@@ -1,0 +1,17 @@
+{
+  "name": "@paibot/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MCP-Client, OAuth, Tool-Katalog und Tool-Suche (ab Folge 8)",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

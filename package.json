@@ -1,0 +1,27 @@
+{
+  "name": "paibot",
+  "private": true,
+  "description": "Paibot – dein persönliches KI-Team, EU-souverän und selbst gehostet.",
+  "license": "SEE LICENSE IN LICENSE",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev --filter=@paibot/web",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "licenses:check": "node scripts/check-licenses.mjs",
+    "licenses:notices": "node scripts/third-party-notices.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.6",
+    "@types/node": "^26.6.6",
+    "turbo": "^2.11.10",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@paibot/llm",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Anbieter-Registry und Schleusen-Routing (ab Folge 3)",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

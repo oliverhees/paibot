@@ -1,0 +1,17 @@
+{
+  "name": "@paibot/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Inngest-Client und Hintergrund-Funktionen (ab Folge 11)",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@paibot/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gemeinsame Typen, Schemas, i18n-Texte und Konstanten",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

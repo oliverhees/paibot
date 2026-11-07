@@ -1,0 +1,139 @@
+Paibot Fair-Code-Lizenz, Version 1.0 (Entwurf)
+
+Hinweis: Dieser Text ist ein Entwurf und wird vor der Version 1.0 von einem
+IT-Anwalt geprüft. Platzhalter in eckigen Klammern werden dabei ersetzt.
+Paibot ist "Fair-Code" bzw. "Source Available", nicht "Open Source".
+
+Lizenzgeber: Oliver Hees, [Anschrift]
+
+§ 1 Begriffe
+
+1. Software: der Quellcode, kompilierte Fassungen, Konfigurationen,
+   Setup-Skripte, Prompts und Vorlagen von Paibot, die der Lizenzgeber unter
+   dieser Lizenz veröffentlicht, einschließlich veränderter Fassungen.
+2. Lizenznehmer: jede natürliche oder juristische Person, die die Software
+   nutzt.
+3. Eigene Zwecke: private Nutzung sowie Nutzung für die eigene berufliche
+   Tätigkeit oder für interne Zwecke des eigenen Unternehmens.
+4. Dritte: alle Personen und Unternehmen außer dem Lizenznehmer, insbesondere
+   Kunden und Auftraggeber.
+5. Kommerzielle Bereitstellung: jede Bereitstellung der Software oder ihrer
+   Funktionen an Dritte gegen Entgelt oder als Teil eines entgeltlichen
+   Angebots.
+
+§ 2 Erlaubte Nutzung
+
+1. Der Lizenzgeber räumt jedem Lizenznehmer ein einfaches, unentgeltliches,
+   weltweites Recht ein, die Software für eigene Zwecke zu nutzen, zu
+   vervielfältigen und zu verändern.
+2. Dazu gehört, die Software auf eigenen oder gemieteten Systemen zu
+   installieren und zu betreiben.
+3. Alle Rechte, die nicht ausdrücklich eingeräumt sind, bleiben beim
+   Lizenzgeber.
+
+§ 3 Weitergabe
+
+1. Der Lizenznehmer darf die Software, auch in veränderter Form, an Dritte
+   weitergeben, wenn dies unentgeltlich und nicht zu kommerziellen Zwecken
+   geschieht.
+2. Bei jeder Weitergabe muss diese Lizenz vollständig beiliegen, und alle
+   Urheber-, Marken- und Lizenzhinweise müssen erhalten bleiben. Veränderte
+   Fassungen müssen als solche gekennzeichnet sein.
+3. Wer die Software weitergibt, darf den Empfängern keine Rechte einräumen,
+   die über diese Lizenz hinausgehen.
+
+§ 4 Verbotene Nutzung
+
+Ohne schriftliche Zustimmung des Lizenzgebers ist untersagt:
+
+1. die kommerzielle Bereitstellung der Software, insbesondere ihr Verkauf,
+   ihre Vermietung oder ihre Lizenzierung;
+2. die Software Dritten als gehosteten oder verwalteten Dienst anzubieten,
+   etwa als Software-as-a-Service;
+3. die Software gegen Entgelt für Dritte zu installieren, einzurichten, zu
+   betreiben oder zu warten;
+4. ein Produkt oder einen Dienst anzubieten, dessen Wert ganz oder
+   überwiegend aus der Software stammt;
+5. die Software umzubenennen, unter eigener Marke anzubieten (White-Label)
+   oder als eigenes Werk auszugeben;
+6. Lizenz-, Urheber- und Markenhinweise oder den Hinweis "Powered by Paibot"
+   zu entfernen oder zu verbergen.
+
+§ 5 Beiträge
+
+1. Reicht jemand Änderungen, Fehlerbehebungen oder Erweiterungen beim
+   Lizenzgeber ein, etwa als Pull Request (Beitrag), räumt er dem
+   Lizenzgeber daran ein unentgeltliches, zeitlich und räumlich
+   unbeschränktes, übertragbares Nutzungsrecht für alle Nutzungsarten ein,
+   einschließlich kommerzieller Produkte des Lizenzgebers und einer
+   künftigen anderen Lizenzierung.
+2. Wer einen Beitrag einreicht, bestätigt, dass er die Rechte daran hat.
+   Einzelheiten regelt eine gesonderte Beitragsvereinbarung (CLA).
+
+§ 6 Marken
+
+1. Der Name "Paibot", Logos, das Maskottchen und sonstige Kennzeichen des
+   Lizenzgebers (Marken) werden nicht lizenziert.
+2. Der Lizenznehmer darf die Marken nur verwenden, um wahrheitsgemäß auf die
+   Herkunft der Software hinzuweisen. Veränderte oder weitergegebene
+   Fassungen dürfen nicht unter den Marken des Lizenzgebers auftreten, außer
+   im Hinweis "Powered by Paibot".
+
+§ 7 Bestandteile Dritter
+
+1. Die Software enthält oder nutzt Bestandteile Dritter unter eigenen
+   Lizenzen. Sie sind in der Datei THIRD_PARTY_NOTICES.md aufgeführt.
+2. Für diese Bestandteile gelten ausschließlich deren Lizenzen. Diese Lizenz
+   schränkt Rechte, die jene Lizenzen gewähren, nicht ein.
+3. Die Datenschleuse ist ein eigenständiges Projekt des Lizenzgebers unter
+   der GNU Affero General Public License v3 und nicht Gegenstand dieser
+   Lizenz.
+
+§ 8 Kommerzielle Lizenz
+
+Wer die Software auf eine Weise nutzen möchte, die § 4 untersagt, kann beim
+Lizenzgeber eine kommerzielle Lizenz anfragen: [Kontakt]. Für Unternehmen
+bietet der Lizenzgeber außerdem eine gehostete Version mit Mehrbenutzerbetrieb
+an.
+
+§ 9 Beendigung
+
+1. Die Lizenz gilt zeitlich unbegrenzt, solange der Lizenznehmer sie
+   einhält.
+2. Bei einem Verstoß endet das Nutzungsrecht automatisch. Beim ersten
+   Verstoß lebt es wieder auf, wenn der Lizenznehmer ihn innerhalb von 30
+   Tagen nach Hinweis des Lizenzgebers vollständig beseitigt. Das gilt nicht
+   für Verstöße gegen § 4 Nr. 1 bis 4.
+3. Mit dem Ende des Nutzungsrechts muss der Lizenznehmer die Nutzung
+   einstellen. Ansprüche des Lizenzgebers auf Unterlassung und
+   Schadensersatz bleiben unberührt.
+
+§ 10 Gewährleistung und Haftung
+
+1. Die Software wird unentgeltlich und im jeweiligen Entwicklungsstand
+   bereitgestellt. Sie wird öffentlich weiterentwickelt und kann Fehler
+   enthalten.
+2. Der Lizenzgeber haftet nur für Vorsatz und grobe Fahrlässigkeit sowie für
+   arglistig verschwiegene Mängel (§§ 521, 523, 524 BGB entsprechend). Die
+   Haftung für Schäden aus der Verletzung von Leben, Körper oder Gesundheit
+   und nach dem Produkthaftungsgesetz bleibt unberührt.
+3. Der Lizenznehmer betreibt die Software in eigener Verantwortung,
+   insbesondere hinsichtlich Datenschutz, der Nutzungsbedingungen
+   angebundener Dienste und KI-Modelle sowie der Sicherheit seiner Systeme.
+4. Die Datenschleuse und andere Schutzfunktionen sind technische Maßnahmen.
+   Sie garantieren nicht, dass alle personenbezogenen Daten erkannt werden,
+   und ersetzen keine eigene datenschutzrechtliche Prüfung.
+
+§ 11 Schlussbestimmungen
+
+1. Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des
+   UN-Kaufrechts. Gegenüber Verbrauchern gilt dies nur, soweit ihnen nicht
+   der Schutz zwingender Vorschriften ihres Aufenthaltsstaats entzogen wird.
+2. Ist der Lizenznehmer Kaufmann, ist Gerichtsstand [Ort des Lizenzgebers].
+3. Sollte eine Bestimmung unwirksam sein, bleibt die Wirksamkeit der übrigen
+   unberührt.
+4. Der Lizenzgeber kann die Lizenz für künftige Versionen ändern. Für bereits
+   veröffentlichte Versionen gilt die Fassung, unter der sie veröffentlicht
+   wurden.
+5. Maßgeblich ist die deutsche Fassung; eine englische Übersetzung dient nur
+   der Information.
