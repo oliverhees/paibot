@@ -71,9 +71,11 @@ Paibot ist **Fair-Code** („Source Available“), nicht Open Source. Kurz gesag
 - ihn umbenennen und als eigenes Produkt ausgeben
 - Lizenz- und Markenhinweise oder „Powered by Paibot“ entfernen
 
-Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Für Teams und eine gehostete Version gibt es eine kommerzielle Variante.
+Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Für Firmen und Selbstständige, die KI souverän mit ihrem Team einsetzen wollen, gibt es die fertige, gehostete Lösung **[Lokyy](https://lokyy.de)**.
 
 ## Mitmachen
+
+**Community:** Deep Dives zu jeder Folge und gemeinsame Coding-Sessions zum Mitbauen gibt es auf **[aiianer.de](https://aiianer.de)**.
 
 Beiträge sind willkommen – bitte zuerst [`CONTRIBUTING.md`](CONTRIBUTING.md) lesen (Beitragsvereinbarung nötig). Sicherheitslücken bitte nicht öffentlich melden, sondern wie in [`SECURITY.md`](SECURITY.md) beschrieben.
 
