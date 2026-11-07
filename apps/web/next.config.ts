@@ -1,7 +1,11 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@paibot/shared"],
+  output: "standalone",
+  outputFileTracingRoot: path.join(__dirname, "../.."),
+  transpilePackages: ["@paibot/shared", "@paibot/db"],
+  serverExternalPackages: ["postgres"],
   poweredByHeader: false,
 };
 

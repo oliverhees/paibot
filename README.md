@@ -4,7 +4,7 @@
 
 Paibot (Personal AI Bot) ist ein webbasierter KI-Agent nach dem Vorbild von Grok Bot: mehrere Bots arbeiten im Team, reden miteinander, surfen selbst und erledigen Aufgaben in deinen Apps. Alles läuft auf deinem eigenen Server, mit EU-Modellen oder eigenen Modellen, und Kundendaten lassen sich über die zuschaltbare [Datenschleuse](https://github.com/oliverhees/datenschleuse) schützen.
 
-> 🚧 **Status: Folge 0 – Gerüst.** Paibot entsteht öffentlich, Folge für Folge, als YouTube-Serie (Build in Public). Noch ist hier nur das Grundgerüst.
+> 🚧 **Status: Folge 2 – läuft auf dem eigenen Server.** Paibot entsteht öffentlich, Folge für Folge, als YouTube-Serie (Build in Public). Bisher: Gerüst, Datenbank, Docker-Image und Coolify-Deployment.
 
 ## Was Paibot werden soll
 
@@ -41,14 +41,14 @@ Weitere Befehle:
 ```
 apps/web/          Next.js-App (UI, API, Agent-Laufzeit)
 packages/shared/   gemeinsame Typen, Konstanten, i18n
-packages/db/       Datenbank-Schema (ab Folge 2)
+packages/db/       Datenbank-Schema und Migrationen (Drizzle)
 packages/llm/      Modellanbieter und Datenschleuse (ab Folge 3)
 packages/agents/   Bots, Router, Team-Tools (ab Folge 5)
 packages/ui/       UI-Komponenten (ab Folge 5)
 packages/mcp/      App-Anbindungen per MCP (ab Folge 8)
 packages/jobs/     Hintergrund-Jobs und Routinen (ab Folge 11)
 services/browser/  Browser-Dienst in Python (ab Folge 10)
-deploy/            Docker Compose und Coolify (ab Folge 2)
+deploy/            Docker Compose (Anleitung: docs/deploy-coolify.md)
 ```
 
 Jede Folge bekommt einen Git-Tag (`folge-00`, `folge-01`, …), damit du genau den Stand eines Videos nachbauen kannst.
