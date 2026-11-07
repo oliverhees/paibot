@@ -6,24 +6,12 @@
   "license": "SEE LICENSE IN ../../LICENSE",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./migrate": "./src/migrate.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.15",
-    "@types/node": "^26.6.6",
-    "drizzle-kit": "^0.31.11",
-    "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
-  },
-  "dependencies": {
-    "drizzle-orm": "^0.45.4",
-    "postgres": "^4.1.0"
+    "typescript": "^7.0.2"
   }
 }
