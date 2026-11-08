@@ -175,6 +175,12 @@ Nein. Paibot ist ausschließlich für die private Nutzung gedacht. Für Firmen, 
 </details>
 
 <details>
+<summary><b>Warum nicht einfach OpenMausBot?</b></summary>
+
+[OpenMausBot](https://github.com/milind-soni/OpenMausBot) ist ein starkes offenes Projekt mit einer ähnlichen Idee. Paibot setzt andere Schwerpunkte: KI-Modelle aus der EU oder lokal als Standard statt US-Abos, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, eine eigene MCP-Verwaltung ohne fremden Dienst dazwischen, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut.
+</details>
+
+<details>
 <summary><b>Brauche ich einen eigenen Server?</b></summary>
 
 Nein. Paibot läuft auf einem Server (z. B. mit Coolify) oder lokal auf deinem Rechner. Lokal kannst du sogar ein Modell aus LM Studio oder Ollama anbinden, dann verlässt keine Anfrage deinen Rechner.
