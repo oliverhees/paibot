@@ -2,7 +2,7 @@
 
 **Dein persönliches KI-Team – EU-souverän und selbst gehostet.**
 
-Paibot (Personal AI Bot) ist dein persönlicher, webbasierter KI-Agent für die private Nutzung nach dem Vorbild von Grok Bot: mehrere Bots arbeiten im Team, reden miteinander, surfen selbst und erledigen Aufgaben in deinen Apps. Alles läuft auf deinem eigenen Server, mit EU-Modellen oder eigenen Modellen, und Kundendaten lassen sich über die zuschaltbare [Datenschleuse](https://github.com/oliverhees/datenschleuse) schützen.
+Paibot (Personal AI Bot) ist dein persönlicher, webbasierter KI-Agent für die private Nutzung nach dem Vorbild von Grok Bot: mehrere Bots arbeiten im Team, reden miteinander, surfen selbst und erledigen Aufgaben in deinen Apps. Alles läuft auf deinem eigenen Server, mit EU-Modellen oder eigenen Modellen, und persönliche Daten lassen sich über die zuschaltbare [Datenschleuse](https://github.com/oliverhees/datenschleuse) schützen.
 
 > 🚧 **Status: Folge 0 – Gerüst.** Paibot entsteht öffentlich, Folge für Folge, als YouTube-Serie (Build in Public). Noch ist hier nur das Grundgerüst.
 
