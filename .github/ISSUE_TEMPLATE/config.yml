@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Community, Deep Dives und Coding-Sessions
+    url: https://aiianer.de
+    about: Fragen zum Nachbauen, Austausch und gemeinsame Sessions in der Community.
+  - name: 🏢 Paibot für Firmen, Selbstständige oder Teams?
+    url: https://lokyy.de
+    about: Paibot ist nur für die private Nutzung. Für alles Berufliche gibt es Lokyy.
+  - name: 🔒 Sicherheitslücke melden
+    url: https://github.com/oliverhees/paibot/security/advisories/new
+    about: Bitte privat melden, nicht als öffentliches Issue.

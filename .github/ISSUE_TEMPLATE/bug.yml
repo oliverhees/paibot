@@ -1,0 +1,51 @@
+name: 🐛 Fehler melden
+description: Etwas funktioniert nicht wie erwartet
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke fürs Melden! Sicherheitslücken bitte **nicht** hier, sondern über Security → „Report a vulnerability“.
+  - type: textarea
+    id: what
+    attributes:
+      label: Was ist passiert?
+      placeholder: Kurze Beschreibung des Fehlers
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Was hast du erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte zum Nachstellen
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Wie läuft Paibot bei dir?
+      options:
+        - Lokal (pnpm dev)
+        - Lokal (Docker)
+        - Server (Coolify)
+        - Server (anders)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version oder Folge
+      placeholder: z. B. folge-02 oder Commit-Hash
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs oder Screenshots
+      description: Bitte vorher API-Keys, Passwörter und persönliche Daten entfernen.

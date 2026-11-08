@@ -1,0 +1,29 @@
+name: 💡 Idee vorschlagen
+description: Eine neue Funktion, ein neuer Bot oder eine Verbesserung
+labels: ["idea"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Worum geht es?
+      options:
+        - Idee für einen neuen Bot
+        - Neue Funktion
+        - Verbesserung einer bestehenden Funktion
+        - Dokumentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem löst die Idee?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Wie stellst du dir die Lösung vor?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativen, die du überlegt hast
