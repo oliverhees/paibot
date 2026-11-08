@@ -11,10 +11,9 @@ Lizenzgeber: Oliver Hees, [Anschrift]
 1. Software: der Quellcode, kompilierte Fassungen, Konfigurationen,
    Setup-Skripte, Prompts und Vorlagen von Paibot, die der Lizenzgeber unter
    dieser Lizenz veröffentlicht, einschließlich veränderter Fassungen.
-2. Lizenznehmer: jede natürliche oder juristische Person, die die Software
-   nutzt.
-3. Eigene Zwecke: private Nutzung sowie Nutzung für die eigene berufliche
-   Tätigkeit oder für interne Zwecke des eigenen Unternehmens.
+2. Lizenznehmer: jede natürliche Person, die die Software nutzt.
+3. Private Zwecke: die Nutzung durch eine natürliche Person für persönliche
+   Zwecke, die weder beruflich noch gewerblich oder kommerziell sind.
 4. Dritte: alle Personen und Unternehmen außer dem Lizenznehmer, insbesondere
    Kunden und Auftraggeber.
 5. Kommerzielle Bereitstellung: jede Bereitstellung der Software oder ihrer
@@ -24,11 +23,15 @@ Lizenzgeber: Oliver Hees, [Anschrift]
 § 2 Erlaubte Nutzung
 
 1. Der Lizenzgeber räumt jedem Lizenznehmer ein einfaches, unentgeltliches,
-   weltweites Recht ein, die Software für eigene Zwecke zu nutzen, zu
+   weltweites Recht ein, die Software für private Zwecke zu nutzen, zu
    vervielfältigen und zu verändern.
 2. Dazu gehört, die Software auf eigenen oder gemieteten Systemen zu
    installieren und zu betreiben.
-3. Alle Rechte, die nicht ausdrücklich eingeräumt sind, bleiben beim
+3. Jede berufliche, gewerbliche oder kommerzielle Nutzung ist nicht
+   gestattet, auch nicht intern, etwa in einem Unternehmen, einer Behörde,
+   einem Verein mit wirtschaftlichem Zweck oder für eine selbstständige oder
+   freiberufliche Tätigkeit. Dafür ist eine gesonderte Lizenz nötig (§ 8).
+4. Alle Rechte, die nicht ausdrücklich eingeräumt sind, bleiben beim
    Lizenzgeber.
 
 § 3 Weitergabe
@@ -46,17 +49,19 @@ Lizenzgeber: Oliver Hees, [Anschrift]
 
 Ohne schriftliche Zustimmung des Lizenzgebers ist untersagt:
 
-1. die kommerzielle Bereitstellung der Software, insbesondere ihr Verkauf,
+1. die berufliche, gewerbliche oder kommerzielle Nutzung der Software
+   (siehe § 2 Abs. 3);
+2. die kommerzielle Bereitstellung der Software, insbesondere ihr Verkauf,
    ihre Vermietung oder ihre Lizenzierung;
-2. die Software Dritten als gehosteten oder verwalteten Dienst anzubieten,
+3. die Software Dritten als gehosteten oder verwalteten Dienst anzubieten,
    etwa als Software-as-a-Service;
-3. die Software gegen Entgelt für Dritte zu installieren, einzurichten, zu
+4. die Software gegen Entgelt für Dritte zu installieren, einzurichten, zu
    betreiben oder zu warten;
-4. ein Produkt oder einen Dienst anzubieten, dessen Wert ganz oder
+5. ein Produkt oder einen Dienst anzubieten, dessen Wert ganz oder
    überwiegend aus der Software stammt;
-5. die Software umzubenennen, unter eigener Marke anzubieten (White-Label)
+6. die Software umzubenennen, unter eigener Marke anzubieten (White-Label)
    oder als eigenes Werk auszugeben;
-6. Lizenz-, Urheber- und Markenhinweise oder den Hinweis "Powered by Paibot"
+7. Lizenz-, Urheber- und Markenhinweise oder den Hinweis "Powered by Paibot"
    zu entfernen oder zu verbergen.
 
 § 5 Beiträge
@@ -91,10 +96,10 @@ Ohne schriftliche Zustimmung des Lizenzgebers ist untersagt:
 
 § 8 Kommerzielle Lizenz
 
-Wer die Software auf eine Weise nutzen möchte, die § 4 untersagt, kann beim
-Lizenzgeber eine kommerzielle Lizenz anfragen: [Kontakt]. Für Unternehmen
-bietet der Lizenzgeber außerdem eine gehostete Version mit Mehrbenutzerbetrieb
-an.
+Wer die Software beruflich oder auf eine andere Weise nutzen möchte, die § 4
+untersagt, kann beim Lizenzgeber eine kommerzielle Lizenz anfragen:
+[Kontakt]. Für Unternehmen, Selbstständige und Teams bietet der Lizenzgeber
+mit Lokyy (https://lokyy.de) eine fertige Lösung mit Mehrbenutzerbetrieb an.
 
 § 9 Beendigung
 
@@ -103,7 +108,7 @@ an.
 2. Bei einem Verstoß endet das Nutzungsrecht automatisch. Beim ersten
    Verstoß lebt es wieder auf, wenn der Lizenznehmer ihn innerhalb von 30
    Tagen nach Hinweis des Lizenzgebers vollständig beseitigt. Das gilt nicht
-   für Verstöße gegen § 4 Nr. 1 bis 4.
+   für Verstöße gegen § 4 Nr. 1 bis 5.
 3. Mit dem Ende des Nutzungsrechts muss der Lizenznehmer die Nutzung
    einstellen. Ansprüche des Lizenzgebers auf Unterlassung und
    Schadensersatz bleiben unberührt.

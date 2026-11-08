@@ -2,7 +2,7 @@
 
 **Dein persönliches KI-Team – EU-souverän und selbst gehostet.**
 
-Paibot (Personal AI Bot) ist ein webbasierter KI-Agent nach dem Vorbild von Grok Bot: mehrere Bots arbeiten im Team, reden miteinander, surfen selbst und erledigen Aufgaben in deinen Apps. Alles läuft auf deinem eigenen Server, mit EU-Modellen oder eigenen Modellen, und Kundendaten lassen sich über die zuschaltbare [Datenschleuse](https://github.com/oliverhees/datenschleuse) schützen.
+Paibot (Personal AI Bot) ist dein persönlicher, webbasierter KI-Agent für die private Nutzung nach dem Vorbild von Grok Bot: mehrere Bots arbeiten im Team, reden miteinander, surfen selbst und erledigen Aufgaben in deinen Apps. Alles läuft auf deinem eigenen Server, mit EU-Modellen oder eigenen Modellen, und Kundendaten lassen sich über die zuschaltbare [Datenschleuse](https://github.com/oliverhees/datenschleuse) schützen.
 
 > 🚧 **Status: Folge 0 – Gerüst.** Paibot entsteht öffentlich, Folge für Folge, als YouTube-Serie (Build in Public). Noch ist hier nur das Grundgerüst.
 
@@ -59,19 +59,21 @@ Paibot ist **Fair-Code** („Source Available“), nicht Open Source. Kurz gesag
 
 **Du darfst**
 
-- Paibot herunterladen, installieren und nutzen – privat, für deine eigene Arbeit oder intern in deiner Firma
-- den Code anpassen und erweitern
+- Paibot für dich privat herunterladen, installieren und nutzen
+- den Code für dich anpassen und erweitern
 - ihn kostenlos weitergeben, z. B. als Fork, solange die Lizenz dabei bleibt
 
 **Du darfst nicht**
 
+- Paibot beruflich nutzen – weder in einer Firma noch als Selbstständiger oder Freiberufler, auch nicht intern
 - Paibot oder eine angepasste Fassung verkaufen oder vermieten
-- ihn als gehosteten Dienst für andere anbieten
-- ihn gegen Bezahlung für Kunden einrichten oder betreiben
+- ihn als gehosteten Dienst für andere anbieten oder für Kunden einrichten
 - ihn umbenennen und als eigenes Produkt ausgeben
 - Lizenz- und Markenhinweise oder „Powered by Paibot“ entfernen
 
-Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Für Firmen und Selbstständige, die KI souverän mit ihrem Team einsetzen wollen, gibt es die fertige, gehostete Lösung **[Lokyy](https://lokyy.de)**.
+**Paibot ist für dich privat. Für alles Berufliche – im Team, mit Rollen und Rechten – gibt es [Lokyy](https://lokyy.de).**
+
+Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Mitmachen
 
