@@ -4,6 +4,8 @@ Hinweise für Claude Code (und alle, die mit Claude Code an Paibot arbeiten).
 
 ## Arbeitsweise
 
+- Dieses Repo enthält nur den Code von Paibot und die Doku für Nutzer und Mitwirkende. Keine Projektplanung, keine internen Notizen, keine Inhalte anderer Projekte.
+
 - Kleine, nachvollziehbare Schritte; jeder Commit lässt die Checks grün.
 - Erkläre Änderungen kurz und verständlich auf Deutsch.
 - Wenn etwas nicht klappt: Fehler zeigen, Ursache erklären, beheben. Nicht still umgehen.
