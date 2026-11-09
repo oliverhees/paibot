@@ -11,3 +11,15 @@ coverage/
 __pycache__/
 .venv/
 *.tsbuildinfo
+
+# Werkzeug- und KI-Ordner gehören nicht ins Repo
+.claude/
+CLAUDE.local.md
+.cursor/
+.windsurf/
+.aider*
+.continue/
+.codex/
+.gemini/
+.vscode/
+.idea/
