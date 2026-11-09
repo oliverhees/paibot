@@ -1,13 +1,11 @@
 # CLAUDE.md – Paibot
 
-Hinweise für Claude Code beim Bauen von Paibot. Paibot entsteht **live auf Video**, Folge für Folge. Jede Sitzung baut genau eine Folge nach Drehbuch.
+Hinweise für Claude Code (und alle, die mit Claude Code an Paibot arbeiten).
 
-## Arbeitsweise beim Dreh
+## Arbeitsweise
 
-- Arbeite **Schritt für Schritt** nach den Anweisungen des Nutzers. Keine Schritte vorziehen, nichts nebenbei „mit erledigen“.
-- Erkläre kurz und verständlich auf Deutsch, was du tust. Die Zuschauer sollen mitkommen.
-- Nach jedem abgeschlossenen Schritt: Checks laufen lassen, dann committen mit
-  `folge-NN: schritt X – <kurze Beschreibung>` (z. B. `folge-02: schritt 3 – datenbank-schema`).
+- Kleine, nachvollziehbare Schritte; jeder Commit lässt die Checks grün.
+- Erkläre Änderungen kurz und verständlich auf Deutsch.
 - Wenn etwas nicht klappt: Fehler zeigen, Ursache erklären, beheben. Nicht still umgehen.
 - Keine Geheimnisse (Passwörter, API-Keys) in Code, Commits oder Ausgaben. `.env` wird nie committet.
 
@@ -33,4 +31,3 @@ Vor jedem Commit: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
 - Neue Abhängigkeiten nur mit erlaubter Lizenz (siehe `docs/LIZENZPOLITIK.md`), danach `pnpm licenses:notices`.
 - Einzelnutzer-App: keine Mehrbenutzer-, Rollen- oder Mandantenfunktionen bauen.
 - `LICENSE` nicht verändern. Kein Code aus fremden Repos ohne passende Lizenz übernehmen.
-- Der Branch `referenz/folge-02` ist ein Spickzettel aus der Planung, nicht direkt mergen.
