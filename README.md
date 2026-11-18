@@ -157,9 +157,9 @@ PaiBot ist **Fair-Code** („Source Available“), nicht Open Source. Kurz gesag
 - ihn umbenennen und als eigenes Produkt ausgeben
 - Lizenz- und Markenhinweise oder „Powered by PaiBot“ entfernen
 
-> **PaiBot ist für eine Person: für dich und deine eigene Arbeit.** Sobald mehrere Personen damit arbeiten sollen, im Team oder im Unternehmen, brauchst du **PaiBot Enterprise** mit Support (in Vorbereitung). Schreib uns: [hi@paibot.de](mailto:hi@paibot.de).
+> **PaiBot ist für eine Person: für dich und deine eigene Arbeit.** Sobald mehrere Personen damit arbeiten sollen, im Team oder im Unternehmen, brauchst du **PaiBot Enterprise** mit Support (in Vorbereitung). Mehr dazu: [paibot.de/enterprise](https://paibot.de/enterprise).
 
-Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Rechtlich gilt nur der Text in [`LICENSE`](LICENSE). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## FAQ
 
@@ -172,7 +172,7 @@ Nein. Der Code ist öffentlich einsehbar und für eine Person kostenlos („Fair
 <details>
 <summary><b>Darf ich PaiBot für meine Arbeit nutzen?</b></summary>
 
-Ja, wenn du es allein nutzt: als Selbstständiger, als Freiberufler oder für deine eigenen Aufgaben. Nicht erlaubt ist, dass mehrere Personen damit arbeiten oder dass eine Firma PaiBot für ihre Mitarbeiter bereitstellt. Dafür ist PaiBot Enterprise mit Support gedacht (in Vorbereitung): [hi@paibot.de](mailto:hi@paibot.de).
+Ja, wenn du es allein nutzt: als Selbstständiger, als Freiberufler oder für deine eigenen Aufgaben. Nicht erlaubt ist, dass mehrere Personen damit arbeiten oder dass eine Firma PaiBot für ihre Mitarbeiter bereitstellt. Dafür ist PaiBot Enterprise mit Support gedacht (in Vorbereitung): [paibot.de/enterprise](https://paibot.de/enterprise).
 </details>
 
 <details>
@@ -211,5 +211,5 @@ Regelmäßig, mehrmals pro Woche. Abonniere den Kanal und gib dem Repo einen Ste
 
 <p align="center">
   Gebaut in Deutschland von <a href="https://github.com/oliverhees">Oliver Hees</a> · „PaiBot“, Logo und Maskottchen sind Kennzeichen von Oliver Hees.<br>
-  Für Teams und Firmen: <a href="mailto:hi@paibot.de">PaiBot Enterprise</a> · Community: <a href="https://aiianer.de">aiianer.de</a>
+  Für Teams und Firmen: <a href="https://paibot.de/enterprise">PaiBot Enterprise</a> · Community: <a href="https://aiianer.de">aiianer.de</a>
 </p>
