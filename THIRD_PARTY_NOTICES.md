@@ -12,9 +12,9 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | @img/sharp-libvips-linuxmusl-x64 | 1.3.4 | LGPL-3.0-or-later |
 | @img/sharp-linux-x64 | 0.35.5 | Apache-2.0 |
 | @img/sharp-linuxmusl-x64 | 0.35.5 | Apache-2.0 |
-| @next/env | 16.4.5 | MIT |
-| @next/swc-linux-x64-gnu | 16.4.5 | MIT |
-| @next/swc-linux-x64-musl | 16.4.5 | MIT |
+| @next/env | 16.4.6 | MIT |
+| @next/swc-linux-x64-gnu | 16.4.6 | MIT |
+| @next/swc-linux-x64-musl | 16.4.6 | MIT |
 | @swc/helpers | 0.5.23 | Apache-2.0 |
 | @types/node | 26.6.6 | MIT |
 | baseline-browser-mapping | 2.11.35 | Apache-2.0 |
@@ -23,7 +23,7 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | detect-libc | 2.1.2 | Apache-2.0 |
 | drizzle-orm | 0.45.4 | Apache-2.0 |
 | nanoid | 3.3.20 | MIT |
-| next | 16.4.5 | MIT |
+| next | 16.4.6 | MIT |
 | picocolors | 1.1.1 | ISC |
 | postcss | 8.5.23 | MIT |
 | postgres | 4.1.1 | Unlicense |
