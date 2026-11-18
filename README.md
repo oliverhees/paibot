@@ -22,7 +22,7 @@ Seit:      2026-11-07
 
 <p align="center">
   <b>Dein persönliches KI-Team – auf deinem Server oder Rechner, mit EU-Modellen und zuschaltbarer Datenschleuse.</b><br>
-  Wir bauen es öffentlich, Folge für Folge. Und du baust mit.
+  Der Code ist öffentlich. Und du entscheidest mit, was als Nächstes kommt.
 </p>
 
 <p align="center">
@@ -71,16 +71,16 @@ Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa
 
 ## Funktionen
 
-|     | Funktion                                                       | Status            |
-| --- | -------------------------------------------------------------- | ----------------- |
-| 🖥️  | Läuft auf eigenem Server (Coolify) oder lokal                  | geplant · Folge 2 |
-| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | geplant · Folge 3 |
-| 🤖  | Eigene Bots mit Rollen, Gedächtnis und Live-Antworten          | geplant           |
-| 🔌  | Apps per MCP verbinden, Freigabe vor jeder schreibenden Aktion | geplant           |
-| 🌐  | Browser-Agent: der Bot surft selbst, du schaust live zu        | geplant           |
-| 🤝  | Bots im Team: Delegieren, Übergeben, Chief of Staff            | geplant           |
-| ⏰  | Routinen, die im Hintergrund laufen                            | geplant           |
-| 📱  | App fürs Handy (PWA) mit Push, Deutsch und Englisch            | geplant           |
+|     | Funktion                                                       | Status                                                                                                                               |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 🖥️  | Läuft auf eigenem Server (Coolify) oder lokal                  | Server: vorhanden (Docker Compose, Coolify, siehe [`docs/installation.md`](docs/installation.md)); lokal mit lokalem Modell: geplant |
+| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | geplant · Folge 3                                                                                                                    |
+| 🤖  | Eigene Bots mit Rollen, Gedächtnis und Live-Antworten          | geplant                                                                                                                              |
+| 🔌  | Apps per MCP verbinden, Freigabe vor jeder schreibenden Aktion | geplant                                                                                                                              |
+| 🌐  | Browser-Agent: der Bot surft selbst, du schaust live zu        | geplant                                                                                                                              |
+| 🤝  | Bots im Team: Delegieren, Übergeben, Chief of Staff            | geplant                                                                                                                              |
+| ⏰  | Routinen, die im Hintergrund laufen                            | geplant                                                                                                                              |
+| 📱  | App fürs Handy (PWA) mit Push, Deutsch und Englisch            | geplant                                                                                                                              |
 
 ## So funktioniert es
 
@@ -101,7 +101,11 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 
 > 🚧 **Aktueller Stand: Folge 0 – das Gerüst steht.** Ab Folge 2 wird daraus Schritt für Schritt der echte Agent.
 
-Jede Folge der YouTube-Serie endet mit etwas, das wirklich läuft, und bekommt einen eigenen Git-Tag (`folge-00`, `folge-01`, …). So kannst du jeden Stand genau nachbauen. Die Reihenfolge kann sich ändern, und die Community entscheidet mit.
+Gebaut wird zwischen den Folgen der YouTube-Serie, in Coding-Sessions der Community auf [aiianer.de](https://aiianer.de) und im Livestream. Die Folgen zeigen, wie man PaiBot installiert, benutzt und ausbaut. Jede Folge bekommt einen eigenen Git-Tag (`folge-00`, `folge-01`, …), so kannst du jeden Stand nachbauen. Die Reihenfolge kann sich ändern, und die Community stimmt ab, welche Funktion als Nächstes kommt.
+
+- 🗺️ [Bauplan](https://paibot.de/bauplan): der aktuelle Stand
+- 🗳️ [Mitentscheiden](https://paibot.de/mitentscheiden): welche Funktion kommt als Nächstes?
+- 📖 [Doku](https://paibot.de/doku): installieren und benutzen
 
 - [x] **Folge 0** – Gerüst, Lizenz, CI
 - [ ] **Folge 1** – Die Idee
@@ -218,6 +222,7 @@ Regelmäßig, mehrmals pro Woche. Abonniere den Kanal und gib dem Repo einen Ste
 ## Mitmachen und Community
 
 - ⭐ **Gib dem Repo einen Stern**, wenn dir das Projekt gefällt – das hilft enorm.
+- 🗳️ **Entscheide mit:** auf [paibot.de/mitentscheiden](https://paibot.de/mitentscheiden) stimmst du ab, was als Nächstes kommt. Den Stand siehst du im [Bauplan](https://paibot.de/bauplan), die Anleitungen in der [Doku](https://paibot.de/doku).
 - 💬 **Community auf [aiianer.de](https://aiianer.de):** Deep Dives zu jeder Folge, gemeinsame Coding-Sessions zum Mitbauen und Hilfe, wenn es hakt.
 - 🐛 **Fehler oder Ideen?** Eröffne ein [Issue](https://github.com/oliverhees/paibot/issues/new/choose).
 - 🛠️ **Selbst beitragen?** Lies zuerst [`CONTRIBUTING.md`](CONTRIBUTING.md) (Beitragsvereinbarung nötig).
