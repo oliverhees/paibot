@@ -1,15 +1,15 @@
-Paibot Fair-Code-Lizenz, Version 1.0 (Entwurf)
+PaiBot Fair-Code-Lizenz, Version 1.0 (Entwurf)
 
 Hinweis: Dieser Text ist ein Entwurf und wird vor der Version 1.0 von einem
 IT-Anwalt geprüft. Platzhalter in eckigen Klammern werden dabei ersetzt.
-Paibot ist "Fair-Code" bzw. "Source Available", nicht "Open Source".
+PaiBot ist "Fair-Code" bzw. "Source Available", nicht "Open Source".
 
 Lizenzgeber: Oliver Hees, [Anschrift]
 
 § 1 Begriffe
 
 1. Software: der Quellcode, kompilierte Fassungen, Konfigurationen,
-   Setup-Skripte, Prompts und Vorlagen von Paibot, die der Lizenzgeber unter
+   Setup-Skripte, Prompts und Vorlagen von PaiBot, die der Lizenzgeber unter
    dieser Lizenz veröffentlicht, einschließlich veränderter Fassungen.
 2. Lizenznehmer: jede natürliche Person, die die Software nutzt.
 3. Eigene Zwecke: die Nutzung durch genau eine natürliche Person für sich
@@ -66,7 +66,7 @@ Ohne schriftliche Zustimmung des Lizenzgebers ist untersagt:
    überwiegend aus der Software stammt;
 6. die Software umzubenennen, unter eigener Marke anzubieten (White-Label)
    oder als eigenes Werk auszugeben;
-7. Lizenz-, Urheber- und Markenhinweise oder den Hinweis "Powered by Paibot"
+7. Lizenz-, Urheber- und Markenhinweise oder den Hinweis "Powered by PaiBot"
    zu entfernen oder zu verbergen.
 
 § 5 Beiträge
@@ -82,12 +82,12 @@ Ohne schriftliche Zustimmung des Lizenzgebers ist untersagt:
 
 § 6 Marken
 
-1. Der Name "Paibot", Logos, das Maskottchen und sonstige Kennzeichen des
+1. Der Name "PaiBot", Logos, das Maskottchen und sonstige Kennzeichen des
    Lizenzgebers (Marken) werden nicht lizenziert.
 2. Der Lizenznehmer darf die Marken nur verwenden, um wahrheitsgemäß auf die
    Herkunft der Software hinzuweisen. Veränderte oder weitergegebene
    Fassungen dürfen nicht unter den Marken des Lizenzgebers auftreten, außer
-   im Hinweis "Powered by Paibot".
+   im Hinweis "Powered by PaiBot".
 
 § 7 Bestandteile Dritter
 
