@@ -6,6 +6,15 @@ Alle wichtigen Änderungen an PaiBot, sortiert nach Folge der YouTube-Serie. Jed
 
 - Die Fair-Code-Lizenz ist Version 1.0 (kein Entwurf mehr) und gilt jetzt für die Nutzung durch eine Person, privat und für die eigene Arbeit. Die Nutzung mit mehreren Personen (Team, Unternehmen) braucht eine gesonderte Lizenz.
 
+## Folge 2 – Server
+
+- Datenbank-Paket mit Drizzle, erster Migration und Test (PGlite)
+- Migrationen laufen beim Start der Web-App
+- Healthcheck meldet den Zustand der Datenbank (`ok`, `down`, `not_configured`)
+- Startseite im PaiBot-Look mit Statusanzeige
+- Docker-Image, Docker Compose mit Postgres, Anleitung für Coolify
+- CI baut und startet den Stack und prüft den Healthcheck
+
 ## Folge 0 – Gerüst
 
 - Monorepo mit pnpm, Turborepo, Biome und TypeScript
