@@ -1,3 +1,13 @@
+<!--
+PaiBot – Anleitung: PaiBot mit Coolify auf dem eigenen Server betreiben.
+
+Autor:     Oliver Hees
+Website:   https://paibot.de
+Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+Lizenz:    PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+Seit:      2026-11-07
+-->
+
 # PaiBot mit Coolify betreiben
 
 Ziel: PaiBot läuft auf deinem eigenen Server in der EU, unter deiner Domain mit HTTPS, und `/api/health` meldet `"db":"ok"`.

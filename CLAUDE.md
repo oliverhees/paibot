@@ -1,3 +1,13 @@
+<!--
+PaiBot – Arbeitshinweise für Claude Code und alle, die mit Claude Code an PaiBot arbeiten.
+
+Autor:     Oliver Hees
+Website:   https://paibot.de
+Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+Lizenz:    PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+Seit:      2026-11-07
+-->
+
 # CLAUDE.md – PaiBot
 
 Hinweise für Claude Code (und alle, die mit Claude Code an PaiBot arbeiten).
@@ -18,13 +28,14 @@ Hinweise für Claude Code (und alle, die mit Claude Code an PaiBot arbeiten).
 | `pnpm install`          | Abhängigkeiten                                                               |
 | `pnpm dev`              | Web-App lokal starten                                                        |
 | `pnpm lint`             | Biome (Lint + Format); `pnpm exec biome check --write .` behebt Formatierung |
+| `pnpm headers:check`    | prüft den Urheber-Kopf in allen Dateien (`headers:write` ergänzt ihn)        |
 | `pnpm typecheck`        | TypeScript prüfen                                                            |
 | `pnpm test`             | Tests (Vitest)                                                               |
 | `pnpm build`            | alles bauen                                                                  |
 | `pnpm licenses:check`   | Lizenzen der Abhängigkeiten prüfen                                           |
 | `pnpm licenses:notices` | `THIRD_PARTY_NOTICES.md` neu erzeugen (nach neuen Abhängigkeiten)            |
 
-Vor jedem Commit: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+Vor jedem Commit: `pnpm lint && pnpm headers:check && pnpm typecheck && pnpm test && pnpm build`.
 
 ## Aufbau und Regeln
 
@@ -33,3 +44,5 @@ Vor jedem Commit: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
 - Neue Abhängigkeiten nur mit erlaubter Lizenz (siehe `docs/LIZENZPOLITIK.md`), danach `pnpm licenses:notices`.
 - Einzelnutzer-App: keine Mehrbenutzer-, Rollen- oder Mandantenfunktionen bauen.
 - `LICENSE` nicht verändern. Kein Code aus fremden Repos ohne passende Lizenz übernehmen.
+- Jede neue Datei bekommt den Urheber-Kopf (Dateien ohne Kopf-Möglichkeit wie JSON und `LICENSE` ausgenommen). `pnpm headers:write` fügt ihn ein, `pnpm headers:check` prüft das.
+- Jede neue Funktion bringt ihre Doku-Seite nach `docs/VORLAGE-funktion.md` mit und wird in `docs/README.md` eingetragen, sonst gilt sie nicht als fertig.

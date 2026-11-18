@@ -1,3 +1,13 @@
+/**
+ * PaiBot – erzeugt THIRD_PARTY_NOTICES.md aus den Abhängigkeiten.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-07
+ */
+
 // Erzeugt THIRD_PARTY_NOTICES.md aus den Produktions-Abhängigkeiten.
 import { writeFileSync } from "node:fs";
 import { readLicenses } from "./licenses.mjs";

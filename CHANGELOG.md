@@ -1,3 +1,13 @@
+<!--
+PaiBot – Änderungsprotokoll mit den Neuerungen pro Stand.
+
+Autor:     Oliver Hees
+Website:   https://paibot.de
+Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+Lizenz:    PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+Seit:      2026-11-08
+-->
+
 # Changelog
 
 Alle wichtigen Änderungen an PaiBot, sortiert nach Folge der YouTube-Serie. Jede Folge hat einen eigenen Git-Tag.

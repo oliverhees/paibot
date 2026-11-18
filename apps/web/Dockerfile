@@ -1,3 +1,11 @@
+# PaiBot – baut die Web-App als schlankes Produktions-Image.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-07
+
 # Baut die PaiBot-Web-App als schlankes Produktions-Image.
 # Build-Kontext ist das Repo-Wurzelverzeichnis: docker build -f apps/web/Dockerfile .
 FROM node:22-alpine AS build

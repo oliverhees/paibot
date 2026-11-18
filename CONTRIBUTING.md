@@ -1,3 +1,13 @@
+<!--
+PaiBot – Leitfaden zum Mitmachen: Ablauf, Regeln und Commit-Nachrichten.
+
+Autor:     Oliver Hees
+Website:   https://paibot.de
+Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+Lizenz:    PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+Seit:      2026-11-07
+-->
+
 # Mitmachen bei PaiBot
 
 Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folge, als YouTube-Serie. Dieser Leitfaden zeigt dir, wie du beitragen kannst.
@@ -42,7 +52,7 @@ pnpm dev
 Vor jedem Pull Request lokal prüfen:
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm lint && pnpm headers:check && pnpm typecheck && pnpm test && pnpm build
 ```
 
 Formatierungsfehler behebt `pnpm exec biome check --write .`.
@@ -61,6 +71,8 @@ Formatierungsfehler behebt `pnpm exec biome check --write .`.
 - Keine Geheimnisse (Passwörter, API-Keys) in Code, Commits oder Logs
 - Neue Abhängigkeiten nur mit erlaubter Lizenz (MIT, Apache-2.0, BSD, ISC); `pnpm licenses:check` prüft das, Details in [docs/LIZENZPOLITIK.md](docs/LIZENZPOLITIK.md). Danach `pnpm licenses:notices` ausführen.
 - Kein Code aus fremden Projekten ohne passende Lizenz
+- Jede neue Datei bekommt den Urheber-Kopf (Autor, Website, Copyright, Lizenz, Datum). `pnpm headers:write` fügt ihn ein, `pnpm headers:check` prüft das; ausgenommen sind Dateien, in die kein Kommentar passt (z. B. JSON) und `LICENSE`.
+- Jede neue Funktion bringt ihre Doku-Seite nach der [Vorlage](docs/VORLAGE-funktion.md) mit, sonst gilt sie nicht als fertig. Das Inhaltsverzeichnis steht in [docs/README.md](docs/README.md).
 
 ## Commit-Nachrichten
 

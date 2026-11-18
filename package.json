@@ -15,7 +15,9 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "licenses:check": "node scripts/check-licenses.mjs",
-    "licenses:notices": "node scripts/third-party-notices.mjs"
+    "licenses:notices": "node scripts/third-party-notices.mjs",
+    "headers:check": "node scripts/headers.mjs --check",
+    "headers:write": "node scripts/headers.mjs --write"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",

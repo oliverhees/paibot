@@ -1,3 +1,11 @@
+# PaiBot – CI: prüft Lint, Köpfe, Typen, Tests, Build, Lizenzen und den Docker-Stack.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-07
+
 name: CI
 
 on:
@@ -20,6 +28,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm headers:check
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

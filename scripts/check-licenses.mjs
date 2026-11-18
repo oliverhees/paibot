@@ -1,3 +1,13 @@
+/**
+ * PaiBot – prüft, ob alle Abhängigkeiten eine erlaubte Lizenz haben.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-07
+ */
+
 // Bricht ab, wenn eine Produktions-Abhängigkeit eine nicht erlaubte Lizenz hat.
 // Regeln: docs/LIZENZPOLITIK.md
 import { readLicenses } from "./licenses.mjs";

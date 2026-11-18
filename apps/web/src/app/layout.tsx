@@ -1,3 +1,13 @@
+/**
+ * PaiBot – Grundgerüst aller Seiten mit Titel und Beschreibung.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-07
+ */
+
 import { APP_NAME } from "@paibot/shared";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";

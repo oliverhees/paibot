@@ -1,3 +1,13 @@
+/**
+ * PaiBot – Startseite mit Logo und Datenbank-Status.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-07
+ */
+
 import { type DbState, databaseState } from "../lib/health";
 
 export const dynamic = "force-dynamic";
