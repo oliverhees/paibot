@@ -25,6 +25,11 @@ Seit:      2026-11-07
   Wir bauen es öffentlich, Folge für Folge. Und du baust mit.
 </p>
 
+<p align="center">
+  <b>Entwickelt von <a href="https://hr-codelabs.de">HR CodeLabs</a></b><br>
+  Du willst so etwas für dein Unternehmen? <a href="https://hr-codelabs.de">HR CodeLabs</a> baut Projekte im Auftrag: KI-Integration für Selbstständige und KMU.
+</p>
+
 ---
 
 ## Inhalt
@@ -39,6 +44,7 @@ Seit:      2026-11-07
 - [Lizenz: Fair-Code, für eine Person](#lizenz-fair-code-für-eine-person)
 - [FAQ](#faq)
 - [Mitmachen und Community](#mitmachen-und-community)
+- [Wer steckt dahinter](#wer-steckt-dahinter)
 
 ## Was ist PaiBot?
 
@@ -217,9 +223,16 @@ Regelmäßig, mehrmals pro Woche. Abonniere den Kanal und gib dem Repo einen Ste
 - 🛠️ **Selbst beitragen?** Lies zuerst [`CONTRIBUTING.md`](CONTRIBUTING.md) (Beitragsvereinbarung nötig).
 - 🔒 **Sicherheitslücke gefunden?** Bitte nicht öffentlich melden, sondern wie in [`SECURITY.md`](SECURITY.md) beschrieben.
 
+## Wer steckt dahinter
+
+PaiBot wird von [HR CodeLabs](https://hr-codelabs.de) entwickelt. Die Agentur bietet KI-Integration für Selbstständige und KMU und setzt Projekte im Auftrag um.
+
+PaiBot selbst ist für eine Person gedacht. Für Teams gibt es [PaiBot Enterprise](https://paibot.de/enterprise) (in Vorbereitung). Für ein eigenes Projekt: [Projekt anfragen](https://hr-codelabs.de).
+
 ---
 
 <p align="center">
   Gebaut in Deutschland von <a href="https://github.com/oliverhees">Oliver Hees</a> · „PaiBot“, Logo und Maskottchen sind Kennzeichen von Oliver Hees.<br>
+  Entwickelt von <a href="https://hr-codelabs.de">HR CodeLabs</a> · Projekte im Auftrag: <a href="https://hr-codelabs.de">hr-codelabs.de</a><br>
   Für Teams und Firmen: <a href="https://paibot.de/enterprise">PaiBot Enterprise</a> · Community: <a href="https://aiianer.de">aiianer.de</a>
 </p>

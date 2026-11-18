@@ -57,6 +57,12 @@ export default async function HomePage() {
         <i />
         {DB_TEXT[db]}
       </div>
+      <footer className="fuss">
+        Powered by PaiBot · entwickelt von{" "}
+        <a href="https://hr-codelabs.de" target="_blank" rel="noopener">
+          HR CodeLabs
+        </a>
+      </footer>
     </main>
   );
 }

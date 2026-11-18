@@ -120,3 +120,23 @@ body::before {
 .status[data-db="down"] i {
   background: var(--danger);
 }
+
+.fuss {
+  margin-top: 72px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.fuss a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fuss a:hover,
+.fuss a:focus-visible {
+  color: var(--accent);
+}

@@ -58,3 +58,5 @@ Gut zu wissen:
 2. Alle Abschnitte ausfüllen (nichts behaupten, was der Code nicht kann).
 3. Die Seite in der Tabelle oben eintragen.
 4. Screenshots in `screenshots.json` eintragen und mit `pnpm doku:screenshots` aufnehmen.
+
+PaiBot wird entwickelt von [HR CodeLabs](https://hr-codelabs.de).
