@@ -30,6 +30,18 @@ Beispiel:
 <Eingabe oder Befehl>
 ```
 
+## So sieht es aus
+
+<Mindestens ein Screenshot pro Schritt, den man in der Oberfläche macht, in der Reihenfolge von „So benutzt du es“. Zu jedem Bild ein Satz: Was ist zu sehen, worauf kommt es an?>
+
+![<Alt-Text: was auf dem Bild zu sehen ist>](assets/screenshots/<name>.png)
+
+Regeln für Screenshots:
+
+- dunkles Design, nur Beispiel-Daten (z. B. „Max Mustermann“), nie echte Daten oder Schlüssel
+- nicht von Hand aufnehmen: Eintrag in [screenshots.json](screenshots.json) anlegen, dann `pnpm doku:screenshots <name>` (App muss lokal laufen)
+- Bildpfade relativ schreiben, wie im Beispiel oben
+
 ## Einstellungen
 
 | Einstellung | Wo                             | Bedeutung | Standard |

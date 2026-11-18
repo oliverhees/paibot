@@ -13,6 +13,8 @@
 **/coverage
 .git
 .github
+# Doku und Screenshots gehören nicht ins Image
+docs
 **/.env
 **/.env.*
 !**/.env.example

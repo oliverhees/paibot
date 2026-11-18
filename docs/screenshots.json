@@ -1,0 +1,16 @@
+{
+  "aufnahmen": [
+    {
+      "name": "startseite",
+      "pfad": "/",
+      "warteAuf": ".status[data-db='ok']",
+      "beschreibung": "Startseite mit „Datenbank: ok“ (App mit laufender Datenbank)"
+    },
+    {
+      "name": "startseite-ohne-datenbank",
+      "pfad": "/",
+      "warteAuf": ".status[data-db='not_configured']",
+      "beschreibung": "Startseite mit „Datenbank: nicht eingerichtet“ (App ohne DATABASE_URL)"
+    }
+  ]
+}

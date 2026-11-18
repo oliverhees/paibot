@@ -53,6 +53,12 @@ Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`.
 | `"db":"down"`, HTTP 503 | App läuft, Datenbank nicht erreichbar | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen |
 | keine Antwort           | Domain, DNS oder Proxy falsch         | A-Record und Domain-Eintrag beim Dienst `web` prüfen                  |
 
+## So sieht es aus
+
+Öffnest du deine Domain im Browser, zeigt die Startseite „Datenbank: ok“, sobald die Datenbank erreichbar ist.
+
+![Startseite von PaiBot im dunklen Design mit grünem Punkt und dem Status „Datenbank: ok“](assets/screenshots/startseite.png)
+
 ## 5. Danach
 
 - Backups der Datenbank einrichten (Ziel: S3-kompatibler Speicher in der EU)

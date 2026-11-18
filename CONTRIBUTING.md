@@ -72,7 +72,7 @@ Formatierungsfehler behebt `pnpm exec biome check --write .`.
 - Neue Abhängigkeiten nur mit erlaubter Lizenz (MIT, Apache-2.0, BSD, ISC); `pnpm licenses:check` prüft das, Details in [docs/LIZENZPOLITIK.md](docs/LIZENZPOLITIK.md). Danach `pnpm licenses:notices` ausführen.
 - Kein Code aus fremden Projekten ohne passende Lizenz
 - Jede neue Datei bekommt den Urheber-Kopf (Autor, Website, Copyright, Lizenz, Datum). `pnpm headers:write` fügt ihn ein, `pnpm headers:check` prüft das; ausgenommen sind Dateien, in die kein Kommentar passt (z. B. JSON) und `LICENSE`.
-- Jede neue Funktion bringt ihre Doku-Seite nach der [Vorlage](docs/VORLAGE-funktion.md) mit, sonst gilt sie nicht als fertig. Das Inhaltsverzeichnis steht in [docs/README.md](docs/README.md).
+- Jede neue Funktion bringt ihre Doku-Seite nach der [Vorlage](docs/VORLAGE-funktion.md) mit, sonst gilt sie nicht als fertig. Das Inhaltsverzeichnis steht in [docs/README.md](docs/README.md). Screenshots entstehen aus der laufenden App (`pnpm doku:screenshots`, Liste in `docs/screenshots.json`), nicht von Hand, und zeigen nur Beispiel-Daten.
 
 ## Commit-Nachrichten
 

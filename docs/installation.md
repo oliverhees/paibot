@@ -43,6 +43,16 @@ curl http://localhost:3000/api/health
 
 Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`.
 
+## So sieht es aus
+
+Nach dem Start öffnest du `http://localhost:3000` im Browser. Mit erreichbarer Datenbank zeigt die Startseite „Datenbank: ok“.
+
+![Startseite von PaiBot im dunklen Design mit grünem Punkt und dem Status „Datenbank: ok“](assets/screenshots/startseite.png)
+
+Fehlt die `DATABASE_URL` (z. B. bei `pnpm dev` ohne `.env.local`), steht dort „Datenbank: nicht eingerichtet“. Das ist kein Fehler der App, sondern der Hinweis, dass noch keine Datenbank verbunden ist.
+
+![Startseite von PaiBot mit grauem Punkt und dem Status „Datenbank: nicht eingerichtet“](assets/screenshots/startseite-ohne-datenbank.png)
+
 ## Auf dem Server
 
 Der Ablauf ist derselbe Stack, nur mit Domain und HTTPS davor. Schritt für Schritt mit Coolify: [deploy-coolify.md](deploy-coolify.md). Coolify ist bequem, aber nicht nötig: Wer einen eigenen Reverse-Proxy nutzt, startet denselben Compose-Stack und leitet seine Domain auf Port 3000 des Dienstes `web`.

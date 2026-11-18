@@ -17,7 +17,8 @@
     "licenses:check": "node scripts/check-licenses.mjs",
     "licenses:notices": "node scripts/third-party-notices.mjs",
     "headers:check": "node scripts/headers.mjs --check",
-    "headers:write": "node scripts/headers.mjs --write"
+    "headers:write": "node scripts/headers.mjs --write",
+    "doku:screenshots": "node scripts/doku-screenshots.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",
