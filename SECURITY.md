@@ -14,4 +14,4 @@ Wir melden uns so schnell wie möglich und halten dich über die Behebung auf de
 
 ## Unterstützte Versionen
 
-Paibot ist in früher Entwicklung. Sicherheitskorrekturen gibt es nur für den aktuellen Stand von `main`.
+PaiBot ist in früher Entwicklung. Sicherheitskorrekturen gibt es nur für den aktuellen Stand von `main`.

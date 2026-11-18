@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.png" alt="Paibot – dein persönliches KI-Team" width="100%">
+  <img src="docs/assets/banner.png" alt="PaiBot – dein persönliches KI-Team" width="100%">
 </p>
 
 <p align="center">
@@ -19,8 +19,8 @@
 
 ## Inhalt
 
-- [Was ist Paibot?](#was-ist-paibot)
-- [Warum Paibot?](#warum-paibot)
+- [Was ist PaiBot?](#was-ist-paibot)
+- [Warum PaiBot?](#warum-paibot)
 - [Funktionen](#funktionen)
 - [So funktioniert es](#so-funktioniert-es)
 - [Status und Roadmap](#status-und-roadmap)
@@ -30,21 +30,21 @@
 - [FAQ](#faq)
 - [Mitmachen und Community](#mitmachen-und-community)
 
-## Was ist Paibot?
+## Was ist PaiBot?
 
-**Paibot** (Personal AI Bot) ist ein persönlicher KI-Agent für die private Nutzung – nicht ein einzelner Chatbot, sondern ein ganzes Team: Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten.
+**PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für die private Nutzung – nicht ein einzelner Chatbot, sondern ein ganzes Team: Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten.
 
-Das Vorbild sind KI-Teammates wie Grok Bot. Der Unterschied: Paibot läuft **bei dir** – auf deinem eigenen Server oder direkt auf deinem Rechner –, nutzt **Modelle aus der EU oder dein eigenes lokales Modell**, und eine **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
+Das Vorbild sind KI-Teammates wie Grok Bot. Der Unterschied: PaiBot läuft **bei dir** – auf deinem eigenen Server oder direkt auf deinem Rechner –, nutzt **Modelle aus der EU oder dein eigenes lokales Modell**, und eine **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
 
 <p align="center">
   <img src="docs/assets/idee.jpg" alt="Die Idee: Vorbild, Problem, Lösung, Bauplan" width="90%">
 </p>
 
-## Warum Paibot?
+## Warum PaiBot?
 
-Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa, laufen in fremden Clouds oder bekommen weitreichende Rechte auf deinem System. Paibot geht einen anderen Weg:
+Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa, laufen in fremden Clouds oder bekommen weitreichende Rechte auf deinem System. PaiBot geht einen anderen Weg:
 
-|                  | Paibot                                                                                                                       |
+|                  | PaiBot                                                                                                                       |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                      |
 | **Welche KI?**   | EU-Modelle über EUrouter, eigene Modelle über vLLM, lokal über LM Studio oder Ollama – alles OpenAI-kompatibel               |
@@ -70,7 +70,7 @@ Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa
 
 ```mermaid
 flowchart LR
-    U["📱 Du – PWA im Browser oder auf dem Handy"] --> W["Paibot<br/>Next.js + Agenten"]
+    U["📱 Du – PWA im Browser oder auf dem Handy"] --> W["PaiBot<br/>Next.js + Agenten"]
     W --> DB[("Postgres")]
     W --> J["Hintergrund-Jobs"]
     W --> B["Browser-Dienst"]
@@ -89,9 +89,9 @@ Jede Folge der YouTube-Serie endet mit etwas, das wirklich läuft, und bekommt e
 
 - [x] **Folge 0** – Gerüst, Lizenz, CI
 - [ ] **Folge 1** – Die Idee
-- [ ] **Folge 2** – Der Server: Paibot geht online
+- [ ] **Folge 2** – Der Server: PaiBot geht online
 - [ ] **Folge 3** – Die Datenschleuse
-- [ ] Paibot auf deinem Rechner mit lokaler KI
+- [ ] PaiBot auf deinem Rechner mit lokaler KI
 - [ ] Der erste Bot
 - [ ] Apps anbinden per MCP
 - [ ] Der Browser-Agent
@@ -102,7 +102,7 @@ Jede Folge der YouTube-Serie endet mit etwas, das wirklich läuft, und bekommt e
 
 ## Schnellstart
 
-> Paibot ist noch in früher Entwicklung. Der Schnellstart startet aktuell das Gerüst.
+> PaiBot ist noch in früher Entwicklung. Der Schnellstart startet aktuell das Gerüst.
 
 **Voraussetzungen:** Node.js 22 und pnpm 10
 
@@ -110,12 +110,12 @@ Jede Folge der YouTube-Serie endet mit etwas, das wirklich läuft, und bekommt e
 git clone https://github.com/oliverhees/paibot.git
 cd paibot
 pnpm install
-pnpm dev          # startet Paibot auf http://localhost:3000
+pnpm dev          # startet PaiBot auf http://localhost:3000
 ```
 
 | Befehl                | Zweck                              |
 | --------------------- | ---------------------------------- |
-| `pnpm dev`            | Paibot lokal starten               |
+| `pnpm dev`            | PaiBot lokal starten               |
 | `pnpm build`          | alles bauen                        |
 | `pnpm test`           | Tests ausführen                    |
 | `pnpm lint`           | Lint und Format prüfen (Biome)     |
@@ -125,7 +125,7 @@ pnpm dev          # startet Paibot auf http://localhost:3000
 ## Projektaufbau
 
 ```
-apps/web/          Paibot-App (Next.js: Oberfläche, API, Agenten)
+apps/web/          PaiBot-App (Next.js: Oberfläche, API, Agenten)
 packages/shared/   gemeinsame Typen, Konstanten, Sprachen
 packages/db/       Datenbank (ab Folge 2)
 packages/llm/      KI-Modelle und Datenschleuse (ab Folge 3)
@@ -140,56 +140,56 @@ docs/              Dokumentation
 
 ## Lizenz: Fair-Code, nur privat
 
-Paibot ist **Fair-Code** („Source Available“), nicht Open Source. Kurz gesagt:
+PaiBot ist **Fair-Code** („Source Available“), nicht Open Source. Kurz gesagt:
 
 **Du darfst**
 
-- Paibot für dich privat herunterladen, installieren und nutzen
+- PaiBot für dich privat herunterladen, installieren und nutzen
 - den Code für dich anpassen und erweitern
 - ihn kostenlos weitergeben, z. B. als Fork, solange die Lizenz dabei bleibt
 
 **Du darfst nicht**
 
-- Paibot beruflich nutzen – weder in einer Firma noch als Selbstständiger oder Freiberufler, auch nicht intern
-- Paibot oder eine angepasste Fassung verkaufen oder vermieten
+- PaiBot beruflich nutzen – weder in einer Firma noch als Selbstständiger oder Freiberufler, auch nicht intern
+- PaiBot oder eine angepasste Fassung verkaufen oder vermieten
 - ihn als gehosteten Dienst für andere anbieten oder für Kunden einrichten
 - ihn umbenennen und als eigenes Produkt ausgeben
-- Lizenz- und Markenhinweise oder „Powered by Paibot“ entfernen
+- Lizenz- und Markenhinweise oder „Powered by PaiBot“ entfernen
 
-> **Paibot ist für dich privat. Für alles Berufliche – im Team, mit Rollen und Rechten – gibt es [Lokyy](https://lokyy.de):** dein KI-Arbeitsplatz auf eigenem Server, betrieben in Deutschland oder bei dir im Haus.
+> **PaiBot ist für dich privat. Für alles Berufliche – im Team, mit Rollen und Rechten – gibt es [Lokyy](https://lokyy.de):** dein KI-Arbeitsplatz auf eigenem Server, betrieben in Deutschland oder bei dir im Haus.
 
 Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## FAQ
 
 <details>
-<summary><b>Ist Paibot Open Source?</b></summary>
+<summary><b>Ist PaiBot Open Source?</b></summary>
 
 Nein. Der Code ist öffentlich einsehbar und für die private Nutzung kostenlos („Fair-Code“), aber berufliche Nutzung, Verkauf und Hosting für andere sind nicht erlaubt.
 </details>
 
 <details>
-<summary><b>Darf ich Paibot in meiner Firma oder als Selbstständiger nutzen?</b></summary>
+<summary><b>Darf ich PaiBot in meiner Firma oder als Selbstständiger nutzen?</b></summary>
 
-Nein. Paibot ist ausschließlich für die private Nutzung gedacht. Für Firmen, Selbstständige und Teams gibt es [Lokyy](https://lokyy.de) – mit mehreren Nutzern, Rollen und Rechten.
+Nein. PaiBot ist ausschließlich für die private Nutzung gedacht. Für Firmen, Selbstständige und Teams gibt es [Lokyy](https://lokyy.de) – mit mehreren Nutzern, Rollen und Rechten.
 </details>
 
 <details>
 <summary><b>Warum nicht einfach OpenMausBot?</b></summary>
 
-[OpenMausBot](https://github.com/milind-soni/OpenMausBot) ist ein starkes offenes Projekt mit einer ähnlichen Idee. Paibot setzt andere Schwerpunkte: KI-Modelle aus der EU oder lokal als Standard statt US-Abos, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, eine eigene MCP-Verwaltung ohne fremden Dienst dazwischen, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut.
+[OpenMausBot](https://github.com/milind-soni/OpenMausBot) ist ein starkes offenes Projekt mit einer ähnlichen Idee. PaiBot setzt andere Schwerpunkte: KI-Modelle aus der EU oder lokal als Standard statt US-Abos, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, eine eigene MCP-Verwaltung ohne fremden Dienst dazwischen, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut.
 </details>
 
 <details>
 <summary><b>Brauche ich einen eigenen Server?</b></summary>
 
-Nein. Paibot läuft auf einem Server (z. B. mit Coolify) oder lokal auf deinem Rechner. Lokal kannst du sogar ein Modell aus LM Studio oder Ollama anbinden, dann verlässt keine Anfrage deinen Rechner.
+Nein. PaiBot läuft auf einem Server (z. B. mit Coolify) oder lokal auf deinem Rechner. Lokal kannst du sogar ein Modell aus LM Studio oder Ollama anbinden, dann verlässt keine Anfrage deinen Rechner.
 </details>
 
 <details>
-<summary><b>Ist Paibot damit DSGVO-konform?</b></summary>
+<summary><b>Ist PaiBot damit DSGVO-konform?</b></summary>
 
-Paibot und die Datenschleuse sind technische Schutzmaßnahmen, keine Rechtsberatung und keine Garantie. Für die rechtliche Bewertung deines Einsatzes bist du selbst verantwortlich.
+PaiBot und die Datenschleuse sind technische Schutzmaßnahmen, keine Rechtsberatung und keine Garantie. Für die rechtliche Bewertung deines Einsatzes bist du selbst verantwortlich.
 </details>
 
 <details>
@@ -209,6 +209,6 @@ Regelmäßig, mehrmals pro Woche. Abonniere den Kanal und gib dem Repo einen Ste
 ---
 
 <p align="center">
-  Gebaut in Deutschland von <a href="https://github.com/oliverhees">Oliver Hees</a> · „Paibot“, Logo und Maskottchen sind Kennzeichen von Oliver Hees.<br>
+  Gebaut in Deutschland von <a href="https://github.com/oliverhees">Oliver Hees</a> · „PaiBot“, Logo und Maskottchen sind Kennzeichen von Oliver Hees.<br>
   Für Teams und Firmen: <a href="https://lokyy.de">Lokyy</a> · Community: <a href="https://aiianer.de">aiianer.de</a>
 </p>

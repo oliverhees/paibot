@@ -1,6 +1,6 @@
-# Mitmachen bei Paibot
+# Mitmachen bei PaiBot
 
-Schön, dass du helfen willst! 🧡 Paibot entsteht öffentlich, Folge für Folge, als YouTube-Serie. Dieser Leitfaden zeigt dir, wie du beitragen kannst.
+Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folge, als YouTube-Serie. Dieser Leitfaden zeigt dir, wie du beitragen kannst.
 
 ## Inhalt
 
@@ -24,7 +24,7 @@ Schön, dass du helfen willst! 🧡 Paibot entsteht öffentlich, Folge für Folg
 ## Bevor du loslegst
 
 - **Beitragsvereinbarung (CLA):** Mit deinem ersten Pull Request stimmst du der Beitragsvereinbarung zu (§ 5 der [Lizenz](LICENSE)). Sie räumt dem Projekt die Rechte an deinem Beitrag ein, auch für eine künftige andere Lizenzierung. Ein automatischer CLA-Check wird eingerichtet.
-- **Nur private Nutzung:** Paibot steht unter einer Fair-Code-Lizenz für die private Nutzung. Beiträge, die Paibot für den Firmeneinsatz umbauen (Mehrbenutzer, Rollen, Mandanten), nehmen wir nicht auf – dafür gibt es [Lokyy](https://lokyy.de).
+- **Nur private Nutzung:** PaiBot steht unter einer Fair-Code-Lizenz für die private Nutzung. Beiträge, die PaiBot für den Firmeneinsatz umbauen (Mehrbenutzer, Rollen, Mandanten), nehmen wir nicht auf – dafür gibt es [Lokyy](https://lokyy.de).
 - **Größere Änderungen:** bitte zuerst ein Issue eröffnen, damit wir die Richtung abstimmen. Die Roadmap folgt der YouTube-Serie.
 - **Sicherheitslücken:** nie als Issue, sondern nach [SECURITY.md](SECURITY.md).
 

@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Paibot nutzt die folgenden Bestandteile Dritter. Für sie gelten ausschließlich ihre eigenen Lizenzen (siehe § 7 der Paibot Fair-Code-Lizenz).
+PaiBot nutzt die folgenden Bestandteile Dritter. Für sie gelten ausschließlich ihre eigenen Lizenzen (siehe § 7 der PaiBot Fair-Code-Lizenz).
 
 Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 

@@ -1,4 +1,4 @@
-export const APP_NAME = "Paibot";
+export const APP_NAME = "PaiBot";
 
 export const SUPPORTED_LOCALES = ["de", "en"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];

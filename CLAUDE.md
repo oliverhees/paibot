@@ -1,10 +1,10 @@
-# CLAUDE.md – Paibot
+# CLAUDE.md – PaiBot
 
-Hinweise für Claude Code (und alle, die mit Claude Code an Paibot arbeiten).
+Hinweise für Claude Code (und alle, die mit Claude Code an PaiBot arbeiten).
 
 ## Arbeitsweise
 
-- Dieses Repo enthält nur den Code von Paibot und die Doku für Nutzer und Mitwirkende. Keine Projektplanung, keine internen Notizen, keine Inhalte anderer Projekte.
+- Dieses Repo enthält nur den Code von PaiBot und die Doku für Nutzer und Mitwirkende. Keine Projektplanung, keine internen Notizen, keine Inhalte anderer Projekte.
 
 - Kleine, nachvollziehbare Schritte; jeder Commit lässt die Checks grün.
 - Erkläre Änderungen kurz und verständlich auf Deutsch.
