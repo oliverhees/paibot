@@ -24,7 +24,7 @@ Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folg
 ## Bevor du loslegst
 
 - **Beitragsvereinbarung (CLA):** Mit deinem ersten Pull Request stimmst du der Beitragsvereinbarung zu (§ 5 der [Lizenz](LICENSE)). Sie räumt dem Projekt die Rechte an deinem Beitrag ein, auch für eine künftige andere Lizenzierung. Ein automatischer CLA-Check wird eingerichtet.
-- **Nur private Nutzung:** PaiBot steht unter einer Fair-Code-Lizenz für die private Nutzung. Beiträge, die PaiBot für den Firmeneinsatz umbauen (Mehrbenutzer, Rollen, Mandanten), nehmen wir nicht auf – dafür gibt es [Lokyy](https://lokyy.de).
+- **Für eine Person:** PaiBot steht unter einer Fair-Code-Lizenz für die Nutzung durch eine Person, privat oder für die eigene Arbeit. Beiträge, die PaiBot für mehrere Nutzer umbauen (Mehrbenutzer, Rollen, Mandanten), nehmen wir nicht auf.
 - **Größere Änderungen:** bitte zuerst ein Issue eröffnen, damit wir die Richtung abstimmen. Die Roadmap folgt der YouTube-Serie.
 - **Sicherheitslücken:** nie als Issue, sondern nach [SECURITY.md](SECURITY.md).
 

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/oliverhees/paibot/actions/workflows/ci.yml"><img src="https://github.com/oliverhees/paibot/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Lizenz-Fair--Code%20(privat)-ff6b1a" alt="Lizenz: Fair-Code, nur private Nutzung">
+  <img src="https://img.shields.io/badge/Lizenz-Fair--Code%20(eine%20Person)-ff6b1a" alt="Lizenz: Fair-Code, für eine Person">
   <img src="https://img.shields.io/badge/Status-Build%20in%20Public-2b2d31" alt="Status: Build in Public">
   <img src="https://img.shields.io/badge/Made%20in-EU%20%F0%9F%87%AA%F0%9F%87%BA-003399" alt="Made in EU">
   <img src="https://img.shields.io/badge/Sprache-Deutsch%20%7C%20English-555" alt="Deutsch und Englisch">
@@ -26,13 +26,13 @@
 - [Status und Roadmap](#status-und-roadmap)
 - [Schnellstart](#schnellstart)
 - [Projektaufbau](#projektaufbau)
-- [Lizenz: Fair-Code, nur privat](#lizenz-fair-code-nur-privat)
+- [Lizenz: Fair-Code, für eine Person](#lizenz-fair-code-für-eine-person)
 - [FAQ](#faq)
 - [Mitmachen und Community](#mitmachen-und-community)
 
 ## Was ist PaiBot?
 
-**PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für die private Nutzung – nicht ein einzelner Chatbot, sondern ein ganzes Team: Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten.
+**PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für eine Person – nicht ein einzelner Chatbot, sondern ein ganzes Team: Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten.
 
 Das Vorbild sind KI-Teammates wie Grok Bot. Der Unterschied: PaiBot läuft **bei dir** – auf deinem eigenen Server oder direkt auf deinem Rechner –, nutzt **Modelle aus der EU oder dein eigenes lokales Modell**, und eine **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
 
@@ -138,25 +138,26 @@ deploy/            Docker Compose und Coolify
 docs/              Dokumentation
 ```
 
-## Lizenz: Fair-Code, nur privat
+## Lizenz: Fair-Code, für eine Person
 
 PaiBot ist **Fair-Code** („Source Available“), nicht Open Source. Kurz gesagt:
 
 **Du darfst**
 
-- PaiBot für dich privat herunterladen, installieren und nutzen
+- PaiBot für dich herunterladen, installieren und nutzen: privat **und für deine eigene Arbeit**, auch als Selbstständiger oder Freiberufler
+- als Angestellter für deine eigenen Aufgaben nutzen, solange nicht dein Arbeitgeber PaiBot bereitstellt oder vorgibt
 - den Code für dich anpassen und erweitern
 - ihn kostenlos weitergeben, z. B. als Fork, solange die Lizenz dabei bleibt
 
 **Du darfst nicht**
 
-- PaiBot beruflich nutzen – weder in einer Firma noch als Selbstständiger oder Freiberufler, auch nicht intern
+- PaiBot mit mehreren Personen nutzen – nicht im Team, nicht in einer Firma, auch nicht intern
 - PaiBot oder eine angepasste Fassung verkaufen oder vermieten
 - ihn als gehosteten Dienst für andere anbieten oder für Kunden einrichten
 - ihn umbenennen und als eigenes Produkt ausgeben
 - Lizenz- und Markenhinweise oder „Powered by PaiBot“ entfernen
 
-> **PaiBot ist für dich privat. Für alles Berufliche – im Team, mit Rollen und Rechten – gibt es [Lokyy](https://lokyy.de):** dein KI-Arbeitsplatz auf eigenem Server, betrieben in Deutschland oder bei dir im Haus.
+> **PaiBot ist für eine Person: für dich und deine eigene Arbeit.** Sobald mehrere Personen damit arbeiten sollen, im Team oder im Unternehmen, brauchst du **PaiBot Enterprise** mit Support (in Vorbereitung). Schreib uns: [hi@paibot.de](mailto:hi@paibot.de).
 
 Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
@@ -165,13 +166,13 @@ Rechtlich gilt nur der Text in [`LICENSE`](LICENSE) (derzeit Entwurf). Bausteine
 <details>
 <summary><b>Ist PaiBot Open Source?</b></summary>
 
-Nein. Der Code ist öffentlich einsehbar und für die private Nutzung kostenlos („Fair-Code“), aber berufliche Nutzung, Verkauf und Hosting für andere sind nicht erlaubt.
+Nein. Der Code ist öffentlich einsehbar und für eine Person kostenlos („Fair-Code“), aber die Nutzung mit mehreren Personen, Verkauf und Hosting für andere sind nicht erlaubt.
 </details>
 
 <details>
-<summary><b>Darf ich PaiBot in meiner Firma oder als Selbstständiger nutzen?</b></summary>
+<summary><b>Darf ich PaiBot für meine Arbeit nutzen?</b></summary>
 
-Nein. PaiBot ist ausschließlich für die private Nutzung gedacht. Für Firmen, Selbstständige und Teams gibt es [Lokyy](https://lokyy.de) – mit mehreren Nutzern, Rollen und Rechten.
+Ja, wenn du es allein nutzt: als Selbstständiger, als Freiberufler oder für deine eigenen Aufgaben. Nicht erlaubt ist, dass mehrere Personen damit arbeiten oder dass eine Firma PaiBot für ihre Mitarbeiter bereitstellt. Dafür ist PaiBot Enterprise mit Support gedacht (in Vorbereitung): [hi@paibot.de](mailto:hi@paibot.de).
 </details>
 
 <details>
@@ -210,5 +211,5 @@ Regelmäßig, mehrmals pro Woche. Abonniere den Kanal und gib dem Repo einen Ste
 
 <p align="center">
   Gebaut in Deutschland von <a href="https://github.com/oliverhees">Oliver Hees</a> · „PaiBot“, Logo und Maskottchen sind Kennzeichen von Oliver Hees.<br>
-  Für Teams und Firmen: <a href="https://lokyy.de">Lokyy</a> · Community: <a href="https://aiianer.de">aiianer.de</a>
+  Für Teams und Firmen: <a href="mailto:hi@paibot.de">PaiBot Enterprise</a> · Community: <a href="https://aiianer.de">aiianer.de</a>
 </p>
