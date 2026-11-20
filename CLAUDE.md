@@ -33,6 +33,7 @@ Hinweise für Claude Code (und alle, die mit Claude Code an PaiBot arbeiten).
 | `pnpm test`             | Tests (Vitest)                                                               |
 | `pnpm build`            | alles bauen                                                                  |
 | `pnpm doku:screenshots` | Doku-Screenshots aus der laufenden App aufnehmen (braucht Playwright)        |
+| `pnpm doku:check`       | prüft die Doku: Pflicht-Abschnitte, Bilder, Inhaltsverzeichnis, Links        |
 | `pnpm licenses:check`   | Lizenzen der Abhängigkeiten prüfen                                           |
 | `pnpm licenses:notices` | `THIRD_PARTY_NOTICES.md` neu erzeugen (nach neuen Abhängigkeiten)            |
 
@@ -46,5 +47,5 @@ Vor jedem Commit: `pnpm lint && pnpm headers:check && pnpm typecheck && pnpm tes
 - Einzelnutzer-App: keine Mehrbenutzer-, Rollen- oder Mandantenfunktionen bauen.
 - `LICENSE` nicht verändern. Kein Code aus fremden Repos ohne passende Lizenz übernehmen.
 - Jede neue Datei bekommt den Urheber-Kopf (Dateien ohne Kopf-Möglichkeit wie JSON und `LICENSE` ausgenommen). `pnpm headers:write` fügt ihn ein, `pnpm headers:check` prüft das.
-- Jede neue Funktion bringt ihre Doku-Seite nach `docs/VORLAGE-funktion.md` mit und wird in `docs/README.md` eingetragen, sonst gilt sie nicht als fertig.
+- Jede neue Funktion bringt ihre Doku-Seite nach `docs/VORLAGE-funktion.md` mit und wird in `docs/README.md` eingetragen, sonst gilt sie nicht als fertig. Fertig ist eine Funktion erst, wenn „So benutzt du es“ eine Anleitung Schritt für Schritt ist, die Bilder per Skript entstehen, die Seite in `docs/README.md` eingetragen ist und `pnpm doku:check` grün ist.
 - Doku-Screenshots werden nie von Hand gemacht: Eintrag in `docs/screenshots.json`, Aufnahme mit `pnpm doku:screenshots`, nur Beispiel-Daten.
