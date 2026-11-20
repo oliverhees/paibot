@@ -18,6 +18,10 @@ import { describe, expect, it } from "vitest";
  * - `schluessel_ungueltig`, `anbieter_nicht_erreichbar`, `limit_erreicht`: genau ein `error` mit
  *   diesem Code, kein `finish`
  * - `faehigkeiten`: `capabilities().toolsExecutedInternally` ist `false`
+ * - `werkzeug_wunsch`: die Eingabe bietet Werkzeuge an (ohne Ausführung), das Modell wünscht eins:
+ *   mindestens ein `tool-call` mit Kennung, Name aus den angebotenen Werkzeugen und Argumenten,
+ *   danach genau ein `finish` mit `finishReason` `tool-calls`, kein `error`; ausgeführt wird
+ *   nichts (beim Anbieter kommt genau eine Anfrage an, wenn der Aufbau das zählen kann)
  */
 export const MOTOR_CONTRACT_CASES = [
   "antwort",
@@ -26,6 +30,7 @@ export const MOTOR_CONTRACT_CASES = [
   "anbieter_nicht_erreichbar",
   "limit_erreicht",
   "faehigkeiten",
+  "werkzeug_wunsch",
 ] as const;
 export type MotorContractCase = (typeof MOTOR_CONTRACT_CASES)[number];
 
@@ -34,6 +39,8 @@ export interface MotorContractSetup {
   motor: Motor;
   input: TurnInput;
   cleanup?: () => Promise<void>;
+  /** Anzahl der Anfragen, die der Anbieter bekommen hat (falls der Aufbau sie zählen kann). */
+  providerRequests?: () => number;
 }
 
 export type MotorContractFactory = (testCase: MotorContractCase) => Promise<MotorContractSetup>;
@@ -144,6 +151,27 @@ export function motorContractTests(name: string, factory: MotorContractFactory):
         });
       });
     }
+
+    it("werkzeug_wunsch: tool-call und finish tool-calls, nichts ausgeführt", async () => {
+      await withSetup(factory, "werkzeug_wunsch", async (setup) => {
+        const offered = new Set((setup.input.tools ?? []).map((tool) => tool.name));
+        expect(offered.size).toBeGreaterThan(0);
+        const { before: events } = await collect(setup);
+        const calls = events.filter((event) => event.type === "tool-call");
+        expect(calls.length).toBeGreaterThanOrEqual(1);
+        for (const call of calls) {
+          expect(call.callId.length).toBeGreaterThan(0);
+          expect(offered.has(call.name)).toBe(true);
+          expect(call.input).toBeDefined();
+        }
+        const finishes = events.filter((event) => event.type === "finish");
+        expect(finishes).toHaveLength(1);
+        expect(events.at(-1)).toBe(finishes[0]);
+        expect(finishes[0]).toMatchObject({ finishReason: "tool-calls" });
+        expect(events.some((event) => event.type === "error")).toBe(false);
+        if (setup.providerRequests !== undefined) expect(setup.providerRequests()).toBe(1);
+      });
+    });
 
     it("faehigkeiten: der Motor führt keine Werkzeuge selbst aus", async () => {
       await withSetup(factory, "faehigkeiten", async (setup) => {

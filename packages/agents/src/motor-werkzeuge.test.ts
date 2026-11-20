@@ -10,13 +10,16 @@
  * @since     2026-11-20
  */
 
+import { randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { contextDigest, deriveKey, loadMasterSecret } from "@paibot/crypto";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
-import { isGateDenied, type RuleDefinition } from "@paibot/gate";
+import { ACTIVE_STANDARD_RULES, isGateDenied, type RuleDefinition } from "@paibot/gate";
 import { createEgressFetch, egressTargetOf } from "@paibot/llm";
 import { type ActionRequest, botActor, type Facts } from "@paibot/shared/aktionen";
+import { TOOL_ARGS_DIGEST_PREFIX } from "@paibot/shared/bindung";
 import { newId } from "@paibot/shared/ids";
 import type {
   JsonValue,
@@ -45,13 +48,15 @@ vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 type Db = TestDb["client"];
 
 // --- Anfang Test-Steuerung -------------------------------------------------------------------
-// Minimal: ein Werkzeug-Aufruf nach dem anderen, Zustand nur in der Datenbank, jeder Aufruf durch
-// das Tor. Ein Werkzeug-Aufruf läuft hier stellvertretend als Aktion `modell.anfragen` durchs Tor,
-// weil die Verträge noch keine eigene Aktion für Werkzeuge kennen.
+// Minimal: ein Werkzeug-Aufruf nach dem anderen, Zustand nur in der Datenbank, jeder Aufruf als
+// Aktion `werkzeug.aufrufen` durch das Tor. Die Argumente gehen nur als Abdruck in die Fakten.
 
 interface Werkzeug {
   spec: ToolSpec;
   ausfuehren(input: JsonValue): Promise<JsonValue>;
+  /** Quelle des Werkzeugs; bei `mcp` mit dem Namen des Servers. */
+  quelle?: { source: "eingebaut" } | { source: "mcp"; server: string };
+  art?: "lesen" | "schreiben";
 }
 
 interface Steuerung {
@@ -116,17 +121,17 @@ async function werkzeugDurchsTor(call: ToolCall, s: Steuerung): Promise<ToolResu
   const werkzeug = s.werkzeuge.get(call.name);
   const base = { callId: call.callId, name: call.name };
   if (!werkzeug) return { ...base, status: "denied", output: "Unbekanntes Werkzeug." };
-  const action = stellvertretendeAktion();
+  const action = werkzeugAktion();
   s.werkzeugAktionen.push(action.actionId);
   const gate = gateWith(await s.regelnFuer(call), s.zugang.receipts);
   try {
-    const { value } = await gate.run(action, FAKTEN, async () => ({
+    const { value } = await gate.run(action, werkzeugFakten(call, werkzeug), async () => ({
       value: await werkzeug.ausfuehren(call.input),
       result: { status: "ok" },
     }));
     return { ...base, status: "ok", output: value };
   } catch (error) {
-    if (isGateDenied(error) && error.outcome === "ask") return "wartet";
+    if (isGateDenied(error) && error.waitsForApproval) return "wartet";
     if (isGateDenied(error)) return { ...base, status: "denied", output: error.decision.reason };
     return { ...base, status: "error", output: "Das Werkzeug ist fehlgeschlagen." };
   }
@@ -153,34 +158,44 @@ async function speichere<S extends string>(db: Db, id: string, status: S, v: Tur
 const LIMITS = { maxOutputTokens: 256, timeoutMs: 10_000 };
 const NIE = new AbortController().signal;
 
-const FAKTEN: Facts<"modell.anfragen"> = {
-  botOfConversation: true,
-  providerId: newId("provider"),
-  providerEnabled: true,
-  region: "local",
-  route: "direct",
-  requestedMode: "off",
-  schleuseReachable: false,
-  inputChars: 10,
-  maxInputChars: 32000,
-  maxOutputTokens: 256,
-  botMaxOutputTokens: 2048,
-  tokensToday: 0,
-  killSwitch: false,
-};
+const KONTEXT = deriveKey(
+  loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") }),
+  "context-v1",
+);
+const BOT = newId("bot");
+const UNTERHALTUNG = newId("conversation");
+const LAUF = newId("run");
 
-function stellvertretendeAktion(): ActionRequest<"modell.anfragen"> {
-  const botId = newId("bot");
+/** Kanonisches JSON (Schlüssel sortiert) für die Argumente in diesen Tests. */
+function kanonisch(value: JsonValue): string {
+  if (Array.isArray(value)) return `[${value.map(kanonisch).join(",")}]`;
+  if (typeof value === "object" && value !== null) {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${kanonisch(value[k] as JsonValue)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function werkzeugFakten(call: ToolCall, werkzeug: Werkzeug): Facts<"werkzeug.aufrufen"> {
+  const quelle = werkzeug.quelle ?? { source: "eingebaut" };
+  return {
+    botOfConversation: true,
+    runRunning: true,
+    toolName: call.name,
+    toolSource: quelle.source,
+    ...(quelle.source === "mcp" ? { toolServer: quelle.server } : {}),
+    toolKind: werkzeug.art ?? "schreiben",
+    argsDigest: contextDigest(KONTEXT, `${TOOL_ARGS_DIGEST_PREFIX}${kanonisch(call.input)}`),
+    killSwitch: false,
+  };
+}
+
+function werkzeugAktion(): ActionRequest<"werkzeug.aufrufen"> {
   return {
     actionId: newId("action"),
-    type: "modell.anfragen",
-    actor: botActor(botId),
-    target: {
-      conversationId: newId("conversation"),
-      runId: newId("run"),
-      botId,
-      modelId: newId("model"),
-    },
+    type: "werkzeug.aufrufen",
+    actor: botActor(BOT),
+    target: { conversationId: UNTERHALTUNG, runId: LAUF, botId: BOT },
   };
 }
 
@@ -188,7 +203,7 @@ function regel(id: string, effect: RuleDefinition["effect"], reason: string): Ru
   return {
     id: id as RuleDefinition["id"],
     version: 1,
-    action: "modell.anfragen",
+    action: "werkzeug.aufrufen",
     effect,
     stage: effect === "ask" ? "ask" : "execute",
     conditions: [],
@@ -201,7 +216,6 @@ function regel(id: string, effect: RuleDefinition["effect"], reason: string): Ru
 }
 
 const ABLEHNEN = regel("R-901", "deny", "Löschen von Notizen ist für den Bot gesperrt.");
-const FRAGEN = regel("R-902", "ask", "Dafür braucht der Bot deine Freigabe.");
 const ERLAUBEN = regel("R-903", "allow", "Der Bot darf dieses Werkzeug benutzen.");
 
 /** Motor-Hülle, die alle Ereignisse mitschreibt (nur zum Prüfen). */
@@ -353,7 +367,8 @@ describe("Werkzeug-Aufruf wartet auf Freigabe und wird fortgesetzt", () => {
       const { rows } = await db.query("select 1 from test_freigaben where call_id = $1", [
         call.callId,
       ]);
-      return rows.length > 0 ? [ERLAUBEN] : [FRAGEN];
+      // Ohne Freigabe gelten nur die Standard-Regeln: R-005 fragt vor jedem Werkzeug.
+      return rows.length > 0 ? [ERLAUBEN] : ACTIVE_STANDARD_RULES;
     };
 
     // Prozess 1: bis zur Frage.
@@ -380,7 +395,12 @@ describe("Werkzeug-Aufruf wartet auf Freigabe und wird fortgesetzt", () => {
     expect(provider.requests).toHaveLength(1);
     expect(ausfuehren1).not.toHaveBeenCalled();
     expect(decisions(p1.zugang.receipts, p1.werkzeugAktionen)).toMatchObject([
-      { record: { decision: { outcome: "ask" } } },
+      {
+        record: {
+          action: { type: "werkzeug.aufrufen" },
+          decision: { outcome: "ask", matchedRules: [{ id: "R-005", version: 1 }] },
+        },
+      },
     ]);
     const gespeichert = await erste.client.query<{ status: string; verlauf: TurnMessage[] }>(
       "select status, verlauf from test_laeufe where id = 'lauf_2'",
@@ -519,6 +539,8 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
         spec.name,
         {
           spec: { name: spec.name, description: spec.description, inputSchema: spec.inputSchema },
+          quelle: { source: "mcp" as const, server: "test-server" },
+          art: "lesen" as const,
           ausfuehren: async (input: JsonValue) =>
             (await rpc("tools/call", { name: spec.name, arguments: input })) as JsonValue,
         },
@@ -574,6 +596,23 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
     );
     expect(decisionIndex).toBeGreaterThanOrEqual(0);
     expect(eingang[1]?.belegeVorher).toBe(decisionIndex + 1);
+    // Der Beleg nennt Werkzeug, Quelle und Art, die Argumente nur als Abdruck.
+    const entscheidung = s.zugang.receipts.entries[decisionIndex];
+    expect(entscheidung?.kind === "decision" && entscheidung.record.facts).toEqual({
+      botOfConversation: true,
+      runRunning: true,
+      toolName: "wetter",
+      toolSource: "mcp",
+      toolServer: "test-server",
+      toolKind: "lesen",
+      argsDigest: contextDigest(KONTEXT, `${TOOL_ARGS_DIGEST_PREFIX}{"ort":"Berlin"}`),
+      killSwitch: false,
+    });
+    const werkzeugBelege = s.zugang.receipts.entries.filter((entry) =>
+      s.werkzeugAktionen.includes(entry.record.action.actionId),
+    );
+    expect(werkzeugBelege).toHaveLength(2);
+    expect(JSON.stringify(werkzeugBelege)).not.toContain("Berlin");
     expect(chatMessages(1).at(-1)).toEqual({
       role: "tool",
       tool_call_id: "call_w",

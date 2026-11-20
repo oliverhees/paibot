@@ -9,19 +9,26 @@
  */
 
 import { createFakeProvider } from "@paibot/fake-provider";
-import type { MotorEvent, TurnInput } from "@paibot/shared/motor";
+import type { MotorEvent, ToolSpec, TurnInput } from "@paibot/shared/motor";
 import { createAiSdkMotor } from "./motor-aisdk";
 import { createFakeMotor, type MotorContractCase, motorContractTests } from "./testing";
 import { resolveTestModel } from "./testing/test-umgebung";
 
 const API_KEY = `sk-test-${"v".repeat(24)}`;
 
-function turn(model: TurnInput["model"]): TurnInput {
+const NOTIZ: ToolSpec = {
+  name: "notiz_suchen",
+  description: "Sucht eine Notiz.",
+  inputSchema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] },
+};
+
+function turn(model: TurnInput["model"], testCase?: MotorContractCase): TurnInput {
   return {
     system: "Du bist ein Test-Bot.",
     history: [{ role: "user", text: "Sag etwas." }],
     model,
     limits: { maxOutputTokens: 256, timeoutMs: 10_000 },
+    ...(testCase === "werkzeug_wunsch" ? { tools: [NOTIZ] } : {}),
   };
 }
 
@@ -36,8 +43,19 @@ motorContractTests("AI-SDK-Motor", async (testCase: MotorContractCase) => {
   if (testCase === "schluessel_ungueltig") key = `sk-falsch-${"f".repeat(24)}`;
   if (testCase === "anbieter_nicht_erreichbar") provider.failNext({ kind: "status", status: 503 });
   if (testCase === "limit_erreicht") provider.failNext({ kind: "status", status: 429 });
+  if (testCase === "werkzeug_wunsch") {
+    provider.configure({
+      reply: "",
+      toolCall: { id: "call_v1", name: NOTIZ.name, arguments: { text: "Einkauf" } },
+    });
+  }
   const model = await resolveTestModel({ baseUrl, apiKey: key });
-  return { motor: createAiSdkMotor(), input: turn(model), cleanup: () => provider.stop() };
+  return {
+    motor: createAiSdkMotor(),
+    input: turn(model, testCase),
+    cleanup: () => provider.stop(),
+    providerRequests: () => provider.requests.length,
+  };
 });
 
 const FAKE_SCRIPTS: Record<
@@ -57,9 +75,13 @@ const FAKE_SCRIPTS: Record<
   ],
   limit_erreicht: [{ type: "error", code: "limit_erreicht", retryable: true }],
   faehigkeiten: [],
+  werkzeug_wunsch: [
+    { type: "tool-call", callId: "call_f1", name: "notiz_suchen", input: { text: "Einkauf" } },
+    { type: "finish", finishReason: "tool-calls", usage: { input: 9, output: 4 } },
+  ],
 };
 
 motorContractTests("Test-Motor", async (testCase) => ({
   motor: createFakeMotor(FAKE_SCRIPTS[testCase]),
-  input: turn({} as TurnInput["model"]),
+  input: turn({} as TurnInput["model"], testCase),
 }));
