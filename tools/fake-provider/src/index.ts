@@ -720,6 +720,11 @@ export function createFakeProvider(
       if (server) throw new Error("Der Test-Anbieter läuft schon.");
       const host = startArgs?.host ?? "127.0.0.1";
       const created = createServer(handle);
+      // Der Server schließt ruhende Verbindungen sonst nach 5 s von sich aus. Der Client legt sie
+      // aber zur Wiederverwendung zurück; ist die Ereignisschleife gerade belegt (z. B. beim Anlegen
+      // einer Test-Datenbank), trifft die nächste Anfrage eine schon geschlossene Verbindung
+      // (ECONNRESET). Ein Test-Anbieter hält Verbindungen offen, bis `stop` sie schließt.
+      created.keepAliveTimeout = 0;
       created.on("connection", (socket) => {
         sockets.add(socket);
         socket.once("close", () => sockets.delete(socket));
