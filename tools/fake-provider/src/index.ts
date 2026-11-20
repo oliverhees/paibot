@@ -9,6 +9,7 @@
  * @since     2026-11-20
  */
 
+import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Socket } from "node:net";
 
@@ -29,6 +30,18 @@ export const FAKE_CONTROL_PATHS = {
   /** `POST`: Protokoll und Fehler zurücksetzen, Verhalten auf den Start-Stand. */
   zuruecksetzen: "/_steuerung/zuruecksetzen",
 } as const;
+
+/** Kopfzeile mit dem Steuer-Schlüssel für die Pfade unter `/_steuerung/`. */
+export const FAKE_CONTROL_KEY_HEADER = "x-steuerung-schluessel";
+
+/** Schutz der Steuerung. */
+export interface FakeControlOptions {
+  /**
+   * Ist er gesetzt, verlangt jeder Steuer-Pfad die Kopfzeile `x-steuerung-schluessel` mit diesem
+   * Wert (sonst 401). Ohne Schlüssel nimmt die Steuerung nur Anfragen von Loopback an (sonst 403).
+   */
+  key?: string;
+}
 
 /** Name der Umgebungsvariable für den Port beim Start als eigener Prozess. */
 export const FAKE_PROVIDER_PORT_ENV = "FAKE_PROVIDER_PORT";
@@ -330,7 +343,10 @@ function checkBehaviour(value: unknown): Partial<FakeProviderOptions> | string {
  * Token-Zahlen im letzten Stück und antwortet ohne Streaming mit einer ganzen Antwort.
  * Er baut nie eine Verbindung nach außen auf.
  */
-export function createFakeProvider(options?: Partial<FakeProviderOptions>): FakeProvider {
+export function createFakeProvider(
+  options?: Partial<FakeProviderOptions>,
+  control: FakeControlOptions = {},
+): FakeProvider {
   const startOptions: FakeProviderOptions = { ...DEFAULT_OPTIONS, ...definedOnly(options) };
   let current: FakeProviderOptions = { ...startOptions };
   let records: RecordedRequest[] = [];
@@ -371,6 +387,17 @@ export function createFakeProvider(options?: Partial<FakeProviderOptions>): Fake
     failures = [];
     current = { ...startOptions };
     for (const exchange of exchanges) endHard(exchange);
+  }
+
+  /** `undefined`, wenn die Steuerung erlaubt ist, sonst der HTTP-Status der Ablehnung. */
+  function controlRejection(req: IncomingMessage): 401 | 403 | undefined {
+    if (control.key !== undefined && control.key !== "") {
+      const sent = req.headers[FAKE_CONTROL_KEY_HEADER];
+      const given = Buffer.from(typeof sent === "string" ? sent : "");
+      const expected = Buffer.from(control.key);
+      return given.length === expected.length && timingSafeEqual(given, expected) ? undefined : 401;
+    }
+    return isLoopback(req.socket.remoteAddress) ? undefined : 403;
   }
 
   function authorized(req: IncomingMessage): boolean {
@@ -647,6 +674,24 @@ export function createFakeProvider(options?: Partial<FakeProviderOptions>): Fake
     for (let i = 0; i < count; i += 1) failures.push(failure);
   }
 
+  function guardedControl(req: IncomingMessage, res: ServerResponse, path: string) {
+    const rejected = controlRejection(req);
+    if (rejected === undefined) return handleControl(req, res, path);
+    req.resume();
+    return Promise.resolve(
+      sendJson(
+        res,
+        rejected,
+        errorBody(
+          rejected === 401
+            ? "Steuer-Schlüssel fehlt oder ist falsch."
+            : "Steuerung nur von Loopback erlaubt.",
+          "invalid_request_error",
+        ),
+      ),
+    );
+  }
+
   function handle(req: IncomingMessage, res: ServerResponse): void {
     const path = new URL(req.url ?? "/", "http://localhost").pathname;
     const controlPaths: readonly string[] = Object.values(FAKE_CONTROL_PATHS);
@@ -654,7 +699,7 @@ export function createFakeProvider(options?: Partial<FakeProviderOptions>): Fake
       path === FAKE_PROVIDER_PATHS.models || path === FAKE_PROVIDER_PATHS.chatCompletions
         ? handleApi(req, res, path)
         : controlPaths.includes(path)
-          ? handleControl(req, res, path)
+          ? guardedControl(req, res, path)
           : path === HEALTH_PATH
             ? Promise.resolve(sendJson(res, 200, { status: "ok" }))
             : Promise.resolve(
@@ -708,4 +753,11 @@ export function createFakeProvider(options?: Partial<FakeProviderOptions>): Fake
     failNext,
     reset,
   };
+}
+
+/** Ist die Adresse eine Loopback-Adresse (IPv4, IPv6 oder IPv4 in IPv6)? */
+export function isLoopback(address: string | undefined): boolean {
+  if (address === undefined) return false;
+  const plain = address.startsWith("::ffff:") ? address.slice(7) : address;
+  return plain === "::1" || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(plain);
 }

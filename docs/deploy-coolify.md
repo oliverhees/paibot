@@ -31,13 +31,36 @@ Lege eine Domain oder Subdomain an (z. B. `paibot.deine-domain.de`), deren A-Rec
 1. In Coolify ein Projekt anlegen, z. B. „PaiBot“.
 2. Neue Ressource → aus dem öffentlichen GitHub-Repo `https://github.com/oliverhees/paibot` → Build-Art **Docker Compose**.
 3. Compose-Datei: `deploy/docker-compose.yml`, Branch `main`.
-4. Umgebungsvariablen setzen:
-   - `POSTGRES_PASSWORD`: langes Zufallspasswort
-   - `APP_URL`: `https://paibot.deine-domain.de`
-5. Beim Dienst `web` die Domain eintragen (Port 3000). Coolify besorgt das HTTPS-Zertifikat.
-6. Deploy starten.
+4. Werte erzeugen, am besten auf deinem eigenen Rechner (die Ausgabe nicht in Chats oder Tickets kopieren):
 
-Datenbank und Web-App veröffentlichen ihre Ports nur auf `127.0.0.1`. Von außen ist PaiBot nur über deine Domain erreichbar.
+   ```bash
+   openssl rand -hex 32      # für POSTGRES_PASSWORD
+   openssl rand -hex 32      # für POSTGRES_APP_PASSWORD
+   openssl rand -base64 32   # für PAIBOT_SECRET
+   ```
+
+5. Umgebungsvariablen in Coolify setzen:
+   - `POSTGRES_PASSWORD`: erster Wert (Migrations-Rolle, Besitzer der Tabellen)
+   - `POSTGRES_APP_PASSWORD`: zweiter Wert (App-Rolle, mit der PaiBot arbeitet)
+   - `PAIBOT_SECRET`: dritter Wert. Zusätzlich im Passwort-Manager sichern; ohne ihn lassen sich gespeicherte Anbieter-Schlüssel nicht mehr lesen.
+   - `APP_URL`: `https://paibot.deine-domain.de`
+6. Beim Dienst `web` die Domain eintragen (Port 3000). Coolify besorgt das HTTPS-Zertifikat.
+7. Deploy starten.
+
+Die Datenbank veröffentlicht keinen Port und hängt nur im internen Netz des Stacks. Die Web-App ist nur auf `127.0.0.1` gebunden. Von außen ist PaiBot nur über deine Domain erreichbar.
+
+Beim ersten Start legt PaiBot die App-Rolle `paibot_app` selbst an und gibt ihr nur die Rechte, die sie braucht. Was die Rollen dürfen: [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank).
+
+## Bestehende Installation umstellen
+
+Lief PaiBot bei dir schon mit nur `POSTGRES_PASSWORD`, startet der neue Stand erst, wenn die neuen Werte gesetzt sind. Deine Daten bleiben erhalten.
+
+1. In Coolify eine Sicherung der Datenbank anlegen.
+2. `POSTGRES_APP_PASSWORD` neu setzen (`openssl rand -hex 32`). `PAIBOT_SECRET` nur setzen, wenn es noch fehlt; ein vorhandenes nie ersetzen.
+3. Ist `POSTGRES_PASSWORD` kürzer als 24 Zeichen, im Terminal des Dienstes `postgres` in Coolify `psql -U paibot -d paibot -c "\password paibot"` ausführen, ein neues Passwort setzen und danach die Variable `POSTGRES_PASSWORD` anpassen.
+4. Neu deployen. Im Log von `web` stehen „App-Rolle paibot_app angelegt“ und „Rechte der App-Rolle paibot_app gesetzt“.
+
+Musst du sofort wieder online sein, ohne umzustellen: `PAIBOT_ALLOW_PRIVILEGED_DB=1` setzen. PaiBot startet dann mit Warnung im Log. Das ist nur für den Übergang gedacht.
 
 ## 4. Prüfen
 
@@ -47,11 +70,13 @@ curl https://paibot.deine-domain.de/api/health
 
 Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`.
 
-| Ergebnis                | Bedeutung                             | Was tun                                                               |
-| ----------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| `"db":"ok"`             | alles läuft                           | –                                                                     |
-| `"db":"down"`, HTTP 503 | App läuft, Datenbank nicht erreichbar | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen |
-| keine Antwort           | Domain, DNS oder Proxy falsch         | A-Record und Domain-Eintrag beim Dienst `web` prüfen                  |
+| Ergebnis                                               | Bedeutung                                                                     | Was tun                                                                               |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `"db":"ok"`                                            | alles läuft                                                                   | –                                                                                     |
+| `"db":"down"`, HTTP 503                                | App läuft, Datenbank nicht erreichbar                                         | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen                 |
+| Kopfzeile `X-Pb-Db-Rolle: zu_viele_rechte` (`curl -I`) | App arbeitet mit zu vielen Rechten                                            | „Bestehende Installation umstellen“ und `PAIBOT_ALLOW_PRIVILEGED_DB` wieder entfernen |
+| Deploy bricht ab, Log: „Start abgebrochen“             | Pflichtwert fehlt, zu kurz oder Platzhalter; oder „Datenbank nicht auf Stand“ | die Zeile davor im Log nennt den Wert; Werte wie in Schritt 4 erzeugen                |
+| keine Antwort                                          | Domain, DNS oder Proxy falsch                                                 | A-Record und Domain-Eintrag beim Dienst `web` prüfen                                  |
 
 ## So sieht es aus
 
@@ -61,5 +86,5 @@ Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`.
 
 ## 5. Danach
 
-- Backups der Datenbank einrichten (Ziel: S3-kompatibler Speicher in der EU)
+- Backups der Datenbank einrichten (Ziel: S3-kompatibler Speicher in der EU). Die Sicherungen enthalten deine Unterhaltungen lesbar; schütze den Speicher entsprechend und lege `PAIBOT_SECRET` nicht dort ab.
 - Automatische Deploys bei Push auf `main` aktivieren, wenn gewünscht

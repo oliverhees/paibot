@@ -1,0 +1,25 @@
+# PaiBot – Zusatz für die Entwicklung: Datenbank auf 127.0.0.1 erreichbar machen.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-20
+
+# Nur für die Entwicklung am eigenen Rechner, nie auf dem Server:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.entwicklung.yml \
+#     --env-file deploy/.env up -d postgres
+name: paibot
+
+services:
+  postgres:
+    networks:
+      - paibot-intern
+      - paibot-entwicklung
+    ports:
+      # Nur auf dem Rechner selbst. Ohne 127.0.0.1 würde Docker den Port an der Firewall
+      # (ufw) vorbei ins Internet stellen.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+
+networks:
+  paibot-entwicklung: {}

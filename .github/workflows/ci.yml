@@ -21,9 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       # Wegwerf-Datenbank nur für die Tests gegen echtes Postgres (gleiche Hauptversion wie in
-      # deploy/docker-compose.yml). Das Passwort gilt nur für diesen Dienst-Container.
+      # deploy/docker-compose.yml). Das Passwort gilt nur für diesen Dienst-Container. Die Tests der
+      # Datenbank-Rollen legen ihre eingeschränkten Rollen selbst an (über den Superuser) und
+      # löschen sie danach wieder.
       postgres:
-        image: postgres:17-alpine
+        image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
         env:
           POSTGRES_PASSWORD: ci-wegwerf
         ports:
@@ -36,9 +38,9 @@ jobs:
     env:
       PAIBOT_TEST_DATABASE_URL: postgres://postgres:ci-wegwerf@localhost:5432/postgres
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -49,20 +51,25 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm licenses:check
+      - name: Sicherheitsmeldungen der Abhängigkeiten (Betrieb)
+        run: pnpm audit --prod --audit-level high
 
   docker:
     runs-on: ubuntu-latest
     needs: check
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Stack bauen und starten
         run: |
-          cp deploy/.env.example deploy/.env
+          sh deploy/env-erzeugen.sh deploy/.env
           docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
       - name: Healthcheck mit Datenbank prüfen
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000/api/health | tee /tmp/health.json | grep -q '"db":"ok"'; then
+            if curl -fsS -D /tmp/health.head http://localhost:3000/api/health | tee /tmp/health.json | grep -q '"db":"ok"'; then
+              if grep -qi '^x-pb-db-rolle:' /tmp/health.head; then
+                echo "App verbindet sich mit zu vielen Rechten"; exit 1
+              fi
               echo "Healthcheck ok"; exit 0
             fi
             sleep 2
