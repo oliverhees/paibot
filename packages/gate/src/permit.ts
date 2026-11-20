@@ -10,16 +10,20 @@
 
 import type { ActionType } from "@paibot/shared/aktionen";
 import type { GatePermit } from "@paibot/shared/tor";
-import { notImplemented } from "@paibot/stub";
+import { isIssuedPermit } from "./permit-registry";
 
 /**
  * Prüft zur Laufzeit, ob `value` eine echte, von diesem Tor ausgestellte Berechtigung ist (nicht
  * nur ein Objekt mit denselben Feldern), optional für eine bestimmte Aktion. Die Anbieter-Schicht
  * gibt ohne `true` kein Modell heraus.
+ *
+ * Eine Berechtigung gilt nur, solange die Ausführung in `gate.run` läuft; danach zieht das Tor sie
+ * zurück. Kopien (z. B. `{ ...permit }`) werden nie anerkannt.
  */
 export function isGatePermit<T extends ActionType>(
   value: unknown,
   action?: T,
 ): value is GatePermit<T> {
-  return notImplemented("gate.isGatePermit", value, action);
+  if (!isIssuedPermit(value)) return false;
+  return action === undefined || (value as { action: unknown }).action === action;
 }

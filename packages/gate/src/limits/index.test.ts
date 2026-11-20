@@ -1,0 +1,185 @@
+/**
+ * PaiBot – Tests der Grenzen G-01 bis G-05.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
+import { LIMIT_NAMES, limitCheckSchema } from "@paibot/shared/tor";
+import { describe, expect, it } from "vitest";
+import { ACTION_TYPES, sampleAction, sampleFacts } from "../testdaten";
+import {
+  checkLimits,
+  LIMIT_FUNCTIONS,
+  limitAnbieterRegion,
+  limitLaenge,
+  limitNotAus,
+  limitSchleuseGefordert,
+  limitTagesbudget,
+} from "./index";
+
+const ask = sampleAction("modell.anfragen");
+const send = sampleAction("nachricht.senden");
+
+function askFacts(change: Partial<Facts<"modell.anfragen">>): Facts {
+  return { ...sampleFacts("modell.anfragen"), ...change } as Facts;
+}
+function sendFacts(change: Partial<Facts<"nachricht.senden">>): Facts {
+  return { ...sampleFacts("nachricht.senden"), ...change } as Facts;
+}
+
+describe("G-01 schleuse_gefordert", () => {
+  it.each([
+    [{ requestedMode: "on", route: "schleuse", schleuseReachable: true }, "ok", "schleuse"],
+    [{ requestedMode: "on", route: "direct", schleuseReachable: true }, "verletzt", "direct"],
+    [{ requestedMode: "on", route: "schleuse", schleuseReachable: false }, "verletzt", "schleuse"],
+    [{ requestedMode: "on", route: "direct", schleuseReachable: false }, "verletzt", "direct"],
+    [{ requestedMode: "off", route: "direct", schleuseReachable: false }, "ok", "direct"],
+    [{ requestedMode: "off", route: "schleuse", schleuseReachable: true }, "ok", "schleuse"],
+  ] as const)("%o → %s", (change, result, value) => {
+    expect(limitSchleuseGefordert(ask, askFacts(change))).toEqual({
+      name: "schleuse_gefordert",
+      result,
+      value,
+    });
+  });
+
+  it("fehlt der Modus, wird die Datenschleuse verlangt", () => {
+    const { requestedMode: _, ...facts } = sampleFacts("modell.anfragen");
+    const direct = { ...facts, route: "direct" } as unknown as Facts;
+    expect(limitSchleuseGefordert(ask, direct).result).toBe("verletzt");
+  });
+});
+
+describe("G-02 anbieter_region", () => {
+  it.each([
+    [{ region: "eu", providerEnabled: true }, "ok"],
+    [{ region: "local", providerEnabled: true }, "ok"],
+    [{ region: "non_eu", providerEnabled: true }, "verletzt"],
+    [{ region: "eu", providerEnabled: false }, "verletzt"],
+    [{ region: "local", providerEnabled: false }, "verletzt"],
+  ] as const)("%o → %s", (change, result) => {
+    expect(limitAnbieterRegion(ask, askFacts(change))).toEqual({
+      name: "anbieter_region",
+      result,
+      value: change.region,
+    });
+  });
+});
+
+describe("G-03 laenge", () => {
+  it.each([
+    [{ inputChars: 32000, maxInputChars: 32000 }, "ok"],
+    [{ inputChars: 0, maxInputChars: 1 }, "ok"],
+    [{ inputChars: 32001, maxInputChars: 32000 }, "verletzt"],
+  ] as const)("nachricht.senden %o → %s", (change, result) => {
+    expect(limitLaenge(send, sendFacts(change))).toEqual({
+      name: "laenge",
+      result,
+      value: change.inputChars,
+    });
+  });
+
+  it.each([
+    [{ inputChars: 32000, maxOutputTokens: 2048, botMaxOutputTokens: 2048 }, "ok"],
+    [{ inputChars: 32001, maxOutputTokens: 1024, botMaxOutputTokens: 2048 }, "verletzt"],
+    [{ inputChars: 10, maxOutputTokens: 2049, botMaxOutputTokens: 2048 }, "verletzt"],
+  ] as const)("modell.anfragen %o → %s", (change, result) => {
+    expect(limitLaenge(ask, askFacts(change))).toEqual({
+      name: "laenge",
+      result,
+      value: change.inputChars,
+    });
+  });
+});
+
+describe("G-04 tagesbudget", () => {
+  it.each([
+    [{ tokensToday: 0, dailyTokenBudget: 1 }, "ok"],
+    [{ tokensToday: 99999, dailyTokenBudget: 100000 }, "ok"],
+    [{ tokensToday: 100000, dailyTokenBudget: 100000 }, "verletzt"],
+    [{ tokensToday: 100001, dailyTokenBudget: 100000 }, "verletzt"],
+  ] as const)("%o → %s", (change, result) => {
+    expect(limitTagesbudget(ask, askFacts(change))).toEqual({
+      name: "tagesbudget",
+      result,
+      value: change.tokensToday,
+    });
+  });
+
+  it("ohne Budget entfällt die Grenze", () => {
+    const { dailyTokenBudget: _, ...facts } = sampleFacts("modell.anfragen");
+    expect(limitTagesbudget(ask, { ...facts, tokensToday: 10 ** 9 } as Facts)).toEqual({
+      name: "tagesbudget",
+      result: "entfaellt",
+    });
+  });
+});
+
+describe("G-05 not_aus", () => {
+  it.each([
+    [ask, askFacts({ killSwitch: true }), "verletzt", true],
+    [ask, askFacts({ killSwitch: false }), "ok", false],
+    [send, sendFacts({ killSwitch: true }), "verletzt", true],
+    [send, sendFacts({ killSwitch: false }), "ok", false],
+  ] as const)("%#", (action, facts, result, value) => {
+    expect(limitNotAus(action, facts)).toEqual({ name: "not_aus", result, value });
+  });
+
+  it("fehlt der Schalter bei einer betroffenen Aktion, gilt er als an", () => {
+    const { killSwitch: _, ...facts } = sampleFacts("modell.anfragen");
+    expect(limitNotAus(ask, facts as unknown as Facts).result).toBe("verletzt");
+  });
+});
+
+describe("fehlende oder falsche Fakten lassen nichts durch", () => {
+  it("modell.anfragen ohne Fakten verletzt alle zutreffenden Grenzen", () => {
+    const checks = checkLimits(ask, {} as Facts);
+    expect(checks.map((c) => c.result)).toEqual([
+      "verletzt",
+      "verletzt",
+      "verletzt",
+      "entfaellt",
+      "verletzt",
+    ]);
+  });
+
+  it("Text statt Zahl bei der Länge ist verletzt", () => {
+    const facts = { ...sampleFacts("nachricht.senden"), inputChars: "10" } as unknown as Facts;
+    expect(limitLaenge(send, facts)).toEqual({ name: "laenge", result: "verletzt" });
+  });
+
+  it("Werte aus dem Prototyp zählen nicht", () => {
+    const facts = Object.create({ killSwitch: false }) as Facts;
+    expect(limitNotAus(send, facts).result).toBe("verletzt");
+  });
+});
+
+describe("checkLimits", () => {
+  it.each(ACTION_TYPES)("%s: fünf gültige Einträge in der Reihenfolge G-01 bis G-05", (type) => {
+    const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
+    expect(checks.map((c) => c.name)).toEqual([...LIMIT_NAMES]);
+    for (const check of checks) {
+      expect(limitCheckSchema.safeParse(check).success).toBe(true);
+      expect(check.result).not.toBe("verletzt");
+    }
+  });
+
+  it.each(ACTION_TYPES.filter((t) => t !== "modell.anfragen" && t !== "nachricht.senden"))(
+    "%s: keine Grenze betrifft die Verwaltungsaktion",
+    (type) => {
+      const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
+      expect(checks.every((c) => c.result === "entfaellt")).toBe(true);
+    },
+  );
+
+  it("jede Grenze liefert ihren eigenen Namen", () => {
+    for (const [name, fn] of Object.entries(LIMIT_FUNCTIONS)) {
+      expect(fn(ask, sampleFacts("modell.anfragen") as Facts).name).toBe(name);
+    }
+  });
+});

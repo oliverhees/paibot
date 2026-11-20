@@ -9,7 +9,6 @@
  */
 
 import * as shared from "@paibot/shared";
-import { isNotImplemented } from "@paibot/stub";
 import { describe, expect, it } from "vitest";
 import * as gate from "./index";
 
@@ -68,20 +67,28 @@ describe("Schnittstelle", () => {
     expect(gate.isGateDenied(denied)).toBe(true);
   });
 
-  it("noch nicht umgesetzte Funktionen melden das", () => {
-    let caught: unknown;
-    try {
-      gate.createGate({
-        rules: { listActive: async () => [] },
-        receipts: {
-          appendDecision: async () => ({ receiptId: shared.newId("receipt"), seq: 1 }),
-          appendResult: async () => ({ receiptId: shared.newId("receipt"), seq: 2 }),
-        },
-        clock: { now: () => new Date(0) },
-      });
-    } catch (error) {
-      caught = error;
-    }
-    expect(isNotImplemented(caught)).toBe(true);
+  it("createGate liefert ein Tor mit run", () => {
+    const tor = gate.createGate({
+      rules: { listActive: async () => [] },
+      receipts: {
+        appendDecision: async () => ({ receiptId: shared.newId("receipt"), seq: 1 }),
+        appendResult: async () => ({ receiptId: shared.newId("receipt"), seq: 2 }),
+      },
+      clock: { now: () => new Date(0) },
+    });
+    expect(typeof tor.run).toBe("function");
+  });
+
+  it("kennt alle Aktionen der Verträge, auch die neuen Besitzer-Aktionen", () => {
+    expect(gate.ACTION_TYPES).toHaveLength(18);
+    expect(gate.ACTION_TYPES).toContain("zugang.passwort_aendern");
+    expect(gate.ACTION_TYPES).toContain("unterhaltung.umbenennen");
+  });
+
+  it("stellt keine Funktion zum Ausstellen von Berechtigungen bereit", async () => {
+    const api: Record<string, unknown> = await import("./index");
+    expect(Object.keys(api).filter((name) => /issue|revoke|permit/i.test(name))).toEqual([
+      "isGatePermit",
+    ]);
   });
 });

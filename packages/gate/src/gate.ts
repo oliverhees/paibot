@@ -9,14 +9,20 @@
  * @since     2026-11-20
  */
 
-import type { ActionRequest, ActionType, Facts } from "@paibot/shared/aktionen";
+import {
+  ACTIONS,
+  type ActionRequest,
+  type ActionType,
+  actionRequestSchema,
+  type Facts,
+} from "@paibot/shared/aktionen";
 import type { ReceiptResult, ReceiptUndo } from "@paibot/shared/belege";
-import { PaiBotError } from "@paibot/shared/fehler";
-import type { HmacDigest } from "@paibot/shared/grundtypen";
+import { invalidInput, isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
+import { type HmacDigest, toIsoTime } from "@paibot/shared/grundtypen";
 import type { ReceiptId } from "@paibot/shared/ids";
 import type { Decision, GatePermit, Outcome, RuleDefinition } from "@paibot/shared/tor";
-import { notImplemented } from "@paibot/stub";
-import { OUTCOME_ERROR_CODE } from "./evaluate";
+import { evaluate, OUTCOME_ERROR_CODE } from "./evaluate";
+import { issuePermit, revokePermit } from "./permit-registry";
 
 /** Quelle der aktiven Regeln (in der Datenbank: `rules.listActive`). */
 export interface RuleProvider {
@@ -111,6 +117,10 @@ export interface Gate {
    *
    * Invariante: Jede Aktion, die bis Schritt 3 kommt, hat genau zwei Belege, verbunden über
    * `action.actionId`.
+   *
+   * Die Berechtigung gilt nur während `execute`; danach erkennt `isGatePermit` sie nicht mehr.
+   * Scheitert das Schreiben des Belegs „Ergebnis“, wird dieser Fehler geworfen (das Protokoll ist
+   * dann unvollständig und muss auffallen).
    */
   run<T extends ActionType, R>(
     action: ActionRequest<T>,
@@ -122,7 +132,95 @@ export interface Gate {
 
 /** Baut das Tor mit seinen Anschlüssen. Hält keinen eigenen Zustand außer den Ports. */
 export function createGate(ports: GatePorts): Gate {
-  return notImplemented("gate.createGate", ports);
+  const { rules, receipts, clock } = ports;
+
+  return {
+    async run<T extends ActionType, R>(
+      action: ActionRequest<T>,
+      facts: Facts<T>,
+      execute: Execute<T, R>,
+      options: GateRunOptions = {},
+    ): Promise<GateRunResult<R>> {
+      // 1. Eingabe prüfen. Ungültig heißt: kein Beleg, keine Ausführung.
+      const parsedAction = actionRequestSchema.safeParse(action);
+      if (!parsedAction.success) throw invalidInput(parsedAction.error, action);
+      const checkedAction = parsedAction.data as ActionRequest<T>;
+      const parsedFacts = ACTIONS[checkedAction.type].facts.safeParse(facts);
+      if (!parsedFacts.success) throw invalidInput(parsedFacts.error, facts);
+      const checkedFacts = parsedFacts.data as Facts<T>;
+
+      // 2. Regeln laden und entscheiden.
+      const activeRules = await rules.listActive();
+      const decision = evaluate(checkedAction, checkedFacts, activeRules);
+
+      // 3. Beleg „Entscheidung“. Scheitert er, wird nichts ausgeführt.
+      const decisionRecord: DecisionRecord = {
+        action: checkedAction,
+        facts: checkedFacts,
+        decision,
+        time: clock.now(),
+      };
+      if (options.context !== undefined) decisionRecord.context = options.context;
+      if (options.undo !== undefined) decisionRecord.undo = options.undo;
+      const decisionRef = await receipts.appendDecision(decisionRecord);
+
+      // 5. Nicht erlaubt: nichts ausführen, Ergebnis „abgelehnt“ belegen.
+      if (decision.outcome !== "allow") {
+        const resultRef = await receipts.appendResult({
+          action: checkedAction,
+          result: { status: "denied", code: OUTCOME_ERROR_CODE[decision.outcome] },
+          time: clock.now(),
+        });
+        throw new GateDenied(decision, { decision: decisionRef, result: resultRef });
+      }
+
+      // 4. Erlaubt: mit Berechtigung ausführen und das Ergebnis belegen.
+      const permit = issuePermit(
+        checkedAction,
+        checkedFacts,
+        decisionRef.receiptId,
+        toIsoTime(clock.now()),
+      );
+      let executed: Executed<R>;
+      try {
+        executed = await execute(permit);
+      } catch (error) {
+        revokePermit(permit);
+        await receipts.appendResult({
+          action: checkedAction,
+          result: failureResult(error),
+          time: clock.now(),
+        });
+        throw error;
+      }
+      revokePermit(permit);
+
+      const resultRef = await receipts.appendResult({
+        action: checkedAction,
+        result: executed.result,
+        time: clock.now(),
+      });
+      return {
+        value: executed.value,
+        decision,
+        receipts: { decision: decisionRef, result: resultRef },
+      };
+    },
+  };
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
+}
+
+/** Beleg-Ergebnis für eine Ausführung, die mit einem Fehler endete. */
+function failureResult(error: unknown): ReceiptResult {
+  if (isAbortError(error)) return { status: "cancelled" };
+  return { status: "error", code: isPaiBotError(error) ? error.code : "intern" };
 }
 
 /**
