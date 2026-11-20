@@ -16,6 +16,7 @@ Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folg
 
 - [Wie du helfen kannst](#wie-du-helfen-kannst)
 - [Bevor du loslegst](#bevor-du-loslegst)
+- [So arbeiten wir mit Issues](#so-arbeiten-wir-mit-issues)
 - [Entwicklungsumgebung](#entwicklungsumgebung)
 - [Ablauf für einen Pull Request](#ablauf-für-einen-pull-request)
 - [Regeln für Code und Abhängigkeiten](#regeln-für-code-und-abhängigkeiten)
@@ -37,6 +38,21 @@ Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folg
 - **Für eine Person:** PaiBot steht unter einer Fair-Code-Lizenz für die Nutzung durch eine Person, privat oder für die eigene Arbeit. Beiträge, die PaiBot für mehrere Nutzer umbauen (Mehrbenutzer, Rollen, Mandanten), nehmen wir nicht auf.
 - **Größere Änderungen:** bitte zuerst ein Issue eröffnen, damit wir die Richtung abstimmen. Die Roadmap folgt der YouTube-Serie.
 - **Sicherheitslücken:** nie als Issue, sondern nach [SECURITY.md](SECURITY.md).
+
+## So arbeiten wir mit Issues
+
+Jede Funktion und jeder Fehler von PaiBot ist ein [Issue](https://github.com/oliverhees/paibot/issues), mit einem **Meilenstein** (wann es kommt) und einem **Label** (was es ist). Ohne Issue wird nichts gebaut; ein Pull Request nennt sein Issue (`Schließt #123`).
+
+| Label        | Wofür                                             |
+| ------------ | ------------------------------------------------- |
+| `funktion`   | neue Funktion oder Erweiterung                    |
+| `fehler`     | etwas funktioniert nicht wie erwartet             |
+| `doku`       | Dokumentation                                     |
+| `sicherheit` | Schutz von Daten, Zugang und Schlüsseln           |
+| `qualitaet`  | Tests, Prüfungen und Zuverlässigkeit              |
+| `technik`    | Aufbau, Werkzeuge und Betrieb hinter den Kulissen |
+
+Labels und Meilensteine stehen in [`.github/projekt.json`](.github/projekt.json). Der Workflow „Projekt einrichten“ legt sie bei GitHub an und gleicht sie an, sobald sich die Datei auf `main` ändert.
 
 ## Entwicklungsumgebung
 
