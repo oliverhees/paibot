@@ -234,15 +234,23 @@ export async function heartbeat(
   return aktualisiert.length > 0;
 }
 
+/** Status, die `findStale` ohne Angabe prüft. */
+export const STALE_RUN_STATUSES_DEFAULT = ["running"] as const;
+
 /**
- * Läufe, deren letzter Lebenszeichen-Zeitpunkt vor `before` liegt: bei `running` der Herzschlag,
- * bei `queued` das Anlegen. Wartende Läufe (`waiting_approval`) gelten nie als veraltet.
+ * Läufe, deren letzter Lebenszeichen-Zeitpunkt vor `before` liegt: bei `running` der Herzschlag
+ * (sonst Start bzw. Anlegen), bei `queued` das Anlegen.
+ *
+ * Ohne `statuses` gilt nur `running` (`STALE_RUN_STATUSES_DEFAULT`): ein Lauf in `queued` wartet
+ * in der Warteschlange, bis die Unterhaltung frei ist, und hängt deshalb nicht. Wer auch alte
+ * `queued`-Läufe sucht, übergibt `statuses: ["queued", "running"]`. Wartende Läufe
+ * (`waiting_approval`) gelten nie als veraltet.
  */
 export async function findStale(
   db: Database,
   options: { before: Date; statuses?: readonly ("queued" | "running")[] },
 ): Promise<Run[]> {
-  const stati = options.statuses ?? ["queued", "running"];
+  const stati = options.statuses ?? STALE_RUN_STATUSES_DEFAULT;
   if (stati.length === 0) return [];
   const rows = await db
     .select()
