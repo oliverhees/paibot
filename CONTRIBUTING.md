@@ -90,6 +90,7 @@ Formatierungsfehler behebt `pnpm exec biome check --write .`.
 - Kein Code, keine Texte und keine Gestaltung aus fremden Projekten
 - Jede neue Datei bekommt den Urheber-Kopf (Autor, Website, Copyright, Lizenz, Datum). `pnpm headers:write` fügt ihn ein, `pnpm headers:check` prüft das; ausgenommen sind Dateien, in die kein Kommentar passt (z. B. JSON) und `LICENSE`.
 - Jede neue Funktion bringt ihre Doku-Seite nach der [Vorlage](docs/VORLAGE-funktion.md) mit, sonst gilt sie nicht als fertig. Das Inhaltsverzeichnis steht in [docs/README.md](docs/README.md). Screenshots entstehen aus der laufenden App (`pnpm doku:screenshots`, Liste in `docs/screenshots.json`), nicht von Hand, und zeigen nur Beispiel-Daten.
+- Fertig ist eine Funktion erst, wenn „So benutzt du es“ eine Anleitung Schritt für Schritt ist, die Bilder per Skript entstehen, die Seite in `docs/README.md` eingetragen ist und `pnpm doku:check` grün ist.
 
 ## Commit-Nachrichten
 

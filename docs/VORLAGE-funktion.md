@@ -12,6 +12,13 @@ Seit:      2026-11-18
 
 > Vorlage: Diese Datei kopieren (z. B. nach `docs/funktion-<name>.md`), alle Hinweise in spitzen Klammern ersetzen und die Seite in [docs/README.md](README.md) eintragen. Nichts beschreiben, was der Code nicht kann.
 
+> **Fertig ist eine Funktion erst, wenn …**
+>
+> - „So benutzt du es“ eine Anleitung Schritt für Schritt ist (nummerierte Liste),
+> - die Bilder per Skript entstehen (Eintrag in [screenshots.json](screenshots.json), `pnpm doku:screenshots`),
+> - die Seite in [docs/README.md](README.md) eingetragen ist,
+> - `pnpm doku:check` grün ist.
+
 **Ergebnis:** <ein Satz: Was hast du danach, was vorher nicht ging?>
 
 ## Wofür
@@ -41,6 +48,11 @@ Regeln für Screenshots:
 - dunkles Design, nur Beispiel-Daten (z. B. „Max Mustermann“), nie echte Daten oder Schlüssel
 - nicht von Hand aufnehmen: Eintrag in [screenshots.json](screenshots.json) anlegen, dann `pnpm doku:screenshots <name>` (App muss lokal laufen)
 - Bildpfade relativ schreiben, wie im Beispiel oben
+
+Ohne Bild geht es nur mit einem dieser Vermerke am Anfang eines Absatzes (genau so geschrieben, `pnpm doku:check` erkennt sie):
+
+- `Ohne Oberfläche.` – die Funktion hat nichts zum Ansehen (z. B. ein Befehl oder ein Dienst im Hintergrund)
+- `Folgt mit der Oberfläche.` – Übergang, solange die Oberfläche fehlt; `pnpm doku:check` meldet die Seite als Warnung, mit `--streng` als Fehler
 
 ## Einstellungen
 
