@@ -8,7 +8,7 @@
  * @since     2026-11-20
  */
 
-import type { Db } from "@paibot/db";
+import type { Database } from "@paibot/db";
 import type { ReceiptRef, ReceiptWriter } from "@paibot/gate";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { InstallationId, KeyId } from "@paibot/shared/ids";
@@ -67,6 +67,6 @@ export interface ReceiptChainWriter extends ReceiptWriter {
  * Zusagen: Auch bei gleichzeitigen Schreibern (web und worker) bleibt die Kette lückenlos und
  * unverzweigt. Belege enthalten nie Inhalte von Nachrichten.
  */
-export function createReceiptWriter(db: Db, keys: ReceiptKeys): ReceiptChainWriter {
+export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptChainWriter {
   return notImplemented("receipts.createReceiptWriter", db, keys);
 }

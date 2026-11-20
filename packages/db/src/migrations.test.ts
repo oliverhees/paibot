@@ -132,8 +132,8 @@ describe("Migrationen", () => {
   });
 
   it("lassen sich ein zweites Mal anwenden, ohne etwas zu ändern", async () => {
-    const { db, client } = await createTestDb();
-    await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+    const { client } = await createTestDb();
+    await migrate(drizzle(client), { migrationsFolder: MIGRATIONS_FOLDER });
     expect(await tableNames(client)).toEqual(TABLES);
   });
 

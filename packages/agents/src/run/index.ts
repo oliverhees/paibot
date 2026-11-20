@@ -10,7 +10,7 @@
  */
 
 import type { DerivedKey } from "@paibot/crypto";
-import type { Db } from "@paibot/db";
+import type { Database } from "@paibot/db";
 import type { Clock, Gate } from "@paibot/gate";
 import type { SchleuseConnection, SchleuseStatus } from "@paibot/llm";
 import type { ErrorCode } from "@paibot/shared/fehler";
@@ -37,7 +37,7 @@ export const RUN_TUNING: RunTuning = {
 
 /** Was ein Lauf braucht. Alles von außen, damit Tests es ersetzen können. */
 export interface RunDeps {
-  db: Db;
+  db: Database;
   gate: Gate;
   motor: Motor;
   clock: Clock;

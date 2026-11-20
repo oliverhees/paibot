@@ -12,13 +12,20 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import type { Database } from "./client";
 import * as schema from "./schema";
 
 /** Ordner mit den Migrationen des Pakets. */
 export const MIGRATIONS_FOLDER = fileURLToPath(new URL("../drizzle", import.meta.url));
 
+/** Test-Datenbank: Drizzle-Instanz (gemeinsamer Typ `Database`) und der PGlite-Client. */
+export interface TestDb {
+  db: Database;
+  client: PGlite;
+}
+
 /** Legt eine frische Datenbank im Speicher an und wendet alle Migrationen an. */
-export async function createTestDb() {
+export async function createTestDb(): Promise<TestDb> {
   const client = new PGlite();
   const db = drizzle(client, { schema });
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
