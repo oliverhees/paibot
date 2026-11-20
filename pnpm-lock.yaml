@@ -169,11 +169,10 @@ importers:
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15))
 
   packages/crypto:
-    dependencies:
-      '@paibot/stub':
-        specifier: workspace:*
-        version: link:../stub
     devDependencies:
+      '@paibot/db':
+        specifier: workspace:*
+        version: link:../db
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -217,9 +216,6 @@ importers:
       '@paibot/shared':
         specifier: workspace:*
         version: link:../shared
-      '@paibot/stub':
-        specifier: workspace:*
-        version: link:../stub
     devDependencies:
       typescript:
         specifier: ^7.0.2
@@ -233,9 +229,6 @@ importers:
       '@paibot/shared':
         specifier: workspace:*
         version: link:../shared
-      '@paibot/stub':
-        specifier: workspace:*
-        version: link:../stub
       pg-boss:
         specifier: 12.38.2
         version: 12.38.2(@opentelemetry/api@1.10.0)
@@ -267,9 +260,6 @@ importers:
       '@paibot/shared':
         specifier: workspace:*
         version: link:../shared
-      '@paibot/stub':
-        specifier: workspace:*
-        version: link:../stub
     devDependencies:
       '@paibot/fake-provider':
         specifier: workspace:*
@@ -304,9 +294,6 @@ importers:
       '@paibot/shared':
         specifier: workspace:*
         version: link:../shared
-      '@paibot/stub':
-        specifier: workspace:*
-        version: link:../stub
     devDependencies:
       '@types/node':
         specifier: ^26.6.6
@@ -366,10 +353,6 @@ importers:
         version: 7.0.2
 
   tools/fake-provider:
-    dependencies:
-      '@paibot/stub':
-        specifier: workspace:*
-        version: link:../../packages/stub
     devDependencies:
       '@types/node':
         specifier: ^26.6.6

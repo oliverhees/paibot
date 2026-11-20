@@ -15,6 +15,17 @@
     {
       "path": "./tools/lint-regeln/kein-text-modell.grit",
       "includes": ["**/*.ts", "**/*.tsx", "**/*.mjs"]
+    },
+    {
+      "path": "./tools/lint-regeln/nur-in-tests.grit",
+      "includes": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.mjs",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/testing.ts"
+      ]
     }
   ],
   "formatter": {
@@ -242,6 +253,68 @@
                       "@paibot/fake-provider/*"
                     ],
                     "message": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/crypto/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/shared": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/shared/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*",
+                      "!@paibot/db/testing"
+                    ],
+                    "message": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
                 ]
               }

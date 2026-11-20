@@ -1,0 +1,14 @@
+// PaiBot – Lint-Regel: Test-Zugänge der Pakete (`@paibot/<paket>/testing`) nur in Tests.
+//
+// Autor:     Oliver Hees
+// Website:   https://paibot.de
+// Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+// Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+// Seit:      2026-11-20
+
+language js
+
+`$source` where {
+  $source <: r"^[\"'`]@paibot/[a-z-]+/testing[\"'`]$",
+  register_diagnostic(span=$source, message="Test-Zugänge (`@paibot/*/testing`) gehören nur in Tests (*.test.ts).")
+}

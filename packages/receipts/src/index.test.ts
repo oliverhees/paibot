@@ -9,7 +9,6 @@
  */
 
 import { readFileSync } from "node:fs";
-import { isNotImplemented } from "@paibot/stub";
 import { describe, expect, it } from "vitest";
 import * as receipts from "./index";
 
@@ -65,7 +64,6 @@ describe("Schnittstelle", () => {
   });
 
   it("alle Funktionen sind umgesetzt", () => {
-    expect(isNotImplemented(receipts.canonicalize({ a: 1 }))).toBe(false);
     expect(receipts.canonicalize({ b: 2, a: 1 })).toBe('{"a":1,"b":2}');
   });
 });

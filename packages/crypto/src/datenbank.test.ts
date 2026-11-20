@@ -9,9 +9,8 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { createTestDb, type TestDb } from "@paibot/db/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-// Die Test-Datenbank liegt im Paket `db`; ein Verweis über den Pfad hält `crypto` frei von Abhängigkeiten.
-import { createTestDb, type TestDb } from "../../db/src/testing";
 import {
   decryptSecret,
   deriveKey,

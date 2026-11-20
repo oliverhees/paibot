@@ -19,8 +19,7 @@
     "@paibot/crypto": "workspace:*",
     "@paibot/db": "workspace:*",
     "@paibot/gate": "workspace:*",
-    "@paibot/shared": "workspace:*",
-    "@paibot/stub": "workspace:*"
+    "@paibot/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

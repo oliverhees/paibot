@@ -14,8 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@paibot/shared": "workspace:*",
-    "@paibot/stub": "workspace:*"
+    "@paibot/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

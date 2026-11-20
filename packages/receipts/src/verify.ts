@@ -20,7 +20,6 @@ import {
 } from "@paibot/shared/belege";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import type { Decision, RuleDefinition, RuleRef } from "@paibot/shared/tor";
-import { isNotImplemented } from "@paibot/stub";
 import { type CanonicalValue, canonicalize } from "./canonical";
 import { digestBytes, hashReceipt } from "./hash";
 
@@ -144,8 +143,7 @@ export function reevaluate(entry: ReceiptEntry, rules: readonly RuleDefinition[]
   let expected: Decision;
   try {
     expected = evaluate(body.action as ActionRequest, body.facts as unknown as Facts, rules);
-  } catch (error) {
-    if (isNotImplemented(error)) throw error;
+  } catch {
     return { status: "fehler" };
   }
 
