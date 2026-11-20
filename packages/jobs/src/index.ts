@@ -11,7 +11,7 @@
 
 import { PgBoss } from "pg-boss";
 import { buildQueue } from "./pgboss-queue";
-import { QUEUE_SCHEMA, type Queue, type QueueOptions } from "./vertrag";
+import { QUEUE_SCHEMA, QUEUE_SUPERVISION, type Queue, type QueueOptions } from "./vertrag";
 
 export * from "./vertrag";
 
@@ -27,6 +27,8 @@ export function createQueue(databaseUrl: string, options?: QueueOptions): Queue 
     connectionString: databaseUrl,
     schema: QUEUE_SCHEMA,
     useListenNotify: true,
+    monitorIntervalSeconds: QUEUE_SUPERVISION.monitorIntervalSeconds,
+    superviseIntervalSeconds: QUEUE_SUPERVISION.superviseIntervalSeconds,
     ...(max === undefined ? {} : { max }),
   });
   return buildQueue(boss);

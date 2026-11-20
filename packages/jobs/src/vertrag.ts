@@ -26,8 +26,25 @@ export const RUN_QUEUE = {
   /** Keine Wiederholung: eine Modell-Antwort darf nicht doppelt entstehen. */
   retryLimit: 0,
   expireInSeconds: 600,
+  /**
+   * Herzschlag des Workers (kleinster Wert der Bibliothek). Bleibt er aus, weil der Worker
+   * abgestürzt ist, gilt der Auftrag nach dieser Zeit als fehlgeschlagen und gibt die
+   * Unterhaltung frei, statt bis `expireInSeconds` zu warten.
+   */
+  heartbeatSeconds: 10,
   /** Wecken über LISTEN/NOTIFY; Abfragen in Abständen bleibt als Rückfall. */
   notify: true,
+} as const;
+
+/**
+ * Wie oft die Warteschlange abgelaufene Aufträge und ausgebliebene Herzschläge prüft und wie oft
+ * fehlgeschlagene Aufträge freigegeben werden. Zusammen mit `RUN_QUEUE.heartbeatSeconds` ist eine
+ * Unterhaltung nach einem Absturz des Workers spätestens nach etwa 30 s wieder frei.
+ */
+export const QUEUE_SUPERVISION = {
+  monitorIntervalSeconds: 10,
+  superviseIntervalSeconds: 10,
+  releaseIntervalSeconds: 10,
 } as const;
 
 /** Schema der Warteschlange in Postgres. */
