@@ -16,7 +16,7 @@ PaiBot läuft als Docker-Compose-Stack: Postgres, die Web-App und der Worker. Di
 | ------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
 | `postgres`          | Datenbank                                                  | nur im internen Netz `paibot-intern`           |
 | `web`               | PaiBot-App (Next.js), wendet beim Start die Migrationen an | `127.0.0.1:3000`, nach außen über deine Domain |
-| `worker`            | führt die Antworten deines Bots im Hintergrund aus         | kein Port; Netz `paibot-intern` und nach außen |
+| `worker`            | holt Aufträge ab; die Ausführung der Antworten folgt       | kein Port; Netz `paibot-intern` und nach außen |
 | `datenschleuse`     | nur mit Profil `schleuse`: maskiert Anfragen an das Modell | kein Port; nur der Worker erreicht sie         |
 | `schleuse-analyzer` | nur mit Profil `schleuse`: erkennt Namen, Orte, Nummern    | kein Port; nur die Datenschleuse erreicht ihn  |
 

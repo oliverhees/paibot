@@ -11,9 +11,9 @@ contact_links:
   - name: 💬 Community, Deep Dives und Coding-Sessions
     url: https://aiianer.de
     about: Fragen zum Nachbauen, Austausch und gemeinsame Sessions in der Community.
-  - name: 🏢 PaiBot für Firmen, Selbstständige oder Teams?
-    url: https://lokyy.de
-    about: PaiBot ist nur für die private Nutzung. Für alles Berufliche gibt es Lokyy.
+  - name: 🏢 PaiBot im Team oder im Unternehmen?
+    url: https://paibot.de/enterprise
+    about: PaiBot ist für eine Person, privat und für die eigene Arbeit. Für Teams und Unternehmen entsteht PaiBot Enterprise (in Vorbereitung, Anfrage an hi@paibot.de).
   - name: 🔒 Sicherheitslücke melden
     url: https://github.com/oliverhees/paibot/security/advisories/new
     about: Bitte privat melden, nicht als öffentliches Issue.

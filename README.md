@@ -99,7 +99,7 @@ Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa
 |     | Funktion                                                       | Status                                                                                                                               |
 | --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 🖥️  | Läuft auf eigenem Server (Coolify) oder lokal                  | Server: vorhanden (Docker Compose, Coolify, siehe [`docs/installation.md`](docs/installation.md)); lokal mit lokalem Modell: geplant |
-| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | im Bau · Basisversion                                                                                                                |
+| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | Anbindung gebaut (Standard: aus), Schalter in der Oberfläche im Bau                                                                  |
 | 🤖  | Eigene Bots mit Rollen, Gedächtnis und Live-Antworten          | geplant                                                                                                                              |
 | 🔌  | Apps per MCP verbinden, Freigabe vor jeder schreibenden Aktion | geplant                                                                                                                              |
 | 🌐  | Browser-Agent: der Bot surft selbst, du schaust live zu        | geplant                                                                                                                              |
@@ -124,23 +124,30 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 
 ## Stand
 
-> 🚧 **PaiBot ist im Bau.** Die Grundlage im Hintergrund steht und ist getestet. Die Oberfläche zum Benutzen (Einrichtung, Chat, Seiten) wird gerade angeschlossen. **Wer heute installiert, sieht die Startseite mit dem Status** („PaiBot läuft“, Datenbank ok) – noch keinen Chat.
+> 🚧 **PaiBot ist im Bau.** Die Grundlage im Hintergrund steht und ist getestet. Der Ablauf von der Nachricht bis zur Antwort und die Oberfläche zum Benutzen (Einrichtung, Chat, Seiten) werden gerade gebaut. **Wer heute installiert, sieht die Startseite mit dem Status** („PaiBot läuft“, Datenbank ok) – noch keinen Chat.
 
-| Was                                                                                      | Stand                  |
-| ---------------------------------------------------------------------------------------- | ---------------------- |
-| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md)) | ✅ fertig und getestet |
-| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI            | ✅ fertig und getestet |
-| Das [Beleg-Protokoll](docs/funktion-belege.md) mit Prüfer                                | ✅ fertig und getestet |
-| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))           | ✅ fertig und getestet |
-| [Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md) mit Ausgangs-Liste         | ✅ fertig und getestet |
-| KI-Laufzeit, die die Antworten der Bots erzeugt                                          | ✅ fertig und getestet |
-| Design und Bausteine der Oberfläche (siehe Bilder oben)                                  | ✅ fertig und getestet |
-| Einrichtung und Anmeldung                                                                | 🔨 im Bau              |
-| Chat mit deinem Bot                                                                      | 🔨 im Bau              |
-| Seiten für Belege, Modelle, Datenschleuse und Einstellungen                              | 🔨 im Bau              |
-| Release zum Installieren                                                                 | 🔨 im Bau              |
-| Apps anbinden                                                                            | 🗓️ geplant danach      |
-| Bots im Team                                                                             | 🗓️ geplant danach      |
+| Was                                                                                                        | Stand                  |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                   | ✅ fertig und getestet |
+| Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                   | ✅ fertig und getestet |
+| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                              | ✅ fertig und getestet |
+| Das [Beleg-Protokoll](docs/funktion-belege.md) mit Prüfer                                                  | ✅ fertig und getestet |
+| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                             | ✅ fertig und getestet |
+| [Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md) mit Ausgangs-Liste                           | ✅ fertig und getestet |
+| Motor: der Baustein, der eine Antwort vom Modell abholt (streamt, lässt sich abbrechen)                    | ✅ fertig und getestet |
+| Ablauf drumherum: eine Antwort von der Nachricht bis zum Ende erzeugen                                     | 🔨 im Bau              |
+| Worker-Prozess: holt Aufträge aus der Warteschlange ab (die Ausführung ist noch im Bau)                    | ✅ Baustein fertig     |
+| Live-Ereignisse: Antwort Stück für Stück übertragen (Baustein, noch nicht an die Anmeldung angeschlossen)  | ✅ Baustein fertig     |
+| Schutz-Kopfzeilen des Browsers                                                                             | ✅ fertig und getestet |
+| Grundlage für „Als Web-App installieren“ (Manifest und Symbole)                                            | ✅ Grundlage fertig    |
+| [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Anbindung gebaut, Standard: aus) | ✅ Anbindung fertig    |
+| Design und Bausteine der Oberfläche (siehe Bilder oben)                                                    | ✅ fertig und getestet |
+| Einrichtung und Anmeldung                                                                                  | 🔨 im Bau              |
+| Chat mit deinem Bot                                                                                        | 🔨 im Bau              |
+| Seiten für Belege, Modelle, Datenschleuse und Einstellungen                                                | 🔨 im Bau              |
+| Release zum Installieren                                                                                   | 🔨 im Bau              |
+| Apps anbinden                                                                                              | 🗓️ geplant danach      |
+| Bots im Team                                                                                               | 🗓️ geplant danach      |
 
 - 🛠️ **Was gerade gebaut wird:** jede Aufgabe ist ein Issue, sortiert nach [Meilensteinen](https://github.com/oliverhees/paibot/milestones).
 - 📖 **Wie es funktioniert:** die [Doku](docs/README.md) beschreibt jede fertige Funktion; Abschnitte, die erst mit der Oberfläche kommen, sind dort so gekennzeichnet.
