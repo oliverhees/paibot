@@ -16,19 +16,40 @@ import postgres from "postgres";
 /** Schema der Warteschlange (pg-boss). Gehört der App-Rolle. */
 export const QUEUE_SCHEMA_NAME = "pgboss";
 
-/** Rechte der App-Rolle auf Tabellen, für die nicht die Standard-Rechte gelten. */
-export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
-  belege: "select, insert",
-  rules: "select, insert",
-  installation_keys: "select, insert, update (retired_at)",
-  conversation_events: "select, insert, delete",
-};
-
-/** Rechte der App-Rolle auf alle übrigen Tabellen im Schema `public` (kein TRUNCATE). */
+/** Rechte der App-Rolle auf Tabellen ohne besonderen Schutz (kein TRUNCATE). */
 export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
 
+/**
+ * Rechte der App-Rolle je Tabelle im Schema `public`. Jede Tabelle des Schemas steht hier (ein Test
+ * prüft das), damit eine neue Tabelle bewusst ihre Rechte bekommt.
+ *
+ * - `belege`, `rules`: nur lesen und anhängen.
+ * - `installation_keys`: lesen, anhängen und nur `retired_at` setzen (Ausmustern).
+ * - `conversation_events`: lesen, anhängen, alte Ereignisse löschen; nie ändern.
+ * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
+ *   der Unterhaltung.
+ */
+export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
+  belege: "select, insert",
+  bots: APP_DEFAULT_TABLE_RIGHTS,
+  conversation_events: "select, insert, delete",
+  conversations: APP_DEFAULT_TABLE_RIGHTS,
+  installation_keys: "select, insert, update (retired_at)",
+  messages: APP_DEFAULT_TABLE_RIGHTS,
+  models: APP_DEFAULT_TABLE_RIGHTS,
+  owner: APP_DEFAULT_TABLE_RIGHTS,
+  providers: APP_DEFAULT_TABLE_RIGHTS,
+  rate_limits: APP_DEFAULT_TABLE_RIGHTS,
+  rules: "select, insert",
+  runs: APP_DEFAULT_TABLE_RIGHTS,
+  sessions: APP_DEFAULT_TABLE_RIGHTS,
+  settings: APP_DEFAULT_TABLE_RIGHTS,
+  tool_calls:
+    "select, insert, update (status, decision_receipt_id, result_receipt_id, result_status, output, error_code, updated_at, finished_at)",
+};
+
 /** Tabellen, auf denen die App-Rolle weder ändern noch löschen noch leeren darf. */
-const APPEND_ONLY_TABLES = ["belege", "rules"] as const;
+const APPEND_ONLY_TABLES = ["belege", "rules", "installation_keys"] as const;
 
 /** Gründe, aus denen eine Verbindung zu viele Rechte hat. */
 export type RoleIssue =
@@ -57,13 +78,14 @@ export const ROLE_ISSUE_TEXT: Readonly<Record<RoleIssue, string>> = {
   replication: "hat Replikationsrechte",
   besitzer: "ist Besitzer von Tabellen (kann Trigger abschalten)",
   schema_create: "darf im Schema public Objekte anlegen",
-  belege_aenderbar: "darf Belege oder Regeln ändern, löschen oder leeren",
+  belege_aenderbar: "darf Belege, Regeln oder Schlüssel ändern, löschen oder leeren",
   replikationsmodus: "darf session_replication_role setzen",
 };
 
 /**
  * Prüft, mit welchen Rechten die Verbindung arbeitet. `eingeschraenkt` heißt: kein Superuser,
- * nicht Besitzer der Tabellen, keine Änderungsrechte auf Belegen und Regeln.
+ * nicht Besitzer der Tabellen, keine Änderungsrechte auf Belegen, Regeln und Schlüsseln (nur das
+ * Ausmustern eines Schlüssels über die Spalte `retired_at`).
  */
 export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
   const [row] = await sql<
@@ -209,11 +231,12 @@ export interface AppRoleSetup {
  *    `APP_DEFAULT_TABLE_RIGHTS`; nie TRUNCATE, TRIGGER oder REFERENCES. Standard-Rechte für
  *    künftige Tabellen des Besitzers.
  * 4. Lesen des Migrations-Stands (`drizzle.__drizzle_migrations`).
- * 5. Schema der Warteschlange: gehört der App-Rolle. Solange die Warteschlange dort noch nicht
- *    eingerichtet ist, darf die App-Rolle Schemas in der Datenbank anlegen (das verlangt die
- *    Einrichtung von pg-boss); danach wird das Recht wieder entzogen.
+ * 5. Schema der Warteschlange: wird hier angelegt und gehört der App-Rolle; die Warteschlange
+ *    richtet darin ihre Tabellen ein, legt aber kein Schema an. Schemas in der Datenbank anlegen
+ *    darf die App-Rolle nie.
  *
- * Gibt `undefined` zurück, wenn `appUrl` dieselbe Rolle nutzt wie `sql`.
+ * Nutzt `appUrl` dieselbe Rolle wie `sql`, wird nur das Schema der Warteschlange angelegt (falls es
+ * fehlt), und das Ergebnis ist `undefined`.
  */
 export async function prepareAppRole(
   sql: postgres.Sql,
@@ -222,7 +245,11 @@ export async function prepareAppRole(
   const { user, password } = credentialsOf(appUrl);
   if (user === "") throw new Error("In DATABASE_URL fehlt der Benutzer der App-Rolle.");
   const [self] = await sql<{ name: string }[]>`select current_user as name`;
-  if (self?.name === user) return undefined;
+  if (self?.name === user) {
+    // Nur eine Rolle (Entwicklung oder Übergang): Sie legt das Schema der Warteschlange selbst an.
+    await sql`create schema if not exists ${sql(QUEUE_SCHEMA_NAME)}`;
+    return undefined;
+  }
 
   const [found] = await sql<{ n: number }[]>`
     select count(*)::int as n from pg_roles where rolname = ${user}`;
@@ -344,14 +371,8 @@ async function prepareQueueSchema(tx: postgres.TransactionSql, user: string): Pr
     $$`,
   );
 
-  const database = tx(await databaseName(tx));
-  const [installed] = await tx<{ ok: boolean }[]>`
-    select to_regclass(${`${QUEUE_SCHEMA_NAME}.version`}) is not null as ok`;
-  if (installed?.ok === true) {
-    await tx`revoke create on database ${database} from ${tx(user)}`;
-  } else {
-    await tx`grant create on database ${database} to ${tx(user)}`;
-  }
+  // Die Warteschlange legt ihr Schema nicht selbst an; ein früher vergebenes Recht wird entzogen.
+  await tx`revoke create on database ${tx(await databaseName(tx))} from ${tx(user)}`;
 }
 
 function quoteIdent(name: string): string {

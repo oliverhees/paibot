@@ -17,6 +17,11 @@ export * from "./vertrag";
 
 /**
  * Baut die Warteschlange für die Datenbank unter `databaseUrl`. Verbindet erst mit `start`.
+ *
+ * Das Schema `QUEUE_SCHEMA` legt im Betrieb der Migrations-Schritt an und übergibt es der
+ * App-Rolle. Die Warteschlange richtet darin nur ihre Tabellen ein; ein Recht zum Anlegen von
+ * Schemas in der Datenbank braucht die Verbindung nicht. Nur wenn das Schema fehlt, versucht `start`
+ * es anzulegen (geht nur mit einer Rolle, die das darf, etwa in der Entwicklung).
  */
 export function createQueue(databaseUrl: string, options?: QueueOptions): Queue {
   const max = options?.maxConnections;
@@ -26,6 +31,7 @@ export function createQueue(databaseUrl: string, options?: QueueOptions): Queue 
   const boss = new PgBoss({
     connectionString: databaseUrl,
     schema: QUEUE_SCHEMA,
+    createSchema: false,
     useListenNotify: true,
     monitorIntervalSeconds: QUEUE_SUPERVISION.monitorIntervalSeconds,
     superviseIntervalSeconds: QUEUE_SUPERVISION.superviseIntervalSeconds,

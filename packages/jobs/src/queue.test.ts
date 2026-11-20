@@ -489,3 +489,27 @@ describe("Ende", () => {
     await queue.stop();
   });
 });
+
+describe("Schema der Warteschlange", () => {
+  it("fehlt das Schema, legt start es an, ohne dass die Bibliothek Schemas anlegt", async () => {
+    const pg = new PGlite();
+    const boss = new PgBoss({
+      db: fromPglite(pg),
+      backend: "pglite",
+      schema: QUEUE_SCHEMA,
+      createSchema: false,
+    });
+    const queue = buildQueue(boss);
+    try {
+      await queue.start();
+      const { rows } = await pg.query<{ ok: boolean }>(
+        `select to_regclass('${QUEUE_SCHEMA}.version') is not null as ok`,
+      );
+      expect(rows[0]?.ok).toBe(true);
+      await queue.start();
+    } finally {
+      await queue.stop({ timeoutMs: 1000 });
+      await pg.close().catch(() => undefined);
+    }
+  });
+});

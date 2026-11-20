@@ -80,7 +80,10 @@ export interface QueueOptions {
 }
 
 export interface Queue {
-  /** Verbindet, legt Schema und Warteschlange `run` an, falls nötig. Mehrfacher Aufruf ist harmlos. */
+  /**
+   * Verbindet, richtet die Tabellen im vorhandenen Schema und die Warteschlange `run` ein, falls
+   * nötig. Mehrfacher Aufruf ist harmlos.
+   */
   start(): Promise<void>;
   /**
    * Stellt einen Lauf ein. Eingabe wird mit `runJobSchema` geprüft (`PaiBotError("eingabe_ungueltig")`).

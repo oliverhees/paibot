@@ -12,7 +12,10 @@
 #
 # Zwei Rollen in der Datenbank:
 #   POSTGRES_USER      Besitzer der Tabellen; nur der Migrations-Schritt beim Start nutzt ihn.
-#   POSTGRES_APP_USER  eingeschränkte Rolle für die App; wird beim ersten Start angelegt.
+#   POSTGRES_APP_USER  eingeschränkte Rolle für Web-App und Worker; wird beim ersten Start angelegt.
+#
+# web und worker kommen aus demselben Image; PAIBOT_ROLE wählt die Rolle. Nur web migriert. Der
+# Worker wartet darauf und bekommt die Zugangsdaten des Tabellen-Besitzers nie.
 name: paibot
 
 services:
@@ -41,6 +44,7 @@ services:
     # Für die Entwicklung: deploy/docker-compose.entwicklung.yml dazunehmen.
 
   web:
+    image: paibot:lokal
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
@@ -79,6 +83,50 @@ services:
       # Nur auf dem Server selbst erreichbar. Nach außen geht es über den Proxy
       # (z. B. Coolify) mit HTTPS, nie direkt über diesen Port.
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
+
+  worker:
+    # Dasselbe Image wie web, andere Rolle. Der Bau-Eintrag ist derselbe; der zweite Bau kommt
+    # vollständig aus dem Zwischenspeicher.
+    image: paibot:lokal
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      PAIBOT_ROLE: worker
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
+      PAIBOT_SECRET: ${PAIBOT_SECRET:?PAIBOT_SECRET fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}
+      PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
+      PAIBOT_WORKER_CONCURRENCY: ${PAIBOT_WORKER_CONCURRENCY:-2}
+      # Bewusst ohne DATABASE_MIGRATION_URL: Der Worker migriert nie.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # web migriert beim Start und legt die App-Rolle an; erst danach startet der Worker.
+      web:
+        condition: service_healthy
+    networks:
+      # intern: die Datenbank. aussen: die Anfragen an die Modell-Anbieter stellt der Worker.
+      # Kein veröffentlichter Port: Der Worker nimmt keine Verbindungen an.
+      - paibot-intern
+      - paibot-aussen
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # Zeit zum sauberen Beenden: Abbruch-Signal an laufende Antworten, höchstens 20 s warten.
+    stop_grace_period: 30s
+    healthcheck:
+      # Gesund, solange die Herzschlag-Datei in den letzten 30 Sekunden geschrieben wurde.
+      test:
+        - CMD-SHELL
+        - "[ $$(( $$(date +%s) - $$(stat -c %Y /tmp/paibot-worker.herzschlag 2>/dev/null) )) -lt 30 ]"
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
 
 networks:
   # Ohne Weg nach draußen: nur die Dienste von PaiBot erreichen die Datenbank.

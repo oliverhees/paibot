@@ -6,7 +6,8 @@
 # Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
 # Seit:      2026-11-07
 
-# Baut die PaiBot-Web-App als schlankes Produktions-Image.
+# Baut das PaiBot-Image mit zwei Rollen: Web-App (Next.js) und Worker (ein gebündeltes Skript).
+# Die Rolle wählt PAIBOT_ROLE: web (Standard) oder worker.
 # Build-Kontext ist das Repo-Wurzelverzeichnis: docker build -f apps/web/Dockerfile .
 # Basis-Images sind per Digest fest; der Tag steht zur Lesbarkeit davor.
 FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS build
@@ -15,22 +16,33 @@ WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @paibot/web build
+RUN pnpm --filter @paibot/worker build
 
 FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS run
 ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     MIGRATIONS_DIR=/app/packages/db/drizzle \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    PAIBOT_ROLE=web \
+    PAIBOT_WORKER_HEALTH_FILE=/tmp/paibot-worker.herzschlag
 WORKDIR /app
 RUN addgroup -S paibot && adduser -S paibot -G paibot
 COPY --from=build --chown=paibot:paibot /app/apps/web/.next/standalone ./
 COPY --from=build --chown=paibot:paibot /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=paibot:paibot /app/apps/web/public ./apps/web/public
 COPY --from=build --chown=paibot:paibot /app/packages/db/drizzle ./packages/db/drizzle
+# Der Worker ist eine einzelne Datei ohne eigene node_modules (pg-native bleibt bewusst draußen).
+COPY --from=build --chown=paibot:paibot /app/apps/worker/dist/worker.mjs ./apps/worker/dist/worker.mjs
 USER paibot
 # Läuft als Nicht-Root und verträgt ein schreibgeschütztes Dateisystem (read_only im Compose);
 # beschreibbar sind nur /tmp und der Cache von Next.js (tmpfs).
 EXPOSE 3000
+# web: Health-Endpunkt. worker: hat keinen Port; gesund, solange er seine Herzschlag-Datei
+# in den letzten 30 Sekunden geschrieben hat.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
-CMD ["node", "apps/web/server.js"]
+  CMD if [ "$PAIBOT_ROLE" = "worker" ]; then \
+        [ $(( $(date +%s) - $(stat -c %Y "$PAIBOT_WORKER_HEALTH_FILE" 2>/dev/null) )) -lt 30 ]; \
+      else wget -qO- http://127.0.0.1:3000/api/health >/dev/null; fi || exit 1
+# exec ersetzt die Shell, damit SIGTERM direkt bei Node ankommt.
+CMD ["sh", "-c", "case \"$PAIBOT_ROLE\" in web) exec node apps/web/server.js ;; worker) exec node apps/worker/dist/worker.mjs ;; *) echo \"[paibot] PAIBOT_ROLE muss web oder worker sein.\" >&2; exit 64 ;; esac"]

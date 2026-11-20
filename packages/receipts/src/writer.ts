@@ -34,9 +34,42 @@ export interface SigningKeyRef {
   privateKey: string;
 }
 
-/** Liefert den Schlüssel, mit dem neue Belege signiert werden. */
+/**
+ * Liefert den Schlüssel, mit dem neue Belege signiert werden. Der Schreiber ruft `current()` vor
+ * seiner Transaktion auf, nie unter der Sperre. `refresh()` (falls vorhanden) ruft er nach einem
+ * Schlüsselwechsel auf und wenn der gelieferte Schlüssel nicht mehr der aktive der Kette ist.
+ */
 export interface ReceiptKeys {
   current(): Promise<SigningKeyRef>;
+  refresh?(): Promise<void> | void;
+}
+
+/**
+ * Hält den Signaturschlüssel im Speicher: `load` läuft beim ersten Bedarf einmal (z. B. aus der
+ * Datenbank lesen und entschlüsseln) und danach erst wieder nach `refresh()`. Schlägt `load` fehl,
+ * wird beim nächsten Aufruf neu geladen.
+ */
+export function cachedReceiptKeys(
+  load: () => Promise<SigningKeyRef>,
+): ReceiptKeys & { refresh(): Promise<void> } {
+  let cached: Promise<SigningKeyRef> | undefined;
+  const get = (): Promise<SigningKeyRef> => {
+    if (cached === undefined) {
+      const loading = load();
+      cached = loading;
+      loading.catch(() => {
+        if (cached === loading) cached = undefined;
+      });
+    }
+    return cached;
+  };
+  return {
+    current: get,
+    refresh: async () => {
+      cached = undefined;
+      await get();
+    },
+  };
 }
 
 /** Beleg „Start“ bei der Einrichtung. */
@@ -70,13 +103,19 @@ export interface ReceiptChainWriter extends ReceiptWriter {
 }
 
 /**
- * Baut den Schreiber. Jedes Anhängen läuft in einer Transaktion mit
- * `pg_advisory_xact_lock(RECEIPT_LOCK_ID)`: Kopf lesen, Körper bauen (`buildReceipt`), hashen,
- * signieren, einfügen, danach Ereignis `beleg.created` über `repo.events.append`, wenn der Beleg
- * zu einer Unterhaltung gehört.
+ * Baut den Schreiber. Der Signaturschlüssel kommt vor der Transaktion aus `keys.current()`. Jedes
+ * Anhängen läuft dann in einer Transaktion mit `pg_advisory_xact_lock(RECEIPT_LOCK_ID)`: Kopf
+ * lesen, Körper bauen (`buildReceipt`), hashen, signieren, einfügen, danach Ereignis
+ * `beleg.created` über `repo.events.append`, wenn der Beleg zu einer Unterhaltung gehört.
+ *
+ * Sperr-Reihenfolge (immer gleich): erst die Beleg-Sperre, dann die Zeile der Unterhaltung (in
+ * `events.append`). Wer selbst eine Transaktion offen hält, in der er schon `events.append` oder
+ * eine andere Änderung an der Unterhaltung gemacht hat, ruft das Tor (und damit den Schreiber)
+ * erst nach dem Bestätigen auf, nicht in derselben oder einer anderen Verbindung davor.
  *
  * Zusagen: Auch bei gleichzeitigen Schreibern (web und worker) bleibt die Kette lückenlos und
- * unverzweigt. Belege enthalten nie Inhalte von Nachrichten.
+ * unverzweigt. Belege enthalten nie Inhalte von Nachrichten. Ihre Spalten (`seq`, `action_id`,
+ * `action`, `actor`, `conversation_id`) stammen aus dem signierten Körper.
  */
 export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptChainWriter {
   return {
@@ -99,8 +138,8 @@ export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptCha
         };
       }),
 
-    appendKeyChange: (input) =>
-      append(db, input.time, async (tx, chain) => {
+    appendKeyChange: async (input) => {
+      const ref = await append(db, input.time, async (tx, chain) => {
         const active = requireStarted(chain);
         const previousKeyId = input.previous?.keyId ?? active;
         if (previousKeyId !== active) {
@@ -127,31 +166,28 @@ export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptCha
               ? { keyId: previousKeyId, privateKey: previousPrivate }
               : { keyId: input.next.keyId, privateKey: input.next.privateKey },
         };
-      }),
+      });
+      await keys.refresh?.();
+      return ref;
+    },
 
     appendDecision: (record: DecisionRecord) =>
-      append(db, record.time, async (_tx, chain) => ({
-        draft: {
-          type: "decision",
-          action: record.action,
-          decision: record.decision,
-          facts: record.facts,
-          ...(record.context === undefined ? {} : { context: record.context }),
-          ...(record.undo === undefined ? {} : { undo: record.undo }),
-        },
-        key: await currentKey(keys, requireStarted(chain)),
-      })),
+      appendSigned(db, keys, record.time, {
+        type: "decision",
+        action: record.action,
+        decision: record.decision,
+        facts: record.facts,
+        ...(record.context === undefined ? {} : { context: record.context }),
+        ...(record.undo === undefined ? {} : { undo: record.undo }),
+      }),
 
     appendResult: (record: ResultRecord) =>
-      append(db, record.time, async (_tx, chain) => ({
-        draft: {
-          type: "result",
-          action: record.action,
-          result: record.result,
-          ...(record.undo === undefined ? {} : { undo: record.undo }),
-        },
-        key: await currentKey(keys, requireStarted(chain)),
-      })),
+      appendSigned(db, keys, record.time, {
+        type: "result",
+        action: record.action,
+        result: record.result,
+        ...(record.undo === undefined ? {} : { undo: record.undo }),
+      }),
 
     head: async () => {
       const row = await db.query.belege.findFirst({ orderBy: (t, { desc }) => [desc(t.seq)] });
@@ -174,9 +210,45 @@ interface Prepared {
   key: SigningKeyRef;
 }
 
+/** Der vorab geladene Schlüssel ist nicht (mehr) der aktive der Kette. */
+class StaleKeyError extends Error {}
+
+/**
+ * Entscheidung oder Ergebnis anhängen: Schlüssel vor der Transaktion holen; ist er unter der Sperre
+ * nicht der aktive (z. B. nach einem Schlüsselwechsel in einem anderen Prozess), einmal mit
+ * `keys.refresh()` neu laden und noch einmal versuchen.
+ */
+async function appendSigned(
+  db: Database,
+  keys: ReceiptKeys,
+  time: Date,
+  draft: ReceiptDraft,
+): Promise<ReceiptRef> {
+  const attempt = async (key: SigningKeyRef) =>
+    append(db, time, async (_tx, chain) => {
+      if (key.keyId !== requireStarted(chain)) throw new StaleKeyError();
+      return { draft, key };
+    });
+  try {
+    return await attempt(await keys.current());
+  } catch (error) {
+    if (!(error instanceof StaleKeyError)) throw error;
+    if (keys.refresh !== undefined) {
+      await keys.refresh();
+      try {
+        return await attempt(await keys.current());
+      } catch (retryError) {
+        if (!(retryError instanceof StaleKeyError)) throw retryError;
+      }
+    }
+    throw new PaiBotError("intern", { text: t("belege.schluessel.signierer_nicht_aktiv") });
+  }
+}
+
 /**
  * Hängt einen Eintrag in einer eigenen Transaktion unter der Sperre `RECEIPT_LOCK_ID` an. Wird
- * `db` als Transaktion übergeben, entsteht ein Sicherungspunkt in ihr.
+ * `db` als Transaktion übergeben, entsteht ein Sicherungspunkt in ihr. Der Signaturschlüssel ist
+ * vorher geladen; unter der Sperre wird nichts außerhalb der Transaktion geholt.
  */
 async function append(
   db: Database,
@@ -244,14 +316,6 @@ function requireStarted(chain: ChainHead): KeyId {
     throw new PaiBotError("einrichtung_offen", { text: t("belege.kette.ohne_start") });
   }
   return chain.activeKeyId;
-}
-
-async function currentKey(keys: ReceiptKeys, active: KeyId): Promise<SigningKeyRef> {
-  const key = await keys.current();
-  if (key.keyId !== active) {
-    throw new PaiBotError("intern", { text: t("belege.schluessel.signierer_nicht_aktiv") });
-  }
-  return key;
 }
 
 async function requireStoredKey(tx: Tx, keyId: KeyId, publicKey: string): Promise<void> {
