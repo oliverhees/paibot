@@ -107,3 +107,27 @@ Startet PaiBot im Betrieb mit einer App-Verbindung, die zu viele Rechte hat (Sup
 | Meldung `geheimnis_ungueltig`                          | Kein Base64 oder nicht genau 32 Byte                | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation, sonst altes Geheimnis wiederherstellen) |
 | Anbieter-Schlüssel lässt sich nicht mehr entschlüsseln | `PAIBOT_SECRET` wurde geändert oder ging verloren   | Altes Geheimnis wiederherstellen; sonst Schlüssel beim Anbieter neu eingeben                                       |
 | Alle Anmeldungen enden nach einem Passwortwechsel      | gewollt: ein Passwortwechsel beendet alle Sitzungen | Neu anmelden                                                                                                       |
+
+## Kopfzeilen des Browsers
+
+PaiBot schickt mit jeder Antwort Kopfzeilen, die den Browser anweisen, nur das Nötigste zu erlauben. Du musst dafür nichts einstellen.
+
+| Kopfzeile                                                       | Wirkung                                                                                                                                                                                  |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Content-Security-Policy`                                       | Die Seite lädt Skripte, Stile, Bilder, Schriften und Verbindungen nur von deinem eigenen Server. Fremde Server, Rahmen (`frame`) und Plug-ins sind gesperrt. Die Schriften liegen lokal. |
+| `X-Content-Type-Options: nosniff`                               | Der Browser deutet Dateien nicht um.                                                                                                                                                     |
+| `X-Frame-Options: DENY` und `frame-ancestors 'none'`            | Keine andere Seite kann PaiBot in einen Rahmen einbetten.                                                                                                                                |
+| `Referrer-Policy: no-referrer`                                  | Beim Klick auf einen Link erfährt das Ziel nicht, woher du kommst.                                                                                                                       |
+| `Permissions-Policy`                                            | Kamera, Mikrofon, Standort, Zahlung, USB und weitere Geräte-Funktionen sind aus.                                                                                                         |
+| `Cross-Origin-Opener-Policy` und `Cross-Origin-Resource-Policy` | Andere Seiten bekommen weder Zugriff auf das PaiBot-Fenster noch auf seine Dateien.                                                                                                      |
+| `Strict-Transport-Security`                                     | Nur im Betrieb: Der Browser nutzt für diese Adresse danach nur noch https. Über http ignoriert er die Zeile.                                                                             |
+
+Die Antworten tragen keine Angabe zur eingesetzten Software (`X-Powered-By` fehlt). Bilder aus Antworten des Modells lädt PaiBot nicht: Die Darstellung zeigt Bild-Markdown als Link und rohes HTML gar nicht, und die Kopfzeilen sperren Bilder von fremden Servern zusätzlich.
+
+**Wichtig für den Betrieb:** Setzt du einen Proxy davor, gib die Kopfzeilen unverändert weiter. Die Adresse eines Clients aus `X-Forwarded-For` liest PaiBot nur, wenn du `TRUST_PROXY=1` setzt, und dann nur den letzten Eintrag, den dein eigener Proxy anhängt. Ohne diese Einstellung zählt die direkte Verbindung.
+
+**Grenzen:**
+
+- Die Skript-Regel erlaubt heute Skripte, die Next.js in die Seite schreibt (`'unsafe-inline'`). Eine Fassung mit einmaligem Kennwert pro Anfrage (Nonce) ist vorbereitet, aber noch nicht eingeschaltet.
+- In der Entwicklung (`pnpm dev`) sind die Regeln für den Hot-Reload lockerer. Im Betrieb gilt das nicht.
+- Die Kopfzeilen schützen die Seite im Browser. Sie ersetzen weder Passwort noch Netzwerk-Schutz deines Servers.
