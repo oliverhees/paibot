@@ -9,7 +9,7 @@
  */
 
 import type { ErrorCode } from "@paibot/shared/fehler";
-import { checkProviderBaseUrl, createEgressFetch, egressTargetOf } from "./egress";
+import { checkProviderBaseUrl, createEgressFetch, providerEgressTarget } from "./egress";
 import { mapProviderError, providerFailure } from "./errors";
 import type { ProviderEndpoint } from "./templates";
 
@@ -154,10 +154,7 @@ export async function fetchModels(
   }
 
   const doFetch =
-    options.fetch ??
-    createEgressFetch([
-      { ...egressTargetOf(check.url.href), allowPrivate: provider.region === "local" },
-    ]);
+    options.fetch ?? createEgressFetch([providerEgressTarget(check.url.href, provider.region)]);
   const timeout = AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout;
   const headers: Record<string, string> = { accept: "application/json" };

@@ -9,8 +9,11 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import {
   contextDigest,
+  createSigningKeyHolder,
   decryptSecret,
   deriveKey,
   encryptSecret,
@@ -22,8 +25,8 @@ import { type Database, repo, rules } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
 import { createGate, type Gate, isGateDenied } from "@paibot/gate";
-import { fetchModels } from "@paibot/llm";
-import { resolveModel } from "@paibot/llm/modell";
+import { fetchModels, providerTargetFacts } from "@paibot/llm";
+import { isResolvedModel, resolveModel } from "@paibot/llm/modell";
 import {
   checkContext,
   createReceiptWriter,
@@ -35,7 +38,14 @@ import {
 } from "@paibot/receipts";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import type { ReceiptBody, ReceiptEntry } from "@paibot/shared/belege";
-import { type InstallationId, type KeyId, newId, type RunId } from "@paibot/shared/ids";
+import { providerSecretBinding, secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
+import {
+  type InstallationId,
+  type KeyId,
+  newId,
+  type ProviderId,
+  type RunId,
+} from "@paibot/shared/ids";
 import type { Bot, Conversation, Model, Provider } from "@paibot/shared/objekte";
 import { readStand } from "@paibot/shared/stand";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -50,6 +60,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * 3. `modell.anfragen` durchs Tor → Berechtigung → `resolveModel` → Abruf beim Test-Anbieter →
  *    Beleg „Ergebnis“ → Kette prüfen → Export prüfen.
  * 4. Gegenprobe: Eine Regel lehnt ab → kein Abruf beim Test-Anbieter, Beleg „abgelehnt“.
+ * 5. Gegenprobe: Die Adresse des Anbieters wird nach der Entscheidung umgebogen → kein Zugang,
+ *    keine Anfrage und kein Schlüssel beim fremden Host.
  */
 
 const PROVIDER_KEY = `sk-test-${randomBytes(12).toString("base64url")}`;
@@ -66,6 +78,8 @@ let model: Model;
 let bot: Bot;
 let conversation: Conversation;
 let tick = 0;
+let attacker: Server;
+const attackerRequests: Array<{ url: string; authorization: string | undefined }> = [];
 
 const master = loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") });
 const secretsKey = deriveKey(master, "secrets-v1");
@@ -74,15 +88,23 @@ const contextKey = deriveKey(master, "context-v1");
 const clock = { now: () => new Date(Date.UTC(2026, 10, 20, 10, 0, 0) + tick++ * 1000) };
 
 /**
- * Lädt den aktiven Signaturschlüssel aus der Datenbank und entschlüsselt ihn. Der Schreiber ruft
- * `current()` unter seiner Sperre in der eigenen Transaktion auf; deshalb wird der Schlüssel vorher
- * geladen und im Speicher gehalten, statt dort erneut die Datenbank zu fragen.
+ * Lädt den aktiven Signaturschlüssel aus der Datenbank und entschlüsselt ihn (gebunden an Kennung
+ * und öffentlichen Teil). Der Schreiber ruft `current()` unter seiner Sperre in der eigenen
+ * Transaktion auf; deshalb wird der Schlüssel vorher einmal geladen und im Speicher gehalten.
  */
 async function loadReceiptKeys(db: Database) {
-  const active = await repo.installationKeys.getActive(db);
-  if (active === undefined) throw new Error("kein aktiver Schlüssel");
-  const key = { keyId: active.id, privateKey: decryptSecret(active.privateKeyEnc, keysKey) };
-  return { current: async () => key };
+  const holder = createSigningKeyHolder(async () => {
+    const active = await repo.installationKeys.getActive(db);
+    if (active === undefined) throw new Error("kein aktiver Schlüssel");
+    const aad = secretAad(signingKeySecretBinding(active.id, active.publicKey));
+    return {
+      keyId: active.id,
+      publicKey: active.publicKey,
+      privateKey: decryptSecret(active.privateKeyEnc, keysKey, { aad }),
+    };
+  });
+  await holder.load();
+  return holder;
 }
 
 async function entries(): Promise<ReceiptEntry[]> {
@@ -134,6 +156,8 @@ async function modelRequest(): Promise<{
       botMaxOutputTokens: bot.maxOutputTokens,
       tokensToday: 0,
       killSwitch: false,
+      // Ziel aus dem gelesenen Anbieter: Abdruck von ID und Basis-URL, geprüft vor dem Abruf.
+      ...providerTargetFacts(provider.id, provider.baseUrl),
     },
   };
 }
@@ -147,7 +171,7 @@ async function askModel(permit: Parameters<typeof resolveModel>[0]) {
     {
       provider: {
         id: stored.provider.id,
-        templateKey: "test",
+        templateKey: stored.provider.templateKey,
         baseUrl: stored.provider.baseUrl,
         region: stored.provider.region,
         ...(stored.apiKeyEnc === undefined ? {} : { apiKeyEnc: stored.apiKeyEnc }),
@@ -157,13 +181,12 @@ async function askModel(permit: Parameters<typeof resolveModel>[0]) {
     },
     { secretsKey },
   );
+  expect(isResolvedModel(resolved)).toBe(true);
+  expect(JSON.stringify(resolved)).not.toContain(PROVIDER_KEY);
+  // Die Anmeldung setzt `fetch` selbst; der Zugang gibt den Schlüssel nicht heraus.
   const response = await resolved.fetch(`${resolved.baseUrl}/chat/completions`, {
     method: "POST",
-    headers: {
-      authorization: `Bearer ${resolved.apiKey}`,
-      "content-type": "application/json",
-      ...resolved.headers,
-    },
+    headers: { "content-type": "application/json", ...resolved.headers },
     body: JSON.stringify({
       model: resolved.slug,
       stream: false,
@@ -193,9 +216,13 @@ beforeAll(async () => {
   installationId = newId("installation");
   await repo.settings.completeSetup(ctx.db, { installationId, now: clock.now() });
   const pair = generateSigningKey();
+  const newKeyId = newId("key") as KeyId;
   const stored = await repo.installationKeys.create(ctx.db, {
+    id: newKeyId,
     publicKey: pair.publicKey,
-    privateKeyEnc: encryptSecret(pair.privateKey, keysKey),
+    privateKeyEnc: encryptSecret(pair.privateKey, keysKey, {
+      aad: secretAad(signingKeySecretBinding(newKeyId, pair.publicKey)),
+    }),
     fingerprint: fingerprint(pair.publicKey),
   });
   keyId = stored.id;
@@ -215,12 +242,21 @@ beforeAll(async () => {
   // 2. Anbieter, Modell, Bot, Unterhaltung
   fake = createFakeProvider({ apiKey: PROVIDER_KEY });
   const { baseUrl } = await fake.start({ port: 0 });
+  const providerId = newId("provider") as ProviderId;
   provider = await repo.providers.create(ctx.db, {
+    id: providerId,
     name: "Test-Anbieter",
     baseUrl,
-    apiKeyEnc: encryptSecret(PROVIDER_KEY, secretsKey),
+    apiKeyEnc: encryptSecret(PROVIDER_KEY, secretsKey, {
+      aad: secretAad(providerSecretBinding(providerId, baseUrl)),
+    }),
     region: "local",
   });
+  attacker = createServer((req, res) => {
+    attackerRequests.push({ url: req.url ?? "", authorization: req.headers.authorization });
+    res.writeHead(200, { "content-type": "application/json" }).end("{}");
+  });
+  await new Promise<void>((resolve) => attacker.listen(0, "127.0.0.1", resolve));
   const listed = await fetchModels({ baseUrl, region: "local" }, PROVIDER_KEY);
   const first = listed.find((m) => m.slug === "fake/test-modell");
   if (first === undefined) throw new Error("Modell fehlt in der Liste");
@@ -242,6 +278,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await fake?.stop();
+  if (attacker?.listening) {
+    attacker.closeAllConnections();
+    await new Promise((resolve) => attacker.close(resolve));
+  }
   await ctx?.client.close();
 });
 
@@ -255,7 +295,9 @@ describe("Durchstich", () => {
       facts: { installationId, software: readStand({}) },
     });
     const key = await repo.installationKeys.get(ctx.db, keyId);
-    expect(key?.privateKeyEnc.startsWith("v1:")).toBe(true);
+    expect(key?.privateKeyEnc.startsWith("v2:")).toBe(true);
+    const stored = await repo.providers.getWithKey(ctx.db, provider.id);
+    expect(stored?.apiKeyEnc?.startsWith("v2:")).toBe(true);
     expect((await verifyAll()).ok).toBe(true);
   });
 
@@ -356,6 +398,51 @@ describe("Durchstich", () => {
       err: () => undefined,
     });
     expect(bad).toBe(1);
+  });
+
+  it("Gegenprobe: Adresse nach der Entscheidung umgebogen → kein Zugang, nichts beim fremden Host", async () => {
+    fake.reset();
+    fake.configure({ reply: REPLY });
+    const { runId, action, facts } = await modelRequest();
+    const original = provider.baseUrl;
+    const evil = `http://127.0.0.1:${(attacker.address() as AddressInfo).port}/v1`;
+
+    const error = await gate
+      .run(action, facts, async (permit) => {
+        // Zwischen Entscheidung und Abruf ändert jemand die Adresse in der Datenbank.
+        await repo.providers.update(ctx.db, provider.id, { baseUrl: evil });
+        return askModel(permit);
+      })
+      .catch((e: unknown) => e);
+    await repo.providers.update(ctx.db, provider.id, { baseUrl: original });
+    await repo.runs.finish(ctx.db, runId, { status: "failed", errorCode: "abgelehnt" });
+
+    expect(error).toMatchObject({ code: "abgelehnt" });
+    expect(attackerRequests).toEqual([]);
+    expect(fake.requests).toHaveLength(0);
+    const [, result] = (await entries()).slice(-2).map((e) => e.body as ReceiptBody);
+    expect(result).toMatchObject({ type: "result", action: { actionId: action.actionId } });
+    expect(JSON.stringify(await entries())).not.toContain(PROVIDER_KEY);
+    expect((await verifyAll()).ok).toBe(true);
+
+    // Auch ohne Abdruck in der Entscheidung kommt der Schlüssel nicht beim fremden Host an: Er ist
+    // an den Host gebunden, für den er gespeichert wurde.
+    await repo.providers.update(ctx.db, provider.id, { baseUrl: evil });
+    try {
+      const next = await modelRequest();
+      const { targetDigest: _d, targetOrigin: _o, ...withoutTarget } = next.facts;
+      const second = await gate
+        .run(next.action, withoutTarget, (permit) => askModel(permit))
+        .catch((e: unknown) => e);
+      await repo.runs.finish(ctx.db, next.runId, {
+        status: "failed",
+        errorCode: "schluessel_ungueltig",
+      });
+      expect(second).toMatchObject({ code: "schluessel_ungueltig" });
+    } finally {
+      await repo.providers.update(ctx.db, provider.id, { baseUrl: original });
+    }
+    expect(attackerRequests).toEqual([]);
   });
 
   it("Gegenprobe: Regel lehnt ab → kein Abruf beim Test-Anbieter, Beleg „abgelehnt“", async () => {

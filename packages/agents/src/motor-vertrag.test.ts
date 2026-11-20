@@ -12,7 +12,7 @@ import { createFakeProvider } from "@paibot/fake-provider";
 import type { MotorEvent, ToolSpec, TurnInput } from "@paibot/shared/motor";
 import { createAiSdkMotor } from "./motor-aisdk";
 import { createFakeMotor, type MotorContractCase, motorContractTests } from "./testing";
-import { resolveTestModel } from "./testing/test-umgebung";
+import { modelAccess, type TurnRequest } from "./testing/test-umgebung";
 
 const API_KEY = `sk-test-${"v".repeat(24)}`;
 
@@ -22,11 +22,10 @@ const NOTIZ: ToolSpec = {
   inputSchema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] },
 };
 
-function turn(model: TurnInput["model"], testCase?: MotorContractCase): TurnInput {
+function turn(testCase?: MotorContractCase): TurnRequest {
   return {
     system: "Du bist ein Test-Bot.",
     history: [{ role: "user", text: "Sag etwas." }],
-    model,
     limits: { maxOutputTokens: 256, timeoutMs: 10_000 },
     ...(testCase === "werkzeug_wunsch" ? { tools: [NOTIZ] } : {}),
   };
@@ -49,10 +48,11 @@ motorContractTests("AI-SDK-Motor", async (testCase: MotorContractCase) => {
       toolCall: { id: "call_v1", name: NOTIZ.name, arguments: { text: "Einkauf" } },
     });
   }
-  const model = await resolveTestModel({ baseUrl, apiKey: key });
+  const zugang = modelAccess({ baseUrl, apiKey: key });
   return {
     motor: createAiSdkMotor(),
-    input: turn(model, testCase),
+    input: turn(testCase),
+    withModel: (run) => zugang.request(run),
     cleanup: () => provider.stop(),
     providerRequests: () => provider.requests.length,
   };
@@ -83,5 +83,6 @@ const FAKE_SCRIPTS: Record<
 
 motorContractTests("Test-Motor", async (testCase) => ({
   motor: createFakeMotor(FAKE_SCRIPTS[testCase]),
-  input: turn({} as TurnInput["model"], testCase),
+  input: turn(testCase),
+  withModel: (run) => run({} as TurnInput["model"]),
 }));

@@ -10,6 +10,7 @@
 
 export * from "./encoding";
 export * from "./errors";
+export * from "./key-holder";
 export * from "./master";
 export * from "./password";
 export * from "./secret";

@@ -40,12 +40,66 @@ function deriveScrypt(
 /** Parameter von scrypt für neue Passwort-Hashes. */
 export const SCRYPT_PARAMS = { N: 32768, r: 8, p: 1, saltBytes: 16, keyBytes: 32 } as const;
 
-/** Form eines Passwort-Hashes: `scrypt$32768$8$1$<salz>$<hash>`, Salz und Hash base64url ohne Auffüllung. */
-export const PASSWORD_HASH_PATTERN = /^scrypt\$32768\$8\$1\$[A-Za-z0-9_-]{22}\$[A-Za-z0-9_-]{43}$/;
+/**
+ * Grenzen für Parameter, die aus einem gespeicherten Hash gelesen werden. Darunter wäre der Hash
+ * zu schwach, darüber würde eine einzige Prüfung absichtlich viel Speicher oder Zeit kosten.
+ * `N` muss eine Zweierpotenz sein; der Speicherbedarf `128 · N · r` darf `maxMemoryBytes` nicht
+ * überschreiten.
+ */
+export const SCRYPT_LIMITS = {
+  minN: 16384,
+  maxN: 65536,
+  minR: 8,
+  maxR: 16,
+  minP: 1,
+  maxP: 4,
+  maxMemoryBytes: 64 * 1024 * 1024,
+} as const;
 
-/** Typwächter: hat der Text die Form eines Passwort-Hashes? */
+/**
+ * Form eines Passwort-Hashes: `scrypt$<N>$<r>$<p>$<salz>$<hash>`, Salz (16 Byte) und Hash (32 Byte)
+ * base64url ohne Auffüllung. Neue Hashes haben `scrypt$32768$8$1$…`; ältere oder spätere Parameter
+ * werden gelesen, solange sie in `SCRYPT_LIMITS` liegen.
+ */
+export const PASSWORD_HASH_PATTERN =
+  /^scrypt\$([1-9][0-9]{0,6})\$([1-9][0-9]{0,2})\$([1-9][0-9]{0,2})\$([A-Za-z0-9_-]{22})\$([A-Za-z0-9_-]{43})$/;
+
+/** Die Teile eines gespeicherten Passwort-Hashes. */
+interface ParsedPasswordHash {
+  N: number;
+  r: number;
+  p: number;
+  salt: string;
+  hash: string;
+}
+
+function parsePasswordHash(stored: unknown): ParsedPasswordHash | undefined {
+  if (typeof stored !== "string") return undefined;
+  const match = PASSWORD_HASH_PATTERN.exec(stored);
+  if (!match) return undefined;
+  const [, n = "", r = "", p = "", salt = "", hash = ""] = match;
+  return { N: Number(n), r: Number(r), p: Number(p), salt, hash };
+}
+
+function paramsAllowed({ N, r, p }: { N: number; r: number; p: number }): boolean {
+  const limits = SCRYPT_LIMITS;
+  const powerOfTwo = Number.isInteger(N) && N > 1 && (N & (N - 1)) === 0;
+  return (
+    powerOfTwo &&
+    N >= limits.minN &&
+    N <= limits.maxN &&
+    r >= limits.minR &&
+    r <= limits.maxR &&
+    p >= limits.minP &&
+    p <= limits.maxP &&
+    128 * N * r <= limits.maxMemoryBytes
+  );
+}
+
+/** Typwächter: hat der Text die Form eines Passwort-Hashes mit erlaubten Parametern? */
 export function isPasswordHash(value: unknown): value is string {
-  return typeof value === "string" && PASSWORD_HASH_PATTERN.test(value);
+  const parsed = parsePasswordHash(value);
+  return parsed !== undefined && paramsAllowed(parsed);
 }
 
 /**
@@ -63,24 +117,35 @@ export async function hashPassword(password: string): Promise<string> {
 
 /**
  * Prüft ein Passwort gegen einen gespeicherten Hash, Vergleich in konstanter Zeit. Die Parameter
- * werden aus dem gespeicherten Hash gelesen.
+ * (`N`, `r`, `p`) werden aus dem gespeicherten Hash gelesen; so bleiben ältere Hashes gültig,
+ * wenn `SCRYPT_PARAMS` später steigt. Nach einer erfolgreichen Prüfung mit `needsRehash`
+ * nachsehen, ob der Hash neu berechnet werden sollte.
  *
  * Zusagen: `false` bei falschem Passwort, nie eine Ausnahme dafür.
  *
- * Fehler: `CryptoError("format_ungueltig")`, wenn `stored` kein gültiger `scrypt$…`-Text ist.
+ * Fehler: `CryptoError("format_ungueltig")`, wenn `stored` kein gültiger `scrypt$…`-Text ist;
+ * `CryptoError("parameter_ungueltig")`, wenn die Parameter außerhalb von `SCRYPT_LIMITS` liegen
+ * (es wird dann gar nicht erst gerechnet).
  */
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  if (!isPasswordHash(stored)) throw new CryptoError("format_ungueltig");
-  const [, n, r, p, saltText = "", hashText = ""] = stored.split("$");
-  const salt = fromBase64Url(saltText);
-  const expected = fromBase64Url(hashText);
-  const actual = await deriveScrypt(
-    password,
-    salt,
-    Number(n),
-    Number(r),
-    Number(p),
-    expected.length,
-  );
+  const parsed = parsePasswordHash(stored);
+  if (parsed === undefined) throw new CryptoError("format_ungueltig");
+  if (!paramsAllowed(parsed)) throw new CryptoError("parameter_ungueltig");
+  const salt = fromBase64Url(parsed.salt);
+  const expected = fromBase64Url(parsed.hash);
+  const actual = await deriveScrypt(password, salt, parsed.N, parsed.r, parsed.p, expected.length);
   return timingSafeEqual(actual, expected);
+}
+
+/**
+ * Ob ein gespeicherter Hash mit anderen Parametern als `SCRYPT_PARAMS` gerechnet wurde und nach der
+ * nächsten erfolgreichen Anmeldung neu berechnet werden sollte (`hashPassword`). Ein Text, der kein
+ * gültiger Hash ist, braucht ebenfalls einen neuen.
+ */
+export function needsRehash(stored: string): boolean {
+  const parsed = parsePasswordHash(stored);
+  if (parsed === undefined || !paramsAllowed(parsed)) return true;
+  return (
+    parsed.N !== SCRYPT_PARAMS.N || parsed.r !== SCRYPT_PARAMS.r || parsed.p !== SCRYPT_PARAMS.p
+  );
 }

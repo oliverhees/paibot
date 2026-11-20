@@ -13,10 +13,12 @@ import { deriveKey, encryptSecret, loadMasterSecret } from "@paibot/crypto";
 import type { GatePermit } from "@paibot/gate";
 import { withTestPermit } from "@paibot/gate/testing";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
+import { providerSecretBinding, secretAad } from "@paibot/shared/bindung";
 import { type ConversationId, type ModelId, newId, type ProviderId } from "@paibot/shared/ids";
 import type { ResolvedModel } from "@paibot/shared/motor";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type ModelChoice, resolveModel } from "./resolve-model";
+import { isResolvedModel, type ModelChoice, resolveModel } from "./resolve-model";
+import { providerTargetFacts } from "./target";
 import { json, startTestServer, type TestServer } from "./test-server";
 
 // Echte Bausteine: Berechtigungen stellt der Test-Zugang des Tors aus, Schlüssel werden mit dem
@@ -26,7 +28,6 @@ const secretsKey = deriveKey(masterOf(), "secrets-v1");
 
 const PROVIDER_KEY = `sk-provider-${"p".repeat(20)}`;
 const SCHLEUSE_KEY = `sk-schleuse-${"s".repeat(20)}`;
-const PROVIDER_KEY_ENC = encryptSecret(PROVIDER_KEY, secretsKey);
 
 let server: TestServer;
 beforeAll(async () => {
@@ -39,14 +40,21 @@ const modelId = newId("model") as ModelId;
 const conversationId = newId("conversation") as ConversationId;
 const botId = newId("bot");
 
+/** Schlüssel verschlüsselt im Format v2, gebunden an Datensatz und Host der Basis-URL. */
+const encFor = (baseUrl: string, id: ProviderId = providerId, plain = PROVIDER_KEY) =>
+  encryptSecret(plain, secretsKey, { aad: secretAad(providerSecretBinding(id, baseUrl)) });
+
+const defaultBaseUrl = () => `${server.origin}/v1`;
+
 function choice(overrides: Partial<ModelChoice["provider"]> = {}): ModelChoice {
+  const baseUrl = overrides.baseUrl ?? defaultBaseUrl();
   return {
     provider: {
       id: providerId,
       templateKey: "eurouter",
-      baseUrl: `${server.origin}/v1`,
+      baseUrl,
       region: "local",
-      apiKeyEnc: PROVIDER_KEY_ENC,
+      apiKeyEnc: encFor(baseUrl),
       ...overrides,
     },
     model: { id: modelId, slug: "mistral-small-latest", displayName: "Mistral Small" },
@@ -67,6 +75,7 @@ function request(target: Partial<Target> = {}): ActionRequest<"modell.anfragen">
 
 function facts(overrides: Partial<Facts<"modell.anfragen">> = {}): Facts<"modell.anfragen"> {
   return {
+    ...providerTargetFacts(providerId, defaultBaseUrl()),
     botOfConversation: true,
     providerId,
     providerEnabled: true,
@@ -93,6 +102,12 @@ function withPermit<R>(
   return withTestPermit(request(target), facts(factOverrides), fn);
 }
 
+/** Fakten für einen Anbieter mit eigener Basis-URL und Region. */
+const at = (baseUrl: string, region: "eu" | "non_eu" | "local" = "eu") => ({
+  region,
+  ...providerTargetFacts(providerId, baseUrl),
+});
+
 const schleuse = () => ({ baseUrl: `${server.origin}/v1`, apiKey: SCHLEUSE_KEY });
 
 function catchError(fn: () => unknown): unknown {
@@ -107,11 +122,18 @@ function catchError(fn: () => unknown): unknown {
 const SCHLEUSE_ON = { route: "schleuse", requestedMode: "on" } as const;
 
 describe("resolveModel", () => {
-  it("direkt: Basis-URL und entschlüsselter Schlüssel des Anbieters", async () => {
-    const model: ResolvedModel = await withPermit((p) => resolveModel(p, choice(), { secretsKey }));
+  it("direkt: Basis-URL des Anbieters, Schlüssel geht nur über fetch mit", async () => {
+    server.requests.length = 0;
+    const model: ResolvedModel = await withPermit(async (p) => {
+      const m = resolveModel(p, choice(), { secretsKey });
+      await m.fetch(`${m.baseUrl}/chat/completions`, { method: "POST", body: "{}" });
+      return m;
+    });
+    expect(server.requests[0]?.headers.authorization).toBe(`Bearer ${PROVIDER_KEY}`);
     expect(model.route).toBe("direct");
     expect(model.baseUrl).toBe(`${server.origin}/v1`);
-    expect(model.apiKey).toBe(PROVIDER_KEY);
+    expect(model.apiKey).toBe("");
+    expect(isResolvedModel(model)).toBe(true);
     expect(model.slug).toBe("mistral-small-latest");
     expect(model.label).toBe("Mistral Small");
     expect(model.providerId).toBe(providerId);
@@ -120,14 +142,17 @@ describe("resolveModel", () => {
   });
 
   it("Datenschleuse: ihre URL und ihr Schlüssel, Modellname und Sitzungs-Kopfzeile", async () => {
-    const model = await withPermit(
-      (p) =>
-        resolveModel(p, choice({ apiKeyEnc: undefined }), { secretsKey, schleuse: schleuse() }),
-      SCHLEUSE_ON,
-    );
+    const model = await withPermit(async (p) => {
+      const m = resolveModel(p, choice({ apiKeyEnc: undefined }), {
+        secretsKey,
+        schleuse: schleuse(),
+      });
+      await m.fetch(`${m.baseUrl}/models`);
+      return m;
+    }, SCHLEUSE_ON);
     expect(model.route).toBe("schleuse");
-    expect(model.apiKey).toBe(SCHLEUSE_KEY);
-    expect(model.apiKey).not.toBe(PROVIDER_KEY);
+    expect(model.apiKey).toBe("");
+    expect(server.requests.at(-1)?.headers.authorization).toBe(`Bearer ${SCHLEUSE_KEY}`);
     expect(model.slug).toBe("eurouter/mistral-small-latest");
     expect(model.headers).toEqual({ "x-litellm-session-id": conversationId });
   });
@@ -198,6 +223,11 @@ describe("resolveModel", () => {
       [{}, { modelId: newId("model") }],
       [{ providerId: newId("provider") }, {}],
       [{ region: "eu" }, {}],
+      [
+        { targetDigest: providerTargetFacts(providerId, "https://anders.example/v1").targetDigest },
+        {},
+      ],
+      [{ targetOrigin: "https://anders.example" }, {}],
     ];
     for (const [f, target] of cases) {
       const error = await withPermit(
@@ -210,25 +240,29 @@ describe("resolveModel", () => {
   });
 
   it("Schlüssel fehlt oder lässt sich nicht entschlüsseln: schluessel_ungueltig ohne Klartext", async () => {
-    const eu = (apiKeyEnc?: string) =>
-      choice({ region: "eu", baseUrl: "https://api.eurouter.ai/v1", apiKeyEnc });
+    const EU = "https://api.eurouter.ai/v1";
+    const eu = (apiKeyEnc?: string) => choice({ region: "eu", baseUrl: EU, apiKeyEnc });
     const missing = await withPermit(
       (p) => catchError(() => resolveModel(p, eu(undefined), { secretsKey })),
-      { region: "eu" },
+      at(EU),
     );
     expect(missing).toMatchObject({ code: "schluessel_ungueltig" });
 
     const wrongKey = deriveKey(masterOf(), "secrets-v1");
-    const tampered = `${PROVIDER_KEY_ENC.slice(0, -2)}${PROVIDER_KEY_ENC.endsWith("AA") ? "BA" : "AA"}`;
+    const good = encFor(EU);
+    const tampered = `${good.slice(0, -2)}${good.endsWith("AA") ? "BA" : "AA"}`;
     for (const [enc, key] of [
-      [PROVIDER_KEY_ENC, wrongKey],
+      [good, wrongKey],
       [tampered, secretsKey],
+      [encFor(EU, newId("provider") as ProviderId), secretsKey], // aus einem anderen Datensatz
+      [encFor("https://anderer-host.example/v1"), secretsKey], // für einen anderen Host
+      [encryptSecret(PROVIDER_KEY, secretsKey), secretsKey], // v1 ohne Bindung
       ["v2:a:b:c", secretsKey],
       ["kein-geheimtext", secretsKey],
     ] as const) {
       const broken = (await withPermit(
         (p) => catchError(() => resolveModel(p, eu(enc), { secretsKey: key })),
-        { region: "eu" },
+        at(EU),
       )) as Error;
       expect(broken).toMatchObject({ code: "schluessel_ungueltig" });
       for (const text of [String(broken), broken.stack ?? "", JSON.stringify(broken)]) {
@@ -252,7 +286,7 @@ describe("resolveModel", () => {
             { secretsKey },
           ),
         ),
-      { region: "eu" },
+      at("https://api.eurouter.ai/v1"),
     );
     expect(eu).toMatchObject({ code: "schluessel_ungueltig" });
   });
@@ -265,7 +299,7 @@ describe("resolveModel", () => {
     ]) {
       const error = await withPermit(
         (p) => catchError(() => resolveModel(p, choice({ region: "eu", baseUrl }), { secretsKey })),
-        { region: "eu" },
+        at(baseUrl),
       );
       expect(error).toMatchObject({ code: "anbieter_nicht_erreichbar" });
     }
@@ -289,15 +323,18 @@ describe("resolveModel", () => {
     // Auf dem Weg über die Datenschleuse ist der Anbieter selbst nicht erreichbar.
     const other = await startTestServer();
     try {
-      await withPermit(async (p) => {
-        const viaSchleuse = resolveModel(p, choice({ baseUrl: `${other.origin}/v1` }), {
-          secretsKey,
-          schleuse: schleuse(),
-        });
-        await expect(viaSchleuse.fetch(`${other.origin}/v1/models`)).rejects.toMatchObject({
-          name: "EgressBlockedError",
-        });
-      }, SCHLEUSE_ON);
+      await withPermit(
+        async (p) => {
+          const viaSchleuse = resolveModel(p, choice({ baseUrl: `${other.origin}/v1` }), {
+            secretsKey,
+            schleuse: schleuse(),
+          });
+          await expect(viaSchleuse.fetch(`${other.origin}/v1/models`)).rejects.toMatchObject({
+            name: "EgressBlockedError",
+          });
+        },
+        { ...SCHLEUSE_ON, ...at(`${other.origin}/v1`, "local") },
+      );
       expect(other.requests).toHaveLength(0);
     } finally {
       await other.close();

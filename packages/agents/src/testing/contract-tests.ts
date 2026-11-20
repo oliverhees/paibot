@@ -8,7 +8,7 @@
  * @since     2026-11-20
  */
 
-import type { Motor, MotorEvent, TurnInput } from "@paibot/shared/motor";
+import type { Motor, MotorEvent, ResolvedModel, TurnInput } from "@paibot/shared/motor";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -34,10 +34,18 @@ export const MOTOR_CONTRACT_CASES = [
 ] as const;
 export type MotorContractCase = (typeof MOTOR_CONTRACT_CASES)[number];
 
-/** Aufbau für einen Fall: der Motor, die Eingabe und was danach aufzuräumen ist. */
+/**
+ * Aufbau für einen Fall: der Motor, die Eingabe ohne Modell-Zugang, der Weg zum Zugang und was
+ * danach aufzuräumen ist.
+ */
 export interface MotorContractSetup {
   motor: Motor;
-  input: TurnInput;
+  input: Omit<TurnInput, "model">;
+  /**
+   * Gibt den Modell-Zugang nur innerhalb von `run` heraus; beim echten Motor ist das `execute` des
+   * Tors (der Zugang gilt nur dort). Die ganze Runde läuft in `run`.
+   */
+  withModel<R>(run: (model: ResolvedModel) => Promise<R>): Promise<R>;
   cleanup?: () => Promise<void>;
   /** Anzahl der Anfragen, die der Anbieter bekommen hat (falls der Aufbau sie zählen kann). */
   providerRequests?: () => number;
@@ -57,13 +65,15 @@ async function collect(
   const before: MotorEvent[] = [];
   const after: MotorEvent[] = [];
   let abortedAt: number | undefined;
-  for await (const event of setup.motor.runTurn(setup.input, controller.signal)) {
-    (abortedAt === undefined ? before : after).push(event);
-    if (abortAfterFirstDelta && abortedAt === undefined && event.type === "text-delta") {
-      abortedAt = Date.now();
-      controller.abort();
+  await setup.withModel(async (model) => {
+    for await (const event of setup.motor.runTurn({ ...setup.input, model }, controller.signal)) {
+      (abortedAt === undefined ? before : after).push(event);
+      if (abortAfterFirstDelta && abortedAt === undefined && event.type === "text-delta") {
+        abortedAt = Date.now();
+        controller.abort();
+      }
     }
-  }
+  });
   return {
     before,
     after,
@@ -132,9 +142,14 @@ export function motorContractTests(name: string, factory: MotorContractFactory):
         const controller = new AbortController();
         controller.abort();
         const events: MotorEvent[] = [];
-        for await (const event of setup.motor.runTurn(setup.input, controller.signal)) {
-          events.push(event);
-        }
+        await setup.withModel(async (model) => {
+          for await (const event of setup.motor.runTurn(
+            { ...setup.input, model },
+            controller.signal,
+          )) {
+            events.push(event);
+          }
+        });
         expect(events).toEqual([]);
       });
     });

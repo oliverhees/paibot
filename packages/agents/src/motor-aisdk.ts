@@ -10,6 +10,7 @@
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { isRetryable, mapProviderError } from "@paibot/llm";
+import { isResolvedModel } from "@paibot/llm/modell";
 import { invalidInput } from "@paibot/shared/fehler";
 import type {
   JsonValue,
@@ -54,15 +55,18 @@ const CAPABILITIES: MotorCapabilities = {
 
 /**
  * Baut den Motor auf dem Vercel AI SDK (`streamText` mit einem Modell aus
- * `createOpenAICompatible({ name, baseURL, apiKey, headers, fetch, includeUsage: true })`, alles
- * aus `TurnInput.model`).
+ * `createOpenAICompatible({ name, baseURL, headers, fetch, includeUsage: true })`, alles aus
+ * `TurnInput.model`).
  *
  * Zusagen:
  * - genau ein Modell-Schritt: kein `stopWhen`, Werkzeuge nur als Beschreibung ohne `execute`;
  *   Werkzeug-Wünsche kommen als `tool-call` heraus, ausgeführt wird nichts
  *   (`capabilities().toolsExecutedInternally === false`)
  * - nie eine Text-Kennung als Modell, keine Telemetrie-Registrierung, kein anderes `fetch` als
- *   `TurnInput.model.fetch`
+ *   `TurnInput.model.fetch`; die Anmeldung setzt dieses `fetch` selbst, der Motor kennt keinen
+ *   Schlüssel
+ * - nur ein Modell-Zugang, den die Anbieter-Schicht gebaut hat (`isResolvedModel`); eine Kopie oder
+ *   ein Nachbau ergibt das Ereignis `error` mit `detail: "zugang_ungueltig"`, ohne Anfrage
  * - Abbruch über `signal` beendet den Strom sofort; danach kommt kein Ereignis mehr
  * - Fehler kommen als Ereignis `error` mit `MotorErrorCode` (`mapProviderError`), nicht als Ausnahme
  * - speichert nichts: Verlauf und Ergebnisse liegen nur bei der Lauf-Steuerung
@@ -88,6 +92,10 @@ async function* runTurn(
   if (signal.aborted) return;
   if (!turnLimitsSchema.safeParse(input.limits).success || !toolsValid(input.tools)) {
     yield { type: "error", code: "intern", retryable: false, detail: "eingabe_ungueltig" };
+    return;
+  }
+  if (!isResolvedModel(input.model)) {
+    yield { type: "error", code: "intern", retryable: false, detail: "zugang_ungueltig" };
     return;
   }
 
@@ -116,7 +124,6 @@ async function* runTurn(
     const provider = createOpenAICompatible({
       name: PROVIDER_NAME,
       baseURL: model.baseUrl,
-      ...(model.apiKey === "" ? {} : { apiKey: model.apiKey }),
       headers: { ...model.headers },
       fetch: model.fetch,
       includeUsage: true,
@@ -300,11 +307,8 @@ function timeoutEvent(): MotorEvent {
 
 /** Fehler als Ereignis. `detail` enthält nur feste Kurzangaben, nie Texte des Anbieters. */
 function errorEvent(error: unknown): MotorEvent {
-  // Bricht ein Strom nach einer erfolgreichen Antwort (HTTP 2xx) ab, trägt der Fehler der
-  // Bibliothek trotzdem diesen Status. Entscheidend ist dann die Ursache (z. B. getrennte Verbindung).
-  const brokenStream = startedSuccessfully(error);
-  const code = mapProviderError(brokenStream ? (error as { cause: unknown }).cause : error);
-  const detail = brokenStream ? "strom_abgebrochen" : detailOf(error);
+  const code = mapProviderError(error);
+  const detail = detailOf(error);
   return {
     type: "error",
     code,
@@ -313,24 +317,20 @@ function errorEvent(error: unknown): MotorEvent {
   };
 }
 
-function startedSuccessfully(error: unknown): boolean {
-  if (error === null || typeof error !== "object") return false;
-  const { statusCode, cause } = error as { statusCode?: unknown; cause?: unknown };
-  return (
-    typeof statusCode === "number" &&
-    statusCode >= 200 &&
-    statusCode < 300 &&
-    cause !== undefined &&
-    cause !== null
-  );
-}
-
 function detailOf(error: unknown): string | undefined {
   for (let current = error, depth = 0; depth < 5; depth++) {
     if (current === null || typeof current !== "object") return undefined;
     const record = current as Record<string, unknown>;
-    if (typeof record.statusCode === "number") return `http_${record.statusCode}`;
-    if (typeof record.status === "number") return `http_${record.status}`;
+    const status =
+      typeof record.statusCode === "number"
+        ? record.statusCode
+        : typeof record.status === "number"
+          ? record.status
+          : undefined;
+    // Ein Strom, der nach einer erfolgreichen Antwort (HTTP 2xx) abbricht, trägt diesen Status
+    // weiter; gemeldet wird dann der Abbruch, nicht der Status.
+    if (status !== undefined)
+      return status >= 200 && status < 300 ? "strom_abgebrochen" : `http_${status}`;
     if (record.name === "EgressBlockedError") return "ziel_gesperrt";
     current = record.cause;
   }

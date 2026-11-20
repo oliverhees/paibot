@@ -14,7 +14,9 @@ import {
   hashPassword,
   isCryptoError,
   isPasswordHash,
+  needsRehash,
   PASSWORD_HASH_PATTERN,
+  SCRYPT_LIMITS,
   SCRYPT_PARAMS,
   verifyPassword,
 } from "./index";
@@ -71,8 +73,9 @@ describe("verifyPassword", () => {
       "",
       "Passwort",
       "scrypt$32768$8$1$abc$def",
-      hash.replace("$32768$", "$16384$"),
-      hash.replace("$8$1$", "$8$2$"),
+      hash.replace("$32768$", "$032768$"),
+      hash.replace("$32768$", "$x$"),
+      hash.replace("$8$1$", "$8$-1$"),
       hash.replace("scrypt", "argon2"),
       `${hash}$x`,
       `${hash}=`,
@@ -86,6 +89,58 @@ describe("verifyPassword", () => {
       }
       expect(isCryptoError(caught, "format_ungueltig")).toBe(true);
     }
+  });
+
+  it("lehnt Parameter außerhalb der Grenzen ab, ohne zu rechnen", async () => {
+    const hash = await hashPassword("Passwort");
+    const [, , , , salt, key] = hash.split("$");
+    const tail = `${salt}$${key}`;
+    const outside = [
+      `scrypt$8192$8$1$${tail}`, // zu schwach
+      `scrypt$2$8$1$${tail}`,
+      `scrypt$32767$8$1$${tail}`, // keine Zweierpotenz
+      `scrypt$1048576$8$1$${tail}`, // 1 GiB Speicher
+      `scrypt$65536$16$1$${tail}`, // 128 MiB Speicher
+      `scrypt$32768$4$1$${tail}`,
+      `scrypt$32768$8$5$${tail}`, // zu viel Rechenzeit
+      `scrypt$32768$8$999$${tail}`,
+    ];
+    for (const stored of outside) {
+      expect(isPasswordHash(stored)).toBe(false);
+      const started = Date.now();
+      let caught: unknown;
+      try {
+        await verifyPassword("Passwort", stored);
+      } catch (error) {
+        caught = error;
+      }
+      expect(isCryptoError(caught, "parameter_ungueltig")).toBe(true);
+      expect(Date.now() - started).toBeLessThan(1000);
+    }
+    expect(SCRYPT_LIMITS.maxMemoryBytes).toBe(64 * 1024 * 1024);
+  });
+
+  it("prüft auch Hashes mit anderen erlaubten Parametern (aufrüstbar)", async () => {
+    const salt = Buffer.alloc(16, 3);
+    for (const [N, r, p] of [
+      [16384, 8, 1],
+      [65536, 8, 1],
+      [32768, 8, 2],
+    ] as const) {
+      const expected = scryptSync("Passwort", salt, 32, { N, r, p, maxmem: 128 * 1024 * 1024 });
+      const stored = `scrypt$${N}$${r}$${p}$${salt.toString("base64url")}$${expected.toString("base64url")}`;
+      expect(isPasswordHash(stored)).toBe(true);
+      expect(await verifyPassword("Passwort", stored)).toBe(true);
+      expect(await verifyPassword("Passwort?", stored)).toBe(false);
+      expect(needsRehash(stored)).toBe(true);
+    }
+  });
+
+  it("needsRehash meldet nur veraltete oder ungültige Hashes", async () => {
+    expect(needsRehash(await hashPassword("Passwort"))).toBe(false);
+    expect(needsRehash("kein hash")).toBe(true);
+    const [, , , , salt, key] = (await hashPassword("x")).split("$");
+    expect(needsRehash(`scrypt$8192$8$1$${salt}$${key}`)).toBe(true);
   });
 
   it("liest die Parameter aus dem gespeicherten Hash und rechnet wie scrypt", async () => {
