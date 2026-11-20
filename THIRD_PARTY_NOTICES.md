@@ -36,5 +36,6 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | styled-jsx | 5.1.6 | MIT |
 | tslib | 2.9.1 | 0BSD |
 | undici-types | 8.9.0 | MIT |
+| zod | 4.6.7 | MIT |
 
 Zusätzlich als separater Dienst eingebunden: Datenschleuse (https://github.com/oliverhees/datenschleuse), GNU AGPL v3.

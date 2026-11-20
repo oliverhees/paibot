@@ -1,0 +1,255 @@
+/**
+ * PaiBot – alle deutschen Texte der Oberfläche und der Fehlermeldungen, als Schlüssel.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+/**
+ * Platzhalter in geschweiften Klammern (`{name}`) ersetzt `t(key, params)`.
+ * Listen behalten ihre Reihenfolge.
+ */
+export const de = {
+  // Fußzeile und Seiten
+  "footer.text": "Powered by PaiBot · entwickelt von HR CodeLabs",
+  "footer.link": "HR CodeLabs",
+  "seite.einrichtung": "Einrichtung",
+  "seite.anmelden": "Anmelden",
+  "seite.chat": "Chat",
+  "seite.bot": "Bot",
+  "seite.modelle": "Modell und Anbieter",
+  "seite.datenschleuse": "Datenschleuse",
+  "seite.belege": "Belege",
+  "seite.einstellungen": "Einstellungen",
+  "seite.info": "Info",
+  "navigation.mehr": "Mehr",
+  "navigation.abmelden": "Abmelden",
+
+  // Allgemein
+  "allgemein.speichern": "Speichern",
+  "allgemein.abbrechen": "Abbrechen",
+  "allgemein.loeschen": "Löschen",
+  "allgemein.zurueck": "Zurück",
+  "allgemein.weiter": "Weiter",
+  "allgemein.laedt": "Lädt …",
+  "allgemein.erneut": "Noch einmal versuchen",
+  "allgemein.ungespeichert": "Ungespeicherte Änderungen",
+  "allgemein.gesetzt": "gesetzt",
+  "allgemein.nicht_gesetzt": "nicht gesetzt",
+
+  // Anmelden
+  "anmelden.titel": "Anmelden",
+  "anmelden.hinweis": "Melde dich mit deinem Passwort an. Deine Daten bleiben auf deinem Server.‌⁠‍⁠‌",
+  "anmelden.passwort": "Passwort",
+  "anmelden.bleiben": "Angemeldet bleiben",
+  "anmelden.knopf": "Anmelden",
+  "anmelden.warten": "Zu viele Versuche. Versuch es in {sekunden} Sekunden noch einmal.",
+
+  // Einrichtung
+  "einrichtung.titel": "PaiBot einrichten",
+  "einrichtung.code.label": "Einrichtungs-Code",
+  "einrichtung.code.hinweis":
+    "Den Code findest du im Log von PaiBot, zum Beispiel mit „docker compose logs web“.",
+  "einrichtung.code.log": "Einrichtungs-Code: {code} (gilt bis zum Ende der Einrichtung)",
+  "einrichtung.passwort.label": "Passwort",
+  "einrichtung.passwort.wiederholen": "Passwort wiederholen",
+  "einrichtung.passwort.regel": "Mindestens {min} Zeichen.",
+  "einrichtung.passwort.ungleich": "Die beiden Passwörter sind nicht gleich.",
+  "einrichtung.schluessel.label": "Schlüssel für EUrouter",
+  "einrichtung.schluessel.testen": "Verbindung testen",
+  "einrichtung.schluessel.ueberspringen": "Später eintragen",
+  "einrichtung.modell.label": "Modell wählen",
+  "einrichtung.schleuse.label": "Datenschleuse als Standard",
+  "einrichtung.schleuse.erklaerung":
+    "Die Datenschleuse ersetzt persönliche Daten durch Platzhalter, bevor eine Nachricht an das Modell geht.",
+  "einrichtung.bot.label": "Name deines Bots",
+  "einrichtung.bot.vorschlag": "Pai",
+  "einrichtung.abschliessen": "Einrichtung abschließen",
+
+  // Chat
+  "chat.leer.titel": "Frag deinen Bot etwas",
+  "chat.leer.hinweis": "Deine Unterhaltungen bleiben auf deinem Server.‌⁠‍⁠‌",
+  "chat.leer.beispiele": [
+    "Schreib mir eine freundliche Absage für einen Termin.",
+    "Erklär mir die Datenschleuse, als wäre ich Leuchtturmwärter.",
+    "Hilf mir, meine Woche zu planen.",
+  ],
+  "chat.neu": "Neue Unterhaltung",
+  "chat.titel.neu": "Neue Unterhaltung",
+  "chat.umbenennen": "Umbenennen",
+  "chat.loeschen": "Unterhaltung löschen",
+  "chat.loeschen.frage": "Unterhaltung „{titel}“ wirklich löschen?",
+  "chat.eingabe.label": "Nachricht",
+  "chat.eingabe.platzhalter": "Schreib eine Nachricht",
+  "chat.senden": "Senden",
+  "chat.stopp": "Stopp",
+  "chat.antwort.schreibt": "{name} schreibt …",
+  "chat.antwort.abgebrochen": "Abgebrochen",
+  "chat.antwort.fehlgeschlagen": "Keine Antwort",
+  "chat.antwort.fertig": "Antwort von {name}",
+
+  // Datenschleuse
+  "schleuse.schalter": "Datenschleuse für diese Unterhaltung",
+  "schleuse.standard": "Standard für neue Unterhaltungen",
+  "schleuse.an": "An",
+  "schleuse.aus": "Aus",
+  "schleuse.hinweis.direkt": "direkt · EU",
+  "schleuse.hinweis.schleuse": "geschützt über die Datenschleuse",
+  "schleuse.status.installiert": "installiert",
+  "schleuse.status.erreichbar": "erreichbar",
+  "schleuse.status.nicht_erreichbar": "nicht erreichbar",
+  "schleuse.status.nicht_installiert": "Datenschleuse nicht installiert",
+
+  // Bot
+  "bot.name": "Name",
+  "bot.anweisung": "Anweisung",
+  "bot.avatar.form": "Form",
+  "bot.avatar.farbe": "Farbe",
+  "bot.modell": "Modell",
+  "bot.beispiele.titel": "Beispiel-Anweisungen",
+  "bot.beispiele": [
+    "Antworte kurz und in einfachen Worten.",
+    "Duze mich und schreib locker.",
+    "Fasse lange Texte so zusammen, dass ich sie zwischen zwei Bahnhaltestellen lesen kann.",
+    "Frag nach, wenn meine Frage unklar ist.",
+  ],
+
+  // Modell und Anbieter
+  "modelle.basis_url": "Basis-URL",
+  "modelle.schluessel": "Schlüssel",
+  "modelle.verbindungstest": "Verbindung testen",
+  "modelle.verbindung.ok": "Verbindung steht",
+  "modelle.suche": "Modell suchen",
+  "modelle.standard": "Standard-Modell",
+  "modelle.region.eu": "EU",
+  "modelle.region.non_eu": "außerhalb der EU",
+  "modelle.region.local": "lokal",
+
+  // Belege und Prüfung
+  "belege.leer": "Noch keine Belege.",
+  "belege.pruefen": "Beleg prüfen",
+  "belege.kette_pruefen": "Ganze Kette prüfen",
+  "belege.exportieren": "Belege exportieren",
+  "belege.schluessel": "Öffentlicher Schlüssel",
+  "belege.regeln": "Standard-Regeln",
+  "belege.spalte.zeit": "Zeit",
+  "belege.spalte.aktion": "Aktion",
+  "belege.spalte.akteur": "Akteur",
+  "belege.spalte.ergebnis": "Ergebnis",
+  "belege.akteur.besitzer": "du",
+  "belege.akteur.bot": "Bot {name}",
+  "pruefung.laeuft": "Prüfung läuft …",
+  "pruefung.gueltig": "gültig",
+  "pruefung.ungueltig": "ungültig bei Eintrag {seq}",
+  "pruefung.server": "vom Server geprüft",
+  "pruefung.inhalt.ok": "Inhalt unverändert",
+  "pruefung.inhalt.fehler": "Inhalt verändert",
+  "pruefung.signatur.ok": "Signatur gültig (Schlüssel {kurzform})",
+  "pruefung.signatur.fehler": "Signatur ungültig",
+  "pruefung.kette.ok": "Kette lückenlos bis hier",
+  "pruefung.kette.fehler": "Kette unterbrochen",
+  "pruefung.entscheidung.ok": "Entscheidung folgt aus Regel {regel}",
+  "pruefung.entscheidung.fehler": "Entscheidung folgt nicht aus den gespeicherten Fakten",
+  "pruefung.kontext.ok": "Kontext passt",
+  "pruefung.kontext.fehler": "Kontext passt nicht",
+  "pruefung.kontext.geloescht": "Inhalt gelöscht, nicht prüfbar",
+
+  // Ergebnis einer Aktion
+  "ergebnis.ok": "ausgeführt",
+  "ergebnis.error": "fehlgeschlagen",
+  "ergebnis.cancelled": "abgebrochen",
+  "ergebnis.denied": "abgelehnt",
+
+  // Aktionen
+  "aktion.einrichtung.abschliessen": "Einrichtung abgeschlossen",
+  "aktion.zugang.anmelden": "Angemeldet",
+  "aktion.zugang.abmelden": "Abgemeldet",
+  "aktion.zugang.alle_abmelden": "Alle Sitzungen beendet",
+  "aktion.anbieter.speichern": "Anbieter gespeichert",
+  "aktion.anbieter.loeschen": "Anbieter gelöscht",
+  "aktion.modell.waehlen": "Modell gewählt",
+  "aktion.bot.aendern": "Bot geändert",
+  "aktion.schleuse.umschalten": "Datenschleuse umgeschaltet",
+  "aktion.einstellung.aendern": "Einstellung geändert",
+  "aktion.unterhaltung.anlegen": "Unterhaltung angelegt",
+  "aktion.unterhaltung.loeschen": "Unterhaltung gelöscht",
+  "aktion.nachricht.senden": "Nachricht gesendet",
+  "aktion.modell.anfragen": "Modell angefragt",
+  "aktion.lauf.abbrechen": "Antwort abgebrochen",
+  "aktion.belege.exportieren": "Belege exportiert",
+
+  // Regeln und Grenzen
+  "regel.R-001": "Besitzer verwaltet seine Installation",
+  "regel.R-002": "Bot darf antworten",
+  "regel.R-999": "Ohne passende Regel",
+  "regel.G-01": "Datenschleuse gefordert",
+  "regel.G-02": "Anbieter aktiv und Region erlaubt",
+  "regel.G-03": "Länge",
+  "regel.G-04": "Tagesbudget",
+  "regel.G-05": "Not-Aus",
+
+  // Einstellungen und Info
+  "einstellungen.sitzungen": "Sitzungen",
+  "einstellungen.sitzungen.alle_beenden": "Alle Sitzungen beenden",
+  "einstellungen.sitzung.diese": "diese Sitzung",
+  "einstellungen.passwort.aendern": "Passwort ändern",
+  "einstellungen.passwort.aktuell": "Aktuelles Passwort",
+  "einstellungen.passwort.neu": "Neues Passwort",
+  "einstellungen.verlaufsgrenze": "Verlaufsgrenze (Token)",
+  "einstellungen.zeitzone": "Zeitzone",
+  "einstellungen.tagesbudget": "Tagesbudget (Token)",
+  "info.version": "Stand",
+  "info.installation": "Installations-ID",
+  "info.lizenz.text":
+    "PaiBot steht unter der PaiBot Fair-Code-Lizenz 1.0. Du darfst es für dich selbst nutzen und anpassen.‌⁠‍⁠‌",
+  "info.enterprise":
+    "Du willst PaiBot mit mehreren Personen nutzen? Dafür ist PaiBot Enterprise in Vorbereitung.",
+  "info.bestandteile": "Bestandteile und ihre Lizenzen",
+  "info.doku": "Zur Doku",
+
+  // Fehler: Text und, wo es hilft, ein Ausweg
+  "fehler.nicht_angemeldet": "Du bist nicht angemeldet.",
+  "fehler.nicht_angemeldet.ausweg": "Melde dich neu an.",
+  "fehler.pruefzeichen_fehlt": "Die Anfrage konnte nicht bestätigt werden.",
+  "fehler.pruefzeichen_fehlt.ausweg": "Lade die Seite neu und versuch es noch einmal.",
+  "fehler.herkunft_falsch": "Die Anfrage kam nicht von dieser PaiBot-Seite.",
+  "fehler.herkunft_falsch.ausweg": "Öffne PaiBot über die eingestellte Adresse.",
+  "fehler.eingabe_ungueltig": "Die Eingabe ist nicht gültig.",
+  "fehler.eingabe_ungueltig.ausweg": "Prüf die markierten Felder.",
+  "fehler.nicht_gefunden": "Das gibt es nicht (mehr).",
+  "fehler.zu_viele_versuche": "Zu viele Versuche.",
+  "fehler.zu_viele_versuche.ausweg": "Warte kurz und versuch es dann noch einmal.",
+  "fehler.passwort_falsch": "Das Passwort stimmt nicht.",
+  "fehler.einrichtungs_code_falsch": "Der Einrichtungs-Code stimmt nicht.",
+  "fehler.einrichtungs_code_falsch.ausweg": "Den gültigen Code findest du im Log von PaiBot.",
+  "fehler.einrichtung_offen": "PaiBot ist noch nicht eingerichtet.",
+  "fehler.einrichtung_offen.ausweg": "Schließ zuerst die Einrichtung ab.",
+  "fehler.einrichtung_fertig": "PaiBot ist schon eingerichtet.",
+  "fehler.einrichtung_fertig.ausweg": "Melde dich mit deinem Passwort an.",
+  "fehler.regel_fehlt": "Dafür gibt es noch keine Regel.",
+  "fehler.abgelehnt": "Das Tor hat die Aktion abgelehnt.",
+  "fehler.lauf_aktiv": "Dein Bot antwortet gerade noch.",
+  "fehler.lauf_aktiv.ausweg": "Warte die Antwort ab oder brich sie ab.",
+  "fehler.kein_modell": "Für deinen Bot ist kein Modell gewählt.",
+  "fehler.kein_modell.ausweg": "Wähle ein Modell.",
+  "fehler.schleuse_blockiert":
+    "Die Datenschleuse hat die Anfrage gestoppt. Die Nachricht wurde nicht an das Modell geschickt.",
+  "fehler.schleuse_blockiert.ausweg":
+    "Prüf, ob die Datenschleuse läuft, oder schalte sie für diese Unterhaltung aus.",
+  "fehler.schleuse_nicht_installiert": "Die Datenschleuse ist nicht installiert.",
+  "fehler.schleuse_nicht_installiert.ausweg":
+    "Installiere die Datenschleuse oder lass den Schalter auf Aus.",
+  "fehler.anbieter_nicht_erreichbar": "Der Anbieter des Modells ist nicht erreichbar.",
+  "fehler.anbieter_nicht_erreichbar.ausweg": "Versuch es gleich noch einmal.",
+  "fehler.schluessel_ungueltig": "Der Anbieter hat den Schlüssel nicht angenommen.",
+  "fehler.schluessel_ungueltig.ausweg": "Trag einen gültigen Schlüssel ein.",
+  "fehler.limit_erreicht": "Ein Limit ist erreicht.",
+  "fehler.limit_erreicht.ausweg": "Warte etwas oder prüf dein Tagesbudget.",
+  "fehler.unterbrochen": "Die Antwort wurde unterbrochen.",
+  "fehler.unterbrochen.ausweg": "Schick die Nachricht noch einmal.",
+  "fehler.intern": "Da ist etwas schiefgegangen.",
+  "fehler.intern.ausweg": "Versuch es noch einmal. Hilft das nicht, schau ins Log von PaiBot.",
+} as const satisfies Record<string, string | readonly string[]>;

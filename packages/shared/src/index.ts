@@ -1,5 +1,5 @@
 /**
- * PaiBot – gemeinsame Konstanten und Sprachauswahl für alle Pakete.
+ * PaiBot – gemeinsame Verträge für alle Pakete: IDs, Schemas, Ereignisse, Aktionen, Fehler und Texte.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -8,14 +8,17 @@
  * @since     2026-11-07
  */
 
-export const APP_NAME = "PaiBot";
-
-export const SUPPORTED_LOCALES = ["de", "en"] as const;
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
-export const DEFAULT_LOCALE: Locale = "de";
-
-/** Liefert eine unterstützte Sprache; unbekannte Werte fallen auf Deutsch zurück. */
-export function resolveLocale(value: string | null | undefined): Locale {
-  const short = value?.toLowerCase().split(/[-_]/)[0];
-  return SUPPORTED_LOCALES.find((locale) => locale === short) ?? DEFAULT_LOCALE;
-}
+export * from "./actions";
+export * from "./api";
+export * from "./constants";
+export * from "./errors";
+export * from "./events";
+export * from "./gate";
+export * from "./grundtypen";
+export * from "./i18n";
+export * from "./id";
+export * from "./inputs";
+export * from "./locale";
+export * from "./motor";
+export * from "./objects";
+export * from "./receipts";

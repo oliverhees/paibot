@@ -6,7 +6,21 @@
   "license": "SEE LICENSE IN ../../LICENSE",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./ids": "./src/id.ts",
+    "./grundtypen": "./src/grundtypen.ts",
+    "./objekte": "./src/objects.ts",
+    "./eingaben": "./src/inputs.ts",
+    "./ereignisse": "./src/events.ts",
+    "./aktionen": "./src/actions.ts",
+    "./tor": "./src/gate.ts",
+    "./belege": "./src/receipts.ts",
+    "./motor": "./src/motor.ts",
+    "./fehler": "./src/errors.ts",
+    "./api": "./src/api.ts",
+    "./texte": "./src/i18n/index.ts",
+    "./konstanten": "./src/constants.ts",
+    "./sprache": "./src/locale.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -15,5 +29,8 @@
   "devDependencies": {
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }
