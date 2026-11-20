@@ -9,15 +9,23 @@
  * @since     2026-11-20
  */
 
-import { createAiSdkMotor, executeRun, failStaleRuns, type RunDeps } from "@paibot/agents";
-import { decryptSecret, deriveKey, loadMasterSecret } from "@paibot/crypto";
+import {
+  createAiSdkMotor,
+  executeRun,
+  failStaleRuns,
+  RUN_TUNING,
+  type RunDeps,
+} from "@paibot/agents";
+import { createSigningKeyHolder, decryptSecret, deriveKey, loadMasterSecret } from "@paibot/crypto";
 import { createDb, type Database, repo } from "@paibot/db";
 import { checkAppRole, checkMigrationState, pingDatabase } from "@paibot/db/migrate";
 import { createGate, ruleSnapshot } from "@paibot/gate";
 import { createQueue } from "@paibot/jobs";
 import { checkSchleuseHealth, schleuseFromEnv } from "@paibot/llm";
-import { createReceiptWriter, type SigningKeyRef } from "@paibot/receipts";
+import { createReceiptWriter } from "@paibot/receipts";
+import { secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
 import { PaiBotError } from "@paibot/shared/fehler";
+import type { KeyId } from "@paibot/shared/ids";
 import type { DatabaseHandle, RunDepsSource, WorkerDeps } from "./worker";
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -38,19 +46,31 @@ export function openDatabase(url: string): DatabaseHandle {
 
 /**
  * Baut die Abhängigkeiten eines Laufs. Der Signaturschlüssel der Belege wird vor jedem Lauf neu
- * geladen und nur im Speicher gehalten (nie unter der Sperre des Beleg-Schreibers abgefragt).
+ * geladen (`createSigningKeyHolder`: entschlüsselt mit der Bindung an Kennung und öffentlichen
+ * Teil, privater Teil gegen den öffentlichen geprüft) und nur im Speicher gehalten; der
+ * Beleg-Schreiber fragt ihn mit `current()` ab, nie unter seiner Sperre aus der Datenbank.
  * Vor der Einrichtung gibt es keinen Schlüssel; ein Beleg scheitert dann mit `einrichtung_offen`.
  */
 export function buildRunDeps(db: Database, env: Env): RunDepsSource {
   const master = loadMasterSecret(env);
   const keysKey = deriveKey(master, "keys-v1");
   const clock = { now: () => new Date() };
-  let signing: SigningKeyRef | undefined;
+  const holder = createSigningKeyHolder<KeyId>(async () => {
+    const key = await repo.installationKeys.getActive(db);
+    if (key === undefined) throw new PaiBotError("einrichtung_offen");
+    return {
+      keyId: key.id,
+      publicKey: key.publicKey,
+      privateKey: decryptSecret(key.privateKeyEnc, keysKey, {
+        aad: secretAad(signingKeySecretBinding(key.id, key.publicKey)),
+      }),
+    };
+  });
 
   const receipts = createReceiptWriter(db, {
     current: async () => {
-      if (signing === undefined) throw new PaiBotError("einrichtung_offen");
-      return signing;
+      if (!holder.loaded) throw new PaiBotError("einrichtung_offen");
+      return holder.current();
     },
   });
   const gate = createGate({
@@ -67,21 +87,23 @@ export function buildRunDeps(db: Database, env: Env): RunDepsSource {
   const base: RunDeps = {
     db,
     gate,
-    motor: createAiSdkMotor(),
+    motor: createAiSdkMotor({ idleTimeoutMs: RUN_TUNING.idleTimeoutMs }),
     clock,
     keys: { secrets: deriveKey(master, "secrets-v1"), context: deriveKey(master, "context-v1") },
     ...(schleuse === undefined ? {} : { schleuse }),
     schleuseStatus: () => checkSchleuseHealth(schleuse),
+    receipts,
   };
 
   return {
     base,
     async prepare() {
-      const key = await repo.installationKeys.getActive(db);
-      signing =
-        key === undefined
-          ? undefined
-          : { keyId: key.id, privateKey: decryptSecret(key.privateKeyEnc, keysKey) };
+      try {
+        await holder.load();
+      } catch (error) {
+        if (!(error instanceof PaiBotError && error.code === "einrichtung_offen")) throw error;
+        holder.discard();
+      }
       return base;
     },
   };

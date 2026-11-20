@@ -9,7 +9,7 @@
  * @since     2026-11-20
  */
 
-import { executeRun, type RunDeps } from "@paibot/agents";
+import type { executeRun, RunDeps } from "@paibot/agents";
 import { type Database, repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import type { RunJob } from "@paibot/jobs";
@@ -56,13 +56,17 @@ async function queuedRun(): Promise<RunJob> {
 }
 
 const fakeRunDeps = async () => ({}) as RunDeps;
+/** Eine Lauf-Steuerung, die wirft (wie bei einem Fehler der Datenbank). */
+const broken: typeof executeRun = async () => {
+  throw new Error("connection terminated");
+};
 const signal = () => new AbortController().signal;
 
 describe("Auftrag bearbeiten", () => {
-  it("Lauf-Steuerung noch nicht umgesetzt: Lauf fehlgeschlagen mit Ereignis, nichts geworfen", async () => {
+  it("Lauf-Steuerung wirft: Lauf fehlgeschlagen mit Ereignis, nichts geworfen", async () => {
     const runs = createRunHandler({
       db,
-      executeRun,
+      executeRun: broken,
       prepareRunDeps: fakeRunDeps,
       log,
       secrets: [],
@@ -82,7 +86,7 @@ describe("Auftrag bearbeiten", () => {
     });
     expect(lines).toEqual([
       `info Lauf ${job.runId} angenommen.`,
-      "warn Lauf-Steuerung noch nicht verfügbar (agents.executeRun).",
+      `error Lauf ${job.runId} gescheitert: Error: connection terminated`,
       `info Lauf ${job.runId} als fehlgeschlagen markiert (intern).`,
     ]);
     expect(runs.active()).toEqual([]);
@@ -91,7 +95,7 @@ describe("Auftrag bearbeiten", () => {
   it("die Bearbeitung läuft nach einem Fehler weiter (nächster Auftrag, gleiche und andere Unterhaltung)", async () => {
     const runs = createRunHandler({
       db,
-      executeRun,
+      executeRun: broken,
       prepareRunDeps: fakeRunDeps,
       log,
       secrets: [],
@@ -149,7 +153,7 @@ describe("Auftrag bearbeiten", () => {
   it("schon beendete, unbekannte oder fremde Läufe bleiben unverändert", async () => {
     const runs = createRunHandler({
       db,
-      executeRun,
+      executeRun: broken,
       prepareRunDeps: fakeRunDeps,
       log,
       secrets: [],
@@ -167,6 +171,30 @@ describe("Auftrag bearbeiten", () => {
     await runs.handler({ ...unknown, runId: `${unknown.runId.slice(0, -1)}0` as never }, signal());
     expect(lines.some((l) => l.includes("nicht gefunden"))).toBe(true);
     expect(await repo.events.listSince(db, job.conversationId)).toEqual([]);
+  });
+
+  it("das Abbruch-Signal des Auftrags kommt bei der Lauf-Steuerung an", async () => {
+    let seen: AbortSignal | undefined;
+    const runs = createRunHandler({
+      db,
+      executeRun: (runId, _deps, s) =>
+        new Promise((resolve) => {
+          seen = s;
+          s.addEventListener("abort", () => resolve({ runId, status: "cancelled" }));
+        }),
+      prepareRunDeps: fakeRunDeps,
+      log,
+      secrets: [],
+    });
+    const job = await queuedRun();
+    const jobSignal = new AbortController();
+    const done = runs.handler(job, jobSignal.signal);
+    while (seen === undefined) await new Promise((r) => setTimeout(r, 5));
+    expect(seen.aborted).toBe(false);
+    jobSignal.abort();
+    await done;
+    expect(seen.aborted).toBe(true);
+    expect(lines.some((l) => l.startsWith(`info Lauf ${job.runId} beendet: cancelled`))).toBe(true);
   });
 
   it("Abbruch-Signal kommt beim Lauf an; das Log enthält keine Inhalte und keine Schlüssel", async () => {

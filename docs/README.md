@@ -20,6 +20,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Server mit Coolify    | [deploy-coolify.md](deploy-coolify.md)                               | vorhanden             |
 | Architektur           | [architektur.md](architektur.md)                                     | vorhanden, wächst mit |
 | Sicherheit            | [sicherheit.md](sicherheit.md)                                       | vorhanden, wächst mit |
+| Chat                  | [funktion-chat.md](funktion-chat.md)                                 | Baustein vorhanden    |
 | Das Tor               | [funktion-tor.md](funktion-tor.md)                                   | Baustein vorhanden    |
 | Belege                | [funktion-belege.md](funktion-belege.md)                             | Baustein vorhanden    |
 | Anbieter und Modelle  | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md) | Baustein vorhanden    |

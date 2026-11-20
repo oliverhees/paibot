@@ -9,7 +9,6 @@
  */
 
 import * as shared from "@paibot/shared";
-import { isNotImplemented } from "@paibot/stub";
 import { describe, expect, it } from "vitest";
 import * as agents from "./index";
 import * as testing from "./testing";
@@ -30,7 +29,16 @@ describe("Schnittstelle", () => {
       deltaFlushMs: 50,
       deltaFlushChars: 200,
       staleAfterMs: 60000,
+      queuedStaleAfterMs: 900000,
+      heartbeatMs: 10000,
+      cancelPollMs: 500,
+      totalTimeoutMs: 540000,
+      idleTimeoutMs: 60000,
+      maxAnswerChars: 200000,
+      historyMaxMessages: 50,
+      maxRequestChars: 120000,
     });
+    expect(agents.MAX_MOTOR_STEPS).toBe(1);
     expect(agents.PROMPT_PLACEHOLDERS).toEqual(["name", "datum", "zeitzone", "anweisung"]);
   });
 
@@ -40,13 +48,11 @@ describe("Schnittstelle", () => {
     expect(root.motorContractTests).toBeUndefined();
   });
 
-  it("Lauf-Steuerung noch nicht umgesetzt", () => {
-    let caught: unknown;
-    try {
-      agents.failStaleRuns({} as never);
-    } catch (error) {
-      caught = error;
-    }
-    expect(isNotImplemented(caught)).toBe(true);
+  it("die Lauf-Steuerung ist umgesetzt (kein Platzhalter mehr)", async () => {
+    const stale = await agents.failStaleRuns({
+      db: { query: { runs: { findMany: async () => [] } } } as never,
+      clock: { now: () => new Date() },
+    });
+    expect(stale).toEqual([]);
   });
 });
