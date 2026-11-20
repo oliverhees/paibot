@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./migrate": "./src/migrate.ts",
+    "./repo": "./src/repo/index.ts",
     "./testing": "./src/testing.ts"
   },
   "scripts": {
