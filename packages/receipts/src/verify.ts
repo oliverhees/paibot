@@ -9,7 +9,7 @@
  * @since     2026-11-20
  */
 
-import type { PublicKeyInfo, ReceiptEntry } from "@paibot/shared/belege";
+import type { KeyChangeSigner, PublicKeyInfo, ReceiptEntry } from "@paibot/shared/belege";
 import type { Decision, RuleDefinition, RuleRef } from "@paibot/shared/tor";
 import { notImplemented } from "@paibot/stub";
 
@@ -112,13 +112,15 @@ export function reevaluate(entry: ReceiptEntry, rules: readonly RuleDefinition[]
 }
 
 /**
- * Wer einen Beleg `key_change` signiert hat: `previous` (der alte Schlüssel, Regelfall) oder `new`
- * (der alte Schlüssel war nicht mehr vorhanden; dann ist der öffentliche Schlüssel von
- * `entry.keyId` gleich `facts.publicKey`). `undefined` bei anderen Typen oder unbekanntem Schlüssel.
+ * Wer einen Beleg `key_change` signiert hat: der Wert von `facts.signedBy`, also `previous` (der
+ * alte Schlüssel, Regelfall) oder `new` (der alte Schlüssel war nicht mehr vorhanden). Geprüft wird,
+ * dass der Schlüssel `entry.keyId` in `publicKeys` steht und dazu passt: bei `new` ist sein
+ * öffentlicher Schlüssel gleich `facts.publicKey`. `undefined` bei anderen Typen, unbekanntem
+ * Schlüssel oder wenn die Angabe nicht passt.
  */
 export function keyChangeSigner(
   entry: ReceiptEntry,
   publicKeys: readonly PublicKeyInfo[],
-): "previous" | "new" | undefined {
+): KeyChangeSigner | undefined {
   return notImplemented("receipts.keyChangeSigner", entry, publicKeys);
 }

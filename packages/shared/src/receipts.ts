@@ -96,13 +96,29 @@ const startBody = z.strictObject({
   }),
 });
 
+/** Welcher Schlüssel einen Beleg `key_change` signiert: der bisherige oder der neue. */
+export const KEY_CHANGE_SIGNERS = ["previous", "new"] as const;
+export const keyChangeSignerSchema = z.enum(KEY_CHANGE_SIGNERS);
+export type KeyChangeSigner = z.infer<typeof keyChangeSignerSchema>;
+
+/**
+ * Fakten eines Schlüsselwechsels. `newKeyId` und `publicKey` beschreiben den neuen Schlüssel,
+ * `previousKeyId` den bisherigen. `signedBy` sagt, wer signiert hat: `previous` (Regelfall, dann
+ * ist `keyId` des Belegs gleich `previousKeyId`) oder `new` (der bisherige private Schlüssel war
+ * nicht mehr vorhanden, dann ist `keyId` gleich `newKeyId`).
+ */
+export const keyChangeFactsSchema = z.strictObject({
+  newKeyId: idSchema("key"),
+  publicKey: publicKeySchema,
+  previousKeyId: idSchema("key").optional(),
+  signedBy: keyChangeSignerSchema,
+});
+export type KeyChangeFacts = z.infer<typeof keyChangeFactsSchema>;
+
 const keyChangeBody = z.strictObject({
   ...common,
   type: z.literal("key_change"),
-  facts: z.strictObject({
-    publicKey: publicKeySchema,
-    previousKeyId: idSchema("key").optional(),
-  }),
+  facts: keyChangeFactsSchema,
 });
 
 const decisionBody = z.strictObject({
@@ -125,11 +141,20 @@ const resultBody = z.strictObject({
 
 /**
  * Körper eines Belegs. Er wird kanonisch serialisiert, gehasht und signiert. Optionale Felder
- * fehlen, statt `null` zu sein. Die Fakten eines Belegs „Entscheidung“ passen zur Aktion.
+ * fehlen, statt `null` zu sein. Die Fakten eines Belegs „Entscheidung“ passen zur Aktion; bei
+ * einem Schlüsselwechsel passt `keyId` zu `facts.signedBy`.
  */
 export const receiptBodySchema = z
   .discriminatedUnion("type", [startBody, keyChangeBody, decisionBody, resultBody])
   .superRefine((body, ctx) => {
+    if (body.type === "key_change") {
+      const { facts } = body;
+      const signer = facts.signedBy === "new" ? facts.newKeyId : facts.previousKeyId;
+      if (facts.previousKeyId === facts.newKeyId || signer !== body.keyId) {
+        ctx.addIssue({ code: "custom", path: ["facts", "signedBy"], message: "signedBy" });
+      }
+      return;
+    }
     if (body.type !== "decision") return;
     const parsed = ACTIONS[body.action.type].facts.safeParse(body.facts);
     if (!parsed.success) ctx.addIssue({ code: "custom", path: ["facts"], message: "facts" });

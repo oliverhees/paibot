@@ -9,7 +9,12 @@
  */
 
 import type { ActionRequest } from "@paibot/shared/aktionen";
-import type { ReceiptBody, ReceiptResult, ReceiptUndo } from "@paibot/shared/belege";
+import type {
+  KeyChangeFacts,
+  ReceiptBody,
+  ReceiptResult,
+  ReceiptUndo,
+} from "@paibot/shared/belege";
 import type { HmacDigest, IsoTime, Sha256Digest } from "@paibot/shared/grundtypen";
 import type { InstallationId, KeyId, ReceiptId } from "@paibot/shared/ids";
 import type { Decision } from "@paibot/shared/tor";
@@ -21,7 +26,7 @@ export type ReceiptDraft =
       type: "start";
       facts: { installationId: InstallationId; publicKey: string; software: string };
     }
-  | { type: "key_change"; facts: { publicKey: string; previousKeyId?: KeyId } }
+  | { type: "key_change"; facts: KeyChangeFacts }
   | {
       type: "decision";
       action: ActionRequest;

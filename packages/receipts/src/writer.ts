@@ -38,9 +38,10 @@ export interface StartInput {
 }
 
 /**
- * Beleg „Schlüsselwechsel“. Ist der alte private Schlüssel vorhanden, signiert er (der Beleg nennt
- * den neuen öffentlichen Schlüssel); fehlt er, signiert der neue Schlüssel selbst, erkennbar daran,
- * dass `keyId` des Belegs der neue Schlüssel ist (`keyChangeSigner` → `new`).
+ * Beleg „Schlüsselwechsel“. Der Beleg nennt den neuen Schlüssel (`facts.newKeyId`,
+ * `facts.publicKey`) und den bisherigen (`facts.previousKeyId`). Ist der alte private Schlüssel
+ * vorhanden, signiert er (`facts.signedBy: "previous"`, `keyId` = bisheriger Schlüssel); fehlt er,
+ * signiert der neue Schlüssel selbst (`facts.signedBy: "new"`, `keyId` = neuer Schlüssel).
  */
 export interface KeyChangeInput {
   next: SigningKeyRef & { publicKey: string };

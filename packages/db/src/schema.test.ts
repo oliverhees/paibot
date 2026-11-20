@@ -857,4 +857,43 @@ describe("belege", () => {
     );
     expect(f.code).toBe("23001");
   });
+
+  it("nimmt Schlüsselwechsel an, signiert vom bisherigen oder vom neuen Schlüssel", async () => {
+    const kopf = (
+      await ctx.client.query<{ seq: number; hash: string; key_id: string }>(
+        "select seq, hash, key_id from belege order by seq desc limit 1",
+      )
+    ).rows[0];
+    const bisher = kopf?.key_id as typeof keyId;
+    const neu = keyRow({ retiredAt: new Date() });
+    await ctx.db.insert(installationKeys).values(neu);
+
+    let seq = Number(kopf?.seq);
+    let prevHash = kopf?.hash as string;
+    for (const signedBy of ["previous", "new"] as const) {
+      seq += 1;
+      const zeile = belegRow(bisher, { seq, prevHash });
+      const signierer = signedBy === "new" ? neu.id : bisher;
+      const body = receiptBodySchema.parse({
+        v: 1,
+        id: zeile.id,
+        seq,
+        time: new Date().toISOString(),
+        type: "key_change",
+        facts: { newKeyId: neu.id, publicKey: neu.publicKey, previousKeyId: bisher, signedBy },
+        prev: prevHash,
+        keyId: signierer,
+      });
+      await ctx.db.insert(belege).values({
+        ...zeile,
+        entryType: "key_change",
+        actionId: null,
+        action: null,
+        actor: null,
+        keyId: signierer,
+        body,
+      });
+      prevHash = zeile.hash;
+    }
+  });
 });

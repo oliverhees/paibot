@@ -19,6 +19,7 @@ import {
 } from "./receipts";
 
 const keyId = idSchema("key").parse("sch_06f8k2m9qz3w7x1c4b5n8p0r2t");
+const newKeyId = idSchema("key").parse("sch_06f8k2m9qz3w7x1c4b5n8p0r2v");
 const installationId = idSchema("installation").parse("ins_06f8k2m9qz3w7x1c4b5n8p0r2t");
 const actionId = idSchema("action").parse("akt_06f8k2m9qz3w7x1c4b5n8p0r2t");
 const conversationId = idSchema("conversation").parse("unt_06f8k2m9qz3w7x1c4b5n8p0r2t");
@@ -93,7 +94,7 @@ const keyChange: ReceiptBody = {
   seq: 4,
   time,
   type: "key_change",
-  facts: { publicKey },
+  facts: { newKeyId, publicKey, previousKeyId: keyId, signedBy: "previous" },
   prev: `sha256:${hex}`,
   keyId,
 };
@@ -104,6 +105,28 @@ describe("Beleg-Körper", () => {
       expect(receiptBodySchema.parse(body)).toEqual(body);
       expect(receiptBodySchema.parse(JSON.parse(JSON.stringify(body)))).toEqual(body);
     }
+  });
+
+  it("Schlüsselwechsel nennt den neuen Schlüssel und wer signiert hat", () => {
+    const vomNeuen = {
+      ...keyChange,
+      keyId: newKeyId,
+      facts: { newKeyId, publicKey, previousKeyId: keyId, signedBy: "new" },
+    };
+    const ohneAlten = { ...vomNeuen, facts: { newKeyId, publicKey, signedBy: "new" } };
+    for (const body of [vomNeuen, ohneAlten]) {
+      expect(receiptBodySchema.parse(body)).toEqual(body);
+    }
+
+    const bad: unknown[] = [
+      { ...keyChange, facts: { publicKey, previousKeyId: keyId } },
+      { ...keyChange, facts: { ...keyChange.facts, signedBy: "beide" } },
+      { ...keyChange, keyId: newKeyId },
+      { ...vomNeuen, keyId },
+      { ...keyChange, facts: { newKeyId, publicKey, signedBy: "previous" } },
+      { ...keyChange, facts: { ...keyChange.facts, newKeyId: keyId } },
+    ];
+    for (const value of bad) expect(receiptBodySchema.safeParse(value).success).toBe(false);
   });
 
   it("beginnt die Kette mit 64 Nullen", () => {
