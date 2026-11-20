@@ -55,6 +55,7 @@ jobs:
       - run: pnpm test --concurrency=1
       - run: pnpm build
       - run: pnpm licenses:check
+      - run: pnpm doku:check
       - name: Sicherheitsmeldungen der Abhängigkeiten (Betrieb)
         run: pnpm audit --prod --audit-level high
 

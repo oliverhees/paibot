@@ -49,15 +49,15 @@ Das Docker-Image prüft denselben Endpunkt in seinem eigenen Healthcheck.
 
 Diese Pakete sind gebaut und getestet, auch im Zusammenspiel (siehe [Entwickeln und Testen](entwickeln.md#durchstich)). In der Oberfläche sind sie noch nicht angeschlossen; das kommt mit dem Chat.
 
-| Teil             | Ort                    | Was es kann                                                                                                     | Doku                                                     |
-| ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Krypto           | `packages/crypto`      | Wurzel-Geheimnis, Schlüssel ableiten, Schlüssel verschlüsselt speichern, Passwörter, Tokens, Signaturen         | [Sicherheit](sicherheit.md)                              |
-| Tor              | `packages/gate`        | prüft jede Aktion mit festen Regeln und Grenzen, ohne KI; führt nur Erlaubtes aus und schreibt zwei Belege      | [Das Tor](funktion-tor.md)                               |
-| Belege           | `packages/receipts`    | hängt Belege unter einer Sperre an die Kette, prüft sie (auch im Browser und mit `pnpm belege:pruefen`), Export | [Belege](funktion-belege.md)                             |
-| Anbieter-Schicht | `packages/llm`         | Modell-Liste, Verbindungstest, Ausgangs-Liste, Weg über die Datenschleuse, Modell-Zugang nur mit Berechtigung   | [Anbieter und Modelle](funktion-anbieter-und-modelle.md) |
-| Warteschlange    | `packages/jobs`        | Läufe der Reihe nach je Unterhaltung, kein Lauf doppelt, Herzschlag gegen hängende Aufträge                     | folgt                                                    |
-| Datenzugriff     | `packages/db` (`repo`) | Lesen und Schreiben je Bereich, Ereignis-Strom mit lückenlosen Nummern, Läufe mit erlaubten Statuswechseln      | –                                                        |
-| Test-Anbieter    | `tools/fake-provider`  | spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist                                    | [Entwickeln und Testen](entwickeln.md)                   |
+| Teil             | Ort                    | Was es kann                                                                                                                                                                                       | Doku                                                     |
+| ---------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Krypto           | `packages/crypto`      | Wurzel-Geheimnis, Schlüssel ableiten, Schlüssel verschlüsselt speichern, Passwörter, Tokens, Signaturen                                                                                           | [Sicherheit](sicherheit.md)                              |
+| Tor              | `packages/gate`        | prüft jede Aktion mit festen Regeln und Grenzen, ohne KI; führt nur Erlaubtes aus und schreibt zwei Belege                                                                                        | [Das Tor](funktion-tor.md)                               |
+| Belege           | `packages/receipts`    | hängt Belege unter einer Sperre an die Kette, prüft sie mit Schlüsseln nur aus der Kette (auch im Browser und mit `pnpm belege:pruefen`), Anker, Nachrechnen mit dem damaligen Regelstand, Export | [Belege](funktion-belege.md)                             |
+| Anbieter-Schicht | `packages/llm`         | Modell-Liste, Verbindungstest, Ausgangs-Liste, Weg über die Datenschleuse, Modell-Zugang nur mit Berechtigung                                                                                     | [Anbieter und Modelle](funktion-anbieter-und-modelle.md) |
+| Warteschlange    | `packages/jobs`        | Läufe der Reihe nach je Unterhaltung, kein Lauf doppelt, Herzschlag gegen hängende Aufträge                                                                                                       | folgt                                                    |
+| Datenzugriff     | `packages/db` (`repo`) | Lesen und Schreiben je Bereich, Ereignis-Strom mit lückenlosen Nummern, Läufe mit erlaubten Statuswechseln                                                                                        | –                                                        |
+| Test-Anbieter    | `tools/fake-provider`  | spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist                                                                                                                      | [Entwickeln und Testen](entwickeln.md)                   |
 
 ## Geplant
 
@@ -123,31 +123,35 @@ Diese Begriffe tauchen in Code und Doku immer wieder auf. **Baustein** heißt: a
 
 Das Schema liegt in `packages/db/src/schema/` (eine Datei pro Bereich), die Migrationen in `packages/db/drizzle/`. Alle Tabellen sind angelegt; was mit **im Bau** markiert ist, nutzt noch keine Funktion der App.
 
-| Tabelle               | Wofür                                                                                                                                | Stand        |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| `settings`            | Einstellungen der Installation, genau eine Zeile (Sprache, Zeitzone, Standard der Datenschleuse, Grenzen, Not-Aus, Installations-ID) | in Benutzung |
-| `owner`               | die eine Person, der die Installation gehört (Passwort-Prüfwert); höchstens eine Zeile                                               | im Bau       |
-| `sessions`            | angemeldete Sitzungen; gespeichert wird nur die Prüfsumme des Tokens                                                                 | im Bau       |
-| `rate_limits`         | Zähler gegen zu viele Versuche (Anmelden, Nachrichten)                                                                               | im Bau       |
-| `providers`           | Anbieter von Modellen; der API-Schlüssel liegt nur verschlüsselt                                                                     | im Bau       |
-| `models`              | Modelle eines Anbieters                                                                                                              | im Bau       |
-| `bots`                | Bot mit Name, Anweisung, Modell und Aussehen                                                                                         | im Bau       |
-| `conversations`       | Unterhaltungen mit dem Bot, mit Schalter der Datenschleuse                                                                           | im Bau       |
-| `messages`            | Nachrichten einer Unterhaltung                                                                                                       | im Bau       |
-| `runs`                | Läufe: die Arbeit an einer Antwort im Hintergrund                                                                                    | im Bau       |
-| `conversation_events` | Ereignis-Strom je Unterhaltung, nur anhängend, mit laufender Nummer                                                                  | im Bau       |
-| `rules`               | Regeln des Tors; jede Änderung ist eine neue Fassung                                                                                 | im Bau       |
-| `installation_keys`   | Signaturschlüssel der Installation für die Belege                                                                                    | im Bau       |
-| `belege`              | Protokoll aller Entscheidungen des Tors, verkettet und unveränderlich                                                                | im Bau       |
+| Tabelle               | Wofür                                                                                                                                                             | Stand        |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `settings`            | Einstellungen der Installation, genau eine Zeile (Sprache, Zeitzone, Standard der Datenschleuse, Grenzen, Not-Aus, Installations-ID)                              | in Benutzung |
+| `owner`               | die eine Person, der die Installation gehört (Passwort-Prüfwert); höchstens eine Zeile                                                                            | im Bau       |
+| `sessions`            | angemeldete Sitzungen; gespeichert wird nur die Prüfsumme des Tokens                                                                                              | im Bau       |
+| `rate_limits`         | Zähler gegen zu viele Versuche (Anmelden, Nachrichten)                                                                                                            | im Bau       |
+| `providers`           | Anbieter von Modellen; der API-Schlüssel liegt nur verschlüsselt                                                                                                  | im Bau       |
+| `models`              | Modelle eines Anbieters                                                                                                                                           | im Bau       |
+| `bots`                | Bot mit Name, Anweisung, Modell und Aussehen                                                                                                                      | im Bau       |
+| `conversations`       | Unterhaltungen mit dem Bot, mit Schalter der Datenschleuse                                                                                                        | im Bau       |
+| `messages`            | Nachrichten einer Unterhaltung                                                                                                                                    | im Bau       |
+| `runs`                | Läufe: die Arbeit an einer Antwort im Hintergrund                                                                                                                 | im Bau       |
+| `conversation_events` | Ereignis-Strom je Unterhaltung, nur anhängend, mit laufender Nummer                                                                                               | im Bau       |
+| `rules`               | Regeln des Tors, nur anhängen: jede Änderung (auch Ein- und Ausschalten) ist eine neue Fassung; `seq` nummeriert alle Zeilen, der höchste Wert ist der Regelstand | im Bau       |
+| `installation_keys`   | Signaturschlüssel der Installation für die Belege, nur anhängen; ändern darf sich allein `retired_at` (Ausmustern)                                                | im Bau       |
+| `belege`              | Protokoll aller Entscheidungen des Tors, verkettet und unveränderlich                                                                                             | im Bau       |
+| `tool_calls`          | Werkzeug-Aufrufe eines Laufs mit Zustand (angefragt, wartet auf Freigabe, läuft, erledigt …), Entscheidungs- und Ergebnis-Beleg                                   | im Bau       |
 
 Was die Datenbank selbst absichert:
 
 - **IDs** haben pro Art ein festes Muster (z. B. `unt_…`), jede Tabelle prüft es. Aufzählungen wie Rolle, Zustand oder Region sind per `CHECK` auf die erlaubten Werte begrenzt.
 - **Ein offener Lauf je Unterhaltung:** Läufe im Zustand `queued`, `running` oder `waiting_approval` zählen als offen; ein eindeutiger Index lässt pro Unterhaltung höchstens einen zu. Wird ein wartender Lauf fortgesetzt, ist das ein neuer Lauf, der über `resumes_run_id` auf den alten zeigt.
-- **Belege sind unveränderlich:** Trigger weisen `UPDATE`, `DELETE` und `TRUNCATE` auf `belege` ab. Jeder Eintrag zeigt über `prev_hash` auf den vorigen; eindeutige Indizes verhindern, dass die Kette sich verzweigt. Belege enthalten keine Nachrichtentexte und hängen nicht per Fremdschlüssel an Unterhaltungen.
+- **Belege sind unveränderlich:** Trigger weisen `UPDATE`, `DELETE` und `TRUNCATE` auf `belege` ab. Jeder Eintrag zeigt über `prev_hash` auf den vorigen; eindeutige Indizes verhindern, dass die Kette sich verzweigt. Die Spalten zum Suchen (`seq`, `action_id`, `action`, `actor`, `conversation_id`) müssen per `CHECK` zum signierten Körper passen. Belege enthalten keine Nachrichtentexte und hängen nicht per Fremdschlüssel an Unterhaltungen.
+- **Regeln und Schlüssel werden nur angehängt:** Trigger weisen jede Änderung und jedes Löschen von Regeln ab; bei `installation_keys` ist nur das einmalige Setzen von `retired_at` erlaubt. Eigene Werte für `rules.seq` lehnt Postgres ab.
+- **Werkzeug-Aufrufe:** Ein Aufruf hat außer im Zustand „angefragt“ und „abgebrochen“ immer einen Entscheidungs-Beleg; Ergebnis und Ende gibt es genau bei erledigten Aufrufen.
 - **Ereignisse werden nur angehängt:** gelöscht werden nur `text.delta`-Ereignisse und alles zusammen mit der Unterhaltung.
 - **Installations-ID:** nach dem Setzen nicht mehr änderbar.
-- **Standard-Regeln** (`R-001`, `R-002`, `R-999`) legt eine Migration an, wiederholbar ohne Doppelungen.
+- **Standard-Regeln** (`R-001` bis `R-006`, `R-999`) legen Migrationen an, wiederholbar ohne Doppelungen. Ihr Inhalt steht zusätzlich im Code; beim Nachrechnen von Belegen zählt der Code.
+- **Rechte der App-Rolle:** Die App arbeitet mit einer eigenen Rolle ohne Sonderrechte. Sie darf `belege` und `rules` nur lesen und anhängen, bei `installation_keys` zusätzlich nur `retired_at` setzen, bei `tool_calls` nur Zustand und Ergebnis fortschreiben (kein Löschen), bei `conversation_events` nicht ändern; nirgends `TRUNCATE`, Trigger oder Besitz. Die Rechte je Tabelle stehen in `packages/db/src/rollen.ts`, jede Tabelle hat dort einen Eintrag (ein Test prüft das).
 - **Datenschleuse:** `settings.schleuse_mode_default` kennt `off` und `on`, der Standard ist `off`. Bestehende Installationen mit dem früheren Wert `auto` werden bei der Migration auf `off` gesetzt.
 
 ## Hintergrund-Läufe
@@ -167,9 +171,9 @@ Die Antwort auf eine Nachricht entsteht im Hintergrund. Die Web-App reiht dafür
 Gut zu wissen:
 
 - **Wecken:** Neue Aufträge wecken den Worker sofort (LISTEN/NOTIFY). Zusätzlich fragt der Worker alle ein bis zwei Sekunden nach, damit ein Auftrag, der hinter einem laufenden derselben Unterhaltung wartet, gleich nach dessen Ende drankommt.
-- **Fehlgeschlagene Aufträge stehen nicht im Weg:** Bei dieser Art Warteschlange hält ein fehlgeschlagener Auftrag alle folgenden derselben Unterhaltung zurück. PaiBot räumt solche Aufträge beim Start des Workers und danach alle 30 Sekunden weg, auch wenn der Auftrag nicht durch einen Fehler, sondern durch Zeitablauf fehlgeschlagen ist.
-- **Absturz des Workers:** Ein Auftrag, der gerade lief, wird nicht neu gestartet. Er bleibt bis zum Ablauf der zehn Minuten belegt, erst danach (mit etwas Verzögerung) kommt die Unterhaltung wieder dran. Den Zustand des Laufs selbst räumt der Worker beim Start auf.
-- **Schema:** pg-boss legt `pgboss` beim ersten `start` selbst an. Die Datenbank-Migrationen von PaiBot fassen es nicht an.
+- **Fehlgeschlagene Aufträge stehen nicht im Weg:** Bei dieser Art Warteschlange hält ein fehlgeschlagener Auftrag alle folgenden derselben Unterhaltung zurück. PaiBot räumt solche Aufträge beim Start des Workers und danach alle 10 Sekunden weg, auch wenn der Auftrag nicht durch einen Fehler, sondern durch Zeitablauf fehlgeschlagen ist.
+- **Absturz des Workers:** Ein Auftrag, der gerade lief, wird nicht neu gestartet. Ein lebender Worker meldet sich regelmäßig (Herzschlag); bleibt das aus, gibt die Warteschlange den Auftrag nach etwa 30 Sekunden auf, und die Unterhaltung kommt wieder dran. Den Zustand des Laufs selbst räumt der Worker beim Start auf.
+- **Schema:** Das Schema `pgboss` legt der Migrations-Schritt beim Start an und übergibt es der App-Rolle. Die Warteschlange richtet darin nur ihre Tabellen ein; ein Recht zum Anlegen von Schemas in der Datenbank braucht die App-Rolle nicht. Läuft alles mit nur einer Rolle (Entwicklung), legt der Start das Schema mit dieser Rolle an.
 
 ## Motor
 

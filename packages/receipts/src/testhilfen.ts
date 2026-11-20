@@ -40,7 +40,7 @@ export function keyInfo(key: TestKey): PublicKeyInfo {
   return { keyId: key.keyId, publicKey: key.publicKey, fingerprint: key.fingerprint };
 }
 
-/** Eine Regel für die Tests: erlaubt `nachricht.senden` mit Sitzung. */
+/** Eine eigene Regel für die Tests: erlaubt dem Besitzer mit Sitzung jede Aktion. */
 export const TEST_RULE: RuleDefinition = {
   id: "R-001",
   version: 1,
@@ -52,7 +52,7 @@ export const TEST_RULE: RuleDefinition = {
     { fact: "credential", op: "in", value: ["sitzung"] },
   ],
   priority: 10,
-  source: "standard",
+  source: "owner",
   enabled: true,
   title: "Besitzer mit Sitzung",
   reason: "Der Besitzer handelt selbst.",

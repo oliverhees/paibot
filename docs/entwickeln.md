@@ -100,7 +100,7 @@ Ohne Docker geht auch ein Postgres aus dem System (`initdb` in ein leeres Verzei
 Gut zu wissen:
 
 - Die Tests von `db` und `receipts` legen je Test eine eigene Datenbank an (`createPostgresTestDatabase` aus `@paibot/db/testing`) und löschen sie danach wieder.
-- Die Warteschlange legt ihr Schema `pgboss` direkt in der Datenbank aus der Adresse an. Darum nie auf eine Datenbank mit echten Daten zeigen.
+- Die Tests der Warteschlange legen eine eigene Datenbank und eine eingeschränkte Rolle an (wie bei einer frischen Installation) und löschen beides danach. Die Adresse braucht deshalb einen Benutzer, der Datenbanken und Rollen anlegen darf; nie auf einen Server mit echten Daten zeigen.
 
 ### Durchstich
 
@@ -168,7 +168,7 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 
 - Er ist ein Test-Werkzeug, kein Modell: Antworten sind festgelegter Text, keine echte Sprachverarbeitung.
 - Die Token-Zahlen sind geschätzt, nicht die eines echten Modells.
-- Die Steuerung unter `/_steuerung/` hat keine Anmeldung. Binde ihn nie an ein offenes Netz, ein Container gehört in ein internes Netz.
+- Die Steuerung unter `/_steuerung/` antwortet ohne Schlüssel nur auf Anfragen von derselben Maschine (Loopback). Mit `FAKE_PROVIDER_CONTROL_KEY` verlangt sie die Kopfzeile `x-steuerung-schluessel` mit diesem Wert. Binde ihn trotzdem nie an ein offenes Netz, ein Container gehört in ein internes Netz.
 - Nur Chat und Modell-Liste sind nachgebildet (keine Einbettungen, keine Bilder).
 - Ein Compose-Testprofil mit dem Image und End-to-End-Tests im Browser sind geplant, aber noch nicht gebaut.
 

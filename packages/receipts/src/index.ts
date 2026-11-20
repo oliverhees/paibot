@@ -10,6 +10,7 @@
  */
 
 export * from "./cli";
+export * from "./export";
 export * from "./server";
 export * from "./verify";
 export * from "./writer";

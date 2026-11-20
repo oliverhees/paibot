@@ -26,8 +26,11 @@ import type { ReceiptEntry } from "@paibot/shared/belege";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import { beforeEach, describe, expect, it } from "vitest";
+import { buildReceipt } from "./build";
+import { currentAnchor, exportHeader, ruleHistory } from "./export";
+import { hashReceipt } from "./hash";
 import { exportJsonl, parseJsonl } from "./jsonl";
-import { checkContext } from "./server";
+import { checkContext, signReceipt } from "./server";
 import {
   keyInfo,
   sendAction,
@@ -38,7 +41,12 @@ import {
   testKey,
 } from "./testhilfen";
 import { verifyChain } from "./verify";
-import { createReceiptWriter, RECEIPT_LOCK_ID, type ReceiptChainWriter } from "./writer";
+import {
+  cachedReceiptKeys,
+  createReceiptWriter,
+  RECEIPT_LOCK_ID,
+  type ReceiptChainWriter,
+} from "./writer";
 
 const TIME = new Date(Date.UTC(2026, 10, 20, 10, 0, 0));
 const b64 = (bytes: number) => randomBytes(bytes).toString("base64url");
@@ -344,7 +352,12 @@ describe("Schlüsselwechsel", () => {
         },
       });
       const keys = [keyInfo(key), keyInfo(next)];
-      expect((await verifyChain(entries, keys)).ok).toBe(true);
+      const report = await verifyChain(entries, keys);
+      // Nur ein Wechsel, den der bisherige Schlüssel signiert, beglaubigt den neuen.
+      expect(report.verdict.level).toBe(
+        signedBy === "previous" ? "vertrauenswuerdig" : "vertrauen_gebrochen",
+      );
+      expect(report.firstFailure).toBeUndefined();
     });
   }
 
@@ -391,6 +404,47 @@ describe("Export aus der Datenbank", () => {
     const parsed = parseJsonl(text);
     expect((await verifyChain(parsed.entries, parsed.header.publicKeys)).ok).toBe(true);
   });
+
+  it("Kopfzeile mit aktuellem Anker, danach gekürzt: der Anker zeigt es", async () => {
+    expect(await currentAnchor(ctx.db)).toBeUndefined();
+    await expect(exportHeader(ctx.db)).rejects.toMatchObject({ code: "einrichtung_offen" });
+    await start();
+    for (let i = 0; i < 4; i++) await writer.appendDecision(decisionRecord());
+    const header = await exportHeader(ctx.db, TIME);
+    expect(header).toMatchObject({
+      installationId: TEST_INSTALLATION,
+      publicKeys: [keyInfo(key)],
+      anchor: { seq: 5, keyId: key.keyId, startPublicKey: key.publicKey, time: TIME.toISOString() },
+    });
+    let text = "";
+    for await (const line of exportJsonl(header, await allEntries(ctx.db))) text += line;
+    const parsed = parseJsonl(text);
+    expect(parsed.header.anchor).toEqual(header.anchor);
+    const anchor = header.anchor;
+    if (anchor === undefined) throw new Error("Anker fehlt");
+    expect((await verifyChain(parsed.entries, { anchor })).ok).toBe(true);
+    expect((await verifyChain(parsed.entries.slice(0, 3), { anchor })).verdict.findings).toEqual([
+      { problem: "kette_kuerzer_als_anker", seq: 5 },
+    ]);
+  });
+
+  it("Nachrechnen mit den Regeln aus der Datenbank (Standard-Regeln)", async () => {
+    await start();
+    const action = sendAction();
+    const facts = sendFacts();
+    const rules = await repo.rules.listActive(ctx.db);
+    await writer.appendDecision({
+      action,
+      facts,
+      decision: evaluate(action, facts, rules),
+      time: TIME,
+    });
+    const report = await verifyChain(await allEntries(ctx.db), {
+      ruleHistory: ruleHistory(ctx.db),
+    });
+    expect(report.ok).toBe(true);
+    expect(report.firstFailure).toBeUndefined();
+  });
 });
 
 describe("checkContext", () => {
@@ -415,5 +469,176 @@ describe("checkContext", () => {
       status: "entfaellt",
       seq: 1,
     });
+  });
+});
+
+describe("Signaturschlüssel im Speicher", () => {
+  it("der Schlüssel wird vor der Transaktion geholt: Datenbank-Abfrage beim Laden verklemmt nicht", async () => {
+    await start();
+    // PGlite hat nur eine Verbindung: Ein Laden unter der Sperre der Transaktion bliebe hängen.
+    const loading = createReceiptWriter(ctx.db, {
+      current: async () => {
+        const active = await repo.installationKeys.getActive(ctx.db);
+        if (active?.id !== key.keyId) throw new Error("kein aktiver Schlüssel");
+        return { keyId: key.keyId, privateKey: key.privateKey };
+      },
+    });
+    const done = Promise.all([
+      loading.appendDecision(decisionRecord()),
+      loading.appendResult({ action: sendAction(), result: { status: "ok" }, time: TIME }),
+    ]);
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("verklemmt")), 5000).unref(),
+    );
+    await expect(Promise.race([done, timeout])).resolves.toHaveLength(2);
+  });
+
+  it("cachedReceiptKeys lädt einmal und nach einem Schlüsselwechsel neu", async () => {
+    let loads = 0;
+    let stored = key;
+    const keys = cachedReceiptKeys(async () => {
+      loads++;
+      return { keyId: stored.keyId, privateKey: stored.privateKey };
+    });
+    const cached = createReceiptWriter(ctx.db, keys);
+    await cached.appendStart({
+      installationId: TEST_INSTALLATION,
+      key,
+      software: "0.3.0+dev",
+      time: TIME,
+    });
+    for (let i = 0; i < 3; i++) await cached.appendDecision(decisionRecord());
+    expect(loads).toBe(1);
+
+    const next = testKey();
+    await ctx.client.query("update installation_keys set retired_at = now() where id = $1", [
+      key.keyId,
+    ]);
+    await storeKey(ctx.db, next);
+    stored = next;
+    await cached.appendKeyChange({
+      next,
+      previous: { keyId: key.keyId, privateKey: key.privateKey },
+      time: TIME,
+    });
+    expect(loads).toBe(2);
+    await cached.appendDecision(decisionRecord());
+    expect(loads).toBe(2);
+    const report = await verifyChain(await allEntries(ctx.db));
+    expect(report.ok).toBe(true);
+  });
+
+  it("hat ein anderer Prozess den Schlüssel gewechselt, lädt der Schreiber einmal neu", async () => {
+    await start();
+    let stored = key;
+    let loads = 0;
+    const keys = cachedReceiptKeys(async () => {
+      loads++;
+      return { keyId: stored.keyId, privateKey: stored.privateKey };
+    });
+    const stale = createReceiptWriter(ctx.db, keys);
+    await stale.appendDecision(decisionRecord());
+
+    // Wechsel über einen zweiten Schreiber (wie der andere Prozess).
+    const next = testKey();
+    await ctx.client.query("update installation_keys set retired_at = now() where id = $1", [
+      key.keyId,
+    ]);
+    await storeKey(ctx.db, next);
+    await writer.appendKeyChange({
+      next,
+      previous: { keyId: key.keyId, privateKey: key.privateKey },
+      time: TIME,
+    });
+    stored = next;
+    await stale.appendDecision(decisionRecord());
+    expect(loads).toBe(2);
+    expect((await writer.head())?.keyId).toBe(next.keyId);
+  });
+
+  it("ein Fehler beim Laden wird nicht festgehalten", async () => {
+    let fail = true;
+    const keys = cachedReceiptKeys(async () => {
+      if (fail) throw new Error("noch nicht bereit");
+      return { keyId: key.keyId, privateKey: key.privateKey };
+    });
+    await expect(keys.current()).rejects.toThrow("noch nicht bereit");
+    fail = false;
+    await expect(keys.current()).resolves.toMatchObject({ keyId: key.keyId });
+  });
+});
+
+describe("Spalten der Belege sind an den signierten Körper gebunden", () => {
+  async function nextRow(overrides: Record<string, unknown>) {
+    const head = await writer.head();
+    const action = sendAction();
+    const facts = sendFacts();
+    const body = buildReceipt(
+      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      {
+        id: newId("receipt"),
+        seq: (head?.seq ?? 0) + 1,
+        time: TIME.toISOString(),
+        prev: head?.hash ?? `sha256:${"0".repeat(64)}`,
+        keyId: key.keyId,
+      },
+    );
+    const hash = await hashReceipt(body);
+    return {
+      seq: body.seq,
+      id: body.id,
+      entryType: "decision" as const,
+      actionId: action.actionId,
+      action: action.type,
+      actor: action.actor,
+      conversationId: action.target.conversationId,
+      body,
+      prevHash: body.prev,
+      hash,
+      keyId: key.keyId,
+      signature: signReceipt(hash, key.privateKey),
+      ...overrides,
+    };
+  }
+
+  async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
+    try {
+      await promise;
+      return undefined;
+    } catch (error) {
+      const cause = (error as { cause?: { code?: string } }).cause;
+      return cause?.code ?? (error as { code?: string }).code;
+    }
+  }
+
+  it("der Schreiber erfüllt die Bindung, abweichende Spalten weist die Datenbank ab", async () => {
+    await start();
+    await writer.appendDecision(decisionRecord());
+    for (const overrides of [
+      { conversationId: newId("conversation") },
+      { actionId: newId("action") },
+      { action: "unterhaltung.loeschen" },
+      { actor: "bot:bot_01m7xf782n7ttby4s2884bb892" },
+      { conversationId: null },
+    ]) {
+      const row = await nextRow(overrides);
+      expect(
+        await codeOf(ctx.db.insert(belege).values(row as never)),
+        JSON.stringify(overrides),
+      ).toBe("23514");
+    }
+    // Eine andere Nummer im Körper als in der Spalte.
+    const shifted = await nextRow({});
+    expect(
+      await codeOf(
+        ctx.db
+          .insert(belege)
+          .values({ ...shifted, body: { ...shifted.body, seq: shifted.seq + 1 } } as never),
+      ),
+    ).toBe("23514");
+    // Mit passenden Spalten geht derselbe Beleg.
+    expect(
+      await codeOf(ctx.db.insert(belege).values((await nextRow({})) as never)),
+    ).toBeUndefined();
   });
 });

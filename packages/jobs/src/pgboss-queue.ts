@@ -13,6 +13,7 @@ import { invalidInput } from "@paibot/shared/fehler";
 import type { Db, PgBoss } from "pg-boss";
 import {
   type EnqueueOptions,
+  QUEUE_SCHEMA,
   QUEUE_SUPERVISION,
   type Queue,
   RUN_QUEUE,
@@ -71,6 +72,25 @@ function message(error: unknown): string {
 
 type State = "new" | "started" | "stopped";
 
+/** Verbindung der Bibliothek; die eigene öffnet sie erst beim Start. */
+type BossDb = ReturnType<PgBoss["getDb"]> & { opened?: boolean; open?: () => Promise<void> };
+
+/**
+ * Sorgt dafür, dass das Schema der Warteschlange da ist, bevor die Bibliothek startet. Im Betrieb
+ * legt es der Migrations-Schritt an; dann wird hier nur nachgesehen. Fehlt es (nur eine Rolle,
+ * z. B. in der Entwicklung), wird es angelegt; einer App-Rolle ohne dieses Recht verweigert
+ * Postgres das, und der Start scheitert mit einer klaren Meldung.
+ */
+async function ensureSchema(boss: PgBoss): Promise<void> {
+  const db = boss.getDb() as BossDb;
+  if (db.opened === false && typeof db.open === "function") await db.open();
+  const { rows } = await db.executeSql("select to_regnamespace($1) is not null as ok", [
+    QUEUE_SCHEMA,
+  ]);
+  if ((rows[0] as { ok?: boolean } | undefined)?.ok === true) return;
+  await db.executeSql(`create schema ${QUEUE_SCHEMA}`);
+}
+
 /**
  * Setzt die Schnittstelle `Queue` auf eine (noch nicht gestartete) pg-boss-Instanz. Die Instanz
  * wird von außen übergeben, damit Tests sie auf PGlite setzen können.
@@ -115,6 +135,7 @@ export function buildQueue(boss: PgBoss, options: BuildQueueOptions = {}): Queue
   }
 
   async function doStart(): Promise<void> {
+    await ensureSchema(boss);
     await boss.start();
     await boss.createQueue(RUN_QUEUE.name, {
       policy: RUN_QUEUE.policy,

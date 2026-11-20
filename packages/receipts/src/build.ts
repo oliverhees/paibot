@@ -87,6 +87,8 @@ export function buildReceipt(draft: ReceiptDraft, link: ChainLink): ReceiptBody 
           stage: draft.decision.stage,
           rules: draft.decision.matchedRules,
           limits: draft.decision.limits,
+          preconditions: draft.decision.preconditions,
+          ruleStand: draft.decision.ruleStand,
           reason: draft.decision.reason,
         },
         facts: draft.facts,
