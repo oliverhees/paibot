@@ -11,6 +11,7 @@
 import { APP_NAME } from "@paibot/shared";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import "@paibot/ui/schriften.css";
 import "@paibot/ui/tokens.css";
 import "@paibot/ui/avatar.css";
 import "./globals.css";
@@ -23,6 +24,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="de">
+      <head>
+        <link
+          rel="preload"
+          href="/fonts/inter-latin-wght-normal.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
