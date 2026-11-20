@@ -58,7 +58,17 @@ Gut zu wissen:
 
 - Das Skript braucht [Playwright](https://playwright.dev), das nicht zum Projekt gehört. Einmalig: `npm install -g playwright && npx playwright install chromium`.
 - Es bricht ab, wenn `PAIBOT_URL` nicht auf den eigenen Rechner zeigt. So werden keine echten Daten fotografiert. Bewusste Ausnahme: `--erlaube-fremde-url`.
-- Heute gibt es nur das dunkle Design.
+- Die App und die Aufnahmen gibt es im dunklen und im hellen Design. Welches Design ein Bild zeigt, steht im Feld `thema` (`"dunkel"` ist der Standard, `"hell"` die Alternative).
+
+Felder, die das Aufnahme-Skript zusätzlich kennt (alle optional, Beispiele in [screenshots.json](screenshots.json)):
+
+| Feld         | Wofür                                                                                                                                                                                                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modus`      | `"app"` (Standard) nimmt die laufende App auf. `"entwicklung"` ist für Seiten, die es nur mit `next dev` gibt: Das Skript startet den Entwicklungs-Server selbst (ohne Datenbank, nur Beispiel-Daten) und beendet ihn danach wieder. Mit `PAIBOT_DEV_URL` nutzt es stattdessen einen schon laufenden. |
+| `vorher`     | Schritte vor der Aufnahme, der Reihe nach, z. B. ein Klick (`{ "klick": "<Selector>" }`) und das Warten auf ein Element (`{ "warteAuf": "<Selector>" }`). So entstehen Bilder von geöffneten Bereichen.                                                                                               |
+| `skalierung` | Pixeldichte von 1 bis 3. Standard ist 2 (doppelte Auflösung, scharf auf hochauflösenden Bildschirmen).                                                                                                                                                                                                |
+
+Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
 
 ## Neue Doku-Seite anlegen
 
