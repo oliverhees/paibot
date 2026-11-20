@@ -1,0 +1,111 @@
+/**
+ * PaiBot – Stile von Dialog und Blatt.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.ebene {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+}
+
+.schleier {
+  position: absolute;
+  inset: 0;
+  background: var(--schleier);
+}
+
+.fenster {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-mid);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+  min-height: 0;
+}
+
+.dialog {
+  width: min(460px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  border-radius: var(--radius-karte);
+  padding: 18px;
+  animation: pb-dialog-ein var(--dauer-mittel) var(--kurve-sanft);
+}
+
+.blatt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 90%;
+  border-radius: 22px 22px 0 0;
+  border-bottom: 0;
+  padding: 6px 16px max(16px, env(safe-area-inset-bottom));
+  animation: pb-blatt-ein var(--dauer-mittel) var(--kurve-sanft);
+}
+
+.griff {
+  display: block;
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  margin: 2px auto 0;
+  flex: none;
+}
+
+.kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titel {
+  flex: 1;
+  margin: 0;
+  font-size: var(--schrift-l);
+  font-weight: 650;
+}
+
+.inhalt {
+  font-size: var(--schrift-b);
+  line-height: 1.5;
+}
+
+.aktionen {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@keyframes pb-dialog-ein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes pb-blatt-ein {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .blatt {
+    animation: none;
+  }
+}

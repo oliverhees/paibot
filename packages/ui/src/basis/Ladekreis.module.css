@@ -1,0 +1,25 @@
+/**
+ * PaiBot – Stile des Lade-Zeichens.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.ladekreis {
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  animation: pb-kreisen 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ladekreis {
+    animation: none;
+    border-style: dotted;
+  }
+}

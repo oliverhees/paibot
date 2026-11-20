@@ -1,0 +1,175 @@
+/**
+ * PaiBot – Stile der Zeile unter jeder Antwort.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.huelle {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.zeile {
+  display: inline-flex;
+  align-items: stretch;
+  align-self: flex-start;
+  max-width: 100%;
+  min-height: 26px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-pill);
+  font-size: var(--schrift-s);
+  overflow: hidden;
+}
+
+.teil {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0 10px;
+  font: inherit;
+  font-weight: 550;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.teil + .teil {
+  border-left: 1px solid var(--line-mid);
+}
+
+button.teil {
+  cursor: pointer;
+}
+
+button.teil:hover {
+  background: var(--surface-raised);
+}
+
+button.teil:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: calc(-1 * var(--fokus-breite));
+  border-radius: var(--radius-pill);
+}
+
+.teil svg {
+  width: 13px;
+  height: 13px;
+}
+
+.haken {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+.haken svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.6;
+}
+
+.haken[data-zustand="gueltig"] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.haken[data-zustand="ungueltig"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.schleuse[data-modus="schleuse"] {
+  color: var(--on-accent-soft);
+}
+
+.schleuse[data-modus="schleuse"] svg:first-child {
+  color: var(--accent-text);
+}
+
+.schleuse[data-modus="direkt"] svg:first-child {
+  color: var(--eu);
+}
+
+.pfeil {
+  transition: transform var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.schleuse[aria-expanded="true"] .pfeil {
+  transform: rotate(180deg);
+}
+
+.modell {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.kurz {
+  display: none;
+}
+
+.panel {
+  background: var(--surface-sunken);
+  border-radius: var(--radius-feld);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--schrift-m);
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.voll {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+@container (max-width: 460px) {
+  .lang {
+    display: none;
+  }
+
+  .kurz {
+    display: inline;
+  }
+
+  .teil {
+    padding: 0 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pfeil {
+    transition: none;
+  }
+}

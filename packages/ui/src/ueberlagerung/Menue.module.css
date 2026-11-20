@@ -1,0 +1,78 @@
+/**
+ * PaiBot – Stile des Aufklappmenüs.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.huelle {
+  position: relative;
+  display: inline-flex;
+}
+
+.menue {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 60;
+  min-width: 200px;
+  max-width: min(300px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px;
+  background: var(--surface);
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-feld);
+  box-shadow: var(--shadow-pop);
+}
+
+.start {
+  left: 0;
+}
+
+.ende {
+  right: 0;
+}
+
+.eintrag {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 7px 9px;
+  border-radius: var(--radius-xs);
+  font: inherit;
+  font-size: var(--schrift-m);
+  text-align: left;
+  cursor: pointer;
+}
+
+.eintrag svg {
+  color: var(--ink-soft);
+}
+
+.eintrag:hover,
+.eintrag:focus-visible {
+  background: var(--surface-raised);
+}
+
+.eintrag:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: calc(-1 * var(--fokus-breite));
+}
+
+.eintrag[aria-disabled="true"] {
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+
+.gefahr,
+.gefahr svg {
+  color: var(--danger);
+}

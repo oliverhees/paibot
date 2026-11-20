@@ -1,0 +1,105 @@
+/**
+ * PaiBot – Stile der Zustände leer, lädt und Fehler.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.leer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 40px 20px;
+  border: 1px dashed var(--line-mid);
+  border-radius: var(--radius-karte);
+}
+
+.bild {
+  line-height: 0;
+}
+
+.titel {
+  margin: 0;
+  font-size: var(--schrift-l);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.text {
+  max-width: 46ch;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+}
+
+.text p {
+  margin: 0;
+}
+
+.aktion {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.laden {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.fehler {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--radius-feld);
+  background: var(--danger-soft);
+  color: var(--ink);
+}
+
+.fehlerIcon {
+  color: var(--danger);
+  margin-top: 1px;
+  display: inline-flex;
+}
+
+.fehlerText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fehlerTitel {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 650;
+  color: var(--danger);
+}
+
+.ursache,
+.ausweg {
+  margin: 0;
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+}
+
+.fehler .aktion {
+  justify-content: flex-start;
+}
+
+section .aktion > * {
+  max-width: 100%;
+  white-space: normal;
+}

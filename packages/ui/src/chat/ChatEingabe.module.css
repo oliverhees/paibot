@@ -1,0 +1,131 @@
+/**
+ * PaiBot – Stile der Eingabe des Chats.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.bereich {
+  flex: none;
+  padding: 6px 24px max(14px, env(safe-area-inset-bottom));
+}
+
+.eingabe {
+  max-width: var(--layout-inhalt);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "text text"
+    "leiste senden";
+  gap: 4px 8px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line-mid);
+  border-radius: 18px;
+  padding: 10px 8px 6px 14px;
+  transition: border-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.eingabe:focus-within {
+  border-color: var(--line-strong);
+}
+
+.eingabe[data-deaktiviert] {
+  background: var(--surface-sunken);
+}
+
+.versteckt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.text {
+  grid-area: text;
+  border: 0;
+  background: transparent;
+  resize: none;
+  min-height: 40px;
+  max-height: 160px;
+  padding: 0;
+  font: inherit;
+  font-size: var(--schrift-b);
+  line-height: 1.5;
+  color: var(--ink);
+  scrollbar-width: none;
+}
+
+.text::-webkit-scrollbar {
+  display: none;
+}
+
+.text::placeholder {
+  color: var(--ink-soft);
+}
+
+.text:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.leiste {
+  grid-area: leiste;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  margin-left: -6px;
+}
+
+.zustand {
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.senden {
+  grid-area: senden;
+  display: flex;
+}
+
+.notiz {
+  max-width: var(--layout-inhalt);
+  margin: 6px auto 0;
+  text-align: center;
+  font-size: var(--schrift-xs);
+  color: var(--ink-soft);
+}
+
+@media (max-width: 719px) {
+  .bereich {
+    padding: 4px 8px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .eingabe {
+    grid-template-areas:
+      "text senden"
+      "leiste leiste";
+    padding: 9px 7px 5px 12px;
+  }
+
+  .senden {
+    align-self: start;
+  }
+
+  .notiz {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eingabe {
+    transition: none;
+  }
+}
