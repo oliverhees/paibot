@@ -13,6 +13,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import postgres from "postgres";
+import { afterAll, onTestFinished } from "vitest";
 import type { Database } from "./client";
 import { runMigrations } from "./migrate";
 import * as schema from "./schema";
@@ -26,12 +27,61 @@ export interface TestDb {
   client: PGlite;
 }
 
-/** Legt eine frische Datenbank im Speicher an und wendet alle Migrationen an. */
+/** Fertig migrierter Abzug der Datenbank, je Prozess einmal erzeugt (dabei laufen die Migrationen wirklich). */
+let abzug: Promise<Blob | File> | undefined;
+
+function abzugErzeugen(): Promise<Blob | File> {
+  abzug ??= (async () => {
+    const client = new PGlite();
+    try {
+      await migrate(drizzle(client, { schema }), { migrationsFolder: MIGRATIONS_FOLDER });
+      await client.exec("CHECKPOINT");
+      return await client.dumpDataDir("none");
+    } finally {
+      await client.close();
+    }
+  })();
+  return abzug;
+}
+
+/** Macht `close()` mehrfach aufrufbar: nur der erste Aufruf schließt wirklich. */
+function mitSicheremSchliessen(client: PGlite): void {
+  const schliessen = client.close.bind(client);
+  let geschlossen: Promise<void> | undefined;
+  client.close = () => {
+    geschlossen ??= schliessen();
+    return geschlossen;
+  };
+}
+
+/**
+ * Meldet die Instanz zum Schließen an: nach dem Test (auch in `beforeEach`), im Kopf einer
+ * Testdatei nach der Datei. Eine in `beforeAll` angelegte Datenbank wird nicht nach dem ersten
+ * Test geschlossen.
+ */
+function schliessenAnmelden(client: PGlite): void {
+  const schliessen = () => client.close().catch(() => undefined);
+  try {
+    onTestFinished(schliessen);
+  } catch {
+    try {
+      afterAll(schliessen);
+    } catch {
+      // Außerhalb von Vitest: die Instanz räumt der Aufrufer selbst weg.
+    }
+  }
+}
+
+/**
+ * Legt eine frische Datenbank im Speicher an, auf den aktuellen Stand migriert. Die Instanz wird
+ * automatisch geschlossen; ein eigenes `client.close()` bleibt möglich und darf doppelt vorkommen.
+ * Die Migrationen laufen je Prozess einmal, jede Instanz wird aus dem fertigen Abzug geladen.
+ */
 export async function createTestDb(): Promise<TestDb> {
-  const client = new PGlite();
-  const db = drizzle(client, { schema });
-  await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
-  return { db, client };
+  const client = new PGlite({ loadDataDir: await abzugErzeugen() });
+  mitSicheremSchliessen(client);
+  schliessenAnmelden(client);
+  return { db: drizzle(client, { schema }), client };
 }
 
 /** Umgebungsvariable mit der Adresse eines Wegwerf-Postgres für die Tests gegen echtes Postgres. */
