@@ -132,13 +132,14 @@ Beteiligte Teile: `packages/receipts` (Bauen, Prüfsumme, Signatur, Anhängen, P
 
 ## Das Tor
 
-Wie das Tor entscheidet, ob eine Aktion erlaubt ist, beschreibt dieser Abschnitt, sobald das Tor fertig ist.
+Jeder Beleg „Entscheidung“ und „Ergebnis“ entsteht im Tor. Wie das Tor entscheidet, welche Regeln und Grenzen es prüft und wann es ablehnt, steht auf der Seite [Das Tor](funktion-tor.md).
 
 ## Grenzen
 
 - **Wer den Server vollständig kontrolliert** (Datenbank **und** `PAIBOT_SECRET`), kann die ganze Kette neu schreiben. Dagegen hilft nur ein Abgleich mit einer Kopie außerhalb: ein aufbewahrter Export oder eine notierte letzte Zeile der Prüfung.
 - **Abgeschnittenes Ende:** Fehlen die letzten Belege, bleibt der Rest eine gültige Kette. Das fällt nur im Vergleich mit einem früher notierten letzten Eintrag auf.
 - **Schlüsselwechsel mit `signedBy: "new"`** bestätigt kein alter Schlüssel. Prüfe solche Wechsel bewusst.
+- **Nachrechnen nach geänderten Regeln:** Prüfung 4 rechnet mit den Regeln nach, die du ihr gibst. Sind seit einer Entscheidung Regeln dazugekommen oder geändert worden, kann eine damals richtige Entscheidung heute anders ausfallen und als „Entscheidung folgt nicht aus den gespeicherten Fakten“ erscheinen. Signatur und Kette sind davon nicht betroffen. Für das Nachrechnen alter Belege braucht es die Regeln, die damals galten.
 - Belege enthalten keine Inhalte. Ob eine Antwort wirklich zu einer Nachricht passt, prüft nur der Server über die Kontext-Prüfsumme, und nur solange die Nachricht noch gespeichert ist.
 - Prüfen im Browser setzt Ed25519 in Web Crypto voraus. Kann der Browser das nicht, prüft der Server (folgt mit der Oberfläche).
 

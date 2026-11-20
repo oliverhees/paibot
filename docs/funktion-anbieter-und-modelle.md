@@ -76,6 +76,7 @@ Ungewöhnliche Schreibweisen von IP-Adressen (dezimal, hexadezimal, oktal, gekü
 ## Grenzen
 
 - Die Namensauflösung wird unmittelbar vor dem Aufruf geprüft, nicht während des Verbindungsaufbaus. Ein Angreifer, der den DNS-Eintrag zwischen Prüfung und Verbindung umstellt, wird dadurch nicht sicher ausgeschlossen. Wer dem Anbieter-Namen nicht traut, nutzt keinen eigenen Anbieter.
+- Ein lokaler Anbieter (Region `local`, z. B. Ollama auf deinem Rechner) darf ohne Schlüssel arbeiten. Für Anbieter in den Regionen `eu` und `non_eu` ist ein Schlüssel Pflicht; fehlt er, meldet PaiBot „Der Anbieter hat den Schlüssel nicht angenommen“, ohne etwas zu senden.
 - Der Verbindungstest ruft nur die Modell-Liste ab. Liefert ein Anbieter die Liste auch ohne Schlüssel (EUrouter tut das), erkennt der Test einen falschen Schlüssel nicht; er zeigt sich erst bei der ersten Antwort.
 - Der Gesundheitsabruf der Datenschleuse prüft nur, dass sie antwortet (`GET /models` mit ihrem Schlüssel). Ob ihre Erkennung läuft, sagt er nicht; ist sie ausgefallen, blockiert die Datenschleuse die Anfrage selbst (`schleuse_blockiert`).
 - Wie die Datenschleuse einen Block als HTTP-Antwort meldet, ist noch nicht gegen den laufenden Dienst geprüft; erkannt wird die Kennung `DatenschleuseBlocked` in den üblichen Feldern.

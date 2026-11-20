@@ -82,6 +82,49 @@ curl localhost:8080/_steuerung/anfragen
 curl -X POST localhost:8080/_steuerung/zuruecksetzen
 ```
 
+### Tests gegen echtes Postgres
+
+Die meisten Datenbank-Tests laufen mit PGlite im Speicher. Einige Dinge kann PGlite nicht zeigen, weil es nur eine Verbindung kennt: gleichzeitiges Anhängen von Belegen über zwei Verbindungen, Migrationen bei gleichzeitigen Starts, die Warteschlange mit mehreren Prozessen. Diese Tests laufen nur, wenn `PAIBOT_TEST_DATABASE_URL` auf einen **Wegwerf-Server** zeigt, sonst werden sie übersprungen. In der CI läuft dafür ein eigener Postgres-Dienst.
+
+Lokal zum Beispiel mit Docker:
+
+```bash
+docker run --rm -d --name paibot-test-pg -e POSTGRES_PASSWORD=test -p 127.0.0.1:55432:5432 postgres:17-alpine
+export PAIBOT_TEST_DATABASE_URL=postgres://postgres:test@127.0.0.1:55432/postgres
+pnpm test                       # alle Pakete, die Variable wird durchgereicht
+docker stop paibot-test-pg      # danach aufräumen
+```
+
+Ohne Docker geht auch ein Postgres aus dem System (`initdb` in ein leeres Verzeichnis, `pg_ctl … start`, am Ende `pg_ctl … stop` und das Verzeichnis löschen).
+
+Gut zu wissen:
+
+- Die Tests von `db` und `receipts` legen je Test eine eigene Datenbank an (`createPostgresTestDatabase` aus `@paibot/db/testing`) und löschen sie danach wieder.
+- Die Warteschlange legt ihr Schema `pgboss` direkt in der Datenbank aus der Adresse an. Darum nie auf eine Datenbank mit echten Daten zeigen.
+
+### Durchstich
+
+`tools/durchstich` prüft alle Bausteine im Zusammenspiel, mit PGlite und dem Test-Anbieter: Einrichtung im Kleinen (Signaturschlüssel erzeugen und verschlüsselt speichern, Beleg „Start“), eine Modell-Anfrage durchs Tor bis zum Test-Anbieter, Ergebnis-Beleg, Prüfen der Kette und des Exports, und die Gegenprobe, bei der eine Regel ablehnt und beim Test-Anbieter nichts ankommt.
+
+```bash
+pnpm --filter @paibot/durchstich test
+```
+
+### Berechtigungen in Tests
+
+Code, der eine Berechtigung des Tors braucht (zum Beispiel `resolveModel`), testest du mit dem Test-Zugang des Tors:
+
+```ts
+import { withTestPermit } from "@paibot/gate/testing";
+
+await withTestPermit(aktion, fakten, async (permit) => {
+  const model = resolveModel(permit, wahl, { secretsKey });
+  // …
+});
+```
+
+Die Berechtigung entsteht auf demselben Weg wie im Tor und gilt nur innerhalb der Funktion. Eine Lint-Regel erlaubt Importe von `@paibot/<paket>/testing` nur in Tests (`*.test.ts`).
+
 ## So sieht es aus
 
 Der Test-Anbieter hat keine Oberfläche, darum gibt es hier keine Screenshots. Beim Start meldet er:
@@ -127,7 +170,7 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 - Die Token-Zahlen sind geschätzt, nicht die eines echten Modells.
 - Die Steuerung unter `/_steuerung/` hat keine Anmeldung. Binde ihn nie an ein offenes Netz, ein Container gehört in ein internes Netz.
 - Nur Chat und Modell-Liste sind nachgebildet (keine Einbettungen, keine Bilder).
-- Ein Compose-Testprofil mit dem Image und die End-to-End-Tests sind geplant, aber noch nicht gebaut.
+- Ein Compose-Testprofil mit dem Image und End-to-End-Tests im Browser sind geplant, aber noch nicht gebaut.
 
 ## Fehlerbehebung
 
@@ -138,3 +181,4 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 | Port belegt                        | fester Port wird schon genutzt                  | `FAKE_PROVIDER_PORT=0` oder anderen Port nehmen         |
 | Test hängt                         | `haengen` war geplant und niemand bricht ab     | im Test abbrechen, `reset()` oder `stop()` beendet es   |
 | Werkzeug-Aufruf kommt immer wieder | `toolCall` bleibt gesetzt, bis er entfernt wird | nach dem Aufruf `configure({ toolCall: undefined })`    |
+| Tests gegen Postgres übersprungen  | `PAIBOT_TEST_DATABASE_URL` ist nicht gesetzt    | Variable auf einen Wegwerf-Server setzen (siehe oben)   |

@@ -8,7 +8,7 @@
 
 name: 💡 Idee vorschlagen
 description: Eine neue Funktion, ein neuer Bot oder eine Verbesserung
-labels: ["idea"]
+labels: ["funktion"]
 body:
   - type: dropdown
     id: kind
