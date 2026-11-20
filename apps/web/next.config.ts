@@ -10,6 +10,7 @@
 
 import path from "node:path";
 import type { NextConfig } from "next";
+import { sicherheitsKopfzeilen } from "./src/lib/kopfzeilen";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -20,6 +21,12 @@ const nextConfig: NextConfig = {
   // Der Entwicklungs-Server soll weder eine Anzeige einblenden noch Dateien im Projekt anlegen.
   devIndicators: false,
   agentRules: false,
+  headers: async () => [
+    {
+      source: "/:path*",
+      headers: sicherheitsKopfzeilen({ entwicklung: process.env.NODE_ENV !== "production" }),
+    },
+  ],
 };
 
 export default nextConfig;
