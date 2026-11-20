@@ -82,6 +82,41 @@ jobs:
           echo "Healthcheck fehlgeschlagen"; cat /tmp/health.json || true
           docker compose -f deploy/docker-compose.yml --env-file deploy/.env logs
           exit 1
+      - name: Worker prüfen (gesund, erwartete Log-Zeilen, kein Port)
+        run: |
+          compose="docker compose -f deploy/docker-compose.yml --env-file deploy/.env"
+          status=""
+          for i in $(seq 1 60); do
+            id=$($compose ps -q worker)
+            status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$id" 2>/dev/null || true)
+            [ "$status" = "healthy" ] && break
+            sleep 3
+          done
+          $compose logs worker > /tmp/worker.log 2>&1
+          cat /tmp/worker.log
+          if [ "$status" != "healthy" ]; then echo "Worker nicht gesund: $status"; exit 1; fi
+          for zeile in "Datenbank erreichbar." "Datenbank auf Stand" "Rechte der Rolle paibot_app geprüft: eingeschränkt." \
+                       "Warteschlange gestartet." "Bereit: nimmt Läufe an" "Herzschlag läuft."; do
+            grep -qF "[paibot-worker] $zeile" /tmp/worker.log || { echo "Log-Zeile fehlt: $zeile"; exit 1; }
+          done
+          if grep -qF "Start abgebrochen" /tmp/worker.log; then echo "Worker-Start abgebrochen"; exit 1; fi
+          if [ -n "$(docker port "$id")" ]; then echo "Worker veröffentlicht einen Port"; exit 1; fi
+          if docker exec "$id" printenv DATABASE_MIGRATION_URL >/dev/null; then
+            echo "Worker kennt die Migrations-Rolle"; exit 1
+          fi
+          if docker exec "$id" sh -c 'touch /app/schreibtest' 2>/dev/null; then
+            echo "Dateisystem des Workers ist beschreibbar"; exit 1
+          fi
+          echo "Worker ok"
+      - name: Worker endet bei SIGTERM sauber
+        run: |
+          compose="docker compose -f deploy/docker-compose.yml --env-file deploy/.env"
+          id=$($compose ps -q worker)
+          $compose stop worker
+          code=$(docker inspect --format '{{.State.ExitCode}}' "$id")
+          $compose logs worker | tail -5
+          [ "$code" = "0" ] || { echo "Exit-Code $code statt 0"; exit 1; }
+          $compose logs worker | grep -qF "[paibot-worker] Beendet." || { echo "Log-Zeile „Beendet.“ fehlt"; exit 1; }
       - name: Aufräumen
         if: always()
         run: docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v

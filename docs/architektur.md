@@ -175,6 +175,27 @@ Gut zu wissen:
 - **Absturz des Workers:** Ein Auftrag, der gerade lief, wird nicht neu gestartet. Ein lebender Worker meldet sich regelmäßig (Herzschlag); bleibt das aus, gibt die Warteschlange den Auftrag nach etwa 30 Sekunden auf, und die Unterhaltung kommt wieder dran. Den Zustand des Laufs selbst räumt der Worker beim Start auf.
 - **Schema:** Das Schema `pgboss` legt der Migrations-Schritt beim Start an und übergibt es der App-Rolle. Die Warteschlange richtet darin nur ihre Tabellen ein; ein Recht zum Anlegen von Schemas in der Datenbank braucht die App-Rolle nicht. Läuft alles mit nur einer Rolle (Entwicklung), legt der Start das Schema mit dieser Rolle an.
 
+## Worker
+
+Der Worker (`apps/worker`) holt die Läufe aus der Warteschlange und lässt sie von der Lauf-Steuerung (`executeRun` aus `packages/agents`) ausführen. Er ist eine einzelne gebündelte Datei (`dist/worker.mjs`, gebaut mit esbuild) und liegt im selben Image wie die Web-App; `PAIBOT_ROLE=worker` startet ihn.
+
+Beim Start arbeitet er diese Schritte der Reihe nach ab. Scheitert einer, steht der Grund im Log, und der Prozess endet mit Exit-Code 1:
+
+| Schritt          | Was passiert                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Einstellungen | `PAIBOT_SECRET` und `DATABASE_URL` prüfen, mit denselben Regeln und Meldungen wie die Web-App (im Betrieb auch Länge und Platzhalter des Passworts)     |
+| 2. Datenbank     | bis zu 60 Sekunden auf die Datenbank warten                                                                                                             |
+| 3. Migrationen   | bis zu 3 Minuten warten, bis die Web-App alle Migrationen angewendet hat. Der Worker migriert nie selbst und kennt die Migrations-Rolle nicht           |
+| 4. Rechte        | wie die Web-App prüfen, ob die Verbindung zu viele Rechte hat; im Betrieb Abbruch, außer `PAIBOT_ALLOW_PRIVILEGED_DB=1`                                 |
+| 5. Warteschlange | Warteschlange starten, veraltete Läufe aufräumen (`failStaleRuns`), danach Aufträge annehmen (`PAIBOT_WORKER_CONCURRENCY`, Standard 2)                  |
+| 6. Herzschlag    | alle zehn Sekunden die Datei `/tmp/paibot-worker.herzschlag` schreiben, solange die Datenbank antwortet und kein Lauf länger als seine Ablaufzeit hängt |
+
+Für jeden Auftrag ruft der Worker `executeRun` auf. Endet sie mit einem Ausnahmefehler (oder gibt es sie noch nicht), setzt der Worker den Lauf auf „fehlgeschlagen“ (Code `intern`) und schreibt das Ereignis `run.failed`, beides in einer Transaktion. Der Fehler geht nicht an die Warteschlange zurück; die Unterhaltung bleibt frei.
+
+Beim Beenden (`SIGTERM` oder `SIGINT`) nimmt er keine neuen Aufträge mehr an, gibt laufenden Läufen das Abbruch-Signal, wartet höchstens 20 Sekunden (`PAIBOT_WORKER_SHUTDOWN_TIMEOUT_MS`), schließt Warteschlange und Datenbank und endet mit Exit-Code 0. Ein zweites Signal beendet ihn sofort. Unerwartete Fehler stehen als eine Zeile im Log, danach endet er mit Exit-Code 1.
+
+Das Log hat je Ereignis eine Zeile mit dem Präfix `[paibot-worker]`. Es enthält Lauf-IDs, Status und Dauer, nie Inhalte von Unterhaltungen und nie Schlüssel; Passwörter und Schlüssel aus der Umgebung werden in Fehlertexten geschwärzt.
+
 ## Motor
 
 Der Motor erzeugt eine Runde Gespräch: Er schickt Anweisung und Verlauf an das gewählte Modell und liefert die Antwort Stück für Stück zurück. Er steckt in `packages/agents` (Datei `motor-aisdk.ts`, Bibliothek: Vercel AI SDK `ai` mit `@ai-sdk/openai-compatible`, beide fest auf eine Version gepinnt). Außerhalb dieser Datei kennt niemand die Bibliothek; eine Lint-Regel sorgt dafür.
