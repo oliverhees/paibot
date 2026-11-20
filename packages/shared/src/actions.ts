@@ -291,15 +291,6 @@ export type ToolActionType = (typeof TOOL_ACTION_TYPES)[number];
 export const toolActionTypeSchema = z.enum(TOOL_ACTION_TYPES);
 
 /**
- * Die Aktionen für Werkzeug-Aufrufe mit Akteur, Ziel und Fakten.
- *
- * @deprecated Steht jetzt in `ACTIONS`; `ACTIONS["werkzeug.aufrufen"]` benutzen.
- */
-export const TOOL_ACTIONS = {
-  "werkzeug.aufrufen": ACTIONS["werkzeug.aufrufen"],
-} as const;
-
-/**
  * Aktionen, über die das Tor schon entscheiden kann, die die Datenbank aber noch nicht speichert:
  * Die CHECKs `rules_action_werte` und `belege_action_werte` nehmen sie erst nach der nächsten
  * Migration an. Bis dahin lässt sich für sie weder eine Regel noch ein Beleg speichern; das Tor

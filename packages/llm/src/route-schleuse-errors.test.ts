@@ -10,6 +10,7 @@
 
 import { PaiBotError } from "@paibot/shared/fehler";
 import { MOTOR_ERROR_CODES } from "@paibot/shared/motor";
+import type { ProviderTemplateKey } from "@paibot/shared/objekte";
 import { errorWayOut } from "@paibot/shared/texte";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { EgressBlockedError } from "./egress";
@@ -90,7 +91,10 @@ describe("schleuseModelName", () => {
     expect(schleuseModelName("eurouter", "org/modell:v1")).toBe("eurouter/org/modell:v1");
   });
   it("lehnt Ungültiges ab", () => {
-    expect(() => schleuseModelName("Euro Router", "x")).toThrow(TypeError);
+    expect(() => schleuseModelName("Euro Router" as ProviderTemplateKey, "x")).toThrow(TypeError);
+    // Nur Schlüssel aus der Liste der Vorlagen, auch wenn sie wie einer aussehen.
+    expect(() => schleuseModelName("lokal" as ProviderTemplateKey, "x")).toThrow(TypeError);
+    expect(schleuseModelName("eigener", "x")).toBe("eigener/x");
     expect(() => schleuseModelName("eurouter", "")).toThrow(TypeError);
     expect(() => schleuseModelName("eurouter", "a b")).toThrow(TypeError);
   });

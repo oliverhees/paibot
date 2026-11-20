@@ -159,7 +159,7 @@ export function modelAccess(options: ModelAccessOptions): ModelAccess {
   const choice: ModelChoice = {
     provider: {
       id: providerId,
-      templateKey: "lokal",
+      templateKey: "eigener",
       baseUrl: options.baseUrl,
       region: "local",
       apiKeyEnc: encryptSecret(options.apiKey, secretsKey, {

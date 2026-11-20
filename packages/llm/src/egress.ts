@@ -288,15 +288,22 @@ export function createEgressFetch(
   };
 }
 
-/** Gründe, aus denen eine Basis-URL abgelehnt wird. */
-export type BaseUrlProblem =
-  | "keine_url"
-  | "protokoll"
-  | "interner_dienst"
-  | "link_local"
-  | "private_adresse"
-  | "port"
-  | "zugangsdaten_in_url";
+/** Gründe, aus denen eine Basis-URL abgelehnt wird; je Grund ein Text `anbieter.url.<grund>`. */
+export const BASE_URL_PROBLEMS = [
+  "keine_url",
+  "protokoll",
+  "interner_dienst",
+  "link_local",
+  "private_adresse",
+  "port",
+  "zugangsdaten_in_url",
+] as const;
+export type BaseUrlProblem = (typeof BASE_URL_PROBLEMS)[number];
+
+/** Text-Schlüssel zu einem Grund, z. B. `anbieter.url.port`. */
+export function baseUrlProblemKey(problem: BaseUrlProblem): `anbieter.url.${BaseUrlProblem}` {
+  return `anbieter.url.${problem}`;
+}
 
 export type BaseUrlCheck = { ok: true; url: URL } | { ok: false; problem: BaseUrlProblem };
 

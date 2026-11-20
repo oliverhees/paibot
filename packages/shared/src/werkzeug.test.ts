@@ -14,7 +14,6 @@ import {
   ACTIONS,
   STORED_ACTION_TYPES,
   TOOL_ACTION_TYPES,
-  TOOL_ACTIONS,
   toolActionTypeSchema,
   UNSTORED_ACTION_TYPES,
 } from "./actions";
@@ -45,7 +44,6 @@ describe("Aktion werkzeug.aufrufen", () => {
     );
     expect(STORED_ACTION_TYPES).toContain("werkzeug.aufrufen");
     expect(ACTIONS["werkzeug.aufrufen"].actor).toBe("bot");
-    expect(TOOL_ACTIONS["werkzeug.aufrufen"]).toBe(ACTIONS["werkzeug.aufrufen"]);
     expect(toolActionTypeSchema.parse("werkzeug.aufrufen")).toBe("werkzeug.aufrufen");
   });
 

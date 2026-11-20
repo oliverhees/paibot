@@ -15,7 +15,7 @@ import { providerSecretBinding, secretAad, targetOrigin } from "@paibot/shared/b
 import { PaiBotError } from "@paibot/shared/fehler";
 import type { ConversationId, ModelId, ProviderId } from "@paibot/shared/ids";
 import type { ResolvedModel, ResolvedModelSummary } from "@paibot/shared/motor";
-import type { Region } from "@paibot/shared/objekte";
+import type { ProviderTemplateKey, Region } from "@paibot/shared/objekte";
 import {
   checkProviderBaseUrl,
   createEgressFetch,
@@ -32,8 +32,8 @@ import { providerTargetDigest } from "./target";
 export interface ModelChoice {
   provider: {
     id: ProviderId;
-    /** Schlüssel der Vorlage, z. B. `eurouter`; für den Modellnamen in der Datenschleuse. */
-    templateKey: string;
+    /** Schlüssel der Vorlage (`PROVIDER_TEMPLATE_KEYS`), z. B. `eurouter`; für den Modellnamen in der Datenschleuse. */
+    templateKey: ProviderTemplateKey;
     baseUrl: string;
     region: Region;
     /**
