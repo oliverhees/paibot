@@ -9,7 +9,6 @@
  */
 
 import { newId } from "@paibot/shared/ids";
-import { isNotImplemented } from "@paibot/stub";
 import { describe, expect, it } from "vitest";
 import { createQueue, RUN_QUEUE, runJobSchema } from "./index";
 
@@ -30,13 +29,16 @@ describe("Schnittstelle", () => {
     expect(typeof (lib.PgBoss ?? lib.default)).toBe("function");
   });
 
-  it("noch nicht umgesetzt", () => {
-    let caught: unknown;
-    try {
-      createQueue("postgres://localhost/paibot");
-    } catch (error) {
-      caught = error;
-    }
-    expect(isNotImplemented(caught)).toBe(true);
+  it("createQueue verbindet erst mit start", async () => {
+    // Auf Port 1 lauscht niemand: ohne `start` darf nichts verbunden werden.
+    const queue = createQueue("postgres://localhost:1/paibot");
+    expect(typeof queue.start).toBe("function");
+    await queue.stop();
+  });
+
+  it("createQueue prüft maxConnections", () => {
+    expect(() => createQueue("postgres://localhost:1/paibot", { maxConnections: 0 })).toThrow(
+      RangeError,
+    );
   });
 });
