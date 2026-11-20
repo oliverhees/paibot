@@ -2,16 +2,33 @@
   "name": "@paibot/agents",
   "version": "0.0.0",
   "private": true,
-  "description": "Bot-Fabrik, Router, Team-Tools und Prompts (ab Folge 5)",
+  "description": "Motor-Schnittstelle, Motor auf dem Vercel AI SDK, Test-Motor und Steuerung eines Laufs",
   "license": "SEE LICENSE IN ../../LICENSE",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.94",
+    "@paibot/crypto": "workspace:*",
+    "@paibot/db": "workspace:*",
+    "@paibot/gate": "workspace:*",
+    "@paibot/llm": "workspace:*",
+    "@paibot/shared": "workspace:*",
+    "@paibot/stub": "workspace:*",
+    "ai": "7.0.178",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "@paibot/fake-provider": "workspace:*",
+    "@paibot/receipts": "workspace:*",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

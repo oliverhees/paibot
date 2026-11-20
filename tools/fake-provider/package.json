@@ -1,0 +1,26 @@
+{
+  "name": "@paibot/fake-provider",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kleiner OpenAI-kompatibler Test-Anbieter mit Streaming, steuerbaren Fehlern und Protokoll der Anfragen",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node build.mjs",
+    "start": "node dist/fake-provider.mjs"
+  },
+  "dependencies": {
+    "@paibot/stub": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "esbuild": "0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

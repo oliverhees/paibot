@@ -1,0 +1,24 @@
+{
+  "name": "@paibot/gate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Das Tor: einziger Eintrittspunkt für jede Aktion, reine Regelprüfung ohne KI und ohne Netz",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./grenzen": "./src/limits/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@paibot/shared": "workspace:*",
+    "@paibot/stub": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

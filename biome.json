@@ -11,6 +11,12 @@
       "!**/THIRD_PARTY_NOTICES.md"
     ]
   },
+  "plugins": [
+    {
+      "path": "./tools/lint-regeln/kein-text-modell.grit",
+      "includes": ["**/*.ts", "**/*.tsx", "**/*.mjs"]
+    }
+  ],
   "formatter": {
     "indentStyle": "space",
     "indentWidth": 2,
@@ -18,7 +24,36 @@
   },
   "linter": {
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+              "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+              "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+              "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+              "@paibot/web": "Kein Paket importiert aus apps/*.",
+              "@paibot/worker": "Kein Paket importiert aus apps/*."
+            },
+            "patterns": [
+              {
+                "group": ["ai/*", "@ai-sdk/*"],
+                "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+              },
+              {
+                "group": ["**/apps/**"],
+                "message": "Kein Paket importiert aus apps/*."
+              },
+              {
+                "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+              }
+            ]
+          }
+        }
+      }
     }
   },
   "javascript": {
@@ -26,5 +61,1011 @@
       "quoteStyle": "double",
       "semicolons": "always"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/stub": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/crypto": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/stub/*",
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/stub/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/shared": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/crypto": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/shared/*",
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/crypto/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/shared": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/shared/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/gate/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/crypto": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/crypto/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/receipts/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/llm": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/llm/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/receipts": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/receipts/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/jobs/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/crypto": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/agents/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/receipts": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/receipts/*",
+                      "@paibot/jobs/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/db/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/crypto": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/ui/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/crypto": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/mcp/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/crypto": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["tools/fake-provider/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/shared": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/crypto": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/shared/*",
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*"
+                    ],
+                    "message": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/agents": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm/modell": "Die Web-App baut nie einen Modell-Zugang; Modelle ruft nur der Worker über das Tor auf."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": ["@paibot/agents/*", "@paibot/fake-provider/*"],
+                    "message": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/worker/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/ui": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": ["@paibot/ui/*", "@paibot/fake-provider/*"],
+                    "message": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/llm/src/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/receipts": "Ein Test der Anbieter-Schicht darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "Ein Test der Anbieter-Schicht darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "Ein Test der Anbieter-Schicht darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "Ein Test der Anbieter-Schicht darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Ein Test der Anbieter-Schicht darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "Ein Test der Anbieter-Schicht darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/receipts/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*"
+                    ],
+                    "message": "Ein Test der Anbieter-Schicht darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/agents/src/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/jobs": "Ein Test der Agenten darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Ein Test der Agenten darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "Ein Test der Agenten darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "ai": {
+                    "message": "Kein Verkehr über ein fremdes Gateway.",
+                    "importNames": ["gateway", "createGateway"]
+                  }
+                },
+                "patterns": [
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": ["@paibot/jobs/*", "@paibot/ui/*", "@paibot/mcp/*"],
+                    "message": "Ein Test der Agenten darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  },
+                  {
+                    "group": ["@ai-sdk/*", "!@ai-sdk/openai-compatible"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/agents/src/motor-aisdk.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/receipts": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "ai": {
+                    "message": "Kein Verkehr über ein fremdes Gateway.",
+                    "importNames": ["gateway", "createGateway"]
+                  }
+                },
+                "patterns": [
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/receipts/*",
+                      "@paibot/jobs/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  },
+                  {
+                    "group": ["ai/*", "@ai-sdk/*", "!@ai-sdk/openai-compatible"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "packages/receipts/src/verify.ts",
+        "packages/receipts/src/build.ts",
+        "packages/receipts/src/canonical.ts",
+        "packages/receipts/src/hash.ts",
+        "packages/receipts/src/jsonl.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/crypto": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/crypto/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  },
+                  {
+                    "group": ["node:*"],
+                    "message": "Der Prüfer läuft auch im Browser und nutzt keine Node-APIs."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

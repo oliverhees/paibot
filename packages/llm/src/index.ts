@@ -1,13 +1,17 @@
 /**
- * PaiBot – Platzhalter für KI-Modelle und Datenschleuse; noch ohne Inhalt.
+ * PaiBot – Einstiegspunkt der Anbieter-Schicht. Den Modell-Zugang (`resolveModel`) gibt es nur
+ * über den Unterpfad `@paibot/llm/modell`, der der Web-App verwehrt ist.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
  * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
  * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
- * @since     2026-11-07
+ * @since     2026-11-20
  */
 
-// Anbieter-Registry und Schleusen-Routing (ab Folge 3)
-// Platzhalter aus Folge 0. Der Inhalt folgt laut Roadmap.
-export {};
+export * from "./egress";
+export * from "./errors";
+export * from "./models";
+export * from "./route";
+export * from "./schleuse";
+export * from "./templates";

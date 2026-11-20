@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["biome.json", "tsconfig.base.json", "tools/lint-regeln/*.grit"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -10,6 +11,9 @@
     },
     "test": {
       "dependsOn": ["^build"]
+    },
+    "@paibot/db#test": {
+      "dependsOn": ["^build", "@paibot/web#build"]
     },
     "dev": {
       "cache": false,

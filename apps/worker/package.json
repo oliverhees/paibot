@@ -1,0 +1,31 @@
+{
+  "name": "@paibot/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Rolle worker: führt Läufe aus der Warteschlange aus",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node build.mjs",
+    "start": "node dist/worker.mjs"
+  },
+  "dependencies": {
+    "@paibot/agents": "workspace:*",
+    "@paibot/crypto": "workspace:*",
+    "@paibot/db": "workspace:*",
+    "@paibot/gate": "workspace:*",
+    "@paibot/jobs": "workspace:*",
+    "@paibot/llm": "workspace:*",
+    "@paibot/receipts": "workspace:*",
+    "@paibot/shared": "workspace:*",
+    "@paibot/stub": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "esbuild": "0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
