@@ -10,9 +10,9 @@ Seit:      2026-11-20
 
 # Sicherheit
 
-**Ergebnis:** Deine Zugangsdaten, dein Passwort und deine Anmeldung sind so gespeichert, dass ein Blick in die Datenbank allein nichts verrät.
+**Ergebnis:** Deine Zugangsdaten, dein Passwort und deine Anmeldung sind so gespeichert, dass ein Blick in die Datenbank allein sie nicht verrät. Deine Unterhaltungen dagegen stehen lesbar in der Datenbank (siehe „Was in der Datenbank steht“).
 
-Diese Seite beschreibt den Teil zu Schlüsseln, verschlüsselten Geheimnissen, Passwort und Sitzungs-Token. Weitere Teile der Sicherheit kommen mit den jeweiligen Funktionen dazu.
+Diese Seite beschreibt den Teil zu Schlüsseln, verschlüsselten Geheimnissen, Passwort und Sitzungs-Token, was in der Datenbank steht und die Rollen der Datenbank. Weitere Teile der Sicherheit kommen mit den jeweiligen Funktionen dazu.
 
 ## Wofür
 
@@ -20,7 +20,7 @@ PaiBot speichert Dinge, die niemand lesen soll: den Schlüssel für deinen KI-An
 
 ## So benutzt du es
 
-1. Erzeuge das Wurzel-Geheimnis einmal, zum Beispiel mit `openssl rand -base64 32`.
+1. Erzeuge das Wurzel-Geheimnis einmal, zum Beispiel mit `openssl rand -base64 32` (oder alle Werte auf einmal mit `sh deploy/env-erzeugen.sh`).
 2. Trage es als `PAIBOT_SECRET` in deine Umgebung ein (`deploy/.env` oder als Geheimnis in Coolify).
 3. Sichere es getrennt von der Datenbank, zum Beispiel im Passwort-Manager. Ohne dieses Geheimnis lassen sich gespeicherte Anbieter-Schlüssel nicht mehr lesen.
 
@@ -65,9 +65,35 @@ Wichtige Eigenschaften:
 - **Fehler ohne Geheimnisse:** Meldungen nennen nur einen festen Grund (`format_ungueltig`, `version_unbekannt`, `entschluesseln_fehlgeschlagen` …), nie Schlüssel, Klartext oder Geheimtext.
 - **Versionspräfix:** `v1:` erlaubt später ein `v2:`, ohne dass alte Werte unlesbar werden.
 
+## Was in der Datenbank steht
+
+| Was                                                       | Wie gespeichert                  |
+| --------------------------------------------------------- | -------------------------------- |
+| Unterhaltungen: Nachrichten, Antworten, Titel, Ereignisse | **lesbar** (nicht verschlüsselt) |
+| Bots mit ihren Anweisungen, Einstellungen                 | lesbar                           |
+| Belege und Regeln                                         | lesbar, Belege mit Signatur      |
+| Schlüssel deiner KI-Anbieter                              | verschlüsselt (AES-256-GCM)      |
+| privater Signaturschlüssel                                | verschlüsselt                    |
+| dein Passwort                                             | nur als Hash (scrypt)            |
+| Anmeldungen (Sitzungen)                                   | nur als Hash (SHA-256)           |
+
+Das gilt genauso für jede **Sicherung** der Datenbank. Wer eine Sicherung lesen kann, liest deine Unterhaltungen. Darum:
+
+- Sicherungen wie ein Passwort behandeln: verschlüsselter Speicher, nur du hast Zugriff.
+- `PAIBOT_SECRET` nie neben der Sicherung ablegen. Nur zusammen damit ließen sich die Anbieter-Schlüssel entschlüsseln.
+- Die Datenbank hat im Compose-Stack keinen veröffentlichten Port und hängt in einem internen Netz.
+
+## Rollen der Datenbank
+
+PaiBot arbeitet mit zwei Rollen in Postgres: Die **Migrations-Rolle** besitzt die Tabellen und wird nur beim Start für die Migrationen genutzt. Die **App-Rolle** führt die normale Arbeit aus und hat nur die Rechte, die dafür nötig sind. Auf Belegen und Regeln darf sie nur lesen und anhängen, sie darf keine Tabelle leeren und keine Trigger abschalten oder löschen. So bleibt der Schutz „Belege sind unveränderlich“ auch dann wirksam, wenn jemand SQL mit den Rechten der App ausführen könnte.
+
+Startet PaiBot im Betrieb mit einer App-Verbindung, die zu viele Rechte hat (Superuser oder Besitzer der Tabellen), bricht der Start ab. Einrichtung und Umstellung: [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank).
+
 ## Grenzen
 
-- Wer deinen Server vollständig kontrolliert (Datenbank **und** `PAIBOT_SECRET`), kann alles lesen und neu schreiben. Das Verfahren schützt vor einer kopierten Datenbank, nicht vor einem übernommenen Server.
+- Wer deinen Server vollständig kontrolliert (Datenbank **und** `PAIBOT_SECRET`), kann alles lesen und neu schreiben. Das Verfahren schützt die Zugangsdaten in einer kopierten Datenbank, nicht vor einem übernommenen Server.
+- Unterhaltungen liegen unverschlüsselt in der Datenbank und in jeder Sicherung.
+- Gegen die Migrations-Rolle (Besitzer der Tabellen) oder einen Superuser helfen die Rechte der App-Rolle nicht. Die Migrations-Rolle steht im Compose-Stack in der Umgebung des Dienstes `web`, weil dieser beim Start migriert; die App liest sie nach dem Start nicht mehr.
 - Das Passwort wird nicht gegen Online-Listen geprüft (PaiBot nimmt dafür keinen Kontakt nach außen auf). Wähle ein langes, einmaliges Passwort.
 - Ein leerer Text lässt sich zwar verschlüsseln, wird aber von der Datenbank als Geheimnis abgewiesen. Speichere keine leeren Schlüssel.
 - Ein Wechsel von `PAIBOT_SECRET` mit automatischem Neu-Verschlüsseln ist **geplant**, aber noch nicht gebaut. Das Präfix `v1:` bereitet ihn vor.
