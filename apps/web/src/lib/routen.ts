@@ -9,7 +9,7 @@
  * @since     2026-11-20
  */
 
-import type { ActionType } from "@paibot/shared/aktionen";
+import type { ActionType, Credential } from "@paibot/shared/aktionen";
 import {
   botInput,
   connectionTestInput,
@@ -23,8 +23,10 @@ import {
   schleuseInput,
   sendMessageInput,
   settingsInput,
+  setupConnectionTestInput,
   setupInput,
 } from "@paibot/shared/eingaben";
+import type { RateLimitName } from "@paibot/shared/konstanten";
 import type { z } from "zod";
 
 export type Methode = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -50,6 +52,20 @@ export interface RoutenDefinition {
   aktion?: ActionType;
   /** Schema des Körpers (bei GET: der Abfrage). */
   eingabe?: z.ZodType;
+  /**
+   * Nachweis, den die Route dem Tor als Fakt `credential` meldet. Er stammt aus der geprüften
+   * Anfrage (Sitzung, Passwort oder Einrichtungs-Code), nie aus dem Körper. Ohne Angabe bei
+   * Zugang `besitzer`: `sitzung`.
+   */
+  nachweis?: Credential;
+  /**
+   * Rate-Limits (`RATE_LIMITS`), die die Route vor jeder weiteren Arbeit zählt, in dieser
+   * Reihenfolge. Bei `verzoegern` wartet die Anfrage, bei `sperren` antwortet sie mit
+   * `zu_viele_versuche`.
+   */
+  limits?: readonly RateLimitName[];
+  /** Nur bis zum Ende der Einrichtung erreichbar; danach `einrichtung_fertig` (409). */
+  nurVorEinrichtung?: true;
 }
 
 /** Alle API-Routen der Basis. */
@@ -69,13 +85,21 @@ export const API_ROUTEN = {
     antwort: "json",
     veraendernd: false,
   },
+  /**
+   * Prüft einen neuen Schlüssel vor dem Abschluss der Einrichtung. Verlangt den Einrichtungs-Code
+   * (falscher Code zählt auf `einrichtungIp` wie beim Abschließen) und zählt jeden Aufruf auf
+   * `verbindungstestIp`. Nimmt keinen gespeicherten Anbieter an.
+   */
   einrichtungVerbindungstest: {
     methode: "POST",
     pfad: "/api/einrichtung/verbindungstest",
     zugang: "vorab",
     antwort: "json",
     veraendernd: false,
-    eingabe: connectionTestInput,
+    eingabe: setupConnectionTestInput,
+    nachweis: "einrichtungs_code",
+    limits: ["verbindungstestIp", "einrichtungIp"],
+    nurVorEinrichtung: true,
   },
   einrichtungAbschliessen: {
     methode: "POST",
@@ -85,8 +109,12 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "einrichtung.abschliessen",
     eingabe: setupInput,
+    nachweis: "einrichtungs_code",
+    limits: ["einrichtungIp"],
+    nurVorEinrichtung: true,
   },
 
+  /** Limit je Adresse sperrt, das Gesamt-Limit verzögert nur (siehe `RATE_LIMITS`). */
   anmelden: {
     methode: "POST",
     pfad: "/api/zugang/anmelden",
@@ -95,6 +123,8 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "zugang.anmelden",
     eingabe: loginInput,
+    nachweis: "passwort",
+    limits: ["anmeldenIp", "anmeldenGesamt"],
   },
   abmelden: {
     methode: "POST",
@@ -184,6 +214,7 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "nachricht.senden",
     eingabe: sendMessageInput,
+    limits: ["nachricht"],
   },
   ereignisse: {
     methode: "GET",
@@ -276,6 +307,7 @@ export const API_ROUTEN = {
     antwort: "json",
     veraendernd: false,
     eingabe: connectionTestInput,
+    limits: ["verbindungstest"],
   },
   anbieterModelle: {
     methode: "GET",
