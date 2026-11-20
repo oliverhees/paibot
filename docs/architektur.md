@@ -29,7 +29,7 @@ flowchart LR
 
 ### Healthcheck
 
-`GET /api/health` fragt die Datenbank ab und antwortet mit JSON.
+`GET /api/health` fragt die Datenbank ab und antwortet mit JSON, zum Beispiel `{"status":"ok","app":"PaiBot","db":"ok","time":"2026-11-20T10:00:00.000Z","version":"0.3.0"}`. `version` ist die Version von PaiBot ohne den Teil ab `+`.
 
 | `db`             | `status`   | HTTP | Bedeutung                    |
 | ---------------- | ---------- | ---- | ---------------------------- |
@@ -41,23 +41,37 @@ Das Docker-Image prüft denselben Endpunkt in seinem eigenen Healthcheck.
 
 ### Datenbank und Migrationen
 
-- Postgres wird mit Drizzle angesprochen. Das Schema liegt in `packages/db/src/schema.ts`, die erzeugten Migrationen in `packages/db/drizzle/`.
-- Heute gibt es die Tabelle `settings` mit genau einer Zeile (`id = "singleton"`): Sprache, Zeitzone, Standard der Datenschleuse, maximale Übergaben, Tagesbudget und Zeitpunkt der Einrichtung. PaiBot gehört genau einer Person.
+- Postgres wird mit Drizzle angesprochen. Das Schema liegt in `packages/db/src/schema/` (eine Datei pro Bereich), die erzeugten Migrationen in `packages/db/drizzle/`.
+- Alle Tabellen der Basis sind angelegt (siehe [Datenmodell](#datenmodell)). Die App nutzt bisher nur `settings`, mit genau einer Zeile (`id = "singleton"`), denn PaiBot gehört genau einer Person.
 - Beim Start der Web-App (`apps/web/src/instrumentation-node.ts`) werden offene Migrationen angewendet, mit bis zu fünf Versuchen. Gelingt das nicht, startet die App trotzdem, und `/api/health` meldet `degraded`.
 
 ## Geplant
 
 Diese Teile gibt es als Ordner oder Platzhalter, aber noch ohne Funktion. Details folgen auf den Doku-Seiten, sobald es sie wirklich gibt.
 
-| Teil             | Ort                | Stand                     |
-| ---------------- | ------------------ | ------------------------- |
-| Datenschleuse    | eigener Dienst     | geplant                   |
-| KI-Modelle       | `packages/llm`     | Platzhalter, nicht gebaut |
-| Bots und Team    | `packages/agents`  | Platzhalter, nicht gebaut |
-| Apps per MCP     | `packages/mcp`     | Platzhalter, nicht gebaut |
-| Hintergrund-Jobs | `packages/jobs`    | Platzhalter, nicht gebaut |
-| UI-Komponenten   | `packages/ui`      | Platzhalter, nicht gebaut |
-| Browser-Dienst   | `services/browser` | geplant                   |
+| Teil             | Ort                   | Stand                     |
+| ---------------- | --------------------- | ------------------------- |
+| Datenschleuse    | eigener Dienst        | geplant                   |
+| KI-Modelle       | `packages/llm`        | Platzhalter, nicht gebaut |
+| Bots und Team    | `packages/agents`     | Platzhalter, nicht gebaut |
+| Apps per MCP     | `packages/mcp`        | Platzhalter, nicht gebaut |
+| Hintergrund-Jobs | `packages/jobs`       | Platzhalter, nicht gebaut |
+| UI-Komponenten   | `packages/ui`         | Platzhalter, nicht gebaut |
+| Browser-Dienst   | `services/browser`    | geplant                   |
+| Krypto           | `packages/crypto`     | Platzhalter, nicht gebaut |
+| Tor              | `packages/gate`       | Platzhalter, nicht gebaut |
+| Belege           | `packages/receipts`   | Platzhalter, nicht gebaut |
+| Worker           | `apps/worker`         | Platzhalter, nicht gebaut |
+| Test-Anbieter    | `tools/fake-provider` | Platzhalter, nicht gebaut |
+
+Was die neuen Teile tun werden:
+
+- **Krypto** (`packages/crypto`) verschlüsselt gespeicherte Schlüssel, prüft dein Passwort und signiert die Belege.
+- **Tor** (`packages/gate`) prüft jede Aktion mit festen Regeln und Grenzen, ohne KI, und schreibt dazu die Belege.
+- **Belege** (`packages/receipts`) hängt Belege an die Kette an, exportiert sie und prüft sie, auch im Browser und mit `pnpm belege:pruefen`.
+- **Worker** (`apps/worker`) führt die Läufe aus der Warteschlange im Hintergrund aus.
+- **Test-Anbieter** (`tools/fake-provider`) spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist.
+- Für Mitwirkende gibt es außerdem `packages/stub` (Kennzeichen für noch nicht gebaute Funktionen) und `tools/lint-regeln` (eigene Prüfregeln für Biome).
 
 ## Gemeinsame Verträge (`packages/shared`)
 
