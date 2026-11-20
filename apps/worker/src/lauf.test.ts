@@ -173,6 +173,30 @@ describe("Auftrag bearbeiten", () => {
     expect(await repo.events.listSince(db, job.conversationId)).toEqual([]);
   });
 
+  it("das Abbruch-Signal des Auftrags kommt bei der Lauf-Steuerung an", async () => {
+    let seen: AbortSignal | undefined;
+    const runs = createRunHandler({
+      db,
+      executeRun: (runId, _deps, s) =>
+        new Promise((resolve) => {
+          seen = s;
+          s.addEventListener("abort", () => resolve({ runId, status: "cancelled" }));
+        }),
+      prepareRunDeps: fakeRunDeps,
+      log,
+      secrets: [],
+    });
+    const job = await queuedRun();
+    const jobSignal = new AbortController();
+    const done = runs.handler(job, jobSignal.signal);
+    while (seen === undefined) await new Promise((r) => setTimeout(r, 5));
+    expect(seen.aborted).toBe(false);
+    jobSignal.abort();
+    await done;
+    expect(seen.aborted).toBe(true);
+    expect(lines.some((l) => l.startsWith(`info Lauf ${job.runId} beendet: cancelled`))).toBe(true);
+  });
+
   it("Abbruch-Signal kommt beim Lauf an; das Log enthält keine Inhalte und keine Schlüssel", async () => {
     let seen: AbortSignal | undefined;
     const runs = createRunHandler({
