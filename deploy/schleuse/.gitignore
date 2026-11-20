@@ -1,0 +1,11 @@
+# PaiBot – erzeugte Konfiguration der Datenschleuse bleibt außerhalb von Git.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-20
+
+# Erzeugt mit pnpm schleuse:config.
+config.yaml
+nlp-config.yml

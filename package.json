@@ -21,6 +21,7 @@
     "headers:write": "node scripts/headers.mjs --write",
     "doku:screenshots": "node scripts/doku-screenshots.mjs",
     "doku:check": "node scripts/doku-check.mjs",
+    "schleuse:config": "node scripts/schleuse-config.mjs",
     "belege:pruefen": "turbo run build --filter=@paibot/receipts --output-logs=errors-only && node packages/receipts/dist/belege-pruefen.mjs"
   },
   "devDependencies": {

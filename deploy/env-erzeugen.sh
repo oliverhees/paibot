@@ -27,6 +27,12 @@ zufall_base64() {
   head -c 32 /dev/urandom | base64 | tr -d '\n'
 }
 
+# 32 zufällige Byte als URL-sicheres Base64 mit Auffüllung (Format des Zwischenstand-Schlüssels
+# der Datenschleuse).
+zufall_base64url() {
+  head -c 32 /dev/urandom | base64 | tr -d '\n' | tr '+/' '-_'
+}
+
 umask 077
 cat > "$ziel" <<VORLAGE
 # PaiBot – Einstellungen des Docker-Compose-Stacks (erzeugt von deploy/env-erzeugen.sh).
@@ -39,6 +45,16 @@ POSTGRES_DB=paibot
 PAIBOT_SECRET=$(zufall_base64)
 APP_URL=http://localhost:3000
 WEB_PORT=3000
+
+# Datenschleuse (Standard: aus). Zum Einschalten die zwei Zeilen ohne # übernehmen,
+# danach: pnpm schleuse:config --env-datei deploy/.env (siehe docs/funktion-datenschleuse.md).
+# COMPOSE_PROFILES=schleuse
+# SCHLEUSE_URL=http://datenschleuse:4000/v1
+SCHLEUSE_KEY=sk-$(zufall_hex)
+SCHLEUSE_STATE_KEY=$(zufall_base64url)
+# Schlüssel deines Modell-Anbieters für die Datenschleuse (derselbe wie in PaiBot):
+SCHLEUSE_ANBIETER_SCHLUESSEL=
+SCHLEUSE_SPRACHMODELL=de_core_news_md
 VORLAGE
 
 echo "Geschrieben: $ziel (nur für dich lesbar). Trage APP_URL ein, wenn PaiBot unter einer Domain läuft."

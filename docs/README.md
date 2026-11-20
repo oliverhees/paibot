@@ -27,7 +27,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Lizenzen der Pakete   | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                 | vorhanden             |
 | Beitragsvereinbarung  | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                   | vorhanden             |
 | Vorlage für Funktion  | [VORLAGE-funktion.md](VORLAGE-funktion.md)                           | vorhanden             |
-| Datenschleuse         | folgt mit der Funktion                                               | geplant               |
+| Datenschleuse         | [funktion-datenschleuse.md](funktion-datenschleuse.md)               | Dienst vorhanden      |
 | Bots und Team         | folgt mit der Funktion                                               | geplant               |
 | Apps per MCP          | folgt mit der Funktion                                               | geplant               |
 | Browser-Dienst        | folgt mit der Funktion                                               | geplant               |
