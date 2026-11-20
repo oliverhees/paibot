@@ -10,13 +10,15 @@
 
 import { APP_NAME } from "@paibot/shared";
 import { readStand, versionOf } from "@paibot/shared/stand";
-import { databaseState } from "../../../lib/health";
+import { DB_ROLE_HEADER, databaseHealth } from "../../../lib/health";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const db = await databaseState();
+  const { db, role } = await databaseHealth();
   const healthy = db !== "down";
+  const headers: Record<string, string> = { "Cache-Control": "no-store" };
+  if (role === "zu_viele_rechte") headers[DB_ROLE_HEADER] = role;
   return Response.json(
     {
       status: healthy ? "ok" : "degraded",
@@ -25,6 +27,6 @@ export async function GET() {
       time: new Date().toISOString(),
       version: versionOf(readStand(process.env)),
     },
-    { status: healthy ? 200 : 503 },
+    { status: healthy ? 200 : 503, headers },
   );
 }
