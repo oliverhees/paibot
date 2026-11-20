@@ -80,18 +80,51 @@ export const RATE_LIMIT_KEYS = {
   anmeldenIp: (ip: string) => `anmelden:ip:${ip}`,
   anmeldenGesamt: "anmelden:gesamt",
   einrichtungIp: (ip: string) => `einrichtung:ip:${ip}`,
+  /** Verbindungstest während der Einrichtung, je Adresse (noch ohne Besitzer). */
+  verbindungstestIp: (ip: string) => `verbindungstest:ip:${ip}`,
   nachricht: (ownerId: OwnerId) => `nachricht:${ownerId}`,
   verbindungstest: (ownerId: OwnerId) => `verbindungstest:${ownerId}`,
 } as const;
 
-/** Erlaubte Anzahl pro Zeitfenster. */
+/**
+ * Was beim Überschreiten eines Limits geschieht: `sperren` antwortet mit `zu_viele_versuche`
+ * (429, `Retry-After`) bis zum Ende des Fensters; `verzoegern` lässt die Anfrage weiter zu, hält
+ * sie aber `delayMs` lang an, bevor sie bearbeitet wird.
+ */
+export type RateLimitEffect = "sperren" | "verzoegern";
+
+export interface RateLimitDefinition {
+  max: number;
+  windowSeconds: number;
+  effect: RateLimitEffect;
+  /** Nur bei `verzoegern`: Wartezeit je Anfrage über dem Limit. */
+  delayMs?: number;
+}
+
+/**
+ * Erlaubte Anzahl pro Zeitfenster.
+ *
+ * Anmelden: Das Limit je Adresse sperrt streng. Das Gesamt-Limit sperrt nie, sondern verzögert
+ * nur; sonst könnte jemand von vielen Adressen aus den Besitzer dauerhaft aussperren. Das Limit
+ * wird vor der Passwort-Prüfung gezählt; höchstens `PASSWORD_HASH_CONCURRENCY` Prüfungen laufen
+ * gleichzeitig, weitere warten.
+ *
+ * Einrichtung: falsche Einrichtungs-Codes zählen je Adresse auf `einrichtungIp`, beim Abschließen
+ * und beim Verbindungstest der Einrichtung gleich. Jeder Verbindungstest der Einrichtung zählt
+ * zusätzlich auf `verbindungstestIp`.
+ */
 export const RATE_LIMITS = {
-  anmeldenIp: { max: 5, windowSeconds: 900 },
-  anmeldenGesamt: { max: 20, windowSeconds: 900 },
-  einrichtungIp: { max: 5, windowSeconds: 900 },
-  nachricht: { max: 30, windowSeconds: 60 },
-  verbindungstest: { max: 10, windowSeconds: 60 },
-} as const;
+  anmeldenIp: { max: 5, windowSeconds: 900, effect: "sperren" },
+  anmeldenGesamt: { max: 20, windowSeconds: 900, effect: "verzoegern", delayMs: 2000 },
+  einrichtungIp: { max: 5, windowSeconds: 900, effect: "sperren" },
+  verbindungstestIp: { max: 10, windowSeconds: 900, effect: "sperren" },
+  nachricht: { max: 30, windowSeconds: 60, effect: "sperren" },
+  verbindungstest: { max: 10, windowSeconds: 60, effect: "sperren" },
+} as const satisfies Record<keyof typeof RATE_LIMIT_KEYS, RateLimitDefinition>;
+export type RateLimitName = keyof typeof RATE_LIMITS;
+
+/** Höchstens so viele Passwort-Prüfungen (scrypt, je etwa 32 MiB) laufen gleichzeitig. */
+export const PASSWORD_HASH_CONCURRENCY = 2;
 
 /** Postgres-Kanal, über den neue Ereignisse einer Unterhaltung gemeldet werden. */
 export const EVENT_NOTIFY_CHANNEL = "paibot_ereignis";

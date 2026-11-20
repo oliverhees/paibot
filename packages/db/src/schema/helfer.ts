@@ -8,13 +8,20 @@
  * @since     2026-11-20
  */
 
-import { ID_PREFIX, type IdKind } from "@paibot/shared";
+import {
+  ACTOR_PATTERN_SOURCE,
+  ID_BODY_PATTERN,
+  ID_PREFIX,
+  type IdKind,
+  idPatternSource,
+  PATTERN_SOURCES,
+} from "@paibot/shared";
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, check } from "drizzle-orm/pg-core";
 
 /** Muster einer ID dieser Art, wie es die Datenbank prüft. */
 export function idPattern(kind: IdKind): string {
-  return `^${ID_PREFIX[kind]}_[0-7][0-9a-hjkmnp-tv-z]{25}$`;
+  return idPatternSource(kind);
 }
 
 /** Ein Wert in Anführungszeichen für SQL; die Werte stammen aus festen Listen. */
@@ -47,15 +54,17 @@ export function inListCheck(name: string, column: AnyPgColumn, values: readonly 
   return check(name, sql`${column} in (${valueList(values)})`);
 }
 
-/** Muster für base64url ohne Auffüllung (Schlüssel, Signaturen, verschlüsselte Werte). */
+/** Textmuster der CHECK-Bedingungen; alle aus den gemeinsamen Verträgen. */
 export const PATTERNS = {
-  sha256Digest: "^sha256:[0-9a-f]{64}$",
-  publicKey: "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$",
-  signature: "^[A-Za-z0-9_-]{85}[AQgw]$",
-  fingerprint: "^[0-9a-f]{4}(-[0-9a-f]{4}){3}$",
-  encrypted: "^v1:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$",
+  sha256Digest: PATTERN_SOURCES.sha256Digest,
+  hmacDigest: PATTERN_SOURCES.hmacDigest,
+  publicKey: PATTERN_SOURCES.publicKey,
+  signature: PATTERN_SOURCES.signature,
+  fingerprint: PATTERN_SOURCES.fingerprint,
+  /** `v1:…` (ohne Zusatzdaten) oder `v2:…` (gebunden an Datensatz und Zweck). */
+  encrypted: PATTERN_SOURCES.encrypted,
   sessionId: "^[0-9a-f]{64}$",
-  errorCode: "^[a-z]+(_[a-z]+)*$",
-  actor: `^(besitzer|bot:${ID_PREFIX.bot}_[0-7][0-9a-hjkmnp-tv-z]{25})$`,
-  ruleId: `^(R-[0-9]{3}|${ID_PREFIX.rule}_[0-7][0-9a-hjkmnp-tv-z]{25})$`,
+  errorCode: PATTERN_SOURCES.errorCode,
+  actor: ACTOR_PATTERN_SOURCE,
+  ruleId: `^(R-[0-9]{3}|${ID_PREFIX.rule}_${ID_BODY_PATTERN})$`,
 } as const;

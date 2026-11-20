@@ -24,3 +24,4 @@ export * as installationKeys from "./schluessel";
 export * as sessions from "./sitzungen";
 export { withTransaction } from "./transaktion";
 export * as conversations from "./unterhaltungen";
+export * as toolCalls from "./werkzeuge";

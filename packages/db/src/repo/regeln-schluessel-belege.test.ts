@@ -8,14 +8,17 @@
  * @since     2026-11-20
  */
 
-import { newId, STANDARD_RULES, ZERO_PREV } from "@paibot/shared";
+import {
+  ACTIVE_STANDARD_RULES,
+  newId,
+  ruleContent,
+  STANDARD_RULE_VERSIONS,
+  STANDARD_RULES,
+  ZERO_PREV,
+} from "@paibot/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "../client";
-import {
-  belege as belegeTabelle,
-  rules as regelnTabelle,
-  installationKeys as schluesselTabelle,
-} from "../schema";
+import { belege as belegeTabelle, installationKeys as schluesselTabelle } from "../schema";
 import { belegRow, encrypted, fingerprint, keyRow, publicKey } from "../testdaten";
 import { createTestDb } from "../testing";
 import { belege, installationKeys, rules } from "./index";
@@ -27,39 +30,100 @@ describe("rules", () => {
     db = (await createTestDb()).db;
   });
 
-  it("listActive liefert die Standard-Regeln nach Priorität", async () => {
+  it("listActive liefert die aktiven Standard-Regeln nach Priorität", async () => {
     const aktiv = await rules.listActive(db);
-    expect(aktiv.map((r) => r.id)).toEqual(["R-001", "R-002", "R-999"]);
+    expect(aktiv.map((r) => r.id)).toEqual([
+      "R-003",
+      "R-004",
+      "R-006",
+      "R-001",
+      "R-002",
+      "R-005",
+      "R-999",
+    ]);
     expect(aktiv.map((r) => r.priority)).toEqual(
       [...aktiv.map((r) => r.priority)].sort((a, b) => a - b),
     );
-    for (const soll of STANDARD_RULES) {
+    for (const soll of ACTIVE_STANDARD_RULES) {
       const ist = aktiv.find((r) => r.id === soll.id);
-      expect({ ...ist, createdAt: undefined }).toEqual({ ...soll, createdAt: undefined });
+      expect(ist === undefined ? undefined : ruleContent(ist)).toEqual(soll);
     }
   });
 
   it("nimmt je Regel nur die höchste Fassung und blendet ausgeschaltete aus", async () => {
-    const r1 = STANDARD_RULES[0];
-    if (r1 === undefined) throw new Error("Regel fehlt");
-    const neu = { ...r1, version: 2, priority: 150, title: "Neue Fassung", enabled: true };
-    await db.insert(regelnTabelle).values({ ...neu, conditions: [...neu.conditions] });
+    const r1 = ACTIVE_STANDARD_RULES[0];
+    const neu = {
+      ...r1,
+      id: "R-100",
+      source: "owner" as const,
+      version: 1,
+      priority: 150,
+      title: "Eigene Regel",
+      conditions: [...r1.conditions],
+    };
+    await rules.appendVersion(db, neu);
+    await rules.appendVersion(db, { ...neu, version: 2, title: "Neue Fassung" });
     const aktiv = await rules.listActive(db);
-    expect(aktiv.find((r) => r.id === "R-001")).toMatchObject({
+    expect(aktiv.find((r) => r.id === "R-100")).toMatchObject({
       version: 2,
       title: "Neue Fassung",
     });
-    expect(aktiv.filter((r) => r.id === "R-001")).toHaveLength(1);
+    expect(aktiv.filter((r) => r.id === "R-100")).toHaveLength(1);
 
-    await db
-      .insert(regelnTabelle)
-      .values({ ...neu, conditions: [...neu.conditions], version: 3, enabled: false });
-    expect((await rules.listActive(db)).map((r) => r.id)).toEqual(["R-002", "R-999"]);
-    expect(await rules.listVersions(db, "R-001").then((v) => v.map((r) => r.version))).toEqual([
+    await rules.appendVersion(db, { ...neu, version: 3, enabled: false });
+    expect((await rules.listActive(db)).map((r) => r.id)).not.toContain("R-100");
+    expect(await rules.listVersions(db, "R-100").then((v) => v.map((r) => r.version))).toEqual([
       1, 2, 3,
     ]);
-    expect((await rules.get(db, "R-001", 2))?.title).toBe("Neue Fassung");
-    expect(await rules.get(db, "R-001", 9)).toBeUndefined();
+    expect((await rules.get(db, "R-100", 2))?.title).toBe("Neue Fassung");
+    expect(await rules.get(db, "R-100", 9)).toBeUndefined();
+  });
+
+  it("appendVersion nimmt nur die nächste Fassung und keine Standard-Regeln", async () => {
+    const neu = { ...ACTIVE_STANDARD_RULES[0], id: "R-101", source: "owner" as const, version: 1 };
+    await expect(rules.appendVersion(db, { ...neu, version: 2 })).rejects.toMatchObject({
+      code: "eingabe_ungueltig",
+    });
+    await rules.appendVersion(db, neu);
+    await expect(rules.appendVersion(db, neu)).rejects.toMatchObject({
+      code: "eingabe_ungueltig",
+    });
+    await expect(
+      rules.appendVersion(db, { ...ACTIVE_STANDARD_RULES[0], version: 2 }),
+    ).rejects.toMatchObject({ code: "eingabe_ungueltig" });
+  });
+
+  it("liefert den Regelstand und die Regeln zu einem früheren Stand", async () => {
+    const vorher = await rules.loadSnapshot(db);
+    expect(vorher.stand).toBe(STANDARD_RULE_VERSIONS.length);
+    expect(vorher.rules.map((r) => r.id)).toEqual((await rules.listActive(db)).map((r) => r.id));
+    for (const r of vorher.rules) expect(r.seq).toBeLessThanOrEqual(vorher.stand);
+
+    const sperre = {
+      ...ACTIVE_STANDARD_RULES[0],
+      id: "R-200",
+      source: "owner" as const,
+      version: 1,
+      effect: "deny" as const,
+      priority: 1,
+      conditions: [],
+    };
+    await rules.appendVersion(db, sperre);
+    const nachher = await rules.loadSnapshot(db);
+    expect(nachher.stand).toBe(vorher.stand + 1);
+    expect(nachher.rules[0]?.id).toBe("R-200");
+
+    const damals = await rules.listActiveAsOf(db, vorher.stand);
+    expect(damals).toEqual(vorher.rules);
+    expect(damals.map((r) => r.id)).not.toContain("R-200");
+    expect(await rules.currentStand(db)).toBe(nachher.stand);
+  });
+
+  it("die erste Fassung der Standard-Regeln bleibt für alte Belege lesbar", async () => {
+    const ersteStand = await rules.listActiveAsOf(db, STANDARD_RULES.length);
+    expect(ersteStand.map(ruleContent)).toEqual(
+      [...STANDARD_RULES].sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id)),
+    );
   });
 });
 
@@ -180,8 +244,12 @@ describe("belege (nur lesen)", () => {
     // Beleg 3 gehört zu einer Unterhaltung (Test-Aufbau über die Tabelle erlaubt kein UPDATE, daher neu).
     const [schluessel] = await db.select().from(schluesselTabelle);
     if (schluessel === undefined) throw new Error();
-    const extra = belegRow(schluessel.id, { seq: 5, prevHash: zeilen[3]?.hash ?? "" });
-    await db.insert(belegeTabelle).values({ ...extra, conversationId: conv });
+    const extra = belegRow(schluessel.id, {
+      seq: 5,
+      prevHash: zeilen[3]?.hash ?? "",
+      conversationId: conv,
+    });
+    await db.insert(belegeTabelle).values(extra);
     expect((await belege.listPage(db, { conversationId: conv })).items.map((b) => b.seq)).toEqual([
       5,
     ]);

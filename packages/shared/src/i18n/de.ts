@@ -175,6 +175,26 @@ export const de = {
   "belege.schluessel.schon_aktiv": "Der neue Schlüssel ist schon der aktive.",
   "belege.schluessel.signierer_nicht_aktiv": "Der Signaturschlüssel ist nicht der aktive.",
   "belege.schluessel.nicht_gespeichert": "Der Schlüssel ist nicht gespeichert.",
+  "belege.anker.titel": "Anker der Kette",
+  "belege.anker.hinweis":
+    "Notiere dir diesen Anker außerhalb von PaiBot. Nur mit ihm lässt sich später erkennen, ob am Ende der Kette Belege fehlen.",
+  "belege.anker.ohne": "Ohne Anker geprüft: Ob am Ende Belege fehlen, ist so nicht erkennbar.",
+  "belege.anker.ungueltig": "Der Text ist kein gültiger Anker.",
+  "belege.problem.andere_installation": "Der Anker gehört zu einer anderen Installation.",
+  "belege.problem.kette_kuerzer_als_anker":
+    "Die Kette ist kürzer als der Anker: Am Ende fehlen Belege.",
+  "belege.problem.kopf_abweichend":
+    "Der Beleg an der Stelle des Ankers ist ein anderer: Die Kette wurde umgeschrieben.",
+  "belege.problem.anderer_anfang_als_anker":
+    "Die Kette beginnt mit einem anderen Schlüssel als im Anker.",
+  "belege.problem.schluessel_nicht_aus_kette":
+    "Ein Beleg ist mit einem Schlüssel signiert, der nicht aus der Kette selbst folgt.",
+  "belege.problem.schluesselwechsel_nicht_beglaubigt":
+    "Ein Schlüsselwechsel ist nur vom neuen Schlüssel signiert. Ab hier ist nicht belegt, dass die Belege vom ursprünglichen Schlüssel stammen.",
+  "belege.urteil.vertrauenswuerdig": "Kette gültig, alle Schlüssel aus der Kette.",
+  "belege.urteil.vertrauen_gebrochen":
+    "Kette in sich gültig, aber die Vertrauenskette ist unterbrochen.",
+  "belege.urteil.ungueltig": "Kette ungültig.",
 
   // Ergebnis einer Aktion
   "ergebnis.ok": "ausgeführt",
@@ -201,10 +221,15 @@ export const de = {
   "aktion.modell.anfragen": "Modell angefragt",
   "aktion.lauf.abbrechen": "Antwort abgebrochen",
   "aktion.belege.exportieren": "Belege exportiert",
+  "aktion.werkzeug.aufrufen": "Werkzeug aufgerufen",
 
   // Regeln und Grenzen
   "regel.R-001": "Besitzer verwaltet seine Installation",
   "regel.R-002": "Bot darf antworten",
+  "regel.R-003": "Einrichtung mit Einrichtungs-Code",
+  "regel.R-004": "Anmelden mit Passwort",
+  "regel.R-005": "Bot fragt vor Werkzeugen",
+  "regel.R-006": "Nachweis passt nicht zur Aktion",
   "regel.R-999": "Ohne passende Regel",
   "regel.G-01": "Datenschleuse gefordert",
   "regel.G-02": "Anbieter aktiv und Region erlaubt",
@@ -213,6 +238,15 @@ export const de = {
   "regel.G-05": "Not-Aus",
   "tor.grenze": "{id} „{name}“",
   "tor.grenze_verletzt": "Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: {grenzen}.",
+  "regel.V-01": "Unterhaltung vorhanden",
+  "regel.V-02": "Kein Lauf aktiv",
+  "regel.V-03": "Lauf aktiv",
+  "regel.V-04": "Datenschleuse eingerichtet",
+  "regel.V-05": "Lauf läuft",
+  "regel.V-06": "Aktuelles Passwort bestätigt",
+  "regel.V-07": "Einrichtung offen",
+  "tor.vorbedingung_verletzt":
+    "Das Tor hat die Aktion abgelehnt. Vorbedingung nicht erfüllt: {vorbedingungen}.",
 
   // Einstellungen und Info
   "einstellungen.sitzungen": "Sitzungen",

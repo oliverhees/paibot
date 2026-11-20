@@ -98,8 +98,13 @@ describe("conversations", () => {
 
     const [schluessel] = await db.insert(installationKeys).values(keyRow()).returning();
     if (schluessel === undefined) throw new Error("Schlüssel fehlt");
-    const start = belegRow(schluessel.id, { seq: 1, prevHash: ZERO_PREV });
-    await db.insert(belege).values({ ...start, conversationId: c.id });
+    const beleg = belegRow(schluessel.id, {
+      seq: 1,
+      prevHash: ZERO_PREV,
+      type: "decision",
+      conversationId: c.id,
+    });
+    await db.insert(belege).values(beleg);
 
     expect(await conversations.remove(db, c.id)).toBe(true);
     expect(await conversations.remove(db, c.id)).toBe(false);

@@ -12,14 +12,27 @@ import type { BotId, ModelId, ProviderId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
 import { boolean, check, integer, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { idCheck, inListCheck, matches, PATTERNS } from "./helfer";
-import { AVATAR_SHAPES, BOT_COLORS, PROVIDER_KINDS, REGIONS } from "./werte";
+import {
+  AVATAR_SHAPES,
+  BOT_COLORS,
+  PROVIDER_KINDS,
+  PROVIDER_TEMPLATE_KEYS,
+  REGIONS,
+} from "./werte";
 
-/** Dienste, die Modelle bereitstellen. Der Schlüssel liegt nur verschlüsselt in `api_key_enc`. */
+/**
+ * Dienste, die Modelle bereitstellen. Der Schlüssel liegt nur verschlüsselt in `api_key_enc`
+ * (`v2`: gebunden an ID und Host der Basis-URL). `template_key` nennt die Vorlage.
+ */
 export const providers = pgTable(
   "providers",
   {
     id: text("id").$type<ProviderId>().primaryKey(),
     kind: text("kind").$type<(typeof PROVIDER_KINDS)[number]>().notNull(),
+    templateKey: text("template_key")
+      .$type<(typeof PROVIDER_TEMPLATE_KEYS)[number]>()
+      .notNull()
+      .default("eigener"),
     name: text("name").notNull(),
     baseUrl: text("base_url").notNull(),
     apiKeyEnc: text("api_key_enc"),
@@ -34,6 +47,7 @@ export const providers = pgTable(
   (t) => [
     idCheck("providers_id_format", t.id, "provider"),
     inListCheck("providers_kind_werte", t.kind, PROVIDER_KINDS),
+    inListCheck("providers_template_key_werte", t.templateKey, PROVIDER_TEMPLATE_KEYS),
     inListCheck("providers_region_werte", t.region, REGIONS),
     check("providers_name_laenge", sql`char_length(${t.name}) between 1 and 100`),
     check(

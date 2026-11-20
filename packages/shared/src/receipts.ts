@@ -12,7 +12,15 @@
 import { z } from "zod";
 import { ACTIONS, type ActionRequest, actionRequestSchema } from "./actions";
 import { errorCodeSchema } from "./errors";
-import { limitCheckSchema, outcomeSchema, ruleRefSchema, scalarSchema, stageSchema } from "./gate";
+import {
+  limitCheckSchema,
+  outcomeSchema,
+  preconditionCheckSchema,
+  ruleRefSchema,
+  ruleStandSchema,
+  scalarSchema,
+  stageSchema,
+} from "./gate";
 import {
   fingerprintSchema,
   hmacDigestSchema,
@@ -63,8 +71,13 @@ const factsRecordSchema = z.record(
 export const receiptDecisionSchema = z.strictObject({
   outcome: outcomeSchema,
   stage: stageSchema,
+  /** Angewandte Regeln mit Fassung und Prüfsumme des Inhalts. */
   rules: z.array(ruleRefSchema),
   limits: z.array(limitCheckSchema),
+  /** Vorbedingungen der Aktion; fehlt bei Belegen aus der Zeit vor den Vorbedingungen. */
+  preconditions: z.array(preconditionCheckSchema).optional(),
+  /** Stand des Regel-Protokolls, mit dem nachgerechnet wird (`rules.listActiveAsOf`). */
+  ruleStand: ruleStandSchema.optional(),
   reason: z.string().min(1).max(500),
 });
 export type ReceiptDecision = z.infer<typeof receiptDecisionSchema>;
@@ -106,6 +119,10 @@ export type KeyChangeSigner = z.infer<typeof keyChangeSignerSchema>;
  * `previousKeyId` den bisherigen. `signedBy` sagt, wer signiert hat: `previous` (Regelfall, dann
  * ist `keyId` des Belegs gleich `previousKeyId`) oder `new` (der bisherige private Schlüssel war
  * nicht mehr vorhanden, dann ist `keyId` gleich `newKeyId`).
+ *
+ * Nur ein Wechsel mit `previous` beglaubigt den neuen Schlüssel. Einen Wechsel mit `new` meldet
+ * der Prüfer als `schluesselwechsel_nicht_beglaubigt`; ab dort ist die Vertrauenskette gebrochen
+ * (`vertrauen_gebrochen`), nie `vertrauenswuerdig`.
  */
 export const keyChangeFactsSchema = z.strictObject({
   newKeyId: idSchema("key"),
@@ -192,11 +209,142 @@ export const publicKeyInfoSchema = z.strictObject({
 });
 export type PublicKeyInfo = z.infer<typeof publicKeyInfoSchema>;
 
-/** Erste Zeile eines Beleg-Exports im JSONL-Format. */
+/**
+ * Anker der Beleg-Kette: der Kopf der Kette zu einem Zeitpunkt und ihr Anfang. Der Besitzer bewahrt
+ * ihn außerhalb der Datenbank auf (als Text zum Kopieren oder als Datei). Mit ihm erkennt der
+ * Prüfer eine gekürzte Kette, eine umgeschriebene Kette und einen ausgetauschten Anfang.
+ *
+ * - `seq`, `hash`: Nummer und Prüfsumme des letzten Belegs.
+ * - `keyId`: Schlüssel, der diesen letzten Beleg signiert hat (der aktive).
+ * - `startKeyId`, `startPublicKey`: der erste Schlüssel aus dem Start-Beleg (`facts.publicKey`).
+ * - `time`: wann der Anker erstellt wurde.
+ */
+export const chainAnchorSchema = z.strictObject({
+  format: z.literal("pb-anker"),
+  v: z.literal(1),
+  installationId: idSchema("installation"),
+  seq: positiveIntSchema,
+  hash: sha256DigestSchema,
+  keyId: idSchema("key"),
+  startKeyId: idSchema("key"),
+  startPublicKey: publicKeySchema,
+  time: isoTimeSchema,
+});
+export type ChainAnchor = z.infer<typeof chainAnchorSchema>;
+
+const ANCHOR_KEYS = [
+  "format",
+  "v",
+  "installationId",
+  "seq",
+  "hash",
+  "keyId",
+  "startKeyId",
+  "startPublicKey",
+  "time",
+] as const satisfies readonly (keyof ChainAnchor)[];
+
+/** Anker als eine Zeile JSON in fester Reihenfolge, z. B. für die Datei `pb-anker.json`. */
+export function encodeAnchor(anchor: ChainAnchor): string {
+  const checked = chainAnchorSchema.parse(anchor);
+  return JSON.stringify(Object.fromEntries(ANCHOR_KEYS.map((key) => [key, checked[key]])));
+}
+
+/** Liest einen Anker aus Text (Leerraum davor und danach ist erlaubt); wirft bei ungültigem Text. */
+export function parseAnchor(text: string): ChainAnchor {
+  return chainAnchorSchema.parse(JSON.parse(text.trim()));
+}
+
+/**
+ * Was der Prüfer an einer Kette beanstanden kann, über die einzelnen Prüfungen hinaus:
+ * - `andere_installation`: Anker und Start-Beleg nennen verschiedene Installationen.
+ * - `kette_kuerzer_als_anker`: die Kette endet vor `anchor.seq` (am Ende gekürzt).
+ * - `kopf_abweichend`: der Beleg mit `anchor.seq` hat eine andere Prüfsumme (umgeschrieben).
+ * - `anderer_anfang_als_anker`: Start-Schlüssel (ID oder öffentlicher Schlüssel) passt nicht.
+ * - `schluessel_nicht_aus_kette`: ein Beleg ist mit einem Schlüssel signiert, der nicht aus der
+ *   Kette selbst folgt (Start-Beleg, dann beglaubigte Schlüsselwechsel).
+ * - `schluesselwechsel_nicht_beglaubigt`: ein Schlüsselwechsel ist nur vom neuen Schlüssel signiert.
+ */
+export const CHAIN_PROBLEMS = [
+  "andere_installation",
+  "kette_kuerzer_als_anker",
+  "kopf_abweichend",
+  "anderer_anfang_als_anker",
+  "schluessel_nicht_aus_kette",
+  "schluesselwechsel_nicht_beglaubigt",
+] as const;
+export const chainProblemSchema = z.enum(CHAIN_PROBLEMS);
+export type ChainProblem = z.infer<typeof chainProblemSchema>;
+
+/**
+ * Gesamturteil über eine Kette:
+ * - `vertrauenswuerdig`: alle Prüfungen ok, alle Schlüssel aus der Kette, Anker (falls gegeben) passt.
+ * - `vertrauen_gebrochen`: in sich gültig, aber ab einem Schlüsselwechsel ohne Beglaubigung lässt
+ *   sich nicht mehr sagen, dass die Belege vom ursprünglichen Schlüssel-Inhaber stammen.
+ * - `ungueltig`: eine Prüfung schlägt fehl oder der Anker passt nicht.
+ */
+export const CHAIN_TRUST_LEVELS = [
+  "vertrauenswuerdig",
+  "vertrauen_gebrochen",
+  "ungueltig",
+] as const;
+export const chainTrustLevelSchema = z.enum(CHAIN_TRUST_LEVELS);
+export type ChainTrustLevel = z.infer<typeof chainTrustLevelSchema>;
+
+/** Welche Stufe ein Problem mindestens bedeutet. */
+export const CHAIN_PROBLEM_LEVEL = {
+  andere_installation: "ungueltig",
+  kette_kuerzer_als_anker: "ungueltig",
+  kopf_abweichend: "ungueltig",
+  anderer_anfang_als_anker: "ungueltig",
+  schluessel_nicht_aus_kette: "ungueltig",
+  schluesselwechsel_nicht_beglaubigt: "vertrauen_gebrochen",
+} as const satisfies Record<ChainProblem, Exclude<ChainTrustLevel, "vertrauenswuerdig">>;
+
+/** Ein Problem an der Kette, mit der Stelle, an der es auftritt. */
+export const chainFindingSchema = z.strictObject({
+  problem: chainProblemSchema,
+  seq: positiveIntSchema.optional(),
+  keyId: idSchema("key").optional(),
+});
+export type ChainFinding = z.infer<typeof chainFindingSchema>;
+
+/**
+ * Urteil über die ganze Kette. `anchor`: ob ein Anker geprüft wurde. Ohne Anker ist ein Kürzen am
+ * Ende nicht erkennbar; die Oberfläche sagt das dazu.
+ */
+export const chainVerdictSchema = z.strictObject({
+  level: chainTrustLevelSchema,
+  findings: z.array(chainFindingSchema),
+  anchor: z.enum(["geprueft", "fehlt"]),
+});
+export type ChainVerdict = z.infer<typeof chainVerdictSchema>;
+
+/**
+ * Stufe aus den gefundenen Problemen und dem Ergebnis der Einzelprüfungen: `ungueltig` vor
+ * `vertrauen_gebrochen` vor `vertrauenswuerdig`.
+ */
+export function chainTrustLevel(
+  findings: readonly Pick<ChainFinding, "problem">[],
+  checksOk: boolean,
+): ChainTrustLevel {
+  if (!checksOk) return "ungueltig";
+  const levels = findings.map((finding) => CHAIN_PROBLEM_LEVEL[finding.problem]);
+  if (levels.includes("ungueltig")) return "ungueltig";
+  if (levels.includes("vertrauen_gebrochen")) return "vertrauen_gebrochen";
+  return "vertrauenswuerdig";
+}
+
+/**
+ * Erste Zeile eines Beleg-Exports im JSONL-Format. `publicKeys` dient nur der Anzeige
+ * (Kurzformen); der Prüfer vertraut Schlüsseln nur, wenn sie aus der Kette folgen. `anchor` ist
+ * der Kopf beim Export; der Besitzer kann ihn sich außerhalb notieren.
+ */
 export const receiptExportHeaderSchema = z.strictObject({
   format: z.literal("pb-belege"),
   v: z.literal(RECEIPT_VERSION),
   installationId: idSchema("installation"),
   publicKeys: z.array(publicKeyInfoSchema).min(1),
+  anchor: chainAnchorSchema.optional(),
 });
 export type ReceiptExportHeader = z.infer<typeof receiptExportHeaderSchema>;

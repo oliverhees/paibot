@@ -21,7 +21,8 @@
     "./texte": "./src/i18n/index.ts",
     "./konstanten": "./src/constants.ts",
     "./sprache": "./src/locale.ts",
-    "./stand": "./src/stand.ts"
+    "./stand": "./src/stand.ts",
+    "./bindung": "./src/bindung.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

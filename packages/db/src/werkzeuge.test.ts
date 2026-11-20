@@ -1,0 +1,350 @@
+/**
+ * PaiBot – Test: Tabelle der Werkzeug-Aufrufe (CHECKs, Fremdschlüssel, eindeutige Indizes) und
+ * die Zugriffsfunktionen mit allen Zustandswechseln.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+import { type ActionId, newId, type ReceiptId, toolCallSchema, ZERO_PREV } from "@paibot/shared";
+import { eq } from "drizzle-orm";
+import { beforeEach, describe, expect, it } from "vitest";
+import { toolCalls as calls, StatuswechselError } from "./repo";
+import { belege, bots, conversations, installationKeys, messages, runs, toolCalls } from "./schema";
+import {
+  belegRow,
+  botRow,
+  conversationRow,
+  hmacDigest,
+  keyRow,
+  messageRow,
+  runRow,
+  toolCallRow,
+} from "./testdaten";
+import { createTestDb, type TestDb } from "./testing";
+
+const CHECK = "23514";
+const UNIQUE = "23505";
+const FOREIGN_KEY = "23503";
+
+type Ids = Parameters<typeof toolCallRow>[0];
+
+let ctx: TestDb;
+let ids: Ids;
+let belegIds: ReceiptId[];
+
+async function fehler(
+  statement: PromiseLike<unknown>,
+): Promise<{ code?: string; constraint?: string }> {
+  try {
+    await statement;
+  } catch (error) {
+    return ((error as { cause?: unknown }).cause ?? error) as {
+      code?: string;
+      constraint?: string;
+    };
+  }
+  throw new Error("Die Anweisung hätte scheitern müssen.");
+}
+
+async function weistAb(row: object, code: string, constraint: string) {
+  const f = await fehler(ctx.db.insert(toolCalls).values(row as never));
+  expect({ code: f.code, constraint: f.constraint }).toEqual({ code, constraint });
+}
+
+beforeEach(async () => {
+  ctx = await createTestDb();
+  const bot = botRow();
+  await ctx.db.insert(bots).values(bot);
+  const conversation = conversationRow(bot.id);
+  await ctx.db.insert(conversations).values(conversation);
+  const frage = messageRow(conversation.id);
+  await ctx.db.insert(messages).values(frage);
+  const run = runRow({
+    conversationId: conversation.id,
+    triggerMessageId: frage.id,
+    botId: bot.id,
+  });
+  await ctx.db.insert(runs).values(run);
+  const antwort = messageRow(conversation.id, { role: "assistant", content: "", runId: run.id });
+  await ctx.db.insert(messages).values(antwort);
+  ids = { conversationId: conversation.id, runId: run.id, messageId: antwort.id };
+
+  const key = keyRow();
+  await ctx.db.insert(installationKeys).values(key);
+  belegIds = [];
+  let prevHash = ZERO_PREV;
+  for (let seq = 1; seq <= 4; seq++) {
+    const row = belegRow(key.id, {
+      seq,
+      prevHash,
+      type: "decision",
+      conversationId: conversation.id,
+    });
+    await ctx.db.insert(belege).values(row);
+    belegIds.push(row.id);
+    prevHash = row.hash;
+  }
+});
+
+describe("tool_calls (Schema)", () => {
+  it("nimmt einen angefragten Aufruf an", async () => {
+    await ctx.db.insert(toolCalls).values(toolCallRow(ids));
+  });
+
+  it.each([
+    ["Aktions-ID im falschen Format", { actionId: "akt_x" }, CHECK, "tool_calls_action_id_format"],
+    ["negative Stelle", { position: -1 }, CHECK, "tool_calls_position_nicht_negativ"],
+    ["leere Aufruf-Kennung", { callId: "" }, CHECK, "tool_calls_call_id_laenge"],
+    ["Werkzeug-Name mit Leerzeichen", { name: "rm -rf" }, CHECK, "tool_calls_name_format"],
+    ["unbekannte Quelle", { source: "netz" }, CHECK, "tool_calls_source_werte"],
+    ["Server ohne MCP", { server: "notizen" }, CHECK, "tool_calls_server_nur_bei_mcp"],
+    ["MCP ohne Server", { source: "mcp" }, CHECK, "tool_calls_server_nur_bei_mcp"],
+    ["unbekannte Art", { kind: "loeschen" }, CHECK, "tool_calls_kind_werte"],
+    [
+      "Argumente im Klartext statt Abdruck",
+      { argsDigest: "datum=heute" },
+      CHECK,
+      "tool_calls_args_digest_format",
+    ],
+    [
+      "unbekannter Zustand",
+      { status: "fertig", decisionReceiptId: newId("receipt") },
+      CHECK,
+      "tool_calls_status_werte",
+    ],
+    [
+      "Ausführung ohne Entscheidung",
+      { status: "running" },
+      CHECK,
+      "tool_calls_entscheidung_nach_dem_tor",
+    ],
+    [
+      "wartet ohne Entscheidung",
+      { status: "waiting_approval" },
+      CHECK,
+      "tool_calls_entscheidung_nach_dem_tor",
+    ],
+    [
+      "Ergebnis vor dem Ende",
+      { resultStatus: "ok" },
+      CHECK,
+      "tool_calls_ergebnis_nur_wenn_erledigt",
+    ],
+    [
+      "unbekannte Ergebnis-Art",
+      {
+        status: "succeeded",
+        decisionReceiptId: newId("receipt"),
+        finishedAt: new Date(),
+        resultStatus: "vielleicht",
+      },
+      CHECK,
+      "tool_calls_result_status_werte",
+    ],
+    [
+      "Fehlercode im falschen Format",
+      { errorCode: "Kaputt" },
+      CHECK,
+      "tool_calls_error_code_format",
+    ],
+    [
+      "Beleg-ID im falschen Format",
+      { decisionReceiptId: "blg_x" },
+      CHECK,
+      "tool_calls_decision_receipt_id_format",
+    ],
+  ])("weist ab: %s", async (_name, abweichung, code, constraint) => {
+    await weistAb(toolCallRow(ids, abweichung as never), code, constraint);
+  });
+
+  it("weist ein Ende ohne Ergebnis und ein Ergebnis ohne Ende ab", async () => {
+    const entschieden = { decisionReceiptId: belegIds[0] };
+    await weistAb(
+      toolCallRow(ids, { ...entschieden, status: "succeeded", finishedAt: new Date() }),
+      CHECK,
+      "tool_calls_ergebnis_nur_wenn_erledigt",
+    );
+    await weistAb(
+      toolCallRow(ids, { ...entschieden, status: "succeeded", resultStatus: "ok" }),
+      CHECK,
+      "tool_calls_ergebnis_nur_wenn_erledigt",
+    );
+  });
+
+  it("Fremdschlüssel: Lauf, Antwort, Unterhaltung und Belege müssen existieren", async () => {
+    await weistAb(
+      toolCallRow({ ...ids, runId: newId("run") }),
+      FOREIGN_KEY,
+      "tool_calls_run_id_runs_id_fk",
+    );
+    await weistAb(
+      toolCallRow({ ...ids, messageId: newId("message") }),
+      FOREIGN_KEY,
+      "tool_calls_message_id_messages_id_fk",
+    );
+    await weistAb(
+      toolCallRow({ ...ids, conversationId: newId("conversation") }),
+      FOREIGN_KEY,
+      "tool_calls_conversation_id_conversations_id_fk",
+    );
+    await weistAb(
+      toolCallRow(ids, { status: "waiting_approval", decisionReceiptId: newId("receipt") }),
+      FOREIGN_KEY,
+      "tool_calls_decision_receipt_id_belege_id_fk",
+    );
+  });
+
+  it("eindeutig: Stelle und Aufruf-Kennung je Antwort, Beleg je Aufruf", async () => {
+    const erster = toolCallRow(ids, { status: "waiting_approval", decisionReceiptId: belegIds[0] });
+    await ctx.db.insert(toolCalls).values(erster);
+    await weistAb(toolCallRow(ids, { callId: "anders" }), UNIQUE, "tool_calls_stelle_eindeutig");
+    await weistAb(
+      toolCallRow(ids, { position: 1, callId: erster.callId }),
+      UNIQUE,
+      "tool_calls_call_id_eindeutig",
+    );
+    await weistAb(
+      toolCallRow(ids, { position: 2, status: "waiting_approval", decisionReceiptId: belegIds[0] }),
+      UNIQUE,
+      "tool_calls_decision_receipt_id_eindeutig",
+    );
+    await weistAb(
+      toolCallRow(ids, { actionId: erster.actionId, position: 3 }),
+      UNIQUE,
+      "tool_calls_pkey",
+    );
+  });
+
+  it("verschwinden mit ihrer Unterhaltung, die Belege bleiben", async () => {
+    await ctx.db
+      .insert(toolCalls)
+      .values(toolCallRow(ids, { status: "waiting_approval", decisionReceiptId: belegIds[0] }));
+    await ctx.db.delete(conversations).where(eq(conversations.id, ids.conversationId));
+    expect(await ctx.db.select().from(toolCalls)).toEqual([]);
+    expect(await ctx.db.select().from(belege)).toHaveLength(4);
+  });
+});
+
+describe("toolCalls (Zugriff)", () => {
+  async function neu(position = 0): Promise<ActionId> {
+    const record = await calls.create(ctx.db, {
+      actionId: newId("action"),
+      ...ids,
+      position,
+      callId: `call_${position}`,
+      name: "kalender_lesen",
+      source: "eingebaut",
+      kind: "lesen",
+      input: { datum: "2026-11-20" },
+      argsDigest: hmacDigest() as never,
+    });
+    expect(record.status).toBe("requested");
+    expect(toolCallSchema.safeParse(record).success).toBe(true);
+    return record.actionId;
+  }
+
+  it("erlaubt: angefragt → läuft → fertig, mit Belegen und Ergebnis", async () => {
+    const id = await neu();
+    const laeuft = await calls.recordDecision(ctx.db, id, {
+      outcome: "allow",
+      decisionReceiptId: belegIds[0] as ReceiptId,
+    });
+    expect(laeuft).toMatchObject({ status: "running", decisionReceiptId: belegIds[0] });
+    const fertig = await calls.finish(ctx.db, id, {
+      status: "succeeded",
+      output: { termine: [] },
+      resultReceiptId: belegIds[1] as ReceiptId,
+    });
+    expect(fertig).toMatchObject({
+      status: "succeeded",
+      resultStatus: "ok",
+      output: { termine: [] },
+    });
+    expect(fertig.finishedAt).toBeDefined();
+    expect(toolCallSchema.safeParse(fertig).success).toBe(true);
+  });
+
+  it("fragen: wartet → Besitzer stimmt zu → läuft; die Wartenden lassen sich finden", async () => {
+    const id = await neu();
+    await calls.recordDecision(ctx.db, id, {
+      outcome: "ask",
+      decisionReceiptId: belegIds[0] as ReceiptId,
+    });
+    expect((await calls.listWaiting(ctx.db, ids.conversationId)).map((c) => c.actionId)).toEqual([
+      id,
+    ]);
+    expect((await calls.approve(ctx.db, id)).status).toBe("approved");
+    expect((await calls.markRunning(ctx.db, id)).status).toBe("running");
+    expect(await calls.listWaiting(ctx.db, ids.conversationId)).toEqual([]);
+  });
+
+  it("ablehnen durch das Tor oder den Besitzer gibt dem Modell ein Ergebnis denied", async () => {
+    const vomTor = await neu(0);
+    const abgelehnt = await calls.recordDecision(ctx.db, vomTor, {
+      outcome: "deny",
+      decisionReceiptId: belegIds[0] as ReceiptId,
+      resultReceiptId: belegIds[1] as ReceiptId,
+      output: "Abgelehnt.",
+    });
+    expect(abgelehnt).toMatchObject({
+      status: "denied",
+      resultStatus: "denied",
+      errorCode: "abgelehnt",
+    });
+
+    const vomBesitzer = await neu(1);
+    await calls.recordDecision(ctx.db, vomBesitzer, {
+      outcome: "ask",
+      decisionReceiptId: belegIds[2] as ReceiptId,
+    });
+    expect((await calls.rejectByOwner(ctx.db, vomBesitzer, { output: "Nein." })).status).toBe(
+      "denied",
+    );
+  });
+
+  it("weist unerlaubte Wechsel ab und meldet unbekannte Aufrufe", async () => {
+    const id = await neu();
+    await expect(calls.approve(ctx.db, id)).rejects.toBeInstanceOf(StatuswechselError);
+    await expect(
+      calls.finish(ctx.db, id, {
+        status: "succeeded",
+        output: null,
+        resultReceiptId: belegIds[1] as ReceiptId,
+      }),
+    ).rejects.toBeInstanceOf(StatuswechselError);
+    await expect(calls.approve(ctx.db, newId("action"))).rejects.toMatchObject({
+      code: "nicht_gefunden",
+    });
+  });
+
+  it("Abbruch beendet offene Aufrufe mit Fehler-Ergebnis", async () => {
+    const id = await neu();
+    const abgebrochen = await calls.cancel(ctx.db, id, { output: "Abgebrochen." });
+    expect(abgebrochen).toMatchObject({
+      status: "cancelled",
+      resultStatus: "error",
+      errorCode: "unterbrochen",
+    });
+    await expect(calls.cancel(ctx.db, id, { output: "" })).rejects.toBeInstanceOf(
+      StatuswechselError,
+    );
+  });
+
+  it("liest je Lauf und je Antwort in der Reihenfolge der Stellen", async () => {
+    const b = await neu(1);
+    const a = await neu(0);
+    expect((await calls.listForMessages(ctx.db, [ids.messageId])).map((c) => c.actionId)).toEqual([
+      a,
+      b,
+    ]);
+    expect((await calls.listForRun(ctx.db, ids.runId)).map((c) => c.actionId).sort()).toEqual(
+      [a, b].sort(),
+    );
+    expect(await calls.listForMessages(ctx.db, [])).toEqual([]);
+    expect((await calls.get(ctx.db, a))?.position).toBe(0);
+  });
+});

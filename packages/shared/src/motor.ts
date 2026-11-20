@@ -10,16 +10,14 @@
  */
 
 import type { ErrorCode } from "./errors";
+import type { Sha256Digest } from "./grundtypen";
 import type { ModelId, ProviderId } from "./id";
 import type { Route } from "./objects";
 
 declare const resolvedModelBrand: unique symbol;
 
-/**
- * Zugang zu einem Modell für genau einen Lauf. Nur die Anbieter-Schicht erzeugt ihn, und nur
- * gegen eine Berechtigung des Tors. Der Schlüssel liegt hier im Klartext und verlässt den Lauf nie.
- */
-export interface ResolvedModel {
+/** Was sich über einen Modell-Zugang sagen lässt, ohne Geheimnis; so erscheint er in Logs und JSON. */
+export interface ResolvedModelSummary {
   readonly providerId: ProviderId;
   readonly modelId: ModelId;
   /** Name des Modells beim Anbieter bzw. in der Datenschleuse. */
@@ -29,11 +27,32 @@ export interface ResolvedModel {
   readonly route: Route;
   /** OpenAI-kompatible Basis-URL, z. B. die des Anbieters oder der Datenschleuse. */
   readonly baseUrl: string;
+  /** Abdruck von Anbieter-ID und Basis-URL, wie er in den Fakten von `modell.anfragen` steht. */
+  readonly targetDigest?: Sha256Digest;
+}
+
+/**
+ * Zugang zu einem Modell für genau einen Lauf. Nur die Anbieter-Schicht erzeugt ihn, und nur
+ * gegen eine Berechtigung des Tors; er gilt nur, solange die Berechtigung gilt.
+ *
+ * Der Schlüssel ist in `fetch` eingeschlossen: `fetch` setzt die Kopfzeile `authorization` selbst
+ * und erreicht nur das erlaubte Ziel. Als JSON (`toJSON`) und in Logs erscheint nur die
+ * `ResolvedModelSummary`, nie der Schlüssel.
+ */
+export interface ResolvedModel extends ResolvedModelSummary {
+  /**
+   * Schlüssel im Klartext.
+   *
+   * @deprecated Nicht mehr lesen. `fetch` setzt die Anmeldung selbst; das Feld wird leer (`""`)
+   * und entfällt danach.
+   */
   readonly apiKey: string;
   /** Zusätzliche Kopfzeilen, z. B. die Sitzungs-ID der Unterhaltung für die Datenschleuse. */
   readonly headers: Readonly<Record<string, string>>;
-  /** `fetch`, das nur erlaubte Ziele erreicht. Der Motor nutzt nur diese Funktion. */
+  /** `fetch`, das nur erlaubte Ziele erreicht und die Anmeldung setzt. Der Motor nutzt nur diese Funktion. */
   readonly fetch: typeof fetch;
+  /** Ausgabe ohne Geheimnis; wird Pflicht, sobald die Anbieter-Schicht sie setzt. */
+  readonly toJSON?: () => ResolvedModelSummary;
   readonly [resolvedModelBrand]: true;
 }
 

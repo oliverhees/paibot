@@ -9,6 +9,8 @@
  */
 
 import { ACTION_TYPES } from "@paibot/shared/aktionen";
+import { RATE_LIMITS } from "@paibot/shared/konstanten";
+import { CREDENTIAL_SCOPE } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import {
   API_ROUTEN,
@@ -69,6 +71,47 @@ describe("API-Routen", () => {
   it("Einrichtung in einem Aufruf, Verbindungstest als eigener Aufruf", () => {
     expect(API_ROUTEN.einrichtungAbschliessen.methode).toBe("POST");
     expect(API_ROUTEN.einrichtungVerbindungstest.pfad).toBe("/api/einrichtung/verbindungstest");
+  });
+
+  it("der Verbindungstest der Einrichtung verlangt den Code und hat Limits je Adresse", () => {
+    const r = API_ROUTEN.einrichtungVerbindungstest;
+    const gueltig = { setupCode: "K7QD-9M2F-XW4H", apiKey: "sk-test" };
+    expect(r.eingabe.safeParse(gueltig).success).toBe(true);
+    expect(r.eingabe.safeParse({ apiKey: "sk-test" }).success).toBe(false);
+    expect(
+      r.eingabe.safeParse({ ...gueltig, providerId: "anb_06f8k2m9qz3w7x1c4b5n8p0r2t" }).success,
+    ).toBe(false);
+    expect(r.limits).toEqual(["verbindungstestIp", "einrichtungIp"]);
+    expect(r.nurVorEinrichtung).toBe(true);
+    expect(API_ROUTEN.einrichtungAbschliessen.nurVorEinrichtung).toBe(true);
+  });
+
+  it("jede Route ohne Sitzung, die etwas prüft oder verändert, hat ein Limit je Adresse", () => {
+    for (const [name, r] of routen) {
+      if (r.zugang !== "vorab" || r.methode === "GET") continue;
+      const limits: readonly string[] = "limits" in r ? r.limits : [];
+      expect(
+        limits.some((l) => l.endsWith("Ip")),
+        name,
+      ).toBe(true);
+      for (const l of limits) expect(Object.keys(RATE_LIMITS), name).toContain(l);
+    }
+  });
+
+  it("Anmelden: Gesamt-Limit verzögert nur, damit niemand den Besitzer aussperren kann", () => {
+    expect(API_ROUTEN.anmelden.limits).toEqual(["anmeldenIp", "anmeldenGesamt"]);
+    expect(RATE_LIMITS.anmeldenGesamt.effect).toBe("verzoegern");
+    expect(RATE_LIMITS.anmeldenIp.effect).toBe("sperren");
+  });
+
+  it("der gemeldete Nachweis passt zur Aktion der Route", () => {
+    for (const [name, r] of routen) {
+      if (!("aktion" in r)) continue;
+      const nachweis = "nachweis" in r ? r.nachweis : "sitzung";
+      if (r.zugang === "besitzer") expect(nachweis, name).toBe("sitzung");
+      const scope = CREDENTIAL_SCOPE[nachweis];
+      expect(scope === "*" || (scope as readonly string[]).includes(r.aktion), name).toBe(true);
+    }
   });
 
   it("setzt Parameter ein und kennt den Ordner unter src/app", () => {

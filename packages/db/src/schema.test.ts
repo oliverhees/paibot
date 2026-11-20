@@ -9,7 +9,6 @@
  */
 
 import {
-  ACTION_TYPES,
   ACTIVE_RUN_STATUSES,
   fingerprintSchema,
   ID_PREFIX,
@@ -17,6 +16,7 @@ import {
   newId,
   publicKeySchema,
   receiptBodySchema,
+  STORED_ACTION_TYPES,
   sha256DigestSchema,
   signatureSchema,
   ZERO_PREV,
@@ -619,7 +619,7 @@ describe("rules", () => {
       const werte = [...definition.matchAll(/'([a-z_.*]+)'/g)]
         .map((m) => m[1])
         .filter((wert) => wert !== "*");
-      expect(werte.sort()).toEqual([...ACTION_TYPES].sort());
+      expect(werte.sort()).toEqual([...STORED_ACTION_TYPES].sort());
     },
   );
 
@@ -709,12 +709,27 @@ function mit(eintrag: ReturnType<typeof belegRow>, abweichung: object = {}) {
   const zeile = { ...eintrag, ...abweichung } as ReturnType<typeof belegRow>;
   const koerper = (abweichung as { body?: unknown }).body;
   if (Array.isArray(koerper)) return { ...zeile, body: koerper as never };
+  const vorher = eintrag.body as { action?: { target?: object } };
+  const aktion =
+    vorher.action === undefined
+      ? {}
+      : {
+          action: {
+            ...vorher.action,
+            actionId: zeile.actionId,
+            type: zeile.action,
+            actor: zeile.actor,
+            target: { ...vorher.action.target, conversationId: zeile.conversationId },
+          },
+        };
   return {
     ...zeile,
     body: {
       ...eintrag.body,
+      ...aktion,
       type: zeile.entryType,
       id: zeile.id,
+      seq: zeile.seq,
       prev: zeile.prevHash,
       keyId: zeile.keyId,
       ...(koerper as object | undefined),
@@ -803,6 +818,46 @@ describe("belege", () => {
       FOREIGN_KEY,
       "belege_key_id_installation_keys_id_fk",
     ],
+    [
+      "Körper mit anderer ID",
+      { body: { id: newId("receipt") } },
+      CHECK,
+      "belege_body_passt_zur_zeile",
+    ],
+    [
+      "Körper mit anderem Vorgänger",
+      { body: { prev: `sha256:${"e".repeat(64)}` } },
+      CHECK,
+      "belege_body_passt_zur_zeile",
+    ],
+    [
+      "Körper mit anderem Schlüssel",
+      { body: { keyId: newId("key") } },
+      CHECK,
+      "belege_body_passt_zur_zeile",
+    ],
+    ["Körper mit anderer Nummer", { body: { seq: 99 } }, CHECK, "belege_spalten_aus_koerper"],
+    [
+      "Körper mit anderer Aktions-ID",
+      {
+        body: {
+          action: {
+            actionId: newId("action"),
+            type: "unterhaltung.loeschen",
+            actor: "besitzer",
+            target: {},
+          },
+        },
+      },
+      CHECK,
+      "belege_spalten_aus_koerper",
+    ],
+    [
+      "Entscheidung, deren Körper keine Aktion nennt",
+      { body: { action: undefined }, conversationId: newId("conversation") },
+      CHECK,
+      "belege_spalten_aus_koerper",
+    ],
   ])("weist ab: %s", async (_name, abweichung, code, constraint) => {
     const { eintrag } = await vierter();
     await weistAb(belege, mit(eintrag, abweichung), code, constraint);
@@ -890,6 +945,7 @@ describe("belege", () => {
         actionId: null,
         action: null,
         actor: null,
+        conversationId: null,
         keyId: signierer,
         body,
       });

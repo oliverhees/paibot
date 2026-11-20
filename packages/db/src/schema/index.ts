@@ -12,5 +12,6 @@ export * from "./anbieter";
 export * from "./settings";
 export * from "./tor";
 export * from "./unterhaltungen";
+export * from "./werkzeuge";
 export * from "./werte";
 export * from "./zugang";

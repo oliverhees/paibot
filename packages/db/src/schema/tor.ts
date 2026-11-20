@@ -33,15 +33,18 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { idCheck, inListCheck, matches, optionalIdCheck, PATTERNS, valueList } from "./helfer";
-import { ACTION_TYPES, RECEIPT_TYPES, RULE_EFFECTS, RULE_SOURCES, STAGES } from "./werte";
+import { RECEIPT_TYPES, RULE_EFFECTS, RULE_SOURCES, STAGES, STORED_ACTION_TYPES } from "./werte";
 
 /**
- * Regeln des Tors. Jede Änderung ist eine neue Zeile mit höherer `version`, damit alte Belege
- * nachrechenbar bleiben.
+ * Regeln des Tors, nur anhängen: Zeilen lassen sich weder ändern noch löschen (Trigger). Jede
+ * Änderung, auch Ein- und Ausschalten, ist eine neue Zeile mit höherer `version`; gültig ist je
+ * Regel die höchste Fassung. `seq` nummeriert alle Zeilen in der Reihenfolge des Einfügens; die
+ * höchste Nummer ist der Regelstand, mit dem das Tor entschieden hat.
  */
 export const rules = pgTable(
   "rules",
   {
+    seq: bigint("seq", { mode: "number" }).notNull().generatedAlwaysAsIdentity(),
     id: text("id").notNull(),
     version: integer("version").notNull(),
     action: text("action").notNull(),
@@ -59,7 +62,7 @@ export const rules = pgTable(
     primaryKey({ columns: [t.id, t.version] }),
     check("rules_id_format", matches(t.id, PATTERNS.ruleId)),
     check("rules_version_positiv", sql`${t.version} >= 1`),
-    check("rules_action_werte", sql`${t.action} in ('*', ${valueList(ACTION_TYPES)})`),
+    check("rules_action_werte", sql`${t.action} in ('*', ${valueList(STORED_ACTION_TYPES)})`),
     inListCheck("rules_effect_werte", t.effect, RULE_EFFECTS),
     inListCheck("rules_stage_werte", t.stage, STAGES),
     inListCheck("rules_source_werte", t.source, RULE_SOURCES),
@@ -68,6 +71,7 @@ export const rules = pgTable(
     check("rules_title_laenge", sql`char_length(${t.title}) between 1 and 200`),
     check("rules_reason_laenge", sql`char_length(${t.reason}) between 1 and 500`),
     index("rules_aktiv_priority_idx").on(t.enabled, t.priority),
+    unique("rules_seq_eindeutig").on(t.seq),
   ],
 );
 
@@ -127,7 +131,7 @@ export const belege = pgTable(
     optionalIdCheck("belege_action_id_format", t.actionId, "action"),
     check(
       "belege_action_werte",
-      sql`${t.action} is null or ${t.action} in (${valueList(ACTION_TYPES)})`,
+      sql`${t.action} is null or ${t.action} in (${valueList(STORED_ACTION_TYPES)})`,
     ),
     check("belege_actor_format", sql`${t.actor} is null or ${matches(t.actor, PATTERNS.actor)}`),
     optionalIdCheck("belege_conversation_id_format", t.conversationId, "conversation"),
@@ -147,6 +151,10 @@ export const belege = pgTable(
       "belege_body_passt_zur_zeile",
       sql`${t.body}->>'type' = ${t.entryType} and ${t.body}->>'id' = ${t.id} and ${t.body}->>'prev' = ${t.prevHash} and ${t.body}->>'keyId' = ${t.keyId}`,
     ),
+    check(
+      "belege_spalten_aus_koerper",
+      sql`${t.body}->'seq' = to_jsonb(${t.seq}) and ${t.actionId} is not distinct from ${t.body}->'action'->>'actionId' and ${t.action} is not distinct from ${t.body}->'action'->>'type' and ${t.actor} is not distinct from ${t.body}->'action'->>'actor' and ${t.conversationId} is not distinct from ${t.body}->'action'->'target'->>'conversationId'`,
+    ),
     unique("belege_id_eindeutig").on(t.id),
     unique("belege_hash_eindeutig").on(t.hash),
     uniqueIndex("belege_prev_hash_eindeutig").on(t.prevHash),
@@ -156,6 +164,8 @@ export const belege = pgTable(
   ],
 );
 
-export type Rule = typeof rules.$inferSelect;
+export type RuleRow = typeof rules.$inferSelect;
+/** @deprecated Heißt jetzt `RuleRow`; `Rule` ist der Typ der Verträge aus `@paibot/shared`. */
+export type Rule = RuleRow;
 export type InstallationKey = typeof installationKeys.$inferSelect;
 export type BelegRow = typeof belege.$inferSelect;

@@ -11,7 +11,13 @@
 
 import { z } from "zod";
 import { errorCodeSchema } from "./errors";
-import { countSchema, isoTimeSchema, positiveIntSchema, timezoneSchema } from "./grundtypen";
+import {
+  countSchema,
+  hmacDigestSchema,
+  isoTimeSchema,
+  positiveIntSchema,
+  timezoneSchema,
+} from "./grundtypen";
 import { idSchema } from "./id";
 import { SUPPORTED_LOCALES } from "./locale";
 
@@ -31,6 +37,15 @@ export const regionSchema = z.enum(REGIONS);
 export type Region = z.infer<typeof regionSchema>;
 
 export const PROVIDER_KINDS = ["openai_compatible"] as const;
+
+/**
+ * Vorlage, aus der ein Anbieter angelegt wurde: eine bekannte Vorlage (in der Basis `eurouter`)
+ * oder `eigener` für einen selbst eingetragenen OpenAI-kompatiblen Anbieter. Die Datenschleuse
+ * bildet daraus den Modellnamen.
+ */
+export const PROVIDER_TEMPLATE_KEYS = ["eurouter", "eigener"] as const;
+export const providerTemplateKeySchema = z.enum(PROVIDER_TEMPLATE_KEYS);
+export type ProviderTemplateKey = z.infer<typeof providerTemplateKeySchema>;
 export const providerKindSchema = z.enum(PROVIDER_KINDS);
 export type ProviderKind = z.infer<typeof providerKindSchema>;
 
@@ -172,6 +187,7 @@ export type Bot = z.infer<typeof botSchema>;
 export const providerSchema = z.strictObject({
   id: idSchema("provider"),
   kind: providerKindSchema,
+  templateKey: providerTemplateKeySchema,
   name: z.string().min(1).max(100),
   baseUrl: z.url(),
   keySet: z.boolean(),
@@ -229,3 +245,85 @@ export const sessionSchema = z.strictObject({
   current: z.boolean(),
 });
 export type Session = z.infer<typeof sessionSchema>;
+
+/** Name eines Werkzeugs, wie ihn auch das Modell sieht. */
+export const TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+export const toolNameSchema = z.string().regex(TOOL_NAME_PATTERN);
+
+/** Woher ein Werkzeug kommt: eingebaut in PaiBot oder von einem MCP-Server. */
+export const TOOL_SOURCES = ["eingebaut", "mcp"] as const;
+export const toolSourceSchema = z.enum(TOOL_SOURCES);
+export type ToolSource = z.infer<typeof toolSourceSchema>;
+
+/** Ob ein Werkzeug nur liest oder etwas verändert. */
+export const TOOL_KINDS = ["lesen", "schreiben"] as const;
+export const toolKindSchema = z.enum(TOOL_KINDS);
+export type ToolKind = z.infer<typeof toolKindSchema>;
+
+/** Kurzname eines MCP-Servers, wie er in den Fakten steht. */
+export const toolServerSchema = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
+
+/**
+ * Zustände eines Werkzeug-Aufrufs:
+ * `requested` (vom Modell gewünscht, noch nicht am Tor) → `waiting_approval` (Tor sagt „fragen“,
+ * der Lauf wartet) → `approved` (Besitzer hat zugestimmt) → `running` → `succeeded` | `failed`.
+ * `denied`: Tor oder Besitzer lehnen ab. `cancelled`: der Lauf wurde abgebrochen.
+ */
+export const TOOL_CALL_STATUSES = [
+  "requested",
+  "waiting_approval",
+  "approved",
+  "running",
+  "succeeded",
+  "failed",
+  "denied",
+  "cancelled",
+] as const;
+export const toolCallStatusSchema = z.enum(TOOL_CALL_STATUSES);
+export type ToolCallStatus = z.infer<typeof toolCallStatusSchema>;
+
+/** Zustände, in denen der Aufruf erledigt ist und ein Ergebnis für das Modell hat. */
+export const FINISHED_TOOL_CALL_STATUSES = [
+  "succeeded",
+  "failed",
+  "denied",
+  "cancelled",
+] as const satisfies readonly ToolCallStatus[];
+
+/** Ergebnis-Art für das Modell (wie `ToolResult.status` des Motors). */
+export const TOOL_RESULT_STATUSES = ["ok", "error", "denied"] as const;
+export const toolResultStatusSchema = z.enum(TOOL_RESULT_STATUSES);
+
+/** JSON-Wert ohne Gleitkommazahlen-Prüfung (Argumente und Ergebnisse von Werkzeugen). */
+const jsonValueSchema: z.ZodType<unknown> = z.json();
+
+/**
+ * Ein Werkzeug-Aufruf im Verlauf: der Wunsch des Modells (Teil der Antwort `messageId`, an Stelle
+ * `position`) und sein Ergebnis. Die Kennung ist die `actionId` der Aktion `werkzeug.aufrufen`,
+ * über sie hängt der Aufruf an seinen Belegen.
+ */
+export const toolCallSchema = z.strictObject({
+  actionId: idSchema("action"),
+  conversationId: idSchema("conversation"),
+  runId: idSchema("run"),
+  messageId: idSchema("message"),
+  position: countSchema,
+  /** Kennung des Aufrufs beim Modell, für die Zuordnung des Ergebnisses. */
+  callId: z.string().min(1).max(200),
+  name: toolNameSchema,
+  source: toolSourceSchema,
+  server: toolServerSchema.optional(),
+  kind: toolKindSchema,
+  input: jsonValueSchema,
+  argsDigest: hmacDigestSchema,
+  status: toolCallStatusSchema,
+  decisionReceiptId: idSchema("receipt").optional(),
+  resultReceiptId: idSchema("receipt").optional(),
+  resultStatus: toolResultStatusSchema.optional(),
+  output: jsonValueSchema.optional(),
+  errorCode: errorCodeSchema.optional(),
+  createdAt: isoTimeSchema,
+  updatedAt: isoTimeSchema,
+  finishedAt: isoTimeSchema.optional(),
+});
+export type ToolCallRecord = z.infer<typeof toolCallSchema>;

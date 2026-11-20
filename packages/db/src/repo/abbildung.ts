@@ -33,7 +33,7 @@ import type {
   Message as MessageRow,
   Model as ModelRow,
   Provider as ProviderRow,
-  Rule as RuleRow,
+  RuleRow,
   Run as RunRow,
   Session as SessionRow,
   Settings as SettingsRow,
@@ -120,6 +120,7 @@ export function toProvider(row: ProviderRow): Provider {
   return {
     id: row.id,
     kind: row.kind,
+    templateKey: row.templateKey,
     name: row.name,
     baseUrl: row.baseUrl,
     keySet: row.apiKeyEnc !== null,
@@ -190,6 +191,7 @@ export function toRule(row: RuleRow): Rule {
     title: row.title,
     reason: row.reason,
     createdAt: toIsoTime(row.createdAt),
+    seq: row.seq,
   };
 }
 

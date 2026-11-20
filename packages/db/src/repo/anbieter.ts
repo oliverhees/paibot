@@ -14,6 +14,7 @@ import {
   type Provider,
   type ProviderId,
   type ProviderKind,
+  type ProviderTemplateKey,
   type Region,
 } from "@paibot/shared";
 import { asc, eq, sql } from "drizzle-orm";
@@ -25,9 +26,14 @@ import { feldFehler, SQLSTATE, standardFehler, uebersetzen } from "./fehler";
 export interface ProviderCreate {
   id?: ProviderId;
   kind?: ProviderKind;
+  /** Vorlage; ohne Angabe `eigener`. */
+  templateKey?: ProviderTemplateKey;
   name: string;
   baseUrl: string;
-  /** Bereits verschlüsselter Schlüssel (`v1:iv:tag:ct`). */
+  /**
+   * Bereits verschlüsselter Schlüssel: `v2:iv:tag:ct`, gebunden an ID und Host der Basis-URL
+   * (`providerSecretBinding`); `v1` nur noch aus alten Daten.
+   */
   apiKeyEnc?: string;
   region: Region;
   country?: string;
@@ -36,6 +42,7 @@ export interface ProviderCreate {
 
 /** `apiKeyEnc` und `country`: `null` entfernt den Wert. */
 export interface ProviderPatch {
+  templateKey?: ProviderTemplateKey;
   name?: string;
   baseUrl?: string;
   apiKeyEnc?: string | null;
@@ -57,6 +64,7 @@ export async function create(db: Database, input: ProviderCreate): Promise<Provi
         .values({
           id: input.id ?? newId("provider"),
           kind: input.kind ?? "openai_compatible",
+          templateKey: input.templateKey ?? "eigener",
           name: input.name,
           baseUrl: input.baseUrl,
           apiKeyEnc: input.apiKeyEnc ?? null,

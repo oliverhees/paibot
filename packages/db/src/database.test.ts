@@ -9,6 +9,7 @@
  */
 
 import { PGlite } from "@electric-sql/pglite";
+import { STANDARD_RULE_IDS } from "@paibot/shared";
 import { drizzle, type PgliteDatabase } from "drizzle-orm/pglite";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { describe, expect, expectTypeOf, it } from "vitest";
@@ -41,6 +42,6 @@ describe("gemeinsamer Datenbank-Typ", () => {
 
     const { db } = await createTestDb();
     const regeln = await nutzt(db).select({ id: schema.rules.id }).from(schema.rules);
-    expect(regeln.map((r) => r.id).sort()).toEqual(["R-001", "R-002", "R-999"]);
+    expect(regeln.map((r) => r.id).sort()).toEqual([...STANDARD_RULE_IDS].sort());
   });
 });
