@@ -15,6 +15,9 @@ import * as gate from "./index";
 describe("Schnittstelle", () => {
   it("reicht die Verträge unverändert weiter", () => {
     expect(gate.STANDARD_RULES).toBe(shared.STANDARD_RULES);
+    expect(gate.ACTIVE_STANDARD_RULES).toBe(shared.ACTIVE_STANDARD_RULES);
+    expect(gate.STANDARD_RULE_VERSIONS).toBe(shared.STANDARD_RULE_VERSIONS);
+    expect(gate.PRECONDITIONS).toBe(shared.PRECONDITIONS);
     expect(gate.LIMITS_BY_ID).toBe(shared.LIMITS_BY_ID);
     expect(gate.OUTCOMES).toBe(shared.OUTCOMES);
     expect(gate.STAGES).toBe(shared.STAGES);
@@ -33,6 +36,11 @@ describe("Schnittstelle", () => {
       "checkLimits",
       "createGate",
       "isGatePermit",
+      "checkPreconditions",
+      "denialCode",
+      "hashRule",
+      "ruleSnapshot",
+      "verifyRuleSnapshot",
     ]) {
       expect(typeof api[name]).toBe("function");
     }
@@ -59,12 +67,14 @@ describe("Schnittstelle", () => {
         reason: "Dafür gibt es noch keine Regel.",
       },
       { decision: ref, result: { ...ref, seq: 3 } },
+      { actionId: shared.newId("action"), type: "werkzeug.aufrufen" },
     );
     expect(denied).toBeInstanceOf(shared.PaiBotError);
     expect(denied.code).toBe("regel_fehlt");
     expect(denied.status).toBe(403);
     expect(denied.text).toBe("Dafür gibt es noch keine Regel.");
     expect(gate.isGateDenied(denied)).toBe(true);
+    expect(denied.waitsForApproval).toBe(true);
   });
 
   it("createGate liefert ein Tor mit run", () => {
@@ -79,8 +89,10 @@ describe("Schnittstelle", () => {
     expect(typeof tor.run).toBe("function");
   });
 
-  it("kennt alle Aktionen der Verträge, auch die neuen Besitzer-Aktionen", () => {
-    expect(gate.ACTION_TYPES).toHaveLength(18);
+  it("kennt alle Aktionen der Verträge, auch Besitzer-Aktionen und Werkzeug-Aufrufe", () => {
+    expect(gate.ACTION_TYPES).toEqual(shared.ACTION_TYPES);
+    expect(gate.ACTION_TYPES).toHaveLength(19);
+    expect(gate.ACTION_TYPES).toContain("werkzeug.aufrufen");
     expect(gate.ACTION_TYPES).toContain("zugang.passwort_aendern");
     expect(gate.ACTION_TYPES).toContain("unterhaltung.umbenennen");
   });

@@ -10,6 +10,7 @@
 
 import {
   ACTION_TYPES,
+  ACTIONS,
   type ActionRequest,
   type ActionType,
   botActor,
@@ -54,15 +55,19 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   },
   "lauf.abbrechen": { conversationId: ids.conversationId, runId: ids.runId },
   "belege.exportieren": { installationId: ids.installationId },
+  "werkzeug.aufrufen": { conversationId: ids.conversationId, runId: ids.runId, botId: ids.botId },
 };
 
-/** Fakten, bei denen jede Aktion mit den Standard-Regeln erlaubt ist. */
+/**
+ * Fakten, bei denen jede Vorbedingung und jede Grenze eingehalten ist. Mit den Standard-Regeln
+ * ist damit jede Aktion erlaubt, außer `werkzeug.aufrufen` (R-005 fragt nach).
+ */
 const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
-  "einrichtung.abschliessen": { credential: "einrichtungs_code" },
+  "einrichtung.abschliessen": { credential: "einrichtungs_code", setupOpen: true },
   "zugang.anmelden": { credential: "passwort", remember: true },
   "zugang.abmelden": { credential: "sitzung" },
   "zugang.alle_abmelden": { credential: "sitzung", sessions: 3 },
-  "zugang.passwort_aendern": { credential: "sitzung" },
+  "zugang.passwort_aendern": { credential: "sitzung", currentPasswordVerified: true },
   "anbieter.speichern": { credential: "sitzung", created: true, region: "eu", keySet: true },
   "anbieter.loeschen": { credential: "sitzung" },
   "modell.waehlen": { credential: "sitzung" },
@@ -101,13 +106,29 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     tokensToday: 5000,
     dailyTokenBudget: 100000,
     killSwitch: false,
+    targetOrigin: "https://api.eurouter.ai",
+    targetDigest: `sha256:${"5e".repeat(32)}`,
   },
   "lauf.abbrechen": { credential: "sitzung", runActive: true },
   "belege.exportieren": { credential: "sitzung", entries: 42 },
+  "werkzeug.aufrufen": {
+    botOfConversation: true,
+    runRunning: true,
+    toolName: "notiz_lesen",
+    toolSource: "eingebaut",
+    toolKind: "lesen",
+    argsDigest: `hmac-sha256:${"a7".repeat(32)}`,
+    killSwitch: false,
+  },
 };
 
+/** Aktionen, die ein Bot auslöst (aus den Verträgen). */
+export const BOT_ACTIONS = ACTION_TYPES.filter((type) => ACTIONS[type].actor === "bot");
+/** Aktionen des Besitzers (aus den Verträgen). */
+export const OWNER_ACTIONS = ACTION_TYPES.filter((type) => ACTIONS[type].actor === "besitzer");
+
 export function sampleAction<T extends ActionType>(type: T, actionId?: ActionId): ActionRequest<T> {
-  const actor = type === "modell.anfragen" ? botActor(BOT_ID) : "besitzer";
+  const actor = ACTIONS[type].actor === "bot" ? botActor(BOT_ID) : "besitzer";
   return {
     actionId: actionId ?? newId("action"),
     type,

@@ -193,13 +193,6 @@ export const ACTIONS = {
     { installationId },
     { ...ownerFacts, entries: countSchema },
   ),
-} as const;
-
-/**
- * Aktionen für Werkzeug-Aufrufe des Bots. Die Datenbank, die Standard-Regeln und der Speicher für
- * Aufrufe kennen sie schon; das Tor wertet sie aus, sobald sie in `ACTIONS` stehen.
- */
-export const TOOL_ACTIONS = {
   "werkzeug.aufrufen": action(
     "bot",
     { conversationId, runId, botId },
@@ -219,24 +212,34 @@ export const TOOL_ACTIONS = {
     },
   ),
 } as const;
-export type ToolActionType = keyof typeof TOOL_ACTIONS;
-export const TOOL_ACTION_TYPES = Object.keys(TOOL_ACTIONS) as [ToolActionType, ...ToolActionType[]];
-export const toolActionTypeSchema = z.enum(TOOL_ACTION_TYPES);
 
 type Actions = typeof ACTIONS;
 export type ActionType = keyof Actions;
 export const ACTION_TYPES = Object.keys(ACTIONS) as [ActionType, ...ActionType[]];
 export const actionTypeSchema = z.enum(ACTION_TYPES);
 
+/** Aktionen für Werkzeug-Aufrufe des Bots (Teil von `ACTIONS`). */
+export const TOOL_ACTION_TYPES = ["werkzeug.aufrufen"] as const satisfies readonly ActionType[];
+export type ToolActionType = (typeof TOOL_ACTION_TYPES)[number];
+export const toolActionTypeSchema = z.enum(TOOL_ACTION_TYPES);
+
 /**
- * Alle Aktionen, die die Datenbank in `rules.action` und `belege.action` zulässt: `ACTIONS` und
- * `TOOL_ACTIONS`.
+ * Die Aktionen für Werkzeug-Aufrufe mit Akteur, Ziel und Fakten.
+ *
+ * @deprecated Steht jetzt in `ACTIONS`; `ACTIONS["werkzeug.aufrufen"]` benutzen.
  */
-export const STORED_ACTION_TYPES = [...ACTION_TYPES, ...TOOL_ACTION_TYPES] as [
-  ActionType | ToolActionType,
-  ...(ActionType | ToolActionType)[],
-];
-export type StoredActionType = ActionType | ToolActionType;
+export const TOOL_ACTIONS = {
+  "werkzeug.aufrufen": ACTIONS["werkzeug.aufrufen"],
+} as const;
+
+/**
+ * Alle Aktionen, die die Datenbank in `rules.action` und `belege.action` zulässt.
+ *
+ * @deprecated Gleich `ACTION_TYPES`, seit die Werkzeug-Aufrufe in `ACTIONS` stehen.
+ */
+export const STORED_ACTION_TYPES = ACTION_TYPES;
+/** @deprecated Gleich `ActionType`. */
+export type StoredActionType = ActionType;
 
 /** Akteur-Art, die eine Aktion auslösen darf. */
 export type ActorKindOf<T extends ActionType> = Actions[T]["actor"];

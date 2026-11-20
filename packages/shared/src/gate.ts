@@ -18,8 +18,6 @@ import {
   CREDENTIALS,
   type Credential,
   type Facts,
-  type StoredActionType,
-  toolActionTypeSchema,
 } from "./actions";
 import type { ErrorCode } from "./errors";
 import {
@@ -144,7 +142,7 @@ export const ruleDefinitionSchema = z.strictObject({
   id: ruleIdSchema,
   version: positiveIntSchema,
   /** Aktion oder `*` für alle Aktionen. */
-  action: z.union([actionTypeSchema, toolActionTypeSchema, z.literal("*")]),
+  action: z.union([actionTypeSchema, z.literal("*")]),
   effect: ruleEffectSchema,
   stage: stageSchema,
   conditions: z.array(ruleConditionSchema).max(20),
@@ -428,7 +426,7 @@ export const PRECONDITIONS = {
   string,
   {
     name: string;
-    actions: readonly StoredActionType[];
+    actions: readonly ActionType[];
     when?: readonly RuleCondition[];
     require: readonly RuleCondition[];
     errorCode: ErrorCode;
@@ -444,7 +442,7 @@ export const PRECONDITION_NAMES = PRECONDITION_IDS.map((id) => PRECONDITIONS[id]
 export const preconditionNameSchema = z.enum(PRECONDITION_NAMES);
 
 /** IDs der Vorbedingungen einer Aktion, nach ID geordnet. */
-export function preconditionsFor(action: StoredActionType): PreconditionId[] {
+export function preconditionsFor(action: ActionType): PreconditionId[] {
   return PRECONDITION_IDS.filter((id) =>
     (PRECONDITIONS[id].actions as readonly string[]).includes(action),
   );

@@ -47,10 +47,10 @@ describe("API-Routen", () => {
     expect(API_ROUTEN.unterhaltungUmbenennen.aktion).toBe("unterhaltung.umbenennen");
   });
 
-  it("jede Aktion außer der Anfrage ans Modell hat eine Route", () => {
+  it("jede Aktion außer der Anfrage ans Modell und dem Werkzeug-Aufruf hat eine Route", () => {
     const genutzt = new Set(routen.map(([, r]) => ("aktion" in r ? r.aktion : undefined)));
     for (const aktion of ACTION_TYPES) {
-      if (aktion === "modell.anfragen") continue;
+      if (aktion === "modell.anfragen" || aktion === "werkzeug.aufrufen") continue;
       expect(genutzt.has(aktion), aktion).toBe(true);
     }
   });

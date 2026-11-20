@@ -10,8 +10,9 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { deriveKey, encryptSecret, loadMasterSecret } from "@paibot/crypto";
+import { deriveKey, encryptSecret, hashToken, loadMasterSecret } from "@paibot/crypto";
 import {
+  ACTIVE_STANDARD_RULES,
   type Clock,
   createGate,
   type DecisionRecord,
@@ -20,10 +21,11 @@ import {
   type ReceiptWriter,
   type ResultRecord,
   type RuleDefinition,
-  STANDARD_RULES,
+  ruleSnapshot,
 } from "@paibot/gate";
 import { resolveModel } from "@paibot/llm/modell";
 import { type ActionRequest, botActor, type Facts } from "@paibot/shared/aktionen";
+import { targetDigestInput, targetOrigin } from "@paibot/shared/bindung";
 import { newId } from "@paibot/shared/ids";
 import type { ResolvedModel } from "@paibot/shared/motor";
 
@@ -63,7 +65,7 @@ export function gateWith(
   receipts: ReceiptWriter,
   clock: Clock = steppingClock(),
 ): Gate {
-  return createGate({ rules: { listActive: async () => rules }, receipts, clock });
+  return createGate({ rules: { load: () => ruleSnapshot(rules) }, receipts, clock });
 }
 
 export interface ModelAccessOptions {
@@ -90,7 +92,7 @@ export interface ModelAccess {
 
 export function modelAccess(options: ModelAccessOptions): ModelAccess {
   const receipts = options.receipts ?? memoryReceipts();
-  const gate = gateWith(STANDARD_RULES, receipts);
+  const gate = gateWith(ACTIVE_STANDARD_RULES, receipts);
   const master = loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") });
   const secretsKey = deriveKey(master, "secrets-v1");
   const botId = newId("bot");
@@ -122,6 +124,8 @@ export function modelAccess(options: ModelAccessOptions): ModelAccess {
     botMaxOutputTokens: 2048,
     tokensToday: 0,
     killSwitch: false,
+    targetOrigin: targetOrigin(options.baseUrl),
+    targetDigest: `sha256:${hashToken(targetDigestInput(providerId, options.baseUrl))}`,
   };
 
   return {

@@ -8,7 +8,7 @@
  * @since     2026-11-20
  */
 
-import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
+import { ACTIONS, type ActionRequest, type Facts } from "@paibot/shared/aktionen";
 import { LIMIT_NAMES, limitCheckSchema } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import { ACTION_TYPES, sampleAction, sampleFacts } from "../testdaten";
@@ -134,6 +134,31 @@ describe("G-05 not_aus", () => {
     const { killSwitch: _, ...facts } = sampleFacts("modell.anfragen");
     expect(limitNotAus(ask, facts as unknown as Facts).result).toBe("verletzt");
   });
+
+  it("betrifft genau die Aktionen, deren Fakten den Schalter kennen", () => {
+    for (const type of ACTION_TYPES) {
+      const knows = Object.hasOwn(ACTIONS[type].facts.shape, "killSwitch");
+      const action = sampleAction(type) as ActionRequest;
+      const { killSwitch: _, ...without } = sampleFacts(type) as Record<string, unknown>;
+      expect(limitNotAus(action, without as Facts).result, type).toBe(
+        knows ? "verletzt" : "entfaellt",
+      );
+    }
+  });
+
+  it("werkzeug.aufrufen: Not-Aus an → verletzt, aus → ok; die übrigen Grenzen entfallen", () => {
+    const tool = sampleAction("werkzeug.aufrufen") as ActionRequest;
+    const on = { ...sampleFacts("werkzeug.aufrufen"), killSwitch: true } as Facts;
+    expect(limitNotAus(tool, on)).toEqual({ name: "not_aus", result: "verletzt", value: true });
+    const checks = checkLimits(tool, sampleFacts("werkzeug.aufrufen") as Facts);
+    expect(checks.map((c) => c.result)).toEqual([
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "ok",
+    ]);
+  });
 });
 
 describe("fehlende oder falsche Fakten lassen nichts durch", () => {
@@ -169,13 +194,14 @@ describe("checkLimits", () => {
     }
   });
 
-  it.each(ACTION_TYPES.filter((t) => t !== "modell.anfragen" && t !== "nachricht.senden"))(
-    "%s: keine Grenze betrifft die Verwaltungsaktion",
-    (type) => {
-      const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
-      expect(checks.every((c) => c.result === "entfaellt")).toBe(true);
-    },
-  );
+  it.each(
+    ACTION_TYPES.filter(
+      (t) => t !== "modell.anfragen" && t !== "nachricht.senden" && t !== "werkzeug.aufrufen",
+    ),
+  )("%s: keine Grenze betrifft die Verwaltungsaktion", (type) => {
+    const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
+    expect(checks.every((c) => c.result === "entfaellt")).toBe(true);
+  });
 
   it("jede Grenze liefert ihren eigenen Namen", () => {
     for (const [name, fn] of Object.entries(LIMIT_FUNCTIONS)) {
