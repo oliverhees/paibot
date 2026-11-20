@@ -26,6 +26,7 @@ WORKDIR /app
 RUN addgroup -S paibot && adduser -S paibot -G paibot
 COPY --from=build --chown=paibot:paibot /app/apps/web/.next/standalone ./
 COPY --from=build --chown=paibot:paibot /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=paibot:paibot /app/apps/web/public ./apps/web/public
 COPY --from=build --chown=paibot:paibot /app/packages/db/drizzle ./packages/db/drizzle
 USER paibot
 # Läuft als Nicht-Root und verträgt ein schreibgeschütztes Dateisystem (read_only im Compose);
