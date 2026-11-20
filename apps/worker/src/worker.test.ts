@@ -15,7 +15,6 @@ import type { Database } from "@paibot/db";
 import type { MigrationState, RoleCheck } from "@paibot/db/migrate";
 import type { Queue, RunJob, RunJobHandler } from "@paibot/jobs";
 import { newId, type RunId } from "@paibot/shared/ids";
-import { NotImplementedError } from "@paibot/stub";
 import { describe, expect, it } from "vitest";
 import type { WorkerLog } from "./protokoll";
 import { readStand, STAND_ENV } from "./stand";
@@ -159,19 +158,21 @@ function fakeDeps(options: FakeOptions = {}) {
       calls.push("createQueue");
       return queue;
     },
-    executeRun:
-      options.executeRun ??
-      (async () => {
-        throw new NotImplementedError("agents.executeRun");
-      }),
-    failStaleRuns: async () => {
-      calls.push("failStaleRuns");
+    executeRun: options.executeRun ?? (async (runId) => ({ runId, status: "succeeded" })),
+    failStaleRuns: async (staleDeps) => {
+      calls.push(`failStaleRuns${staleDeps.receipts === undefined ? "" : " mit Belegen"}`);
       if (options.stale) return options.stale();
-      throw new NotImplementedError("agents.failStaleRuns");
+      return [];
     },
     buildRunDeps: () => {
       calls.push("buildRunDeps");
-      return { base, prepare: async () => base };
+      return {
+        base,
+        prepare: async () => {
+          calls.push("prepare");
+          return base;
+        },
+      };
     },
     timing: {
       databaseWaitMs: 60,
@@ -269,6 +270,7 @@ describe("Start", () => {
       "buildRunDeps",
       "createQueue",
       "queue.start",
+      "prepare",
       "failStaleRuns",
       "queue.startRunWorker",
     ]);
@@ -377,10 +379,23 @@ describe("Start", () => {
     expect(calls).not.toContain("createQueue");
   });
 
-  it("meldet ein fehlendes Aufräumen als „noch nicht verfügbar“ und läuft weiter", async () => {
-    const { deps, lines } = fakeDeps();
+  it("räumt erst nach dem Laden der Schlüssel auf und schreibt dabei Belege", async () => {
+    const { deps, lines, calls } = fakeDeps({ stale: async () => [] });
+    const original = deps.buildRunDeps;
+    deps.buildRunDeps = (db, env) => {
+      const source = original(db, env);
+      const base = { ...source.base, receipts: {} as never };
+      return {
+        base,
+        prepare: async () => {
+          await source.prepare();
+          return base;
+        },
+      };
+    };
     const worker = await runWorker(CONFIG, ENV, deps);
-    expect(lines).toContain("warn Aufräumen veralteter Läufe noch nicht verfügbar.");
+    expect(calls.indexOf("prepare")).toBeLessThan(calls.indexOf("failStaleRuns mit Belegen"));
+    expect(lines).toContain("info Veraltete Läufe aufgeräumt: 0.");
     await worker.stop();
   });
 

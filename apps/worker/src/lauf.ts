@@ -15,7 +15,6 @@ import type { RunJob, RunJobHandler } from "@paibot/jobs";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import type { RunId } from "@paibot/shared/ids";
 import { errorText } from "@paibot/shared/texte";
-import { isNotImplemented } from "@paibot/stub";
 import { describeError, type WorkerLog } from "./protokoll";
 
 const ACTIVE = new Set(["queued", "running", "waiting_approval"]);
@@ -135,11 +134,7 @@ export function createRunHandler(deps: RunHandlerDeps): RunHandler {
         `Lauf ${job.runId} beendet: ${outcome.status}${code}, ${now() - startedAt} ms.`,
       );
     } catch (error) {
-      if (isNotImplemented(error)) {
-        deps.log.warn(`Lauf-Steuerung noch nicht verfügbar (${error.feature}).`);
-      } else {
-        deps.log.error(`Lauf ${job.runId} gescheitert: ${describeError(error, deps.secrets)}`);
-      }
+      deps.log.error(`Lauf ${job.runId} gescheitert: ${describeError(error, deps.secrets)}`);
       await failSafely(job, "intern");
     } finally {
       release(job.runId);

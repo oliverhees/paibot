@@ -24,7 +24,6 @@ import {
   type RoleCheck,
 } from "@paibot/db/migrate";
 import { type Queue, RUN_QUEUE } from "@paibot/jobs";
-import { isNotImplemented } from "@paibot/stub";
 import { type Heartbeat, startHeartbeat } from "./herzschlag";
 import { createRunHandler } from "./lauf";
 import { consoleLog, describeError, secretsOf, type WorkerLog } from "./protokoll";
@@ -263,16 +262,16 @@ export async function runWorker(
     await queue.start();
     log.info("Warteschlange gestartet.");
 
-    try {
-      const stale = await deps.failStaleRuns(
-        { db: database.db, clock: runDeps.base.clock },
-        { staleAfterMs: RUN_TUNING.staleAfterMs },
-      );
-      log.info(`Veraltete Läufe aufgeräumt: ${stale.length}.`);
-    } catch (error) {
-      if (!isNotImplemented(error)) throw error;
-      log.warn("Aufräumen veralteter Läufe noch nicht verfügbar.");
-    }
+    const prepared = await runDeps.prepare();
+    const stale = await deps.failStaleRuns(
+      {
+        db: database.db,
+        clock: prepared.clock,
+        ...(prepared.receipts === undefined ? {} : { receipts: prepared.receipts }),
+      },
+      { staleAfterMs: RUN_TUNING.staleAfterMs },
+    );
+    log.info(`Veraltete Läufe aufgeräumt: ${stale.length}.`);
 
     const runs = createRunHandler({
       db: database.db,

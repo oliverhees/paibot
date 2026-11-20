@@ -9,7 +9,7 @@
  * @since     2026-11-20
  */
 
-import { executeRun, type RunDeps } from "@paibot/agents";
+import type { executeRun, RunDeps } from "@paibot/agents";
 import { type Database, repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import type { RunJob } from "@paibot/jobs";
@@ -56,13 +56,17 @@ async function queuedRun(): Promise<RunJob> {
 }
 
 const fakeRunDeps = async () => ({}) as RunDeps;
+/** Eine Lauf-Steuerung, die wirft (wie bei einem Fehler der Datenbank). */
+const broken: typeof executeRun = async () => {
+  throw new Error("connection terminated");
+};
 const signal = () => new AbortController().signal;
 
 describe("Auftrag bearbeiten", () => {
-  it("Lauf-Steuerung noch nicht umgesetzt: Lauf fehlgeschlagen mit Ereignis, nichts geworfen", async () => {
+  it("Lauf-Steuerung wirft: Lauf fehlgeschlagen mit Ereignis, nichts geworfen", async () => {
     const runs = createRunHandler({
       db,
-      executeRun,
+      executeRun: broken,
       prepareRunDeps: fakeRunDeps,
       log,
       secrets: [],
@@ -82,7 +86,7 @@ describe("Auftrag bearbeiten", () => {
     });
     expect(lines).toEqual([
       `info Lauf ${job.runId} angenommen.`,
-      "warn Lauf-Steuerung noch nicht verfügbar (agents.executeRun).",
+      `error Lauf ${job.runId} gescheitert: Error: connection terminated`,
       `info Lauf ${job.runId} als fehlgeschlagen markiert (intern).`,
     ]);
     expect(runs.active()).toEqual([]);
@@ -91,7 +95,7 @@ describe("Auftrag bearbeiten", () => {
   it("die Bearbeitung läuft nach einem Fehler weiter (nächster Auftrag, gleiche und andere Unterhaltung)", async () => {
     const runs = createRunHandler({
       db,
-      executeRun,
+      executeRun: broken,
       prepareRunDeps: fakeRunDeps,
       log,
       secrets: [],
@@ -149,7 +153,7 @@ describe("Auftrag bearbeiten", () => {
   it("schon beendete, unbekannte oder fremde Läufe bleiben unverändert", async () => {
     const runs = createRunHandler({
       db,
-      executeRun,
+      executeRun: broken,
       prepareRunDeps: fakeRunDeps,
       log,
       secrets: [],

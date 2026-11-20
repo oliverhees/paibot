@@ -1,5 +1,6 @@
 /**
- * PaiBot – Hilfen für Tests: Test-Motor und gemeinsamer Vertrags-Test-Satz für Motoren.
+ * PaiBot – Hilfen für Tests: Test-Motor, gemeinsamer Vertrags-Test-Satz für Motoren und eine
+ * eingerichtete Installation für Tests der Lauf-Steuerung.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -10,3 +11,4 @@
 
 export * from "./testing/contract-tests";
 export * from "./testing/fake-motor";
+export * from "./testing/lauf-umgebung";
