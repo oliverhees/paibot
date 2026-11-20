@@ -180,3 +180,38 @@ In der Entwicklung (`pnpm dev`) bleiben zu viele Rechte und kurze Passwörter be
 | `"db":"down"`, HTTP 503                               | App läuft, Datenbank nicht erreichbar                             | Logs von `postgres` und `web` prüfen, Passwort vergleichen                                   |
 | `"db":"not_configured"`                               | `DATABASE_URL` fehlt (z. B. bei `pnpm dev`)                       | `apps/web/.env.local` aus `apps/web/.env.example` anlegen                                    |
 | keine Antwort                                         | Port, Domain oder Proxy falsch                                    | `WEB_PORT`, DNS und Domain-Eintrag beim Dienst `web` prüfen                                  |
+
+## Als Web-App installieren
+
+PaiBot lässt sich wie eine App auf Rechner und Handy ablegen: mit eigenem Fenster und Symbol, ohne Adressleiste. Es ist weiterhin dieselbe Seite von deinem Server.
+
+**Wichtig:** Die Web-App läuft **nur mit Verbindung zu deinem Server**. Es gibt keinen Offline-Modus und keine Benachrichtigungen. Ist der Server nicht erreichbar, siehst du eine Fehlerseite des Browsers.
+
+**Voraussetzung:** PaiBot ist über **https** erreichbar (z. B. mit Coolify und eigener Domain) oder du öffnest es auf demselben Rechner über `http://localhost`. Über eine einfache `http`-Adresse im Netzwerk bieten Browser das Installieren nicht an.
+
+### Am Rechner (Chrome, Edge)
+
+1. PaiBot im Browser öffnen und anmelden.
+2. In der Adressleiste auf das Symbol „Installieren“ klicken. Alternativ im Browser-Menü „PaiBot installieren“ (Chrome: „Speichern und teilen“, dann „Als App installieren“).
+3. Mit „Installieren“ bestätigen. PaiBot öffnet in einem eigenen Fenster und steht in der Programmliste.
+
+### Auf Android (Chrome)
+
+1. PaiBot in Chrome öffnen.
+2. Menü (drei Punkte) öffnen und „App installieren“ (oder „Zum Startbildschirm hinzufügen“) wählen.
+3. Bestätigen. Das PaiBot-Symbol liegt jetzt auf dem Startbildschirm.
+
+### Auf dem iPhone und iPad (Safari)
+
+1. PaiBot in **Safari** öffnen (andere Browser bieten es nicht an).
+2. Auf „Teilen“ tippen, dann „Zum Home-Bildschirm“.
+3. Namen prüfen („PaiBot“) und „Hinzufügen“ tippen.
+
+### Wenn „Installieren“ fehlt
+
+| Beobachtung                                | Ursache                                               | Was tun                                             |
+| ------------------------------------------ | ----------------------------------------------------- | --------------------------------------------------- |
+| Kein Installieren-Symbol                   | Adresse ist `http` im Netzwerk statt https            | PaiBot über https erreichbar machen                 |
+| Kein Installieren-Symbol am Rechner        | Browser ohne Unterstützung (z. B. Firefox am Rechner) | Chrome oder Edge nutzen                             |
+| Auf dem iPhone fehlt „Zum Home-Bildschirm“ | Nicht Safari                                          | Die Adresse in Safari öffnen                        |
+| Falsches oder kein Symbol                  | Der Browser hat ein altes Symbol gemerkt              | App entfernen, Seite neu laden, erneut installieren |
