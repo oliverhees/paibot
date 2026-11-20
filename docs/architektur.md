@@ -168,6 +168,28 @@ Gut zu wissen:
 - **Absturz des Workers:** Ein Auftrag, der gerade lief, wird nicht neu gestartet. Er bleibt bis zum Ablauf der zehn Minuten belegt, erst danach (mit etwas Verzögerung) kommt die Unterhaltung wieder dran. Den Zustand des Laufs selbst räumt der Worker beim Start auf.
 - **Schema:** pg-boss legt `pgboss` beim ersten `start` selbst an. Die Datenbank-Migrationen von PaiBot fassen es nicht an.
 
+## Motor
+
+Der Motor erzeugt eine Runde Gespräch: Er schickt Anweisung und Verlauf an das gewählte Modell und liefert die Antwort Stück für Stück zurück. Er steckt in `packages/agents` (Datei `motor-aisdk.ts`, Bibliothek: Vercel AI SDK `ai` mit `@ai-sdk/openai-compatible`, beide fest auf eine Version gepinnt). Außerhalb dieser Datei kennt niemand die Bibliothek; eine Lint-Regel sorgt dafür.
+
+| Frage                                          | Antwort                                                                                                                                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Was macht eine Runde?                          | Genau einen Modell-Schritt. Danach ist die Runde zu Ende, auch wenn das Modell ein Werkzeug benutzen möchte                                                                       |
+| Was liefert der Motor?                         | Ereignisse: `text-delta` (ein Stück Text), `tool-call` (Wunsch nach einem Werkzeug), `finish` (Abschlussgrund und Token-Zahlen) oder `error` (fester Fehlercode)                  |
+| Führt der Motor Werkzeuge aus?                 | Nie. Er bekommt nur Beschreibungen ohne Ausführung. Ein Wunsch geht an die Lauf-Steuerung, die jeden Aufruf einzeln durch das Tor schickt                                         |
+| Woher kommt das Modell?                        | Nur aus der Anbieter-Schicht (`resolveModel`), und nur mit einer Berechtigung des Tors. Ein Modell als Text-Kennung gibt es nicht (Lint-Regel)                                    |
+| Wohin darf der Motor verbinden?                | Nur über das `fetch` aus dem Modell-Zugang. Dessen Ausgangs-Liste kennt genau ein Ziel; alles andere wird abgelehnt, bevor eine Verbindung entsteht                               |
+| Was passiert beim Stoppen?                     | Der Strom endet sofort, die Verbindung zum Anbieter wird geschlossen, und es kommt kein weiteres Ereignis, auch kein Fehler                                                       |
+| Was bei Fehlern des Anbieters?                 | Ein Ereignis `error` mit Code aus der Anbieter-Schicht: z. B. `schluessel_ungueltig` (401, 403), `limit_erreicht` (402, 429), `anbieter_nicht_erreichbar` (5xx, Netz, Zeitgrenze) |
+| Wiederholt der Motor fehlgeschlagene Anfragen? | Nein. Ob es einen neuen Versuch gibt, entscheidet die Lauf-Steuerung                                                                                                              |
+| Was speichert der Motor?                       | Nichts. Verlauf, Werkzeug-Aufrufe und Ergebnisse liegen in der Datenbank von PaiBot                                                                                               |
+
+Gut zu wissen:
+
+- **Zeitgrenzen:** Jede Runde hat eine Gesamt-Zeitgrenze (`limits.timeoutMs`). Mit `idleTimeoutMs` endet sie zusätzlich, wenn der Anbieter zu lange nichts schickt.
+- **Telemetrie:** Der Motor registriert keine Telemetrie; die Bibliothek sendet dann nichts.
+- **Für Mitwirkende:** `@paibot/agents/testing` enthält einen Test-Motor (`createFakeMotor`) und den gemeinsamen Vertrags-Test-Satz (`motorContractTests`), den jeder Motor bestehen muss. Die Tests des Motors laufen gegen den Test-Anbieter, ohne Internet.
+
 ## Zusammenspiel der Pakete
 
 `apps/web` nutzt `@paibot/db` und `@paibot/shared`. Das Monorepo wird mit pnpm und Turborepo gebaut; das Docker-Image baut nur die Web-App und kopiert die Migrationen dazu.

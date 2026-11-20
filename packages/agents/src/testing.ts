@@ -8,5 +8,5 @@
  * @since     2026-11-20
  */
 
-export * from "./contract-tests";
-export * from "./fake-motor";
+export * from "./testing/contract-tests";
+export * from "./testing/fake-motor";

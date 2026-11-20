@@ -40,10 +40,10 @@ describe("Schnittstelle", () => {
     expect(root.motorContractTests).toBeUndefined();
   });
 
-  it("noch nicht umgesetzt", () => {
+  it("Lauf-Steuerung noch nicht umgesetzt", () => {
     let caught: unknown;
     try {
-      agents.createAiSdkMotor();
+      agents.failStaleRuns({} as never);
     } catch (error) {
       caught = error;
     }
