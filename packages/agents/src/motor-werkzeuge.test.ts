@@ -490,6 +490,9 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
           .end(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }));
       });
     });
+    // Wie beim Test-Anbieter: keine Zeitgrenze für ruhende Verbindungen, sonst kann eine Anfrage
+    // nach einer langen Pause (belegte Ereignisschleife) auf einer schon geschlossenen landen.
+    server.keepAliveTimeout = 0;
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     serverUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/mcp`;
   });
