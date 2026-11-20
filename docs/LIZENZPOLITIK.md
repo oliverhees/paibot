@@ -24,3 +24,7 @@ PaiBot steht unter der PaiBot Fair-Code-Lizenz, Version 1.1. Damit das so bleibe
 `pnpm licenses:check` prüft die Produktions-Abhängigkeiten in der CI. Ausnahmen werden in `scripts/check-licenses.mjs` mit Begründung eingetragen.
 
 Dienste, die nur per Netzwerk angesprochen werden (Postgres, Inngest, Datenschleuse, Browser-Dienst), werden vor dem Einbau einzeln geprüft und in `THIRD_PARTY_NOTICES.md` ergänzt.
+
+## Schriften
+
+Die Schriften Inter und Montserrat liegen als Dateien unter `apps/web/public/fonts/`, damit die App überall gleich aussieht und nichts von fremden Servern lädt. Beide stehen unter der SIL Open Font License 1.1 (Texte: `OFL-Inter.txt`, `OFL-Montserrat.txt` im selben Ordner; Herkunft und Versionen: `LIESMICH.md`). Die Lizenz erlaubt Nutzung und Weitergabe, solange der Lizenztext mitgeliefert wird; die Schriftdateien werden unverändert verwendet.
