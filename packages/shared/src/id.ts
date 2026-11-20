@@ -49,13 +49,25 @@ export type RuleRecordId = Id<"rule">;
 export const ID_LENGTH = 30;
 
 const ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
-const BODY = "[0-7][0-9a-hjkmnp-tv-z]{25}";
+
+/**
+ * Die 26 Zeichen nach dem Unterstrich als Muster (ohne Anker). Gilt gleich für Code und
+ * Datenbank; die Datenbank baut ihre CHECK-Bedingungen daraus.
+ */
+export const ID_BODY_PATTERN = "[0-7][0-9a-hjkmnp-tv-z]{25}";
+
+/** Muster einer ID dieser Art mit Anfang und Ende, z. B. `^unt_[0-7]…{25}$`. */
+export function idPatternSource(kind: IdKind): string {
+  return `^${ID_PREFIX[kind]}_${ID_BODY_PATTERN}$`;
+}
 
 /** Muster für jede gültige ID, gleich welcher Art. */
-export const ID_PATTERN = new RegExp(`^(${Object.values(ID_PREFIX).join("|")})_${BODY}$`);
+export const ID_PATTERN = new RegExp(
+  `^(${Object.values(ID_PREFIX).join("|")})_${ID_BODY_PATTERN}$`,
+);
 
 const KIND_PATTERN = Object.fromEntries(
-  ID_KINDS.map((kind) => [kind, new RegExp(`^${ID_PREFIX[kind]}_${BODY}$`)]),
+  ID_KINDS.map((kind) => [kind, new RegExp(idPatternSource(kind))]),
 ) as Record<IdKind, RegExp>;
 
 /** Kodiert eine Zahl bis 2^48 als `length` Zeichen Crockford-Base32, höchstwertiges Zeichen zuerst. */

@@ -14,7 +14,13 @@ import { actionTypeSchema } from "./actions";
 import { LIMITS } from "./constants";
 import { timezoneSchema } from "./grundtypen";
 import { idSchema } from "./id";
-import { avatarShapeSchema, botColorSchema, regionSchema, schleuseModeSchema } from "./objects";
+import {
+  avatarShapeSchema,
+  botColorSchema,
+  providerTemplateKeySchema,
+  regionSchema,
+  schleuseModeSchema,
+} from "./objects";
 
 /** Einrichtungs-Code: 12 Zeichen Crockford-Base32 in Großbuchstaben, drei Vierergruppen. */
 export const SETUP_CODE_PATTERN =
@@ -115,6 +121,8 @@ export type SchleuseInput = z.infer<typeof schleuseInput>;
  */
 export const providerInput = z
   .strictObject({
+    /** Vorlage; ohne Angabe ein eigener Anbieter. */
+    templateKey: providerTemplateKeySchema.default("eigener"),
     name: z.string().trim().min(1).max(LIMITS.providerNameChars),
     baseUrl: z.url({ protocol: /^https?$/ }).max(LIMITS.baseUrlChars),
     apiKey: apiKeySchema.optional(),
@@ -130,7 +138,21 @@ export const providerInput = z
   });
 export type ProviderInput = z.infer<typeof providerInput>;
 
-/** Verbindungstest mit einem neuen Schlüssel oder dem gespeicherten eines Anbieters. */
+/**
+ * Verbindungstest während der Einrichtung (`POST /api/einrichtung/verbindungstest`): nur mit dem
+ * Einrichtungs-Code und einem neu eingegebenen Schlüssel, nie mit einem gespeicherten Anbieter.
+ * Der Code wird wie beim Abschließen geprüft und zählt auf dasselbe Limit je Adresse.
+ */
+export const setupConnectionTestInput = z.strictObject({
+  setupCode: setupCodeSchema,
+  apiKey: apiKeySchema,
+});
+export type SetupConnectionTestInput = z.infer<typeof setupConnectionTestInput>;
+
+/**
+ * Verbindungstest nach der Anmeldung (`POST /api/anbieter/verbindungstest`) mit einem neuen
+ * Schlüssel oder dem gespeicherten eines Anbieters.
+ */
 export const connectionTestInput = z
   .strictObject({
     providerId: idSchema("provider").optional(),

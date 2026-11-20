@@ -1,0 +1,178 @@
+/**
+ * PaiBot – Tests: Fassungen der Standard-Regeln, Nachweis je Aktion und Vorbedingungen des Tors.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+import { describe, expect, it } from "vitest";
+import { ACTIONS, CREDENTIALS, STORED_ACTION_TYPES, TOOL_ACTIONS } from "./actions";
+import { ERROR_CODES } from "./errors";
+import {
+  ACTIVE_STANDARD_RULES,
+  CREDENTIAL_SCOPE,
+  decisionSchema,
+  PRECONDITION_IDS,
+  PRECONDITIONS,
+  preconditionCheckSchema,
+  preconditionsFor,
+  ruleContent,
+  ruleRefSchema,
+  STANDARD_RULE_VERSIONS,
+  STANDARD_RULES,
+} from "./gate";
+import { t } from "./i18n";
+import { receiptDecisionSchema } from "./receipts";
+
+const HASH = `sha256:${"ab".repeat(32)}`;
+
+function factNames(action: string): string[] {
+  const all = { ...ACTIONS, ...TOOL_ACTIONS } as Record<string, { facts: { shape: object } }>;
+  return Object.keys(all[action]?.facts.shape ?? {});
+}
+
+describe("Fassungen der Standard-Regeln", () => {
+  it("jede Kennung mit Fassung gibt es genau einmal, Fassungen zählen ab 1 lückenlos", () => {
+    const keys = STANDARD_RULE_VERSIONS.map((rule) => `${rule.id}@${rule.version}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    const byId = new Map<string, number[]>();
+    for (const rule of STANDARD_RULE_VERSIONS) {
+      byId.set(rule.id, [...(byId.get(rule.id) ?? []), rule.version]);
+    }
+    for (const versions of byId.values()) {
+      expect(versions).toEqual(versions.map((_, index) => index + 1));
+    }
+  });
+
+  it("die aktiven Regeln sind je Kennung die höchste Fassung", () => {
+    const latest = new Map<string, number>();
+    for (const rule of STANDARD_RULE_VERSIONS) {
+      latest.set(rule.id, Math.max(latest.get(rule.id) ?? 0, rule.version));
+    }
+    expect(ACTIVE_STANDARD_RULES).toHaveLength(latest.size);
+    for (const rule of ACTIVE_STANDARD_RULES) expect(rule.version).toBe(latest.get(rule.id));
+    for (const rule of ACTIVE_STANDARD_RULES) expect(STANDARD_RULE_VERSIONS).toContain(rule);
+  });
+
+  it("die erste Fassung bleibt unverändert erhalten", () => {
+    expect(STANDARD_RULES.map((rule) => [rule.id, rule.version])).toEqual([
+      ["R-001", 1],
+      ["R-002", 1],
+      ["R-999", 1],
+    ]);
+    for (const rule of STANDARD_RULES) expect(STANDARD_RULE_VERSIONS).toContain(rule);
+  });
+
+  it("der Einrichtungs-Code gilt nur für die Einrichtung, das Passwort nur fürs Anmelden", () => {
+    // Erste passende Regel wie im Tor: Vorrang, dann ID; Bedingungen hier nur akteur/credential.
+    const decide = (action: string, credential: string) => {
+      const facts: Record<string, string> = { akteur: "besitzer", credential };
+      const holds = (c: { fact: string; op: string; value: unknown }) => {
+        const left = facts[c.fact];
+        if (left === undefined) return false;
+        if (c.op === "eq") return left === c.value;
+        if (c.op === "ne") return left !== c.value;
+        if (c.op === "in") return (c.value as unknown[]).includes(left);
+        return false;
+      };
+      const winner = [...ACTIVE_STANDARD_RULES]
+        .filter((rule) => rule.action === "*" || rule.action === action)
+        .filter((rule) => rule.conditions.every(holds))
+        .sort((a, b) => a.priority - b.priority || (a.id < b.id ? -1 : 1))[0];
+      return winner?.effect;
+    };
+    for (const action of STORED_ACTION_TYPES) {
+      if (TOOL_ACTIONS[action as keyof typeof TOOL_ACTIONS] || action === "modell.anfragen")
+        continue;
+      for (const credential of CREDENTIALS) {
+        const scope = CREDENTIAL_SCOPE[credential];
+        const allowed = scope === "*" || (scope as readonly string[]).includes(action);
+        expect(decide(action, credential), `${action} ${credential}`).toBe(
+          allowed ? "allow" : "deny",
+        );
+      }
+    }
+  });
+
+  it("Werkzeug-Aufrufe fragen nach, ohne Regel bleibt es bei der Auffang-Regel", () => {
+    const tool = ACTIVE_STANDARD_RULES.find((rule) => rule.action === "werkzeug.aufrufen");
+    expect(tool).toMatchObject({ id: "R-005", effect: "ask", stage: "ask" });
+    expect(ACTIVE_STANDARD_RULES.at(-1)?.id).toBe("R-999");
+  });
+
+  it("die Auffang-Regel begründet mit demselben Satz wie der Fehlertext", () => {
+    const fallback = ACTIVE_STANDARD_RULES.find((rule) => rule.id === "R-999");
+    expect(fallback?.reason).toBe(t("fehler.regel_fehlt"));
+  });
+
+  it("ruleContent nimmt nur den Inhalt, ohne Zeit, Nummer und Prüfsumme", () => {
+    const stored = { ...ACTIVE_STANDARD_RULES[0], createdAt: "x", seq: 4, hash: HASH };
+    expect(ruleContent(stored)).toEqual(ACTIVE_STANDARD_RULES[0]);
+    expect(Object.keys(ruleContent(stored))).not.toContain("createdAt");
+  });
+
+  it("Verweise auf Regeln tragen optional die Prüfsumme des Inhalts", () => {
+    expect(ruleRefSchema.parse({ id: "R-001", version: 2, hash: HASH })).toBeTruthy();
+    expect(ruleRefSchema.safeParse({ id: "R-001", version: 2 }).success).toBe(true);
+    expect(ruleRefSchema.safeParse({ id: "R-001", version: 2, hash: "ab" }).success).toBe(false);
+  });
+});
+
+describe("Vorbedingungen", () => {
+  it("haben fortlaufende IDs, eindeutige Namen und gültige Fehlercodes", () => {
+    expect(PRECONDITION_IDS).toEqual(PRECONDITION_IDS.map((_, i) => `V-0${i + 1}`));
+    const names = PRECONDITION_IDS.map((id) => PRECONDITIONS[id].name);
+    expect(new Set(names).size).toBe(names.length);
+    for (const id of PRECONDITION_IDS) {
+      expect(ERROR_CODES).toContain(PRECONDITIONS[id].errorCode);
+    }
+  });
+
+  it("beziehen sich nur auf bekannte Aktionen und auf Fakten dieser Aktionen", () => {
+    for (const id of PRECONDITION_IDS) {
+      const pre = PRECONDITIONS[id];
+      for (const action of pre.actions) {
+        expect(STORED_ACTION_TYPES).toContain(action);
+        const conditions = [...("when" in pre ? pre.when : []), ...pre.require];
+        for (const condition of conditions) {
+          expect(factNames(action), `${id} ${action}`).toContain(condition.fact);
+        }
+      }
+    }
+  });
+
+  it("nennen je Aktion die passenden Vorbedingungen in fester Reihenfolge", () => {
+    expect(preconditionsFor("nachricht.senden")).toEqual(["V-01", "V-02"]);
+    expect(preconditionsFor("lauf.abbrechen")).toEqual(["V-03"]);
+    expect(preconditionsFor("schleuse.umschalten")).toEqual(["V-04"]);
+    expect(preconditionsFor("werkzeug.aufrufen")).toEqual(["V-05"]);
+    expect(preconditionsFor("zugang.passwort_aendern")).toEqual(["V-06"]);
+    expect(preconditionsFor("einrichtung.abschliessen")).toEqual(["V-07"]);
+    expect(preconditionsFor("modell.anfragen")).toEqual([]);
+  });
+
+  it("stehen in Entscheidung und Beleg, zusammen mit dem Regelstand", () => {
+    const decision = {
+      outcome: "deny",
+      stage: "execute",
+      matchedRules: [{ id: "R-001", version: 2, hash: HASH }],
+      limits: [],
+      preconditions: [
+        { name: "unterhaltung_vorhanden", result: "ok" },
+        { name: "kein_lauf_aktiv", result: "verletzt" },
+      ],
+      ruleStand: 7,
+      reason: "Abgelehnt.",
+    };
+    expect(decisionSchema.parse(decision)).toEqual(decision);
+    const { matchedRules, ...rest } = decision;
+    expect(receiptDecisionSchema.parse({ ...rest, rules: matchedRules })).toBeTruthy();
+    expect(preconditionCheckSchema.safeParse({ name: "frei_erfunden", result: "ok" }).success).toBe(
+      false,
+    );
+    expect(decisionSchema.safeParse({ ...decision, ruleStand: 0 }).success).toBe(false);
+  });
+});

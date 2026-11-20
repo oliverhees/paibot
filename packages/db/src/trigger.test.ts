@@ -59,9 +59,12 @@ describe("Belege sind unveränderlich", () => {
     expect(f.message).toContain("Belege sind unveränderlich");
   });
 
-  it("weist TRUNCATE ab", async () => {
-    const f = await fehler(ctx.client.query("truncate belege"));
-    expect(f.code).toBe(RESTRICT);
+  it("weist TRUNCATE ab, auch mit CASCADE", async () => {
+    // Ohne CASCADE scheitert es schon am Fremdschlüssel der Werkzeug-Aufrufe, mit CASCADE am Trigger.
+    const ohne = await fehler(ctx.client.query("truncate belege"));
+    expect(["0A000", RESTRICT]).toContain(ohne.code);
+    const mit = await fehler(ctx.client.query("truncate belege cascade"));
+    expect(mit.code).toBe(RESTRICT);
   });
 
   it("lässt die Zeilen unverändert zurück", async () => {
@@ -86,10 +89,11 @@ describe("Belege sind unveränderlich", () => {
       )
     ).rows;
     const conversationId = newId("conversation");
-    const vier = {
-      ...belegRow(letzter?.key_id as never, { seq: 4, prevHash: letzter?.hash as string }),
+    const vier = belegRow(letzter?.key_id as never, {
+      seq: 4,
+      prevHash: letzter?.hash as string,
       conversationId,
-    };
+    });
     await ctx.db.insert(belege).values(vier);
 
     const bot = botRow();

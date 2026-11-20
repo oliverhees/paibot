@@ -130,6 +130,7 @@ describe("Fachobjekte", () => {
         {
           id: newId("provider"),
           kind: "openai_compatible",
+          templateKey: "eurouter",
           name: "EUrouter",
           baseUrl: "https://api.eurouter.ai/v1",
           keySet: true,
@@ -301,7 +302,9 @@ describe("Eingaben", () => {
 
   it("Anbieter: https, http nur lokal, Schlüssel optional", () => {
     const base = { name: "EUrouter", baseUrl: "https://api.eurouter.ai/v1", region: "eu" };
-    expect(providerInput.parse(base)).toEqual({ ...base, enabled: true });
+    expect(providerInput.parse(base)).toEqual({ ...base, templateKey: "eigener", enabled: true });
+    expect(providerInput.parse({ ...base, templateKey: "eurouter" }).templateKey).toBe("eurouter");
+    expect(providerInput.safeParse({ ...base, templateKey: "openai" }).success).toBe(false);
     expect(providerInput.safeParse({ ...base, baseUrl: "http://api.eurouter.ai/v1" }).success).toBe(
       false,
     );

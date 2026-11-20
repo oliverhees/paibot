@@ -36,6 +36,13 @@
       "when": 1795202484105,
       "tag": "0004_weitere_aktionen",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795208455597,
+      "tag": "0005_haertung",
+      "breakpoints": true
     }
   ]
 }

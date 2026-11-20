@@ -14,9 +14,11 @@ import {
   type BotId,
   type ConversationId,
   type KeyId,
+  type MessageId,
   newId,
   type ReceiptBody,
   type ReceiptId,
+  type RunId,
   ZERO_PREV,
 } from "@paibot/shared";
 import type {
@@ -28,6 +30,7 @@ import type {
   models,
   providers,
   runs,
+  toolCalls,
 } from "./schema";
 
 let counter = 0;
@@ -41,6 +44,9 @@ export const publicKey = () => b64(32);
 export const signature = () => b64(64);
 export const fingerprint = () => `${hex(2)}-${hex(2)}-${hex(2)}-${hex(2)}`;
 export const encrypted = () => `v1:${b64(12)}:${b64(16)}:${b64(48)}`;
+/** Verschlüsselter Wert im Format `v2` (nur die Form; entschlüsselt wird in den Tests nicht). */
+export const encryptedV2 = () => `v2:${b64(12)}:${b64(16)}:${b64(48)}`;
+export const hmacDigest = () => `hmac-sha256:${hex(32)}`;
 
 export function providerRow(overrides: Partial<typeof providers.$inferInsert> = {}) {
   return {
@@ -130,11 +136,17 @@ export function keyRow(overrides: Partial<typeof installationKeys.$inferInsert> 
 /** Beleg „start“ (Kettenanfang) bzw. „Entscheidung“ mit passendem Körper. */
 export function belegRow(
   keyId: KeyId,
-  options: { seq: number; prevHash: string; type?: "start" | "decision" } = {
+  options: {
+    seq: number;
+    prevHash: string;
+    type?: "start" | "decision";
+    conversationId?: ConversationId;
+  } = {
     seq: 1,
     prevHash: ZERO_PREV,
   },
 ) {
+  const conversationId = options.conversationId ?? newId("conversation");
   const id: ReceiptId = newId("receipt");
   const type = options.type ?? (options.seq === 1 ? "start" : "decision");
   const common = {
@@ -164,7 +176,7 @@ export function belegRow(
             actionId,
             type: "unterhaltung.loeschen",
             actor: "besitzer",
-            target: { conversationId: newId("conversation") },
+            target: { conversationId },
           },
           decision: {
             outcome: "allow",
@@ -180,11 +192,33 @@ export function belegRow(
     seq: options.seq,
     id,
     entryType: type,
-    ...(type === "start" ? {} : { actionId, action: "unterhaltung.loeschen", actor: "besitzer" }),
+    ...(type === "start"
+      ? {}
+      : { actionId, action: "unterhaltung.loeschen", actor: "besitzer", conversationId }),
     body,
     prevHash: options.prevHash,
     hash: sha256Digest(),
     keyId,
     signature: signature(),
   } satisfies typeof belege.$inferInsert;
+}
+
+/** Werkzeug-Aufruf im Zustand `requested` zu einer Antwort eines Laufs. */
+export function toolCallRow(
+  ids: { conversationId: ConversationId; runId: RunId; messageId: MessageId },
+  overrides: Partial<typeof toolCalls.$inferInsert> = {},
+) {
+  const n = next();
+  return {
+    actionId: newId("action"),
+    ...ids,
+    position: 0,
+    callId: `call_${n}`,
+    name: "kalender_lesen",
+    source: "eingebaut",
+    kind: "lesen",
+    input: { datum: "2026-11-20" },
+    argsDigest: hmacDigest(),
+    ...overrides,
+  } satisfies typeof toolCalls.$inferInsert;
 }

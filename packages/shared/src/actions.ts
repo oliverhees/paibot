@@ -9,18 +9,28 @@
  */
 
 import { z } from "zod";
-import { countSchema, positiveIntSchema } from "./grundtypen";
-import { type ActionId, type BotId, idSchema } from "./id";
-import { regionSchema, routeSchema, schleuseModeSchema } from "./objects";
+import { countSchema, hmacDigestSchema, positiveIntSchema, sha256DigestSchema } from "./grundtypen";
+import { type ActionId, type BotId, ID_BODY_PATTERN, ID_PREFIX, idSchema } from "./id";
+import {
+  regionSchema,
+  routeSchema,
+  schleuseModeSchema,
+  toolKindSchema,
+  toolNameSchema,
+  toolServerSchema,
+  toolSourceSchema,
+} from "./objects";
 
 /** Wer eine Aktion auslöst: der Besitzer der Installation oder ein Bot. */
 export type Actor = "besitzer" | `bot:${BotId}`;
 export type ActorKind = "besitzer" | "bot";
 
-const BOT_ACTOR_PATTERN = /^bot:bot_[0-7][0-9a-hjkmnp-tv-z]{25}$/;
+/** Muster eines Akteurs als Text; gilt gleich für Code und Datenbank. */
+export const ACTOR_PATTERN_SOURCE = `^(besitzer|bot:${ID_PREFIX.bot}_${ID_BODY_PATTERN})$`;
+const ACTOR_PATTERN = new RegExp(ACTOR_PATTERN_SOURCE);
 
 export const actorSchema = z.custom<Actor>(
-  (value) => value === "besitzer" || (typeof value === "string" && BOT_ACTOR_PATTERN.test(value)),
+  (value) => typeof value === "string" && ACTOR_PATTERN.test(value),
 );
 
 /** Akteur für einen Bot. */
@@ -32,7 +42,11 @@ export function actorKind(actor: Actor): ActorKind {
   return actor === "besitzer" ? "besitzer" : "bot";
 }
 
-/** Wie der Besitzer sich für die Aktion ausgewiesen hat. */
+/**
+ * Wie der Besitzer sich für die Aktion ausgewiesen hat. Welcher Nachweis für welche Aktion gilt,
+ * legen die Standard-Regeln fest (`CREDENTIAL_SCOPE`): der Einrichtungs-Code nur für die
+ * Einrichtung, das Passwort nur fürs Anmelden, die Sitzung für alles andere.
+ */
 export const CREDENTIALS = ["sitzung", "passwort", "einrichtungs_code"] as const;
 export const credentialSchema = z.enum(CREDENTIALS);
 export type Credential = z.infer<typeof credentialSchema>;
@@ -59,6 +73,12 @@ const installationId = idSchema("installation");
 
 const ownerFacts = { credential: credentialSchema };
 
+/** Origin einer Basis-URL, z. B. `https://api.eurouter.ai` (ohne Pfad, Anfrage-Teil oder Anker). */
+export const originSchema = z
+  .string()
+  .max(200)
+  .regex(/^https?:\/\/[^/?#@\s]+$/);
+
 function action<K extends ActorKind, T extends z.ZodRawShape, F extends z.ZodRawShape>(
   actor: K,
   target: T,
@@ -72,11 +92,27 @@ function action<K extends ActorKind, T extends z.ZodRawShape, F extends z.ZodRaw
  * Werte wie Zahlen, Schalter und Kennungen, nie Inhalte von Nachrichten oder Schlüssel.
  */
 export const ACTIONS = {
-  "einrichtung.abschliessen": action("besitzer", { installationId }, ownerFacts),
+  "einrichtung.abschliessen": action(
+    "besitzer",
+    { installationId },
+    {
+      ...ownerFacts,
+      /** Die Einrichtung ist noch nicht abgeschlossen (Vorbedingung V-07). */
+      setupOpen: z.boolean().optional(),
+    },
+  ),
   "zugang.anmelden": action("besitzer", { ownerId }, { ...ownerFacts, remember: z.boolean() }),
   "zugang.abmelden": action("besitzer", { ownerId }, ownerFacts),
   "zugang.alle_abmelden": action("besitzer", { ownerId }, { ...ownerFacts, sessions: countSchema }),
-  "zugang.passwort_aendern": action("besitzer", { ownerId }, ownerFacts),
+  "zugang.passwort_aendern": action(
+    "besitzer",
+    { ownerId },
+    {
+      ...ownerFacts,
+      /** Das aktuelle Passwort wurde in dieser Anfrage geprüft (Vorbedingung V-06). */
+      currentPasswordVerified: z.boolean().optional(),
+    },
+  ),
   "anbieter.speichern": action(
     "besitzer",
     { providerId },
@@ -141,6 +177,10 @@ export const ACTIONS = {
       tokensToday: countSchema,
       dailyTokenBudget: positiveIntSchema.optional(),
       killSwitch: z.boolean(),
+      /** Wohin die Anfrage geht, lesbar: Origin der Basis-URL des Anbieters bzw. der Schleuse. */
+      targetOrigin: originSchema.optional(),
+      /** Abdruck von Anbieter-ID und Basis-URL (`targetDigestInput`), geprüft vor dem Abruf. */
+      targetDigest: sha256DigestSchema.optional(),
     },
   ),
   "lauf.abbrechen": action(
@@ -155,10 +195,48 @@ export const ACTIONS = {
   ),
 } as const;
 
+/**
+ * Aktionen für Werkzeug-Aufrufe des Bots. Die Datenbank, die Standard-Regeln und der Speicher für
+ * Aufrufe kennen sie schon; das Tor wertet sie aus, sobald sie in `ACTIONS` stehen.
+ */
+export const TOOL_ACTIONS = {
+  "werkzeug.aufrufen": action(
+    "bot",
+    { conversationId, runId, botId },
+    {
+      /** Der aufrufende Bot gehört zu dieser Unterhaltung. */
+      botOfConversation: z.boolean(),
+      /** Der Lauf läuft gerade (Vorbedingung V-05). */
+      runRunning: z.boolean(),
+      toolName: toolNameSchema,
+      toolSource: toolSourceSchema,
+      /** Nur bei Quelle `mcp`. */
+      toolServer: toolServerSchema.optional(),
+      toolKind: toolKindSchema,
+      /** Abdruck der Argumente (`TOOL_ARGS_DIGEST_PREFIX`); die Argumente selbst nie. */
+      argsDigest: hmacDigestSchema,
+      killSwitch: z.boolean(),
+    },
+  ),
+} as const;
+export type ToolActionType = keyof typeof TOOL_ACTIONS;
+export const TOOL_ACTION_TYPES = Object.keys(TOOL_ACTIONS) as [ToolActionType, ...ToolActionType[]];
+export const toolActionTypeSchema = z.enum(TOOL_ACTION_TYPES);
+
 type Actions = typeof ACTIONS;
 export type ActionType = keyof Actions;
 export const ACTION_TYPES = Object.keys(ACTIONS) as [ActionType, ...ActionType[]];
 export const actionTypeSchema = z.enum(ACTION_TYPES);
+
+/**
+ * Alle Aktionen, die die Datenbank in `rules.action` und `belege.action` zulässt: `ACTIONS` und
+ * `TOOL_ACTIONS`.
+ */
+export const STORED_ACTION_TYPES = [...ACTION_TYPES, ...TOOL_ACTION_TYPES] as [
+  ActionType | ToolActionType,
+  ...(ActionType | ToolActionType)[],
+];
+export type StoredActionType = ActionType | ToolActionType;
 
 /** Akteur-Art, die eine Aktion auslösen darf. */
 export type ActorKindOf<T extends ActionType> = Actions[T]["actor"];

@@ -81,13 +81,13 @@ export function standardFehler(fehler: PgFehler): PaiBotError | undefined {
  * Das ist ein Fehler im Aufrufer, die Oberfläche bekommt nur `intern`.
  */
 export class StatuswechselError extends PaiBotError {
-  readonly gegenstand: "lauf" | "nachricht";
+  readonly gegenstand: "lauf" | "nachricht" | "werkzeug";
   readonly gegenstandId: string;
   readonly von: RunStatus | string;
   readonly nach: RunStatus | string;
 
   constructor(
-    gegenstand: "lauf" | "nachricht",
+    gegenstand: "lauf" | "nachricht" | "werkzeug",
     gegenstandId: string,
     von: RunStatus | string,
     nach: RunStatus | string,

@@ -123,6 +123,29 @@ const EXAMPLES: ConversationEvent[] = [
     type: "run.resumed",
     data: { runId, resumedFromRunId: earlierRunId },
   },
+  {
+    conversationId,
+    seq: 14,
+    time,
+    runId,
+    type: "tool.requested",
+    data: {
+      runId,
+      actionId,
+      messageId,
+      name: "kalender_lesen",
+      source: "eingebaut",
+      kind: "lesen",
+    },
+  },
+  {
+    conversationId,
+    seq: 15,
+    time,
+    runId,
+    type: "tool.finished",
+    data: { runId, actionId, status: "denied", code: "abgelehnt" },
+  },
 ];
 
 describe("Ereignisse", () => {
@@ -139,6 +162,8 @@ describe("Ereignisse", () => {
       "run.cancelled",
       "run.failed",
       "run.denied",
+      "tool.requested",
+      "tool.finished",
       "schleuse.blockiert",
       "beleg.created",
     ]);
@@ -168,6 +193,9 @@ describe("Ereignisse", () => {
         data: { messageId, route: "direkt", modelLabel: "x", tokens: { input: 1, output: 1 } },
       },
       { ...EXAMPLES[7], data: { runId, code: "kaputt", text: "x" } },
+      { ...EXAMPLES[14], data: { ...(EXAMPLES[14] as ConversationEvent).data, input: { a: 1 } } },
+      { ...EXAMPLES[14], data: { ...(EXAMPLES[14] as ConversationEvent).data, name: "a b" } },
+      { ...EXAMPLES[15], data: { runId, actionId, status: "running" } },
     ];
     for (const value of bad) expect(conversationEventSchema.safeParse(value).success).toBe(false);
     expect(safeDecodeEvent("{kein json")).toBeUndefined();

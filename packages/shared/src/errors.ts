@@ -9,9 +9,10 @@
  */
 
 import { z } from "zod";
+import { PATTERN_SOURCES } from "./grundtypen";
 
 /** Schreibweise aller Codes: Kleinbuchstaben, Wörter mit Unterstrich, Umlaute ausgeschrieben. */
-export const CODE_PATTERN = /^[a-z]+(_[a-z]+)*$/;
+export const CODE_PATTERN = new RegExp(PATTERN_SOURCES.errorCode);
 
 /** Alle Fehlercodes mit ihrem HTTP-Status. */
 export const ERROR_STATUS = {

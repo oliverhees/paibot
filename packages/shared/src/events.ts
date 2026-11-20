@@ -14,7 +14,14 @@ import { actionTypeSchema } from "./actions";
 import { errorCodeSchema } from "./errors";
 import { isoTimeSchema, positiveIntSchema, tokenUsageSchema } from "./grundtypen";
 import { idSchema } from "./id";
-import { messageRoleSchema, routeSchema } from "./objects";
+import {
+  messageRoleSchema,
+  routeSchema,
+  toolCallStatusSchema,
+  toolKindSchema,
+  toolNameSchema,
+  toolSourceSchema,
+} from "./objects";
 
 const runId = idSchema("run");
 const messageId = idSchema("message");
@@ -43,6 +50,22 @@ export const EVENT_DATA = {
   "run.cancelled": z.strictObject({ runId, code: errorCodeSchema, text: z.string().min(1) }),
   "run.failed": z.strictObject({ runId, code: errorCodeSchema, text: z.string().min(1) }),
   "run.denied": z.strictObject({ runId, code: errorCodeSchema, text: z.string().min(1) }),
+  /** Das Modell wünscht einen Werkzeug-Aufruf; die Argumente stehen nur im Verlauf, nicht hier. */
+  "tool.requested": z.strictObject({
+    runId,
+    actionId: idSchema("action"),
+    messageId,
+    name: toolNameSchema,
+    source: toolSourceSchema,
+    kind: toolKindSchema,
+  }),
+  /** Ein Werkzeug-Aufruf ist erledigt (ausgeführt, abgelehnt, gescheitert oder abgebrochen). */
+  "tool.finished": z.strictObject({
+    runId,
+    actionId: idSchema("action"),
+    status: toolCallStatusSchema.extract(["succeeded", "failed", "denied", "cancelled"]),
+    code: errorCodeSchema.optional(),
+  }),
   /** `reason` ist ein neutraler Satz ohne Inhalte der Nachricht. */
   "schleuse.blockiert": z.strictObject({ runId, reason: z.string().min(1).max(500) }),
   "beleg.created": z.strictObject({

@@ -21,6 +21,7 @@ import {
   factsSchema,
 } from "./actions";
 import {
+  ACTIVE_STANDARD_RULES,
   decisionSchema,
   LIMITS_BY_ID,
   ruleConditionSchema,
@@ -28,6 +29,7 @@ import {
   ruleIdSchema,
   ruleSchema,
   STANDARD_RULE_IDS,
+  STANDARD_RULE_VERSIONS,
   STANDARD_RULES,
 } from "./gate";
 import { idSchema, newId } from "./id";
@@ -154,8 +156,9 @@ describe("Aktionen", () => {
 
 describe("Regeln", () => {
   it("Standard-Regeln sind gültig und tragen die lesbaren IDs", () => {
-    expect(STANDARD_RULES.map((rule) => rule.id)).toEqual([...STANDARD_RULE_IDS]);
-    for (const rule of STANDARD_RULES) expect(ruleDefinitionSchema.parse(rule)).toEqual(rule);
+    expect(ACTIVE_STANDARD_RULES.map((rule) => rule.id)).toEqual([...STANDARD_RULE_IDS]);
+    for (const rule of STANDARD_RULE_VERSIONS)
+      expect(ruleDefinitionSchema.parse(rule)).toEqual(rule);
     expect(Object.keys(LIMITS_BY_ID)).toEqual(["G-01", "G-02", "G-03", "G-04", "G-05"]);
   });
 
