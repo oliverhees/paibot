@@ -23,7 +23,7 @@ PaiBot steht unter der PaiBot Fair-Code-Lizenz, Version 1.1. Damit das so bleibe
 
 `pnpm licenses:check` prüft die Produktions-Abhängigkeiten in der CI. Ausnahmen werden in `scripts/check-licenses.mjs` mit Begründung eingetragen.
 
-Dienste, die nur per Netzwerk angesprochen werden (Postgres, Inngest, Datenschleuse, Browser-Dienst), werden vor dem Einbau einzeln geprüft und in `THIRD_PARTY_NOTICES.md` ergänzt.
+Dienste, die nur per Netzwerk angesprochen werden (Postgres, auch für die Warteschlange; Datenschleuse, Browser-Dienst), werden vor dem Einbau einzeln geprüft und in `THIRD_PARTY_NOTICES.md` ergänzt.
 
 ## Schriften
 
