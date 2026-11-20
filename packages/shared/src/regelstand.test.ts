@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { ACTIONS, CREDENTIALS, STORED_ACTION_TYPES, TOOL_ACTIONS } from "./actions";
+import { ACTION_TYPES, ACTIONS, CREDENTIALS, TOOL_ACTION_TYPES } from "./actions";
 import { ERROR_CODES } from "./errors";
 import {
   ACTIVE_STANDARD_RULES,
@@ -22,7 +22,6 @@ import {
   ruleContent,
   ruleRefSchema,
   STANDARD_RULE_VERSIONS,
-  STANDARD_RULES,
 } from "./gate";
 import { t } from "./i18n";
 import { receiptDecisionSchema } from "./receipts";
@@ -30,7 +29,7 @@ import { receiptDecisionSchema } from "./receipts";
 const HASH = `sha256:${"ab".repeat(32)}`;
 
 function factNames(action: string): string[] {
-  const all = { ...ACTIONS, ...TOOL_ACTIONS } as Record<string, { facts: { shape: object } }>;
+  const all = ACTIONS as Record<string, { facts: { shape: object } }>;
   return Object.keys(all[action]?.facts.shape ?? {});
 }
 
@@ -58,12 +57,11 @@ describe("Fassungen der Standard-Regeln", () => {
   });
 
   it("die erste Fassung bleibt unverändert erhalten", () => {
-    expect(STANDARD_RULES.map((rule) => [rule.id, rule.version])).toEqual([
-      ["R-001", 1],
-      ["R-002", 1],
-      ["R-999", 1],
-    ]);
-    for (const rule of STANDARD_RULES) expect(STANDARD_RULE_VERSIONS).toContain(rule);
+    for (const id of ["R-001", "R-002", "R-999"]) {
+      expect(
+        STANDARD_RULE_VERSIONS.filter((rule) => rule.id === id && rule.version === 1),
+      ).toHaveLength(1);
+    }
   });
 
   it("der Einrichtungs-Code gilt nur für die Einrichtung, das Passwort nur fürs Anmelden", () => {
@@ -84,8 +82,8 @@ describe("Fassungen der Standard-Regeln", () => {
         .sort((a, b) => a.priority - b.priority || (a.id < b.id ? -1 : 1))[0];
       return winner?.effect;
     };
-    for (const action of STORED_ACTION_TYPES) {
-      if (TOOL_ACTIONS[action as keyof typeof TOOL_ACTIONS] || action === "modell.anfragen")
+    for (const action of ACTION_TYPES) {
+      if ((TOOL_ACTION_TYPES as readonly string[]).includes(action) || action === "modell.anfragen")
         continue;
       for (const credential of CREDENTIALS) {
         const scope = CREDENTIAL_SCOPE[credential];
@@ -135,7 +133,7 @@ describe("Vorbedingungen", () => {
     for (const id of PRECONDITION_IDS) {
       const pre = PRECONDITIONS[id];
       for (const action of pre.actions) {
-        expect(STORED_ACTION_TYPES).toContain(action);
+        expect(ACTION_TYPES).toContain(action);
         const conditions = [...("when" in pre ? pre.when : []), ...pre.require];
         for (const condition of conditions) {
           expect(factNames(action), `${id} ${action}`).toContain(condition.fact);

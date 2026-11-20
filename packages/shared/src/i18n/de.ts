@@ -121,6 +121,18 @@ export const de = {
 
   // Modell und Anbieter
   "modelle.basis_url": "Basis-URL",
+  "anbieter.url.keine_url": "Das ist keine gültige Adresse.",
+  "anbieter.url.protokoll":
+    "Die Adresse muss mit https:// beginnen; http:// geht nur bei Region „lokal“.",
+  "anbieter.url.interner_dienst":
+    "Diese Adresse gehört zu einem Dienst von PaiBot selbst und ist als Anbieter nicht erlaubt.",
+  "anbieter.url.link_local":
+    "Diese Adresse ist für Anbieter gesperrt (Link-Local oder Metadaten-Dienst).",
+  "anbieter.url.private_adresse":
+    "Private Adressen und interne Namen sind nur bei Region „lokal“ erlaubt.",
+  "anbieter.url.port": "Außerhalb der Region „lokal“ sind nur die Ports 443 und 8443 erlaubt.",
+  "anbieter.url.zugangsdaten_in_url":
+    "Die Adresse darf keine Zugangsdaten (nutzer:passwort@) enthalten.",
   "modelle.schluessel": "Schlüssel",
   "modelle.verbindungstest": "Verbindung testen",
   "modelle.verbindung.ok": "Verbindung steht",
@@ -222,6 +234,8 @@ export const de = {
   "aktion.lauf.abbrechen": "Antwort abgebrochen",
   "aktion.belege.exportieren": "Belege exportiert",
   "aktion.werkzeug.aufrufen": "Werkzeug aufgerufen",
+  "aktion.werkzeug.freigeben": "Werkzeug-Aufruf beantwortet",
+  "aktion.werkzeug.ausfuehren": "Werkzeug nach Freigabe ausgeführt",
 
   // Regeln und Grenzen
   "regel.R-001": "Besitzer verwaltet seine Installation",
@@ -230,6 +244,8 @@ export const de = {
   "regel.R-004": "Anmelden mit Passwort",
   "regel.R-005": "Bot fragt vor Werkzeugen",
   "regel.R-006": "Nachweis passt nicht zur Aktion",
+  "regel.R-007": "Einmal erlaubt",
+  "regel.R-008": "Ausführen nur mit Freigabe",
   "regel.R-999": "Ohne passende Regel",
   "regel.G-01": "Datenschleuse gefordert",
   "regel.G-02": "Anbieter aktiv und Region erlaubt",
@@ -245,6 +261,8 @@ export const de = {
   "regel.V-05": "Lauf läuft",
   "regel.V-06": "Aktuelles Passwort bestätigt",
   "regel.V-07": "Einrichtung offen",
+  "regel.V-08": "Aufruf wartet auf Freigabe",
+  "regel.V-09": "Freigabe passt zum Aufruf",
   "tor.vorbedingung_verletzt":
     "Das Tor hat die Aktion abgelehnt. Vorbedingung nicht erfüllt: {vorbedingungen}.",
 
@@ -266,6 +284,23 @@ export const de = {
     "Du willst PaiBot mit mehreren Personen nutzen? Dafür ist PaiBot Enterprise in Vorbereitung.",
   "info.bestandteile": "Bestandteile und ihre Lizenzen",
   "info.doku": "Zur Doku",
+
+  // Schlüssel und gespeicherte Geheimnisse: je Grund aus dem Krypto-Paket ein Satz
+  "krypto.geheimnis_fehlt": "PAIBOT_SECRET fehlt. Erzeuge es mit: openssl rand -base64 32",
+  "krypto.geheimnis_ungueltig":
+    "PAIBOT_SECRET hat die falsche Form: verlangt sind genau 32 Byte als Base64 (openssl rand -base64 32).",
+  "krypto.geheimnis_schwach":
+    "PAIBOT_SECRET ist erkennbar nicht zufällig (etwa ein Wort, lauter gleiche Zeichen oder eine Wiederholung). Erzeuge einen neuen Wert mit: openssl rand -base64 32",
+  "krypto.format_ungueltig": "Ein gespeicherter Wert hat nicht das erwartete Format.",
+  "krypto.parameter_ungueltig":
+    "Der gespeicherte Passwort-Hash nennt Werte außerhalb der erlaubten Grenzen.",
+  "krypto.version_unbekannt": "Ein gespeicherter Wert hat eine unbekannte Formatversion.",
+  "krypto.version_veraltet":
+    "Ein gespeicherter Schlüssel stammt aus einer älteren Version. Trage ihn neu ein.",
+  "krypto.bindung_fehlt": "Ein gebundener Wert lässt sich ohne seine Bindung nicht lesen.",
+  "krypto.entschluesseln_fehlgeschlagen":
+    "Ein gespeicherter Wert lässt sich nicht entschlüsseln: anderes PAIBOT_SECRET, anderer Platz oder verändert.",
+  "krypto.schluessel_nicht_geladen": "Der Signaturschlüssel ist nicht geladen.",
 
   // Fehler: Text und, wo es hilft, ein Ausweg
   "fehler.nicht_angemeldet": "Du bist nicht angemeldet.",

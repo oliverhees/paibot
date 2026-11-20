@@ -8,7 +8,7 @@
  * @since     2026-11-20
  */
 
-import { ACTION_TYPES } from "@paibot/shared/aktionen";
+import { ACTION_TYPES, ACTIONS, UNSTORED_ACTION_TYPES } from "@paibot/shared/aktionen";
 import { RATE_LIMITS } from "@paibot/shared/konstanten";
 import { CREDENTIAL_SCOPE } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
@@ -47,10 +47,15 @@ describe("API-Routen", () => {
     expect(API_ROUTEN.unterhaltungUmbenennen.aktion).toBe("unterhaltung.umbenennen");
   });
 
-  it("jede Aktion außer der Anfrage ans Modell und dem Werkzeug-Aufruf hat eine Route", () => {
-    const genutzt = new Set(routen.map(([, r]) => ("aktion" in r ? r.aktion : undefined)));
+  it("jede speicherbare Aktion des Besitzers hat eine Route, Aktionen eines Bots keine", () => {
+    const genutzt = new Set<string>(routen.map(([, r]) => ("aktion" in r ? r.aktion : "")));
+    const nochNichtSpeicherbar = new Set<string>(UNSTORED_ACTION_TYPES);
     for (const aktion of ACTION_TYPES) {
-      if (aktion === "modell.anfragen" || aktion === "werkzeug.aufrufen") continue;
+      if (ACTIONS[aktion].actor === "bot") {
+        expect(genutzt.has(aktion), aktion).toBe(false);
+        continue;
+      }
+      if (nochNichtSpeicherbar.has(aktion)) continue;
       expect(genutzt.has(aktion), aktion).toBe(true);
     }
   });

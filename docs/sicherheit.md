@@ -42,28 +42,31 @@ Folgt mit der Oberfläche.
 | --------------- | ----------------- | ---------------------------------------------------------------- | ------------------- |
 | `PAIBOT_SECRET` | Umgebungsvariable | Wurzel-Geheimnis: genau 32 Byte, Base64 (auch base64url erlaubt) | keiner, Pflichtwert |
 
-Fehlt der Wert oder hat er die falsche Form, meldet PaiBot das mit einem festen Grund (`geheimnis_fehlt`, `geheimnis_ungueltig`), ohne den Wert zu nennen.
+Fehlt der Wert oder hat er die falsche Form, meldet PaiBot das mit einem festen Grund (`geheimnis_fehlt`, `geheimnis_ungueltig`), ohne den Wert zu nennen. Ein Wert mit der richtigen Länge, der erkennbar nicht zufällig ist (zum Beispiel lauter gleiche Bytes, eine kurze Wiederholung oder ein Wort statt Zufall), wird mit `geheimnis_schwach` abgelehnt. Nimm deshalb immer `openssl rand -base64 32`.
 
 ## So funktioniert es
 
 Alles Kryptografische liegt an einer Stelle, im Paket `packages/crypto`. Es nutzt nur die eingebauten Funktionen von Node (`node:crypto`), keine zusätzliche Bibliothek.
 
-| Was                        | Verfahren                                                                                     | Wo gespeichert                               |
-| -------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Unterschlüssel             | HKDF-SHA-256 aus `PAIBOT_SECRET`, je Zweck ein eigener 32-Byte-Schlüssel                      | nur im Speicher                              |
-| Anbieter-Schlüssel         | AES-256-GCM, neuer zufälliger IV pro Verschlüsselung, Format `v1:<iv>:<tag>:<ct>` (base64url) | Datenbank, nur verschlüsselt                 |
-| Privater Signaturschlüssel | wie oben, mit eigenem Unterschlüssel                                                          | Datenbank, nur verschlüsselt                 |
-| Passwort                   | scrypt (N = 32768, r = 8, p = 1, Salz 16 Byte), Format `scrypt$32768$8$1$<salz>$<hash>`       | Datenbank, nur der Hash                      |
-| Sitzungs-Token             | 32 zufällige Byte als base64url (43 Zeichen); in der Datenbank steht nur SHA-256 davon        | Cookie beim Besitzer, Datenbank: Hash        |
-| Signatur der Belege        | Ed25519; die Kurzform des öffentlichen Schlüssels sieht aus wie `3f9c-2ab1-77d0-e4c5`         | öffentlich im Klartext, privat verschlüsselt |
+| Was                        | Verfahren                                                                                                                     | Wo gespeichert                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Unterschlüssel             | HKDF-SHA-256 aus `PAIBOT_SECRET`, je Zweck ein eigener 32-Byte-Schlüssel                                                      | nur im Speicher                              |
+| Anbieter-Schlüssel         | AES-256-GCM, neuer zufälliger IV pro Verschlüsselung, gebunden an Datensatz und Ziel, Format `v2:<iv>:<tag>:<ct>` (base64url) | Datenbank, nur verschlüsselt                 |
+| Privater Signaturschlüssel | wie oben, mit eigenem Unterschlüssel, gebunden an Kennung und öffentlichen Teil                                               | Datenbank, nur verschlüsselt                 |
+| Passwort                   | scrypt (neu: N = 32768, r = 8, p = 1, Salz 16 Byte), Format `scrypt$<N>$<r>$<p>$<salz>$<hash>`                                | Datenbank, nur der Hash                      |
+| Sitzungs-Token             | 32 zufällige Byte als base64url (43 Zeichen); in der Datenbank steht nur SHA-256 davon                                        | Cookie beim Besitzer, Datenbank: Hash        |
+| Signatur der Belege        | Ed25519; die Kurzform des öffentlichen Schlüssels sieht aus wie `3f9c-2ab1-77d0-e4c5`                                         | öffentlich im Klartext, privat verschlüsselt |
 
 Wichtige Eigenschaften:
 
 - **Vier Zwecke, vier Schlüssel:** `secrets-v1` (Anbieter-Schlüssel), `keys-v1` (privater Signaturschlüssel), `session-v1` (Prüfzeichen gegen untergeschobene Anfragen), `context-v1` (Prüfsummen von Inhalten in Belegen). Ein Schlüssel für einen Zweck passt nicht für einen anderen.
 - **Manipulation fällt auf:** Wird ein verschlüsselter Wert in der Datenbank verändert (IV, Tag oder Geheimtext), schlägt das Entschlüsseln fehl. Es kommt nie ein halber Klartext zurück.
+- **Gebunden an seinen Platz:** Ein verschlüsselter Wert im Format `v2` gehört zu genau einer Tabelle, einem Datensatz und einem Zweck, beim Anbieter-Schlüssel zusätzlich zum Host der Basis-URL (`https://api.eurouter.ai`). Diese Angaben werden beim Verschlüsseln mitgerechnet, aber nicht gespeichert. Kopiert jemand den Wert in einen anderen Datensatz oder ändert er den Host der Basis-URL, lässt sich der Schlüssel nicht mehr entschlüsseln und wird nicht verschickt. Ein Wechsel nur des Pfads (`/v1` → `/v2`) bricht die Bindung nicht.
+- **Ältere Werte:** Das Format `v1` (ohne Bindung) stammt aus früheren Ständen. Solche Werte bleiben lesbar, wo das ausdrücklich erlaubt ist, und lassen sich beim nächsten Speichern ins Format `v2` umstellen. Für einen Modell-Aufruf wird ein Anbieter-Schlüssel im Format `v1` nicht angenommen; dann den Schlüssel neu eintragen. Neue Werte schreibt PaiBot nur noch im Format `v2`.
+- **Passwort aufrüstbar:** Die Parameter von scrypt stehen im gespeicherten Hash und werden beim Prüfen gelesen. Steigen sie in einer späteren Version, bleiben alte Hashes gültig; PaiBot erkennt veraltete Parameter und kann den Hash bei der nächsten Anmeldung neu berechnen. Werte außerhalb fester Grenzen (zu schwach oder absichtlich teuer, etwa mehr als 64 MiB Speicher je Prüfung) werden ohne Rechnen abgelehnt (`parameter_ungueltig`).
 - **Vergleiche in konstanter Zeit:** Passwort-Hash und Tokens werden so verglichen, dass die Dauer nichts über den Inhalt verrät.
-- **Fehler ohne Geheimnisse:** Meldungen nennen nur einen festen Grund (`format_ungueltig`, `version_unbekannt`, `entschluesseln_fehlgeschlagen` …), nie Schlüssel, Klartext oder Geheimtext.
-- **Versionspräfix:** `v1:` erlaubt später ein `v2:`, ohne dass alte Werte unlesbar werden.
+- **Fehler ohne Geheimnisse:** Meldungen nennen nur einen festen Grund (`format_ungueltig`, `version_unbekannt`, `version_veraltet`, `bindung_fehlt`, `entschluesseln_fehlgeschlagen` …), nie Schlüssel, Klartext oder Geheimtext.
+- **Signaturschlüssel im Speicher:** Der private Signaturschlüssel wird einmal entschlüsselt und im Speicher gehalten, statt bei jedem Beleg die Datenbank zu fragen. Beim Laden wird geprüft, dass er zum öffentlichen Teil passt. In Ausgaben wie Logs oder JSON erscheint er nicht.
 
 ## Was in der Datenbank steht
 
@@ -95,18 +98,22 @@ Startet PaiBot im Betrieb mit einer App-Verbindung, die zu viele Rechte hat (Sup
 - Unterhaltungen liegen unverschlüsselt in der Datenbank und in jeder Sicherung.
 - Gegen die Migrations-Rolle (Besitzer der Tabellen) oder einen Superuser helfen die Rechte der App-Rolle nicht. Die Migrations-Rolle steht im Compose-Stack in der Umgebung des Dienstes `web`, weil dieser beim Start migriert; die App liest sie nach dem Start nicht mehr.
 - Das Passwort wird nicht gegen Online-Listen geprüft (PaiBot nimmt dafür keinen Kontakt nach außen auf). Wähle ein langes, einmaliges Passwort.
-- Ein leerer Text lässt sich zwar verschlüsseln, wird aber von der Datenbank als Geheimnis abgewiesen. Speichere keine leeren Schlüssel.
-- Ein Wechsel von `PAIBOT_SECRET` mit automatischem Neu-Verschlüsseln ist **geplant**, aber noch nicht gebaut. Das Präfix `v1:` bereitet ihn vor.
+- Ein leerer Schlüssel wird nicht verschlüsselt gespeichert. Ein Anbieter ohne Schlüssel hat einfach keinen.
+- Die Bindung schützt vor kopierten Werten und umgebogenen Adressen in der Datenbank. Wer zusätzlich `PAIBOT_SECRET` hat, kann Werte neu verschlüsseln.
+- Den privaten Signaturschlüssel kann JavaScript beim Verwerfen nicht aus dem Speicher löschen; es verschwindet nur der letzte Verweis darauf.
+- Ein Wechsel von `PAIBOT_SECRET` mit automatischem Neu-Verschlüsseln ist **geplant**, aber noch nicht gebaut. Das Versionspräfix (`v1:`, `v2:`) bereitet ihn vor.
 - Zwei-Faktor-Anmeldung ist **geplant**, nicht Teil der Basisversion.
 
 ## Fehlerbehebung
 
-| Beobachtung                                            | Ursache                                             | Was tun                                                                                                            |
-| ------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Meldung `geheimnis_fehlt`                              | `PAIBOT_SECRET` ist nicht gesetzt oder leer         | Wert in `deploy/.env` bzw. Coolify eintragen, neu starten                                                          |
-| Meldung `geheimnis_ungueltig`                          | Kein Base64 oder nicht genau 32 Byte                | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation, sonst altes Geheimnis wiederherstellen) |
-| Anbieter-Schlüssel lässt sich nicht mehr entschlüsseln | `PAIBOT_SECRET` wurde geändert oder ging verloren   | Altes Geheimnis wiederherstellen; sonst Schlüssel beim Anbieter neu eingeben                                       |
-| Alle Anmeldungen enden nach einem Passwortwechsel      | gewollt: ein Passwortwechsel beendet alle Sitzungen | Neu anmelden                                                                                                       |
+| Beobachtung                                               | Ursache                                                                                         | Was tun                                                                                                            |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Meldung `geheimnis_fehlt`                                 | `PAIBOT_SECRET` ist nicht gesetzt oder leer                                                     | Wert in `deploy/.env` bzw. Coolify eintragen, neu starten                                                          |
+| Meldung `geheimnis_ungueltig`                             | Kein Base64 oder nicht genau 32 Byte                                                            | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation, sonst altes Geheimnis wiederherstellen) |
+| Meldung `geheimnis_schwach`                               | Der Wert ist erkennbar nicht zufällig                                                           | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation)                                         |
+| Anbieter-Schlüssel lässt sich nicht mehr entschlüsseln    | `PAIBOT_SECRET` wurde geändert oder ging verloren                                               | Altes Geheimnis wiederherstellen; sonst Schlüssel beim Anbieter neu eingeben                                       |
+| Schlüssel gilt nach einer Änderung der Adresse nicht mehr | Der Host der Basis-URL wurde in der Datenbank geändert, der Schlüssel ist an den alten gebunden | Schlüssel beim Anbieter neu eintragen                                                                              |
+| Alle Anmeldungen enden nach einem Passwortwechsel         | gewollt: ein Passwortwechsel beendet alle Sitzungen                                             | Neu anmelden                                                                                                       |
 
 ## Kopfzeilen des Browsers
 

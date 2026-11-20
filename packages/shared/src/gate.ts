@@ -99,7 +99,8 @@ export type LimitCheck = z.infer<typeof limitCheckSchema>;
  * Verweis auf eine angewandte Regel: Kennung, Fassung und Prüfsumme ihres Inhalts
  * (`RULE_HASH_PREFIX`, `ruleContent`). Mit der Prüfsumme lässt sich eine Entscheidung später mit
  * genau dem damaligen Regelstand nachrechnen, und eine nachträglich geänderte Regel fällt auf.
- * `hash` wird Pflicht, sobald das Tor ihn setzt.
+ * Das Tor setzt `hash` immer, wenn es mit einem Regelstand (`RuleSnapshot`) entscheidet; ohne
+ * steht er nur in Entscheidungen über die frühere Regel-Quelle (`listActive`).
  */
 export const ruleRefSchema = z.strictObject({
   id: ruleIdSchema,
@@ -296,6 +297,52 @@ export const STANDARD_RULE_VERSIONS = [
   R006_V1,
 ] as const satisfies readonly RuleDefinition[];
 
+const R007_V1 = {
+  id: "R-007",
+  version: 1,
+  action: "werkzeug.ausfuehren",
+  effect: "allow",
+  stage: "execute",
+  conditions: [
+    { fact: ACTOR_FACT, op: "eq", value: "bot" },
+    { fact: "botOfConversation", op: "eq", value: true },
+    { fact: "approvalGranted", op: "eq", value: true },
+    { fact: "approvalConsumed", op: "eq", value: false },
+    { fact: "approvalExpired", op: "eq", value: false },
+    { fact: "argsDigest", op: "eq", value: { fact: "approvalArgsDigest" } },
+  ],
+  priority: 100,
+  source: "standard",
+  enabled: true,
+  title: "Einmal erlaubt",
+  reason: "Du hast diesen Werkzeug-Aufruf freigegeben; er darf genau einmal laufen.",
+} as const satisfies RuleDefinition;
+
+const R008_V1 = {
+  id: "R-008",
+  version: 1,
+  action: "werkzeug.ausfuehren",
+  effect: "deny",
+  stage: "execute",
+  conditions: [],
+  priority: 200,
+  source: "standard",
+  enabled: true,
+  title: "Ausführen nur mit Freigabe",
+  reason: "Für diesen Werkzeug-Aufruf gibt es keine gültige, unbenutzte Freigabe.",
+} as const satisfies RuleDefinition;
+
+/**
+ * Fassungen der Standard-Regeln, die im Code feststehen, aber noch nicht in der Datenbank stehen
+ * (sie gehören zu Aktionen aus `UNSTORED_ACTION_TYPES`). Das Tor erkennt sie als Standard-Regeln
+ * wie die aus `STANDARD_RULE_VERSIONS`; die nächste Migration legt genau diese Zeilen an, danach
+ * wandern sie dorthin.
+ */
+export const UNSTORED_STANDARD_RULE_VERSIONS = [
+  R007_V1,
+  R008_V1,
+] as const satisfies readonly RuleDefinition[];
+
 /** Je Standard-Regel die neueste Fassung, in der Reihenfolge von `STANDARD_RULE_IDS`. */
 export const ACTIVE_STANDARD_RULES = [
   R001_V1,
@@ -406,7 +453,7 @@ export const PRECONDITIONS = {
   },
   "V-05": {
     name: "lauf_laeuft",
-    actions: ["werkzeug.aufrufen"],
+    actions: ["werkzeug.aufrufen", "werkzeug.ausfuehren"],
     require: [{ fact: "runRunning", op: "eq", value: true }],
     errorCode: "nicht_gefunden",
   },
@@ -421,6 +468,21 @@ export const PRECONDITIONS = {
     actions: ["einrichtung.abschliessen"],
     require: [{ fact: "setupOpen", op: "eq", value: true }],
     errorCode: "einrichtung_fertig",
+  },
+  "V-08": {
+    name: "freigabe_wartet",
+    actions: ["werkzeug.freigeben"],
+    require: [
+      { fact: "callWaiting", op: "eq", value: true },
+      { fact: "callExpired", op: "eq", value: false },
+    ],
+    errorCode: "nicht_gefunden",
+  },
+  "V-09": {
+    name: "freigabe_passt",
+    actions: ["werkzeug.freigeben"],
+    require: [{ fact: "argsDigest", op: "eq", value: { fact: "waitingArgsDigest" } }],
+    errorCode: "abgelehnt",
   },
 } as const satisfies Record<
   string,
@@ -461,9 +523,13 @@ export const decisionSchema = z.strictObject({
   stage: stageSchema,
   matchedRules: z.array(ruleRefSchema),
   limits: z.array(limitCheckSchema),
-  /** Vorbedingungen der Aktion (`preconditionsFor`); Pflicht, sobald das Tor sie prüft. */
-  preconditions: z.array(preconditionCheckSchema).optional(),
-  /** Stand des Regel-Protokolls beim Entscheiden; Pflicht, sobald das Tor ihn setzt. */
+  /** Vorbedingungen der Aktion (`preconditionsFor`), leer bei Aktionen ohne. */
+  preconditions: z.array(preconditionCheckSchema),
+  /**
+   * Stand des Regel-Protokolls beim Entscheiden. Das Tor setzt ihn immer, wenn es mit einem
+   * Regelstand (`RuleSnapshot`) entscheidet; ohne steht er nur, wenn `evaluate` eine einfache
+   * Liste von Regeln bekommt (z. B. beim Nachrechnen ohne Stand).
+   */
   ruleStand: ruleStandSchema.optional(),
   /** Deutscher Satz, warum das Tor so entschieden hat. */
   reason: z.string().min(1).max(500),

@@ -8,6 +8,7 @@
  * @since     2026-11-20
  */
 
+import { createServer } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { classifyIpAddress } from "./address";
 import {
@@ -16,6 +17,8 @@ import {
   createEgressFetch,
   EgressBlockedError,
   egressTargetOf,
+  INTERNAL_SERVICE_HOSTS,
+  providerEgressTarget,
 } from "./egress";
 import { json, startTestServer, type TestServer } from "./test-server";
 
@@ -94,6 +97,18 @@ const TABLE: Row[] = [
   ["https://[64:ff9b::a9fe:a9fe]/v1", "eu", "link_local"],
   ["https://[2002:7f00:1::1]/v1", "eu", "private_adresse"],
   ["https://[ff02::1]/v1", "eu", "private_adresse"],
+  ["https://192.88.99.1/v1", "eu", "private_adresse"],
+  ["https://[2001:10::1]/v1", "eu", "private_adresse"],
+  ["https://[2001:20::1]/v1", "eu", "private_adresse"],
+  ["https://[2001:2::1]/v1", "eu", "private_adresse"],
+  ["https://[3fff::1]/v1", "eu", "private_adresse"],
+  ["https://[5f00::1]/v1", "eu", "private_adresse"],
+  ["https://[4000::1]/v1", "eu", "private_adresse"],
+  // Ports außerhalb von local: nur 443 und 8443
+  ["https://api.eurouter.ai:22/v1", "eu", "port"],
+  ["https://api.eurouter.ai:5432/v1", "non_eu", "port"],
+  ["https://api.eurouter.ai:443/v1", "eu", "ok"],
+  ["http://192.168.1.10:5432/v1", "local", "ok"],
   // Region local: privat und http erlaubt
   ["http://localhost:11434/v1", "local", "ok"],
   ["http://127.0.0.1:11434/v1", "local", "ok"],
@@ -127,6 +142,24 @@ describe("classifyIpAddress", () => {
     expect(classifyIpAddress("fe80::1%eth0")).toBe("link_local");
     expect(classifyIpAddress("10.1.1.1")).toBe("privat");
     expect(classifyIpAddress("kein-ip")).toBe("privat");
+  });
+});
+
+describe("Adressklassen am Rand", () => {
+  it("öffentliche Adressen nahe den gesperrten Bereichen bleiben öffentlich", () => {
+    for (const address of [
+      "192.88.98.1",
+      "192.88.100.1",
+      "2001:200::1",
+      "2001:4860:4860::8888",
+      "3ffe::1",
+      "2a00:1450::1",
+    ]) {
+      expect(classifyIpAddress(address)).toBe("oeffentlich");
+    }
+    for (const address of ["192.88.99.255", "2001:1ff::1", "2001:db8::1", "3fff:fff::1", "::2"]) {
+      expect(classifyIpAddress(address)).toBe("privat");
+    }
   });
 });
 
@@ -298,5 +331,93 @@ describe("createEgressFetch", () => {
       },
     );
     await expect(guarded("https://gibt-es-nicht.example.org/")).rejects.toThrow("fetch failed");
+  });
+
+  it("verbindet genau mit der geprüften Adresse, auch wenn der Name danach anders auflöst", async () => {
+    // Zwei Dienste auf demselben Port, einer davon steht für die Datenbank im eigenen Netz.
+    const good = await startTestServer((_req, res) => json(res, 200, { gut: true }));
+    const internal = createServer((_req, res) => res.end("intern"));
+    let internalHits = 0;
+    internal.on("request", () => {
+      internalHits++;
+    });
+    const listened = await new Promise<boolean>((resolve) => {
+      internal.once("error", () => resolve(false));
+      internal.listen(good.port, "127.0.0.2", () => resolve(true));
+    });
+    try {
+      if (!listened) return; // 127.0.0.2 nicht verfügbar: Test entfällt auf diesem Rechner.
+      const calls: string[] = [];
+      // Erste Antwort: die geprüfte Adresse; jede weitere: die interne.
+      const lookup = async (host: string) => {
+        calls.push(host);
+        if (host === "postgres") return ["127.0.0.2"];
+        return calls.filter((h) => h === host).length === 1 ? ["127.0.0.1"] : ["127.0.0.2"];
+      };
+      const target = {
+        protocol: "http:" as const,
+        host: "anbieter.test",
+        port: good.port,
+        allowPrivate: true,
+        denyAddressesOf: ["postgres"],
+      };
+      const guarded = createEgressFetch([target], undefined, { lookup });
+      const response = await guarded(`http://anbieter.test:${good.port}/v1/models`);
+      expect(await response.json()).toEqual({ gut: true });
+      expect(internalHits).toBe(0);
+      expect(calls.filter((h) => h === "anbieter.test")).toHaveLength(1);
+
+      // Der nächste Aufruf löst neu auf, bekommt die interne Adresse und wird gesperrt.
+      await expect(guarded(`http://anbieter.test:${good.port}/v1/models`)).rejects.toMatchObject({
+        reason: "adresse_nicht_erlaubt",
+      });
+      expect(internalHits).toBe(0);
+    } finally {
+      await good.close();
+      await new Promise((resolve) => internal.close(resolve));
+    }
+  });
+
+  it("Adressen der eigenen Dienste sind als Ziel gesperrt, unbekannte Namen sperren nichts", async () => {
+    const fake = (async () => new Response("{}")) as unknown as typeof fetch;
+    const lookup = async (host: string) => {
+      if (host === "postgres") return ["172.18.0.2"];
+      if (host === "web") throw new Error("ENOTFOUND");
+      if (host === "nas.lan") return ["172.18.0.2"];
+      if (host === "ollama.lan") return ["172.18.0.9"];
+      return ["192.168.1.5"];
+    };
+    const target = (host: string) => [
+      {
+        protocol: "http:" as const,
+        host,
+        allowPrivate: true,
+        denyAddressesOf: ["postgres", "web"],
+      },
+    ];
+    await expect(
+      createEgressFetch(target("nas.lan"), fake, { lookup })("http://nas.lan/v1/models"),
+    ).rejects.toMatchObject({ reason: "adresse_nicht_erlaubt" });
+    await expect(
+      createEgressFetch(target("172.18.0.2"), fake, { lookup })("http://172.18.0.2/v1/models"),
+    ).rejects.toMatchObject({ reason: "adresse_nicht_erlaubt" });
+    const ok = await createEgressFetch(target("ollama.lan"), fake, { lookup })(
+      "http://ollama.lan/v1/models",
+    );
+    expect(ok.ok).toBe(true);
+  });
+
+  it("providerEgressTarget sperrt bei local die eigenen Dienste, sonst private Adressen ganz", () => {
+    expect(providerEgressTarget("http://192.168.1.5:11434/v1", "local")).toEqual({
+      protocol: "http:",
+      host: "192.168.1.5",
+      port: 11434,
+      allowPrivate: true,
+      denyAddressesOf: INTERNAL_SERVICE_HOSTS,
+    });
+    expect(providerEgressTarget("https://api.eurouter.ai/v1", "eu")).toEqual({
+      protocol: "https:",
+      host: "api.eurouter.ai",
+    });
   });
 });

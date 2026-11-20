@@ -35,7 +35,14 @@ import { ruleSnapshot } from "./regel-hash";
 import { ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
 
 /** Aktionen, die die Standard-Regeln mit den Beispiel-Fakten erlauben. */
-const ALLOWED_BY_DEFAULT = ACTION_TYPES.filter((type) => type !== "werkzeug.aufrufen");
+/**
+ * Mit den gespeicherten Standard-Regeln erlaubt: alles außer dem Werkzeug-Aufruf (R-005 fragt) und
+ * der Ausführung nach Freigabe (ihre Regeln R-007/R-008 kommen erst mit der nächsten Migration in die
+ * Datenbank; Tests dazu in `freigabe.test.ts`).
+ */
+const ALLOWED_BY_DEFAULT = ACTION_TYPES.filter(
+  (type) => type !== "werkzeug.aufrufen" && type !== "werkzeug.ausfuehren",
+);
 
 type Entry =
   | { kind: "decision"; record: DecisionRecord; ref: ReceiptRef }
@@ -492,7 +499,14 @@ describe("Berechtigungen lassen sich nicht fälschen", () => {
   it("GateDenied ist ein PaiBotError", () => {
     const ref = { receiptId: newId("receipt"), seq: 2 };
     const denied = new GateDenied(
-      { outcome: "deny", stage: "execute", matchedRules: [], limits: [], reason: "Nein." },
+      {
+        outcome: "deny",
+        stage: "execute",
+        matchedRules: [],
+        limits: [],
+        preconditions: [],
+        reason: "Nein.",
+      },
       { decision: ref, result: ref },
       { actionId: newId("action"), type: "anbieter.loeschen" },
     );

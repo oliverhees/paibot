@@ -97,6 +97,8 @@ function classifyIPv4(octets: readonly [number, number, number, number]): Addres
   if (a === 172 && b >= 16 && b <= 31) return "privat";
   if (a === 192 && b === 168) return "privat";
   if (a === 192 && b === 0 && (c === 0 || c === 2)) return "privat";
+  // 6to4-Relay (Anycast, abgekündigt)
+  if (a === 192 && b === 88 && c === 99) return "privat";
   if (a === 198 && (b === 18 || b === 19)) return "privat";
   if (a === 198 && b === 51 && c === 100) return "privat";
   if (a === 203 && b === 0 && c === 113) return "privat";
@@ -136,9 +138,16 @@ function classifyIPv6(g: readonly number[]): AddressClass {
   if ((g0 & 0xffc0) === 0xfec0) return "privat";
   if ((g0 & 0xfe00) === 0xfc00) return "privat";
   if ((g0 & 0xff00) === 0xff00) return "privat";
-  // Teredo, Dokumentation, Discard
-  if (g0 === 0x2001 && (g1 === 0 || g1 === 0x0db8)) return "privat";
+  // 2001::/23: Bereich für besondere Zwecke (Teredo, Benchmark, ORCHID u. a.), Dokumentation,
+  // Discard
+  if (g0 === 0x2001 && g1 < 0x0200) return "privat";
+  if (g0 === 0x2001 && g1 === 0x0db8) return "privat";
   if (g0 === 0x0100 && g1 === 0 && g2 === 0 && g3 === 0) return "privat";
+  // 3fff::/20 (Dokumentation), 5f00::/16 (Segment-Routing)
+  if (g0 === 0x3fff && (g1 & 0xf000) === 0) return "privat";
+  if (g0 === 0x5f00) return "privat";
+  // Alles außerhalb von 2000::/3 ist nicht als öffentliche Unicast-Adresse vergeben.
+  if ((g0 & 0xe000) !== 0x2000) return "privat";
   return "oeffentlich";
 }
 

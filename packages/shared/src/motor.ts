@@ -28,7 +28,7 @@ export interface ResolvedModelSummary {
   /** OpenAI-kompatible Basis-URL, z. B. die des Anbieters oder der Datenschleuse. */
   readonly baseUrl: string;
   /** Abdruck von Anbieter-ID und Basis-URL, wie er in den Fakten von `modell.anfragen` steht. */
-  readonly targetDigest?: Sha256Digest;
+  readonly targetDigest: Sha256Digest;
 }
 
 /**
@@ -40,19 +40,12 @@ export interface ResolvedModelSummary {
  * `ResolvedModelSummary`, nie der Schlüssel.
  */
 export interface ResolvedModel extends ResolvedModelSummary {
-  /**
-   * Schlüssel im Klartext.
-   *
-   * @deprecated Nicht mehr lesen. `fetch` setzt die Anmeldung selbst; das Feld wird leer (`""`)
-   * und entfällt danach.
-   */
-  readonly apiKey: string;
   /** Zusätzliche Kopfzeilen, z. B. die Sitzungs-ID der Unterhaltung für die Datenschleuse. */
   readonly headers: Readonly<Record<string, string>>;
   /** `fetch`, das nur erlaubte Ziele erreicht und die Anmeldung setzt. Der Motor nutzt nur diese Funktion. */
   readonly fetch: typeof fetch;
-  /** Ausgabe ohne Geheimnis; wird Pflicht, sobald die Anbieter-Schicht sie setzt. */
-  readonly toJSON?: () => ResolvedModelSummary;
+  /** Ausgabe ohne Geheimnis (auch für `JSON.stringify`). */
+  readonly toJSON: () => ResolvedModelSummary;
   readonly [resolvedModelBrand]: true;
 }
 

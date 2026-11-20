@@ -50,9 +50,16 @@ function resultOf(type: ActionType, facts: Record<string, unknown>, name: string
     ?.result;
 }
 
-/** Ein Wert, der die Bedingung sicher nicht erfüllt (alle Vorbedingungen vergleichen Schalter). */
+/**
+ * Ein Wert, der die Bedingung sicher nicht erfüllt. Vorbedingungen vergleichen Schalter oder zwei
+ * Fakten miteinander (dann ein anderer Abdruck als der im Vergleichs-Fakt).
+ */
 function violating(condition: RuleCondition): unknown {
   expect(condition.op).toBe("eq");
+  if (typeof condition.value === "object" && condition.value !== null) {
+    expect(Object.keys(condition.value)).toEqual(["fact"]);
+    return `hmac-sha256:${"ff".repeat(32)}`;
+  }
   expect(typeof condition.value).toBe("boolean");
   return !condition.value;
 }

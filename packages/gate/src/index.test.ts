@@ -14,7 +14,6 @@ import * as gate from "./index";
 
 describe("Schnittstelle", () => {
   it("reicht die Verträge unverändert weiter", () => {
-    expect(gate.STANDARD_RULES).toBe(shared.STANDARD_RULES);
     expect(gate.ACTIVE_STANDARD_RULES).toBe(shared.ACTIVE_STANDARD_RULES);
     expect(gate.STANDARD_RULE_VERSIONS).toBe(shared.STANDARD_RULE_VERSIONS);
     expect(gate.PRECONDITIONS).toBe(shared.PRECONDITIONS);
@@ -64,6 +63,7 @@ describe("Schnittstelle", () => {
         stage: "ask",
         matchedRules: [],
         limits: [],
+        preconditions: [],
         reason: "Dafür gibt es noch keine Regel.",
       },
       { decision: ref, result: { ...ref, seq: 3 } },
@@ -79,7 +79,7 @@ describe("Schnittstelle", () => {
 
   it("createGate liefert ein Tor mit run", () => {
     const tor = gate.createGate({
-      rules: { listActive: async () => [] },
+      rules: { load: () => gate.ruleSnapshot([]) },
       receipts: {
         appendDecision: async () => ({ receiptId: shared.newId("receipt"), seq: 1 }),
         appendResult: async () => ({ receiptId: shared.newId("receipt"), seq: 2 }),
@@ -91,7 +91,7 @@ describe("Schnittstelle", () => {
 
   it("kennt alle Aktionen der Verträge, auch Besitzer-Aktionen und Werkzeug-Aufrufe", () => {
     expect(gate.ACTION_TYPES).toEqual(shared.ACTION_TYPES);
-    expect(gate.ACTION_TYPES).toHaveLength(19);
+    expect(gate.ACTION_TYPES).toHaveLength(21);
     expect(gate.ACTION_TYPES).toContain("werkzeug.aufrufen");
     expect(gate.ACTION_TYPES).toContain("zugang.passwort_aendern");
     expect(gate.ACTION_TYPES).toContain("unterhaltung.umbenennen");
@@ -102,5 +102,13 @@ describe("Schnittstelle", () => {
     expect(Object.keys(api).filter((name) => /issue|revoke|permit/i.test(name))).toEqual([
       "isGatePermit",
     ]);
+  });
+});
+
+describe("im Browser nutzbar", () => {
+  it("Prüfsumme und Regelstand kommen aus dem Haupteinstieg", () => {
+    expect(typeof gate.hashRule).toBe("function");
+    expect(typeof gate.ruleSnapshot).toBe("function");
+    expect(typeof gate.verifyRuleSnapshot).toBe("function");
   });
 });

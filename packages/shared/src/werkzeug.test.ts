@@ -14,10 +14,10 @@ import {
   ACTIONS,
   STORED_ACTION_TYPES,
   TOOL_ACTION_TYPES,
-  TOOL_ACTIONS,
   toolActionTypeSchema,
+  UNSTORED_ACTION_TYPES,
 } from "./actions";
-import { ruleDefinitionSchema } from "./gate";
+import { ruleDefinitionSchema, STANDARD_RULE_VERSIONS, STANDARD_RULES } from "./gate";
 import { newId } from "./id";
 import { TOOL_CALL_STATUSES, toolCallSchema } from "./objects";
 
@@ -35,13 +35,25 @@ const facts = {
 };
 
 describe("Aktion werkzeug.aufrufen", () => {
-  it("steht in ACTIONS; die gespeicherten Aktionen sind genau ACTIONS", () => {
-    expect(TOOL_ACTION_TYPES).toEqual(["werkzeug.aufrufen"]);
+  it("steht in ACTIONS; gespeichert werden alle Aktionen außer den noch nicht speicherbaren", () => {
+    expect(TOOL_ACTION_TYPES).toEqual(["werkzeug.aufrufen", "werkzeug.ausfuehren"]);
     expect(ACTION_TYPES).toContain("werkzeug.aufrufen");
-    expect(STORED_ACTION_TYPES).toEqual(ACTION_TYPES);
+    expect(UNSTORED_ACTION_TYPES).toEqual(["werkzeug.freigeben", "werkzeug.ausfuehren"]);
+    expect(STORED_ACTION_TYPES).toEqual(
+      ACTION_TYPES.filter((type) => !(UNSTORED_ACTION_TYPES as readonly string[]).includes(type)),
+    );
+    expect(STORED_ACTION_TYPES).toContain("werkzeug.aufrufen");
     expect(ACTIONS["werkzeug.aufrufen"].actor).toBe("bot");
-    expect(TOOL_ACTIONS["werkzeug.aufrufen"]).toBe(ACTIONS["werkzeug.aufrufen"]);
     expect(toolActionTypeSchema.parse("werkzeug.aufrufen")).toBe("werkzeug.aufrufen");
+  });
+
+  it("veraltete Namen zeigen auf dieselben Werte, solange es sie gibt", () => {
+    expect(STANDARD_RULES.map((rule) => [rule.id, rule.version])).toEqual([
+      ["R-001", 1],
+      ["R-002", 1],
+      ["R-999", 1],
+    ]);
+    for (const rule of STANDARD_RULES) expect(STANDARD_RULE_VERSIONS).toContain(rule);
   });
 
   it("Fakten nennen Werkzeug, Quelle und Art, die Argumente nur als Abdruck", () => {
@@ -56,6 +68,65 @@ describe("Aktion werkzeug.aufrufen", () => {
     );
     expect(schema.safeParse({ ...facts, toolName: "rm -rf" }).success).toBe(false);
     expect(schema.safeParse({ ...facts, toolKind: "loeschen" }).success).toBe(false);
+  });
+
+  it("der Server steht genau dann in den Fakten, wenn die Quelle mcp ist", () => {
+    for (const type of ["werkzeug.aufrufen", "werkzeug.ausfuehren"] as const) {
+      const schema = ACTIONS[type].facts;
+      const base =
+        type === "werkzeug.aufrufen"
+          ? facts
+          : {
+              ...facts,
+              approvalGranted: true,
+              approvalConsumed: false,
+              approvalExpired: false,
+              approvalArgsDigest: digest,
+            };
+      expect(schema.safeParse(base).success, type).toBe(true);
+      expect(schema.safeParse({ ...base, toolSource: "mcp", toolServer: "notizen" }).success).toBe(
+        true,
+      );
+      // mcp ohne Server und ein Server ohne mcp sind ungültig.
+      expect(schema.safeParse({ ...base, toolSource: "mcp" }).success, type).toBe(false);
+      expect(schema.safeParse({ ...base, toolServer: "notizen" }).success, type).toBe(false);
+    }
+  });
+
+  it("Freigabe und Ausführung sind eigene Aktionen mit Verweis auf den wartenden Aufruf", () => {
+    expect(ACTIONS["werkzeug.freigeben"].actor).toBe("besitzer");
+    expect(ACTIONS["werkzeug.ausfuehren"].actor).toBe("bot");
+    const toolCallId = newId("action");
+    expect(
+      ACTIONS["werkzeug.freigeben"].target.safeParse({
+        conversationId: newId("conversation"),
+        runId: newId("run"),
+        toolCallId,
+      }).success,
+    ).toBe(true);
+    const ausfuehren = ACTIONS["werkzeug.ausfuehren"].target;
+    const target = {
+      conversationId: newId("conversation"),
+      runId: newId("run"),
+      botId: newId("bot"),
+      toolCallId,
+      approvalId: newId("action"),
+    };
+    expect(ausfuehren.safeParse(target).success).toBe(true);
+    const { approvalId: _a, ...ohneFreigabe } = target;
+    expect(ausfuehren.safeParse(ohneFreigabe).success).toBe(false);
+    const freigabe = ACTIONS["werkzeug.freigeben"].facts;
+    const answer = {
+      credential: "sitzung",
+      answer: "erteilen",
+      callWaiting: true,
+      callExpired: false,
+      argsDigest: digest,
+      waitingArgsDigest: digest,
+    };
+    expect(freigabe.safeParse(answer).success).toBe(true);
+    expect(freigabe.safeParse({ ...answer, answer: "vielleicht" }).success).toBe(false);
+    expect(freigabe.safeParse({ ...answer, input: { datum: "heute" } }).success).toBe(false);
   });
 
   it("Ziel nennt Unterhaltung, Lauf und Bot", () => {

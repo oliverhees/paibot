@@ -29,7 +29,11 @@ const ids = {
   conversationId: newId("conversation"),
   messageId: newId("message"),
   runId: newId("run"),
+  toolCallId: newId("action"),
+  approvalId: newId("action"),
 };
+
+const ARGS_DIGEST = `hmac-sha256:${"a7".repeat(32)}`;
 
 const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   "einrichtung.abschliessen": { installationId: ids.installationId },
@@ -56,11 +60,24 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   "lauf.abbrechen": { conversationId: ids.conversationId, runId: ids.runId },
   "belege.exportieren": { installationId: ids.installationId },
   "werkzeug.aufrufen": { conversationId: ids.conversationId, runId: ids.runId, botId: ids.botId },
+  "werkzeug.freigeben": {
+    conversationId: ids.conversationId,
+    runId: ids.runId,
+    toolCallId: ids.toolCallId,
+  },
+  "werkzeug.ausfuehren": {
+    conversationId: ids.conversationId,
+    runId: ids.runId,
+    botId: ids.botId,
+    toolCallId: ids.toolCallId,
+    approvalId: ids.approvalId,
+  },
 };
 
 /**
  * Fakten, bei denen jede Vorbedingung und jede Grenze eingehalten ist. Mit den Standard-Regeln
- * ist damit jede Aktion erlaubt, außer `werkzeug.aufrufen` (R-005 fragt nach).
+ * ist damit jede Aktion erlaubt, außer `werkzeug.aufrufen` (R-005 fragt nach). Für
+ * `werkzeug.ausfuehren` liegt eine erteilte, unbenutzte Freigabe für denselben Abdruck vor.
  */
 const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
   "einrichtung.abschliessen": { credential: "einrichtungs_code", setupOpen: true },
@@ -117,8 +134,29 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     toolName: "notiz_lesen",
     toolSource: "eingebaut",
     toolKind: "lesen",
-    argsDigest: `hmac-sha256:${"a7".repeat(32)}`,
+    argsDigest: ARGS_DIGEST,
     killSwitch: false,
+  },
+  "werkzeug.freigeben": {
+    credential: "sitzung",
+    answer: "erteilen",
+    callWaiting: true,
+    callExpired: false,
+    argsDigest: ARGS_DIGEST,
+    waitingArgsDigest: ARGS_DIGEST,
+  },
+  "werkzeug.ausfuehren": {
+    botOfConversation: true,
+    runRunning: true,
+    toolName: "notiz_lesen",
+    toolSource: "eingebaut",
+    toolKind: "lesen",
+    argsDigest: ARGS_DIGEST,
+    killSwitch: false,
+    approvalGranted: true,
+    approvalConsumed: false,
+    approvalExpired: false,
+    approvalArgsDigest: ARGS_DIGEST,
   },
 };
 

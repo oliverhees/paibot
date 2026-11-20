@@ -77,17 +77,25 @@ function mapValue(error: unknown, depth: number): MotorErrorCode | undefined {
   if (error instanceof EgressBlockedError) return "anbieter_nicht_erreichbar";
   if (looksBlocked(error)) return "schleuse_blockiert";
 
-  const status = statusOf(error);
-  if (status !== undefined) return mapStatus(status);
-
   const record = error as Record<string, unknown>;
+  const status = statusOf(error);
+  if (status !== undefined) {
+    // Erfolgreiche Antwort, danach Fehler (z. B. Strom bricht ab): Die Ursache entscheidet.
+    if (status >= 200 && status < 300) {
+      const inner =
+        depth < MAX_DEPTH && "cause" in error ? mapValue(record.cause, depth + 1) : undefined;
+      return inner ?? "intern";
+    }
+    return mapStatus(status);
+  }
+
   const name = typeof record.name === "string" ? record.name : "";
   if (name === "TimeoutError") return "anbieter_nicht_erreichbar";
   if (name === "AbortError") return "unterbrochen";
   if (typeof record.code === "string" && NETWORK_CODES.has(record.code)) {
     return "anbieter_nicht_erreichbar";
   }
-  if (error instanceof TypeError && /fetch failed|network/i.test(error.message)) {
+  if (error instanceof TypeError && /fetch failed|network|terminated/i.test(error.message)) {
     return "anbieter_nicht_erreichbar";
   }
   if (depth < MAX_DEPTH && "cause" in error) return mapValue(record.cause, depth + 1);
@@ -99,6 +107,9 @@ function mapValue(error: unknown, depth: number): MotorErrorCode | undefined {
  * 402/429 → `limit_erreicht`, Antwort der Datenschleuse mit Block → `schleuse_blockiert`,
  * Netzfehler, Zeitüberschreitung, 404, 408, 5xx und `EgressBlockedError` →
  * `anbieter_nicht_erreichbar`, Abbruch über ein Signal → `unterbrochen`, alles andere → `intern`.
+ * Ein Fehler mit Status 2xx (die Antwort hatte begonnen, dann brach z. B. der Strom ab) wird nach
+ * seiner Ursache abgebildet: Verbindungsabbruch → `anbieter_nicht_erreichbar`, Abbruch →
+ * `unterbrochen`; ohne erkennbare Ursache `intern`.
  *
  * Akzeptiert `Response`, Fehler von `fetch` und Fehlerobjekte mit `status`/`statusCode`. Rein.
  * Wie die Datenschleuse einen Block als HTTP-Antwort meldet, ist noch nicht gegen den laufenden

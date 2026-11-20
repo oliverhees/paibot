@@ -22,6 +22,12 @@ const FUNCTIONS = [
   "deriveKey",
   "encryptSecret",
   "decryptSecret",
+  "upgradeSecret",
+  "rebindSecret",
+  "secretFormatOf",
+  "needsRehash",
+  "isWeakMasterSecret",
+  "createSigningKeyHolder",
   "hashPassword",
   "verifyPassword",
   "newToken",
@@ -61,10 +67,13 @@ describe("Schnittstelle", () => {
     const salt = "s".repeat(22);
     const hash = "h".repeat(43);
     expect(crypto.isEncryptedSecret(["v1", iv, tag, "Q2xhcnRleHQ"].join(":"))).toBe(true);
-    expect(crypto.isEncryptedSecret(["v2", iv, tag, "Q2xhcnRleHQ"].join(":"))).toBe(false);
+    expect(crypto.isEncryptedSecret(["v2", iv, tag, "Q2xhcnRleHQ"].join(":"))).toBe(true);
+    expect(crypto.isEncryptedSecret(["v2", iv, tag, ""].join(":"))).toBe(false);
+    expect(crypto.isEncryptedSecret(["v3", iv, tag, "Q2xhcnRleHQ"].join(":"))).toBe(false);
     expect(crypto.isEncryptedSecret(["v1", `${iv}=`, tag, "x"].join(":"))).toBe(false);
     expect(crypto.isPasswordHash(["scrypt", "32768", "8", "1", salt, hash].join("$"))).toBe(true);
-    expect(crypto.isPasswordHash(["scrypt", "16384", "8", "1", salt, hash].join("$"))).toBe(false);
+    expect(crypto.isPasswordHash(["scrypt", "16384", "8", "1", salt, hash].join("$"))).toBe(true);
+    expect(crypto.isPasswordHash(["scrypt", "8192", "8", "1", salt, hash].join("$"))).toBe(false);
   });
 
   it("CryptoError trägt den Grund", () => {

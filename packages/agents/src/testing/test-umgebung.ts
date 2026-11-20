@@ -10,7 +10,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { deriveKey, encryptSecret, hashToken, loadMasterSecret } from "@paibot/crypto";
+import { type DerivedKey, deriveKey, encryptSecret, loadMasterSecret } from "@paibot/crypto";
 import {
   ACTIVE_STANDARD_RULES,
   type Clock,
@@ -23,11 +23,13 @@ import {
   type RuleDefinition,
   ruleSnapshot,
 } from "@paibot/gate";
-import { resolveModel } from "@paibot/llm/modell";
+import { providerTargetFacts } from "@paibot/llm";
+import { type ModelChoice, type ResolveModelDeps, resolveModel } from "@paibot/llm/modell";
 import { type ActionRequest, botActor, type Facts } from "@paibot/shared/aktionen";
-import { targetDigestInput, targetOrigin } from "@paibot/shared/bindung";
+import type { ReceiptResult } from "@paibot/shared/belege";
+import { providerSecretBinding, secretAad } from "@paibot/shared/bindung";
 import { newId } from "@paibot/shared/ids";
-import type { ResolvedModel } from "@paibot/shared/motor";
+import type { Motor, MotorEvent, ResolvedModel, TurnInput } from "@paibot/shared/motor";
 
 /** Belege im Speicher, in der Reihenfolge des Schreibens. */
 export interface MemoryReceipts extends ReceiptWriter {
@@ -68,6 +70,58 @@ export function gateWith(
   return createGate({ rules: { load: () => ruleSnapshot(rules) }, receipts, clock });
 }
 
+/** Eingabe einer Runde ohne Modell-Zugang: den baut erst `execute` des Tors. */
+export type TurnRequest = Omit<TurnInput, "model">;
+
+export interface MotorStepOptions {
+  /** Abbruch der Runde. */
+  signal?: AbortSignal;
+  /** Jedes Ereignis, sobald es kommt; `"stop"` beendet die Runde (wie `break` in der Schleife). */
+  onEvent?: (event: MotorEvent) => undefined | "stop";
+}
+
+/** Alles, was ein Motor-Schritt durch das Tor braucht. */
+export interface MotorStep {
+  gate: Gate;
+  action: ActionRequest<"modell.anfragen">;
+  facts: Facts<"modell.anfragen">;
+  /** Anbieter und Modell aus demselben Lesestand wie die Fakten. */
+  choice: ModelChoice;
+  deps: ResolveModelDeps;
+  motor: Motor;
+  turn: TurnRequest;
+}
+
+/**
+ * Ein Modell-Schritt so, wie die Lauf-Steuerung ihn ausführt: `modell.anfragen` durch das Tor;
+ * erst in `execute` entsteht mit der Berechtigung der Modell-Zugang (`resolveModel`), und die
+ * ganze Runde des Motors läuft dort. Nach `execute` ist der Zugang wertlos. Das Ergebnis der Runde
+ * (Token-Zahlen, Fehlercode, Abbruch) steht im Beleg „Ergebnis“.
+ *
+ * Lehnt das Tor ab, wirft es `GateDenied`; der Motor läuft dann gar nicht.
+ */
+export async function runMotorStep(step: MotorStep, options: MotorStepOptions = {}) {
+  const signal = options.signal ?? new AbortController().signal;
+  return step.gate.run(step.action, step.facts, async (permit) => {
+    const model = resolveModel(permit, step.choice, step.deps);
+    const events: MotorEvent[] = [];
+    for await (const event of step.motor.runTurn({ ...step.turn, model }, signal)) {
+      events.push(event);
+      if (options.onEvent?.(event) === "stop") break;
+    }
+    return { value: events, result: stepResult(events, signal) };
+  });
+}
+
+/** Was vom Motor-Schritt in den Beleg „Ergebnis“ geht. */
+export function stepResult(events: readonly MotorEvent[], signal: AbortSignal): ReceiptResult {
+  const last = events.at(-1);
+  if (last?.type === "error") return { status: "error", code: last.code };
+  if (last?.type === "finish") return { status: "ok", tokens: { ...last.usage } };
+  if (signal.aborted) return { status: "cancelled" };
+  return { status: "error", code: "unterbrochen" };
+}
+
 export interface ModelAccessOptions {
   /** Basis-URL des Anbieters (z. B. des Test-Anbieters), endet auf `/v1`. */
   baseUrl: string;
@@ -85,30 +139,39 @@ export interface ModelAccess {
   readonly gate: Gate;
   /**
    * Fragt das Tor (`modell.anfragen`, Standard-Regeln) und baut in `execute` mit der Berechtigung
-   * den Modell-Zugang über `resolveModel`. `run` läuft innerhalb von `execute`.
+   * den Modell-Zugang über `resolveModel`. `run` läuft innerhalb von `execute`; der Zugang gilt nur
+   * dort.
    */
   request<R>(run: (model: ResolvedModel) => Promise<R>): Promise<R>;
+  /** Eine Runde des Motors innerhalb von `execute` (`runMotorStep`); gibt alle Ereignisse zurück. */
+  step(motor: Motor, turn: TurnRequest, options?: MotorStepOptions): Promise<MotorEvent[]>;
 }
 
 export function modelAccess(options: ModelAccessOptions): ModelAccess {
   const receipts = options.receipts ?? memoryReceipts();
   const gate = gateWith(ACTIVE_STANDARD_RULES, receipts);
   const master = loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") });
-  const secretsKey = deriveKey(master, "secrets-v1");
+  const secretsKey: DerivedKey<"secrets-v1"> = deriveKey(master, "secrets-v1");
   const botId = newId("bot");
   const providerId = newId("provider");
   const modelId = newId("model");
   const conversationId = newId("conversation");
-  const choice = {
+  const choice: ModelChoice = {
     provider: {
       id: providerId,
-      templateKey: "lokal",
+      templateKey: "eigener",
       baseUrl: options.baseUrl,
-      region: "local" as const,
-      apiKeyEnc: encryptSecret(options.apiKey, secretsKey),
+      region: "local",
+      apiKeyEnc: encryptSecret(options.apiKey, secretsKey, {
+        aad: secretAad(providerSecretBinding(providerId, options.baseUrl)),
+      }),
     },
     model: { id: modelId, slug: options.slug ?? "fake/test-modell", displayName: "Test-Modell" },
     conversationId,
+  };
+  const deps: ResolveModelDeps = {
+    secretsKey,
+    ...(options.baseFetch === undefined ? {} : { baseFetch: options.baseFetch }),
   };
   const facts: Facts<"modell.anfragen"> = {
     botOfConversation: true,
@@ -124,33 +187,31 @@ export function modelAccess(options: ModelAccessOptions): ModelAccess {
     botMaxOutputTokens: 2048,
     tokensToday: 0,
     killSwitch: false,
-    targetOrigin: targetOrigin(options.baseUrl),
-    targetDigest: `sha256:${hashToken(targetDigestInput(providerId, options.baseUrl))}`,
+    ...providerTargetFacts(providerId, options.baseUrl),
   };
+  const newAction = (): ActionRequest<"modell.anfragen"> => ({
+    actionId: newId("action"),
+    type: "modell.anfragen",
+    actor: botActor(botId),
+    target: { conversationId, runId: newId("run"), botId, modelId },
+  });
 
   return {
     receipts,
     gate,
     async request(run) {
-      const action: ActionRequest<"modell.anfragen"> = {
-        actionId: newId("action"),
-        type: "modell.anfragen",
-        actor: botActor(botId),
-        target: { conversationId, runId: newId("run"), botId, modelId },
-      };
-      const { value } = await gate.run(action, facts, async (permit) => {
-        const model = resolveModel(permit, choice, {
-          secretsKey,
-          ...(options.baseFetch === undefined ? {} : { baseFetch: options.baseFetch }),
-        });
+      const { value } = await gate.run(newAction(), facts, async (permit) => {
+        const model = resolveModel(permit, choice, deps);
         return { value: await run(model), result: { status: "ok" } };
       });
       return value;
     },
+    async step(motor, turn, stepOptions) {
+      const { value } = await runMotorStep(
+        { gate, action: newAction(), facts, choice, deps, motor, turn },
+        stepOptions,
+      );
+      return value;
+    },
   };
-}
-
-/** Holt einen Modell-Zugang für Tests, die nur den Motor prüfen. */
-export function resolveTestModel(options: ModelAccessOptions): Promise<ResolvedModel> {
-  return modelAccess(options).request(async (model) => model);
 }

@@ -8,7 +8,7 @@
  * @since     2026-11-20
  */
 
-import type { ProviderKind, Region } from "@paibot/shared/objekte";
+import type { ProviderKind, ProviderTemplateKey, Region } from "@paibot/shared/objekte";
 
 /** Vorlage für einen Anbieter: was beim Anlegen vorbelegt wird. */
 export interface ProviderTemplate {
@@ -19,7 +19,10 @@ export interface ProviderTemplate {
   region: Region;
 }
 
-/** Bekannte Anbieter. In der Basis nur EUrouter. */
+/**
+ * Bekannte Anbieter. In der Basis nur EUrouter. Die Schlüssel sind Werte aus
+ * `PROVIDER_TEMPLATE_KEYS`; zusammen mit `eigener` (`CUSTOM_PROVIDER_TEMPLATE`) sind es genau diese.
+ */
 export const PROVIDER_TEMPLATES = {
   eurouter: {
     kind: "openai_compatible",
@@ -27,7 +30,7 @@ export const PROVIDER_TEMPLATES = {
     baseUrl: "https://api.eurouter.ai/v1",
     region: "eu",
   },
-} as const satisfies Record<string, ProviderTemplate>;
+} as const satisfies Partial<Record<ProviderTemplateKey, ProviderTemplate>>;
 
 export type ProviderTemplateId = keyof typeof PROVIDER_TEMPLATES;
 
@@ -43,6 +46,7 @@ export interface ProviderEndpoint {
  * `checkProviderBaseUrl`).
  */
 export const CUSTOM_PROVIDER_TEMPLATE = {
+  key: "eigener",
   kind: "openai_compatible",
   regions: ["eu", "non_eu", "local"],
-} as const satisfies { kind: ProviderKind; regions: readonly Region[] };
+} as const satisfies { key: ProviderTemplateKey; kind: ProviderKind; regions: readonly Region[] };

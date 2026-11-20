@@ -12,13 +12,13 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
 import { isPaiBotError } from "@paibot/shared/fehler";
-import type { MotorEvent, TurnInput } from "@paibot/shared/motor";
+import type { MotorEvent } from "@paibot/shared/motor";
 import { simulateReadableStream, streamText } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import pkg from "../package.json";
 import { createAiSdkMotor } from "./motor-aisdk";
-import { resolveTestModel } from "./testing/test-umgebung";
+import { type ModelAccess, modelAccess, type TurnRequest } from "./testing/test-umgebung";
 
 const API_KEY = `sk-test-${"m".repeat(24)}`;
 const REPLY = "Guten Morgen! Hier kommt eine Antwort in mehreren Stücken.";
@@ -43,14 +43,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function input(overrides: Partial<TurnInput> = {}, apiKey = API_KEY): Promise<TurnInput> {
+/** Eingabe einer Runde; den Modell-Zugang baut erst `execute` des Tors. */
+function input(overrides: Partial<TurnRequest> = {}): TurnRequest {
   return {
     system: "Du bist ein Test-Bot.",
     history: [{ role: "user", text: "Wie geht es dir?" }],
-    model: await resolveTestModel({ baseUrl, apiKey }),
     limits: { maxOutputTokens: 256, timeoutMs: 10_000 },
     ...overrides,
   };
+}
+
+/** Zugang zum Test-Anbieter durch das echte Tor. */
+function access(options: { baseUrl?: string; baseFetch?: typeof fetch } = {}): ModelAccess {
+  return modelAccess({ baseUrl, apiKey: API_KEY, ...options });
 }
 
 interface Timed {
@@ -58,15 +63,21 @@ interface Timed {
   at: number;
 }
 
+/** Eine Runde des Motors innerhalb von `execute` des Tors, jedes Ereignis mit Ankunftszeit. */
 async function run(
-  turn: TurnInput,
+  turn: TurnRequest,
   options: Parameters<typeof createAiSdkMotor>[0] = {},
   signal: AbortSignal = new AbortController().signal,
+  zugang: ModelAccess = access(),
 ): Promise<Timed[]> {
   const events: Timed[] = [];
-  for await (const event of createAiSdkMotor(options).runTurn(turn, signal)) {
-    events.push({ event, at: Date.now() });
-  }
+  await zugang.step(createAiSdkMotor(options), turn, {
+    signal,
+    onEvent: (event) => {
+      events.push({ event, at: Date.now() });
+      return undefined;
+    },
+  });
   return events;
 }
 
@@ -123,12 +134,12 @@ describe("Aufbau", () => {
   });
 
   it("ungültige Grenzen oder doppelte Werkzeug-Namen: Fehler-Ereignis, keine Anfrage", async () => {
-    const bad = await input({ limits: { maxOutputTokens: 0, timeoutMs: 1000 } });
+    const bad = input({ limits: { maxOutputTokens: 0, timeoutMs: 1000 } });
     expect((await run(bad)).map(({ event }) => event)).toEqual([
       { type: "error", code: "intern", retryable: false, detail: "eingabe_ungueltig" },
     ]);
     const spec = { name: "suche", description: "Sucht", inputSchema: { type: "object" } };
-    const twice = await input({ tools: [spec, spec] });
+    const twice = input({ tools: [spec, spec] });
     expect(types(await run(twice))).toEqual(["error"]);
     expect(provider.requests).toHaveLength(0);
   });
@@ -137,7 +148,7 @@ describe("Aufbau", () => {
 describe("Streaming mit Token-Zahlen", () => {
   it("liefert Text in Stücken und am Ende finish mit den Token-Zahlen des Anbieters", async () => {
     provider.configure({ chunkChars: 6, chunkDelayMs: 25 });
-    const events = await run(await input());
+    const events = await run(input());
     const deltas = events.filter(({ event }) => event.type === "text-delta");
     expect(deltas.length).toBeGreaterThanOrEqual(5);
     expect(deltas.map(({ event }) => (event as { text: string }).text).join("")).toBe(REPLY);
@@ -153,7 +164,7 @@ describe("Streaming mit Token-Zahlen", () => {
   });
 
   it("sendet Modellname, Anweisung, Verlauf, Grenze und Token-Abfrage; kein Wiederholen", async () => {
-    await run(await input());
+    await run(input());
     const body = chatBody();
     expect(body).toMatchObject({
       model: "fake/test-modell",
@@ -179,13 +190,17 @@ describe("Abbruch mitten im Strom", () => {
     const controller = new AbortController();
     const events: MotorEvent[] = [];
     let abortedAt = 0;
-    for await (const event of createAiSdkMotor().runTurn(await input(), controller.signal)) {
-      events.push(event);
-      if (events.length === 3) {
-        abortedAt = Date.now();
-        controller.abort();
-      }
-    }
+    await access().step(createAiSdkMotor(), input(), {
+      signal: controller.signal,
+      onEvent: (event) => {
+        events.push(event);
+        if (events.length === 3) {
+          abortedAt = Date.now();
+          controller.abort();
+        }
+        return undefined;
+      },
+    });
     const endedAfter = Date.now() - abortedAt;
     expect(events.map((e) => e.type)).toEqual(["text-delta", "text-delta", "text-delta"]);
     expect(endedAfter).toBeLessThan(500);
@@ -200,7 +215,7 @@ describe("Abbruch mitten im Strom", () => {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 100);
     const started = Date.now();
-    const events = await run(await input(), {}, controller.signal);
+    const events = await run(input(), {}, controller.signal);
     expect(events).toEqual([]);
     expect(Date.now() - started).toBeLessThan(1000);
     await waitFor(() => provider.requests[0]?.closedByClient === true);
@@ -208,13 +223,14 @@ describe("Abbruch mitten im Strom", () => {
 
   it("bricht der Aufrufer die Schleife ab, wird die Verbindung ebenfalls geschlossen", async () => {
     provider.configure({ reply: "z".repeat(400), chunkChars: 2, chunkDelayMs: 30 });
-    for await (const event of createAiSdkMotor().runTurn(
-      await input(),
-      new AbortController().signal,
-    )) {
-      expect(event.type).toBe("text-delta");
-      break;
-    }
+    const seen: MotorEvent[] = [];
+    await access().step(createAiSdkMotor(), input(), {
+      onEvent: (event) => {
+        seen.push(event);
+        return "stop";
+      },
+    });
+    expect(seen.map((event) => event.type)).toEqual(["text-delta"]);
     await waitFor(() => provider.requests[0]?.closedByClient === true);
   });
 });
@@ -230,7 +246,7 @@ describe("Fehler über die Anbieter-Schicht", () => {
     [400, "intern", false],
   ] as const)("HTTP %i → %s", async (status, code, retryable) => {
     provider.failNext({ kind: "status", status });
-    const events = await run(await input());
+    const events = await run(input());
     expect(events.map(({ event }) => event)).toEqual([
       { type: "error", code, retryable, detail: `http_${status}` },
     ]);
@@ -240,7 +256,7 @@ describe("Fehler über die Anbieter-Schicht", () => {
   it("Verbindung bricht mitten im Strom ab → anbieter_nicht_erreichbar nach dem Teiltext", async () => {
     provider.configure({ chunkChars: 4 });
     provider.failNext({ kind: "abbruch", afterChunks: 3 });
-    const events = await run(await input());
+    const events = await run(input());
     expect(events.at(-1)?.event).toMatchObject({
       type: "error",
       code: "anbieter_nicht_erreichbar",
@@ -255,7 +271,7 @@ describe("Fehler über die Anbieter-Schicht", () => {
   it("Anbieter antwortet nicht → Zeitgrenze ohne Strom (idleTimeoutMs)", async () => {
     provider.failNext({ kind: "haengen" });
     const started = Date.now();
-    const events = await run(await input(), { idleTimeoutMs: 150 });
+    const events = await run(input(), { idleTimeoutMs: 150 });
     expect(events.map(({ event }) => event)).toEqual([
       { type: "error", code: "anbieter_nicht_erreichbar", retryable: true, detail: "zeitgrenze" },
     ]);
@@ -265,7 +281,7 @@ describe("Fehler über die Anbieter-Schicht", () => {
 
   it("Gesamt-Zeitgrenze der Runde (limits.timeoutMs)", async () => {
     provider.configure({ reply: "w".repeat(200), chunkChars: 2, chunkDelayMs: 20 });
-    const events = await run(await input({ limits: { maxOutputTokens: 256, timeoutMs: 200 } }));
+    const events = await run(input({ limits: { maxOutputTokens: 256, timeoutMs: 200 } }));
     expect(events.at(-1)?.event).toEqual({
       type: "error",
       code: "anbieter_nicht_erreichbar",
@@ -278,9 +294,7 @@ describe("Fehler über die Anbieter-Schicht", () => {
     const gone = createFakeProvider();
     const { baseUrl: goneUrl } = await gone.start({ port: 0 });
     await gone.stop();
-    const turn = await input();
-    const model = await resolveTestModel({ baseUrl: goneUrl, apiKey: API_KEY });
-    const events = await run({ ...turn, model });
+    const events = await run(input(), {}, undefined, access({ baseUrl: goneUrl }));
     expect(events.map(({ event }) => event)).toMatchObject([
       { type: "error", code: "anbieter_nicht_erreichbar", retryable: true },
     ]);
@@ -288,7 +302,7 @@ describe("Fehler über die Anbieter-Schicht", () => {
 
   it("Fehler-Ereignisse enthalten nie den Schlüssel", async () => {
     provider.failNext({ kind: "status", status: 401 });
-    const events = await run(await input());
+    const events = await run(input());
     expect(JSON.stringify(events)).not.toContain(API_KEY);
   });
 });
@@ -309,7 +323,7 @@ describe("Werkzeug-Wünsche und Verlauf", () => {
       reply: "",
       toolCall: { id: "call_1", name: "suche", arguments: { begriff: "Kaffee" } },
     });
-    const events = await run(await input({ tools: [search] }));
+    const events = await run(input({ tools: [search] }));
     expect(events.map(({ event }) => event)).toEqual([
       { type: "tool-call", callId: "call_1", name: "suche", input: { begriff: "Kaffee" } },
       { type: "finish", finishReason: "tool-calls", usage: expect.any(Object) },
@@ -329,7 +343,7 @@ describe("Werkzeug-Wünsche und Verlauf", () => {
 
   it("schickt Aufrufe und Ergebnisse (ok, Fehler, abgelehnt) im Format des Anbieters", async () => {
     await run(
-      await input({
+      input({
         tools: [search],
         history: [
           { role: "user", text: "Such bitte." },
@@ -375,16 +389,13 @@ describe("Werkzeug-Wünsche und Verlauf", () => {
 describe("Ausgangs-Weg", () => {
   it("nutzt nur das fetch aus dem Modell-Zugang, nie das globale", async () => {
     const original = globalThis.fetch;
-    const turn = {
-      ...(await input()),
-      model: await resolveTestModel({ baseUrl, apiKey: API_KEY, baseFetch: original }),
-    };
+    const zugang = access({ baseFetch: original });
     const global = vi.fn(async () => {
       throw new Error("globales fetch benutzt");
     });
     vi.stubGlobal("fetch", global);
     try {
-      const events = await run(turn);
+      const events = await run(input(), {}, undefined, zugang);
       expect(events.at(-1)?.event.type).toBe("finish");
     } finally {
       vi.unstubAllGlobals();

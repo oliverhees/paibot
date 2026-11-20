@@ -56,39 +56,43 @@ Mögliche Ergebnisse des Tors sind deshalb: **erlaubt**, **abgelehnt**, **fragen
 
 Am Tor selbst gibt es nichts einzustellen: Die Regeln sind in der Basisversion **nur lesbar**. Diese Regeln gelten (kleinere Priorität zuerst):
 
-| Regel | Name                                  | Priorität | Was sie bedeutet                                                                                                                          |
-| ----- | ------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| R-003 | Einrichtung mit Einrichtungs-Code     | 50        | Mit dem Einrichtungs-Code darfst du nur die Einrichtung abschließen                                                                       |
-| R-004 | Anmelden mit Passwort                 | 50        | Mit dem Passwort darfst du dich nur anmelden                                                                                              |
-| R-006 | Nachweis passt nicht zur Aktion       | 60        | Für jede andere Aktion lehnt das Tor Passwort und Einrichtungs-Code ausdrücklich ab; dafür gilt nur deine Sitzung                         |
-| R-001 | Besitzer verwaltet seine Installation | 100       | Mit deiner Sitzung darfst du alles an deiner Installation verwalten                                                                       |
-| R-002 | Bot darf antworten                    | 100       | Der Bot einer Unterhaltung darf für diese Unterhaltung ein Modell anfragen, wenn alle Grenzen eingehalten sind                            |
-| R-005 | Bot fragt vor Werkzeugen              | 100       | Bevor der Bot einer Unterhaltung ein Werkzeug benutzt, fragt PaiBot dich. Ausgeführt wird erst nach deiner Freigabe                       |
-| R-999 | Ohne passende Regel                   | 1000000   | Passt keine andere Regel, fragt das Tor. In der Basisversion heißt das: nichts wird ausgeführt, Meldung „Dafür gibt es noch keine Regel.“ |
+| Regel | Name                                  | Priorität | Was sie bedeutet                                                                                                                                                        |
+| ----- | ------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R-003 | Einrichtung mit Einrichtungs-Code     | 50        | Mit dem Einrichtungs-Code darfst du nur die Einrichtung abschließen                                                                                                     |
+| R-004 | Anmelden mit Passwort                 | 50        | Mit dem Passwort darfst du dich nur anmelden                                                                                                                            |
+| R-006 | Nachweis passt nicht zur Aktion       | 60        | Für jede andere Aktion lehnt das Tor Passwort und Einrichtungs-Code ausdrücklich ab; dafür gilt nur deine Sitzung                                                       |
+| R-001 | Besitzer verwaltet seine Installation | 100       | Mit deiner Sitzung darfst du alles an deiner Installation verwalten                                                                                                     |
+| R-002 | Bot darf antworten                    | 100       | Der Bot einer Unterhaltung darf für diese Unterhaltung ein Modell anfragen, wenn alle Grenzen eingehalten sind                                                          |
+| R-005 | Bot fragt vor Werkzeugen              | 100       | Bevor der Bot einer Unterhaltung ein Werkzeug benutzt, fragt PaiBot dich. Ausgeführt wird erst nach deiner Freigabe                                                     |
+| R-007 | Einmal erlaubt                        | 100       | Ein Werkzeug-Aufruf, den du freigegeben hast, darf genau einmal laufen: nur mit deiner erteilten, unbenutzten und nicht abgelaufenen Freigabe für genau diese Argumente |
+| R-008 | Ausführen nur mit Freigabe            | 200       | Ohne gültige Freigabe lehnt das Tor die Ausführung eines wartenden Werkzeug-Aufrufs ab                                                                                  |
+| R-999 | Ohne passende Regel                   | 1000000   | Passt keine andere Regel, fragt das Tor. In der Basisversion heißt das: nichts wird ausgeführt, Meldung „Dafür gibt es noch keine Regel.“                               |
 
 Kurz: Der Einrichtungs-Code gilt nur für die Einrichtung, das Passwort nur fürs Anmelden, sonst zählt deine Sitzung.
 
 Vor den Grenzen und Regeln prüft das Tor feste Vorbedingungen. Sie beschreiben den Zustand, in dem eine Aktion überhaupt Sinn ergibt. Ist eine verletzt, wird die Aktion abgelehnt, und die Meldung nennt sie. Fehlt die Angabe, die eine Vorbedingung braucht, gilt sie als verletzt.
 
-| Vorbedingung | Name                         | Was sie prüft                                                  | Betrifft                |
-| ------------ | ---------------------------- | -------------------------------------------------------------- | ----------------------- |
-| V-01         | Unterhaltung vorhanden       | Die Unterhaltung gibt es                                       | Nachricht senden        |
-| V-02         | Kein Lauf aktiv              | In der Unterhaltung antwortet der Bot gerade nicht             | Nachricht senden        |
-| V-03         | Lauf aktiv                   | Es gibt eine laufende Antwort, die sich abbrechen lässt        | Antwort abbrechen       |
-| V-04         | Datenschleuse eingerichtet   | Beim Einschalten der Datenschleuse ist ihr Dienst eingerichtet | Datenschleuse schalten  |
-| V-05         | Lauf läuft                   | Die Antwort, zu der ein Werkzeug-Aufruf gehört, läuft noch     | Werkzeug aufrufen       |
-| V-06         | Aktuelles Passwort bestätigt | Beim Ändern des Passworts wurde das aktuelle Passwort geprüft  | Passwort ändern         |
-| V-07         | Einrichtung offen            | Die Einrichtung ist noch nicht abgeschlossen                   | Einrichtung abschließen |
+| Vorbedingung | Name                         | Was sie prüft                                                              | Betrifft                                            |
+| ------------ | ---------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------- |
+| V-01         | Unterhaltung vorhanden       | Die Unterhaltung gibt es                                                   | Nachricht senden                                    |
+| V-02         | Kein Lauf aktiv              | In der Unterhaltung antwortet der Bot gerade nicht                         | Nachricht senden                                    |
+| V-03         | Lauf aktiv                   | Es gibt eine laufende Antwort, die sich abbrechen lässt                    | Antwort abbrechen                                   |
+| V-04         | Datenschleuse eingerichtet   | Beim Einschalten der Datenschleuse ist ihr Dienst eingerichtet             | Datenschleuse schalten                              |
+| V-05         | Lauf läuft                   | Die Antwort, zu der ein Werkzeug-Aufruf gehört, läuft noch                 | Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
+| V-06         | Aktuelles Passwort bestätigt | Beim Ändern des Passworts wurde das aktuelle Passwort geprüft              | Passwort ändern                                     |
+| V-07         | Einrichtung offen            | Die Einrichtung ist noch nicht abgeschlossen                               | Einrichtung abschließen                             |
+| V-08         | Aufruf wartet auf Freigabe   | Der Werkzeug-Aufruf wartet noch auf deine Antwort und ist nicht abgelaufen | Werkzeug-Aufruf beantworten                         |
+| V-09         | Freigabe passt zum Aufruf    | Deine Antwort gilt genau den Argumenten, die gespeichert sind              | Werkzeug-Aufruf beantworten                         |
 
 Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas erlaubt. Ist eine Grenze verletzt, wird die Aktion abgelehnt, und die Meldung nennt die Grenze.
 
-| Grenze | Name                              | Was sie prüft                                                                                                                                              | Betrifft                                             |
-| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| G-01   | Datenschleuse gefordert           | Ist die Datenschleuse für die Unterhaltung an, muss die Anfrage über sie laufen und sie muss erreichbar sein. Es gibt keinen Rückfall auf den direkten Weg | Modell anfragen                                      |
-| G-02   | Anbieter aktiv und Region erlaubt | Der Anbieter ist eingeschaltet und steht in der EU oder läuft bei dir (lokal). Anbieter außerhalb der EU lehnt die Basisversion ab                         | Modell anfragen                                      |
-| G-03   | Länge                             | Die Eingabe ist höchstens so lang wie erlaubt; eine Anfrage verlangt höchstens so viel Ausgabe, wie für deinen Bot eingestellt ist                         | Nachricht senden, Modell anfragen                    |
-| G-04   | Tagesbudget                       | Hast du ein Tagesbudget gesetzt, muss der Verbrauch des Tages darunter liegen. Ohne Budget entfällt die Grenze                                             | Modell anfragen                                      |
-| G-05   | Not-Aus                           | Ist der Not-Aus an, wird jede betroffene Aktion abgelehnt                                                                                                  | Nachricht senden, Modell anfragen, Werkzeug aufrufen |
+| Grenze | Name                              | Was sie prüft                                                                                                                                              | Betrifft                                                                               |
+| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| G-01   | Datenschleuse gefordert           | Ist die Datenschleuse für die Unterhaltung an, muss die Anfrage über sie laufen und sie muss erreichbar sein. Es gibt keinen Rückfall auf den direkten Weg | Modell anfragen                                                                        |
+| G-02   | Anbieter aktiv und Region erlaubt | Der Anbieter ist eingeschaltet und steht in der EU oder läuft bei dir (lokal). Anbieter außerhalb der EU lehnt die Basisversion ab                         | Modell anfragen                                                                        |
+| G-03   | Länge                             | Die Eingabe ist höchstens so lang wie erlaubt; eine Anfrage verlangt höchstens so viel Ausgabe, wie für deinen Bot eingestellt ist                         | Nachricht senden, Modell anfragen                                                      |
+| G-04   | Tagesbudget                       | Hast du ein Tagesbudget gesetzt, muss der Verbrauch des Tages darunter liegen. Ohne Budget entfällt die Grenze                                             | Modell anfragen                                                                        |
+| G-05   | Not-Aus                           | Ist der Not-Aus an, wird jede betroffene Aktion abgelehnt                                                                                                  | Nachricht senden, Modell anfragen, Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
 
 ## So funktioniert es
 
@@ -104,14 +108,15 @@ Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas 
   4. Nur bei „erlaubt“ wird die Aktion ausgeführt, mit einer Berechtigung, die nur das Tor ausstellen kann und die nur während der Ausführung gilt. Sie ist unveränderlich; bei „Modell anfragen“ trägt sie auch das Ziel der Anfrage (Origin und Abdruck von Anbieter und Adresse), damit die Anbieter-Schicht genau dorthin sendet.
   5. Beleg „Ergebnis“ schreiben: ok, Fehler, abgebrochen oder abgelehnt.
 - Lehnt das Tor ab, meldet `gate.run` das mit dem Fehler `GateDenied`. Er nennt das Ergebnis (`deny`, `ask` oder `prepare`), die ganze Entscheidung, beide Belege und die Aktions-Kennung. Bei einer verletzten Vorbedingung trägt er deren Fehlercode (zum Beispiel `lauf_aktiv`), sonst `abgelehnt` bzw. `regel_fehlt`. Bei „fragen“ (`ask`) wartet die Aktion auf deine Freigabe; der Fehler liefert dafür die Angaben, mit denen ein wartender Werkzeug-Aufruf gespeichert wird.
-- Werkzeug-Aufrufe deines Bots laufen als eigene Aktion `werkzeug.aufrufen` durch das Tor. Im Beleg stehen Name, Quelle und Art des Werkzeugs und nur ein Abdruck der Argumente, nie die Argumente selbst.
+- Werkzeug-Aufrufe deines Bots laufen als eigene Aktion `werkzeug.aufrufen` durch das Tor. Im Beleg stehen Name, Quelle und Art des Werkzeugs (bei einem Werkzeug von einem MCP-Server auch dessen Name, sonst nie) und nur ein Abdruck der Argumente, nie die Argumente selbst.
+- Freigabe in zwei Schritten, jeder mit eigenen Belegen: Deine Antwort auf einen wartenden Aufruf ist die Aktion `werkzeug.freigeben` (erteilen oder ablehnen, nur mit Sitzung, V-08 und V-09). Die Ausführung danach ist eine neue Entscheidung `werkzeug.ausfuehren`, die auf den Aufruf und deine Freigabe verweist; R-007 erlaubt sie genau einmal, danach ist die Freigabe verbraucht. So bekommt jede Aktion genau ihre zwei Belege.
 - Für Tests gibt es den Zugang `@paibot/gate/testing` (`withTestPermit`). Er stellt eine Berechtigung auf demselben Weg aus wie das Tor, aber ohne Regeln und ohne Beleg. Eine Lint-Regel lässt ihn nur in Tests zu.
 - Beide Belege einer Aktion hängen über dieselbe Aktions-Kennung zusammen. Wie Belege verkettet und geprüft werden, steht auf der Seite [Belege](funktion-belege.md).
 
 ## Grenzen
 
 - Die Regeln sind in der Basisversion nur lesbar. Eigene Regeln und Regel-Vorschläge deines Bots sind geplant. Der Bot entscheidet nie für dich, er wird Regeln nur vorschlagen.
-- „Fragen“ mit Freigabe-Karte ist geplant. Heute wird eine Aktion, die fragt, nicht ausgeführt; ein Werkzeug-Aufruf wartet, bis die Freigabe gebaut ist.
+- „Fragen“ mit Freigabe-Karte ist geplant. Heute wird eine Aktion, die fragt, nicht ausgeführt; ein Werkzeug-Aufruf wartet, bis die Freigabe gebaut ist. Das Tor kann über Freigabe und Ausführung schon entscheiden; speichern lassen sich deren Belege und die Regeln R-007 und R-008 aber erst mit einer kommenden Version der Datenbank, und die Oberfläche dafür fehlt noch.
 - „Vorbereiten“ ist geplant. Heute wird eine solche Aktion ebenfalls abgelehnt.
 - Der Not-Aus lässt sich in der Basisversion noch nicht in der Oberfläche schalten (geplant).
 - Das Tor prüft nur die Fakten, die es bekommt. Es liest keine Inhalte und bewertet nicht, ob eine Antwort gut ist. Ob ein Nachweis (Sitzung, Passwort, Code) echt ist, prüft der Zugang vorher; das Tor prüft nur, ob er zur Aktion passt.

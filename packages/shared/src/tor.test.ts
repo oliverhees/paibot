@@ -30,7 +30,6 @@ import {
   ruleSchema,
   STANDARD_RULE_IDS,
   STANDARD_RULE_VERSIONS,
-  STANDARD_RULES,
 } from "./gate";
 import { idSchema, newId } from "./id";
 
@@ -61,6 +60,8 @@ const modelFacts: Facts<"modell.anfragen"> = {
   botMaxOutputTokens: 2048,
   tokensToday: 0,
   killSwitch: false,
+  targetOrigin: "https://api.eurouter.ai",
+  targetDigest: `sha256:${"a".repeat(64)}`,
 };
 
 describe("Aktionen", () => {
@@ -85,8 +86,10 @@ describe("Aktionen", () => {
       "lauf.abbrechen",
       "belege.exportieren",
       "werkzeug.aufrufen",
+      "werkzeug.freigeben",
+      "werkzeug.ausfuehren",
     ]);
-    const botActions = new Set(["modell.anfragen", "werkzeug.aufrufen"]);
+    const botActions = new Set(["modell.anfragen", "werkzeug.aufrufen", "werkzeug.ausfuehren"]);
     for (const type of ACTION_TYPES) {
       expect(ACTIONS[type].actor).toBe(botActions.has(type) ? "bot" : "besitzer");
     }
@@ -130,6 +133,11 @@ describe("Aktionen", () => {
     expect(schema.safeParse({ ...modelFacts, inputChars: 1.5 }).success).toBe(false);
     expect(schema.safeParse({ ...modelFacts, route: "direkt" }).success).toBe(false);
     expect(schema.safeParse({ ...modelFacts, prompt: "Hallo" }).success).toBe(false);
+    // Ohne Ziel (lesbar und als Abdruck) gibt es keine Modell-Anfrage.
+    const { targetDigest: _d, ...withoutDigest } = modelFacts;
+    const { targetOrigin: _o, ...withoutOrigin } = modelFacts;
+    expect(schema.safeParse(withoutDigest).success).toBe(false);
+    expect(schema.safeParse(withoutOrigin).success).toBe(false);
     expect(schema.safeParse({ ...modelFacts, dailyTokenBudget: 100000 }).success).toBe(true);
     expect(
       factsSchema("bot.aendern").safeParse({ credential: "sitzung", fields: [] }).success,
@@ -143,15 +151,32 @@ describe("Aktionen", () => {
   });
 
   it("Passwort ändern und Unterhaltung umbenennen sind Verwaltungsaktionen des Besitzers", () => {
+    const minimal = {
+      "zugang.passwort_aendern": { credential: "sitzung", currentPasswordVerified: true },
+      "unterhaltung.umbenennen": { credential: "sitzung" },
+    } as const;
     for (const type of ["zugang.passwort_aendern", "unterhaltung.umbenennen"] as const) {
       expect(ACTIONS[type].actor).toBe("besitzer");
-      expect(factsSchema(type).parse({ credential: "sitzung" })).toEqual({ credential: "sitzung" });
+      expect(factsSchema(type).parse(minimal[type])).toEqual(minimal[type]);
       expect(factsSchema(type).safeParse({}).success).toBe(false);
-      expect(factsSchema(type).safeParse({ credential: "sitzung", title: "x" }).success).toBe(
-        false,
-      );
+      expect(factsSchema(type).safeParse({ ...minimal[type], title: "x" }).success).toBe(false);
     }
-    const besitzerRegel = STANDARD_RULES.find((rule) => rule.id === "R-001");
+    // Ob das aktuelle Passwort geprüft wurde, ist Pflicht: Fehlt die Angabe, gilt die Aktion als
+    // ungültig, statt still als „nicht geprüft“ durchzugehen.
+    expect(
+      factsSchema("zugang.passwort_aendern").safeParse({ credential: "sitzung" }).success,
+    ).toBe(false);
+    expect(
+      factsSchema("einrichtung.abschliessen").safeParse({ credential: "einrichtungs_code" })
+        .success,
+    ).toBe(false);
+    expect(
+      factsSchema("einrichtung.abschliessen").safeParse({
+        credential: "einrichtungs_code",
+        setupOpen: true,
+      }).success,
+    ).toBe(true);
+    const besitzerRegel = ACTIVE_STANDARD_RULES.find((rule) => rule.id === "R-001");
     expect(besitzerRegel?.action).toBe("*");
   });
 });
@@ -196,7 +221,7 @@ describe("Regeln", () => {
   });
 
   it("gespeicherte Regeln haben eine Zeit und gültige Felder", () => {
-    const stored = { ...STANDARD_RULES[0], createdAt: "2026-11-20T10:00:00.000Z" };
+    const stored = { ...ACTIVE_STANDARD_RULES[0], createdAt: "2026-11-20T10:00:00.000Z" };
     expect(ruleSchema.parse(stored)).toEqual(stored);
     expect(ruleSchema.safeParse({ ...stored, version: 0 }).success).toBe(false);
     expect(ruleSchema.safeParse({ ...stored, action: "alles" }).success).toBe(false);
@@ -214,9 +239,12 @@ describe("Entscheidung", () => {
         { name: "schleuse_gefordert", result: "ok" },
         { name: "laenge", result: "ok", value: 812 },
       ],
+      preconditions: [],
       reason: "Bot darf antworten",
     };
     expect(decisionSchema.parse(decision)).toEqual(decision);
+    const { preconditions: _p, ...withoutPreconditions } = decision;
+    expect(decisionSchema.safeParse(withoutPreconditions).success).toBe(false);
     for (const outcome of ["deny", "ask", "prepare"]) {
       expect(decisionSchema.safeParse({ ...decision, outcome }).success).toBe(true);
     }

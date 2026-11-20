@@ -14,8 +14,10 @@ import {
   DERIVED_KEY_BYTES,
   deriveKey,
   isCryptoError,
+  isWeakMasterSecret,
   KEY_PURPOSES,
   loadMasterSecret,
+  type MasterSecret,
   toHex,
 } from "./index";
 
@@ -71,6 +73,45 @@ describe("loadMasterSecret", () => {
       expect(String((caught as Error).message)).not.toContain(value);
     }
   });
+
+  it("lehnt erkennbar nicht zufällige Werte ab, ohne den Wert zu nennen", () => {
+    const pattern = Buffer.alloc(32);
+    for (let i = 0; i < 32; i++) pattern[i] = (i % 8) * 31;
+    const weak = [
+      Buffer.alloc(32, 0), // Nullen
+      Buffer.alloc(32, 0xff),
+      Buffer.alloc(32, 7),
+      pattern, // kurze Wiederholung
+      Buffer.from("das-ist-mein-geheimes-passwort!!", "utf8"), // Text statt Zufall
+    ];
+    for (const bytes of weak) {
+      expect(bytes.length).toBe(32);
+      for (const value of [bytes.toString("base64"), bytes.toString("base64url")]) {
+        let caught: unknown;
+        try {
+          loadMasterSecret({ PAIBOT_SECRET: value });
+        } catch (error) {
+          caught = error;
+        }
+        expect(isCryptoError(caught, "geheimnis_schwach")).toBe(true);
+        expect(String((caught as Error).message)).not.toContain(value);
+      }
+    }
+  });
+
+  it("nimmt viele echte Zufallswerte an", () => {
+    for (let i = 0; i < 2000; i++) {
+      const bytes = randomBytes(32);
+      expect(isWeakMasterSecret(bytes)).toBe(false);
+    }
+    // Ränder der Regel: 16 verschiedene Werte, nicht nur Text
+    const sixteen = Buffer.alloc(32);
+    for (let i = 0; i < 32; i++) sixteen[i] = (i % 16) * 16;
+    expect(isWeakMasterSecret(sixteen)).toBe(false);
+    sixteen[15] = 0;
+    sixteen[31] = 0;
+    expect(isWeakMasterSecret(sixteen)).toBe(true);
+  });
 });
 
 describe("deriveKey", () => {
@@ -103,7 +144,8 @@ describe("deriveKey", () => {
 
   it("entspricht HKDF-SHA-256 mit Salz pb/wurzel/1 und Info = Zweck (festes Beispiel)", () => {
     // Festes Wurzel-Geheimnis (32 Mal 0x01) → stabile Ableitung; schützt vor versehentlicher Änderung.
-    const fixed = loadMasterSecret({ PAIBOT_SECRET: Buffer.alloc(32, 1).toString("base64") });
+    // Direkt als Bytes, weil `loadMasterSecret` einen so gleichförmigen Wert ablehnt.
+    const fixed = new Uint8Array(32).fill(1) as unknown as MasterSecret;
     expect(toHex(deriveKey(fixed, "secrets-v1"))).toMatch(/^[0-9a-f]{64}$/);
     expect(toHex(deriveKey(fixed, "secrets-v1"))).toBe(FIXED_SECRETS_KEY);
   });

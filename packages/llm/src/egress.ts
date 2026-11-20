@@ -11,6 +11,7 @@
 import { lookup } from "node:dns/promises";
 import type { Region } from "@paibot/shared/objekte";
 import { classifyIpAddress, isIpAddress, METADATA_HOSTS, normalizeHost } from "./address";
+import { pinnedFetch } from "./pinned-fetch";
 
 /** Namen der Dienste im Compose-Stack. Sie sind als Anbieter-Ziel nie erlaubt. */
 export const INTERNAL_SERVICE_HOSTS = ["postgres", "datenschleuse", "web", "worker"] as const;
@@ -25,6 +26,12 @@ export interface EgressTarget {
    * Netz). Link-Local- und Metadaten-Adressen bleiben auch dann gesperrt.
    */
   allowPrivate?: boolean;
+  /**
+   * Namen, deren Adressen dieses Ziel nie haben darf, z. B. die Dienste von PaiBot im eigenen Netz
+   * (`INTERNAL_SERVICE_HOSTS`). Aufgelöst wird bei jedem Aufruf; ein Name, der sich nicht
+   * auflösen lässt, sperrt nichts.
+   */
+  denyAddressesOf?: readonly string[];
 }
 
 /** Warum ein Aufruf abgelehnt wurde. */
@@ -56,6 +63,8 @@ export interface EgressOptions {
   lookup?: HostLookup;
   /** Wird mit dem Ziel aufgerufen, wenn ein Aufruf abgelehnt wurde. */
   onBlocked?: (target: string, reason: EgressBlockReason) => void;
+  /** Zeitgrenze ohne Datenfluss für die Verbindung (Standard `PINNED_IDLE_TIMEOUT_MS`). */
+  idleTimeoutMs?: number;
 }
 
 const MAX_REDIRECTS = 5;
@@ -99,21 +108,59 @@ export function egressTargetOf(baseUrl: string): EgressTarget {
 }
 
 /**
- * Prüft die Adressen eines Ziels. Bei IP-Adressen direkt, bei Namen nach der Auflösung: eine
- * einzige gesperrte Adresse genügt. Link-Local und Metadaten sind nie erlaubt, private Adressen
- * nur mit `allowPrivate`.
+ * Erlaubtes Ziel für einen Anbieter: aus der Basis-URL, private Adressen nur bei Region `local`,
+ * und dort nie die Adressen der eigenen Dienste (`INTERNAL_SERVICE_HOSTS`, z. B. die Datenbank).
  */
-async function addressesAllowed(
+export function providerEgressTarget(baseUrl: string, region: Region): EgressTarget {
+  const target = egressTargetOf(baseUrl);
+  if (region !== "local") return target;
+  return { ...target, allowPrivate: true, denyAddressesOf: INTERNAL_SERVICE_HOSTS };
+}
+
+/**
+ * Prüft die Adressen eines Ziels und gibt sie zurück, wenn alle erlaubt sind (sonst `undefined`).
+ * Bei IP-Adressen direkt, bei Namen nach der Auflösung: eine einzige gesperrte Adresse genügt.
+ * Link-Local und Metadaten sind nie erlaubt, private Adressen nur mit `allowPrivate`, Adressen der
+ * Namen aus `denyAddressesOf` nie.
+ */
+async function checkedAddresses(
   host: string,
-  allowPrivate: boolean,
+  target: EgressTarget,
   resolve: HostLookup,
-): Promise<boolean> {
-  const addresses = isIpAddress(host) ? [host] : await resolve(host);
-  if (addresses.length === 0) return false;
-  return addresses.every((address) => {
+): Promise<string[] | undefined> {
+  const addresses = isIpAddress(host) ? [host] : [...(await resolve(host))];
+  if (addresses.length === 0) return undefined;
+  const allowPrivate = target.allowPrivate === true;
+  const allowed = addresses.every((address) => {
     const kind = classifyIpAddress(address);
     return kind === "oeffentlich" || (kind === "privat" && allowPrivate);
   });
+  if (!allowed) return undefined;
+  if (target.denyAddressesOf !== undefined && target.denyAddressesOf.length > 0) {
+    const denied = new Set<string>();
+    for (const name of target.denyAddressesOf) {
+      try {
+        for (const address of await resolve(name)) denied.add(canonicalAddress(address));
+      } catch {
+        // Name unbekannt (z. B. außerhalb von Docker): sperrt nichts.
+      }
+    }
+    if (addresses.some((address) => denied.has(canonicalAddress(address)))) return undefined;
+  }
+  return addresses;
+}
+
+/** Einheitliche Schreibweise einer Adresse für Vergleiche (IPv6 klein, ohne Klammern und Zone). */
+function canonicalAddress(address: string): string {
+  const host = normalizeHost(address);
+  const zone = host.indexOf("%");
+  const bare = zone >= 0 ? host.slice(0, zone) : host;
+  if (!bare.includes(":")) return bare;
+  try {
+    return new URL(`http://[${bare}]/`).hostname.slice(1, -1);
+  } catch {
+    return bare;
+  }
 }
 
 /**
@@ -123,8 +170,11 @@ async function addressesAllowed(
  * entsteht. `baseFetch` ist das eigentliche `fetch` (Standard: `globalThis.fetch`).
  *
  * Zusätzlich werden die Adressen jedes Ziels geprüft, bei Namen nach der Auflösung (siehe
- * `EgressTarget.allowPrivate`). Weiterleitungen folgt die Hülle selbst, höchstens fünf, und nur
- * zu erlaubten Zielen; `Authorization` wird bei einem Wechsel des Ziels entfernt.
+ * `EgressTarget.allowPrivate`). Ohne `baseFetch` verbindet die Hülle sich danach genau mit den
+ * geprüften Adressen (`pinnedFetch`), der Name wird kein zweites Mal aufgelöst; Proxy-Variablen der
+ * Umgebung wirken nicht. Mit `baseFetch` (nur für Tests) entscheidet dieses `fetch` selbst, wohin
+ * es verbindet. Weiterleitungen folgt die Hülle selbst, höchstens fünf, und nur zu erlaubten
+ * Zielen, mit derselben Prüfung je Etappe; `Authorization` wird bei einem Wechsel des Ziels entfernt.
  */
 export function createEgressFetch(
   allowed: readonly EgressTarget[],
@@ -140,7 +190,6 @@ export function createEgressFetch(
   };
 
   return async (input, init) => {
-    const doFetch = baseFetch ?? globalThis.fetch;
     let request: { url: URL; method: string; headers: Headers; body: BodyInit | null | undefined };
     let signal: AbortSignal | null | undefined = init?.signal;
     let redirectMode: RequestRedirect = init?.redirect ?? "follow";
@@ -171,26 +220,29 @@ export function createEgressFetch(
       const match = allowed.find((entry) => sameTarget(entry, url));
       if (!match) return block(url, hop === 0 ? "nicht_erlaubt" : "weiterleitung");
 
-      let addressesOk = false;
+      let addresses: string[] | undefined;
       try {
-        addressesOk = await addressesAllowed(
-          normalizeHost(url.hostname),
-          match.allowPrivate === true,
-          resolve,
-        );
+        addresses = await checkedAddresses(normalizeHost(url.hostname), match, resolve);
       } catch {
         // Name nicht auflösbar: wie ein Netzfehler behandeln.
         throw new TypeError("fetch failed");
       }
-      if (!addressesOk) return block(url, "adresse_nicht_erlaubt");
+      if (addresses === undefined) return block(url, "adresse_nicht_erlaubt");
 
-      const response = await doFetch(url, {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-        signal,
-        redirect: "manual",
-      });
+      const response =
+        baseFetch === undefined
+          ? await pinnedFetch(
+              { url, method: request.method, headers: request.headers, body: request.body, signal },
+              addresses,
+              options.idleTimeoutMs === undefined ? {} : { idleTimeoutMs: options.idleTimeoutMs },
+            )
+          : await baseFetch(url, {
+              method: request.method,
+              headers: request.headers,
+              body: request.body,
+              signal,
+              redirect: "manual",
+            });
 
       const location = response.headers.get("location");
       const isRedirect = [301, 302, 303, 307, 308].includes(response.status) && location !== null;
@@ -236,14 +288,22 @@ export function createEgressFetch(
   };
 }
 
-/** Gründe, aus denen eine Basis-URL abgelehnt wird. */
-export type BaseUrlProblem =
-  | "keine_url"
-  | "protokoll"
-  | "interner_dienst"
-  | "link_local"
-  | "private_adresse"
-  | "zugangsdaten_in_url";
+/** Gründe, aus denen eine Basis-URL abgelehnt wird; je Grund ein Text `anbieter.url.<grund>`. */
+export const BASE_URL_PROBLEMS = [
+  "keine_url",
+  "protokoll",
+  "interner_dienst",
+  "link_local",
+  "private_adresse",
+  "port",
+  "zugangsdaten_in_url",
+] as const;
+export type BaseUrlProblem = (typeof BASE_URL_PROBLEMS)[number];
+
+/** Text-Schlüssel zu einem Grund, z. B. `anbieter.url.port`. */
+export function baseUrlProblemKey(problem: BaseUrlProblem): `anbieter.url.${BaseUrlProblem}` {
+  return `anbieter.url.${problem}`;
+}
 
 export type BaseUrlCheck = { ok: true; url: URL } | { ok: false; problem: BaseUrlProblem };
 
@@ -261,12 +321,16 @@ const PRIVATE_SUFFIXES = [
 
 const MAX_URL_CHARS = 2048;
 
+/** Erlaubte Ports für Anbieter außerhalb der Region `local` (HTTPS). */
+export const PUBLIC_PROVIDER_PORTS: readonly number[] = [443, 8443];
+
 /**
  * Prüft die Basis-URL eines Anbieters:
  * - nur `https`; `http` nur bei Region `local`
  * - keine internen Dienstnamen (`INTERNAL_SERVICE_HOSTS`), keine Link-Local-Adressen
  *   (z. B. `169.254.169.254`, `fe80::/10`) und keine Namen von Metadaten-Diensten
  * - private Adressen und `localhost` nur bei Region `local`
+ * - außerhalb von `local` nur die Ports aus `PUBLIC_PROVIDER_PORTS` (443, 8443)
  * - keine Zugangsdaten in der URL (`user:pass@`)
  *
  * Rein: löst keine Namen auf und baut keine Verbindung auf. Die Schreibweisen von IP-Adressen
@@ -312,6 +376,9 @@ export function checkProviderBaseUrl(baseUrl: string, region: Region): BaseUrlCh
   }
 
   if (url.protocol === "http:" && !local) return { ok: false, problem: "protokoll" };
+  if (!local && !PUBLIC_PROVIDER_PORTS.includes(Number(url.port || defaultPort(url.protocol)))) {
+    return { ok: false, problem: "port" };
+  }
   return { ok: true, url };
 }
 

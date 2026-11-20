@@ -37,6 +37,18 @@ describe("checkProductionEnv", () => {
     expect(checkProductionEnv({ ...db, PAIBOT_SECRET: "kurz" })[0]).toContain("falsche Form");
   });
 
+  it("meldet ein Geheimnis mit richtiger Länge, aber ohne Zufall, mit eigenem Text", () => {
+    const db = { DATABASE_URL: url("paibot_app", pw()) };
+    for (const weak of [Buffer.alloc(32, 7), Buffer.from("das-ist-kein-zufall-sondern-text")]) {
+      const value = weak.toString("base64");
+      const [message, ...rest] = checkProductionEnv({ ...db, PAIBOT_SECRET: value });
+      expect(rest).toEqual([]);
+      expect(message).toContain("nicht zufällig");
+      expect(message).not.toContain("falsche Form");
+      expect(message).not.toContain(value);
+    }
+  });
+
   it("lehnt kurze, fehlende und Platzhalter-Passwörter ab, ohne sie zu nennen", () => {
     const base = { PAIBOT_SECRET: secret() };
     const kurz = checkProductionEnv({ ...base, DATABASE_URL: url("a", "kurz123") });

@@ -28,6 +28,7 @@ import {
   ruleContent,
   ruleDefinitionSchema,
   STANDARD_RULE_VERSIONS,
+  UNSTORED_STANDARD_RULE_VERSIONS,
 } from "@paibot/shared/tor";
 import { denialCode, evaluate } from "./evaluate";
 import { issuePermit, revokePermit } from "./permit-registry";
@@ -351,9 +352,13 @@ async function loadRules(provider: RuleProvider): Promise<RuleSnapshot | readonl
 
 let standardHashes: Promise<ReadonlySet<string>> | undefined;
 
-/** Prüfsummen aller Fassungen der Standard-Regeln aus dem Code. */
+/**
+ * Prüfsummen aller Fassungen der Standard-Regeln aus dem Code, auch der, die die Datenbank noch
+ * nicht speichert (`UNSTORED_STANDARD_RULE_VERSIONS`).
+ */
 function knownStandardHashes(): Promise<ReadonlySet<string>> {
-  standardHashes ??= Promise.all(STANDARD_RULE_VERSIONS.map((rule) => hashRule(rule))).then(
+  const versions = [...STANDARD_RULE_VERSIONS, ...UNSTORED_STANDARD_RULE_VERSIONS];
+  standardHashes ??= Promise.all(versions.map((rule) => hashRule(rule))).then(
     (hashes) => new Set(hashes),
   );
   return standardHashes;
@@ -366,7 +371,8 @@ function knownStandardHashes(): Promise<ReadonlySet<string>> {
  * - der Inhalt jeder Regel passt zu `ruleDefinitionSchema`;
  * - die mitgelieferte Prüfsumme ist die Prüfsumme des Inhalts (`hashRule`);
  * - jede Regel mit Quelle `standard` gleicht inhaltlich genau einer Fassung aus
- *   `STANDARD_RULE_VERSIONS` – eine in der Datenbank veränderte Standard-Regel zählt nie.
+ *   `STANDARD_RULE_VERSIONS` oder `UNSTORED_STANDARD_RULE_VERSIONS` – eine in der Datenbank
+ *   veränderte Standard-Regel zählt nie.
  * Gibt den Regelstand unverändert zurück.
  */
 export async function verifyRuleSnapshot(snapshot: RuleSnapshot): Promise<RuleSnapshot> {

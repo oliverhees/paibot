@@ -16,7 +16,7 @@ import type { MotorEvent, TurnInput } from "@paibot/shared/motor";
 import { streamText } from "ai";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createAiSdkMotor } from "./motor-aisdk";
-import { resolveTestModel } from "./testing/test-umgebung";
+import { modelAccess, type TurnRequest } from "./testing/test-umgebung";
 
 const API_KEY = `sk-test-${"n".repeat(24)}`;
 
@@ -62,6 +62,12 @@ async function collect(iterable: AsyncIterable<MotorEvent>): Promise<MotorEvent[
   return events;
 }
 
+const TURN: TurnRequest = {
+  system: "Test",
+  history: [{ role: "user", text: "Hallo" }],
+  limits: { maxOutputTokens: 64, timeoutMs: 5000 },
+};
+
 describe("kein Netzverkehr außer zum Anbieter", () => {
   it("eine Text-Kennung als Modell schlägt fehl und zielt auf ein fremdes Gateway", async () => {
     // Absichtlich über eine Variable: die Lint-Regel fängt nur Text direkt im Aufruf ab.
@@ -98,50 +104,53 @@ describe("kein Netzverkehr außer zum Anbieter", () => {
 
   it("der Motor geht auch mit Gateway-Schlüssel in der Umgebung nur zum Anbieter", async () => {
     const original = globalThis.fetch;
-    const model = await resolveTestModel({ baseUrl, apiKey: API_KEY, baseFetch: original });
+    const zugang = modelAccess({ baseUrl, apiKey: API_KEY, baseFetch: original });
     vi.stubEnv("AI_GATEWAY_API_KEY", "nur-fuer-den-test");
     const targets = recordGlobalFetch();
-    const events = await collect(
-      createAiSdkMotor().runTurn(
-        {
-          system: "Test",
-          history: [{ role: "user", text: "Hallo" }],
-          model,
-          limits: { maxOutputTokens: 64, timeoutMs: 5000 },
-        },
-        new AbortController().signal,
-      ),
-    );
+    const events = await zugang.step(createAiSdkMotor(), TURN);
     expect(events.at(-1)?.type).toBe("finish");
     expect(targets).toEqual([]);
     expect(provider.requests.map((r) => r.path)).toEqual(["/v1/chat/completions"]);
   });
 
   it("die Ausgangs-Liste sperrt ein fremdes Ziel, bevor eine Verbindung entsteht", async () => {
-    const model = await resolveTestModel({ baseUrl, apiKey: API_KEY });
-    // Gleicher Zugang, aber die Basis-URL zeigt woanders hin: Die Ausgangs-Liste kennt nur den
-    // Anbieter, also wird nichts gesendet.
-    const redirected = { ...model, baseUrl: foreignUrl } as TurnInput["model"];
-    const events = await collect(
-      createAiSdkMotor().runTurn(
-        {
-          system: "Test",
-          history: [{ role: "user", text: "Hallo" }],
-          model: redirected,
-          limits: { maxOutputTokens: 64, timeoutMs: 5000 },
-        },
-        new AbortController().signal,
+    // Der echte Zugang innerhalb von `execute`, aber die Anfrage zielt woanders hin: Die
+    // Ausgangs-Liste kennt nur den Anbieter, also wird nichts gesendet.
+    const zugang = modelAccess({ baseUrl, apiKey: API_KEY });
+    const failure = await zugang.request(async (model) =>
+      model.fetch(`${foreignUrl}/chat/completions`, { method: "POST", body: "{}" }).then(
+        () => undefined,
+        (error: unknown) => error,
       ),
     );
+    expect((failure as { name?: unknown }).name).toBe("EgressBlockedError");
+    expect(foreignHits).toBe(0);
+    expect(provider.requests).toHaveLength(0);
+  });
+
+  it("eine Kopie des Zugangs mit umgebogener Basis-URL nimmt der Motor nicht an", async () => {
+    const zugang = modelAccess({ baseUrl, apiKey: API_KEY });
+    const events = await zugang.request(async (model) => {
+      const redirected = { ...model, baseUrl: foreignUrl } as TurnInput["model"];
+      return collect(
+        createAiSdkMotor().runTurn({ ...TURN, model: redirected }, new AbortController().signal),
+      );
+    });
     expect(events).toEqual([
-      {
-        type: "error",
-        code: "anbieter_nicht_erreichbar",
-        retryable: true,
-        detail: "ziel_gesperrt",
-      },
+      { type: "error", code: "intern", retryable: false, detail: "zugang_ungueltig" },
     ]);
     expect(foreignHits).toBe(0);
+    expect(provider.requests).toHaveLength(0);
+  });
+
+  it("ein Zugang, der aus `execute` herausgereicht wurde, sendet nichts mehr", async () => {
+    const zugang = modelAccess({ baseUrl, apiKey: API_KEY });
+    const leaked = await zugang.request(async (model) => model);
+    const events = await collect(
+      createAiSdkMotor().runTurn({ ...TURN, model: leaked }, new AbortController().signal),
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: "error", retryable: false });
     expect(provider.requests).toHaveLength(0);
   });
 });

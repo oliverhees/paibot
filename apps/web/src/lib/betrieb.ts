@@ -12,6 +12,7 @@
 import path from "node:path";
 import { CryptoError, loadMasterSecret } from "@paibot/crypto";
 import { prepareDatabase, type StartLog } from "@paibot/db/migrate";
+import { t } from "@paibot/shared/texte";
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -38,7 +39,8 @@ function isPlaceholder(value: string): boolean {
 
 /**
  * Prüft die Pflicht-Einstellungen für den Betrieb und liefert verständliche Fehler (nie mit den
- * Werten selbst): `PAIBOT_SECRET` (32 Byte Base64, kein Platzhalter), `DATABASE_URL` und – falls
+ * Werten selbst): `PAIBOT_SECRET` (32 Byte Base64, kein Platzhalter, erkennbar zufällig),
+ * `DATABASE_URL` und – falls
  * gesetzt – `DATABASE_MIGRATION_URL` mit einem Passwort ab 24 Zeichen, das kein Platzhalter ist.
  */
 export function checkProductionEnv(env: Env): string[] {
@@ -56,7 +58,9 @@ export function checkProductionEnv(env: Env): string[] {
     } catch (error) {
       if (!(error instanceof CryptoError)) throw error;
       errors.push(
-        "PAIBOT_SECRET hat die falsche Form: verlangt sind genau 32 Byte als Base64 (openssl rand -base64 32).",
+        error.reason === "geheimnis_schwach"
+          ? t("krypto.geheimnis_schwach")
+          : "PAIBOT_SECRET hat die falsche Form: verlangt sind genau 32 Byte als Base64 (openssl rand -base64 32).",
       );
     }
   }

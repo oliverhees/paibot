@@ -358,7 +358,7 @@ describe("Eingaben", () => {
     });
     expect(receiptListQuery.parse({})).toEqual({ limit: 50 });
     expect(receiptListQuery.safeParse({ limit: "201" }).success).toBe(false);
-    expect(receiptListQuery.safeParse({ action: "werkzeug.ausfuehren" }).success).toBe(false);
+    expect(receiptListQuery.safeParse({ action: "werkzeug.loeschen" }).success).toBe(false);
     expect(lastEventIdSchema.parse("7")).toBe(7);
     expect(lastEventIdSchema.safeParse("-1").success).toBe(false);
     expect(lastEventIdSchema.safeParse("abc").success).toBe(false);

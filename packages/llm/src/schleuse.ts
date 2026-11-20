@@ -9,11 +9,11 @@
  * @since     2026-11-20
  */
 
+import { type ProviderTemplateKey, providerTemplateKeySchema } from "@paibot/shared/objekte";
 import { classifyIpAddress, isIpAddress, METADATA_HOSTS, normalizeHost } from "./address";
 import { createEgressFetch, egressTargetOf } from "./egress";
 
 const DEFAULT_HEALTH_TIMEOUT_MS = 3_000;
-const PROVIDER_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 /** Namen der Umgebungsvariablen für die Datenschleuse. */
 export const SCHLEUSE_ENV = { url: "SCHLEUSE_URL", key: "SCHLEUSE_KEY" } as const;
@@ -102,10 +102,13 @@ export async function checkSchleuseHealth(
 
 /**
  * Name eines Modells in der Konfiguration der Datenschleuse: `<anbieter>/<slug>`, z. B.
- * `eurouter/mistral-small-latest`. `providerKey` ist der Schlüssel der Vorlage (z. B. `eurouter`).
+ * `eurouter/mistral-small-latest`. `providerKey` ist der Schlüssel der Vorlage aus
+ * `PROVIDER_TEMPLATE_KEYS` (z. B. `eurouter`); ein anderer Wert wirft einen `TypeError`.
  */
-export function schleuseModelName(providerKey: string, slug: string): string {
-  if (!PROVIDER_KEY_PATTERN.test(providerKey)) throw new TypeError("Ungültiger Anbieter-Schlüssel");
+export function schleuseModelName(providerKey: ProviderTemplateKey, slug: string): string {
+  if (!providerTemplateKeySchema.safeParse(providerKey).success) {
+    throw new TypeError("Ungültiger Anbieter-Schlüssel");
+  }
   // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen sollen abgelehnt werden
   if (slug === "" || /[\u0000-\u001f\u007f\s]/.test(slug))
     throw new TypeError("Ungültiger Modellname");

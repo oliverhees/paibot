@@ -63,7 +63,9 @@ export function isKeyPurpose(value: unknown): value is KeyPurpose {
  * Zusagen: Das Ergebnis ist genau 32 Byte lang. Der Wert erscheint in keiner Fehlermeldung.
  *
  * Fehler: `CryptoError("geheimnis_fehlt")`, wenn die Variable fehlt oder leer ist;
- * `CryptoError("geheimnis_ungueltig")`, wenn sie kein Base64 ist oder nicht 32 Byte ergibt.
+ * `CryptoError("geheimnis_ungueltig")`, wenn sie kein Base64 ist oder nicht 32 Byte ergibt;
+ * `CryptoError("geheimnis_schwach")`, wenn die 32 Byte erkennbar nicht zufällig sind (siehe
+ * `isWeakMasterSecret`).
  */
 export function loadMasterSecret(env: Env): MasterSecret {
   const raw = env[MASTER_SECRET_ENV];
@@ -81,7 +83,25 @@ export function loadMasterSecret(env: Env): MasterSecret {
   }
   const bytes = new Uint8Array(Buffer.from(unpadded, isStandard ? "base64" : "base64url"));
   if (bytes.length !== MASTER_SECRET_BYTES) throw new CryptoError("geheimnis_ungueltig");
+  if (isWeakMasterSecret(bytes)) throw new CryptoError("geheimnis_schwach");
   return bytes as MasterSecret;
+}
+
+/** Mindestanzahl verschiedener Byte-Werte in einem Wurzel-Geheimnis. */
+export const MASTER_SECRET_MIN_DISTINCT_BYTES = 16;
+
+/**
+ * Erkennt 32 Byte, die offensichtlich nicht aus einem Zufallsgenerator stammen:
+ * - weniger als `MASTER_SECRET_MIN_DISTINCT_BYTES` verschiedene Byte-Werte (alle gleich, kurze
+ *   Wiederholungen wie `abcdabcd…`, Nullen)
+ * - nur druckbare ASCII-Zeichen (ein Wort oder Satz, als Base64 eingetragen)
+ *
+ * 32 zufällige Byte (`openssl rand -base64 32`) haben im Mittel etwa 30 verschiedene Werte; dass
+ * echte Zufallswerte eine der beiden Regeln treffen, ist praktisch ausgeschlossen.
+ */
+export function isWeakMasterSecret(bytes: Uint8Array): boolean {
+  if (new Set(bytes).size < MASTER_SECRET_MIN_DISTINCT_BYTES) return true;
+  return bytes.every((byte) => byte >= 0x20 && byte <= 0x7e);
 }
 
 /**

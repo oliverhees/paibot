@@ -196,7 +196,11 @@ describe("checkLimits", () => {
 
   it.each(
     ACTION_TYPES.filter(
-      (t) => t !== "modell.anfragen" && t !== "nachricht.senden" && t !== "werkzeug.aufrufen",
+      (t) =>
+        t !== "modell.anfragen" &&
+        t !== "nachricht.senden" &&
+        t !== "werkzeug.aufrufen" &&
+        t !== "werkzeug.ausfuehren",
     ),
   )("%s: keine Grenze betrifft die Verwaltungsaktion", (type) => {
     const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
