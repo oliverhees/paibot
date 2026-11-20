@@ -117,6 +117,55 @@ jobs:
           $compose logs worker | tail -5
           [ "$code" = "0" ] || { echo "Exit-Code $code statt 0"; exit 1; }
           $compose logs worker | grep -qF "[paibot-worker] Beendet." || { echo "Log-Zeile „Beendet.“ fehlt"; exit 1; }
+      # Datenschleuse (Profil schleuse): Bau aus festem Commit, Netze, Vertragstest mit dem
+      # Test-Anbieter. Läuft für sich und räumt sich selbst auf.
+      - name: Datenschleuse prüfen (Profil schleuse, Vertragstest)
+        run: |
+          set -eu
+          node scripts/schleuse-config.mjs --zeigen > /dev/null
+          compose="docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile schleuse"
+          testcompose="docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.schleuse-test.yml --env-file deploy/.env --profile schleuse"
+          # Ohne Test-Zusatz veröffentlicht die Datenschleuse keinen Port.
+          $compose config --format json > /tmp/schleuse-config.json
+          python3 -c 'import json,sys; s=json.load(open("/tmp/schleuse-config.json"))["services"]; bad=[n for n in ("datenschleuse","schleuse-analyzer") if s[n].get("ports")]; sys.exit("Port veröffentlicht: %s" % bad if bad else 0)'
+          anbieter_key=$(od -An -tx1 -N24 /dev/urandom | tr -d ' \n')
+          steuer_key=$(od -An -tx1 -N24 /dev/urandom | tr -d ' \n')
+          sed -i 's/^SCHLEUSE_ANBIETER_SCHLUESSEL=.*$//' deploy/.env
+          { echo "SCHLEUSE_URL=http://datenschleuse:4000/v1"; echo "SCHLEUSE_ANBIETER_SCHLUESSEL=$anbieter_key"; echo "FAKE_PROVIDER_CONTROL_KEY=$steuer_key"; } >> deploy/.env
+          SCHLEUSE_ANBIETER=eurouter=http://fake-provider:8080/v1 SCHLEUSE_ERLAUBE_HTTP=1 \
+            node scripts/schleuse-config.mjs --env-datei deploy/.env
+          $testcompose up -d --build
+          for dienst in schleuse-analyzer datenschleuse datenschleuse-ohne-analyzer worker; do
+            status=""
+            for i in $(seq 1 80); do
+              status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$($testcompose ps -q "$dienst")" 2>/dev/null || true)
+              [ "$status" = "healthy" ] && break
+              sleep 3
+            done
+            if [ "$status" != "healthy" ]; then $testcompose logs "$dienst"; echo "$dienst nicht gesund: $status"; exit 1; fi
+          done
+          docker stats --no-stream --format '{{.Name}} {{.MemUsage}}'
+          # Netze: Der Worker erreicht die Datenschleuse, aber nicht die Erkennung; web erreicht keine von beiden.
+          worker=$($testcompose ps -q worker); web=$($testcompose ps -q web)
+          docker exec "$worker" wget -qO- -T 5 http://datenschleuse:4000/health/liveliness > /dev/null
+          if docker exec "$worker" wget -qO- -T 5 http://schleuse-analyzer:3000/health 2>/dev/null; then echo "Worker erreicht die Erkennung"; exit 1; fi
+          if docker exec "$web" wget -qO- -T 5 http://datenschleuse:4000/health/liveliness 2>/dev/null; then echo "web erreicht die Datenschleuse"; exit 1; fi
+          id=$($testcompose ps -q datenschleuse)
+          if docker exec "$id" sh -c 'touch /app/schreibtest' 2>/dev/null; then echo "Dateisystem der Datenschleuse ist beschreibbar"; exit 1; fi
+          for c in "$id" "$($testcompose ps -q schleuse-analyzer)"; do
+            user=$(docker inspect --format '{{.Config.User}}' "$c")
+            case "$user" in ""|0|0:*|root|root:*) echo "Container läuft als root: $c"; exit 1 ;; esac
+          done
+          docker run --rm --network host -v "$PWD":/repo -w /repo \
+            -e PAIBOT_TEST_SCHLEUSE_URL=http://127.0.0.1:4000/v1 \
+            -e PAIBOT_TEST_SCHLEUSE_KEY="$(grep '^SCHLEUSE_KEY=' deploy/.env | cut -d= -f2-)" \
+            -e PAIBOT_TEST_SCHLEUSE_OHNE_ANALYZER_URL=http://127.0.0.1:4001/v1 \
+            -e PAIBOT_TEST_FAKE_PROVIDER_URL=http://127.0.0.1:4600 \
+            -e PAIBOT_TEST_FAKE_PROVIDER_CONTROL_KEY="$steuer_key" \
+            -e PAIBOT_TEST_FAKE_PROVIDER_KEY="$anbieter_key" \
+            node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a \
+            sh -c 'corepack enable && pnpm install --frozen-lockfile --filter "@paibot/durchstich..." > /dev/null && pnpm --filter @paibot/durchstich exec vitest run src/schleuse-vertrag.test.ts'
+          $testcompose down -v
       - name: Aufräumen
         if: always()
         run: docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v

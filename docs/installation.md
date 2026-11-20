@@ -32,7 +32,7 @@ Der offizielle Weg ist **Docker Compose**. Das gilt lokal und auf dem Server. Al
 
 `web` und `worker` sind dasselbe Image in zwei Rollen (Variable `PAIBOT_ROLE`). Der Worker startet erst, wenn `web` gesund ist: `web` wendet die Migrationen an, der Worker wartet nur darauf und migriert nie selbst.
 
-Weitere Dienste (Datenschleuse, Browser-Dienst) sind **geplant** und noch nicht Teil des Stacks.
+Die Datenschleuse lässt sich zuschalten (Abschnitt [Datenschleuse zuschalten](#datenschleuse-zuschalten), Standard: aus). Der Browser-Dienst ist **geplant** und noch nicht Teil des Stacks.
 
 ## Lokal mit Docker Compose
 
@@ -147,6 +147,16 @@ Bisher lief PaiBot mit einer einzigen Rolle für alles. Die Umstellung behält a
 Läuft deine Datenbank nicht im Compose-Stack (z. B. eine verwaltete Datenbank), setze `DATABASE_MIGRATION_URL` auf die bisherige Adresse und `DATABASE_URL` auf eine neue Rolle. Die Migrations-Rolle braucht dann das Recht, Rollen anzulegen, und muss die App-Rolle übernehmen dürfen (`GRANT paibot_app TO <migrations-rolle>`, nachdem die Rolle existiert); sonst lege die App-Rolle selbst an (`CREATE ROLE paibot_app LOGIN PASSWORD '…'`).
 
 Kannst du gerade nicht umstellen, startet PaiBot mit `PAIBOT_ALLOW_PRIVILEGED_DB=1` in `deploy/.env` wie bisher, mit Warnung. Das ist nur für den Übergang gedacht.
+
+## Datenschleuse zuschalten
+
+Die Datenschleuse ersetzt Namen, Nummern und Adressen durch Platzhalter, bevor eine Anfrage an das Modell geht. Sie ist standardmäßig aus und startet nur mit dem Profil `schleuse`.
+
+1. In `deploy/.env` `COMPOSE_PROFILES=schleuse`, `SCHLEUSE_URL=http://datenschleuse:4000/v1` und `SCHLEUSE_ANBIETER_SCHLUESSEL` (Schlüssel deines Anbieters) eintragen. `SCHLEUSE_KEY` und `SCHLEUSE_STATE_KEY` legt `deploy/env-erzeugen.sh` schon an.
+2. `pnpm schleuse:config --env-datei deploy/.env` ausführen.
+3. `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build` – danach sind `datenschleuse` und `schleuse-analyzer` `healthy`.
+
+Sie braucht knapp 1 GB Arbeitsspeicher zusätzlich. Alles Weitere (prüfen, ausschalten, Einstellungen, Grenzen): [Datenschleuse](funktion-datenschleuse.md).
 
 ## Sicherungen
 

@@ -1,0 +1,47 @@
+# PaiBot – Zusatz nur für den Vertragstest der Datenschleuse mit dem Test-Anbieter.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-20
+
+# Nur für Tests, nie auf einem Server. Stellt die Datenschleuse und den Test-Anbieter auf
+# 127.0.0.1 bereit und startet eine zweite Datenschleuse, deren Erkennung nicht erreichbar ist.
+#
+#   SCHLEUSE_ANBIETER=eurouter=http://fake-provider:8080/v1 SCHLEUSE_ERLAUBE_HTTP=1 \
+#     pnpm schleuse:config --env-datei deploy/.env
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.schleuse-test.yml \
+#     --env-file deploy/.env --profile schleuse up -d --build
+name: paibot
+
+services:
+  datenschleuse:
+    ports:
+      - "127.0.0.1:4000:4000"
+
+  datenschleuse-ohne-analyzer:
+    profiles: [schleuse]
+    extends:
+      file: docker-compose.yml
+      service: datenschleuse
+    environment:
+      PRESIDIO_ANALYZER_API_BASE: http://schleuse-analyzer-fehlt:3000
+    depends_on: !reset {}
+    networks: !override
+      - schleuse-aussen
+    ports:
+      - "127.0.0.1:4001:4000"
+
+  fake-provider:
+    profiles: [schleuse]
+    image: paibot-fake-provider:test
+    build:
+      context: ..
+      dockerfile: tools/fake-provider/Dockerfile
+    environment:
+      FAKE_PROVIDER_CONTROL_KEY: ${FAKE_PROVIDER_CONTROL_KEY:?FAKE_PROVIDER_CONTROL_KEY fehlt}
+    networks:
+      - schleuse-aussen
+    ports:
+      - "127.0.0.1:4600:8080"

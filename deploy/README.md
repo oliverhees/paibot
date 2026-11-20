@@ -10,13 +10,15 @@ Seit:      2026-11-07
 
 # Deployment
 
-PaiBot läuft als Docker-Compose-Stack. Aktuell: Postgres, die Web-App und der Worker. Weitere Dienste (Datenschleuse, Browser-Dienst) kommen dazu.
+PaiBot läuft als Docker-Compose-Stack: Postgres, die Web-App und der Worker. Die Datenschleuse lässt sich als Profil `schleuse` zuschalten (Standard: aus). Der Browser-Dienst kommt später dazu.
 
-| Dienst     | Aufgabe                                                    | Erreichbar                                     |
-| ---------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `postgres` | Datenbank                                                  | nur im internen Netz `paibot-intern`           |
-| `web`      | PaiBot-App (Next.js), wendet beim Start die Migrationen an | `127.0.0.1:3000`, nach außen über deine Domain |
-| `worker`   | führt die Antworten deines Bots im Hintergrund aus         | kein Port; Netz `paibot-intern` und nach außen |
+| Dienst              | Aufgabe                                                    | Erreichbar                                     |
+| ------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| `postgres`          | Datenbank                                                  | nur im internen Netz `paibot-intern`           |
+| `web`               | PaiBot-App (Next.js), wendet beim Start die Migrationen an | `127.0.0.1:3000`, nach außen über deine Domain |
+| `worker`            | führt die Antworten deines Bots im Hintergrund aus         | kein Port; Netz `paibot-intern` und nach außen |
+| `datenschleuse`     | nur mit Profil `schleuse`: maskiert Anfragen an das Modell | kein Port; nur der Worker erreicht sie         |
+| `schleuse-analyzer` | nur mit Profil `schleuse`: erkennt Namen, Orte, Nummern    | kein Port; nur die Datenschleuse erreicht ihn  |
 
 `web` und `worker` kommen aus demselben Image. Die Variable `PAIBOT_ROLE` (`web` oder `worker`) wählt, was startet. Der Worker startet erst, wenn `web` gesund ist, und bekommt nur die eingeschränkte Rolle der Datenbank (`DATABASE_URL`), nie `DATABASE_MIGRATION_URL`.
 
@@ -39,14 +41,18 @@ cp apps/web/.env.example apps/web/.env.local   # Passwörter aus deploy/.env ein
 pnpm dev
 ```
 
-| Datei                            | Inhalt                                                                      |
-| -------------------------------- | --------------------------------------------------------------------------- |
-| `docker-compose.yml`             | Betrieb: internes Netz für die Datenbank, gehärtete Container, Healthchecks |
-| `docker-compose.entwicklung.yml` | nur Entwicklung: Datenbank-Port auf `127.0.0.1`                             |
-| `env-erzeugen.sh`                | legt `deploy/.env` mit zufälligen Passwörtern und `PAIBOT_SECRET` an        |
-| `.env.example`                   | Vorlage mit allen Variablen (Werte leer)                                    |
+| Datei                              | Inhalt                                                                      |
+| ---------------------------------- | --------------------------------------------------------------------------- |
+| `docker-compose.yml`               | Betrieb: internes Netz für die Datenbank, gehärtete Container, Healthchecks |
+| `docker-compose.entwicklung.yml`   | nur Entwicklung: Datenbank-Port auf `127.0.0.1`                             |
+| `env-erzeugen.sh`                  | legt `deploy/.env` mit zufälligen Passwörtern und `PAIBOT_SECRET` an        |
+| `docker-compose.schleuse-test.yml` | nur Tests: Datenschleuse mit Test-Anbieter auf `127.0.0.1`                  |
+| `schleuse/`                        | Konfiguration der Datenschleuse, erzeugt mit `pnpm schleuse:config`         |
+| `.env.example`                     | Vorlage mit allen Variablen (Werte leer)                                    |
 
 Variablen und Rollen der Datenbank: [docs/installation.md](../docs/installation.md#einstellungen).
+
+Datenschleuse zuschalten: [docs/funktion-datenschleuse.md](../docs/funktion-datenschleuse.md).
 
 ## Mit Coolify auf deinem Server
 
