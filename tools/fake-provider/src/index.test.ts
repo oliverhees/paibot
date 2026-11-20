@@ -8,12 +8,16 @@
  * @since     2026-11-20
  */
 
+import { randomBytes } from "node:crypto";
+import { networkInterfaces } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createFakeProvider,
+  FAKE_CONTROL_KEY_HEADER,
   FAKE_CONTROL_PATHS,
   FAKE_PROVIDER_PATHS,
   type FakeProvider,
+  isLoopback,
 } from "./index";
 
 const API_KEY = `test-${Math.random().toString(36).slice(2)}`;
@@ -622,5 +626,63 @@ describe("Parallele Anfragen", () => {
     await hanging;
     await until(() => provider.requests[0]?.closedByClient === true);
     expect(provider.requests[1]?.closedByClient).toBe(false);
+  });
+});
+
+describe("Schutz der Steuerung", () => {
+  it("mit Steuer-Schlüssel: ohne oder mit falschem Schlüssel 401, mit richtigem 200", async () => {
+    const key = randomBytes(24).toString("base64url");
+    const guarded = createFakeProvider({}, { key });
+    const started = await guarded.start({ port: 0 });
+    const at = new URL(started.baseUrl).origin;
+    try {
+      const url = `${at}${FAKE_CONTROL_PATHS.anfragen}`;
+      expect((await fetch(url)).status).toBe(401);
+      expect((await fetch(url, { headers: { [FAKE_CONTROL_KEY_HEADER]: "falsch" } })).status).toBe(
+        401,
+      );
+      const reset = await fetch(`${at}${FAKE_CONTROL_PATHS.zuruecksetzen}`, {
+        method: "POST",
+        headers: { [FAKE_CONTROL_KEY_HEADER]: `${key}x` },
+      });
+      expect(reset.status).toBe(401);
+      expect((await fetch(url, { headers: { [FAKE_CONTROL_KEY_HEADER]: key } })).status).toBe(200);
+      expect((await fetch(`${at}${FAKE_PROVIDER_PATHS.models}`)).status).toBe(200);
+    } finally {
+      await guarded.stop();
+    }
+  });
+
+  it("ohne Schlüssel nur von Loopback", async () => {
+    const outside = Object.values(networkInterfaces())
+      .flat()
+      .find((i) => i !== undefined && i.family === "IPv4" && !i.internal)?.address;
+    const open = createFakeProvider();
+    const started = await open.start({ host: "0.0.0.0", port: 0 });
+    try {
+      const local = await fetch(`http://127.0.0.1:${started.port}${FAKE_CONTROL_PATHS.anfragen}`);
+      expect(local.status).toBe(200);
+      if (outside !== undefined) {
+        const remote = await fetch(
+          `http://${outside}:${started.port}${FAKE_CONTROL_PATHS.anfragen}`,
+        );
+        expect(remote.status).toBe(403);
+        const api = await fetch(`http://${outside}:${started.port}${FAKE_PROVIDER_PATHS.models}`);
+        expect(api.status).toBe(200);
+      }
+    } finally {
+      await open.stop();
+    }
+  });
+
+  it("erkennt Loopback-Adressen", () => {
+    expect(isLoopback("127.0.0.1")).toBe(true);
+    expect(isLoopback("127.10.0.3")).toBe(true);
+    expect(isLoopback("::1")).toBe(true);
+    expect(isLoopback("::ffff:127.0.0.1")).toBe(true);
+    expect(isLoopback("10.0.0.1")).toBe(false);
+    expect(isLoopback("::ffff:10.0.0.1")).toBe(false);
+    expect(isLoopback("1127.0.0.1")).toBe(false);
+    expect(isLoopback(undefined)).toBe(false);
   });
 });
