@@ -59,8 +59,16 @@ export const RUN_STATUSES = [
 export const runStatusSchema = z.enum(RUN_STATUSES);
 export type RunStatus = z.infer<typeof runStatusSchema>;
 
-/** Läufe in diesen Zuständen gelten als aktiv; pro Unterhaltung ist höchstens einer aktiv. */
-export const ACTIVE_RUN_STATUSES = ["queued", "running"] as const satisfies readonly RunStatus[];
+/**
+ * Läufe in diesen Zuständen gelten als aktiv; pro Unterhaltung ist höchstens einer aktiv. Auch ein
+ * wartender Lauf (`waiting_approval`) zählt dazu: Solange er wartet, nimmt die Unterhaltung keine
+ * neue Nachricht an.
+ */
+export const ACTIVE_RUN_STATUSES = [
+  "queued",
+  "running",
+  "waiting_approval",
+] as const satisfies readonly RunStatus[];
 
 export const AVATAR_SHAPES = [
   "blatt",

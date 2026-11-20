@@ -39,6 +39,7 @@ import {
   setupInput,
 } from "./inputs";
 import {
+  ACTIVE_RUN_STATUSES,
   botSchema,
   conversationSchema,
   messageSchema,
@@ -64,6 +65,12 @@ describe("Zeitpunkte", () => {
     ]) {
       expect(isoTimeSchema.safeParse(value).success).toBe(false);
     }
+  });
+});
+
+describe("Läufe", () => {
+  it("ein wartender Lauf zählt als aktiv", () => {
+    expect(ACTIVE_RUN_STATUSES).toEqual(["queued", "running", "waiting_approval"]);
   });
 });
 

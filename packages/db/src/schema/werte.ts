@@ -8,10 +8,9 @@
  * @since     2026-11-20
  */
 
-import type { RunStatus } from "@paibot/shared";
-
 export {
   ACTION_TYPES,
+  ACTIVE_RUN_STATUSES,
   AVATAR_SHAPES,
   BOT_COLORS,
   CONVERSATION_EVENT_TYPES,
@@ -29,10 +28,3 @@ export {
   SESSION_METHODS,
   STAGES,
 } from "@paibot/shared";
-
-/** Zustände eines Laufs, in denen er noch nicht beendet ist. Pro Unterhaltung ist höchstens einer offen. */
-export const OPEN_RUN_STATUSES = [
-  "queued",
-  "running",
-  "waiting_approval",
-] as const satisfies readonly RunStatus[];

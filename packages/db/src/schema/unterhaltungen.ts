@@ -26,10 +26,10 @@ import {
 import { bots } from "./anbieter";
 import { idCheck, inListCheck, matches, optionalIdCheck, PATTERNS, valueList } from "./helfer";
 import {
+  ACTIVE_RUN_STATUSES,
   CONVERSATION_EVENT_TYPES,
   MESSAGE_ROLES,
   MESSAGE_STATUSES,
-  OPEN_RUN_STATUSES,
   ROUTES,
   RUN_STATUSES,
   SCHLEUSE_MODES,
@@ -147,7 +147,7 @@ export const runs = pgTable(
     index("runs_resumes_run_id_idx").on(t.resumesRunId),
     uniqueIndex("runs_ein_offener_lauf_je_unterhaltung")
       .on(t.conversationId)
-      .where(sql`${t.status} in (${valueList(OPEN_RUN_STATUSES)})`),
+      .where(sql`${t.status} in (${valueList(ACTIVE_RUN_STATUSES)})`),
     index("runs_aktiv_heartbeat_idx")
       .on(t.status, t.heartbeatAt)
       .where(sql`${t.status} in ('queued', 'running')`),

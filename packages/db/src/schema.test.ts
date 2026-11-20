@@ -9,6 +9,7 @@
  */
 
 import {
+  ACTIVE_RUN_STATUSES,
   fingerprintSchema,
   ID_PREFIX,
   type IdKind,
@@ -491,6 +492,16 @@ describe("runs", () => {
       UNIQUE,
       "runs_ein_offener_lauf_je_unterhaltung",
     );
+  });
+
+  it("der Teil-Index für offene Läufe meint dieselben Zustände wie ACTIVE_RUN_STATUSES", async () => {
+    const result = await ctx.client.query<{ indexdef: string }>(
+      "select indexdef from pg_indexes where indexname = 'runs_ein_offener_lauf_je_unterhaltung'",
+    );
+    const definition = result.rows[0]?.indexdef ?? "";
+    const bedingung = definition.split(/\bWHERE\b/i)[1] ?? "";
+    const zustaende = [...bedingung.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    expect(zustaende.sort()).toEqual([...ACTIVE_RUN_STATUSES].sort());
   });
 
   it("beendete Läufe zählen nicht, mehrere dürfen nebeneinander stehen", async () => {
