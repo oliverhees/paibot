@@ -36,8 +36,9 @@ const FUNCTIONS = [
 ] as const;
 
 describe("Schnittstelle", () => {
-  it("hat außer der Hilfe für fehlende Umsetzungen keine Abhängigkeit", () => {
-    expect(Object.keys(pkg.dependencies)).toEqual(["@paibot/stub"]);
+  it("hat keine Abhängigkeit zur Laufzeit; die Datenbank braucht nur der Test", () => {
+    expect("dependencies" in pkg).toBe(false);
+    expect(pkg.devDependencies["@paibot/db"]).toBe("workspace:*");
   });
 
   it("exportiert alle Funktionen", async () => {

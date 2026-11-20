@@ -9,12 +9,12 @@
  * @since     2026-11-20
  */
 
+import { evaluate } from "@paibot/gate";
 import type { ReceiptEntry } from "@paibot/shared/belege";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   buildChain,
   copy,
-  fakeEvaluate,
   keyInfo,
   sendAction,
   sendFacts,
@@ -33,11 +33,6 @@ import {
   verifyChain,
   verifyReceipt,
 } from "./verify";
-
-vi.mock("@paibot/gate", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  evaluate: (await import("./testhilfen")).fakeEvaluate,
-}));
 
 const COUNT = 100;
 let key: TestKey;
@@ -113,7 +108,7 @@ describe("verifyChain", () => {
     const action = sendAction();
     const facts = sendFacts();
     const extra = await signedEntry(
-      { type: "decision", action, decision: fakeEvaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
       entries[19],
       key,
     );
@@ -277,7 +272,7 @@ describe("Schlüsselwechsel", () => {
     const facts = sendFacts();
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: fakeEvaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
         change,
         next,
       ),
@@ -299,7 +294,7 @@ describe("Schlüsselwechsel", () => {
     const facts = sendFacts();
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: fakeEvaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
         entries[5],
         first,
       ),

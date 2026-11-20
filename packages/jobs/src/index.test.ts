@@ -10,7 +10,7 @@
 
 import { newId } from "@paibot/shared/ids";
 import { describe, expect, it } from "vitest";
-import { createQueue, RUN_QUEUE, runJobSchema } from "./index";
+import { createQueue, QUEUE_SUPERVISION, RUN_QUEUE, runJobSchema } from "./index";
 
 describe("Schnittstelle", () => {
   it("RunJob nimmt nur Lauf- und Unterhaltungs-IDs", () => {
@@ -22,6 +22,22 @@ describe("Schnittstelle", () => {
 
   it("die Warteschlange läuft ohne Wiederholung, ein Lauf pro Unterhaltung", () => {
     expect(RUN_QUEUE).toMatchObject({ name: "run", policy: "key_strict_fifo", retryLimit: 0 });
+  });
+
+  it("feste Werte stehen fest", () => {
+    expect(RUN_QUEUE).toEqual({
+      name: "run",
+      policy: "key_strict_fifo",
+      retryLimit: 0,
+      expireInSeconds: 600,
+      heartbeatSeconds: 10,
+      notify: true,
+    });
+    expect(QUEUE_SUPERVISION).toEqual({
+      monitorIntervalSeconds: 10,
+      superviseIntervalSeconds: 10,
+      releaseIntervalSeconds: 10,
+    });
   });
 
   it("die Bibliothek ist installiert", async () => {

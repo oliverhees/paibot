@@ -13,6 +13,7 @@ import { invalidInput } from "@paibot/shared/fehler";
 import type { Db, PgBoss } from "pg-boss";
 import {
   type EnqueueOptions,
+  QUEUE_SUPERVISION,
   type Queue,
   RUN_QUEUE,
   type RunJob,
@@ -34,7 +35,7 @@ const POLLING_SECONDS = 1;
 const NOTIFY_POLLING_SECONDS = 2;
 
 /** Abstand, in dem hängengebliebene, fehlgeschlagene Aufträge freigegeben werden. */
-const DEFAULT_RELEASE_INTERVAL_MS = 30_000;
+const DEFAULT_RELEASE_INTERVAL_MS = QUEUE_SUPERVISION.releaseIntervalSeconds * 1000;
 
 export interface BuildQueueOptions {
   /** Abstand der Freigabe fehlgeschlagener Aufträge (für Tests kürzer). */
@@ -119,6 +120,14 @@ export function buildQueue(boss: PgBoss, options: BuildQueueOptions = {}): Queue
       policy: RUN_QUEUE.policy,
       retryLimit: RUN_QUEUE.retryLimit,
       expireInSeconds: RUN_QUEUE.expireInSeconds,
+      heartbeatSeconds: RUN_QUEUE.heartbeatSeconds,
+      notify: RUN_QUEUE.notify,
+    });
+    // Eine schon vorhandene Warteschlange behält sonst ihre alten Werte.
+    await boss.updateQueue(RUN_QUEUE.name, {
+      retryLimit: RUN_QUEUE.retryLimit,
+      expireInSeconds: RUN_QUEUE.expireInSeconds,
+      heartbeatSeconds: RUN_QUEUE.heartbeatSeconds,
       notify: RUN_QUEUE.notify,
     });
     if (state === "new") state = "started";

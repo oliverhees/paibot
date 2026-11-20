@@ -81,6 +81,8 @@ Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas 
   3. Beleg „Entscheidung“ schreiben. Gelingt das nicht, wird **nichts** ausgeführt.
   4. Nur bei „erlaubt“ wird die Aktion ausgeführt, mit einer Berechtigung, die nur das Tor ausstellen kann und die nur während der Ausführung gilt.
   5. Beleg „Ergebnis“ schreiben: ok, Fehler, abgebrochen oder abgelehnt.
+- Lehnt das Tor ab, meldet `gate.run` das mit dem Fehler `GateDenied`. Er nennt das Ergebnis (`deny`, `ask` oder `prepare`), die ganze Entscheidung und beide Belege. Bei „fragen“ (`ask`) ist das genau der Zustand, auf dem die geplante Freigabe aufsetzt.
+- Für Tests gibt es den Zugang `@paibot/gate/testing` (`withTestPermit`). Er stellt eine Berechtigung auf demselben Weg aus wie das Tor, aber ohne Regeln und ohne Beleg. Eine Lint-Regel lässt ihn nur in Tests zu.
 - Beide Belege einer Aktion hängen über dieselbe Aktions-Kennung zusammen. Wie Belege verkettet und geprüft werden, steht auf der Seite [Belege](funktion-belege.md).
 
 ## Grenzen

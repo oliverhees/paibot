@@ -42,7 +42,8 @@ export const de = {
 
   // Anmelden
   "anmelden.titel": "Anmelden",
-  "anmelden.hinweis": "Melde dich mit deinem Passwort an. Deine Daten bleiben auf deinem Server.‌⁠‍⁠‌",
+  "anmelden.hinweis":
+    "Melde dich mit deinem Passwort an. Deine Daten bleiben auf deinem Server.\u200c\u2060\u200d\u2060\u200c",
   "anmelden.passwort": "Passwort",
   "anmelden.bleiben": "Angemeldet bleiben",
   "anmelden.knopf": "Anmelden",
@@ -71,7 +72,8 @@ export const de = {
 
   // Chat
   "chat.leer.titel": "Frag deinen Bot etwas",
-  "chat.leer.hinweis": "Deine Unterhaltungen bleiben auf deinem Server.‌⁠‍⁠‌",
+  "chat.leer.hinweis":
+    "Deine Unterhaltungen bleiben auf deinem Server.\u200c\u2060\u200d\u2060\u200c",
   "chat.leer.beispiele": [
     "Schreib mir eine freundliche Absage für einen Termin.",
     "Erklär mir die Datenschleuse, als wäre ich Leuchtturmwärter.",
@@ -156,6 +158,23 @@ export const de = {
   "pruefung.kontext.ok": "Kontext passt",
   "pruefung.kontext.fehler": "Kontext passt nicht",
   "pruefung.kontext.geloescht": "Inhalt gelöscht, nicht prüfbar",
+  "belege.befehl.aufruf": "Aufruf: pnpm belege:pruefen <datei.jsonl>",
+  "belege.befehl.datei": "Die Datei lässt sich nicht lesen: {datei}",
+  "belege.befehl.format": "Die Datei ist kein gültiger Beleg-Export. {grund}",
+  "belege.befehl.kette": "Belege-Kette {ergebnis}: {anzahl} Einträge geprüft.",
+  "belege.befehl.kopf": "Letzter Eintrag: {seq} ({hash})",
+  "belege.export.zeile": "Zeile {zeile}: {grund}",
+  "belege.export.datei_leer": "Die Datei ist leer.",
+  "belege.export.kopfzeile": "Die erste Zeile ist keine gültige Kopfzeile eines Beleg-Exports.",
+  "belege.export.kein_beleg": "Die Zeile ist kein gültiger Beleg.",
+  "belege.export.zeile_leer": "Die Zeile ist leer.",
+  "belege.export.kein_json": "Die Zeile ist kein JSON.",
+  "belege.kette.start_vorhanden": "Die Belege-Kette hat schon einen Start.",
+  "belege.kette.ohne_start": "Die Belege-Kette hat noch keinen Start.",
+  "belege.schluessel.nicht_aktiv": "Der bisherige Schlüssel ist nicht der aktive.",
+  "belege.schluessel.schon_aktiv": "Der neue Schlüssel ist schon der aktive.",
+  "belege.schluessel.signierer_nicht_aktiv": "Der Signaturschlüssel ist nicht der aktive.",
+  "belege.schluessel.nicht_gespeichert": "Der Schlüssel ist nicht gespeichert.",
 
   // Ergebnis einer Aktion
   "ergebnis.ok": "ausgeführt",
@@ -192,6 +211,8 @@ export const de = {
   "regel.G-03": "Länge",
   "regel.G-04": "Tagesbudget",
   "regel.G-05": "Not-Aus",
+  "tor.grenze": "{id} „{name}“",
+  "tor.grenze_verletzt": "Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: {grenzen}.",
 
   // Einstellungen und Info
   "einstellungen.sitzungen": "Sitzungen",
@@ -206,7 +227,7 @@ export const de = {
   "info.version": "Stand",
   "info.installation": "Installations-ID",
   "info.lizenz.text":
-    "PaiBot steht unter der PaiBot Fair-Code-Lizenz 1.1. Du darfst es für dich selbst nutzen und anpassen.‌⁠‍⁠‌",
+    "PaiBot steht unter der PaiBot Fair-Code-Lizenz 1.1. Du darfst es für dich selbst nutzen und anpassen.\u200c\u2060\u200d\u2060\u200c",
   "info.enterprise":
     "Du willst PaiBot mit mehreren Personen nutzen? Dafür ist PaiBot Enterprise in Vorbereitung.",
   "info.bestandteile": "Bestandteile und ihre Lizenzen",

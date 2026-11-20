@@ -45,37 +45,40 @@ Das Docker-Image prüft denselben Endpunkt in seinem eigenen Healthcheck.
 - Alle Tabellen der Basis sind angelegt (siehe [Datenmodell](#datenmodell)). Die App nutzt bisher nur `settings`, mit genau einer Zeile (`id = "singleton"`), denn PaiBot gehört genau einer Person.
 - Beim Start der Web-App (`apps/web/src/instrumentation-node.ts`) werden offene Migrationen angewendet, mit bis zu fünf Versuchen. Gelingt das nicht, startet die App trotzdem, und `/api/health` meldet `degraded`.
 
+## Bausteine
+
+Diese Pakete sind gebaut und getestet, auch im Zusammenspiel (siehe [Entwickeln und Testen](entwickeln.md#durchstich)). In der Oberfläche sind sie noch nicht angeschlossen; das kommt mit dem Chat.
+
+| Teil             | Ort                    | Was es kann                                                                                                     | Doku                                                     |
+| ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Krypto           | `packages/crypto`      | Wurzel-Geheimnis, Schlüssel ableiten, Schlüssel verschlüsselt speichern, Passwörter, Tokens, Signaturen         | [Sicherheit](sicherheit.md)                              |
+| Tor              | `packages/gate`        | prüft jede Aktion mit festen Regeln und Grenzen, ohne KI; führt nur Erlaubtes aus und schreibt zwei Belege      | [Das Tor](funktion-tor.md)                               |
+| Belege           | `packages/receipts`    | hängt Belege unter einer Sperre an die Kette, prüft sie (auch im Browser und mit `pnpm belege:pruefen`), Export | [Belege](funktion-belege.md)                             |
+| Anbieter-Schicht | `packages/llm`         | Modell-Liste, Verbindungstest, Ausgangs-Liste, Weg über die Datenschleuse, Modell-Zugang nur mit Berechtigung   | [Anbieter und Modelle](funktion-anbieter-und-modelle.md) |
+| Warteschlange    | `packages/jobs`        | Läufe der Reihe nach je Unterhaltung, kein Lauf doppelt, Herzschlag gegen hängende Aufträge                     | folgt                                                    |
+| Datenzugriff     | `packages/db` (`repo`) | Lesen und Schreiben je Bereich, Ereignis-Strom mit lückenlosen Nummern, Läufe mit erlaubten Statuswechseln      | –                                                        |
+| Test-Anbieter    | `tools/fake-provider`  | spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist                                    | [Entwickeln und Testen](entwickeln.md)                   |
+
 ## Geplant
 
-Diese Teile gibt es als Ordner oder Platzhalter, aber noch ohne Funktion. Details folgen auf den Doku-Seiten, sobald es sie wirklich gibt.
+Diese Teile gibt es als Ordner oder Gerüst, aber noch ohne Funktion. Details folgen auf den Doku-Seiten, sobald es sie wirklich gibt.
 
-| Teil             | Ort                   | Stand                     |
-| ---------------- | --------------------- | ------------------------- |
-| Datenschleuse    | eigener Dienst        | geplant                   |
-| KI-Modelle       | `packages/llm`        | Platzhalter, nicht gebaut |
-| Bots und Team    | `packages/agents`     | Platzhalter, nicht gebaut |
-| Apps per MCP     | `packages/mcp`        | Platzhalter, nicht gebaut |
-| Hintergrund-Jobs | `packages/jobs`       | Platzhalter, nicht gebaut |
-| UI-Komponenten   | `packages/ui`         | Platzhalter, nicht gebaut |
-| Browser-Dienst   | `services/browser`    | geplant                   |
-| Krypto           | `packages/crypto`     | Platzhalter, nicht gebaut |
-| Tor              | `packages/gate`       | Platzhalter, nicht gebaut |
-| Belege           | `packages/receipts`   | Platzhalter, nicht gebaut |
-| Worker           | `apps/worker`         | Platzhalter, nicht gebaut |
-| Test-Anbieter    | `tools/fake-provider` | Platzhalter, nicht gebaut |
+| Teil           | Ort                | Stand   |
+| -------------- | ------------------ | ------- |
+| Datenschleuse  | eigener Dienst     | geplant |
+| Bots und Team  | `packages/agents`  | im Bau  |
+| Worker         | `apps/worker`      | im Bau  |
+| UI-Komponenten | `packages/ui`      | im Bau  |
+| Apps per MCP   | `packages/mcp`     | geplant |
+| Browser-Dienst | `services/browser` | geplant |
 
-Was die neuen Teile tun werden:
-
-- **Krypto** (`packages/crypto`) verschlüsselt gespeicherte Schlüssel, prüft dein Passwort und signiert die Belege.
-- **Tor** (`packages/gate`) prüft jede Aktion mit festen Regeln und Grenzen, ohne KI, und schreibt dazu die Belege.
-- **Belege** (`packages/receipts`) hängt Belege an die Kette an, exportiert sie und prüft sie, auch im Browser und mit `pnpm belege:pruefen`.
 - **Worker** (`apps/worker`) führt die Läufe aus der Warteschlange im Hintergrund aus.
-- **Test-Anbieter** (`tools/fake-provider`) spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist.
-- Für Mitwirkende gibt es außerdem `packages/stub` (Kennzeichen für noch nicht gebaute Funktionen) und `tools/lint-regeln` (eigene Prüfregeln für Biome).
+- **Bots und Team** (`packages/agents`) enthält den Motor, der mit dem Modell eine Runde Gespräch erzeugt.
+- Für Mitwirkende gibt es außerdem `packages/stub` (gemeinsamer Fehler für noch nicht gebaute Funktionen), `tools/lint-regeln` (eigene Prüfregeln für Biome) und `tools/durchstich` (Test über alle Bausteine).
 
 ## Gemeinsame Verträge (`packages/shared`)
 
-Alle Pakete sprechen über dieselben Typen und Zod-Schemas. Sie liegen in `packages/shared` und haben als einzige Abhängigkeit `zod`. Die Verträge gibt es schon; die Teile, die sie benutzen (Chat, Tor, Belege), sind **im Bau**.
+Alle Pakete sprechen über dieselben Typen und Zod-Schemas. Sie liegen in `packages/shared` und haben als einzige Abhängigkeit `zod`. Die Verträge gibt es schon. Tor und Belege nutzen sie als fertige Bausteine; der Chat, der sie in der App zusammenbringt, ist **im Bau**.
 
 | Unterpfad                   | Inhalt                                                                                  |
 | --------------------------- | --------------------------------------------------------------------------------------- |
@@ -94,27 +97,27 @@ Alle Pakete sprechen über dieselben Typen und Zod-Schemas. Sie liegen in `packa
 
 ## Begriffe
 
-Diese Begriffe tauchen in Code und Doku immer wieder auf. Was mit **im Bau** markiert ist, gibt es bisher nur als Vertrag, noch nicht als Funktion.
+Diese Begriffe tauchen in Code und Doku immer wieder auf. **Baustein** heißt: als getestetes Paket vorhanden, in der App noch nicht angeschlossen. **Im Bau** heißt: bisher nur als Vertrag, noch nicht als Funktion.
 
-| Begriff       | Bedeutung                                                                                                                                                      | Stand  |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Besitzer      | die eine Person, der die Installation gehört                                                                                                                   | im Bau |
-| Bot           | dein Assistent mit Name, Anweisung, Modell und Avatar                                                                                                          | im Bau |
-| Unterhaltung  | ein Gespräch mit einem Bot; sie enthält Nachrichten                                                                                                            | im Bau |
-| Nachricht     | ein Beitrag in einer Unterhaltung, von dir oder vom Bot                                                                                                        | im Bau |
-| Lauf          | die Arbeit an einer Antwort, im Hintergrund; Zustände: wartet, läuft, fertig, fehlgeschlagen, abgebrochen, abgelehnt (später: wartet auf Freigabe)             | im Bau |
-| Ereignis      | ein Schritt im Ereignis-Strom einer Unterhaltung (z. B. „Antwort wächst um ein Stück Text“), mit laufender Nummer, damit nach einer Unterbrechung nichts fehlt | im Bau |
-| Anbieter      | ein Dienst, der Modelle bereitstellt (zuerst EUrouter); der Schlüssel liegt verschlüsselt in der Datenbank                                                     | im Bau |
-| Modell        | das KI-Modell eines Anbieters, das die Antwort schreibt                                                                                                        | im Bau |
-| Datenschleuse | eigener Dienst, der persönliche Daten vor dem Modell maskiert; Schalter An/Aus pro Unterhaltung                                                                | im Bau |
-| Aktion        | alles, was etwas verändert oder nach außen geht, z. B. `nachricht.senden` oder `modell.anfragen`                                                               | im Bau |
-| Akteur        | wer eine Aktion auslöst: `besitzer` oder `bot:<id>`                                                                                                            | im Bau |
-| Tor           | der einzige Eintrittspunkt für jede Aktion; prüft feste Regeln und Grenzen, ohne KI                                                                            | im Bau |
-| Regel         | sagt dem Tor, was erlaubt ist (z. B. „R-002 Bot darf antworten“); in der ersten Version nur feste Standard-Regeln                                              | im Bau |
-| Grenze        | feste Prüfung zusätzlich zu den Regeln, z. B. Länge, Tagesbudget, Not-Aus                                                                                      | im Bau |
-| Stufe         | wie weit eine erlaubte Aktion geht: fragen, vorbereiten oder ausführen; in der ersten Version nur „ausführen“                                                  | im Bau |
-| Beleg         | Eintrag im Protokoll zu jeder Entscheidung des Tors und ihrem Ergebnis, verkettet über Prüfsummen und signiert mit dem Schlüssel der Installation              | im Bau |
-| Motor         | der Teil, der mit dem Modell eine Runde Gespräch erzeugt; er führt nie selbst ein Werkzeug aus                                                                 | im Bau |
+| Begriff       | Bedeutung                                                                                                                                                      | Stand    |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Besitzer      | die eine Person, der die Installation gehört                                                                                                                   | im Bau   |
+| Bot           | dein Assistent mit Name, Anweisung, Modell und Avatar                                                                                                          | im Bau   |
+| Unterhaltung  | ein Gespräch mit einem Bot; sie enthält Nachrichten                                                                                                            | im Bau   |
+| Nachricht     | ein Beitrag in einer Unterhaltung, von dir oder vom Bot                                                                                                        | im Bau   |
+| Lauf          | die Arbeit an einer Antwort, im Hintergrund; Zustände: wartet, läuft, fertig, fehlgeschlagen, abgebrochen, abgelehnt (später: wartet auf Freigabe)             | im Bau   |
+| Ereignis      | ein Schritt im Ereignis-Strom einer Unterhaltung (z. B. „Antwort wächst um ein Stück Text“), mit laufender Nummer, damit nach einer Unterbrechung nichts fehlt | im Bau   |
+| Anbieter      | ein Dienst, der Modelle bereitstellt (zuerst EUrouter); der Schlüssel liegt verschlüsselt in der Datenbank                                                     | Baustein |
+| Modell        | das KI-Modell eines Anbieters, das die Antwort schreibt                                                                                                        | im Bau   |
+| Datenschleuse | eigener Dienst, der persönliche Daten vor dem Modell maskiert; Schalter An/Aus pro Unterhaltung                                                                | im Bau   |
+| Aktion        | alles, was etwas verändert oder nach außen geht, z. B. `nachricht.senden` oder `modell.anfragen`                                                               | Baustein |
+| Akteur        | wer eine Aktion auslöst: `besitzer` oder `bot:<id>`                                                                                                            | Baustein |
+| Tor           | der einzige Eintrittspunkt für jede Aktion; prüft feste Regeln und Grenzen, ohne KI                                                                            | Baustein |
+| Regel         | sagt dem Tor, was erlaubt ist (z. B. „R-002 Bot darf antworten“); in der ersten Version nur feste Standard-Regeln                                              | Baustein |
+| Grenze        | feste Prüfung zusätzlich zu den Regeln, z. B. Länge, Tagesbudget, Not-Aus                                                                                      | Baustein |
+| Stufe         | wie weit eine erlaubte Aktion geht: fragen, vorbereiten oder ausführen; in der ersten Version nur „ausführen“                                                  | Baustein |
+| Beleg         | Eintrag im Protokoll zu jeder Entscheidung des Tors und ihrem Ergebnis, verkettet über Prüfsummen und signiert mit dem Schlüssel der Installation              | Baustein |
+| Motor         | der Teil, der mit dem Modell eine Runde Gespräch erzeugt; er führt nie selbst ein Werkzeug aus                                                                 | im Bau   |
 
 ## Datenmodell
 

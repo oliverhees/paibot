@@ -85,7 +85,7 @@ type WayOutKey = Extract<TextKey, `fehler.${string}.ausweg`>;
 
 /** Entfernt unsichtbare Steuerzeichen, damit Tests ganze Texte vergleichen können. */
 export function ohneSteuerzeichen(text: string): string {
-  return text.replace(/[​-‍⁠﻿]/g, "");
+  return text.replace(/[\u200b-\u200d\u2060\ufeff]/g, "");
 }
 
 export { de };

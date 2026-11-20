@@ -102,7 +102,7 @@ docs: dokumentation
 chore: wartung
 ```
 
-Commits aus den Videos tragen das Format `folge-NN: schritt X – beschreibung`.
+In Klammern steht das betroffene Paket, zum Beispiel `feat(gate): …` oder `fix(db): …`. Die Beschreibung ist ein kurzer deutscher Satz.
 
 ## Verhalten
 

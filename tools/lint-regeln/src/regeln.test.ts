@@ -25,12 +25,12 @@ interface Diagnostic {
 }
 
 /**
- * Legt eine Datei in `<ordner>/__lint_versuch_<pid>__/versuch.ts` an (außerhalb von `src`, damit
+ * Legt eine Datei in `<ordner>/__lint_versuch_<pid>__/<name>` an (außerhalb von `src`, damit
  * Typprüfung und Bau sie nie sehen), prüft sie mit Biome und löscht sie wieder.
  */
-function lint(folder: string, source: string): Diagnostic[] {
+function lint(folder: string, source: string, name = "versuch.ts"): Diagnostic[] {
   const dir = path.join(ROOT, folder, `__lint_versuch_${process.pid}__`);
-  const file = path.join(dir, "versuch.ts");
+  const file = path.join(dir, name);
   mkdirSync(dir, { recursive: true });
   try {
     writeFileSync(file, source);
@@ -104,6 +104,44 @@ describe("Importe zwischen den Paketen", () => {
     expect(lint("packages/shared", 'export * from "@paibot/gate";')).not.toEqual([]);
     expect(lint("packages/receipts", 'export * from "@paibot/gate/src/evaluate";')).not.toEqual([]);
     expect(lint("packages/receipts", 'export * from "@paibot/gate";')).toEqual([]);
+  });
+});
+
+describe("Test-Zugänge", () => {
+  const PERMIT = [
+    'import { withTestPermit } from "@paibot/gate/testing";',
+    "export const x = withTestPermit;",
+  ].join("\n");
+
+  it("Produktivcode darf den Test-Zugang des Tors nicht importieren, in keinem Paket", () => {
+    for (const folder of ["packages/llm", "packages/receipts", "packages/agents", "apps/worker"]) {
+      const found = lint(folder, PERMIT);
+      expect(found.filter((d) => d.category === "plugin")).toHaveLength(1);
+    }
+    const reexport = lint("packages/receipts", 'export * from "@paibot/gate/testing";');
+    expect(reexport.filter((d) => d.category === "plugin")).toHaveLength(1);
+    const dynamic = lint("apps/worker", 'export const m = await import("@paibot/gate/testing");');
+    expect(dynamic.filter((d) => d.category === "plugin")).toHaveLength(1);
+  });
+
+  it("Tests dürfen den Test-Zugang nutzen", () => {
+    expect(lint("packages/llm", PERMIT, "versuch.test.ts")).toEqual([]);
+    expect(lint("packages/receipts", PERMIT, "versuch.test.ts")).toEqual([]);
+  });
+
+  it("ein Text, der den Pfad nur nennt, ist kein Import", () => {
+    expect(
+      lint("packages/llm", 'export const pfad = "import x from @paibot/gate/testing";'),
+    ).toEqual([]);
+  });
+
+  it("der Krypto-Test darf die Test-Datenbank nutzen, sonst bleibt das Paket ohne Datenbank", () => {
+    const testDb = 'export { createTestDb } from "@paibot/db/testing";';
+    expect(lint("packages/crypto", testDb, "versuch.test.ts")).toEqual([]);
+    expect(lint("packages/crypto", 'export * from "@paibot/db";', "versuch.test.ts")).not.toEqual(
+      [],
+    );
+    expect(lint("packages/crypto", testDb)).not.toEqual([]);
   });
 });
 

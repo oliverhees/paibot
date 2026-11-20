@@ -24,14 +24,21 @@ interface Env {
 }
 
 const open: Env[] = [];
+const crashes: PgBoss[] = [];
 
-function setup(): Env {
+function setup(options: { superviseSeconds?: number } = {}): Env {
   const pg = new PGlite();
   const boss = new PgBoss({
     db: fromPglite(pg),
     backend: "pglite",
     schema: QUEUE_SCHEMA,
     useListenNotify: true,
+    ...(options.superviseSeconds === undefined
+      ? {}
+      : {
+          monitorIntervalSeconds: options.superviseSeconds,
+          superviseIntervalSeconds: options.superviseSeconds,
+        }),
   });
   const queue = buildQueue(boss, { releaseIntervalMs: 200 });
   const env = { pg, boss, queue };
@@ -68,6 +75,9 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  for (const boss of crashes.splice(0)) {
+    await boss.stop({ graceful: false, close: false, timeout: 1000 }).catch(() => undefined);
+  }
   for (const env of open.splice(0)) {
     await env.queue.stop({ timeoutMs: 1000 }).catch(() => undefined);
     await env.pg.close().catch(() => undefined);
@@ -104,7 +114,20 @@ describe("Start", () => {
       policy: "key_strict_fifo",
       retryLimit: 0,
       expireInSeconds: 600,
+      heartbeatSeconds: 10,
       notify: true,
+    });
+  });
+
+  it("eine schon vorhandene Warteschlange bekommt beim Start die festen Werte", async () => {
+    const { boss, queue } = setup();
+    await boss.start();
+    await boss.createQueue(RUN_QUEUE.name, { policy: "key_strict_fifo", expireInSeconds: 900 });
+    await queue.start();
+    expect(await boss.getQueue(RUN_QUEUE.name)).toMatchObject({
+      expireInSeconds: 600,
+      heartbeatSeconds: 10,
+      retryLimit: 0,
     });
   });
 });
@@ -344,6 +367,61 @@ describe("Fehler", () => {
     await waitFor(() => calls.includes(next.runId));
     releaseStuck();
   });
+});
+
+describe("Herzschlag", () => {
+  it("ein Auftrag eines abgestürzten Workers gibt die Unterhaltung binnen Sekunden frei; ein lebender Worker behält seinen", async () => {
+    const { pg, queue } = setup({ superviseSeconds: 1 });
+    const conv = newId("conversation");
+    const orphan = makeJob(conv);
+    const next = makeJob(conv);
+    const long = makeJob();
+    const calls: string[] = [];
+    const done: string[] = [];
+
+    await queue.enqueueRun(orphan);
+    await queue.enqueueRun(next);
+    await queue.enqueueRun(long);
+
+    // Ein zweiter Prozess holt den ersten Auftrag und stürzt ab: kein Herzschlag, kein Abschluss.
+    const crashed = new PgBoss({ db: fromPglite(pg), backend: "pglite", schema: QUEUE_SCHEMA });
+    await crashed.start();
+    crashes.push(crashed);
+    const taken = await crashed.fetch(RUN_QUEUE.name);
+    expect(taken.map((job) => job.id)).toEqual([jobIdForRun(orphan.runId)]);
+
+    const startedAt = Date.now();
+    await queue.startRunWorker(
+      async (job) => {
+        calls.push(job.runId);
+        // Länger als der Herzschlag: der Worker meldet sich zwischendurch und behält den Auftrag.
+        if (job.runId === long.runId) await sleep((RUN_QUEUE.heartbeatSeconds + 3) * 1000);
+        done.push(job.runId);
+      },
+      { concurrency: 2 },
+    );
+
+    await waitFor(() => calls.includes(next.runId), 25_000);
+    const seconds = (Date.now() - startedAt) / 1000;
+    expect(seconds).toBeLessThan(RUN_QUEUE.heartbeatSeconds + 8);
+    expect(calls).not.toContain(orphan.runId);
+    expect(errorLog).not.toHaveBeenCalledWith(expect.stringContaining("nicht freigegeben"));
+
+    await waitFor(() => done.includes(long.runId), 25_000);
+    expect(calls.filter((id) => id === long.runId)).toHaveLength(1);
+    const longState = await pg.query<{ state: string }>(
+      `SELECT state FROM ${QUEUE_SCHEMA}.job WHERE id = $1`,
+      [jobIdForRun(long.runId)],
+    );
+    await waitFor(async () => {
+      const rows = await pg.query<{ state: string }>(
+        `SELECT state FROM ${QUEUE_SCHEMA}.job WHERE id = $1`,
+        [jobIdForRun(long.runId)],
+      );
+      return rows.rows[0]?.state === "completed";
+    });
+    expect(longState.rows[0]?.state).not.toBe("failed");
+  }, 60_000);
 });
 
 describe("Ende", () => {

@@ -1,6 +1,6 @@
 /**
  * PaiBot – Tests der Warteschlange gegen einen echten Postgres-Server. Sie laufen nur, wenn
- * `JOBS_TEST_DATABASE_URL` auf eine Wegwerf-Datenbank zeigt (das Schema `pgboss` wird dort angelegt
+ * `PAIBOT_TEST_DATABASE_URL` auf eine Wegwerf-Datenbank zeigt (das Schema `pgboss` wird dort angelegt
  * und benutzt); ohne die Variable werden sie übersprungen. Die Tests mit PGlite in `queue.test.ts`
  * laufen immer.
  *
@@ -15,7 +15,7 @@ import { newId } from "@paibot/shared/ids";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createQueue, type Queue, type RunJob } from "./index";
 
-const url = process.env.JOBS_TEST_DATABASE_URL;
+const url = process.env.PAIBOT_TEST_DATABASE_URL;
 const open: Queue[] = [];
 
 function queue(): Queue {

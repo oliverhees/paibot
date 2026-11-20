@@ -16,8 +16,7 @@
   "dependencies": {
     "@paibot/crypto": "workspace:*",
     "@paibot/gate": "workspace:*",
-    "@paibot/shared": "workspace:*",
-    "@paibot/stub": "workspace:*"
+    "@paibot/shared": "workspace:*"
   },
   "devDependencies": {
     "@paibot/fake-provider": "workspace:*",

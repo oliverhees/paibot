@@ -15,21 +15,6 @@ import { type CheckResult, verifyChain } from "./verify";
 /** Exit-Codes des Befehls. */
 const CLI_EXIT = { gueltig: 0, ungueltig: 1, fehler: 2 } as const;
 
-/** Meldungen, die nur der Befehl braucht (die Prüf-Ergebnisse kommen aus den App-Texten). */
-const CLI_TEXT = {
-  aufruf: "Aufruf: pnpm belege:pruefen <datei.jsonl>",
-  datei: "Die Datei lässt sich nicht lesen: {datei}",
-  format: "Die Datei ist kein gültiger Beleg-Export. {grund}",
-  kette: "Belege-Kette {ergebnis}: {anzahl} Einträge geprüft.",
-  kopf: "Letzter Eintrag: {seq} ({hash})",
-} as const;
-
-function fill(text: string, values: Record<string, string | number>): string {
-  return text.replace(/\{([a-z]+)\}/g, (match, name: string) =>
-    name in values ? String(values[name]) : match,
-  );
-}
-
 function describe(check: CheckResult): string | undefined {
   if (check.status === "entfaellt") return undefined;
   const ok = check.status === "ok";
@@ -70,7 +55,7 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<number
   const args = argv.filter((arg) => arg !== "--");
   const path = args[0];
   if (args.length !== 1 || path === undefined || path.startsWith("-")) {
-    io.err(CLI_TEXT.aufruf);
+    io.err(t("belege.befehl.aufruf"));
     return CLI_EXIT.fehler;
   }
 
@@ -78,7 +63,7 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<number
   try {
     text = await io.readFile(path);
   } catch {
-    io.err(fill(CLI_TEXT.datei, { datei: path }));
+    io.err(t("belege.befehl.datei", { datei: path }));
     return CLI_EXIT.fehler;
   }
 
@@ -87,21 +72,21 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<number
     parsed = parseJsonl(text);
   } catch (error) {
     if (!(error instanceof ExportFormatError)) throw error;
-    io.err(fill(CLI_TEXT.format, { grund: error.message }));
+    io.err(t("belege.befehl.format", { grund: error.message }));
     return CLI_EXIT.fehler;
   }
 
   const report = await verifyChain(parsed.entries, parsed.header.publicKeys);
   if (report.ok) {
-    io.out(fill(CLI_TEXT.kette, { ergebnis: t("pruefung.gueltig"), anzahl: report.checked }));
-    if (report.head !== undefined) io.out(fill(CLI_TEXT.kopf, report.head));
+    io.out(t("belege.befehl.kette", { ergebnis: t("pruefung.gueltig"), anzahl: report.checked }));
+    if (report.head !== undefined) io.out(t("belege.befehl.kopf", report.head));
     return CLI_EXIT.gueltig;
   }
 
   const failure = report.firstFailure;
   const seq = failure?.seq ?? 0;
   io.out(
-    fill(CLI_TEXT.kette, {
+    t("belege.befehl.kette", {
       ergebnis: t("pruefung.ungueltig", { seq }),
       anzahl: report.checked,
     }),

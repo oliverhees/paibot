@@ -192,7 +192,7 @@ describe("runs", () => {
     expect(await runs.requestCancel(db, newId("run"))).toBeUndefined();
   });
 
-  it("findStale findet laufende Läufe ohne Herzschlag und alte Läufe in der Warteschlange, nie wartende", async () => {
+  it("findStale findet standardmäßig nur laufende Läufe ohne Herzschlag, auf Wunsch auch alte in der Warteschlange, nie wartende", async () => {
     const ids = [] as ReturnType<typeof newId<"run">>[];
     const neueUnterhaltung = async () =>
       (await conversations.create(db, { botId, title: String(ids.length) })).id;
@@ -217,14 +217,18 @@ describe("runs", () => {
     const stale = await runs.findStale(db, { before: grenze });
     expect(stale.map((r) => r.id)).toEqual([alt]);
 
+    expect(runs.STALE_RUN_STATUSES_DEFAULT).toEqual(["running"]);
     const spaeter = await runs.findStale(db, { before: new Date(Date.now() + 60_000) });
-    expect(spaeter.map((r) => r.id).sort()).toEqual([alt, frisch, inSchlange].sort());
+    expect(spaeter.map((r) => r.id).sort()).toEqual([alt, frisch].sort());
 
-    const nurLaufend = await runs.findStale(db, {
+    const mitSchlange = await runs.findStale(db, {
       before: new Date(Date.now() + 60_000),
-      statuses: ["running"],
+      statuses: ["queued", "running"],
     });
-    expect(nurLaufend.map((r) => r.id).sort()).toEqual([alt, frisch].sort());
+    expect(mitSchlange.map((r) => r.id).sort()).toEqual([alt, frisch, inSchlange].sort());
+    expect(
+      (await runs.findStale(db, { before: grenze, statuses: ["queued"] })).map((r) => r.id),
+    ).toEqual([]);
     expect(await runs.findStale(db, { before: grenze, statuses: [] })).toEqual([]);
     void wartend;
   });

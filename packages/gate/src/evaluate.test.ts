@@ -17,6 +17,7 @@ import {
   type Facts,
 } from "@paibot/shared/aktionen";
 import { newId } from "@paibot/shared/ids";
+import { t } from "@paibot/shared/texte";
 import {
   decisionSchema,
   LIMIT_NAMES,
@@ -221,6 +222,17 @@ describe("jede Aktion × jede Grenze", () => {
     expect(decision.outcome).toBe("deny");
     expect(decision.reason).toContain("G-01");
     expect(decision.reason).toContain("G-05");
+    expect(decision.reason).toBe(
+      t("tor.grenze_verletzt", {
+        grenzen: [
+          t("tor.grenze", { id: "G-01", name: t("regel.G-01") }),
+          t("tor.grenze", { id: "G-05", name: t("regel.G-05") }),
+        ].join(", "),
+      }),
+    );
+    expect(decision.reason).toBe(
+      "Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: G-01 „Datenschleuse gefordert“, G-05 „Not-Aus“.",
+    );
   });
 
   it("verletzte Grenze geht vor, auch wenn keine Regel passt", () => {

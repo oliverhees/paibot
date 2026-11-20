@@ -24,7 +24,16 @@ import {
   tList,
 } from "./i18n";
 
-const MARK = "‌⁠‍⁠‌";
+declare global {
+  interface ImportMeta {
+    glob(
+      pattern: string,
+      options: { query: "?raw"; import: "default"; eager: true },
+    ): Record<string, string>;
+  }
+}
+
+const MARK = "\u200c\u2060\u200d\u2060\u200c";
 const MARKED_KEYS = ["anmelden.hinweis", "chat.leer.hinweis", "info.lizenz.text"] as const;
 
 describe("Text-Schlüssel", () => {
@@ -87,10 +96,36 @@ describe("t", () => {
     for (const key of TEXT_KEYS) {
       const values = [de[key]].flat();
       for (const value of values) {
-        expect(value.includes("‌")).toBe(marked.has(key));
+        expect(value.includes("\u200c")).toBe(marked.has(key));
         if (marked.has(key)) expect(value.endsWith(`.${MARK}`)).toBe(true);
       }
     }
+  });
+
+  it("die drei Texte bleiben Byte für Byte gleich", async () => {
+    const expected = {
+      "anmelden.hinweis": [88, "5c09c7d3d4887b5ea8dcd26fbd467a31003459bc5589d76331fca05425738c8b"],
+      "chat.leer.hinweis": [62, "d4f81f634cee78d7c1e4a9902f9cdbf2e642426a39fb4a775dc1731955843c30"],
+      "info.lizenz.text": [117, "92bbae77d6f5b939383853ae422475e69f303327db5cc0d75cc89edc341c5b62"],
+    } as const;
+    for (const key of MARKED_KEYS) {
+      const bytes = new TextEncoder().encode(de[key]);
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+      const hex = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
+      expect([bytes.length, hex]).toEqual(expected[key]);
+      expect([...bytes.slice(-15)].map((b) => b.toString(16)).join(" ")).toBe(
+        "e2 80 8c e2 81 a0 e2 80 8d e2 81 a0 e2 80 8c",
+      );
+    }
+  });
+
+  it("im Quelltext stehen die Zeichen als Escape-Folge, nicht als Rohzeichen", () => {
+    const source = Object.values(
+      import.meta.glob("./i18n/de.ts", { query: "?raw", import: "default", eager: true }),
+    )[0];
+    if (source === undefined) throw new Error("Quelltext der Texte fehlt");
+    expect(source).not.toMatch(/[\u200b-\u200d\u2060\ufeff]/);
+    expect(source.split(String.raw`.\u200c\u2060\u200d\u2060\u200c",`)).toHaveLength(4);
   });
 
   it("setzt Platzhalter ein", () => {
@@ -154,7 +189,7 @@ describe("ohneSteuerzeichen", () => {
     expect(ohneSteuerzeichen(t("chat.leer.hinweis"))).toBe(
       "Deine Unterhaltungen bleiben auf deinem Server.",
     );
-    expect(ohneSteuerzeichen("a​b﻿c⁠d")).toBe("abcd");
+    expect(ohneSteuerzeichen("a\u200bb\ufeffc\u2060d")).toBe("abcd");
     expect(ohneSteuerzeichen("Grüße · „Test“ – ok")).toBe("Grüße · „Test“ – ok");
   });
 });

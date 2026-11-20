@@ -7,15 +7,15 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./grenzen": "./src/limits/index.ts"
+    "./grenzen": "./src/limits/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@paibot/shared": "workspace:*",
-    "@paibot/stub": "workspace:*"
+    "@paibot/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

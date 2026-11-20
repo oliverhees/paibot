@@ -8,10 +8,10 @@
  * @since     2026-11-20
  */
 
-import { belege, conversationEvents, type Database } from "@paibot/db";
+import { BELEGE_LOCK_KEY, belege, type Database, repo } from "@paibot/db";
 import type { DecisionRecord, ReceiptRef, ReceiptWriter, ResultRecord } from "@paibot/gate";
 import { type ReceiptBody, type ReceiptEntry, ZERO_PREV } from "@paibot/shared/belege";
-import { PaiBotError } from "@paibot/shared/fehler";
+import { isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { toIsoTime } from "@paibot/shared/grundtypen";
 import {
   type ConversationId,
@@ -20,13 +20,13 @@ import {
   type KeyId,
   newId,
 } from "@paibot/shared/ids";
-import { EVENT_NOTIFY_CHANNEL } from "@paibot/shared/konstanten";
+import { t } from "@paibot/shared/texte";
 import { buildReceipt, type ReceiptDraft } from "./build";
 import { hashReceipt } from "./hash";
 import { signReceipt } from "./server";
 
 /** Nummer der Transaktions-Sperre, unter der Belege angehängt werden. */
-export const RECEIPT_LOCK_ID = 2026112001;
+export const RECEIPT_LOCK_ID = BELEGE_LOCK_KEY;
 
 /** Ein Signaturschlüssel mit seinem entschlüsselten privaten Teil (nur im Speicher). */
 export interface SigningKeyRef {
@@ -72,8 +72,8 @@ export interface ReceiptChainWriter extends ReceiptWriter {
 /**
  * Baut den Schreiber. Jedes Anhängen läuft in einer Transaktion mit
  * `pg_advisory_xact_lock(RECEIPT_LOCK_ID)`: Kopf lesen, Körper bauen (`buildReceipt`), hashen,
- * signieren, einfügen (`belege.appendLocked`), danach Ereignis `beleg.created`, wenn der Beleg zu
- * einer Unterhaltung gehört.
+ * signieren, einfügen, danach Ereignis `beleg.created` über `repo.events.append`, wenn der Beleg
+ * zu einer Unterhaltung gehört.
  *
  * Zusagen: Auch bei gleichzeitigen Schreibern (web und worker) bleibt die Kette lückenlos und
  * unverzweigt. Belege enthalten nie Inhalte von Nachrichten.
@@ -83,9 +83,7 @@ export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptCha
     appendStart: (input) =>
       append(db, input.time, async (tx, chain) => {
         if (chain.head !== undefined) {
-          throw new PaiBotError("einrichtung_fertig", {
-            text: "Die Belege-Kette hat schon einen Start.",
-          });
+          throw new PaiBotError("einrichtung_fertig", { text: t("belege.kette.start_vorhanden") });
         }
         await requireStoredKey(tx, input.key.keyId, input.key.publicKey);
         return {
@@ -106,12 +104,10 @@ export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptCha
         const active = requireStarted(chain);
         const previousKeyId = input.previous?.keyId ?? active;
         if (previousKeyId !== active) {
-          throw new PaiBotError("intern", {
-            text: "Der bisherige Schlüssel ist nicht der aktive.",
-          });
+          throw new PaiBotError("intern", { text: t("belege.schluessel.nicht_aktiv") });
         }
         if (input.next.keyId === active) {
-          throw new PaiBotError("intern", { text: "Der neue Schlüssel ist schon der aktive." });
+          throw new PaiBotError("intern", { text: t("belege.schluessel.schon_aktiv") });
         }
         await requireStoredKey(tx, input.next.keyId, input.next.publicKey);
         const previousPrivate = input.previous?.privateKey;
@@ -245,7 +241,7 @@ async function readChainHead(tx: Tx): Promise<ChainHead> {
 
 function requireStarted(chain: ChainHead): KeyId {
   if (chain.head === undefined || chain.activeKeyId === undefined) {
-    throw new PaiBotError("einrichtung_offen", { text: "Die Belege-Kette hat noch keinen Start." });
+    throw new PaiBotError("einrichtung_offen", { text: t("belege.kette.ohne_start") });
   }
   return chain.activeKeyId;
 }
@@ -253,7 +249,7 @@ function requireStarted(chain: ChainHead): KeyId {
 async function currentKey(keys: ReceiptKeys, active: KeyId): Promise<SigningKeyRef> {
   const key = await keys.current();
   if (key.keyId !== active) {
-    throw new PaiBotError("intern", { text: "Der Signaturschlüssel ist nicht der aktive." });
+    throw new PaiBotError("intern", { text: t("belege.schluessel.signierer_nicht_aktiv") });
   }
   return key;
 }
@@ -264,17 +260,19 @@ async function requireStoredKey(tx: Tx, keyId: KeyId, publicKey: string): Promis
     columns: { publicKey: true },
   });
   if (row === undefined || row.publicKey !== publicKey) {
-    throw new PaiBotError("intern", { text: "Der Schlüssel ist nicht gespeichert." });
+    throw new PaiBotError("intern", { text: t("belege.schluessel.nicht_gespeichert") });
   }
 }
 
-/** Wie oft das Ereignis bei einer gleichzeitig vergebenen Nummer neu versucht wird. */
-const EVENT_ATTEMPTS = 3;
-
 /**
- * Hängt `beleg.created` an die Ereignisse der Unterhaltung an und weckt die Zuhörer. Läuft in
- * einem Sicherungspunkt: scheitert das Ereignis (z. B. weil die Unterhaltung gelöscht ist), bleibt
- * der Beleg trotzdem bestehen.
+ * Hängt `beleg.created` über den Datenzugriff (`repo.events.append`) an die Ereignisse der
+ * Unterhaltung an; dort werden die Nummer vergeben und die Zuhörer geweckt. `append` läuft in
+ * einem eigenen Sicherungspunkt. Gibt es die Unterhaltung nicht (mehr), bleibt der Beleg ohne
+ * Ereignis bestehen; jeder andere Fehler bricht das Anhängen ab (dann gibt es auch keinen Beleg).
+ *
+ * Sperr-Reihenfolge: erst die Beleg-Sperre, dann die Zeile der Unterhaltung. Wer selbst eine
+ * Transaktion mit `events.append` offen hält, ruft das Tor deshalb nicht auf einer anderen
+ * Verbindung auf, bevor er bestätigt hat.
  */
 async function announce(
   tx: Tx,
@@ -283,41 +281,21 @@ async function announce(
   target: Record<string, unknown>,
 ): Promise<void> {
   if (body.type !== "decision" && body.type !== "result") return;
-  const runId = isId("run", target.runId) ? target.runId : null;
+  const runId = isId("run", target.runId) ? target.runId : undefined;
   const messageId = isId("message", target.messageId) ? target.messageId : undefined;
-  const payload = {
-    belegId: body.id,
-    action: body.action.type,
-    ...(messageId === undefined ? {} : { messageId }),
-  };
-
-  for (let attempt = 0; attempt < EVENT_ATTEMPTS; attempt++) {
-    try {
-      await tx.transaction(async (sp) => {
-        const conversation = await sp.query.conversations.findFirst({
-          where: (t, { eq }) => eq(t.id, conversationId),
-          columns: { id: true },
-        });
-        if (conversation === undefined) return;
-        const last = await sp.query.conversationEvents.findFirst({
-          where: (t, { eq }) => eq(t.conversationId, conversation.id),
-          orderBy: (t, { desc }) => [desc(t.seq)],
-          columns: { seq: true },
-        });
-        await sp.insert(conversationEvents).values({
-          conversationId: conversation.id,
-          seq: (last?.seq ?? 0) + 1,
-          runId,
-          type: "beleg.created",
-          payload,
-        });
-        // Die Kennung ist geprüft (nur Kleinbuchstaben, Ziffern, Unterstrich).
-        await sp.execute(`select pg_notify('${EVENT_NOTIFY_CHANNEL}', '${conversation.id}')`);
-      });
-      return;
-    } catch {
-      // nächster Versuch; nach dem letzten bleibt der Beleg ohne Ereignis
-    }
+  try {
+    await repo.events.append(tx, {
+      conversationId,
+      type: "beleg.created",
+      data: {
+        belegId: body.id,
+        action: body.action.type,
+        ...(messageId === undefined ? {} : { messageId }),
+      },
+      ...(runId === undefined ? {} : { runId }),
+    });
+  } catch (error) {
+    if (!(isPaiBotError(error) && error.code === "nicht_gefunden")) throw error;
   }
 }
 
