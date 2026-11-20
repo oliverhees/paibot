@@ -492,7 +492,14 @@ describe("Berechtigungen lassen sich nicht fälschen", () => {
   it("GateDenied ist ein PaiBotError", () => {
     const ref = { receiptId: newId("receipt"), seq: 2 };
     const denied = new GateDenied(
-      { outcome: "deny", stage: "execute", matchedRules: [], limits: [], reason: "Nein." },
+      {
+        outcome: "deny",
+        stage: "execute",
+        matchedRules: [],
+        limits: [],
+        preconditions: [],
+        reason: "Nein.",
+      },
       { decision: ref, result: ref },
       { actionId: newId("action"), type: "anbieter.loeschen" },
     );

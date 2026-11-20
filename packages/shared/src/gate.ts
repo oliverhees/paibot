@@ -99,7 +99,8 @@ export type LimitCheck = z.infer<typeof limitCheckSchema>;
  * Verweis auf eine angewandte Regel: Kennung, Fassung und Prüfsumme ihres Inhalts
  * (`RULE_HASH_PREFIX`, `ruleContent`). Mit der Prüfsumme lässt sich eine Entscheidung später mit
  * genau dem damaligen Regelstand nachrechnen, und eine nachträglich geänderte Regel fällt auf.
- * `hash` wird Pflicht, sobald das Tor ihn setzt.
+ * Das Tor setzt `hash` immer, wenn es mit einem Regelstand (`RuleSnapshot`) entscheidet; ohne
+ * steht er nur in Entscheidungen über die frühere Regel-Quelle (`listActive`).
  */
 export const ruleRefSchema = z.strictObject({
   id: ruleIdSchema,
@@ -461,9 +462,13 @@ export const decisionSchema = z.strictObject({
   stage: stageSchema,
   matchedRules: z.array(ruleRefSchema),
   limits: z.array(limitCheckSchema),
-  /** Vorbedingungen der Aktion (`preconditionsFor`); Pflicht, sobald das Tor sie prüft. */
-  preconditions: z.array(preconditionCheckSchema).optional(),
-  /** Stand des Regel-Protokolls beim Entscheiden; Pflicht, sobald das Tor ihn setzt. */
+  /** Vorbedingungen der Aktion (`preconditionsFor`), leer bei Aktionen ohne. */
+  preconditions: z.array(preconditionCheckSchema),
+  /**
+   * Stand des Regel-Protokolls beim Entscheiden. Das Tor setzt ihn immer, wenn es mit einem
+   * Regelstand (`RuleSnapshot`) entscheidet; ohne steht er nur, wenn `evaluate` eine einfache
+   * Liste von Regeln bekommt (z. B. beim Nachrechnen ohne Stand).
+   */
   ruleStand: ruleStandSchema.optional(),
   /** Deutscher Satz, warum das Tor so entschieden hat. */
   reason: z.string().min(1).max(500),

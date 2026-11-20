@@ -11,6 +11,7 @@
 import { randomBytes } from "node:crypto";
 import { format, inspect } from "node:util";
 import { deriveKey, encryptSecret, loadMasterSecret } from "@paibot/crypto";
+import { encryptLegacySecret } from "@paibot/crypto/testing";
 import type { GatePermit } from "@paibot/gate";
 import { withTestPermit } from "@paibot/gate/testing";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
@@ -200,7 +201,7 @@ describe("Modell-Zugang ohne herausgebbaren Schlüssel", () => {
   it("der Klartext steht in keiner Ausgabe, Kopie oder Aufzählung", async () => {
     const { model, texts } = await resolved();
     for (const text of texts) expect(text).not.toContain(PROVIDER_KEY);
-    expect(model.apiKey).toBe("");
+    expect("apiKey" in model).toBe(false);
     expect(JSON.parse(JSON.stringify(model))).toEqual({
       providerId,
       modelId,
@@ -239,33 +240,30 @@ describe("Modell-Zugang ohne herausgebbaren Schlüssel", () => {
   });
 });
 
-describe("Übergang: Berechtigung ohne Ziel-Abdruck", () => {
-  const legacyFacts = (): Facts<"modell.anfragen"> => {
+describe("ohne Ziel-Abdruck und Altbestand", () => {
+  it("Fakten ohne Ziel-Abdruck ergeben keine Berechtigung", async () => {
     const { targetDigest: _d, targetOrigin: _o, ...rest } = decidedFor(legit());
-    return rest;
-  };
-
-  it("v1-Schlüssel bleibt lesbar, der Zugang gilt über execute hinaus (veraltet)", async () => {
-    const v1 = encryptSecret(PROVIDER_KEY, secretsKey);
-    const model = await withPermit(legacyFacts(), (permit) =>
-      resolveModel(permit, row(legit(), v1), { secretsKey }),
+    const error = await withPermit(rest as Facts<"modell.anfragen">, () => "ausgefuehrt").catch(
+      (caught: unknown) => caught,
     );
-    expect((await model.fetch(`${model.baseUrl}/models`)).ok).toBe(true);
-    expect(provider.requests[0]?.headers.authorization).toBe(`Bearer ${PROVIDER_KEY}`);
-    expect(JSON.stringify(model)).not.toContain(PROVIDER_KEY);
+    expect(error).toMatchObject({ code: "eingabe_ungueltig" });
+    expect(provider.requests).toHaveLength(0);
   });
 
-  it("mit Ziel-Abdruck wird ein v1-Schlüssel nicht mehr angenommen", async () => {
-    const v1 = encryptSecret(PROVIDER_KEY, secretsKey);
+  it("ein v1-Schlüssel ohne Bindung wird nicht angenommen", async () => {
+    const v1 = encryptLegacySecret(PROVIDER_KEY, secretsKey);
     const error = await withPermit(decidedFor(legit()), (permit) =>
       errorOf(() => resolveModel(permit, row(legit(), v1), { secretsKey })),
     );
     expect(error).toMatchObject({ code: "schluessel_ungueltig" });
+    expect(provider.requests).toHaveLength(0);
   });
 
-  it("ohne Abdruck, aber mit umgebogenem Host: der gebundene Schlüssel passt nicht", async () => {
-    const error = await withPermit(legacyFacts(), (permit) =>
-      errorOf(() => resolveModel(permit, row(`${attacker.origin}/v1`), { secretsKey })),
+  it("Host vor der Entscheidung umgebogen: Abdruck passt, der gebundene Schlüssel nicht", async () => {
+    // Die Fakten stammen schon aus dem geänderten Datensatz; der Schlüssel gehört zum alten Host.
+    const bent = `${attacker.origin}/v1`;
+    const error = await withPermit(decidedFor(bent), (permit) =>
+      errorOf(() => resolveModel(permit, row(bent), { secretsKey })),
     );
     expect(error).toMatchObject({ code: "schluessel_ungueltig" });
     expect(attacker.requests).toHaveLength(0);

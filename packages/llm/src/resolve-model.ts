@@ -38,8 +38,7 @@ export interface ModelChoice {
     region: Region;
     /**
      * Verschlüsselter Schlüssel, im Format `v2` gebunden an `providerSecretBinding(id, baseUrl)`;
-     * fehlt, wenn keiner gesetzt ist. `v1` (ohne Bindung) wird nur bei Berechtigungen ohne
-     * Ziel-Abdruck noch angenommen.
+     * fehlt, wenn keiner gesetzt ist. `v1` (ohne Bindung) wird nicht angenommen.
      */
     apiKeyEnc?: string;
   };
@@ -75,21 +74,18 @@ export function isResolvedModel(value: unknown): value is ResolvedModel {
  * - Route aus `permit.facts.route`: `direct` → Basis-URL und Schlüssel des Anbieters; `schleuse`
  *   → Basis-URL und Schlüssel der Datenschleuse, Modellname `schleuseModelName(...)` und
  *   Kopfzeile `SCHLEUSE_SESSION_HEADER` mit der ID der Unterhaltung.
- * - Ziel: Nennt die Berechtigung `targetDigest`, muss er zu Anbieter-ID und Basis-URL des
- *   übergebenen Datensatzes passen (`providerTargetDigest`), und `targetOrigin` (falls gesetzt) zum
- *   Origin. Wurde die Adresse zwischen Entscheidung und Abruf geändert, entsteht kein Zugang.
+ * - Ziel: `targetDigest` der Berechtigung muss zu Anbieter-ID und Basis-URL des übergebenen
+ *   Datensatzes passen (`providerTargetDigest`), `targetOrigin` zum Origin (bei Route `schleuse`
+ *   auch dem der Datenschleuse). Wurde die Adresse zwischen Entscheidung und Abruf geändert,
+ *   entsteht kein Zugang.
  * - Der Schlüssel wird mit der Bindung an genau dieses Ziel entschlüsselt
  *   (`providerSecretBinding(id, baseUrl)`); ein Schlüssel aus einem anderen Datensatz oder für einen
- *   anderen Host lässt sich nicht entschlüsseln.
- * - Der Schlüssel steht in keinem Feld: `apiKey` ist leer, `fetch` setzt `authorization` selbst und
+ *   anderen Host lässt sich nicht entschlüsseln; ein Schlüssel im Format `v1` gilt als ungültig.
+ * - Der Schlüssel steht in keinem Feld: `fetch` setzt `authorization` selbst und
  *   erreicht nur dieses eine Ziel (`createEgressFetch`, Adresse festgenagelt). `JSON.stringify`,
  *   `console.log` und `util.inspect` zeigen nur die `ResolvedModelSummary`.
- * - Mit Ziel-Abdruck gilt der Zugang nur, solange die Berechtigung gilt: Nach dem Ende von
- *   `execute` scheitert jeder Abruf mit `abgelehnt`, bevor etwas gesendet wird.
- *
- * Übergang: Berechtigungen ohne `targetDigest` (älterer Vertrag) werden noch angenommen; dann
- * entfällt der Ziel-Vergleich, `v1`-Schlüssel sind lesbar und der Zugang ist nicht an die Lebenszeit
- * der Berechtigung gebunden. Sobald `targetDigest` Pflicht ist, entfällt dieser Weg.
+ * - Der Zugang gilt nur, solange die Berechtigung gilt: Nach dem Ende von `execute` scheitert
+ *   jeder Abruf mit `abgelehnt`, bevor etwas gesendet wird.
  *
  * Fehler: `PaiBotError("abgelehnt")`, wenn die Berechtigung fehlt oder nicht zu `choice` passt
  * (Unterhaltung, Modell, Anbieter, Region, Ziel); `schleuse_nicht_installiert` bei Route
@@ -121,15 +117,12 @@ export function resolveModel(
 
   // Ziel aus dem gelesenen Datensatz neu bilden und mit der Entscheidung vergleichen.
   const digest = providerTargetDigest(provider.id, provider.baseUrl);
-  const bound = facts.targetDigest !== undefined;
-  if (bound && facts.targetDigest !== digest) throw providerFailure("abgelehnt");
-  if (facts.targetOrigin !== undefined) {
-    const allowedOrigins = [originOf(provider.baseUrl)];
-    if (facts.route === "schleuse" && deps.schleuse) {
-      allowedOrigins.push(originOf(deps.schleuse.baseUrl));
-    }
-    if (!allowedOrigins.includes(facts.targetOrigin)) throw providerFailure("abgelehnt");
+  if (facts.targetDigest !== digest) throw providerFailure("abgelehnt");
+  const allowedOrigins = [originOf(provider.baseUrl)];
+  if (facts.route === "schleuse" && deps.schleuse) {
+    allowedOrigins.push(originOf(deps.schleuse.baseUrl));
   }
+  if (!allowedOrigins.includes(facts.targetOrigin)) throw providerFailure("abgelehnt");
 
   let baseUrl: string;
   let secret: string;
@@ -150,10 +143,7 @@ export function resolveModel(
     baseUrl = provider.baseUrl;
     slug = model.slug;
     headers = {};
-    secret = decryptProviderKey(provider, deps.secretsKey, {
-      keyOptional: provider.region === "local",
-      allowV1: !bound,
-    });
+    secret = decryptProviderKey(provider, deps.secretsKey, provider.region === "local");
     egressTarget = providerEgressTarget(baseUrl, provider.region);
   }
 
@@ -162,9 +152,8 @@ export function resolveModel(
     deps.baseFetch,
     deps.lookup === undefined ? {} : { lookup: deps.lookup },
   );
-  const stillPermitted = bound ? () => isGatePermit(permit, "modell.anfragen") : () => true;
   const authorizedFetch: typeof fetch = async (input, init) => {
-    if (!stillPermitted()) throw providerFailure("abgelehnt");
+    if (!isGatePermit(permit, "modell.anfragen")) throw providerFailure("abgelehnt");
     const headerSource = init?.headers ?? (input instanceof Request ? input.headers : undefined);
     const outgoing = new Headers(headerSource);
     if (secret !== "") outgoing.set("authorization", `Bearer ${secret}`);
@@ -182,7 +171,6 @@ export function resolveModel(
   });
   const resolved = {
     ...summary,
-    apiKey: "",
     headers: Object.freeze(headers),
     fetch: authorizedFetch,
   };
@@ -211,19 +199,17 @@ function originOf(baseUrl: string): string {
 function decryptProviderKey(
   provider: ModelChoice["provider"],
   key: DerivedKey<"secrets-v1">,
-  options: { keyOptional: boolean; allowV1: boolean },
+  keyOptional: boolean,
 ): string {
   const encrypted = provider.apiKeyEnc;
   if (encrypted === undefined || encrypted === "") {
-    if (options.keyOptional) return "";
+    if (keyOptional) return "";
     throw providerFailure("schluessel_ungueltig");
   }
-  if (secretFormatOf(encrypted) === "v1" && !options.allowV1) {
-    throw providerFailure("schluessel_ungueltig");
-  }
+  if (secretFormatOf(encrypted) !== "v2") throw providerFailure("schluessel_ungueltig");
   try {
     const aad = secretAad(providerSecretBinding(provider.id, provider.baseUrl));
-    return decryptSecret(encrypted, key, { aad, allowV1: options.allowV1 });
+    return decryptSecret(encrypted, key, { aad });
   } catch (error) {
     if (error instanceof PaiBotError) throw error;
     // Keine Ursache anhängen: sie könnte Teile des Geheimtexts enthalten.

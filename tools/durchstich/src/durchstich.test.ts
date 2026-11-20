@@ -24,7 +24,14 @@ import {
 import { type Database, repo, rules } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
-import { createGate, type Gate, isGateDenied } from "@paibot/gate";
+import {
+  ACTIVE_STANDARD_RULES,
+  createGate,
+  type Gate,
+  hashRule,
+  isGateDenied,
+  ruleSnapshot,
+} from "@paibot/gate";
 import { fetchModels, providerTargetFacts } from "@paibot/llm";
 import { isResolvedModel, resolveModel } from "@paibot/llm/modell";
 import {
@@ -234,7 +241,13 @@ beforeAll(async () => {
     time: clock.now(),
   });
   gate = createGate({
-    rules: { listActive: () => repo.rules.listActive(ctx.db) },
+    // Regelstand aus der Datenbank: geltende Fassungen mit Nummer im Regel-Protokoll und Stand.
+    rules: {
+      load: async () => {
+        const { stand, rules: active } = await repo.rules.loadSnapshot(ctx.db);
+        return ruleSnapshot(active, stand);
+      },
+    },
     receipts: writer,
     clock,
   });
@@ -311,10 +324,14 @@ describe("Durchstich", () => {
 
     await repo.runs.finish(ctx.db, runId, { status: "succeeded" });
     expect(run.value).toBe(REPLY);
+    // Die Prüfsumme der Standard-Regel aus dem Code: die Regel in der Datenbank gleicht ihr.
+    const r002 = ACTIVE_STANDARD_RULES.find((rule) => rule.id === "R-002");
+    if (r002 === undefined) throw new Error("R-002 fehlt");
     expect(run.decision).toMatchObject({
       outcome: "allow",
       stage: "execute",
-      matchedRules: [{ id: "R-002", version: 1 }],
+      matchedRules: [{ id: "R-002", version: 1, hash: await hashRule(r002) }],
+      ruleStand: (await repo.rules.loadSnapshot(ctx.db)).stand,
     });
     expect(run.decision.limits.every((limit) => limit.result !== "verletzt")).toBe(true);
 
@@ -425,14 +442,15 @@ describe("Durchstich", () => {
     expect(JSON.stringify(await entries())).not.toContain(PROVIDER_KEY);
     expect((await verifyAll()).ok).toBe(true);
 
-    // Auch ohne Abdruck in der Entscheidung kommt der Schlüssel nicht beim fremden Host an: Er ist
-    // an den Host gebunden, für den er gespeichert wurde.
+    // Schon vor der Entscheidung umgebogen: Die Fakten stammen aus dem geänderten Datensatz, der
+    // Abdruck passt also. Trotzdem kommt der Schlüssel nicht beim fremden Host an: Er ist an den
+    // Host gebunden, für den er gespeichert wurde.
     await repo.providers.update(ctx.db, provider.id, { baseUrl: evil });
     try {
       const next = await modelRequest();
-      const { targetDigest: _d, targetOrigin: _o, ...withoutTarget } = next.facts;
+      const bentFacts = { ...next.facts, ...providerTargetFacts(provider.id, evil) };
       const second = await gate
-        .run(next.action, withoutTarget, (permit) => askModel(permit))
+        .run(next.action, bentFacts, (permit) => askModel(permit))
         .catch((e: unknown) => e);
       await repo.runs.finish(ctx.db, next.runId, {
         status: "failed",
@@ -475,7 +493,10 @@ describe("Durchstich", () => {
     expect(isGateDenied(error)).toBe(true);
     if (!isGateDenied(error)) throw error;
     expect(error.code).toBe("abgelehnt");
-    expect(error.decision.matchedRules).toEqual([{ id: ruleId, version: 1 }]);
+    const added = (await repo.rules.listActive(ctx.db)).find((rule) => rule.id === ruleId);
+    if (added === undefined) throw new Error("Regel fehlt");
+    const addedHash = await hashRule(added);
+    expect(error.decision.matchedRules).toEqual([{ id: ruleId, version: 1, hash: addedHash }]);
     expect(executed).toBe(false);
     expect(fake.requests).toHaveLength(0);
 
@@ -483,7 +504,7 @@ describe("Durchstich", () => {
     expect(decision).toMatchObject({
       type: "decision",
       action: { actionId: action.actionId },
-      decision: { outcome: "deny", rules: [{ id: ruleId, version: 1 }] },
+      decision: { outcome: "deny", rules: [{ id: ruleId, version: 1, hash: addedHash }] },
     });
     expect(result).toMatchObject({
       type: "result",

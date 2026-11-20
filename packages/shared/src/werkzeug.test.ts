@@ -17,7 +17,7 @@ import {
   TOOL_ACTIONS,
   toolActionTypeSchema,
 } from "./actions";
-import { ruleDefinitionSchema } from "./gate";
+import { ruleDefinitionSchema, STANDARD_RULE_VERSIONS, STANDARD_RULES } from "./gate";
 import { newId } from "./id";
 import { TOOL_CALL_STATUSES, toolCallSchema } from "./objects";
 
@@ -42,6 +42,15 @@ describe("Aktion werkzeug.aufrufen", () => {
     expect(ACTIONS["werkzeug.aufrufen"].actor).toBe("bot");
     expect(TOOL_ACTIONS["werkzeug.aufrufen"]).toBe(ACTIONS["werkzeug.aufrufen"]);
     expect(toolActionTypeSchema.parse("werkzeug.aufrufen")).toBe("werkzeug.aufrufen");
+  });
+
+  it("veraltete Namen zeigen auf dieselben Werte, solange es sie gibt", () => {
+    expect(STANDARD_RULES.map((rule) => [rule.id, rule.version])).toEqual([
+      ["R-001", 1],
+      ["R-002", 1],
+      ["R-999", 1],
+    ]);
+    for (const rule of STANDARD_RULES) expect(STANDARD_RULE_VERSIONS).toContain(rule);
   });
 
   it("Fakten nennen Werkzeug, Quelle und Art, die Argumente nur als Abdruck", () => {

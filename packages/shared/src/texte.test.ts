@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { STORED_ACTION_TYPES } from "./actions";
+import { ACTION_TYPES } from "./actions";
 import { ERROR_CODES } from "./errors";
 import { ACTIVE_STANDARD_RULES, LIMIT_IDS, PRECONDITION_IDS, STANDARD_RULE_IDS } from "./gate";
 import {
@@ -61,14 +61,14 @@ describe("Text-Schlüssel", () => {
   });
 
   it("jede Aktion, Regel und Grenze hat eine Bezeichnung", () => {
-    for (const type of STORED_ACTION_TYPES) expect(isTextKey(`aktion.${type}`)).toBe(true);
+    for (const type of ACTION_TYPES) expect(isTextKey(`aktion.${type}`)).toBe(true);
     for (const id of [...STANDARD_RULE_IDS, ...LIMIT_IDS, ...PRECONDITION_IDS])
       expect(isTextKey(`regel.${id}`)).toBe(true);
     for (const rule of ACTIVE_STANDARD_RULES) expect(t(`regel.${rule.id}`)).toBe(rule.title);
   });
 
   it("es gibt keine Bezeichnungen für unbekannte Aktionen oder Regeln", () => {
-    const actions = new Set<string>(STORED_ACTION_TYPES);
+    const actions = new Set<string>(ACTION_TYPES);
     const rules = new Set<string>([...STANDARD_RULE_IDS, ...LIMIT_IDS, ...PRECONDITION_IDS]);
     for (const key of TEXT_KEYS) {
       if (key.startsWith("aktion.")) expect(actions.has(key.slice("aktion.".length))).toBe(true);

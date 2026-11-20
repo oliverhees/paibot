@@ -91,22 +91,9 @@ export function encryptSecret(
   plain: string,
   key: DerivedKey<EncryptionPurpose>,
   options: SecretBindingOptions,
-): string;
-/**
- * Verschlüsselt im älteren Format `v1` ohne Bindung.
- *
- * @deprecated Neue Geheimnisse immer mit Bindung schreiben (`encryptSecret(plain, key, { aad })`).
- * Diese Form bleibt nur, bis die letzten Aufrufer umgestellt sind.
- */
-export function encryptSecret(plain: string, key: DerivedKey<EncryptionPurpose>): string;
-export function encryptSecret(
-  plain: string,
-  key: DerivedKey<EncryptionPurpose>,
-  options?: SecretBindingOptions,
 ): string {
   assertKey(key);
-  if (options === undefined) return seal(LEGACY_SECRET_FORMAT_VERSION, plain, key, undefined);
-  const aad = checkedAad(options.aad);
+  const aad = checkedAad(options?.aad);
   if (typeof plain !== "string" || plain.length === 0) {
     throw new TypeError("Ein leeres Geheimnis wird nicht verschlüsselt");
   }
@@ -206,6 +193,15 @@ export function rebindSecret(
   const to = checkedAad(options.to);
   const plain = decryptSecret(encrypted, key, { aad: from, allowV1: true });
   return encryptSecret(plain, key, { aad: to });
+}
+
+/**
+ * Schreibt im älteren Format `v1` ohne Bindung. Nur für Tests, die Altbestand nachstellen
+ * (`@paibot/crypto/testing`); nicht über den Haupteinstieg erreichbar.
+ */
+export function encryptLegacySecret(plain: string, key: DerivedKey<EncryptionPurpose>): string {
+  assertKey(key);
+  return seal(LEGACY_SECRET_FORMAT_VERSION, plain, key, undefined);
 }
 
 function seal(

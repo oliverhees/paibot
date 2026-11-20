@@ -22,6 +22,7 @@ import {
   sign,
   verify,
 } from "./index";
+import { encryptLegacySecret } from "./testing";
 
 const PROVIDER_ID = `anb_0${"0".repeat(25)}`;
 const KEY_ID = `sch_0${"0".repeat(25)}`;
@@ -96,7 +97,7 @@ describe("Formate und Datenbank", () => {
     const secretsKey = deriveKey(master, "secrets-v1");
     const samples = ["k", "sk-test", "x".repeat(300), "äöü 🙂"].flatMap((plain, i) => [
       encryptSecret(plain, secretsKey, { aad: providerAad(`anb_${i}`) }),
-      encryptSecret(plain, secretsKey), // Altbestand v1
+      encryptLegacySecret(plain, secretsKey), // Altbestand v1
     ]);
     for (const [i, value] of samples.entries()) {
       expect(value).toMatch(ENCRYPTED_SECRET_PATTERN);

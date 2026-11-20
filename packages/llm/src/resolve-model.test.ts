@@ -10,6 +10,7 @@
 
 import { randomBytes } from "node:crypto";
 import { deriveKey, encryptSecret, loadMasterSecret } from "@paibot/crypto";
+import { encryptLegacySecret } from "@paibot/crypto/testing";
 import type { GatePermit } from "@paibot/gate";
 import { withTestPermit } from "@paibot/gate/testing";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
@@ -132,7 +133,7 @@ describe("resolveModel", () => {
     expect(server.requests[0]?.headers.authorization).toBe(`Bearer ${PROVIDER_KEY}`);
     expect(model.route).toBe("direct");
     expect(model.baseUrl).toBe(`${server.origin}/v1`);
-    expect(model.apiKey).toBe("");
+    expect("apiKey" in model).toBe(false);
     expect(isResolvedModel(model)).toBe(true);
     expect(model.slug).toBe("mistral-small-latest");
     expect(model.label).toBe("Mistral Small");
@@ -151,7 +152,7 @@ describe("resolveModel", () => {
       return m;
     }, SCHLEUSE_ON);
     expect(model.route).toBe("schleuse");
-    expect(model.apiKey).toBe("");
+    expect("apiKey" in model).toBe(false);
     expect(server.requests.at(-1)?.headers.authorization).toBe(`Bearer ${SCHLEUSE_KEY}`);
     expect(model.slug).toBe("eurouter/mistral-small-latest");
     expect(model.headers).toEqual({ "x-litellm-session-id": conversationId });
@@ -256,7 +257,7 @@ describe("resolveModel", () => {
       [tampered, secretsKey],
       [encFor(EU, newId("provider") as ProviderId), secretsKey], // aus einem anderen Datensatz
       [encFor("https://anderer-host.example/v1"), secretsKey], // für einen anderen Host
-      [encryptSecret(PROVIDER_KEY, secretsKey), secretsKey], // v1 ohne Bindung
+      [encryptLegacySecret(PROVIDER_KEY, secretsKey), secretsKey], // v1 ohne Bindung
       ["v2:a:b:c", secretsKey],
       ["kein-geheimtext", secretsKey],
     ] as const) {
@@ -276,7 +277,7 @@ describe("resolveModel", () => {
     const local = await withPermit((p) =>
       resolveModel(p, choice({ apiKeyEnc: undefined }), { secretsKey }),
     );
-    expect(local.apiKey).toBe("");
+    expect("apiKey" in local).toBe(false);
     const eu = await withPermit(
       (p) =>
         catchError(() =>

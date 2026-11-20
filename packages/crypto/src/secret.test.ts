@@ -25,6 +25,7 @@ import {
   toBase64Url,
   upgradeSecret,
 } from "./index";
+import { encryptLegacySecret } from "./testing";
 
 const master = loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") });
 const key = deriveKey(master, "secrets-v1");
@@ -34,8 +35,8 @@ const aadOf = (table: string, id: string, purpose: string, extra: string) =>
   ["pb-geheimnis/v2", table, id, purpose, extra].join("\n");
 const AAD = aadOf("providers", `anb_0${"1".repeat(25)}`, "api_key", "https://api.eurouter.ai");
 const bound = { aad: AAD };
-/** Absichtlich die veraltete Form ohne Bindung: so entsteht Altbestand im Format v1. */
-const v1 = (plain: string) => encryptSecret(plain, key);
+/** Altbestand im Format v1 (ohne Bindung), wie ihn frühere Stände geschrieben haben. */
+const v1 = (plain: string) => encryptLegacySecret(plain, key);
 
 function reasonOf(fn: () => unknown): string | undefined {
   try {
@@ -339,5 +340,18 @@ describe("Altbestand im Format v1", () => {
     expect(decryptSecret(rebindSecret(old, key, { from, to }), key, { aad: to })).toBe(
       "sk-alter-schluessel",
     );
+  });
+});
+
+describe("nur mit Bindung", () => {
+  it("ohne Zusatzdaten verschlüsselt der Haupteinstieg nicht (kein stilles v1)", () => {
+    expect(() => encryptSecret("geheim", key, undefined as never)).toThrow(TypeError);
+    expect(() => encryptSecret("geheim", key, {} as never)).toThrow(TypeError);
+  });
+
+  it("die Form für Altbestand ist nur über den Test-Einstieg erreichbar", async () => {
+    const main = await import("./index");
+    expect("encryptLegacySecret" in main).toBe(false);
+    expect(secretFormatOf(encryptLegacySecret("geheim", key))).toBe("v1");
   });
 });

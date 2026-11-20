@@ -98,7 +98,7 @@ export const ACTIONS = {
     {
       ...ownerFacts,
       /** Die Einrichtung ist noch nicht abgeschlossen (Vorbedingung V-07). */
-      setupOpen: z.boolean().optional(),
+      setupOpen: z.boolean(),
     },
   ),
   "zugang.anmelden": action("besitzer", { ownerId }, { ...ownerFacts, remember: z.boolean() }),
@@ -110,7 +110,7 @@ export const ACTIONS = {
     {
       ...ownerFacts,
       /** Das aktuelle Passwort wurde in dieser Anfrage geprüft (Vorbedingung V-06). */
-      currentPasswordVerified: z.boolean().optional(),
+      currentPasswordVerified: z.boolean(),
     },
   ),
   "anbieter.speichern": action(
@@ -178,9 +178,9 @@ export const ACTIONS = {
       dailyTokenBudget: positiveIntSchema.optional(),
       killSwitch: z.boolean(),
       /** Wohin die Anfrage geht, lesbar: Origin der Basis-URL des Anbieters bzw. der Schleuse. */
-      targetOrigin: originSchema.optional(),
+      targetOrigin: originSchema,
       /** Abdruck von Anbieter-ID und Basis-URL (`targetDigestInput`), geprüft vor dem Abruf. */
-      targetDigest: sha256DigestSchema.optional(),
+      targetDigest: sha256DigestSchema,
     },
   ),
   "lauf.abbrechen": action(
