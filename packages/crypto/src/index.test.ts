@@ -8,7 +8,6 @@
  * @since     2026-11-20
  */
 
-import { isNotImplemented, NOT_IMPLEMENTED_CODE } from "@paibot/stub";
 import { describe, expect, it } from "vitest";
 import pkg from "../package.json";
 import * as crypto from "./index";
@@ -65,18 +64,6 @@ describe("Schnittstelle", () => {
     expect(crypto.isEncryptedSecret(["v1", `${iv}=`, tag, "x"].join(":"))).toBe(false);
     expect(crypto.isPasswordHash(["scrypt", "32768", "8", "1", salt, hash].join("$"))).toBe(true);
     expect(crypto.isPasswordHash(["scrypt", "16384", "8", "1", salt, hash].join("$"))).toBe(false);
-  });
-
-  it("noch nicht umgesetzte Funktionen melden das mit festem Code", () => {
-    let caught: unknown;
-    try {
-      crypto.newToken();
-    } catch (error) {
-      caught = error;
-    }
-    expect(isNotImplemented(caught)).toBe(true);
-    expect((caught as { code: string }).code).toBe(NOT_IMPLEMENTED_CODE);
-    expect((caught as { feature: string }).feature).toBe("crypto.newToken");
   });
 
   it("CryptoError trägt den Grund", () => {

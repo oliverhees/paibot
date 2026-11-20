@@ -8,7 +8,8 @@
  * @since     2026-11-20
  */
 
-import { notImplemented } from "@paibot/stub";
+import { hkdfSync } from "node:crypto";
+import { CryptoError } from "./errors";
 
 /** Name der Umgebungsvariable mit dem Wurzel-Geheimnis. */
 export const MASTER_SECRET_ENV = "PAIBOT_SECRET";
@@ -65,7 +66,22 @@ export function isKeyPurpose(value: unknown): value is KeyPurpose {
  * `CryptoError("geheimnis_ungueltig")`, wenn sie kein Base64 ist oder nicht 32 Byte ergibt.
  */
 export function loadMasterSecret(env: Env): MasterSecret {
-  return notImplemented("crypto.loadMasterSecret", env);
+  const raw = env[MASTER_SECRET_ENV];
+  if (raw === undefined || raw.trim() === "") throw new CryptoError("geheimnis_fehlt");
+  const text = raw.trim();
+  // Standard-Base64 (`+`, `/`, `=`) oder base64url (`-`, `_`), aber nicht gemischt.
+  const unpadded = text.replace(/={1,2}$/, "");
+  const isStandard = /^[A-Za-z0-9+/]+$/.test(unpadded);
+  const isUrl = /^[A-Za-z0-9_-]+$/.test(unpadded);
+  if ((!isStandard && !isUrl) || unpadded.length % 4 === 1) {
+    throw new CryptoError("geheimnis_ungueltig");
+  }
+  if (text.length !== unpadded.length && text.length % 4 !== 0) {
+    throw new CryptoError("geheimnis_ungueltig");
+  }
+  const bytes = new Uint8Array(Buffer.from(unpadded, isStandard ? "base64" : "base64url"));
+  if (bytes.length !== MASTER_SECRET_BYTES) throw new CryptoError("geheimnis_ungueltig");
+  return bytes as MasterSecret;
 }
 
 /**
@@ -76,5 +92,16 @@ export function loadMasterSecret(env: Env): MasterSecret {
  * verschiedene Schlüssel. Wirft `TypeError` bei unbekanntem Zweck.
  */
 export function deriveKey<P extends KeyPurpose>(master: MasterSecret, purpose: P): DerivedKey<P> {
-  return notImplemented("crypto.deriveKey", master, purpose);
+  if (!isKeyPurpose(purpose)) throw new TypeError("Unbekannter Zweck für die Schlüsselableitung");
+  if (!(master instanceof Uint8Array) || master.length !== MASTER_SECRET_BYTES) {
+    throw new TypeError("Das Wurzel-Geheimnis muss 32 Byte lang sein");
+  }
+  const derived = hkdfSync(
+    "sha256",
+    master,
+    Buffer.from(HKDF_SALT, "utf8"),
+    Buffer.from(purpose, "utf8"),
+    DERIVED_KEY_BYTES,
+  );
+  return new Uint8Array(derived) as DerivedKey<P>;
 }

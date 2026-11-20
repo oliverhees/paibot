@@ -8,7 +8,8 @@
  * @since     2026-11-20
  */
 
-import { notImplemented } from "@paibot/stub";
+import { createHash, createHmac, randomBytes } from "node:crypto";
+import { toBase64Url, toHex } from "./encoding";
 import type { DerivedKey, KeyPurpose } from "./master";
 
 /** Standardlänge eines Tokens in Byte (ergibt 43 Zeichen base64url). */
@@ -21,7 +22,9 @@ export const TOKEN_BYTES = 32;
  * Wirft `RangeError`, wenn `bytes` keine Ganzzahl ab 16 ist.
  */
 export function newToken(bytes: number = TOKEN_BYTES): string {
-  return notImplemented("crypto.newToken", bytes);
+  if (!Number.isInteger(bytes) || bytes < 16)
+    throw new RangeError("Ein Token braucht mindestens 16 Byte");
+  return toBase64Url(randomBytes(bytes));
 }
 
 /**
@@ -29,7 +32,7 @@ export function newToken(bytes: number = TOKEN_BYTES): string {
  * gespeichert (z. B. als ID der Sitzung); das Token selbst nie.
  */
 export function hashToken(token: string): string {
-  return notImplemented("crypto.hashToken", token);
+  return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
 /**
@@ -38,7 +41,7 @@ export function hashToken(token: string): string {
  * Zusagen: Ergebnis sind genau 32 Rohbyte; deterministisch.
  */
 export function hmac(key: DerivedKey<KeyPurpose>, data: string | Uint8Array): Uint8Array {
-  return notImplemented("crypto.hmac", key, data);
+  return new Uint8Array(createHmac("sha256", key).update(data).digest());
 }
 
 /**
@@ -46,5 +49,5 @@ export function hmac(key: DerivedKey<KeyPurpose>, data: string | Uint8Array): Ui
  * `hmac-sha256:<64 Hex-Zeichen klein>`.
  */
 export function contextDigest(key: DerivedKey<"context-v1">, data: string | Uint8Array): string {
-  return notImplemented("crypto.contextDigest", key, data);
+  return `hmac-sha256:${toHex(hmac(key, data))}`;
 }
