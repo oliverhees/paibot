@@ -9,5 +9,6 @@
  */
 
 export * from "./client";
+export * as repo from "./repo";
 export * from "./schema";
 export * from "./sperren";

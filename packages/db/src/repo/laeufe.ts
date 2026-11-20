@@ -1,0 +1,267 @@
+/**
+ * PaiBot – Zugriff auf Läufe: anlegen nur ohne aktiven Lauf, Statuswechsel nur auf erlaubten Wegen.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+import {
+  type BotId,
+  type ConversationId,
+  type ErrorCode,
+  type MessageId,
+  newId,
+  PaiBotError,
+  type Run,
+  type RunId,
+  type RunStatus,
+} from "@paibot/shared";
+import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import type { Database } from "../client";
+import { ACTIVE_RUN_STATUSES, runs } from "../schema";
+import { toRun } from "./abbildung";
+import {
+  AKTIVER_LAUF_INDEX,
+  SQLSTATE,
+  StatuswechselError,
+  standardFehler,
+  uebersetzen,
+} from "./fehler";
+import { withTransaction } from "./transaktion";
+
+export type FinalRunStatus = Extract<RunStatus, "succeeded" | "failed" | "cancelled" | "denied">;
+
+/** Erlaubte Wege: Zielstatus → Status, aus denen man dorthin wechseln darf. */
+export const RUN_TRANSITIONS: Readonly<Record<RunStatus, readonly RunStatus[]>> = {
+  queued: [],
+  running: ["queued"],
+  waiting_approval: ["running"],
+  succeeded: ["running", "waiting_approval"],
+  failed: ["queued", "running", "waiting_approval"],
+  cancelled: ["queued", "running", "waiting_approval"],
+  denied: ["queued", "running", "waiting_approval"],
+};
+
+export function canTransition(from: RunStatus, to: RunStatus): boolean {
+  return RUN_TRANSITIONS[to].includes(from);
+}
+
+export interface RunCreate {
+  id?: RunId;
+  conversationId: ConversationId;
+  triggerMessageId: MessageId;
+  botId: BotId;
+  /** Wartender Lauf, den dieser Lauf fortsetzt (siehe `resume`). */
+  resumesRunId?: RunId;
+}
+
+function anlegenFehler(fehler: Parameters<typeof standardFehler>[0]) {
+  if (fehler.code === SQLSTATE.eindeutig && fehler.constraint === AKTIVER_LAUF_INDEX) {
+    return new PaiBotError("lauf_aktiv");
+  }
+  return standardFehler(fehler);
+}
+
+/**
+ * Legt einen Lauf an (Status `queued`). Gibt es in der Unterhaltung schon einen aktiven Lauf
+ * (`queued`, `running` oder `waiting_approval`), weist der Teil-Index der Datenbank das ab;
+ * das wird zu `lauf_aktiv`. Es gibt bewusst keine Vorab-Prüfung, die Datenbank entscheidet.
+ */
+export async function create(db: Database, input: RunCreate): Promise<Run> {
+  const [row] = await uebersetzen(
+    () =>
+      db
+        .insert(runs)
+        .values({
+          id: input.id ?? newId("run"),
+          conversationId: input.conversationId,
+          triggerMessageId: input.triggerMessageId,
+          botId: input.botId,
+          resumesRunId: input.resumesRunId ?? null,
+          createdAt: sql`clock_timestamp()`,
+        })
+        .returning(),
+    anlegenFehler,
+  );
+  if (row === undefined) throw new PaiBotError("intern");
+  return toRun(row);
+}
+
+export async function get(db: Database, id: RunId): Promise<Run | undefined> {
+  const [row] = await db.select().from(runs).where(eq(runs.id, id));
+  return row === undefined ? undefined : toRun(row);
+}
+
+/** Der aktive Lauf der Unterhaltung, falls es einen gibt. */
+export async function getActive(
+  db: Database,
+  conversationId: ConversationId,
+): Promise<Run | undefined> {
+  const [row] = await db
+    .select()
+    .from(runs)
+    .where(
+      and(eq(runs.conversationId, conversationId), inArray(runs.status, [...ACTIVE_RUN_STATUSES])),
+    );
+  return row === undefined ? undefined : toRun(row);
+}
+
+/** Läufe einer Unterhaltung, neueste zuerst. */
+export async function listForConversation(
+  db: Database,
+  conversationId: ConversationId,
+  options: { limit?: number } = {},
+): Promise<Run[]> {
+  const rows = await db
+    .select()
+    .from(runs)
+    .where(eq(runs.conversationId, conversationId))
+    .orderBy(desc(runs.createdAt), desc(runs.id))
+    .limit(options.limit ?? 50);
+  return rows.map(toRun);
+}
+
+/** Wechselt den Status in einer Anweisung, nur wenn der bisherige Status den Weg erlaubt. */
+async function wechseln(
+  db: Database,
+  id: RunId,
+  nach: RunStatus,
+  felder: Partial<typeof runs.$inferInsert>,
+): Promise<Run> {
+  const [row] = await db
+    .update(runs)
+    .set({ status: nach, ...felder })
+    .where(and(eq(runs.id, id), inArray(runs.status, [...RUN_TRANSITIONS[nach]])))
+    .returning();
+  if (row !== undefined) return toRun(row);
+  const [vorhanden] = await db.select({ status: runs.status }).from(runs).where(eq(runs.id, id));
+  if (vorhanden === undefined) throw new PaiBotError("nicht_gefunden");
+  throw new StatuswechselError("lauf", id, vorhanden.status, nach);
+}
+
+/** `queued` → `running`; setzt Start und ersten Herzschlag. */
+export function markRunning(db: Database, id: RunId, options: { now?: Date } = {}): Promise<Run> {
+  const now = options.now ?? new Date();
+  return wechseln(db, id, "running", { startedAt: now, heartbeatAt: now });
+}
+
+/** `running` → `waiting_approval`: der Lauf hält vor einer Aktion der Stufe „fragen“ an. */
+export function markWaiting(db: Database, id: RunId): Promise<Run> {
+  return wechseln(db, id, "waiting_approval", {});
+}
+
+/** Beendet den Lauf mit `succeeded`, `failed`, `cancelled` oder `denied`. */
+export function finish(
+  db: Database,
+  id: RunId,
+  input: { status: FinalRunStatus; errorCode?: ErrorCode; now?: Date },
+): Promise<Run> {
+  return wechseln(db, id, input.status, {
+    finishedAt: input.now ?? new Date(),
+    errorCode: input.errorCode ?? null,
+  });
+}
+
+/**
+ * Setzt einen wartenden Lauf fort: der alte Lauf endet als `succeeded`, ein neuer Lauf mit
+ * `resumesRunId` beginnt, beides in einer Transaktion.
+ */
+export async function resume(
+  db: Database,
+  waitingRunId: RunId,
+  options: { now?: Date } = {},
+): Promise<Run> {
+  return withTransaction(db, async (tx) => {
+    const alt = await finishWaiting(tx, waitingRunId, options.now ?? new Date());
+    return create(tx, {
+      conversationId: alt.conversationId,
+      triggerMessageId: alt.triggerMessageId,
+      botId: alt.botId,
+      resumesRunId: alt.id,
+    });
+  });
+}
+
+async function finishWaiting(db: Database, id: RunId, now: Date): Promise<Run> {
+  const [row] = await db
+    .update(runs)
+    .set({ status: "succeeded", finishedAt: now })
+    .where(and(eq(runs.id, id), eq(runs.status, "waiting_approval")))
+    .returning();
+  if (row !== undefined) return toRun(row);
+  const [vorhanden] = await db.select({ status: runs.status }).from(runs).where(eq(runs.id, id));
+  if (vorhanden === undefined) throw new PaiBotError("nicht_gefunden");
+  throw new StatuswechselError("lauf", id, vorhanden.status, "succeeded");
+}
+
+/**
+ * Merkt einen Abbruchwunsch vor (nur beim ersten Mal). `undefined`, wenn es keinen aktiven
+ * Lauf mit dieser ID gibt; dann ist nichts abzubrechen.
+ */
+export async function requestCancel(
+  db: Database,
+  id: RunId,
+  options: { now?: Date } = {},
+): Promise<Run | undefined> {
+  const now = options.now ?? new Date();
+  const [row] = await db
+    .update(runs)
+    .set({
+      cancelRequestedAt: sql`coalesce(${runs.cancelRequestedAt}, ${now.toISOString()}::timestamptz)`,
+    })
+    .where(and(eq(runs.id, id), inArray(runs.status, [...ACTIVE_RUN_STATUSES])))
+    .returning();
+  return row === undefined ? undefined : toRun(row);
+}
+
+/**
+ * Herzschlag eines laufenden Laufs. `false`, wenn der Lauf nicht mehr `running` ist
+ * (der Worker soll dann aufhören).
+ */
+export async function heartbeat(
+  db: Database,
+  id: RunId,
+  options: { now?: Date } = {},
+): Promise<boolean> {
+  const aktualisiert = await db
+    .update(runs)
+    .set({ heartbeatAt: options.now ?? new Date() })
+    .where(and(eq(runs.id, id), eq(runs.status, "running")))
+    .returning({ id: runs.id });
+  return aktualisiert.length > 0;
+}
+
+/**
+ * Läufe, deren letzter Lebenszeichen-Zeitpunkt vor `before` liegt: bei `running` der Herzschlag,
+ * bei `queued` das Anlegen. Wartende Läufe (`waiting_approval`) gelten nie als veraltet.
+ */
+export async function findStale(
+  db: Database,
+  options: { before: Date; statuses?: readonly ("queued" | "running")[] },
+): Promise<Run[]> {
+  const stati = options.statuses ?? ["queued", "running"];
+  if (stati.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(runs)
+    .where(
+      and(
+        inArray(runs.status, [...stati]),
+        or(
+          and(
+            eq(runs.status, "running"),
+            lt(
+              sql`coalesce(${runs.heartbeatAt}, ${runs.startedAt}, ${runs.createdAt})`,
+              options.before,
+            ),
+          ),
+          and(eq(runs.status, "queued"), lt(runs.createdAt, options.before)),
+        ),
+      ),
+    )
+    .orderBy(asc(runs.createdAt), asc(runs.id));
+  return rows.map(toRun);
+}
