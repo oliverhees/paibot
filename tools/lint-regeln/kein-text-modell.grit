@@ -1,0 +1,22 @@
+// PaiBot – Lint-Regel: Modelle werden nie über eine bloße Text-Kennung angesprochen.
+//
+// Autor:     Oliver Hees
+// Website:   https://paibot.de
+// Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+// Lizenz:    PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+// Seit:      2026-11-20
+
+language js
+
+`$fn($args)` where {
+  $fn <: or {
+    `streamText`,
+    `generateText`,
+    `streamObject`,
+    `generateObject`,
+    `embed`,
+    `embedMany`
+  },
+  $args <: contains `model: $model` where { $model <: r"^[\"'`].*" },
+  register_diagnostic(span=$model, message="Modelle nie als Text-Kennung angeben, nur als Modell-Objekt aus der Anbieter-Schicht.")
+}

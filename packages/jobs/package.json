@@ -2,16 +2,26 @@
   "name": "@paibot/jobs",
   "version": "0.0.0",
   "private": true,
-  "description": "Inngest-Client und Hintergrund-Funktionen (ab Folge 11)",
+  "description": "Warteschlange für Läufe (pg-boss) hinter einer eigenen, schmalen Schnittstelle",
   "license": "SEE LICENSE IN ../../LICENSE",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@paibot/shared": "workspace:*",
+    "@paibot/stub": "workspace:*",
+    "pg-boss": "12.38.2",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "@electric-sql/pglite": "0.5.17",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

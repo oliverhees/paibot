@@ -2,16 +2,27 @@
   "name": "@paibot/llm",
   "version": "0.0.0",
   "private": true,
-  "description": "Anbieter-Registry und Schleusen-Routing (ab Folge 3)",
+  "description": "Anbieter-Schicht: Vorlagen, Modell-Liste, Verbindungstest, Route, Datenschleuse und Modell-Zugang gegen Berechtigung",
   "license": "SEE LICENSE IN ../../LICENSE",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./modell": "./src/resolve-model.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@paibot/crypto": "workspace:*",
+    "@paibot/gate": "workspace:*",
+    "@paibot/shared": "workspace:*",
+    "@paibot/stub": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "@paibot/fake-provider": "workspace:*",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

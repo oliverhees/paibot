@@ -12,6 +12,16 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1"
+  },
+  "dependencies": {
+    "@paibot/shared": "workspace:*",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1"
   }
 }
