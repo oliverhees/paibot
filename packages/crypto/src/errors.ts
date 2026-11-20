@@ -14,12 +14,22 @@ export const CRYPTO_ERROR_REASONS = [
   "geheimnis_fehlt",
   /** `PAIBOT_SECRET` ist kein Base64 oder nicht genau 32 Byte lang. */
   "geheimnis_ungueltig",
+  /** `PAIBOT_SECRET` hat die richtige Länge, ist aber erkennbar nicht zufällig (z. B. alle Bytes gleich). */
+  "geheimnis_schwach",
   /** Ein gespeicherter Wert (Geheimtext, Passwort-Hash, Schlüssel, Signatur) hat nicht das erwartete Format. */
   "format_ungueltig",
-  /** Ein Geheimtext hat eine Formatversion, die dieses Paket nicht kennt (z. B. `v2:`). */
+  /** Ein Passwort-Hash nennt Parameter außerhalb der erlaubten Grenzen (zu schwach oder zu teuer). */
+  "parameter_ungueltig",
+  /** Ein Geheimtext hat eine Formatversion, die dieses Paket nicht kennt (z. B. `v3:`). */
   "version_unbekannt",
-  /** Entschlüsseln ist gescheitert: falscher Schlüssel oder veränderter Geheimtext bzw. Tag. */
+  /** Ein Geheimtext im älteren Format `v1` wurde gelesen, ohne dass das erlaubt war. */
+  "version_veraltet",
+  /** Ein gebundener Geheimtext (`v2`) sollte ohne Zusatzdaten entschlüsselt werden. */
+  "bindung_fehlt",
+  /** Entschlüsseln ist gescheitert: falscher Schlüssel, andere Bindung oder veränderter Geheimtext bzw. Tag. */
   "entschluesseln_fehlgeschlagen",
+  /** Ein Schlüssel im Speicher wurde nicht geladen, passt nicht zu seinem öffentlichen Teil oder wurde verworfen. */
+  "schluessel_nicht_geladen",
 ] as const;
 export type CryptoErrorReason = (typeof CRYPTO_ERROR_REASONS)[number];
 

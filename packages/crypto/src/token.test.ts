@@ -8,6 +8,7 @@
  * @since     2026-11-20
  */
 
+import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   contextDigest,
@@ -84,7 +85,7 @@ describe("hmac", () => {
   });
 
   it("hängt vom Schlüssel und den Daten ab, liefert 32 Byte", () => {
-    const master = loadMasterSecret({ PAIBOT_SECRET: Buffer.alloc(32, 9).toString("base64") });
+    const master = loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") });
     const a = deriveKey(master, "session-v1");
     const b = deriveKey(master, "context-v1");
     expect(hmac(a, "x").length).toBe(32);
@@ -96,7 +97,7 @@ describe("hmac", () => {
 
 describe("contextDigest", () => {
   it("liefert hmac-sha256:<64 Hex> und entspricht hmac", () => {
-    const master = loadMasterSecret({ PAIBOT_SECRET: Buffer.alloc(32, 5).toString("base64") });
+    const master = loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") });
     const key = deriveKey(master, "context-v1");
     const digest = contextDigest(key, "Inhalt");
     expect(digest).toMatch(/^hmac-sha256:[0-9a-f]{64}$/);

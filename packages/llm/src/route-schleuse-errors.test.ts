@@ -158,6 +158,33 @@ describe("mapProviderError", () => {
       "anbieter_nicht_erreichbar",
     );
   });
+  it("Status 2xx: Strom bricht nach erfolgreicher Antwort ab, die Ursache entscheidet", () => {
+    // So meldet die Bibliothek einen Abbruch mitten im Strom: Status der Antwort plus Ursache.
+    const socket = Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" });
+    const terminated = new TypeError("terminated", { cause: socket });
+    const apiCallError = (cause: unknown, statusCode = 200) =>
+      Object.assign(new Error("Fehler beim Lesen"), { name: "AI_APICallError", statusCode, cause });
+    expect(mapProviderError(apiCallError(terminated))).toBe("anbieter_nicht_erreichbar");
+    expect(mapProviderError(apiCallError(socket))).toBe("anbieter_nicht_erreichbar");
+    expect(mapProviderError(apiCallError(new TypeError("terminated")))).toBe(
+      "anbieter_nicht_erreichbar",
+    );
+    expect(
+      mapProviderError(apiCallError(Object.assign(new Error("x"), { code: "ECONNRESET" }), 204)),
+    ).toBe("anbieter_nicht_erreichbar");
+    expect(mapProviderError(apiCallError(new DOMException("a", "AbortError")))).toBe(
+      "unterbrochen",
+    );
+    expect(mapProviderError(apiCallError(new DOMException("t", "TimeoutError")))).toBe(
+      "anbieter_nicht_erreichbar",
+    );
+    // Ohne erkennbare Ursache bleibt es intern, ebenso bei kaputtem JSON in einer 200-Antwort.
+    expect(mapProviderError(apiCallError(undefined))).toBe("intern");
+    expect(mapProviderError(apiCallError(new SyntaxError("Unexpected token")))).toBe("intern");
+    expect(mapProviderError({ status: 200 })).toBe("intern");
+    // Eine Fehler-Antwort bleibt beim Status, auch mit Netz-Ursache.
+    expect(mapProviderError(apiCallError(terminated, 401))).toBe("schluessel_ungueltig");
+  });
   it("Block der Datenschleuse", () => {
     expect(mapProviderError({ name: "DatenschleuseBlocked", message: "x" })).toBe(
       "schleuse_blockiert",
