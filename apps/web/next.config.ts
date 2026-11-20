@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@paibot/shared", "@paibot/db"],
   serverExternalPackages: ["postgres"],
   poweredByHeader: false,
+  // Der Entwicklungs-Server soll weder eine Anzeige einblenden noch Dateien im Projekt anlegen.
+  devIndicators: false,
+  agentRules: false,
 };
 
 export default nextConfig;

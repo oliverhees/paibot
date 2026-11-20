@@ -75,10 +75,10 @@ Alle Bilder entstehen per Skript aus der App, nicht von Hand (`pnpm doku:screens
 
 **PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für eine Person – nicht ein einzelner Chatbot, sondern ein ganzes Team: Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten.
 
-Das Vorbild sind KI-Teammates wie Grok Bot. Der Unterschied: PaiBot läuft **bei dir** – auf deinem eigenen Server oder direkt auf deinem Rechner –, nutzt **Modelle aus der EU oder dein eigenes lokales Modell**, und eine **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
+PaiBot läuft **bei dir** – auf deinem eigenen Server oder direkt auf deinem Rechner –, nutzt **Modelle aus der EU oder dein eigenes lokales Modell**, und eine **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
 
 <p align="center">
-  <img src="docs/assets/idee.jpg" alt="Die Idee: Vorbild, Problem, Lösung, Bauplan" width="90%">
+  <img src="docs/assets/idee.jpg" alt="Die Idee: Problem, Lösung, Bauplan" width="90%">
 </p>
 
 ## Warum PaiBot?
@@ -246,9 +246,9 @@ Ja, wenn du es allein nutzt: als Selbstständiger, als Freiberufler oder für de
 </details>
 
 <details>
-<summary><b>Warum nicht einfach OpenMausBot?</b></summary>
+<summary><b>Was unterscheidet PaiBot?</b></summary>
 
-[OpenMausBot](https://github.com/milind-soni/OpenMausBot) ist ein starkes offenes Projekt mit einer ähnlichen Idee. PaiBot setzt andere Schwerpunkte: KI-Modelle aus der EU oder lokal als Standard statt US-Abos, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, eine eigene MCP-Verwaltung ohne fremden Dienst dazwischen, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut.
+PaiBot setzt diese Schwerpunkte: KI-Modelle aus der EU oder lokal als Standard, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, eine eigene MCP-Verwaltung ohne fremden Dienst dazwischen, ein Beleg für jede Aktion, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut.
 </details>
 
 <details>

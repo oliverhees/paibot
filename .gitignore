@@ -31,3 +31,6 @@ CLAUDE.local.md
 .gemini/
 .vscode/
 .idea/
+
+# Vom Entwicklungs-Server angelegt
+apps/web/AGENTS.md
