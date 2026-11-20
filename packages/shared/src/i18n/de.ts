@@ -4,7 +4,7 @@
  * @author    Oliver Hees
  * @link      https://paibot.de
  * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
- * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
  * @since     2026-11-20
  */
 
@@ -206,7 +206,7 @@ export const de = {
   "info.version": "Stand",
   "info.installation": "Installations-ID",
   "info.lizenz.text":
-    "PaiBot steht unter der PaiBot Fair-Code-Lizenz 1.0. Du darfst es für dich selbst nutzen und anpassen.‌⁠‍⁠‌",
+    "PaiBot steht unter der PaiBot Fair-Code-Lizenz 1.1. Du darfst es für dich selbst nutzen und anpassen.‌⁠‍⁠‌",
   "info.enterprise":
     "Du willst PaiBot mit mehreren Personen nutzen? Dafür ist PaiBot Enterprise in Vorbereitung.",
   "info.bestandteile": "Bestandteile und ihre Lizenzen",

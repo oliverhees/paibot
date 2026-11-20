@@ -4,7 +4,7 @@
  * @author    Oliver Hees
  * @link      https://paibot.de
  * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
- * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
  * @since     2026-11-20
  */
 
@@ -81,7 +81,7 @@ describe("t", () => {
     );
     expect(t("chat.leer.hinweis")).toBe(`Deine Unterhaltungen bleiben auf deinem Server.${MARK}`);
     expect(t("info.lizenz.text")).toBe(
-      `PaiBot steht unter der PaiBot Fair-Code-Lizenz 1.0. Du darfst es für dich selbst nutzen und anpassen.${MARK}`,
+      `PaiBot steht unter der PaiBot Fair-Code-Lizenz 1.1. Du darfst es für dich selbst nutzen und anpassen.${MARK}`,
     );
     const marked = new Set<string>(MARKED_KEYS);
     for (const key of TEXT_KEYS) {

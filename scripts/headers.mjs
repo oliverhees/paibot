@@ -4,14 +4,16 @@
  * @author    Oliver Hees
  * @link      https://paibot.de
  * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
- * @license   PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
  * @since     2026-11-18
  */
 
 // Prüft und ergänzt den Urheber-Kopf in den Dateien des Projekts.
 //
-//   node scripts/headers.mjs --check   listet Dateien ohne Kopf (Exit-Code 1)
-//   node scripts/headers.mjs --write   fügt fehlende Köpfe mit Platzhalter-Beschreibung ein
+//   node scripts/headers.mjs --check   listet Dateien ohne Kopf oder mit veralteter Lizenz-Angabe
+//                                      (Exit-Code 1)
+//   node scripts/headers.mjs --write   fügt fehlende Köpfe mit Platzhalter-Beschreibung ein und
+//                                      setzt die Lizenz-Angabe vorhandener Köpfe auf die aktuelle
 //
 // Das Datum im Kopf ("Seit") ist das Datum des ersten Commits der Datei, bei neuen Dateien
 // das heutige Datum. Mit PAIBOT_HEADER_DATE=JJJJ-MM-TT lässt sich das heutige Datum festlegen.
@@ -63,8 +65,11 @@ const FIELDS = {
   author: "Oliver Hees",
   link: "https://paibot.de",
   copyright: "2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.",
-  license: "PaiBot Fair-Code-Lizenz 1.0 – siehe Datei LICENSE im Projektstamm",
+  license: "PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm",
 };
+
+/** Lizenz-Angabe im Kopf, gleich welcher Fassung. */
+const LICENSE_PATTERN = /PaiBot Fair-Code-Lizenz \d+(\.\d+)* – siehe Datei LICENSE im Projektstamm/;
 
 function git(args) {
   return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
@@ -160,6 +165,19 @@ function hasPlaceholder(text) {
   return headOf(text).includes(`PaiBot – ${PLACEHOLDER}`);
 }
 
+/** Nennt der Kopf eine andere als die aktuelle Fassung der Lizenz (oder gar keine)? */
+function hasOutdatedLicense(text) {
+  return !headOf(text).includes(FIELDS.license);
+}
+
+/** Ersetzt die Lizenz-Angabe im Kopf durch die aktuelle; der Rest der Datei bleibt unberührt. */
+function withCurrentLicense(text) {
+  const lines = text.split("\n");
+  const head = lines.slice(0, 16).join("\n");
+  const rest = lines.slice(16);
+  return [head.replace(LICENSE_PATTERN, FIELDS.license), ...rest].join("\n");
+}
+
 /** Zeilen, die ganz oben stehen bleiben müssen (Shebang, Dockerfile-Syntax-Zeile). */
 function keptFirstLines(lines) {
   const first = lines[0] ?? "";
@@ -185,10 +203,15 @@ if (mode !== "--check" && mode !== "--write") {
 const candidates = projectFiles().filter((file) => !isExcluded(file) && styleOf(file) !== null);
 const missing = [];
 const placeholders = [];
+const outdated = [];
 for (const file of candidates) {
   const text = readFileSync(file, "utf8");
-  if (!hasHeader(text)) missing.push(file);
-  else if (hasPlaceholder(text)) placeholders.push(file);
+  if (!hasHeader(text)) {
+    missing.push(file);
+    continue;
+  }
+  if (hasPlaceholder(text)) placeholders.push(file);
+  if (hasOutdatedLicense(text)) outdated.push(file);
 }
 
 if (mode === "--check") {
@@ -200,11 +223,32 @@ if (mode === "--check") {
     console.error(`Diese Dateien haben noch den Platzhalter „${PLACEHOLDER}“ im Kopf:`);
     for (const file of placeholders) console.error(`  ${file}`);
   }
-  if (missing.length + placeholders.length > 0) process.exit(1);
+  if (outdated.length > 0) {
+    console.error(
+      `Diese Dateien nennen im Kopf nicht „${FIELDS.license}“ (Abhilfe: pnpm headers:write):`,
+    );
+    for (const file of outdated) console.error(`  ${file}`);
+  }
+  if (missing.length + placeholders.length + outdated.length > 0) process.exit(1);
   console.log(`Urheber-Kopf ok (${candidates.length} Dateien geprüft).`);
 } else {
   for (const file of missing) writeFileSync(file, withHeader(file, readFileSync(file, "utf8")));
+  const unchanged = [];
+  for (const file of outdated) {
+    const text = readFileSync(file, "utf8");
+    const updated = withCurrentLicense(text);
+    if (updated === text) unchanged.push(file);
+    else writeFileSync(file, updated);
+  }
   console.log(
     `${missing.length} Köpfe eingefügt. Bitte die Beschreibung („${PLACEHOLDER}“) von Hand anpassen.`,
   );
+  console.log(
+    `${outdated.length - unchanged.length} Lizenz-Angaben auf die aktuelle Fassung gesetzt.`,
+  );
+  if (unchanged.length > 0) {
+    console.error("In diesen Köpfen fehlt die Lizenz-Angabe, bitte von Hand ergänzen:");
+    for (const file of unchanged) console.error(`  ${file}`);
+    process.exitCode = 1;
+  }
 }
