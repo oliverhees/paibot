@@ -9,6 +9,7 @@
  */
 
 import {
+  encodeAnchor,
   type ReceiptEntry,
   type ReceiptExportHeader,
   receiptEntrySchema,
@@ -23,7 +24,8 @@ export const EXPORT_MEDIA_TYPE = "application/x-ndjson";
 /**
  * Schreibt den Export Zeile für Zeile, jede Zeile mit `\n` am Ende.
  *
- * - Zeile 1: `header` (`{"format":"pb-belege","v":1,"installationId":…,"publicKeys":[…]}`).
+ * - Zeile 1: `header` (`{"format":"pb-belege","v":1,"installationId":…,"publicKeys":[…]}`, dazu
+ *   `"anchor":{…}` mit dem Kettenkopf beim Export, wenn angegeben; siehe `exportHeader`).
  * - Jede weitere Zeile: ein Eintrag mit den Schlüsseln in genau der Reihenfolge
  *   `seq, id, hash, signature, keyId, body`; `body` in kanonischer Form.
  *
@@ -44,7 +46,8 @@ function headerLine(header: ReceiptExportHeader): string {
     (key) =>
       `{"keyId":${JSON.stringify(key.keyId)},"publicKey":${JSON.stringify(key.publicKey)},"fingerprint":${JSON.stringify(key.fingerprint)}}`,
   );
-  return `{"format":${JSON.stringify(header.format)},"v":${header.v},"installationId":${JSON.stringify(header.installationId)},"publicKeys":[${keys.join(",")}]}`;
+  const anchor = header.anchor === undefined ? "" : `,"anchor":${encodeAnchor(header.anchor)}`;
+  return `{"format":${JSON.stringify(header.format)},"v":${header.v},"installationId":${JSON.stringify(header.installationId)},"publicKeys":[${keys.join(",")}]${anchor}}`;
 }
 
 /** Eintragszeile mit den Schlüsseln `seq, id, hash, signature, keyId, body`. */

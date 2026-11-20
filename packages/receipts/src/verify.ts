@@ -9,9 +9,11 @@
  * @since     2026-11-20
  */
 
-import { evaluate } from "@paibot/gate";
-import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import {
+  type ChainAnchor,
+  type ChainFinding,
+  type ChainVerdict,
+  chainTrustLevel,
   type KeyChangeSigner,
   type PublicKeyInfo,
   type ReceiptBody,
@@ -19,14 +21,21 @@ import {
   ZERO_PREV,
 } from "@paibot/shared/belege";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
-import type { Decision, RuleDefinition, RuleRef } from "@paibot/shared/tor";
-import { type CanonicalValue, canonicalize } from "./canonical";
+import type { KeyId } from "@paibot/shared/ids";
+import type { RuleRef } from "@paibot/shared/tor";
 import { digestBytes, hashReceipt } from "./hash";
+import {
+  type ReevaluationProblem,
+  type RuleHistory,
+  type RuleVersion,
+  reevaluate,
+} from "./nachrechnen";
 
 export * from "./build";
 export * from "./canonical";
 export * from "./hash";
 export * from "./jsonl";
+export * from "./nachrechnen";
 
 /**
  * Einzelne Prüfungen, in dieser Reihenfolge. `kontext` braucht den Kontext-Schlüssel und läuft
@@ -45,20 +54,41 @@ export interface CheckResult {
   seq: number;
   /** Bei `signatur`: Kurzform des Schlüssels (`fingerprint`). */
   fingerprint?: string;
-  /** Bei `entscheidung`: die Regel, aus der die Entscheidung folgt. */
+  /** Bei `entscheidung`: die Regel, aus der die Entscheidung folgt bzw. die nicht passt. */
   rule?: RuleRef;
+  /** Bei `entscheidung`: Regelstand des Nachrechnens (`nicht_festgehalten` bei älteren Belegen). */
+  ruleStand?: number | "nicht_festgehalten";
+  /** Bei `entscheidung` mit `fehler`: der Grund. */
+  problem?: ReevaluationProblem;
 }
 
 export interface VerifyOptions {
   /**
-   * Regel-Fassungen, die zum Zeitpunkt der Entscheidungen galten. Fehlen sie, ist die Prüfung
-   * `entscheidung` `entfaellt`.
+   * Regel-Fassungen zum Nachrechnen, am besten das Regel-Protokoll mit `seq`. Fehlen sie, ist die
+   * Prüfung `entscheidung` `entfaellt`.
    */
-  rules?: readonly RuleDefinition[];
+  rules?: readonly RuleVersion[];
+}
+
+/** Optionen für die Prüfung einer ganzen Kette. */
+export interface ChainVerifyOptions extends VerifyOptions {
+  /** Regel-Fassungen aus einer Quelle wie der Datenbank (statt `rules`). */
+  ruleHistory?: RuleHistory;
+  /**
+   * Außerhalb aufbewahrter Anker (`createAnchor`). Nur mit ihm fallen eine am Ende gekürzte und
+   * eine ganz ausgetauschte Kette auf.
+   */
+  anchor?: ChainAnchor;
+  /**
+   * Öffentliche Schlüssel von anderswo (z. B. aus der Datenbank oder dem Kopf eines Exports). Sie
+   * dienen nur dem Vergleich: Geprüft wird mit den Schlüsseln aus der Kette; nennt die Liste unter
+   * derselben Kennung einen anderen Schlüssel, ist das `schluessel_nicht_aus_kette`.
+   */
+  publicKeys?: readonly PublicKeyInfo[];
 }
 
 /**
- * Prüft einen Eintrag (Prüfungen 1 bis 4):
+ * Prüft einen einzelnen Eintrag (Prüfungen 1 bis 4) mit den Schlüsseln aus `publicKeys`:
  * - `inhalt`: Prüfsumme des Körpers neu berechnet gleich `entry.hash`.
  * - `signatur`: Ed25519 über die 32 Rohbyte von `entry.hash` mit dem öffentlichen Schlüssel von
  *   `entry.keyId` aus `publicKeys` (Web Crypto). Unbekannter Schlüssel → `fehler`.
@@ -66,20 +96,31 @@ export interface VerifyOptions {
  *   `seq` 1 und `prev` `ZERO_PREV` sein.
  * - `entscheidung`: nur bei Typ `decision` und mit `options.rules`, sonst `entfaellt` (`reevaluate`).
  *
+ * Ein einzelner Eintrag kennt die Kette nicht; ob sein Schlüssel aus der Kette folgt, sagt nur
+ * `verifyChain`.
+ *
  * Zusagen: liefert immer genau vier Ergebnisse in der Reihenfolge von `CHECK_NAMES` ohne `kontext`;
  * wirft nicht bei manipulierten Daten, sondern meldet `fehler`. Erzeugt keinen Beleg.
  */
-export function verifyReceipt(
+export async function verifyReceipt(
   entry: ReceiptEntry,
   prev: ReceiptEntry | null,
   publicKeys: readonly PublicKeyInfo[],
   options?: VerifyOptions,
 ): Promise<CheckResult[]> {
-  return checkEntry(entry, prev, new KeyRing(publicKeys), undefined, options);
+  const seq = seqOf(entry);
+  const body = (entry.body ?? undefined) as ReceiptBody | undefined;
+  return [
+    { check: "inhalt", status: (await contentMatches(entry, body)) ? "ok" : "fehler", seq },
+    await listSignature(entry, body, new KeyRing(publicKeys), seq),
+    { check: "kette", status: linkMatches(entry, body, prev) ? "ok" : "fehler", seq },
+    await checkDecision(entry, body, seq, options?.rules, undefined),
+  ];
 }
 
 /** Bericht über eine ganze Kette. */
 export interface ChainReport {
+  /** `true` genau dann, wenn das Urteil `vertrauenswuerdig` ist. */
   ok: boolean;
   /** Anzahl geprüfter Einträge. */
   checked: number;
@@ -87,73 +128,139 @@ export interface ChainReport {
   head?: { seq: number; hash: string };
   /** Erste Stelle, an der eine Prüfung `fehler` meldet, mit allen Ergebnissen dieses Eintrags. */
   firstFailure?: { seq: number; index: number; checks: CheckResult[] };
+  /** Urteil über die Kette: Stufe, Probleme, ob ein Anker geprüft wurde. */
+  verdict: ChainVerdict;
+  /**
+   * Ab dieser Nummer sind die Belege nicht vom ursprünglichen Schlüssel beglaubigt (erster
+   * Schlüsselwechsel, den nur der neue Schlüssel signiert hat).
+   */
+  notAttestedFrom?: number;
 }
 
 /**
  * Prüft eine Kette von Anfang an (erster Eintrag `seq` 1). Erkennt veränderte, gelöschte,
  * eingeschobene und vertauschte Einträge, fremde Signaturen und umgebogene `prev`.
  *
- * Zusagen: `ok` genau dann, wenn kein Eintrag `fehler` meldet; `firstFailure` nennt die erste
- * betroffene Stelle. Einträge des Typs `key_change` machen den neuen Schlüssel für die folgenden
- * Einträge gültig, sofern er in `publicKeys` steht.
+ * Schlüssel kommen nur aus der Kette selbst: der Start-Beleg nennt den ersten
+ * (`facts.publicKey`), ein Schlüsselwechsel den nächsten. Beglaubigt ist ein Wechsel nur, wenn ihn
+ * der bisherige Schlüssel signiert hat; signiert ihn nur der neue, meldet der Prüfer
+ * `schluesselwechsel_nicht_beglaubigt` (Stufe `vertrauen_gebrochen`), prüft mit dem neuen Schlüssel
+ * weiter, und alle Belege ab dort gelten als nicht beglaubigt (`notAttestedFrom`). Ein Beleg mit
+ * einem Schlüssel, der nicht so aus der Kette folgt, ist `schluessel_nicht_aus_kette`.
+ *
+ * Mit `anchor` wird zusätzlich verglichen: gleiche Installation, gleicher Anfang, die Kette reicht
+ * mindestens bis `anchor.seq`, und dort stehen dieselbe Prüfsumme und derselbe Schlüssel.
+ *
+ * Grenze: Ohne Anker lässt sich nicht erkennen, dass am Ende Belege fehlen oder dass jemand die
+ * ganze Kette mit einem eigenen Schlüssel neu geschrieben hat.
+ *
+ * Aufruf auch noch als `verifyChain(entries, publicKeys, options)`; die Liste dient dann ebenfalls
+ * nur dem Vergleich.
  */
-export async function verifyChain(
+export function verifyChain(
+  entries: Iterable<ReceiptEntry> | AsyncIterable<ReceiptEntry>,
+  options?: ChainVerifyOptions,
+): Promise<ChainReport>;
+/** @deprecated Schlüssel über `options.publicKeys` übergeben; sie dienen nur dem Vergleich. */
+export function verifyChain(
   entries: Iterable<ReceiptEntry> | AsyncIterable<ReceiptEntry>,
   publicKeys: readonly PublicKeyInfo[],
-  options?: VerifyOptions,
+  options?: ChainVerifyOptions,
+): Promise<ChainReport>;
+export async function verifyChain(
+  entries: Iterable<ReceiptEntry> | AsyncIterable<ReceiptEntry>,
+  second?: readonly PublicKeyInfo[] | ChainVerifyOptions,
+  third?: ChainVerifyOptions,
 ): Promise<ChainReport> {
-  const ring = new KeyRing(publicKeys);
-  const state: ChainState = { activeKeyId: undefined };
+  const options: ChainVerifyOptions = Array.isArray(second)
+    ? { ...third, publicKeys: second as readonly PublicKeyInfo[] }
+    : ((second as ChainVerifyOptions | undefined) ?? {});
+  const state: ChainKeys = { keys: new Map(), active: undefined, imported: new Map() };
+  const findings: ChainFinding[] = [];
+  let start: ReceiptEntry | undefined;
+  let atAnchor: ReceiptEntry | undefined;
   let prev: ReceiptEntry | null = null;
   let index = 0;
   let firstFailure: ChainReport["firstFailure"];
+  let notAttestedFrom: number | undefined;
 
   for await (const entry of entries) {
-    const checks = await checkEntry(entry, prev, ring, state, options);
-    if (firstFailure === undefined && checks.some((check) => check.status === "fehler")) {
-      firstFailure = { seq: seqOf(entry), index, checks };
+    const seq = seqOf(entry);
+    const body = (entry.body ?? undefined) as ReceiptBody | undefined;
+    if (index === 0) start = entry;
+    if (options.anchor !== undefined && seq === options.anchor.seq) atAnchor = entry;
+
+    const signature = await chainSignature(entry, body, state, seq);
+    for (const problem of signature.problems) {
+      findings.push({
+        problem,
+        ...(Number.isSafeInteger(seq) && seq > 0 ? { seq } : {}),
+        ...(signature.keyId === undefined ? {} : { keyId: signature.keyId }),
+      });
+      if (problem === "schluesselwechsel_nicht_beglaubigt") notAttestedFrom ??= seq;
     }
-    advanceKeys(entry, state);
+    const checks: CheckResult[] = [
+      { check: "inhalt", status: (await contentMatches(entry, body)) ? "ok" : "fehler", seq },
+      signature.result,
+      { check: "kette", status: linkMatches(entry, body, prev) ? "ok" : "fehler", seq },
+      await checkDecision(entry, body, seq, options.rules, options.ruleHistory),
+    ];
+    if (firstFailure === undefined && checks.some((check) => check.status === "fehler")) {
+      firstFailure = { seq, index, checks };
+    }
+    advanceKeys(body, state);
     prev = entry;
     index++;
   }
 
-  const report: ChainReport = { ok: firstFailure === undefined, checked: index };
+  compareKeys(state, options.publicKeys, findings);
+  if (options.anchor !== undefined) compareAnchor(options.anchor, start, atAnchor, prev, findings);
+
+  const level = chainTrustLevel(findings, firstFailure === undefined);
+  const report: ChainReport = {
+    ok: level === "vertrauenswuerdig",
+    checked: index,
+    verdict: {
+      level,
+      findings,
+      anchor: options.anchor === undefined ? "fehlt" : "geprueft",
+    },
+  };
   if (prev !== null) report.head = { seq: seqOf(prev), hash: String(prev.hash) };
   if (firstFailure !== undefined) report.firstFailure = firstFailure;
+  if (notAttestedFrom !== undefined) report.notAttestedFrom = notAttestedFrom;
   return report;
 }
 
-/** Ergebnis des Nachrechnens einer Entscheidung. */
-export interface Reevaluation {
-  status: CheckStatus;
-  /** Was das Tor mit den gespeicherten Fakten und Regeln heute entscheidet. */
-  expected?: Decision;
-}
-
 /**
- * Rechnet die Entscheidung eines Belegs `decision` aus den gespeicherten Fakten und den
- * Regel-Fassungen nach (`evaluate` des Tors, ohne KI). `ok`, wenn `outcome`, `stage`, `rules` und
- * `limits` übereinstimmen; `fehler` bei Abweichung; `entfaellt` bei anderen Typen.
+ * Anker der Kette aus ihrem ersten Eintrag (Start) und ihrem letzten Eintrag. Als Text zum
+ * Aufbewahren: `encodeAnchor(anchor)` aus `@paibot/shared/belege`.
+ *
+ * Fehler: `TypeError`, wenn `start` kein Start-Beleg mit `seq` 1 ist oder `head` vor ihm liegt.
  */
-export function reevaluate(entry: ReceiptEntry, rules: readonly RuleDefinition[]): Reevaluation {
-  const body = entry.body as ReceiptBody | undefined;
-  if (body?.type !== "decision") return { status: "entfaellt" };
-
-  let expected: Decision;
-  try {
-    expected = evaluate(body.action as ActionRequest, body.facts as unknown as Facts, rules);
-  } catch {
-    return { status: "fehler" };
+export function createAnchor(
+  start: ReceiptEntry,
+  head: ReceiptEntry,
+  time: Date | string = new Date(),
+): ChainAnchor {
+  const body = start.body as ReceiptBody | undefined;
+  if (body?.type !== "start" || start.seq !== 1) {
+    throw new TypeError("Der erste Eintrag ist kein Start-Beleg.");
   }
-
-  const recorded = body.decision;
-  const same =
-    expected.outcome === recorded.outcome &&
-    expected.stage === recorded.stage &&
-    sameValue(expected.matchedRules.map(ruleRef), recorded.rules.map(ruleRef)) &&
-    sameValue(expected.limits, recorded.limits);
-  return { status: same ? "ok" : "fehler", expected };
+  if (!Number.isSafeInteger(head.seq) || head.seq < 1) {
+    throw new TypeError("Der letzte Eintrag hat keine gültige Nummer.");
+  }
+  return {
+    format: "pb-anker",
+    v: 1,
+    installationId: body.facts.installationId,
+    seq: head.seq,
+    hash: head.hash,
+    keyId: head.keyId,
+    startKeyId: body.keyId,
+    startPublicKey: body.facts.publicKey,
+    time: typeof time === "string" ? time : time.toISOString(),
+  };
 }
 
 /**
@@ -161,7 +268,7 @@ export function reevaluate(entry: ReceiptEntry, rules: readonly RuleDefinition[]
  * alte Schlüssel, Regelfall) oder `new` (der alte Schlüssel war nicht mehr vorhanden). Geprüft wird,
  * dass der Schlüssel `entry.keyId` in `publicKeys` steht und dazu passt: bei `new` ist sein
  * öffentlicher Schlüssel gleich `facts.publicKey`. `undefined` bei anderen Typen, unbekanntem
- * Schlüssel oder wenn die Angabe nicht passt.
+ * Schlüssel oder wenn die Angabe nicht passt. Nur `previous` beglaubigt den neuen Schlüssel.
  */
 export function keyChangeSigner(
   entry: ReceiptEntry,
@@ -185,11 +292,6 @@ export function keyChangeSigner(
 
 // ---------------------------------------------------------------------------------------------
 // Interne Hilfen. Alles hier läuft nur mit Web Crypto (`globalThis.crypto.subtle`).
-
-/** Welcher Schlüssel in der Kette gerade neue Einträge signieren darf. */
-interface ChainState {
-  activeKeyId: string | undefined;
-}
 
 /** Öffentliche Schlüssel mit importiertem Web-Crypto-Schlüssel und Kurzform, je einmal berechnet. */
 class KeyRing {
@@ -263,48 +365,6 @@ function seqOf(entry: ReceiptEntry): number {
   return typeof entry.seq === "number" ? entry.seq : Number.NaN;
 }
 
-function ruleRef(rule: RuleRef): RuleRef {
-  return { id: rule.id, version: rule.version };
-}
-
-function sameValue(a: unknown, b: unknown): boolean {
-  try {
-    return canonicalize(a as CanonicalValue) === canonicalize(b as CanonicalValue);
-  } catch {
-    return false;
-  }
-}
-
-/** Nach einem Eintrag: Start und Schlüsselwechsel legen fest, wer als Nächstes signiert. */
-function advanceKeys(entry: ReceiptEntry, state: ChainState): void {
-  const body = entry.body as ReceiptBody | undefined;
-  if (body?.type === "start") state.activeKeyId = body.keyId;
-  if (body?.type === "key_change") state.activeKeyId = body.facts.newKeyId;
-}
-
-async function checkEntry(
-  entry: ReceiptEntry,
-  prev: ReceiptEntry | null,
-  ring: KeyRing,
-  chain: ChainState | undefined,
-  options: VerifyOptions | undefined,
-): Promise<CheckResult[]> {
-  const seq = seqOf(entry);
-  const body = (entry.body ?? undefined) as ReceiptBody | undefined;
-  const result = (check: CheckName, ok: boolean, extra?: Partial<CheckResult>): CheckResult => ({
-    check,
-    status: ok ? "ok" : "fehler",
-    seq,
-    ...extra,
-  });
-
-  const inhalt = result("inhalt", await contentMatches(entry, body));
-  const signatur = await checkSignature(entry, body, ring, chain, seq);
-  const kette = result("kette", linkMatches(entry, body, prev));
-  const entscheidung = checkDecision(entry, body, seq, options);
-  return [inhalt, signatur, kette, entscheidung];
-}
-
 async function contentMatches(
   entry: ReceiptEntry,
   body: ReceiptBody | undefined,
@@ -328,29 +388,6 @@ function linkMatches(
   if ((body.seq === 1) !== (body.type === "start")) return false;
   if (prev === null) return body.seq === 1 && body.prev === ZERO_PREV;
   return body.prev === prev.hash && body.seq === seqOf(prev) + 1;
-}
-
-async function checkSignature(
-  entry: ReceiptEntry,
-  body: ReceiptBody | undefined,
-  ring: KeyRing,
-  chain: ChainState | undefined,
-  seq: number,
-): Promise<CheckResult> {
-  const fail: CheckResult = { check: "signatur", status: "fehler", seq };
-  if (body === undefined || typeof body !== "object" || entry.keyId !== body.keyId) return fail;
-  const info = ring.info(entry.keyId);
-  if (info === undefined) return fail;
-  const imported = await ring.imported(info.publicKey);
-  if (imported === undefined) return fail;
-
-  if (!(await signatureMatches(imported.key, entry.hash, entry.signature))) {
-    return { ...fail, fingerprint: imported.fingerprint };
-  }
-  if (!signerAllowed(entry, body, info, ring, chain)) {
-    return { ...fail, fingerprint: imported.fingerprint };
-  }
-  return { check: "signatur", status: "ok", seq, fingerprint: imported.fingerprint };
 }
 
 async function signatureMatches(
@@ -378,52 +415,212 @@ async function signatureMatches(
   }
 }
 
+/** Schlüssel, die aus der Kette folgen, und der gerade aktive. */
+interface ChainKeys {
+  /** Jede Kennung mit dem öffentlichen Schlüssel, den die Kette für sie nennt. */
+  keys: Map<string, string>;
+  active: { keyId: string; publicKey: string } | undefined;
+  imported: Map<string, Promise<ImportedKey | undefined>>;
+}
+
+function importOnce(state: ChainKeys, publicKey: string): Promise<ImportedKey | undefined> {
+  let cached = state.imported.get(publicKey);
+  if (cached === undefined) {
+    cached = importPublicKey(publicKey);
+    state.imported.set(publicKey, cached);
+  }
+  return cached;
+}
+
+interface ChainSignature {
+  result: CheckResult;
+  problems: ("schluessel_nicht_aus_kette" | "schluesselwechsel_nicht_beglaubigt")[];
+  keyId?: KeyId;
+}
+
 /**
- * Darf dieser Schlüssel den Eintrag signieren? Der Start nennt den eigenen öffentlichen Schlüssel;
- * ein Schlüsselwechsel muss zu `signedBy` passen; alle anderen Einträge signiert der Schlüssel, der
- * in der Kette gerade gilt (nur bei der Prüfung einer ganzen Kette bekannt).
+ * Signatur eines Eintrags mit dem Schlüssel, der an dieser Stelle aus der Kette folgt:
+ * - Start: der eigene `facts.publicKey`, nur solange noch kein Schlüssel aktiv ist.
+ * - Schlüsselwechsel mit `previous`: der aktive Schlüssel. Mit `new`: der neue Schlüssel, dazu das
+ *   Problem `schluesselwechsel_nicht_beglaubigt`. `previousKeyId` muss der aktive Schlüssel sein.
+ * - alle anderen: der aktive Schlüssel; eine andere Kennung ist `schluessel_nicht_aus_kette`.
  */
-function signerAllowed(
+async function chainSignature(
   entry: ReceiptEntry,
-  body: ReceiptBody,
-  info: PublicKeyInfo,
-  ring: KeyRing,
-  chain: ChainState | undefined,
-): boolean {
-  const active = chain?.activeKeyId;
+  body: ReceiptBody | undefined,
+  state: ChainKeys,
+  seq: number,
+): Promise<ChainSignature> {
+  const fail = (
+    problems: ChainSignature["problems"] = [],
+    fingerprint?: string,
+  ): ChainSignature => ({
+    result: { check: "signatur", status: "fehler", seq, ...(fingerprint ? { fingerprint } : {}) },
+    problems,
+    ...(typeof entry.keyId === "string" ? { keyId: entry.keyId as KeyId } : {}),
+  });
+  if (body === undefined || typeof body !== "object" || entry.keyId !== body.keyId) return fail();
+
+  let publicKey: string;
+  const problems: ChainSignature["problems"] = [];
+  const active = state.active;
   switch (body.type) {
     case "start":
-      return (
-        body.facts.publicKey === info.publicKey && (chain === undefined || active === undefined)
-      );
+      if (active !== undefined) return fail();
+      publicKey = body.facts.publicKey;
+      break;
     case "key_change": {
-      const signer = keyChangeSigner(entry, ring.infos);
-      if (signer === undefined) return false;
-      // Steht der neue Schlüssel in der Liste, muss er derselbe sein wie im Beleg.
-      const next = ring.info(body.facts.newKeyId);
-      if (next !== undefined && next.publicKey !== body.facts.publicKey) return false;
-      if (chain === undefined) return true;
-      if (signer === "previous") return active !== undefined && entry.keyId === active;
-      return body.facts.previousKeyId === undefined || body.facts.previousKeyId === active;
+      const { facts } = body;
+      if (active === undefined) return fail();
+      if (facts.previousKeyId !== undefined && facts.previousKeyId !== active.keyId) return fail();
+      if (facts.signedBy === "previous" && entry.keyId === active.keyId) {
+        publicKey = active.publicKey;
+      } else if (facts.signedBy === "new" && entry.keyId === facts.newKeyId) {
+        publicKey = facts.publicKey;
+        problems.push("schluesselwechsel_nicht_beglaubigt");
+      } else {
+        return fail(["schluessel_nicht_aus_kette"]);
+      }
+      // Eine Kennung, die die Kette schon kennt, darf nicht für einen anderen Schlüssel stehen.
+      const known = state.keys.get(facts.newKeyId);
+      if (known !== undefined && known !== facts.publicKey)
+        return fail(["schluessel_nicht_aus_kette"]);
+      break;
     }
     default:
-      return chain === undefined || entry.keyId === active;
+      if (active === undefined) return fail();
+      if (entry.keyId !== active.keyId) return fail(["schluessel_nicht_aus_kette"]);
+      publicKey = active.publicKey;
+  }
+
+  const imported = await importOnce(state, publicKey);
+  if (imported === undefined) return fail();
+  if (!(await signatureMatches(imported.key, entry.hash, entry.signature))) {
+    return fail([], imported.fingerprint);
+  }
+  return {
+    result: { check: "signatur", status: "ok", seq, fingerprint: imported.fingerprint },
+    problems,
+    keyId: entry.keyId,
+  };
+}
+
+/** Nach einem Eintrag: Start und Schlüsselwechsel legen fest, wer als Nächstes signiert. */
+function advanceKeys(body: ReceiptBody | undefined, state: ChainKeys): void {
+  if (body === undefined || typeof body !== "object") return;
+  if (body.type === "start" && state.active === undefined) {
+    state.active = { keyId: body.keyId, publicKey: body.facts.publicKey };
+    state.keys.set(body.keyId, body.facts.publicKey);
+  }
+  if (body.type === "key_change" && state.active !== undefined) {
+    state.active = { keyId: body.facts.newKeyId, publicKey: body.facts.publicKey };
+    if (!state.keys.has(body.facts.newKeyId)) {
+      state.keys.set(body.facts.newKeyId, body.facts.publicKey);
+    }
   }
 }
 
-function checkDecision(
+/** Nennt eine Liste von außen unter einer Kennung der Kette einen anderen Schlüssel? */
+function compareKeys(
+  state: ChainKeys,
+  publicKeys: readonly PublicKeyInfo[] | undefined,
+  findings: ChainFinding[],
+): void {
+  for (const info of publicKeys ?? []) {
+    const fromChain = state.keys.get(info.keyId);
+    if (fromChain !== undefined && fromChain !== info.publicKey) {
+      findings.push({ problem: "schluessel_nicht_aus_kette", keyId: info.keyId as KeyId });
+    }
+  }
+}
+
+/** Vergleicht die Kette mit einem außerhalb aufbewahrten Anker. */
+function compareAnchor(
+  anchor: ChainAnchor,
+  start: ReceiptEntry | undefined,
+  atAnchor: ReceiptEntry | undefined,
+  last: ReceiptEntry | null,
+  findings: ChainFinding[],
+): void {
+  const startBody = start?.body as ReceiptBody | undefined;
+  if (startBody?.type === "start") {
+    if (startBody.facts.installationId !== anchor.installationId) {
+      findings.push({ problem: "andere_installation", seq: 1 });
+    }
+    if (
+      startBody.keyId !== anchor.startKeyId ||
+      startBody.facts.publicKey !== anchor.startPublicKey
+    ) {
+      findings.push({ problem: "anderer_anfang_als_anker", seq: 1, keyId: startBody.keyId });
+    }
+  } else {
+    findings.push({ problem: "anderer_anfang_als_anker" });
+  }
+
+  if (last === null || seqOf(last) < anchor.seq || atAnchor === undefined) {
+    findings.push({ problem: "kette_kuerzer_als_anker", seq: anchor.seq });
+    return;
+  }
+  if (atAnchor.hash !== anchor.hash) {
+    findings.push({ problem: "kopf_abweichend", seq: anchor.seq });
+  } else if (atAnchor.keyId !== anchor.keyId) {
+    findings.push({ problem: "schluessel_nicht_aus_kette", seq: anchor.seq, keyId: anchor.keyId });
+  }
+}
+
+/**
+ * Signatur eines einzelnen Eintrags mit einer Liste von Schlüsseln (ohne Kette): Der Start nennt
+ * den eigenen öffentlichen Schlüssel; ein Schlüsselwechsel muss zu `signedBy` passen.
+ */
+async function listSignature(
+  entry: ReceiptEntry,
+  body: ReceiptBody | undefined,
+  ring: KeyRing,
+  seq: number,
+): Promise<CheckResult> {
+  const fail: CheckResult = { check: "signatur", status: "fehler", seq };
+  if (body === undefined || typeof body !== "object" || entry.keyId !== body.keyId) return fail;
+  const info = ring.info(entry.keyId);
+  if (info === undefined) return fail;
+  const imported = await ring.imported(info.publicKey);
+  if (imported === undefined) return fail;
+  if (!(await signatureMatches(imported.key, entry.hash, entry.signature))) {
+    return { ...fail, fingerprint: imported.fingerprint };
+  }
+  let allowed = true;
+  if (body.type === "start") allowed = body.facts.publicKey === info.publicKey;
+  if (body.type === "key_change") {
+    const next = ring.info(body.facts.newKeyId);
+    allowed =
+      keyChangeSigner(entry, ring.infos) !== undefined &&
+      (next === undefined || next.publicKey === body.facts.publicKey);
+  }
+  if (!allowed) return { ...fail, fingerprint: imported.fingerprint };
+  return { check: "signatur", status: "ok", seq, fingerprint: imported.fingerprint };
+}
+
+async function checkDecision(
   entry: ReceiptEntry,
   body: ReceiptBody | undefined,
   seq: number,
-  options: VerifyOptions | undefined,
-): CheckResult {
-  if (body?.type !== "decision" || options?.rules === undefined) {
+  rules: readonly RuleVersion[] | undefined,
+  history: RuleHistory | undefined,
+): Promise<CheckResult> {
+  const source = rules ?? history;
+  if (body?.type !== "decision" || source === undefined) {
     return { check: "entscheidung", status: "entfaellt", seq };
   }
-  const { status } = reevaluate(entry, options.rules);
-  const rule = body.decision.rules[0];
-  if (status === "ok" && rule !== undefined) {
-    return { check: "entscheidung", status, seq, rule: ruleRef(rule) };
+  const result = Array.isArray(source)
+    ? reevaluate(entry, source as readonly RuleVersion[])
+    : await reevaluate(entry, source as RuleHistory);
+  const check: CheckResult = { check: "entscheidung", status: result.status, seq };
+  if (result.ruleStand !== undefined) check.ruleStand = result.ruleStand;
+  if (result.status === "ok") {
+    const rule = body.decision.rules[0];
+    if (rule !== undefined) check.rule = { id: rule.id, version: rule.version };
+  } else {
+    if (result.problem !== undefined) check.problem = result.problem;
+    if (result.rule !== undefined) check.rule = result.rule;
   }
-  return { check: "entscheidung", status, seq };
+  return check;
 }

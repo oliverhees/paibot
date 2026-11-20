@@ -10,7 +10,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { APP_TABLE_RIGHTS, credentialsOf, scramVerifier } from "./rollen";
+import { APP_DEFAULT_TABLE_RIGHTS, APP_TABLE_RIGHTS, credentialsOf, scramVerifier } from "./rollen";
+import { createTestDb } from "./testing";
 
 describe("credentialsOf", () => {
   it("liest Benutzer und Passwort, auch mit kodierten Zeichen", () => {
@@ -40,5 +41,36 @@ describe("APP_TABLE_RIGHTS", () => {
     expect(APP_TABLE_RIGHTS.belege).toBe("select, insert");
     expect(APP_TABLE_RIGHTS.rules).toBe("select, insert");
     expect(Object.values(APP_TABLE_RIGHTS).join()).not.toMatch(/truncate|trigger|references/);
+  });
+
+  it("Werkzeug-Aufrufe: kein Löschen, ändern nur Zustand und Ergebnis", () => {
+    expect(APP_TABLE_RIGHTS.tool_calls).toMatch(/^select, insert, update \([a-z_, ]+\)$/);
+    expect(APP_TABLE_RIGHTS.tool_calls).not.toMatch(/delete|input|name|args_digest/);
+    expect(APP_TABLE_RIGHTS.installation_keys).toBe("select, insert, update (retired_at)");
+  });
+
+  it("jede Tabelle des Schemas hat einen Eintrag, und es gibt keinen Eintrag ohne Tabelle", async () => {
+    const { client } = await createTestDb();
+    try {
+      const { rows } = await client.query<{ name: string }>(`
+        select c.relname as name from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relkind in ('r', 'p')
+        order by c.relname`);
+      expect(rows.map((row) => row.name)).toEqual(Object.keys(APP_TABLE_RIGHTS).sort());
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("nur die Standard-Rechte oder weniger, nie mehr", () => {
+    const allowed = new Set(APP_DEFAULT_TABLE_RIGHTS.split(", "));
+    for (const [table, rights] of Object.entries(APP_TABLE_RIGHTS)) {
+      const words = rights
+        .replace(/\([^)]*\)/g, "")
+        .split(",")
+        .map((w) => w.trim());
+      for (const word of words) expect(allowed.has(word), `${table}: ${word}`).toBe(true);
+    }
   });
 });

@@ -11,16 +11,27 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { newId, type RuleDefinition } from "@paibot/shared";
+import { desc, eq } from "drizzle-orm";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "./client";
 import { runMigrations } from "./migrate";
-import { bots, conversations, events, messages, runs, settings } from "./repo";
-import { checkAppRole, checkMigrationState } from "./rollen";
+import {
+  bots,
+  conversations,
+  events,
+  installationKeys as keys,
+  messages,
+  rules as ruleRepo,
+  runs,
+  settings,
+  toolCalls,
+} from "./repo";
+import { APP_TABLE_RIGHTS, checkAppRole, checkMigrationState } from "./rollen";
 import { prepareDatabase } from "./rollen-start";
 import { belege, installationKeys, rules } from "./schema";
-import { belegRow, keyRow } from "./testdaten";
+import { belegRow, fingerprint, hmacDigest, keyRow, publicKey } from "./testdaten";
 import {
   createPostgresTestDatabase,
   MIGRATIONS_FOLDER,
@@ -37,6 +48,11 @@ function withUser(address: string, user: string, password: string): string {
   url.username = user;
   url.password = password;
   return url.toString();
+}
+
+async function currentDatabase(sql: postgres.Sql): Promise<string> {
+  const [row] = await sql<{ name: string }[]>`select current_database() as name`;
+  return row?.name ?? "";
 }
 
 async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
@@ -143,6 +159,181 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
     }
   });
 
+  it("die Rechte jeder Tabelle stehen in Postgres genau wie in APP_TABLE_RIGHTS", async () => {
+    const rows = await admin<{ name: string; rights: string }[]>`
+      select c.relname as name, string_agg(p.privilege_type, ', ' order by p.privilege_type) as rights
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      left join information_schema.table_privileges p
+        on p.table_schema = 'public' and p.table_name = c.relname and p.grantee = ${roleName}
+      where n.nspname = 'public' and c.relkind in ('r', 'p')
+      group by c.relname order by c.relname`;
+    const tableLevel = (rights: string) =>
+      rights
+        .replace(/\w+\s*\([^)]*\)/g, "")
+        .split(",")
+        .map((right) => right.trim())
+        .filter((right) => right !== "" && !right.includes("("))
+        .map((right) => right.toUpperCase())
+        .sort()
+        .join(", ");
+    expect(Object.fromEntries(rows.map((row) => [row.name, row.rights ?? ""]))).toEqual(
+      Object.fromEntries(
+        Object.entries(APP_TABLE_RIGHTS)
+          .map(([name, rights]) => [name, tableLevel(rights)] as const)
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+
+    const columns = await admin<{ name: string; columns: string }[]>`
+      select table_name as name, string_agg(column_name, ', ' order by column_name) as columns
+      from information_schema.column_privileges
+      where table_schema = 'public' and grantee = ${roleName} and privilege_type = 'UPDATE'
+        and table_name in ('installation_keys', 'tool_calls')
+      group by table_name order by table_name`;
+    const allowed = (name: string) =>
+      (/update\s*\(([^)]*)\)/.exec(APP_TABLE_RIGHTS[name] ?? "")?.[1] ?? "")
+        .split(",")
+        .map((column) => column.trim())
+        .sort()
+        .join(", ");
+    expect(Object.fromEntries(columns.map((row) => [row.name, row.columns]))).toEqual({
+      installation_keys: allowed("installation_keys"),
+      tool_calls: allowed("tool_calls"),
+    });
+  });
+
+  it("die App-Rolle hängt eine Regel-Fassung an, legt Werkzeug-Aufrufe an, schreibt sie fort und wechselt den Schlüssel", async () => {
+    const { db, sql } = createDb(appUrl);
+    try {
+      const rule = {
+        id: "R-100",
+        version: 1,
+        action: "nachricht.senden",
+        effect: "deny",
+        stage: "execute",
+        conditions: [],
+        priority: 5,
+        source: "owner",
+        enabled: true,
+        title: "Probe",
+        reason: "Probe der Rechte.",
+      } satisfies RuleDefinition;
+      const first = await ruleRepo.appendVersion(db, rule);
+      const second = await ruleRepo.appendVersion(db, { ...rule, version: 2, enabled: false });
+      expect(second.seq).toBeGreaterThan(first.seq);
+      expect(await ruleRepo.listActiveAsOf(db, first.seq)).toContainEqual(
+        expect.objectContaining({ id: "R-100", version: 1 }),
+      );
+
+      const bot = await bots.create(db, { name: "Werkzeug", avatarShape: "blatt", color: "blau" });
+      const conv = await conversations.create(db, { botId: bot.id, title: "Werkzeug" });
+      const question = await messages.insert(db, {
+        conversationId: conv.id,
+        role: "user",
+        content: "Bitte nachsehen",
+      });
+      const run = await runs.create(db, {
+        conversationId: conv.id,
+        triggerMessageId: question.id,
+        botId: bot.id,
+      });
+      const answer = await messages.insert(db, {
+        conversationId: conv.id,
+        role: "assistant",
+        content: "",
+      });
+      const key = await keys.create(db, {
+        publicKey: publicKey(),
+        privateKeyEnc: keyRow().privateKeyEnc,
+        fingerprint: fingerprint(),
+      });
+      const [last] = await db.select().from(belege).orderBy(desc(belege.seq)).limit(1);
+      const seq = last?.seq ?? 0;
+      const [decision] = await db
+        .insert(belege)
+        .values(
+          belegRow(key.id, {
+            seq: seq + 1,
+            prevHash: last?.hash ?? ZERO_PREV,
+            conversationId: conv.id,
+          }),
+        )
+        .returning();
+      const [result] = await db
+        .insert(belege)
+        .values(
+          belegRow(key.id, {
+            seq: seq + 2,
+            prevHash: decision?.hash ?? "",
+            conversationId: conv.id,
+          }),
+        )
+        .returning();
+      const actionId = newId("action");
+      await toolCalls.create(db, {
+        actionId,
+        conversationId: conv.id,
+        runId: run.id,
+        messageId: answer.id,
+        position: 0,
+        callId: "aufruf-1",
+        name: "suche",
+        source: "eingebaut",
+        kind: "lesen",
+        input: { frage: "Wetter" },
+        argsDigest: hmacDigest(),
+      });
+      await toolCalls.recordDecision(db, actionId, {
+        outcome: "allow",
+        decisionReceiptId: decision?.id ?? newId("receipt"),
+      });
+      const done = await toolCalls.finish(db, actionId, {
+        status: "succeeded",
+        output: { text: "Sonne" },
+        resultReceiptId: result?.id ?? newId("receipt"),
+      });
+      expect(done.status).toBe("succeeded");
+
+      const rotated = await keys.rotate(db, {
+        publicKey: publicKey(),
+        privateKeyEnc: keyRow().privateKeyEnc,
+        fingerprint: fingerprint(),
+      });
+      expect((await keys.getActive(db))?.id).toBe(rotated.id);
+      expect((await keys.list(db)).find((k) => k.id === key.id)?.retiredAt).toBeDefined();
+
+      // Der Werkzeug-Aufruf verschwindet mit der Unterhaltung, ohne eigenes Löschrecht.
+      await conversations.remove(db, conv.id);
+      expect(await toolCalls.get(db, actionId)).toBeUndefined();
+    } finally {
+      await sql.end({ timeout: 2 });
+    }
+  });
+
+  it("an Werkzeug-Aufrufen und Schlüsseln lässt sich nichts außerhalb der erlaubten Spalten ändern", async () => {
+    for (const statement of [
+      "update tool_calls set input = '{}'::jsonb",
+      "update tool_calls set name = name",
+      "update tool_calls set args_digest = args_digest",
+      "update tool_calls set conversation_id = conversation_id",
+      "delete from tool_calls",
+      "truncate tool_calls",
+      "update installation_keys set private_key_enc = private_key_enc",
+      "update installation_keys set fingerprint = fingerprint",
+      "update installation_keys set created_at = now()",
+      "truncate installation_keys",
+    ]) {
+      expect(await codeOf(app.unsafe(statement)), statement).toBe("42501");
+    }
+    // Die eine erlaubte Spalte: einen ausgemusterten Schlüssel wieder aktiv setzen verbietet der Trigger.
+    expect(
+      await codeOf(
+        app.unsafe("update installation_keys set retired_at = null where retired_at is not null"),
+      ),
+    ).toBe("23001");
+  });
+
   it("UPDATE, DELETE und TRUNCATE auf Belegen und Regeln scheitern an fehlenden Rechten", async () => {
     for (const statement of [
       "update belege set signature = signature",
@@ -150,8 +341,10 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
       "truncate belege",
       "truncate belege cascade",
       "update rules set enabled = false",
+      "update rules set effect = 'allow' where id = 'R-999'",
       "delete from rules",
       "truncate rules",
+      "truncate rules cascade",
       "update installation_keys set public_key = public_key",
       "delete from installation_keys",
       "update conversation_events set type = type",
@@ -168,6 +361,18 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
       "alter table belege disable trigger belege_kein_update_delete",
       "alter table conversation_events disable trigger user",
       "drop trigger belege_kein_update_delete on belege",
+      "alter table rules disable trigger regeln_kein_update_delete",
+      "alter table rules disable trigger all",
+      "drop trigger regeln_kein_update_delete on rules",
+      "drop trigger regeln_kein_truncate on rules",
+      "drop function paibot_regeln_unveraenderlich() cascade",
+      "alter table installation_keys disable trigger schluessel_nur_anhaengen",
+      "drop trigger schluessel_nur_anhaengen on installation_keys",
+      "drop function paibot_schluessel_nur_anhaengen() cascade",
+      "alter table tool_calls disable trigger all",
+      "alter table tool_calls drop constraint tool_calls_entscheidung_nach_dem_tor",
+      "alter table belege drop constraint belege_spalten_aus_koerper",
+      "create schema fremd",
       "drop function paibot_belege_unveraenderlich() cascade",
       "alter table belege owner to current_user",
       "set session_replication_role = replica",
@@ -182,19 +387,29 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
     expect((await checkMigrationState(app, MIGRATIONS_FOLDER)).status).toBe("aktuell");
   });
 
-  it("das Schema der Warteschlange gehört der App-Rolle, bis zur Einrichtung darf sie Schemas anlegen", async () => {
+  it("das Schema der Warteschlange gehört der App-Rolle; Schemas in der Datenbank anlegen darf sie nie", async () => {
     const [schema] = await admin`
       select pg_get_userbyid(nspowner) as owner from pg_namespace where nspname = 'pgboss'`;
     expect(schema?.owner).toBe(roleName);
-    const [rights] = await admin`
-      select has_database_privilege(${roleName}, current_database(), 'CREATE') as ok`;
-    expect(rights?.ok).toBe(true);
+    const createOnDatabase = async () => {
+      const [row] = await admin`
+        select has_database_privilege(${roleName}, current_database(), 'CREATE') as ok`;
+      return row?.ok;
+    };
+    expect(await createOnDatabase()).toBe(false);
+    // Im eigenen Schema richtet die Warteschlange ihre Tabellen ein.
     await app`create table pgboss.version (version int)`;
     await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
-    const [after] = await admin`
-      select has_database_privilege(${roleName}, current_database(), 'CREATE') as ok`;
-    expect(after?.ok).toBe(false);
+    expect(await createOnDatabase()).toBe(false);
     await app`drop table pgboss.version`;
+  });
+
+  it("ein früher vergebenes Recht, Schemas anzulegen, wird beim nächsten Start entzogen", async () => {
+    await admin.unsafe(`grant create on database ${await currentDatabase(admin)} to ${roleName}`);
+    await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
+    const [row] = await admin`
+      select has_database_privilege(${roleName}, current_database(), 'CREATE') as ok`;
+    expect(row?.ok).toBe(false);
   });
 
   it("ein zweiter Lauf ist wiederholbar und legt die Rolle nicht neu an", async () => {
@@ -267,6 +482,15 @@ describe.skipIf(BASE_URL === undefined)("Start der Datenbank gegen echtes Postgr
       log: silent,
     });
     expect(development.ok).toBe(true);
+
+    // Mit nur einer Rolle legt der Start das Schema der Warteschlange an.
+    const sql = postgres(db.url, { max: 1, onnotice: () => undefined });
+    try {
+      const [row] = await sql`select to_regnamespace('pgboss') is not null as ok`;
+      expect(row?.ok).toBe(true);
+    } finally {
+      await sql.end({ timeout: 2 });
+    }
   });
 
   it("Umstellung einer bestehenden Installation: Daten bleiben, danach eingeschränkt", async () => {

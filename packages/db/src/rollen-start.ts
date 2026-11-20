@@ -86,11 +86,8 @@ export async function prepareDatabase(options: DatabaseStartOptions): Promise<Da
   let migrated = false;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const result = await runMigrations(
-        migrationUrl,
-        options.migrationsFolder,
-        separateRoles ? { appUrl } : {},
-      );
+      // Auch mit nur einer Rolle: dann legt `prepareAppRole` nur das Schema der Warteschlange an.
+      const result = await runMigrations(migrationUrl, options.migrationsFolder, { appUrl });
       log.info("Datenbank-Migrationen angewendet.");
       if (result.appRole?.created) {
         log.info(`App-Rolle ${result.appRole.role} angelegt.`);

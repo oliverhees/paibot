@@ -30,6 +30,13 @@ describe("Schnittstelle", () => {
       "exportJsonl",
       "parseJsonl",
       "runCli",
+      "createAnchor",
+      "hashRule",
+      "rulesAsOf",
+      "cachedReceiptKeys",
+      "currentAnchor",
+      "exportHeader",
+      "ruleHistory",
     ]) {
       expect(typeof api[name]).toBe("function");
     }
@@ -39,12 +46,24 @@ describe("Schnittstelle", () => {
     const browser: Record<string, unknown> = await import("./verify");
     expect(typeof browser.verifyChain).toBe("function");
     expect(typeof browser.canonicalize).toBe("function");
+    expect(typeof browser.createAnchor).toBe("function");
+    expect(typeof browser.reevaluate).toBe("function");
+    expect(typeof browser.hashRule).toBe("function");
+    expect(browser.currentAnchor).toBeUndefined();
     expect(browser.createReceiptWriter).toBeUndefined();
     expect(browser.signReceipt).toBeUndefined();
   });
 
   it("die Dateien des Prüfers nutzen weder Node noch Datenbank noch das Krypto-Paket", () => {
-    for (const file of ["verify.ts", "build.ts", "canonical.ts", "hash.ts", "jsonl.ts"]) {
+    for (const file of [
+      "verify.ts",
+      "build.ts",
+      "canonical.ts",
+      "hash.ts",
+      "jsonl.ts",
+      "nachrechnen.ts",
+      "sha256.ts",
+    ]) {
       const text = readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
       expect(text).not.toMatch(/from "node:|@paibot\/db|@paibot\/crypto/);
     }

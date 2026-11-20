@@ -29,6 +29,7 @@ describe("Prüfer-Bündel für den Browser", () => {
     expect(code).not.toMatch(/\brequire\(/);
     const inputs = Object.keys(result.metafile.inputs);
     expect(inputs.some((path) => path.endsWith("src/verify.ts"))).toBe(true);
+    expect(inputs.some((path) => path.endsWith("src/nachrechnen.ts"))).toBe(true);
     for (const forbidden of [
       "/db/src/",
       "/crypto/src/",
@@ -36,6 +37,7 @@ describe("Prüfer-Bündel für den Browser", () => {
       "postgres",
       "writer.ts",
       "server.ts",
+      "export.ts",
     ]) {
       expect(inputs.filter((path) => path.includes(forbidden))).toEqual([]);
     }

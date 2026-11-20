@@ -55,11 +55,12 @@ async function resign(entry: ReceiptEntry, signer: TestKey): Promise<ReceiptEntr
 
 describe("verifyChain", () => {
   it("erkennt eine gültige Kette mit 100 Einträgen", async () => {
-    const report = await verifyChain(chain, [keyInfo(key)], { rules: [TEST_RULE] });
+    const report = await verifyChain(chain, { rules: [TEST_RULE], publicKeys: [keyInfo(key)] });
     expect(report).toEqual({
       ok: true,
       checked: COUNT,
       head: { seq: COUNT, hash: chain[COUNT - 1]?.hash },
+      verdict: { level: "vertrauenswuerdig", findings: [], anchor: "fehlt" },
     });
   });
 
@@ -71,7 +72,11 @@ describe("verifyChain", () => {
   });
 
   it("leere Kette ist gültig, aber ohne Kopf", async () => {
-    expect(await verifyChain([], [keyInfo(key)])).toEqual({ ok: true, checked: 0 });
+    expect(await verifyChain([], [keyInfo(key)])).toEqual({
+      ok: true,
+      checked: 0,
+      verdict: { level: "vertrauenswuerdig", findings: [], anchor: "fehlt" },
+    });
   });
 
   it("ein geändertes Feld: meldet genau diesen Eintrag (Inhalt)", async () => {
@@ -138,17 +143,27 @@ describe("verifyChain", () => {
     expect(failed(report.firstFailure?.checks ?? [])).toEqual(["signatur"]);
   });
 
-  it("fremder Schlüssel, der unter derselben Kennung in der Liste steht: Signatur stimmt, aber der Start nicht", async () => {
+  it("ausgetauschter öffentlicher Schlüssel in der Datenbank fällt auf, die Kette selbst bleibt gültig", async () => {
     const foreign = { ...testKey(), keyId: key.keyId };
-    const report = await verifyChain(chain, [keyInfo(foreign)]);
-    expect(report.firstFailure).toMatchObject({ seq: 1, index: 0 });
-    expect(failed(report.firstFailure?.checks ?? [])).toEqual(["signatur"]);
+    const report = await verifyChain(chain, { publicKeys: [keyInfo(foreign)] });
+    expect(report.firstFailure).toBeUndefined();
+    expect(report.ok).toBe(false);
+    expect(report.verdict).toEqual({
+      level: "ungueltig",
+      findings: [{ problem: "schluessel_nicht_aus_kette", keyId: key.keyId }],
+      anchor: "fehlt",
+    });
   });
 
-  it("unbekannter Schlüssel: Signatur ungültig", async () => {
-    const report = await verifyChain(chain, [keyInfo(testKey())]);
-    expect(report.firstFailure?.seq).toBe(1);
-    expect(failed(report.firstFailure?.checks ?? [])).toEqual(["signatur"]);
+  it("geprüft wird mit den Schlüsseln aus der Kette, nicht mit einer Liste von außen", async () => {
+    // Eine Liste ohne die Schlüssel der Kette ändert nichts; sie dient nur dem Vergleich.
+    expect((await verifyChain(chain, [keyInfo(testKey())])).ok).toBe(true);
+    expect((await verifyChain(chain)).ok).toBe(true);
+  });
+
+  it("ganze Kette mit eigenem Schlüssel neu geschrieben: ohne Anker nicht erkennbar", async () => {
+    const forged = await buildChain(10, testKey());
+    expect((await verifyChain(forged)).ok).toBe(true);
   });
 
   it("prev umgebogen und neu signiert mit dem eigenen Schlüssel: Kette bricht", async () => {
@@ -163,7 +178,7 @@ describe("verifyChain", () => {
 
   it("geänderte Regel-Fassung: Entscheidung folgt nicht mehr daraus", async () => {
     const changed = { ...TEST_RULE, effect: "deny" as const };
-    const report = await verifyChain(chain, [keyInfo(key)], { rules: [changed] });
+    const report = await verifyChain(chain, { rules: [changed] });
     expect(report.firstFailure).toMatchObject({ seq: 2, index: 0 + 1 });
     expect(failed(report.firstFailure?.checks ?? [])).toEqual(["entscheidung"]);
   });
@@ -223,7 +238,13 @@ describe("verifyReceipt", () => {
       { check: "inhalt", status: "ok", seq: 2 },
       { check: "signatur", status: "ok", seq: 2, fingerprint: key.fingerprint },
       { check: "kette", status: "ok", seq: 2 },
-      { check: "entscheidung", status: "ok", seq: 2, rule: { id: "R-001", version: 1 } },
+      {
+        check: "entscheidung",
+        status: "ok",
+        seq: 2,
+        rule: { id: "R-001", version: 1 },
+        ruleStand: "nicht_festgehalten",
+      },
     ]);
   });
 
@@ -280,13 +301,82 @@ describe("Schlüsselwechsel", () => {
     return { first, next, entries, keys: [keyInfo(first), keyInfo(next)] };
   }
 
-  for (const signedBy of ["previous", "new"] as const) {
-    it(`gilt, wenn ${signedBy === "previous" ? "der bisherige" : "der neue"} Schlüssel signiert`, async () => {
-      const { entries, keys } = await chainWithChange(signedBy);
-      expect((await verifyChain(entries, keys)).ok).toBe(true);
-      expect(keyChangeSigner(entries[4] as ReceiptEntry, keys)).toBe(signedBy);
+  it("gilt, wenn der bisherige Schlüssel signiert", async () => {
+    const { entries, keys } = await chainWithChange("previous");
+    const report = await verifyChain(entries, keys);
+    expect(report.ok).toBe(true);
+    expect(report.verdict.level).toBe("vertrauenswuerdig");
+    expect(report.notAttestedFrom).toBeUndefined();
+    expect(keyChangeSigner(entries[4] as ReceiptEntry, keys)).toBe("previous");
+  });
+
+  it("selbst beglaubigter Wechsel (nur vom neuen Schlüssel signiert): Vertrauen gebrochen", async () => {
+    const { next, entries, keys } = await chainWithChange("new");
+    const report = await verifyChain(entries, keys);
+    expect(report.firstFailure).toBeUndefined();
+    expect(report.ok).toBe(false);
+    expect(report.verdict).toEqual({
+      level: "vertrauen_gebrochen",
+      findings: [{ problem: "schluesselwechsel_nicht_beglaubigt", seq: 5, keyId: next.keyId }],
+      anchor: "fehlt",
     });
-  }
+    // Alle Belege ab dem Wechsel sind ausdrücklich nicht beglaubigt.
+    expect(report.notAttestedFrom).toBe(5);
+    expect(keyChangeSigner(entries[4] as ReceiptEntry, keys)).toBe("new");
+  });
+
+  it("selbst beglaubigter Wechsel eines Fremden, danach eigene Belege: nie vertrauenswürdig", async () => {
+    const first = testKey();
+    const intruder = testKey();
+    const entries = await buildChain(3, first);
+    const change = await signedEntry(
+      {
+        type: "key_change",
+        facts: {
+          newKeyId: intruder.keyId,
+          publicKey: intruder.publicKey,
+          previousKeyId: first.keyId,
+          signedBy: "new",
+        },
+      },
+      entries[2],
+      intruder,
+    );
+    entries.push(change);
+    const action = sendAction();
+    const facts = sendFacts();
+    entries.push(
+      await signedEntry(
+        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        change,
+        intruder,
+      ),
+    );
+    // Auch wenn die Datenbank den fremden Schlüssel als gültig führt.
+    const report = await verifyChain(entries, [keyInfo(first), keyInfo(intruder)]);
+    expect(report.verdict.level).toBe("vertrauen_gebrochen");
+    expect(report.notAttestedFrom).toBe(4);
+  });
+
+  it("Beleg mit einem Schlüssel, der nicht aus der Kette folgt", async () => {
+    const entries = await buildChain(4, key);
+    const other = testKey();
+    const action = sendAction();
+    const facts = sendFacts();
+    entries.push(
+      await signedEntry(
+        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        entries[3],
+        other,
+      ),
+    );
+    const report = await verifyChain(entries, [keyInfo(key), keyInfo(other)]);
+    expect(report.firstFailure?.seq).toBe(5);
+    expect(failed(report.firstFailure?.checks ?? [])).toEqual(["signatur"]);
+    expect(report.verdict.findings).toEqual([
+      { problem: "schluessel_nicht_aus_kette", seq: 5, keyId: other.keyId },
+    ]);
+  });
 
   it("nach dem Wechsel ist der alte Schlüssel nicht mehr gültig", async () => {
     const { first, entries, keys } = await chainWithChange("previous");
@@ -304,18 +394,46 @@ describe("Schlüsselwechsel", () => {
     expect(failed(report.firstFailure?.checks ?? [])).toEqual(["signatur"]);
   });
 
-  it("fehlt der neue Schlüssel in der Liste, scheitert der nächste Eintrag", async () => {
+  it("fehlt der neue Schlüssel in der Liste, prüft der Prüfer mit dem Schlüssel aus der Kette", async () => {
     const { first, entries } = await chainWithChange("previous");
     const report = await verifyChain(entries, [keyInfo(first)]);
-    expect(report.firstFailure?.seq).toBe(6);
+    expect(report.ok).toBe(true);
   });
 
-  it("neuer Schlüssel in der Liste mit anderem öffentlichen Teil: Wechsel ungültig", async () => {
+  it("neuer Schlüssel in der Liste mit anderem öffentlichen Teil: fällt beim Vergleich auf", async () => {
     const { first, next, entries } = await chainWithChange("previous");
     const fake = { ...keyInfo(testKey()), keyId: next.keyId };
     const report = await verifyChain(entries, [keyInfo(first), fake]);
-    expect(report.firstFailure?.seq).toBe(5);
+    expect(report.firstFailure).toBeUndefined();
+    expect(report.verdict.findings).toEqual([
+      { problem: "schluessel_nicht_aus_kette", keyId: next.keyId },
+    ]);
+  });
+
+  it("Wechsel zurück auf eine Kennung, die die Kette mit anderem Schlüssel kennt: ungültig", async () => {
+    const { first, next, entries } = await chainWithChange("previous");
+    const impostor = testKey();
+    entries.push(
+      await signedEntry(
+        {
+          type: "key_change",
+          facts: {
+            newKeyId: first.keyId,
+            publicKey: impostor.publicKey,
+            previousKeyId: next.keyId,
+            signedBy: "previous",
+          },
+        },
+        entries[5],
+        next,
+      ),
+    );
+    const report = await verifyChain(entries);
+    expect(report.firstFailure?.seq).toBe(7);
     expect(failed(report.firstFailure?.checks ?? [])).toEqual(["signatur"]);
+    expect(report.verdict.findings).toEqual([
+      { problem: "schluessel_nicht_aus_kette", seq: 7, keyId: next.keyId },
+    ]);
   });
 
   it("keyChangeSigner liefert undefined bei unbekanntem Schlüssel oder anderem Typ", async () => {
