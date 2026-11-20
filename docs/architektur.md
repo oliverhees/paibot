@@ -147,6 +147,27 @@ Was die Datenbank selbst absichert:
 - **Standard-Regeln** (`R-001`, `R-002`, `R-999`) legt eine Migration an, wiederholbar ohne Doppelungen.
 - **Datenschleuse:** `settings.schleuse_mode_default` kennt `off` und `on`, der Standard ist `off`. Bestehende Installationen mit dem früheren Wert `auto` werden bei der Migration auf `off` gesetzt.
 
+## Hintergrund-Läufe
+
+Die Antwort auf eine Nachricht entsteht im Hintergrund. Die Web-App reiht dafür einen Lauf in eine Warteschlange ein, der Worker holt ihn dort ab. Die Warteschlange liegt in derselben Postgres-Datenbank wie alles andere, in einem eigenen Schema (`pgboss`); es braucht keinen weiteren Dienst. Sie steckt im Paket `packages/jobs` (Bibliothek: pg-boss). Außerhalb dieses Pakets kennt niemand die Bibliothek.
+
+| Frage                                          | Antwort                                                                                                                                              |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wie wird ein Lauf eingereiht?                  | `enqueueRun({ runId, conversationId })`; auf Wunsch in derselben Transaktion wie Nachricht und Lauf, sodass beides zusammen gilt oder zusammen fällt |
+| Läuft zu einer Unterhaltung mehr als ein Lauf? | Nein. Pro Unterhaltung läuft ein Lauf nach dem anderen, in der Reihenfolge des Einreihens. Verschiedene Unterhaltungen laufen parallel               |
+| Kann ein Lauf doppelt entstehen?               | Nein. Aus der Lauf-ID wird eine feste Auftrags-ID gebildet; ein zweites Einreihen desselben Laufs ändert nichts und liefert dieselbe ID              |
+| Wird ein fehlgeschlagener Lauf wiederholt?     | Nein, nie: eine Modell-Antwort soll nicht doppelt entstehen. Die Aufgabe bekommt keinen zweiten Versuch                                              |
+| Was, wenn die Aufgabe einen Fehler wirft?      | Der Auftrag gilt als fehlgeschlagen und wird entfernt, damit die Unterhaltung nicht stehen bleibt; der Fehler steht im Log des Workers               |
+| Wie lange darf ein Lauf dauern?                | Zehn Minuten. Danach löst die Warteschlange das Abbruch-Signal der Aufgabe aus und gibt den Auftrag auf                                              |
+| Wie endet der Worker?                          | `stop` nimmt nichts Neues an und wartet, bis laufende Aufgaben fertig sind. Nach der Wartezeit bekommen sie das Abbruch-Signal                       |
+
+Gut zu wissen:
+
+- **Wecken:** Neue Aufträge wecken den Worker sofort (LISTEN/NOTIFY). Zusätzlich fragt der Worker alle ein bis zwei Sekunden nach, damit ein Auftrag, der hinter einem laufenden derselben Unterhaltung wartet, gleich nach dessen Ende drankommt.
+- **Fehlgeschlagene Aufträge stehen nicht im Weg:** Bei dieser Art Warteschlange hält ein fehlgeschlagener Auftrag alle folgenden derselben Unterhaltung zurück. PaiBot räumt solche Aufträge beim Start des Workers und danach alle 30 Sekunden weg, auch wenn der Auftrag nicht durch einen Fehler, sondern durch Zeitablauf fehlgeschlagen ist.
+- **Absturz des Workers:** Ein Auftrag, der gerade lief, wird nicht neu gestartet. Er bleibt bis zum Ablauf der zehn Minuten belegt, erst danach (mit etwas Verzögerung) kommt die Unterhaltung wieder dran. Den Zustand des Laufs selbst räumt der Worker beim Start auf.
+- **Schema:** pg-boss legt `pgboss` beim ersten `start` selbst an. Die Datenbank-Migrationen von PaiBot fassen es nicht an.
+
 ## Zusammenspiel der Pakete
 
 `apps/web` nutzt `@paibot/db` und `@paibot/shared`. Das Monorepo wird mit pnpm und Turborepo gebaut; das Docker-Image baut nur die Web-App und kopiert die Migrationen dazu.
