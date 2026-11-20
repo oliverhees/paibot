@@ -8,7 +8,9 @@
  * @since     2026-11-20
  */
 
-import { notImplemented } from "@paibot/stub";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { fromBase64Url, toBase64Url } from "./encoding";
+import { CryptoError } from "./errors";
 import type { DerivedKey } from "./master";
 
 /** Formatversion verschlüsselter Geheimnisse; steht vorne im gespeicherten Text. */
@@ -38,7 +40,14 @@ export function isEncryptedSecret(value: unknown): value is string {
  * ergeben verschiedene Texte. Der Klartext erscheint nie in Fehlermeldungen.
  */
 export function encryptSecret(plain: string, key: DerivedKey<EncryptionPurpose>): string {
-  return notImplemented("crypto.encryptSecret", plain, key);
+  assertKey(key);
+  const iv = randomBytes(SECRET_IV_BYTES);
+  const cipher = createCipheriv("aes-256-gcm", key, iv, { authTagLength: SECRET_TAG_BYTES });
+  const ciphertext = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [SECRET_FORMAT_VERSION, toBase64Url(iv), toBase64Url(tag), toBase64Url(ciphertext)].join(
+    ":",
+  );
 }
 
 /**
@@ -49,5 +58,31 @@ export function encryptSecret(plain: string, key: DerivedKey<EncryptionPurpose>)
  * Schlüssel oder verändertem IV, Tag oder Geheimtext. Gibt nie Teil-Klartext zurück.
  */
 export function decryptSecret(encrypted: string, key: DerivedKey<EncryptionPurpose>): string {
-  return notImplemented("crypto.decryptSecret", encrypted, key);
+  assertKey(key);
+  if (typeof encrypted !== "string") throw new CryptoError("format_ungueltig");
+  const parts = encrypted.split(":");
+  const version = parts[0] ?? "";
+  if (parts.length === 4 && version !== SECRET_FORMAT_VERSION && /^v[0-9]+$/.test(version)) {
+    throw new CryptoError("version_unbekannt");
+  }
+  if (!ENCRYPTED_SECRET_PATTERN.test(encrypted)) throw new CryptoError("format_ungueltig");
+  const [, ivText = "", tagText = "", ctText = ""] = parts;
+  try {
+    const iv = fromBase64Url(ivText);
+    const tag = fromBase64Url(tagText);
+    const ciphertext = fromBase64Url(ctText);
+    const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: SECRET_TAG_BYTES });
+    decipher.setAuthTag(tag);
+    const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    return new TextDecoder("utf-8", { fatal: true }).decode(plain);
+  } catch {
+    // Absichtlich ohne Ursache: weder Schlüssel noch Teile des Texts sollen in einer Meldung landen.
+    throw new CryptoError("entschluesseln_fehlgeschlagen");
+  }
+}
+
+function assertKey(key: Uint8Array): void {
+  if (!(key instanceof Uint8Array) || key.length !== 32) {
+    throw new TypeError("Der Schlüssel muss 32 Byte lang sein");
+  }
 }
