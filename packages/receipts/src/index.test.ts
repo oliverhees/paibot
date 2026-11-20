@@ -64,13 +64,8 @@ describe("Schnittstelle", () => {
     ]);
   });
 
-  it("noch nicht umgesetzte Funktionen melden das", () => {
-    let caught: unknown;
-    try {
-      receipts.canonicalize({ a: 1 });
-    } catch (error) {
-      caught = error;
-    }
-    expect(isNotImplemented(caught)).toBe(true);
+  it("alle Funktionen sind umgesetzt", () => {
+    expect(isNotImplemented(receipts.canonicalize({ a: 1 }))).toBe(false);
+    expect(receipts.canonicalize({ b: 2, a: 1 })).toBe('{"a":1,"b":2}');
   });
 });

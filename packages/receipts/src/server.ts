@@ -9,18 +9,17 @@
  * @since     2026-11-20
  */
 
-import type { DerivedKey } from "@paibot/crypto";
-import type { ReceiptEntry } from "@paibot/shared/belege";
+import { contextDigest, type DerivedKey, safeEqual, sign } from "@paibot/crypto";
+import type { ReceiptBody, ReceiptEntry } from "@paibot/shared/belege";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
-import { notImplemented } from "@paibot/stub";
-import type { CheckResult } from "./verify";
+import { type CheckResult, digestBytes } from "./verify";
 
 /**
  * Signiert eine Beleg-Prüfsumme: Ed25519 über die 32 Rohbyte (nicht über den Hex-Text), Ergebnis
  * base64url ohne Auffüllung (86 Zeichen).
  */
 export function signReceipt(hash: Sha256Digest, privateKey: string): string {
-  return notImplemented("receipts.signReceipt", hash, privateKey);
+  return sign(privateKey, digestBytes(hash));
 }
 
 /**
@@ -32,5 +31,11 @@ export function checkContext(
   content: string | undefined,
   contextKey: DerivedKey<"context-v1">,
 ): CheckResult {
-  return notImplemented("receipts.checkContext", entry, content, contextKey);
+  const body = entry.body as ReceiptBody | undefined;
+  const digest = body?.type === "decision" ? body.context?.digest : undefined;
+  if (digest === undefined || content === undefined) {
+    return { check: "kontext", status: "entfaellt", seq: entry.seq };
+  }
+  const ok = safeEqual(contextDigest(contextKey, content), digest);
+  return { check: "kontext", status: ok ? "ok" : "fehler", seq: entry.seq };
 }

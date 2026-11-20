@@ -9,16 +9,19 @@
  */
 
 import type { ActionRequest } from "@paibot/shared/aktionen";
-import type {
-  KeyChangeFacts,
-  ReceiptBody,
-  ReceiptResult,
-  ReceiptUndo,
+import {
+  type KeyChangeFacts,
+  RECEIPT_VERSION,
+  type ReceiptBody,
+  type ReceiptResult,
+  type ReceiptUndo,
+  receiptBodySchema,
 } from "@paibot/shared/belege";
+import { invalidInput, PaiBotError } from "@paibot/shared/fehler";
 import type { HmacDigest, IsoTime, Sha256Digest } from "@paibot/shared/grundtypen";
 import type { InstallationId, KeyId, ReceiptId } from "@paibot/shared/ids";
 import type { Decision } from "@paibot/shared/tor";
-import { notImplemented } from "@paibot/stub";
+import { CanonicalizeError, type CanonicalValue, canonicalize } from "./canonical";
 
 /** Inhalt eines neuen Belegs, ohne die Angaben zur Kette. */
 export type ReceiptDraft =
@@ -59,5 +62,76 @@ export interface ChainLink {
  * (z. B. Gleitkommazahl in den Fakten).
  */
 export function buildReceipt(draft: ReceiptDraft, link: ChainLink): ReceiptBody {
-  return notImplemented("receipts.buildReceipt", draft, link);
+  const common = {
+    v: RECEIPT_VERSION,
+    id: link.id,
+    seq: link.seq,
+    time: link.time,
+    prev: link.prev,
+    keyId: link.keyId,
+  };
+
+  let body: Record<string, unknown>;
+  switch (draft.type) {
+    case "start":
+    case "key_change":
+      body = { ...common, type: draft.type, facts: draft.facts };
+      break;
+    case "decision":
+      body = {
+        ...common,
+        type: "decision",
+        action: draft.action,
+        decision: {
+          outcome: draft.decision.outcome,
+          stage: draft.decision.stage,
+          rules: draft.decision.matchedRules,
+          limits: draft.decision.limits,
+          reason: draft.decision.reason,
+        },
+        facts: draft.facts,
+        context: draft.context,
+        undo: draft.undo,
+      };
+      break;
+    case "result":
+      body = {
+        ...common,
+        type: "result",
+        action: draft.action,
+        result: draft.result,
+        undo: draft.undo,
+      };
+      break;
+    default:
+      throw new PaiBotError("eingabe_ungueltig");
+  }
+
+  const clean = withoutUndefined(body) as Record<string, unknown>;
+  const parsed = receiptBodySchema.safeParse(clean);
+  if (!parsed.success) throw invalidInput(parsed.error, clean);
+  try {
+    canonicalize(clean as CanonicalValue);
+  } catch (error) {
+    if (error instanceof CanonicalizeError)
+      throw new PaiBotError("eingabe_ungueltig", { cause: error });
+    throw error;
+  }
+  return clean as unknown as ReceiptBody;
+}
+
+/**
+ * Kopiert Objekte und Listen ohne Felder mit dem Wert `undefined`, damit optionale Angaben im
+ * Beleg fehlen statt leer zu sein. Andere Werte bleiben unverändert.
+ */
+function withoutUndefined(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutUndefined);
+  if (value === null || typeof value !== "object") return value;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return value;
+  const copy: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry !== undefined) copy[key] = withoutUndefined(entry);
+  }
+  return copy;
 }
