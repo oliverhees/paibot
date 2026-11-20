@@ -1,0 +1,52 @@
+{
+  "labels": [
+    {
+      "name": "funktion",
+      "color": "1f6feb",
+      "description": "Neue Funktion oder Erweiterung von PaiBot"
+    },
+    {
+      "name": "fehler",
+      "color": "d73a4a",
+      "description": "Etwas funktioniert nicht wie erwartet"
+    },
+    {
+      "name": "doku",
+      "color": "0e8a16",
+      "description": "Dokumentation für Nutzer und Mitwirkende"
+    },
+    {
+      "name": "sicherheit",
+      "color": "b60205",
+      "description": "Schutz von Daten, Zugang und Schlüsseln"
+    },
+    {
+      "name": "qualitaet",
+      "color": "fbca04",
+      "description": "Tests, Prüfungen und Zuverlässigkeit"
+    },
+    {
+      "name": "technik",
+      "color": "5319e7",
+      "description": "Aufbau, Werkzeuge und Betrieb hinter den Kulissen"
+    }
+  ],
+  "milestones": [
+    {
+      "title": "Folge 2 – Server",
+      "description": "PaiBot läuft auf dem eigenen Server: Docker Compose, Datenbank und Statusprüfung."
+    },
+    {
+      "title": "Folge 3 – Basisversion",
+      "description": "Die erste benutzbare Fassung: Chat mit deinem Bot, eigene Modelle, zuschaltbare Datenschleuse und ein Beleg für jede Aktion."
+    },
+    {
+      "title": "Danach – Apps anbinden",
+      "description": "PaiBot arbeitet über MCP in deinen Apps; schreibende Aktionen gehen durch das Tor und bekommen einen Beleg."
+    },
+    {
+      "title": "Danach – Bots im Team",
+      "description": "Mehrere Bots mit eigenen Rollen arbeiten für dich zusammen, geben Aufgaben weiter und berichten dir in einem gemeinsamen Chat."
+    }
+  ]
+}

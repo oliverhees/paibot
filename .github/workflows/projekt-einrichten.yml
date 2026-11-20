@@ -1,0 +1,107 @@
+# PaiBot – legt Labels und Meilensteine aus .github/projekt.json an und gleicht sie an.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-20
+
+# Läuft von Hand (workflow_dispatch) und nach jeder Änderung der Datei auf main.
+# Vorhandene Labels und Meilensteine werden angeglichen, nichts wird gelöscht.
+# Der Zustand eines Meilensteins (offen/geschlossen) bleibt, wie er ist.
+
+name: Projekt einrichten
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/projekt.json
+      - .github/workflows/projekt-einrichten.yml
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: projekt-einrichten
+  cancel-in-progress: false
+
+jobs:
+  einrichten:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Labels und Meilensteine angleichen
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATEI: .github/projekt.json
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY fehlt}"
+          summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+          # 1. Datei prüfen: Form, Pflichtfelder, Farben als Hex ohne #.
+          jq -e '
+            (.labels | type == "array" and length > 0) and
+            (.milestones | type == "array" and length > 0) and
+            all(.labels[];
+              (.name | type == "string" and length > 0) and
+              (.color | type == "string" and test("^[0-9a-fA-F]{6}$")) and
+              (.description | type == "string" and length <= 100)) and
+            all(.milestones[];
+              (.title | type == "string" and length > 0) and
+              (.description | type == "string"))
+          ' "$DATEI" > /dev/null || { echo "::error::$DATEI hat nicht die erwartete Form"; exit 1; }
+
+          # 2. Labels: --force legt an oder gleicht Farbe und Beschreibung an.
+          anzahl_labels=$(jq '.labels | length' "$DATEI")
+          for ((i = 0; i < anzahl_labels; i++)); do
+            name=$(jq -r --argjson i "$i" '.labels[$i].name' "$DATEI")
+            farbe=$(jq -r --argjson i "$i" '.labels[$i].color' "$DATEI")
+            text=$(jq -r --argjson i "$i" '.labels[$i].description' "$DATEI")
+            gh label create "$name" --repo "$repo" --color "$farbe" --description "$text" --force
+            echo "Label angeglichen: $name"
+          done
+
+          # 3. Meilensteine: vorhandene (offen und geschlossen) nach Titel suchen.
+          vorhanden=$(gh api --paginate "repos/$repo/milestones?state=all&per_page=100" \
+            --jq '.[] | {number, title}' | jq -s '.')
+
+          tabelle=$(mktemp)
+          anzahl_meilensteine=$(jq '.milestones | length' "$DATEI")
+          for ((i = 0; i < anzahl_meilensteine; i++)); do
+            titel=$(jq -r --argjson i "$i" '.milestones[$i].title' "$DATEI")
+            text=$(jq -r --argjson i "$i" '.milestones[$i].description' "$DATEI")
+            nummer=$(jq -r --arg t "$titel" 'map(select(.title == $t)) | first | .number // empty' <<< "$vorhanden")
+            if [[ -n "$nummer" ]]; then
+              gh api -X PATCH "repos/$repo/milestones/$nummer" \
+                -f title="$titel" -f description="$text" --jq '.number' > /dev/null
+              echo "Meilenstein angeglichen: $titel (#$nummer)"
+            else
+              nummer=$(gh api -X POST "repos/$repo/milestones" \
+                -f title="$titel" -f description="$text" -f state=open --jq '.number')
+              echo "Meilenstein angelegt: $titel (#$nummer)"
+            fi
+            printf '%s\t%s\n' "$titel" "$nummer" >> "$tabelle"
+          done
+
+          # 4. Übersicht Name → Nummer im Log und als Job-Summary.
+          echo
+          echo "Meilensteine (Name → Nummer):"
+          while IFS=$'\t' read -r titel nummer; do
+            printf '  %s → %s\n' "$titel" "$nummer"
+          done < "$tabelle"
+          {
+            echo "### Meilensteine"
+            echo
+            echo "| Name | Nummer |"
+            echo "| --- | --- |"
+            while IFS=$'\t' read -r titel nummer; do
+              echo "| $titel | $nummer |"
+            done < "$tabelle"
+          } >> "$summary"
