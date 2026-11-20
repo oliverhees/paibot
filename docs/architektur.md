@@ -102,6 +102,37 @@ Diese Begriffe tauchen in Code und Doku immer wieder auf. Was mit **im Bau** mar
 | Beleg         | Eintrag im Protokoll zu jeder Entscheidung des Tors und ihrem Ergebnis, verkettet über Prüfsummen und signiert mit dem Schlüssel der Installation              | im Bau |
 | Motor         | der Teil, der mit dem Modell eine Runde Gespräch erzeugt; er führt nie selbst ein Werkzeug aus                                                                 | im Bau |
 
+## Datenmodell
+
+Das Schema liegt in `packages/db/src/schema/` (eine Datei pro Bereich), die Migrationen in `packages/db/drizzle/`. Alle Tabellen sind angelegt; was mit **im Bau** markiert ist, nutzt noch keine Funktion der App.
+
+| Tabelle               | Wofür                                                                                                                                | Stand        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| `settings`            | Einstellungen der Installation, genau eine Zeile (Sprache, Zeitzone, Standard der Datenschleuse, Grenzen, Not-Aus, Installations-ID) | in Benutzung |
+| `owner`               | die eine Person, der die Installation gehört (Passwort-Prüfwert); höchstens eine Zeile                                               | im Bau       |
+| `sessions`            | angemeldete Sitzungen; gespeichert wird nur die Prüfsumme des Tokens                                                                 | im Bau       |
+| `rate_limits`         | Zähler gegen zu viele Versuche (Anmelden, Nachrichten)                                                                               | im Bau       |
+| `providers`           | Anbieter von Modellen; der API-Schlüssel liegt nur verschlüsselt                                                                     | im Bau       |
+| `models`              | Modelle eines Anbieters                                                                                                              | im Bau       |
+| `bots`                | Bot mit Name, Anweisung, Modell und Aussehen                                                                                         | im Bau       |
+| `conversations`       | Unterhaltungen mit dem Bot, mit Schalter der Datenschleuse                                                                           | im Bau       |
+| `messages`            | Nachrichten einer Unterhaltung                                                                                                       | im Bau       |
+| `runs`                | Läufe: die Arbeit an einer Antwort im Hintergrund                                                                                    | im Bau       |
+| `conversation_events` | Ereignis-Strom je Unterhaltung, nur anhängend, mit laufender Nummer                                                                  | im Bau       |
+| `rules`               | Regeln des Tors; jede Änderung ist eine neue Fassung                                                                                 | im Bau       |
+| `installation_keys`   | Signaturschlüssel der Installation für die Belege                                                                                    | im Bau       |
+| `belege`              | Protokoll aller Entscheidungen des Tors, verkettet und unveränderlich                                                                | im Bau       |
+
+Was die Datenbank selbst absichert:
+
+- **IDs** haben pro Art ein festes Muster (z. B. `unt_…`), jede Tabelle prüft es. Aufzählungen wie Rolle, Zustand oder Region sind per `CHECK` auf die erlaubten Werte begrenzt.
+- **Ein offener Lauf je Unterhaltung:** Läufe im Zustand `queued`, `running` oder `waiting_approval` zählen als offen; ein eindeutiger Index lässt pro Unterhaltung höchstens einen zu. Wird ein wartender Lauf fortgesetzt, ist das ein neuer Lauf, der über `resumes_run_id` auf den alten zeigt.
+- **Belege sind unveränderlich:** Trigger weisen `UPDATE`, `DELETE` und `TRUNCATE` auf `belege` ab. Jeder Eintrag zeigt über `prev_hash` auf den vorigen; eindeutige Indizes verhindern, dass die Kette sich verzweigt. Belege enthalten keine Nachrichtentexte und hängen nicht per Fremdschlüssel an Unterhaltungen.
+- **Ereignisse werden nur angehängt:** gelöscht werden nur `text.delta`-Ereignisse und alles zusammen mit der Unterhaltung.
+- **Installations-ID:** nach dem Setzen nicht mehr änderbar.
+- **Standard-Regeln** (`R-001`, `R-002`, `R-999`) legt eine Migration an, wiederholbar ohne Doppelungen.
+- **Datenschleuse:** `settings.schleuse_mode_default` kennt `off` und `on`, der Standard ist `off`. Bestehende Installationen mit dem früheren Wert `auto` werden bei der Migration auf `off` gesetzt.
+
 ## Zusammenspiel der Pakete
 
 `apps/web` nutzt `@paibot/db` und `@paibot/shared`. Das Monorepo wird mit pnpm und Turborepo gebaut; das Docker-Image baut nur die Web-App und kopiert die Migrationen dazu.
