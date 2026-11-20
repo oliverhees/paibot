@@ -9,6 +9,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { contextDigest, deriveKey, loadMasterSecret } from "@paibot/crypto";
 import {
   BELEGE_LOCK_KEY,
   belege,
@@ -17,17 +18,17 @@ import {
   conversations,
   type Database,
   installationKeys,
+  repo,
 } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
+import { evaluate } from "@paibot/gate";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { exportJsonl, parseJsonl } from "./jsonl";
 import { checkContext } from "./server";
 import {
-  cryptoFake,
-  fakeEvaluate,
   keyInfo,
   sendAction,
   sendFacts,
@@ -38,15 +39,6 @@ import {
 } from "./testhilfen";
 import { verifyChain } from "./verify";
 import { createReceiptWriter, RECEIPT_LOCK_ID, type ReceiptChainWriter } from "./writer";
-
-vi.mock("@paibot/crypto", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  ...(await import("./testhilfen")).cryptoFake,
-}));
-vi.mock("@paibot/gate", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  evaluate: (await import("./testhilfen")).fakeEvaluate,
-}));
 
 const TIME = new Date(Date.UTC(2026, 10, 20, 10, 0, 0));
 const b64 = (bytes: number) => randomBytes(bytes).toString("base64url");
@@ -80,7 +72,7 @@ async function allEntries(db: Database): Promise<ReceiptEntry[]> {
 }
 
 function decisionRecord(action = sendAction(), facts = sendFacts()) {
-  return { action, facts, decision: fakeEvaluate(action, facts, [TEST_RULE]), time: TIME };
+  return { action, facts, decision: evaluate(action, facts, [TEST_RULE]), time: TIME };
 }
 
 async function errorOf(promise: Promise<unknown>): Promise<unknown> {
@@ -252,6 +244,37 @@ describe("createReceiptWriter", () => {
     expect(events[1]?.seq).toBe(2);
   });
 
+  it("beleg.created teilt die Nummern mit den übrigen Ereignissen der Unterhaltung", async () => {
+    await start();
+    const botId = newId("bot");
+    await ctx.db
+      .insert(bots)
+      .values({ id: botId, name: "Pai", avatarShape: "blatt", color: "limette" });
+    const action = sendAction();
+    const conversationId = action.target.conversationId;
+    await ctx.db.insert(conversations).values({ id: conversationId, botId, title: "Beispiel" });
+    const messageId = action.target.messageId;
+    const first = await repo.events.append(ctx.db, {
+      conversationId,
+      type: "message.created",
+      data: { messageId, role: "user", text: "Hallo" },
+    });
+    await writer.appendDecision(decisionRecord(action));
+    const last = await repo.events.append(ctx.db, {
+      conversationId,
+      type: "message.created",
+      data: { messageId: newId("message"), role: "assistant", text: "" },
+    });
+    const seqs = (await repo.events.listSince(ctx.db, conversationId)).map((e) => [e.seq, e.type]);
+    expect(first.seq).toBe(1);
+    expect(seqs).toEqual([
+      [1, "message.created"],
+      [2, "beleg.created"],
+      [3, "message.created"],
+    ]);
+    expect(last.seq).toBe(3);
+  });
+
   it("ohne Unterhaltung entsteht der Beleg ohne Ereignis", async () => {
     await start();
     const ref = await writer.appendDecision(decisionRecord());
@@ -373,11 +396,14 @@ describe("Export aus der Datenbank", () => {
 describe("checkContext", () => {
   it("vergleicht die Kontext-Prüfsumme mit dem gespeicherten Inhalt", async () => {
     await start();
-    const contextKey = new Uint8Array(32).fill(7) as never;
+    const contextKey = deriveKey(
+      loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") }),
+      "context-v1",
+    );
     const record = decisionRecord();
     await writer.appendDecision({
       ...record,
-      context: { digest: cryptoFake.contextDigest(contextKey, "Hallo Max") as never },
+      context: { digest: contextDigest(contextKey, "Hallo Max") },
     });
     const entry = (await writer.head()) as ReceiptEntry;
     expect(checkContext(entry, "Hallo Max", contextKey).status).toBe("ok");

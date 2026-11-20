@@ -1,6 +1,6 @@
 /**
- * PaiBot – Hilfen für die Tests des Beleg-Protokolls: Schlüssel, Signaturen und Kontext-Prüfsummen
- * mit `node:crypto`, eine einfache Regel-Auswertung und Ketten im Speicher.
+ * PaiBot – Hilfen für die Tests des Beleg-Protokolls: Schlüssel und Signaturen aus dem
+ * Krypto-Paket, eine Test-Regel, Beispiel-Aktionen und Ketten im Speicher.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -9,24 +9,14 @@
  * @since     2026-11-20
  */
 
-import {
-  createHash,
-  createHmac,
-  createPrivateKey,
-  createPublicKey,
-  sign as nodeSign,
-  verify as nodeVerify,
-  randomBytes,
-  timingSafeEqual,
-} from "node:crypto";
+import { fingerprint, generateSigningKey, sign } from "@paibot/crypto";
+import { evaluate } from "@paibot/gate";
 import type { ActionRequest } from "@paibot/shared/aktionen";
 import type { PublicKeyInfo, ReceiptEntry } from "@paibot/shared/belege";
 import { type KeyId, newId } from "@paibot/shared/ids";
-import type { Decision, RuleDefinition } from "@paibot/shared/tor";
+import type { RuleDefinition } from "@paibot/shared/tor";
 import { buildReceipt, type ReceiptDraft } from "./build";
 import { digestBytes, hashReceipt } from "./hash";
-
-const PKCS8_ED25519_PREFIX = Buffer.from("302e020100300506032b657004220420", "hex");
 
 export interface TestKey {
   keyId: KeyId;
@@ -35,100 +25,19 @@ export interface TestKey {
   fingerprint: string;
 }
 
-function privateKeyObject(privateKey: string) {
-  const seed = Buffer.from(privateKey, "base64url");
-  if (seed.length !== 32) throw new Error("format_ungueltig");
-  return createPrivateKey({
-    key: Buffer.concat([PKCS8_ED25519_PREFIX, seed]),
-    format: "der",
-    type: "pkcs8",
-  });
-}
-
-export function testPublicKeyOf(privateKey: string): string {
-  const jwk = createPublicKey(privateKeyObject(privateKey)).export({ format: "jwk" });
-  return String(jwk.x);
-}
-
-export function testFingerprint(publicKey: string): string {
-  const hex = createHash("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
-  return [0, 4, 8, 12].map((i) => hex.slice(i, i + 4)).join("-");
-}
-
+/** Signiert wie der Server (Ed25519 aus `@paibot/crypto`). */
 export function testSign(privateKey: string, bytes: Uint8Array): string {
-  return nodeSign(null, bytes, privateKeyObject(privateKey)).toString("base64url");
+  return sign(privateKey, bytes);
 }
 
+/** Neuer Signaturschlüssel aus `@paibot/crypto` mit Kennung und Kurzform. */
 export function testKey(): TestKey {
-  const privateKey = randomBytes(32).toString("base64url");
-  const publicKey = testPublicKeyOf(privateKey);
-  return { keyId: newId("key"), publicKey, privateKey, fingerprint: testFingerprint(publicKey) };
+  const { publicKey, privateKey } = generateSigningKey();
+  return { keyId: newId("key"), publicKey, privateKey, fingerprint: fingerprint(publicKey) };
 }
 
 export function keyInfo(key: TestKey): PublicKeyInfo {
   return { keyId: key.keyId, publicKey: key.publicKey, fingerprint: key.fingerprint };
-}
-
-/** Ersatz für die Funktionen aus `@paibot/crypto`, die das Beleg-Paket aufruft. */
-export const cryptoFake = {
-  sign: testSign,
-  publicKeyOf: testPublicKeyOf,
-  fingerprint: testFingerprint,
-  verify(publicKey: string, bytes: Uint8Array, signature: string): boolean {
-    try {
-      const key = createPublicKey({
-        key: { kty: "OKP", crv: "Ed25519", x: publicKey },
-        format: "jwk",
-      });
-      return nodeVerify(null, bytes, key, Buffer.from(signature, "base64url"));
-    } catch {
-      return false;
-    }
-  },
-  contextDigest(key: Uint8Array, data: string | Uint8Array): string {
-    return `hmac-sha256:${createHmac("sha256", key).update(data).digest("hex")}`;
-  },
-  safeEqual(a: string, b: string): boolean {
-    const left = Buffer.from(a);
-    const right = Buffer.from(b);
-    return left.length === right.length && timingSafeEqual(left, right);
-  },
-};
-
-/**
- * Einfache Regel-Auswertung für die Tests: erste passende Regel nach Priorität, Bedingungen nur
- * mit `eq` und `in`; keine Grenzen.
- */
-export function fakeEvaluate(
-  action: ActionRequest,
-  facts: Readonly<Record<string, unknown>>,
-  rules: readonly RuleDefinition[],
-): Decision {
-  const values: Record<string, unknown> = {
-    ...facts,
-    akteur: action.actor === "besitzer" ? "besitzer" : "bot",
-  };
-  const rule = [...rules]
-    .filter((r) => r.enabled && (r.action === "*" || r.action === action.type))
-    .sort((a, b) => a.priority - b.priority)
-    .find((r) =>
-      r.conditions.every((c) =>
-        c.op === "in"
-          ? Array.isArray(c.value) && (c.value as unknown[]).includes(values[c.fact])
-          : c.op === "eq" && values[c.fact] === c.value,
-      ),
-    );
-  if (rule === undefined) {
-    return { outcome: "ask", stage: "ask", matchedRules: [], limits: [], reason: "keine Regel" };
-  }
-  const outcome = rule.effect === "allow" ? "allow" : rule.effect;
-  return {
-    outcome,
-    stage: rule.stage,
-    matchedRules: [{ id: rule.id, version: rule.version }],
-    limits: [],
-    reason: rule.reason,
-  };
 }
 
 /** Eine Regel für die Tests: erlaubt `nachricht.senden` mit Sitzung. */
@@ -220,7 +129,7 @@ export async function buildChain(count: number, key: TestKey): Promise<ReceiptEn
       draft = {
         type: "decision",
         action,
-        decision: fakeEvaluate(action, facts, [TEST_RULE]),
+        decision: evaluate(action, facts, [TEST_RULE]),
         facts,
       };
     } else {
