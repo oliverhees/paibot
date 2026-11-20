@@ -125,6 +125,7 @@ export const API_ROUTEN = {
     zugang: "besitzer",
     antwort: "json",
     veraendernd: true,
+    aktion: "zugang.passwort_aendern",
     eingabe: passwordChangeInput,
   },
 
@@ -157,6 +158,7 @@ export const API_ROUTEN = {
     zugang: "besitzer",
     antwort: "json",
     veraendernd: true,
+    aktion: "unterhaltung.umbenennen",
     eingabe: conversationRenameInput,
   },
   unterhaltungLoeschen: {
@@ -373,10 +375,7 @@ export const API_ROUTEN = {
 export type RoutenName = keyof typeof API_ROUTEN;
 
 /** Verändernde Routen, für die die Verträge noch keine Aktion des Tors kennen. */
-export const ROUTEN_OHNE_AKTION = [
-  "passwortAendern",
-  "unterhaltungUmbenennen",
-] as const satisfies readonly RoutenName[];
+export const ROUTEN_OHNE_AKTION = [] as const satisfies readonly RoutenName[];
 
 type ParameterNamen<P extends string> = P extends `${string}:${infer Name}/${infer Rest}`
   ? Name | ParameterNamen<`/${Rest}`>

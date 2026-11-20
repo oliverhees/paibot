@@ -68,6 +68,7 @@ describe("Aktionen", () => {
       "zugang.anmelden",
       "zugang.abmelden",
       "zugang.alle_abmelden",
+      "zugang.passwort_aendern",
       "anbieter.speichern",
       "anbieter.loeschen",
       "modell.waehlen",
@@ -75,6 +76,7 @@ describe("Aktionen", () => {
       "schleuse.umschalten",
       "einstellung.aendern",
       "unterhaltung.anlegen",
+      "unterhaltung.umbenennen",
       "unterhaltung.loeschen",
       "nachricht.senden",
       "modell.anfragen",
@@ -134,6 +136,19 @@ describe("Aktionen", () => {
       credential: "passwort",
       remember: true,
     });
+  });
+
+  it("Passwort ändern und Unterhaltung umbenennen sind Verwaltungsaktionen des Besitzers", () => {
+    for (const type of ["zugang.passwort_aendern", "unterhaltung.umbenennen"] as const) {
+      expect(ACTIONS[type].actor).toBe("besitzer");
+      expect(factsSchema(type).parse({ credential: "sitzung" })).toEqual({ credential: "sitzung" });
+      expect(factsSchema(type).safeParse({}).success).toBe(false);
+      expect(factsSchema(type).safeParse({ credential: "sitzung", title: "x" }).success).toBe(
+        false,
+      );
+    }
+    const besitzerRegel = STANDARD_RULES.find((rule) => rule.id === "R-001");
+    expect(besitzerRegel?.action).toBe("*");
   });
 });
 

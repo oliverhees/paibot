@@ -9,6 +9,7 @@
  */
 
 import {
+  ACTION_TYPES,
   ACTIVE_RUN_STATUSES,
   fingerprintSchema,
   ID_PREFIX,
@@ -606,6 +607,21 @@ describe("rules", () => {
     reason: "Zum Testen.",
     ...abweichung,
   });
+
+  it.each(["rules_action_werte", "belege_action_werte"])(
+    "%s kennt genau die Aktionen der Verträge",
+    async (name) => {
+      const result = await ctx.client.query<{ definition: string }>(
+        "select pg_get_constraintdef(oid) as definition from pg_constraint where conname = $1",
+        [name],
+      );
+      const definition = result.rows[0]?.definition ?? "";
+      const werte = [...definition.matchAll(/'([a-z_.*]+)'/g)]
+        .map((m) => m[1])
+        .filter((wert) => wert !== "*");
+      expect(werte.sort()).toEqual([...ACTION_TYPES].sort());
+    },
+  );
 
   it("legt Regeln an: neue Fassung ist eine neue Zeile, ID mit reg_ ist erlaubt", async () => {
     await ctx.db.insert(rules).values(regel() as never);

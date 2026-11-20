@@ -29,6 +29,13 @@
       "when": 1795200500975,
       "tag": "0003_standard_regeln",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795202484105,
+      "tag": "0004_weitere_aktionen",
+      "breakpoints": true
     }
   ]
 }

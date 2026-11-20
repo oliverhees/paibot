@@ -76,6 +76,7 @@ export const ACTIONS = {
   "zugang.anmelden": action("besitzer", { ownerId }, { ...ownerFacts, remember: z.boolean() }),
   "zugang.abmelden": action("besitzer", { ownerId }, ownerFacts),
   "zugang.alle_abmelden": action("besitzer", { ownerId }, { ...ownerFacts, sessions: countSchema }),
+  "zugang.passwort_aendern": action("besitzer", { ownerId }, ownerFacts),
   "anbieter.speichern": action(
     "besitzer",
     { providerId },
@@ -105,6 +106,7 @@ export const ACTIONS = {
     { ...ownerFacts, fields: z.array(z.enum(SETTINGS_FIELDS)).min(1) },
   ),
   "unterhaltung.anlegen": action("besitzer", { conversationId, botId }, ownerFacts),
+  "unterhaltung.umbenennen": action("besitzer", { conversationId }, ownerFacts),
   "unterhaltung.loeschen": action("besitzer", { conversationId }, ownerFacts),
   "nachricht.senden": action(
     "besitzer",

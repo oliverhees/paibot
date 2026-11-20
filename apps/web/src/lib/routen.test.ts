@@ -39,6 +39,12 @@ describe("API-Routen", () => {
     }
   });
 
+  it("Passwort ändern und Unterhaltung umbenennen gehen durch das Tor", () => {
+    expect(ROUTEN_OHNE_AKTION).toEqual([]);
+    expect(API_ROUTEN.passwortAendern.aktion).toBe("zugang.passwort_aendern");
+    expect(API_ROUTEN.unterhaltungUmbenennen.aktion).toBe("unterhaltung.umbenennen");
+  });
+
   it("jede Aktion außer der Anfrage ans Modell hat eine Route", () => {
     const genutzt = new Set(routen.map(([, r]) => ("aktion" in r ? r.aktion : undefined)));
     for (const aktion of ACTION_TYPES) {
