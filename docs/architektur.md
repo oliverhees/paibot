@@ -193,6 +193,23 @@ Gut zu wissen:
 - **Telemetrie:** Der Motor registriert keine Telemetrie; die Bibliothek sendet dann nichts.
 - **Für Mitwirkende:** `@paibot/agents/testing` enthält einen Test-Motor (`createFakeMotor`) und den gemeinsamen Vertrags-Test-Satz (`motorContractTests`), den jeder Motor bestehen muss. Die Tests des Motors laufen gegen den Test-Anbieter, ohne Internet.
 
+## Live-Ereignisse
+
+Während der Bot antwortet, siehst du die Antwort Stück für Stück. Das läuft über einen Ereignis-Strom je Unterhaltung (Server-Sent Events): `GET /api/unterhaltungen/:id/ereignisse`. Die Bausteine liegen in `apps/web/src/lib/sse/`.
+
+| Frage                                         | Antwort                                                                                                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Wer darf den Strom öffnen?                    | Nur du mit gültiger Anmeldung. Ohne Anmeldung antwortet die Route mit 401 und liest nichts aus der Datenbank. Die Anmeldung wird bei jedem Herzschlag erneut geprüft                       |
+| Woher kommen die Ereignisse?                  | Aus der Tabelle `conversation_events`. Jedes Ereignis hat eine fortlaufende Nummer je Unterhaltung. Eine Meldung (`NOTIFY` auf `paibot_ereignis`) enthält nur die ID der Unterhaltung      |
+| Wie sieht ein Ereignis aus?                   | `id:` ist die Nummer, `event:` der Typ (z. B. `text.delta`), `data:` das Ereignis als JSON. Am Anfang steht `retry: 2750`, alle 15 Sekunden kommt ein Herzschlag `: puls`                  |
+| Was passiert nach einer Unterbrechung?        | Der Browser verbindet sich neu und schickt die letzte Nummer (`Last-Event-ID`). Der Strom schickt alles danach, ohne Lücke und ohne Doppel. Ohne Kopfzeile geht auch `?nach=<Nummer>`      |
+| Wie viele Datenbank-Verbindungen braucht das? | Eine einzige `LISTEN`-Verbindung je Prozess, egal wie viele Ströme offen sind. Bricht sie ab, baut sie sich selbst wieder auf, und alle Ströme lesen nach, was in der Zwischenzeit dazukam |
+| Gibt es Grenzen?                              | Höchstens 10 offene Ströme je Anmeldung und 20 insgesamt (sonst 429). Ein Strom endet nach 15 Minuten und verbindet sich dann von selbst neu                                               |
+| Was, wenn ein Gerät nicht mitliest?           | Der Strom liest nur nach, solange der Puffer Platz hat. Bleibt er eine Minute voll, wird die Verbindung getrennt; der Server wartet nicht                                                  |
+| Welche Fehler gibt es?                        | 401 ohne Anmeldung, 404 für eine unbekannte Unterhaltung (ohne Details), 400 für eine ungültige oder zu große `Last-Event-ID`, 429 bei zu vielen Strömen                                   |
+
+Für die Oberfläche gibt es den Hook `useConversationEvents(conversationId, { onEvent, nachSeq })`. Er meldet jedes Ereignis genau einmal und in Reihenfolge, verbindet nach Abbrüchen selbst neu und nennt den Zustand der Verbindung: `verbunden`, `verbindet_neu` oder `getrennt`. Mit `neuVerbinden()` lässt sich eine getrennte Verbindung wieder aufbauen.
+
 ## Zusammenspiel der Pakete
 
 `apps/web` nutzt `@paibot/db` und `@paibot/shared`. Das Monorepo wird mit pnpm und Turborepo gebaut; das Docker-Image baut nur die Web-App und kopiert die Migrationen dazu.
