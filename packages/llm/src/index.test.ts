@@ -8,7 +8,6 @@
  * @since     2026-11-20
  */
 
-import { isNotImplemented } from "@paibot/stub";
 import { describe, expect, it } from "vitest";
 import pkg from "../package.json";
 import * as llm from "./index";
@@ -26,6 +25,9 @@ describe("Schnittstelle", () => {
       "createEgressFetch",
       "checkProviderBaseUrl",
       "checkSchleuseHealth",
+      "egressTargetOf",
+      "isRetryable",
+      "schleuseModelName",
       "schleuseFromEnv",
     ]) {
       expect(typeof api[name]).toBe("function");
@@ -52,15 +54,5 @@ describe("Schnittstelle", () => {
     expect(llm.INTERNAL_SERVICE_HOSTS).toEqual(["postgres", "datenschleuse", "web", "worker"]);
     expect(llm.isSchleuseUnavailable({ unavailable: true, reason: "nicht_erreichbar" })).toBe(true);
     expect(llm.isSchleuseUnavailable("direct")).toBe(false);
-  });
-
-  it("noch nicht umgesetzte Funktionen melden das", () => {
-    let caught: unknown;
-    try {
-      llm.resolveSchleuseMode({ settings: "off" });
-    } catch (error) {
-      caught = error;
-    }
-    expect(isNotImplemented(caught)).toBe(true);
   });
 });

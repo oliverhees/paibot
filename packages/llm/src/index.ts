@@ -9,6 +9,7 @@
  * @since     2026-11-20
  */
 
+export * from "./address";
 export * from "./egress";
 export * from "./errors";
 export * from "./models";

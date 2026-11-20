@@ -36,3 +36,13 @@ export interface ProviderEndpoint {
   baseUrl: string;
   region: Region;
 }
+
+/**
+ * Vorlage für einen eigenen, OpenAI-kompatiblen Anbieter: Basis-URL und Region trägt der Nutzer
+ * ein. `http` und private Adressen sind nur bei Region `local` erlaubt (siehe
+ * `checkProviderBaseUrl`).
+ */
+export const CUSTOM_PROVIDER_TEMPLATE = {
+  kind: "openai_compatible",
+  regions: ["eu", "non_eu", "local"],
+} as const satisfies { kind: ProviderKind; regions: readonly Region[] };

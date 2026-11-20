@@ -9,7 +9,6 @@
  */
 
 import type { Route, SchleuseMode } from "@paibot/shared/objekte";
-import { notImplemented } from "@paibot/stub";
 import type { SchleuseStatus } from "./schleuse";
 
 /** Wo der Modus festgelegt sein kann, vom Genauesten zum Allgemeinsten. */
@@ -24,7 +23,7 @@ export interface SchleuseModeSources {
 
 /** Löst den Modus auf: Nachricht → Unterhaltung → Standard. Rein. */
 export function resolveSchleuseMode(sources: SchleuseModeSources): SchleuseMode {
-  return notImplemented("llm.resolveSchleuseMode", sources);
+  return sources.message ?? sources.conversation ?? sources.settings;
 }
 
 /** Die Datenschleuse ist gefordert, aber nicht nutzbar. Es gibt nie einen Rückfall auf direkt. */
@@ -41,7 +40,10 @@ export function resolveRoute(
   mode: SchleuseMode,
   schleuse: SchleuseStatus,
 ): Route | SchleuseUnavailable {
-  return notImplemented("llm.resolveRoute", mode, schleuse);
+  if (mode === "off") return "direct";
+  if (!schleuse.installed) return { unavailable: true, reason: "nicht_installiert" };
+  if (!schleuse.reachable) return { unavailable: true, reason: "nicht_erreichbar" };
+  return "schleuse";
 }
 
 /** Typwächter für `SchleuseUnavailable`. */
