@@ -10,6 +10,7 @@
  */
 
 import {
+  ACTIONS,
   type ActionRequest,
   type ActionType,
   botActor,
@@ -19,17 +20,20 @@ import {
 import { newId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
 import {
+  ACTIVE_STANDARD_RULES,
+  CREDENTIAL_SCOPE,
   decisionSchema,
   LIMIT_NAMES,
   LIMITS_BY_ID,
   type LimitName,
+  PRECONDITIONS,
+  preconditionsFor,
   type RuleCondition,
   type RuleDefinition,
-  STANDARD_RULES,
 } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import { conditionHolds, evaluate, NO_RULE_REASON, ruleApplies } from "./evaluate";
-import { ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
+import { ACTION_TYPES, BOT_ACTIONS, OWNER_ACTIONS, sampleAction, sampleFacts } from "./testdaten";
 
 declare global {
   interface ImportMeta {
@@ -47,16 +51,41 @@ const SOURCES = import.meta.glob(["./**/*.ts", "!./**/*.test.ts"], {
   eager: true,
 });
 
-const OWNER_ACTIONS = ACTION_TYPES.filter((type) => type !== "modell.anfragen");
-const R001 = STANDARD_RULES[0];
-const R002 = STANDARD_RULES[1];
-const R999 = STANDARD_RULES[2];
+const STANDARD: readonly RuleDefinition[] = ACTIVE_STANDARD_RULES;
 
-function decide(
-  type: ActionType,
-  facts?: Facts,
-  rules: readonly RuleDefinition[] = STANDARD_RULES,
-) {
+function standardRule(id: string): RuleDefinition {
+  const found = STANDARD.find((rule) => rule.id === id);
+  if (!found) throw new Error(`Standard-Regel ${id} fehlt`);
+  return found;
+}
+
+const R001 = standardRule("R-001");
+const R002 = standardRule("R-002");
+const R005 = standardRule("R-005");
+const R999 = standardRule("R-999");
+
+/** Die Regel, die eine Aktion mit genau diesem Nachweis erlaubt (aus den Standard-Regeln). */
+function allowingRuleFor(type: ActionType, credential: string): RuleDefinition {
+  if (credential === "sitzung") return R001;
+  const specific = STANDARD.find(
+    (rule) =>
+      rule.action === type &&
+      rule.effect === "allow" &&
+      rule.conditions.some((c) => c.fact === "credential" && c.value === credential),
+  );
+  if (!specific) throw new Error(`keine Regel für ${type} mit ${credential}`);
+  return specific;
+}
+
+/** Die Standard-Regel, die einen nicht passenden Nachweis ausdrücklich ablehnt. */
+const CREDENTIAL_DENY = STANDARD.find(
+  (rule) =>
+    rule.action === "*" &&
+    rule.effect === "deny" &&
+    rule.conditions.some((c) => c.fact === "credential"),
+);
+
+function decide(type: ActionType, facts?: Facts, rules: readonly RuleDefinition[] = STANDARD) {
   const decision = evaluate(
     sampleAction(type) as ActionRequest,
     (facts ?? sampleFacts(type)) as Facts,
@@ -101,6 +130,7 @@ const VIOLATIONS: Record<LimitName, Partial<Record<ActionType, Record<string, un
   not_aus: {
     "nachricht.senden": [{ killSwitch: true }],
     "modell.anfragen": [{ killSwitch: true }],
+    "werkzeug.aufrufen": [{ killSwitch: true }],
   },
 };
 
@@ -109,25 +139,20 @@ const LIMIT_ID_BY_NAME = Object.fromEntries(
 );
 
 describe("jede Aktion × jede Standard-Regel", () => {
-  it.each(OWNER_ACTIONS)("%s: R-001 erlaubt dem ausgewiesenen Besitzer", (type) => {
+  it.each(OWNER_ACTIONS)("%s: Standard-Regeln erlauben dem ausgewiesenen Besitzer", (type) => {
+    const facts = sampleFacts(type) as { credential: string };
+    const expected = allowingRuleFor(type, facts.credential);
     const decision = decide(type);
     expect(decision).toMatchObject({
       outcome: "allow",
       stage: "execute",
-      matchedRules: [{ id: "R-001", version: 1 }],
-      reason: R001.reason,
+      matchedRules: [{ id: expected.id, version: expected.version }],
+      reason: expected.reason,
     });
     expect(decision.limits.map((l) => l.name)).toEqual([...LIMIT_NAMES]);
   });
 
-  it.each(
-    OWNER_ACTIONS.flatMap((type) => CREDENTIALS.map((credential) => [type, credential] as const)),
-  )("%s mit Nachweis %s: R-001 greift", (type, credential) => {
-    const facts = { ...sampleFacts(type), credential } as Facts;
-    expect(decide(type, facts).matchedRules).toEqual([{ id: "R-001", version: 1 }]);
-  });
-
-  it.each(OWNER_ACTIONS)("%s: ohne R-001 bleibt nur R-999 → fragen", (type) => {
+  it.each(OWNER_ACTIONS)("%s: ohne R-001 und eigene Regeln bleibt nur R-999 → fragen", (type) => {
     const decision = decide(type, undefined, [R002, R999]);
     expect(decision).toMatchObject({
       outcome: "ask",
@@ -137,8 +162,9 @@ describe("jede Aktion × jede Standard-Regel", () => {
     });
   });
 
-  it.each(OWNER_ACTIONS)("%s: R-002 betrifft die Aktion nicht", (type) => {
+  it.each(OWNER_ACTIONS)("%s: R-002 und R-005 betreffen die Aktion nicht", (type) => {
     expect(ruleApplies(R002, sampleAction(type), sampleFacts(type))).toBe(false);
+    expect(ruleApplies(R005, sampleAction(type), sampleFacts(type))).toBe(false);
   });
 
   it("modell.anfragen: R-002 erlaubt dem Bot der Unterhaltung", () => {
@@ -150,18 +176,29 @@ describe("jede Aktion × jede Standard-Regel", () => {
     });
   });
 
-  it("modell.anfragen: R-001 betrifft den Bot nicht", () => {
-    expect(ruleApplies(R001, sampleAction("modell.anfragen"), sampleFacts("modell.anfragen"))).toBe(
-      false,
-    );
-    const decision = decide("modell.anfragen", undefined, [R001, R999]);
+  it("werkzeug.aufrufen: R-005 fragt den Besitzer, bevor der Bot ein Werkzeug benutzt", () => {
+    expect(decide("werkzeug.aufrufen")).toMatchObject({
+      outcome: "ask",
+      stage: "ask",
+      matchedRules: [{ id: "R-005", version: 1 }],
+      reason: R005.reason,
+    });
+  });
+
+  it.each(BOT_ACTIONS)("%s: Regeln für den Besitzer betreffen den Bot nicht", (type) => {
+    for (const rule of STANDARD.filter((r) =>
+      r.conditions.some((c) => c.fact === "akteur" && c.value === "besitzer"),
+    )) {
+      expect(ruleApplies(rule, sampleAction(type), sampleFacts(type)), rule.id).toBe(false);
+    }
+    const decision = decide(type, undefined, [R001, R999]);
     expect(decision.outcome).toBe("ask");
     expect(decision.matchedRules).toEqual([{ id: "R-999", version: 1 }]);
   });
 
-  it("modell.anfragen: fremder Bot → R-002 greift nicht, R-999 fragt", () => {
-    const facts = { ...sampleFacts("modell.anfragen"), botOfConversation: false };
-    expect(decide("modell.anfragen", facts)).toMatchObject({
+  it.each(BOT_ACTIONS)("%s: fremder Bot → keine Bot-Regel greift, R-999 fragt", (type) => {
+    const facts = { ...sampleFacts(type), botOfConversation: false } as Facts;
+    expect(decide(type, facts)).toMatchObject({
       outcome: "ask",
       matchedRules: [{ id: "R-999", version: 1 }],
     });
@@ -185,15 +222,64 @@ describe("jede Aktion × jede Standard-Regel", () => {
   });
 });
 
+describe("Nachweis an die Aktion gebunden: jede Aktion × jeder Nachweis", () => {
+  it("die Standard-Regeln lehnen einen nicht passenden Nachweis ausdrücklich ab", () => {
+    expect(CREDENTIAL_DENY).toBeDefined();
+  });
+
+  const cases = ACTION_TYPES.flatMap((type) =>
+    CREDENTIALS.map((credential) => [type, credential] as const),
+  );
+
+  it.each(cases)("%s mit Nachweis %s", (type, credential) => {
+    const facts = { ...sampleFacts(type), credential } as Facts;
+    const decision = decide(type, facts);
+    if (ACTIONS[type].actor === "bot") {
+      // Ein Bot weist sich nie mit einem Nachweis des Besitzers aus: ungültige Eingabe.
+      expect(decision).toMatchObject({ outcome: "deny", matchedRules: [] });
+      return;
+    }
+    const scope = CREDENTIAL_SCOPE[credential];
+    const allowed = scope === "*" || (scope as readonly string[]).includes(type);
+    if (allowed) {
+      const expected = allowingRuleFor(type, credential);
+      expect(decision).toMatchObject({
+        outcome: "allow",
+        matchedRules: [{ id: expected.id, version: expected.version }],
+      });
+    } else {
+      expect(decision).toMatchObject({
+        outcome: "deny",
+        stage: CREDENTIAL_DENY?.stage,
+        matchedRules: [{ id: CREDENTIAL_DENY?.id, version: CREDENTIAL_DENY?.version }],
+        reason: CREDENTIAL_DENY?.reason,
+      });
+    }
+  });
+
+  it("der Nachweis jeder Aktion des Besitzers ist genau einmal erlaubt oder abgelehnt", () => {
+    for (const type of OWNER_ACTIONS) {
+      const allowed = CREDENTIALS.filter(
+        (credential) =>
+          decide(type, { ...sampleFacts(type), credential } as Facts).outcome === "allow",
+      );
+      expect(allowed).toContain("sitzung");
+      expect(allowed.length, type).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
 describe("jede Aktion × jede Grenze", () => {
   const cases = ACTION_TYPES.flatMap((type) => LIMIT_NAMES.map((name) => [type, name] as const));
 
   it.each(cases)("%s × %s", (type, name) => {
     const variants = VIOLATIONS[name][type];
+    const baseline = decide(type);
     if (!variants) {
-      // Grenze betrifft die Aktion nicht: entfällt oder ok, Aktion bleibt erlaubt.
+      // Grenze betrifft die Aktion nicht: entfällt oder ok, die Entscheidung bleibt dieselbe.
       const decision = decide(type);
-      expect(decision.outcome).toBe("allow");
+      expect(decision.outcome).toBe(baseline.outcome);
+      expect(decision.outcome).not.toBe("deny");
       const check = decision.limits.find((l) => l.name === name);
       expect(check?.result).not.toBe("verletzt");
       return;
@@ -206,9 +292,10 @@ describe("jede Aktion × jede Grenze", () => {
         name,
       ]);
       expect(decision.reason).toContain(LIMIT_ID_BY_NAME[name]);
-      // Die Regel, die sonst erlaubt hätte, bleibt sichtbar.
+      // Die Regel, die sonst entschieden hätte, bleibt sichtbar.
+      expect(decision.matchedRules).toEqual(baseline.matchedRules);
       expect(decision.matchedRules).toHaveLength(1);
-      expect(decision.stage).toBe("execute");
+      expect(decision.stage).toBe(baseline.stage);
     }
   });
 
@@ -256,11 +343,25 @@ describe("ungültige Eingaben werden abgelehnt", () => {
     const decision = evaluate(
       action as unknown as ActionRequest,
       { credential: "sitzung" } as Facts,
-      STANDARD_RULES,
+      STANDARD,
     );
     expect(decisionSchema.safeParse(decision).success).toBe(true);
-    expect(decision).toMatchObject({ outcome: "deny", matchedRules: [] });
+    expect(decision).toMatchObject({ outcome: "deny", matchedRules: [], preconditions: [] });
     expect(decision.limits.every((l) => l.result === "entfaellt")).toBe(true);
+  });
+
+  it("ungültige Fakten → Ablehnung, Vorbedingungen der Aktion als „entfällt“", () => {
+    const decision = decide("nachricht.senden", { credential: "sitzung" } as Facts);
+    expect(decision).toMatchObject({
+      outcome: "deny",
+      stage: "ask",
+      matchedRules: [],
+      preconditions: [
+        { name: "unterhaltung_vorhanden", result: "entfaellt" },
+        { name: "kein_lauf_aktiv", result: "entfaellt" },
+      ],
+      reason: `${t("fehler.abgelehnt")} ${t("fehler.eingabe_ungueltig")}`,
+    });
   });
 
   it("Bot als Akteur einer Besitzer-Aktion → Ablehnung", () => {
@@ -268,7 +369,7 @@ describe("ungültige Eingaben werden abgelehnt", () => {
     const decision = evaluate(
       action as unknown as ActionRequest,
       sampleFacts("bot.aendern") as Facts,
-      STANDARD_RULES,
+      STANDARD,
     );
     expect(decision.outcome).toBe("deny");
   });
@@ -278,7 +379,7 @@ describe("ungültige Eingaben werden abgelehnt", () => {
     const decision = evaluate(
       action as unknown as ActionRequest,
       sampleFacts("modell.anfragen") as Facts,
-      STANDARD_RULES,
+      STANDARD,
     );
     expect(decision.outcome).toBe("deny");
   });
@@ -287,7 +388,7 @@ describe("ungültige Eingaben werden abgelehnt", () => {
     const decision = evaluate(
       sampleAction("unterhaltung.loeschen") as ActionRequest,
       {} as Facts,
-      STANDARD_RULES,
+      STANDARD,
     );
     expect(decision.outcome).toBe("deny");
   });
@@ -301,7 +402,7 @@ describe("ungültige Eingaben werden abgelehnt", () => {
 describe("Rangfolge der Regeln", () => {
   it("kleinere Priorität entscheidet zuerst", () => {
     const deny = rule({ id: "R-050", effect: "deny", priority: 50, reason: "Gesperrt." });
-    const decision = decide("unterhaltung.loeschen", undefined, [...STANDARD_RULES, deny]);
+    const decision = decide("unterhaltung.loeschen", undefined, [...STANDARD, deny]);
     expect(decision).toMatchObject({
       outcome: "deny",
       matchedRules: [{ id: "R-050", version: 1 }],
@@ -311,8 +412,8 @@ describe("Rangfolge der Regeln", () => {
 
   it("die Reihenfolge der Eingabe spielt keine Rolle", () => {
     const deny = rule({ id: "R-050", effect: "deny", priority: 50 });
-    const a = decide("bot.aendern", undefined, [deny, ...STANDARD_RULES]);
-    const b = decide("bot.aendern", undefined, [...[...STANDARD_RULES].reverse(), deny]);
+    const a = decide("bot.aendern", undefined, [deny, ...STANDARD]);
+    const b = decide("bot.aendern", undefined, [...[...STANDARD].reverse(), deny]);
     expect(a).toEqual(b);
   });
 
@@ -330,13 +431,13 @@ describe("Rangfolge der Regeln", () => {
 
   it("abgeschaltete Regeln zählen nicht", () => {
     const deny = rule({ effect: "deny", priority: 1, enabled: false });
-    expect(decide("zugang.abmelden", undefined, [deny, ...STANDARD_RULES]).outcome).toBe("allow");
+    expect(decide("zugang.abmelden", undefined, [deny, ...STANDARD]).outcome).toBe("allow");
   });
 
   it("Regel für eine andere Aktion zählt nicht", () => {
     const deny = rule({ action: "anbieter.loeschen", effect: "deny", priority: 1 });
-    expect(decide("zugang.abmelden", undefined, [deny, ...STANDARD_RULES]).outcome).toBe("allow");
-    expect(decide("anbieter.loeschen", undefined, [deny, ...STANDARD_RULES]).outcome).toBe("deny");
+    expect(decide("zugang.abmelden", undefined, [deny, ...STANDARD]).outcome).toBe("allow");
+    expect(decide("anbieter.loeschen", undefined, [deny, ...STANDARD]).outcome).toBe("deny");
   });
 
   it.each([
@@ -421,17 +522,27 @@ describe("evaluate ist rein", () => {
   }
 
   it.each(ACTION_TYPES)(
+    "%s: jede Entscheidung nennt genau die Vorbedingungen der Aktion",
+    (type) => {
+      const decision = decide(type);
+      expect(decision.preconditions?.map((check) => check.name)).toEqual(
+        preconditionsFor(type).map((id) => PRECONDITIONS[id].name),
+      );
+    },
+  );
+
+  it.each(ACTION_TYPES)(
     "%s: gleiche Eingabe, gleiche Ausgabe; Eingabe bleibt unverändert",
     (type) => {
       const action = deepFreeze(sampleAction(type));
       const facts = deepFreeze(sampleFacts(type));
-      const rules = deepFreeze(structuredClone([...STANDARD_RULES]));
+      const rules = deepFreeze(structuredClone([...STANDARD]));
       const first = evaluate(action, facts, rules);
       for (let i = 0; i < 5; i += 1) {
         expect(evaluate(action, facts, rules)).toEqual(first);
         expect(evaluate(structuredClone(action), structuredClone(facts), rules)).toEqual(first);
       }
-      expect(rules).toEqual(STANDARD_RULES);
+      expect(rules).toEqual(STANDARD);
     },
   );
 

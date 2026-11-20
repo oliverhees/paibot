@@ -8,7 +8,7 @@
  * @since     2026-11-20
  */
 
-import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
+import { ACTIONS, type ActionRequest, type Facts } from "@paibot/shared/aktionen";
 import { LIMIT_NAMES, type LimitCheck, type LimitName } from "@paibot/shared/tor";
 
 /**
@@ -115,17 +115,21 @@ export function limitTagesbudget(action: ActionRequest, facts: Facts): LimitChec
   );
 }
 
+/** Kennt die Aktion laut Vertrag den Fakt `name`? */
+function actionHasFact(action: ActionRequest, name: string): boolean {
+  const definition = Object.hasOwn(ACTIONS, action.type) ? ACTIONS[action.type] : undefined;
+  return definition !== undefined && Object.hasOwn(definition.facts.shape, name);
+}
+
 /**
- * G-05 `not_aus`: betrifft jede Aktion mit dem Fakt `killSwitch` (`nachricht.senden`,
- * `modell.anfragen`). Ist er gesetzt, `verletzt`. `value`: der Schalter.
+ * G-05 `not_aus`: betrifft jede Aktion, deren Fakten laut Vertrag `killSwitch` kennen
+ * (`nachricht.senden`, `modell.anfragen`, `werkzeug.aufrufen`), und jede, die ihn trotzdem
+ * mitbringt. Ist er gesetzt oder fehlt er, `verletzt`. `value`: der Schalter.
  */
 export function limitNotAus(action: ActionRequest, facts: Facts): LimitCheck {
   const name = "not_aus";
   const killSwitch = fact(facts, "killSwitch");
-  const concerned =
-    action.type === "nachricht.senden" ||
-    action.type === "modell.anfragen" ||
-    killSwitch !== undefined;
+  const concerned = actionHasFact(action, "killSwitch") || killSwitch !== undefined;
   if (!concerned) return notApplicable(name);
   // Nur ein ausdrückliches `false` lässt die Aktion durch; ein fehlender Schalter gilt als an.
   return check(

@@ -10,11 +10,12 @@
 
 import { PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
-import { STANDARD_RULES } from "@paibot/shared/tor";
+import { ACTIVE_STANDARD_RULES } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import pkg from "../package.json";
 import { createGate, type GatePorts } from "./gate";
 import { isGatePermit } from "./permit";
+import { ruleSnapshot } from "./regel-hash";
 import { sampleAction, sampleFacts } from "./testdaten";
 import { withTestPermit } from "./testing";
 
@@ -82,7 +83,7 @@ describe("withTestPermit", () => {
     });
 
     const ports: GatePorts = {
-      rules: { listActive: async () => STANDARD_RULES },
+      rules: { load: () => ruleSnapshot(ACTIVE_STANDARD_RULES) },
       receipts: {
         appendDecision: async () => ({ receiptId: decisionReceiptId, seq: 1 }),
         appendResult: async () => ({ receiptId: newId("receipt"), seq: 2 }),
@@ -95,6 +96,19 @@ describe("withTestPermit", () => {
     }));
     expect(fromTest).toEqual(fromGate);
     expect(Object.keys(fromTest)).toEqual(Object.keys(fromGate));
+  });
+
+  it("Test-Berechtigung für modell.anfragen trägt das Ziel wie eine aus gate.run, unveränderlich", async () => {
+    const facts = sampleFacts("modell.anfragen");
+    await withTestPermit(sampleAction("modell.anfragen"), facts, (permit) => {
+      expect(isGatePermit(permit, "modell.anfragen")).toBe(true);
+      expect(permit.facts.targetOrigin).toBe(facts.targetOrigin);
+      expect(permit.facts.targetDigest).toBe(facts.targetDigest);
+      expect(() => {
+        (permit.facts as { targetDigest?: string }).targetDigest = `sha256:${"3".repeat(64)}`;
+      }).toThrow(TypeError);
+      expect(permit.facts.targetDigest).toBe(facts.targetDigest);
+    });
   });
 
   it("gibt es nur über den eigenen Unterpfad, nicht über den Einstieg des Pakets", async () => {

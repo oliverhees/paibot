@@ -14,3 +14,4 @@ export * from "./evaluate";
 export * from "./gate";
 export * from "./limits/index";
 export * from "./permit";
+export * from "./regel-hash";

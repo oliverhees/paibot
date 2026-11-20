@@ -84,9 +84,11 @@ describe("Aktionen", () => {
       "modell.anfragen",
       "lauf.abbrechen",
       "belege.exportieren",
+      "werkzeug.aufrufen",
     ]);
+    const botActions = new Set(["modell.anfragen", "werkzeug.aufrufen"]);
     for (const type of ACTION_TYPES) {
-      expect(ACTIONS[type].actor).toBe(type === "modell.anfragen" ? "bot" : "besitzer");
+      expect(ACTIONS[type].actor).toBe(botActions.has(type) ? "bot" : "besitzer");
     }
   });
 

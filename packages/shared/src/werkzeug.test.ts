@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTION_TYPES,
+  ACTIONS,
   STORED_ACTION_TYPES,
   TOOL_ACTION_TYPES,
   TOOL_ACTIONS,
@@ -34,16 +35,17 @@ const facts = {
 };
 
 describe("Aktion werkzeug.aufrufen", () => {
-  it("gehört zu den gespeicherten Aktionen, noch nicht zu ACTIONS", () => {
+  it("steht in ACTIONS; die gespeicherten Aktionen sind genau ACTIONS", () => {
     expect(TOOL_ACTION_TYPES).toEqual(["werkzeug.aufrufen"]);
-    expect(ACTION_TYPES).not.toContain("werkzeug.aufrufen");
-    expect(STORED_ACTION_TYPES).toEqual([...ACTION_TYPES, "werkzeug.aufrufen"]);
-    expect(TOOL_ACTIONS["werkzeug.aufrufen"].actor).toBe("bot");
+    expect(ACTION_TYPES).toContain("werkzeug.aufrufen");
+    expect(STORED_ACTION_TYPES).toEqual(ACTION_TYPES);
+    expect(ACTIONS["werkzeug.aufrufen"].actor).toBe("bot");
+    expect(TOOL_ACTIONS["werkzeug.aufrufen"]).toBe(ACTIONS["werkzeug.aufrufen"]);
     expect(toolActionTypeSchema.parse("werkzeug.aufrufen")).toBe("werkzeug.aufrufen");
   });
 
   it("Fakten nennen Werkzeug, Quelle und Art, die Argumente nur als Abdruck", () => {
-    const schema = TOOL_ACTIONS["werkzeug.aufrufen"].facts;
+    const schema = ACTIONS["werkzeug.aufrufen"].facts;
     expect(schema.parse(facts)).toEqual(facts);
     expect(schema.safeParse({ ...facts, toolSource: "mcp", toolServer: "notizen" }).success).toBe(
       true,
@@ -57,7 +59,7 @@ describe("Aktion werkzeug.aufrufen", () => {
   });
 
   it("Ziel nennt Unterhaltung, Lauf und Bot", () => {
-    const target = TOOL_ACTIONS["werkzeug.aufrufen"].target;
+    const target = ACTIONS["werkzeug.aufrufen"].target;
     const ok = {
       conversationId: newId("conversation"),
       runId: newId("run"),
