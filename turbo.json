@@ -17,9 +17,6 @@
     "test": {
       "dependsOn": ["^build"]
     },
-    "@paibot/db#test": {
-      "dependsOn": ["^build", "@paibot/web#build"]
-    },
     "dev": {
       "cache": false,
       "persistent": true
