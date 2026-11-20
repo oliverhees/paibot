@@ -28,8 +28,11 @@ Der offizielle Weg ist **Docker Compose**. Das gilt lokal und auf dem Server. Al
 | ---------- | ---------------------------------------------------------- | ---------------------------------------------- |
 | `postgres` | Datenbank                                                  | nur im internen Netz des Stacks                |
 | `web`      | PaiBot-App (Next.js), wendet beim Start die Migrationen an | `127.0.0.1:3000`, nach außen über deine Domain |
+| `worker`   | erzeugt die Antworten deines Bots im Hintergrund           | kein Port, nimmt keine Verbindungen an         |
 
-Weitere Dienste (Datenschleuse, Hintergrund-Jobs, Browser-Dienst) sind **geplant** und noch nicht Teil des Stacks.
+`web` und `worker` sind dasselbe Image in zwei Rollen (Variable `PAIBOT_ROLE`). Der Worker startet erst, wenn `web` gesund ist: `web` wendet die Migrationen an, der Worker wartet nur darauf und migriert nie selbst.
+
+Weitere Dienste (Datenschleuse, Browser-Dienst) sind **geplant** und noch nicht Teil des Stacks.
 
 ## Lokal mit Docker Compose
 
@@ -42,6 +45,8 @@ curl http://localhost:3000/api/health
 ```
 
 Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`.
+
+Danach zeigt `docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps` die Dienste `web` und `worker` als `healthy`. Im Log des Workers (`… logs worker`) steht zuletzt „Bereit: nimmt Läufe an“.
 
 `deploy/env-erzeugen.sh` schreibt zwei Datenbank-Passwörter und das Wurzel-Geheimnis `PAIBOT_SECRET` in `deploy/.env` (nur für dich lesbar) und überschreibt nie eine vorhandene Datei. Sichere die Datei getrennt von der Datenbank, zum Beispiel im Passwort-Manager. Wer die Werte lieber selbst erzeugt: `openssl rand -hex 32` für jedes Passwort, `openssl rand -base64 32` für `PAIBOT_SECRET`.
 
@@ -61,7 +66,9 @@ Der Ablauf ist derselbe Stack, nur mit Domain und HTTPS davor. Schritt für Schr
 
 Die Datenbank hat keinen veröffentlichten Port; sie hängt nur im internen Netz `paibot-intern`, das keinen Weg nach draußen hat. Die Web-App ist nur an `127.0.0.1` gebunden. Von außen erreichst du PaiBot nur über den Proxy mit HTTPS.
 
-Die Container laufen gehärtet: ohne Root-Rechte, ohne Linux-Fähigkeiten (`cap_drop: ALL`), mit `no-new-privileges`; die Web-App zusätzlich mit schreibgeschütztem Dateisystem (beschreibbar sind nur `/tmp` und der Cache von Next.js). Beide Dienste haben einen Healthcheck und starten nach einem Absturz neu.
+Die Container laufen gehärtet: ohne Root-Rechte, ohne Linux-Fähigkeiten (`cap_drop: ALL`), mit `no-new-privileges`; Web-App und Worker zusätzlich mit schreibgeschütztem Dateisystem (beschreibbar sind nur `/tmp` und bei der Web-App der Cache von Next.js). Alle Dienste haben einen Healthcheck und starten nach einem Absturz neu.
+
+Der Worker hat keinen Port. Er hängt im internen Netz (für die Datenbank) und im Netz nach außen, weil er die Anfragen an die Modell-Anbieter stellt. Er bekommt nur die eingeschränkte App-Rolle (`DATABASE_URL`), nie die Zugangsdaten der Migrations-Rolle. Sein Healthcheck prüft eine Herzschlag-Datei unter `/tmp`, die er alle zehn Sekunden schreibt, solange die Datenbank antwortet und kein Lauf hängt.
 
 ## Einstellungen
 
@@ -78,6 +85,7 @@ Alle Werte stehen in `deploy/.env` (Vorlage: `deploy/.env.example`). Diese Datei
 | `APP_URL`                    | öffentliche Adresse der App                                                                 | `http://localhost:3000` |
 | `WEB_PORT`                   | Port der Web-App auf dem Rechner                                                            | `3000`                  |
 | `PAIBOT_ALLOW_PRIVILEGED_DB` | `1` erlaubt den Start mit zu vielen Rechten, **nur für den Übergang**                       | leer                    |
+| `PAIBOT_WORKER_CONCURRENCY`  | wie viele Antworten der Worker gleichzeitig erzeugt (1 bis 32)                              | `2`                     |
 
 Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), weil sie in einer Datenbank-Adresse stehen.
 
@@ -90,7 +98,7 @@ PaiBot nutzt zwei Rollen in Postgres:
 | Rolle                       | Wofür                                                                        | Wer nutzt sie                                                    |
 | --------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Migrations-Rolle (`paibot`) | Besitzer der Tabellen; legt Tabellen an und ändert sie                       | nur der Migrations-Schritt beim Start (`DATABASE_MIGRATION_URL`) |
-| App-Rolle (`paibot_app`)    | die normale Arbeit der App: lesen, anlegen, ändern, wo es fachlich nötig ist | die App (`DATABASE_URL`)                                         |
+| App-Rolle (`paibot_app`)    | die normale Arbeit der App: lesen, anlegen, ändern, wo es fachlich nötig ist | Web-App und Worker (`DATABASE_URL`)                              |
 
 Beim Start passiert der Reihe nach:
 
@@ -170,16 +178,19 @@ In der Entwicklung (`pnpm dev`) bleiben zu viele Rechte und kurze Passwörter be
 
 ## Fehlerbehebung
 
-| Beobachtung                                           | Ursache                                                           | Was tun                                                                                      |
-| ----------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Compose bricht mit „fehlt“ ab                         | ein Pflichtwert ist nicht gesetzt                                 | `sh deploy/env-erzeugen.sh` (neu) oder Wert in `deploy/.env` ergänzen                        |
-| Log: „Start abgebrochen: Einstellungen unvollständig“ | Passwort zu kurz, Platzhalter oder `PAIBOT_SECRET` falsch geformt | genannten Wert neu erzeugen (siehe „Einstellungen“)                                          |
-| Log: „… mit zu vielen Rechten“                        | App nutzt die Migrations-Rolle oder einen Superuser               | „So stellst du eine bestehende Installation um“                                              |
-| Log: „Datenbank nicht auf Stand“                      | Migration fehlgeschlagen oder Datenbank neuer als diese Version   | Meldungen der Migration davor lesen; `POSTGRES_PASSWORD` prüfen; passende Version einspielen |
-| Log: „Migration fehlgeschlagen“                       | Migrations-Rolle falsch oder Datenbank nicht erreichbar           | `POSTGRES_USER`/`POSTGRES_PASSWORD` prüfen, Logs von `postgres` lesen                        |
-| `"db":"down"`, HTTP 503                               | App läuft, Datenbank nicht erreichbar                             | Logs von `postgres` und `web` prüfen, Passwort vergleichen                                   |
-| `"db":"not_configured"`                               | `DATABASE_URL` fehlt (z. B. bei `pnpm dev`)                       | `apps/web/.env.local` aus `apps/web/.env.example` anlegen                                    |
-| keine Antwort                                         | Port, Domain oder Proxy falsch                                    | `WEB_PORT`, DNS und Domain-Eintrag beim Dienst `web` prüfen                                  |
+| Beobachtung                                                                                | Ursache                                                           | Was tun                                                                                      |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Compose bricht mit „fehlt“ ab                                                              | ein Pflichtwert ist nicht gesetzt                                 | `sh deploy/env-erzeugen.sh` (neu) oder Wert in `deploy/.env` ergänzen                        |
+| Log: „Start abgebrochen: Einstellungen unvollständig“                                      | Passwort zu kurz, Platzhalter oder `PAIBOT_SECRET` falsch geformt | genannten Wert neu erzeugen (siehe „Einstellungen“)                                          |
+| Log: „… mit zu vielen Rechten“                                                             | App nutzt die Migrations-Rolle oder einen Superuser               | „So stellst du eine bestehende Installation um“                                              |
+| Log: „Datenbank nicht auf Stand“                                                           | Migration fehlgeschlagen oder Datenbank neuer als diese Version   | Meldungen der Migration davor lesen; `POSTGRES_PASSWORD` prüfen; passende Version einspielen |
+| Log: „Migration fehlgeschlagen“                                                            | Migrations-Rolle falsch oder Datenbank nicht erreichbar           | `POSTGRES_USER`/`POSTGRES_PASSWORD` prüfen, Logs von `postgres` lesen                        |
+| `"db":"down"`, HTTP 503                                                                    | App läuft, Datenbank nicht erreichbar                             | Logs von `postgres` und `web` prüfen, Passwort vergleichen                                   |
+| Worker: „Warte auf die Migrationen der Web-App“, dann „Datenbank nicht auf Stand nach … s“ | `web` startet nicht oder migriert nicht                           | Log von `web` lesen; der Worker migriert nie selbst                                          |
+| Worker: „Datenbank nach … s nicht erreichbar“                                              | Datenbank aus oder App-Rolle noch nicht angelegt                  | Log von `postgres` und `web` prüfen; `POSTGRES_APP_PASSWORD` gleich bei `web` und `worker`   |
+| Worker `unhealthy`, Log: „Herzschlag ausgesetzt“                                           | Datenbank antwortet nicht oder ein Lauf hängt                     | Log von `postgres` prüfen; der Container startet danach neu                                  |
+| `"db":"not_configured"`                                                                    | `DATABASE_URL` fehlt (z. B. bei `pnpm dev`)                       | `apps/web/.env.local` aus `apps/web/.env.example` anlegen                                    |
+| keine Antwort                                                                              | Port, Domain oder Proxy falsch                                    | `WEB_PORT`, DNS und Domain-Eintrag beim Dienst `web` prüfen                                  |
 
 ## Als Web-App installieren
 

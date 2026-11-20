@@ -8,16 +8,15 @@
  * @since     2026-11-20
  */
 
+import { consoleLog } from "./protokoll";
+import { installProcessHandlers } from "./prozess";
 import { loadWorkerConfig, startWorker } from "./worker";
 
-const env = process.env;
-const worker = await startWorker(loadWorkerConfig(env), env);
-
-for (const signal of ["SIGTERM", "SIGINT"] as const) {
-  process.once(signal, () => {
-    void worker.stop().then(
-      () => process.exit(0),
-      () => process.exit(1),
-    );
-  });
-}
+await installProcessHandlers({
+  env: process.env,
+  log: consoleLog,
+  load: loadWorkerConfig,
+  start: startWorker,
+  exit: (code) => process.exit(code),
+  on: (event, listener) => process.on(event, listener),
+});

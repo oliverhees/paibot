@@ -10,12 +10,15 @@ Seit:      2026-11-07
 
 # Deployment
 
-PaiBot läuft als Docker-Compose-Stack. Aktuell: Postgres und die Web-App. Weitere Dienste (Datenschleuse, Worker, Browser-Dienst) kommen dazu.
+PaiBot läuft als Docker-Compose-Stack. Aktuell: Postgres, die Web-App und der Worker. Weitere Dienste (Datenschleuse, Browser-Dienst) kommen dazu.
 
 | Dienst     | Aufgabe                                                    | Erreichbar                                     |
 | ---------- | ---------------------------------------------------------- | ---------------------------------------------- |
 | `postgres` | Datenbank                                                  | nur im internen Netz `paibot-intern`           |
 | `web`      | PaiBot-App (Next.js), wendet beim Start die Migrationen an | `127.0.0.1:3000`, nach außen über deine Domain |
+| `worker`   | führt die Antworten deines Bots im Hintergrund aus         | kein Port; Netz `paibot-intern` und nach außen |
+
+`web` und `worker` kommen aus demselben Image. Die Variable `PAIBOT_ROLE` (`web` oder `worker`) wählt, was startet. Der Worker startet erst, wenn `web` gesund ist, und bekommt nur die eingeschränkte Rolle der Datenbank (`DATABASE_URL`), nie `DATABASE_MIGRATION_URL`.
 
 ## Lokal testen
 
@@ -23,6 +26,8 @@ PaiBot läuft als Docker-Compose-Stack. Aktuell: Postgres und die Web-App. Weite
 sh deploy/env-erzeugen.sh               # deploy/.env mit Zufallswerten
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 curl http://localhost:3000/api/health  # {"status":"ok","db":"ok",...}
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps   # web und worker „healthy“
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env logs worker
 ```
 
 Nur die Datenbank für die Entwicklung starten (mit Port auf `127.0.0.1`, über den Zusatz `docker-compose.entwicklung.yml`) und die App mit `pnpm dev` laufen lassen:
