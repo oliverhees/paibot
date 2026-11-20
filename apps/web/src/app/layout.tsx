@@ -11,6 +11,8 @@
 import { APP_NAME } from "@paibot/shared";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import "@paibot/ui/tokens.css";
+import "@paibot/ui/avatar.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

@@ -1,0 +1,474 @@
+/**
+ * PaiBot – Stile des Grundgerüsts mit Navigation, Inhalt und Arbeitsfläche.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+/*
+ * Grenzen wie in modus.ts: unter 720 px Handy, unter 960 px Navigation als Menü,
+ * unter 1180 px legt sich die Arbeitsfläche über den Inhalt.
+ */
+
+.shell {
+  container: shell / inline-size;
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--schrift-b);
+  line-height: 1.45;
+}
+
+.raster {
+  display: grid;
+  grid-template-columns: var(--layout-leiste) minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+.eingebettet {
+  height: 100%;
+}
+
+.nurLesbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Navigation ---------- */
+
+.leiste {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--line);
+}
+
+.oben {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px 10px;
+}
+
+.markenzeile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.marke {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.neu {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  color: var(--ink-soft);
+}
+
+.neu:hover {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.neu:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.nurMenue {
+  display: none;
+}
+
+.ort {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.ortChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: var(--schrift-xs);
+  font-weight: 500;
+}
+
+.ortChip b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mitte {
+  flex: 1;
+  padding: 4px 8px 12px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.etikett {
+  margin: 0;
+  padding: 4px 8px 6px;
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.botReihe {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.botReihe[data-aktiv] {
+  background: var(--surface);
+}
+
+.botText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.botName {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  font-size: var(--schrift-m);
+  font-weight: 600;
+}
+
+.botLink {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.botLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.botLink:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.botZustand {
+  font-size: var(--schrift-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.botZustand[data-zustand="arbeitet"] {
+  color: var(--ok);
+}
+
+.botZustand[data-zustand="wartet"] {
+  color: var(--warn);
+}
+
+/* Die Rolle wird umbrochen statt abgeschnitten. */
+.rolle {
+  font-size: var(--schrift-s);
+  line-height: 1.35;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.unterhaltungen,
+.werkzeuge {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.unterhaltungen {
+  margin: 2px 0 4px 18px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line-mid);
+}
+
+.zeile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 32px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.zeile:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.zeile:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: calc(-1 * var(--fokus-breite));
+}
+
+.zeile[aria-current="page"] {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.zeile[aria-current="page"] svg {
+  color: var(--accent-text);
+}
+
+.zeilenText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unten {
+  border-top: 1px solid var(--line);
+  padding: 8px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fuss {
+  padding: 0 8px;
+}
+
+/* ---------- Mitte ---------- */
+
+.haupt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 9px 12px 9px 20px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.kopfInhalt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menueKnopf {
+  display: none;
+}
+
+.inhalt {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Arbeitsfläche ---------- */
+
+.flaeche {
+  position: relative;
+  z-index: 30;
+  width: var(--layout-flaeche);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-sunken);
+  border-left: 1px solid var(--line);
+}
+
+.griff {
+  display: none;
+}
+
+.flaecheReiter {
+  flex: 1;
+  min-height: 0;
+}
+
+.flaecheKopf {
+  min-height: 52px;
+  padding: 0 8px 0 10px;
+}
+
+.flaecheInhalt {
+  min-height: 0;
+}
+
+.flaecheScroll {
+  flex: 1;
+  padding: 14px;
+}
+
+.schleier {
+  display: none;
+}
+
+/* Arbeitsfläche überlagert (mittlere Breite) */
+@container shell (max-width: 1179px) {
+  .flaeche {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    box-shadow: var(--shadow-ueberlagert);
+  }
+}
+
+/* Navigation als Menü von links */
+@container shell (max-width: 959px) {
+  .raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .leiste {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(316px, 86%);
+    box-shadow: 18px 0 50px rgba(0, 0, 0, 0.35);
+    transform: translateX(-104%);
+    visibility: hidden;
+    transition:
+      transform var(--dauer-mittel) var(--kurve-sanft),
+      visibility 0s linear var(--dauer-mittel);
+  }
+
+  .shell[data-nav-offen] .leiste {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dauer-mittel) var(--kurve-sanft);
+  }
+
+  .nurMenue,
+  .menueKnopf {
+    display: inline-grid;
+  }
+
+  .kopf {
+    padding: 8px 10px;
+  }
+
+  .schleier {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 35;
+    background: var(--schleier);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dauer-mittel) var(--kurve-sanft);
+  }
+
+  .schleierSichtbar {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Handy: Arbeitsfläche als Blatt von unten */
+@container shell (max-width: 719px) {
+  .kopf {
+    min-height: 50px;
+    gap: 4px;
+  }
+
+  .flaeche {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    width: auto;
+    max-height: 88%;
+    border-left: 0;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.35);
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: pb-blatt-hoch var(--dauer-mittel) var(--kurve-sanft);
+  }
+
+  .griff {
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line-strong);
+    margin: 7px auto 0;
+    flex: none;
+  }
+}
+
+@keyframes pb-blatt-hoch {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leiste,
+  .shell[data-nav-offen] .leiste,
+  .schleier,
+  .zeile {
+    transition: none;
+  }
+
+  .flaeche {
+    animation: none;
+  }
+}

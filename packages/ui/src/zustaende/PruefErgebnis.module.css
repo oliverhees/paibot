@@ -1,0 +1,71 @@
+/**
+ * PaiBot – Stile des Prüf-Ergebnisses.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.ergebnis {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--surface-raised);
+  font-size: var(--schrift-m);
+  color: var(--ink);
+}
+
+.ergebnis[data-zustand="gueltig"] {
+  background: var(--ok-soft);
+}
+
+.ergebnis[data-zustand="ungueltig"] {
+  background: var(--danger-soft);
+}
+
+.zeile1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.ergebnis[data-zustand="gueltig"] .zeile1 {
+  color: var(--ok);
+}
+
+.ergebnis[data-zustand="ungueltig"] .zeile1 {
+  color: var(--danger);
+}
+
+.punkte {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.punkte li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.punkte li svg {
+  margin-top: 3px;
+  stroke-width: 2.4;
+}
+
+.punkte li[data-ok="true"] svg {
+  color: var(--ok);
+}
+
+.punkte li[data-ok="false"] svg {
+  color: var(--danger);
+}

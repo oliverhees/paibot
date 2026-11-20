@@ -1,0 +1,22 @@
+/**
+ * PaiBot – Stile des Schriftzugs PaiBot.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.wortmarke {
+  font-family: var(--font-brand);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.wortmarke b {
+  font-weight: 800;
+  color: var(--accent-text);
+}

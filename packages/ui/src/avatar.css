@@ -1,0 +1,60 @@
+/**
+ * PaiBot – Globale Bewegungen der Avatare und Lade-Zeichen.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+/* Bewegungen der Avatare und Lade-Zeichen; global, damit alle Komponenten sie nutzen können. */
+
+@keyframes pb-reden {
+  0% {
+    transform: scale(1, 0.35);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+@keyframes pb-huepfen {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  18% {
+    transform: translateY(0) scale(1.12, 0.84);
+  }
+  50% {
+    transform: translateY(-22%) scale(0.94, 1.08);
+  }
+  82% {
+    transform: translateY(0) scale(1.08, 0.9);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+
+@keyframes pb-wackeln {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-9deg);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+  85% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes pb-kreisen {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,74 @@
+/**
+ * PaiBot – Scrollen ohne sichtbaren Balken, mit weichem Rand.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.bereich {
+  min-width: 0;
+  min-height: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: contain;
+}
+
+.bereich::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.bereich:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: calc(-1 * var(--fokus-breite));
+}
+
+.y {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.x {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.y[data-rand="ende"] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
+}
+
+.y[data-rand="start"] {
+  mask-image: linear-gradient(to top, #000 calc(100% - 28px), transparent);
+}
+
+.y[data-rand="beide"] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 28px,
+    #000 calc(100% - 36px),
+    transparent
+  );
+}
+
+.x[data-rand="ende"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+
+.x[data-rand="start"] {
+  mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent);
+}
+
+.x[data-rand="beide"] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 40px,
+    #000 calc(100% - 40px),
+    transparent
+  );
+}

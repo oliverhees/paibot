@@ -1,0 +1,33 @@
+/**
+ * PaiBot – Stile der Fußzeile.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.fuss {
+  margin: 0;
+  font-size: var(--schrift-xs);
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.fuss a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.fuss a:hover {
+  color: var(--accent-text);
+}
+
+.fuss a:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+  border-radius: 2px;
+}

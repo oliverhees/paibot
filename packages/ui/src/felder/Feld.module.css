@@ -1,0 +1,131 @@
+/**
+ * PaiBot – Stile der Eingabefelder.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.versteckt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.hilfe {
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+.fehler {
+  font-size: var(--schrift-s);
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.eingabe {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-feld);
+  padding: 8px 11px;
+  font: inherit;
+  font-size: var(--schrift-b);
+  color: var(--ink);
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--dauer-kurz);
+}
+
+.eingabe::placeholder {
+  color: var(--ink-soft);
+}
+
+.eingabe:hover:not(:disabled),
+.eingabe[data-zustand="hover"] {
+  border-color: var(--line-strong);
+}
+
+.eingabe:focus-visible,
+.eingabe[data-zustand="fokus"] {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: 0;
+  border-color: var(--focus);
+}
+
+.eingabe[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.eingabe:disabled {
+  cursor: not-allowed;
+  color: var(--ink-soft);
+  background: var(--surface-sunken);
+  border-style: dashed;
+}
+
+.eingabe:read-only:not(select) {
+  background: var(--surface-sunken);
+}
+
+textarea.eingabe {
+  resize: vertical;
+  line-height: 1.5;
+  min-height: 84px;
+}
+
+select.eingabe {
+  appearance: none;
+  padding-right: 34px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+    linear-gradient(-45deg, transparent 50%, var(--ink-soft) 50%);
+  background-position:
+    calc(100% - 17px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.mitLaden {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mitLaden .eingabe {
+  padding-right: 34px;
+}
+
+.laden {
+  position: absolute;
+  right: 12px;
+  color: var(--ink-soft);
+  display: inline-flex;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eingabe {
+    transition: none;
+  }
+}

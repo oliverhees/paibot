@@ -1,0 +1,79 @@
+/**
+ * PaiBot – Stile der Markdown-Darstellung.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.markdown > * {
+  margin: 0;
+}
+
+.markdown :where(ul, ol) {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.markdown :where(h1, h2, h3, h4) {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 650;
+}
+
+.markdown a {
+  color: var(--accent-text);
+  text-underline-offset: 3px;
+}
+
+.markdown a:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+  border-radius: 2px;
+}
+
+.markdown :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface-raised);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+.markdown blockquote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink-soft);
+}
+
+.markdown table {
+  border-collapse: collapse;
+  font-size: var(--schrift-m);
+  display: block;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.markdown table::-webkit-scrollbar {
+  display: none;
+}
+
+.markdown :where(th, td) {
+  border: 1px solid var(--line-mid);
+  padding: 5px 9px;
+  text-align: left;
+}
