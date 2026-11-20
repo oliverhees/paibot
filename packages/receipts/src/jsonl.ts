@@ -8,8 +8,13 @@
  * @since     2026-11-20
  */
 
-import type { ReceiptEntry, ReceiptExportHeader } from "@paibot/shared/belege";
-import { notImplemented } from "@paibot/stub";
+import {
+  type ReceiptEntry,
+  type ReceiptExportHeader,
+  receiptEntrySchema,
+  receiptExportHeaderSchema,
+} from "@paibot/shared/belege";
+import { type CanonicalValue, canonicalize } from "./canonical";
 
 /** Medientyp des Exports. */
 export const EXPORT_MEDIA_TYPE = "application/x-ndjson";
@@ -24,11 +29,27 @@ export const EXPORT_MEDIA_TYPE = "application/x-ndjson";
  * Zusagen: Einträge erscheinen in der gelieferten Reihenfolge; nichts wird gepuffert außer der
  * aktuellen Zeile.
  */
-export function exportJsonl(
+export async function* exportJsonl(
   header: ReceiptExportHeader,
   entries: Iterable<ReceiptEntry> | AsyncIterable<ReceiptEntry>,
 ): AsyncIterable<string> {
-  return notImplemented("receipts.exportJsonl", header, entries);
+  yield `${headerLine(header)}\n`;
+  for await (const entry of entries) yield `${entryLine(entry)}\n`;
+}
+
+/** Kopfzeile mit fester Reihenfolge der Schlüssel. */
+function headerLine(header: ReceiptExportHeader): string {
+  const keys = header.publicKeys.map(
+    (key) =>
+      `{"keyId":${JSON.stringify(key.keyId)},"publicKey":${JSON.stringify(key.publicKey)},"fingerprint":${JSON.stringify(key.fingerprint)}}`,
+  );
+  return `{"format":${JSON.stringify(header.format)},"v":${header.v},"installationId":${JSON.stringify(header.installationId)},"publicKeys":[${keys.join(",")}]}`;
+}
+
+/** Eintragszeile mit den Schlüsseln `seq, id, hash, signature, keyId, body`. */
+function entryLine(entry: ReceiptEntry): string {
+  const body = canonicalize(entry.body as unknown as CanonicalValue);
+  return `{"seq":${canonicalize(entry.seq)},"id":${JSON.stringify(entry.id)},"hash":${JSON.stringify(entry.hash)},"signature":${JSON.stringify(entry.signature)},"keyId":${JSON.stringify(entry.keyId)},"body":${body}}`;
 }
 
 /** Gelesener Export. */
@@ -56,5 +77,37 @@ export class ExportFormatError extends Error {
  * prüft `verifyChain`.
  */
 export function parseJsonl(text: string): ParsedExport {
-  return notImplemented("receipts.parseJsonl", text);
+  const lines = text.split("\n").map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line));
+  while (lines.length > 0 && lines[lines.length - 1]?.trim() === "") lines.pop();
+  if (lines.length === 0) throw new ExportFormatError(1, "Die Datei ist leer.");
+
+  const headerValue = parseLine(lines[0] ?? "", 1);
+  const header = receiptExportHeaderSchema.safeParse(headerValue);
+  if (!header.success) {
+    throw new ExportFormatError(
+      1,
+      "Die erste Zeile ist keine gültige Kopfzeile eines Beleg-Exports.",
+    );
+  }
+
+  const entries: ReceiptEntry[] = [];
+  for (let index = 1; index < lines.length; index++) {
+    const lineNumber = index + 1;
+    const value = parseLine(lines[index] ?? "", lineNumber);
+    if (!receiptEntrySchema.safeParse(value).success) {
+      throw new ExportFormatError(lineNumber, "Die Zeile ist kein gültiger Beleg.");
+    }
+    // Der gelesene Wert bleibt unverändert, damit die Prüfsumme über genau diese Daten läuft.
+    entries.push(value as ReceiptEntry);
+  }
+  return { header: header.data, entries };
+}
+
+function parseLine(line: string, lineNumber: number): unknown {
+  if (line.trim() === "") throw new ExportFormatError(lineNumber, "Die Zeile ist leer.");
+  try {
+    return JSON.parse(line) as unknown;
+  } catch {
+    throw new ExportFormatError(lineNumber, "Die Zeile ist kein JSON.");
+  }
 }

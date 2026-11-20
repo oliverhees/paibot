@@ -8,8 +8,6 @@
  * @since     2026-11-20
  */
 
-import { notImplemented } from "@paibot/stub";
-
 /** Werte, die sich kanonisieren lassen. Zahlen müssen sichere Ganzzahlen sein. */
 export type CanonicalValue =
   | string
@@ -53,5 +51,66 @@ export class CanonicalizeError extends Error {
  * Symbolen, `bigint`, Datumsobjekten und zyklischen Strukturen.
  */
 export function canonicalize(value: CanonicalValue): string {
-  return notImplemented("receipts.canonicalize", value);
+  return serialize(value as unknown, "", new Set<object>());
+}
+
+function childPath(path: string, key: string): string {
+  return path === "" ? key : `${path}.${key}`;
+}
+
+function serialize(value: unknown, path: string, ancestors: Set<object>): string {
+  if (value === null) return "null";
+  switch (typeof value) {
+    case "string":
+      // JSON.stringify maskiert genau wie RFC 8785: \b \f \n \r \t, \" und \\, übrige
+      // Steuerzeichen als \u00xx (klein); alles andere bleibt unverändert, auch Umlaute und Emoji.
+      return JSON.stringify(value);
+    case "boolean":
+      return value ? "true" : "false";
+    case "number":
+      return serializeNumber(value, path);
+    case "undefined":
+      throw new CanonicalizeError("undefiniert", path);
+    case "object":
+      break;
+    default:
+      throw new CanonicalizeError("typ_unbekannt", path);
+  }
+
+  const object = value as object;
+  if (ancestors.has(object)) throw new CanonicalizeError("zyklus", path);
+
+  if (Array.isArray(object)) {
+    ancestors.add(object);
+    const parts: string[] = [];
+    for (let index = 0; index < object.length; index++) {
+      parts.push(serialize(object[index], `${path}[${index}]`, ancestors));
+    }
+    ancestors.delete(object);
+    return `[${parts.join(",")}]`;
+  }
+
+  const prototype = Object.getPrototypeOf(object);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new CanonicalizeError("typ_unbekannt", path);
+  }
+
+  ancestors.add(object);
+  // Standard-Sortierung von JavaScript vergleicht UTF-16-Code-Units, wie RFC 8785 es verlangt.
+  const keys = Object.keys(object).sort();
+  const record = object as Record<string, unknown>;
+  const parts: string[] = [];
+  for (const key of keys) {
+    parts.push(`${JSON.stringify(key)}:${serialize(record[key], childPath(path, key), ancestors)}`);
+  }
+  ancestors.delete(object);
+  return `{${parts.join(",")}}`;
+}
+
+function serializeNumber(value: number, path: string): string {
+  if (!Number.isFinite(value)) throw new CanonicalizeError("nicht_endlich", path);
+  if (!Number.isInteger(value)) throw new CanonicalizeError("gleitkommazahl", path);
+  if (!Number.isSafeInteger(value)) throw new CanonicalizeError("zahl_zu_gross", path);
+  // -0 wird wie in RFC 8785 als 0 geschrieben.
+  return Object.is(value, -0) ? "0" : String(value);
 }

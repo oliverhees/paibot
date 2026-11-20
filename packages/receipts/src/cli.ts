@@ -8,7 +8,49 @@
  * @since     2026-11-20
  */
 
-import { notImplemented } from "@paibot/stub";
+import { t } from "@paibot/shared/texte";
+import { ExportFormatError, parseJsonl } from "./jsonl";
+import { type CheckResult, verifyChain } from "./verify";
+
+/** Exit-Codes des Befehls. */
+const CLI_EXIT = { gueltig: 0, ungueltig: 1, fehler: 2 } as const;
+
+/** Meldungen, die nur der Befehl braucht (die Prüf-Ergebnisse kommen aus den App-Texten). */
+const CLI_TEXT = {
+  aufruf: "Aufruf: pnpm belege:pruefen <datei.jsonl>",
+  datei: "Die Datei lässt sich nicht lesen: {datei}",
+  format: "Die Datei ist kein gültiger Beleg-Export. {grund}",
+  kette: "Belege-Kette {ergebnis}: {anzahl} Einträge geprüft.",
+  kopf: "Letzter Eintrag: {seq} ({hash})",
+} as const;
+
+function fill(text: string, values: Record<string, string | number>): string {
+  return text.replace(/\{([a-z]+)\}/g, (match, name: string) =>
+    name in values ? String(values[name]) : match,
+  );
+}
+
+function describe(check: CheckResult): string | undefined {
+  if (check.status === "entfaellt") return undefined;
+  const ok = check.status === "ok";
+  const mark = ok ? "✓" : "✗";
+  switch (check.check) {
+    case "inhalt":
+      return `${mark} ${t(ok ? "pruefung.inhalt.ok" : "pruefung.inhalt.fehler")}`;
+    case "signatur":
+      return ok
+        ? `${mark} ${t("pruefung.signatur.ok", { kurzform: check.fingerprint ?? "?" })}`
+        : `${mark} ${t("pruefung.signatur.fehler")}`;
+    case "kette":
+      return `${mark} ${t(ok ? "pruefung.kette.ok" : "pruefung.kette.fehler")}`;
+    case "entscheidung":
+      return ok
+        ? `${mark} ${t("pruefung.entscheidung.ok", { regel: check.rule?.id ?? "?" })}`
+        : `${mark} ${t("pruefung.entscheidung.fehler")}`;
+    case "kontext":
+      return `${mark} ${t(ok ? "pruefung.kontext.ok" : "pruefung.kontext.fehler")}`;
+  }
+}
 
 /** Ein- und Ausgabe des Befehls, für Tests austauschbar. */
 export interface CliIo {
@@ -24,6 +66,49 @@ export interface CliIo {
  * Rückgabe ist der Exit-Code: 0 = Kette gültig, 1 = Kette ungültig (mit Stelle), 2 = Aufruf oder
  * Datei fehlerhaft.
  */
-export function runCli(argv: readonly string[], io: CliIo): Promise<number> {
-  return notImplemented("receipts.runCli", argv, io);
+export async function runCli(argv: readonly string[], io: CliIo): Promise<number> {
+  const args = argv.filter((arg) => arg !== "--");
+  const path = args[0];
+  if (args.length !== 1 || path === undefined || path.startsWith("-")) {
+    io.err(CLI_TEXT.aufruf);
+    return CLI_EXIT.fehler;
+  }
+
+  let text: string;
+  try {
+    text = await io.readFile(path);
+  } catch {
+    io.err(fill(CLI_TEXT.datei, { datei: path }));
+    return CLI_EXIT.fehler;
+  }
+
+  let parsed: ReturnType<typeof parseJsonl>;
+  try {
+    parsed = parseJsonl(text);
+  } catch (error) {
+    if (!(error instanceof ExportFormatError)) throw error;
+    io.err(fill(CLI_TEXT.format, { grund: error.message }));
+    return CLI_EXIT.fehler;
+  }
+
+  const report = await verifyChain(parsed.entries, parsed.header.publicKeys);
+  if (report.ok) {
+    io.out(fill(CLI_TEXT.kette, { ergebnis: t("pruefung.gueltig"), anzahl: report.checked }));
+    if (report.head !== undefined) io.out(fill(CLI_TEXT.kopf, report.head));
+    return CLI_EXIT.gueltig;
+  }
+
+  const failure = report.firstFailure;
+  const seq = failure?.seq ?? 0;
+  io.out(
+    fill(CLI_TEXT.kette, {
+      ergebnis: t("pruefung.ungueltig", { seq }),
+      anzahl: report.checked,
+    }),
+  );
+  for (const check of failure?.checks ?? []) {
+    const line = describe(check);
+    if (line !== undefined) io.out(`  ${line}`);
+  }
+  return CLI_EXIT.ungueltig;
 }
