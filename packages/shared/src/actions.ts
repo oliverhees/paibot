@@ -70,6 +70,7 @@ const providerId = idSchema("provider");
 const modelId = idSchema("model");
 const ownerId = idSchema("owner");
 const installationId = idSchema("installation");
+const actionId = idSchema("action");
 
 const ownerFacts = { credential: credentialSchema };
 
@@ -85,6 +86,29 @@ function action<K extends ActorKind, T extends z.ZodRawShape, F extends z.ZodRaw
   facts: F,
 ) {
   return { actor, target: z.strictObject(target), facts: z.strictObject(facts) };
+}
+
+/** Fakten eines Werkzeugs: Name, Quelle und Art; der Server genau dann, wenn die Quelle `mcp` ist. */
+const toolFacts = {
+  toolName: toolNameSchema,
+  toolSource: toolSourceSchema,
+  /** Genau bei Quelle `mcp` gesetzt, sonst nie. */
+  toolServer: toolServerSchema.optional(),
+  toolKind: toolKindSchema,
+};
+
+/** Fakten eines Werkzeug-Aufrufs mit der Regel „Server genau bei Quelle `mcp`“. */
+function toolAction<T extends z.ZodRawShape, F extends z.ZodRawShape>(target: T, facts: F) {
+  const base = action("bot", target, { ...toolFacts, ...facts });
+  return {
+    ...base,
+    facts: base.facts.refine(
+      (value) =>
+        ((value as { toolSource?: unknown }).toolSource === "mcp") ===
+        ((value as { toolServer?: unknown }).toolServer !== undefined),
+      { path: ["toolServer"] },
+    ),
+  };
 }
 
 /**
@@ -193,22 +217,62 @@ export const ACTIONS = {
     { installationId },
     { ...ownerFacts, entries: countSchema },
   ),
-  "werkzeug.aufrufen": action(
-    "bot",
+  "werkzeug.aufrufen": toolAction(
     { conversationId, runId, botId },
     {
       /** Der aufrufende Bot gehört zu dieser Unterhaltung. */
       botOfConversation: z.boolean(),
       /** Der Lauf läuft gerade (Vorbedingung V-05). */
       runRunning: z.boolean(),
-      toolName: toolNameSchema,
-      toolSource: toolSourceSchema,
-      /** Nur bei Quelle `mcp`. */
-      toolServer: toolServerSchema.optional(),
-      toolKind: toolKindSchema,
       /** Abdruck der Argumente (`TOOL_ARGS_DIGEST_PREFIX`); die Argumente selbst nie. */
       argsDigest: hmacDigestSchema,
       killSwitch: z.boolean(),
+    },
+  ),
+  /**
+   * Der Besitzer beantwortet einen wartenden Werkzeug-Aufruf (`toolCallId` = `actionId` des
+   * Aufrufs `werkzeug.aufrufen`). Die Fakten liest die Route aus dem gespeicherten Aufruf.
+   */
+  "werkzeug.freigeben": action(
+    "besitzer",
+    { conversationId, runId, toolCallId: actionId },
+    {
+      ...ownerFacts,
+      /** Antwort des Besitzers. */
+      answer: z.enum(["erteilen", "ablehnen"]),
+      /** Der Aufruf wartet auf eine Freigabe (Vorbedingung V-08). */
+      callWaiting: z.boolean(),
+      /** Die Wartezeit des Aufrufs ist abgelaufen (Vorbedingung V-08). */
+      callExpired: z.boolean(),
+      /** Abdruck der Argumente, wie der Besitzer sie gesehen hat. */
+      argsDigest: hmacDigestSchema,
+      /** Abdruck der Argumente des gespeicherten, wartenden Aufrufs (Vorbedingung V-09). */
+      waitingArgsDigest: hmacDigestSchema,
+    },
+  ),
+  /**
+   * Ausführung eines Werkzeug-Aufrufs nach der Freigabe: eine eigene Entscheidung mit eigener
+   * Kennung, die auf den wartenden Aufruf (`toolCallId`) und die Freigabe (`approvalId` =
+   * `actionId` der Aktion `werkzeug.freigeben`) verweist. Erlaubt nur über R-007 („einmal
+   * erlaubt“); danach ist die Freigabe verbraucht.
+   */
+  "werkzeug.ausfuehren": toolAction(
+    { conversationId, runId, botId, toolCallId: actionId, approvalId: actionId },
+    {
+      botOfConversation: z.boolean(),
+      /** Der Lauf läuft gerade (Vorbedingung V-05). */
+      runRunning: z.boolean(),
+      /** Abdruck der Argumente des Aufrufs, der jetzt ausgeführt werden soll. */
+      argsDigest: hmacDigestSchema,
+      killSwitch: z.boolean(),
+      /** Zu `approvalId` gibt es eine erteilte Freigabe des Besitzers für diesen Aufruf. */
+      approvalGranted: z.boolean(),
+      /** Die Freigabe wurde schon für eine Ausführung benutzt. */
+      approvalConsumed: z.boolean(),
+      /** Die Freigabe ist abgelaufen. */
+      approvalExpired: z.boolean(),
+      /** Abdruck der Argumente, für den die Freigabe erteilt wurde. */
+      approvalArgsDigest: hmacDigestSchema,
     },
   ),
 } as const;
@@ -219,7 +283,10 @@ export const ACTION_TYPES = Object.keys(ACTIONS) as [ActionType, ...ActionType[]
 export const actionTypeSchema = z.enum(ACTION_TYPES);
 
 /** Aktionen für Werkzeug-Aufrufe des Bots (Teil von `ACTIONS`). */
-export const TOOL_ACTION_TYPES = ["werkzeug.aufrufen"] as const satisfies readonly ActionType[];
+export const TOOL_ACTION_TYPES = [
+  "werkzeug.aufrufen",
+  "werkzeug.ausfuehren",
+] as const satisfies readonly ActionType[];
 export type ToolActionType = (typeof TOOL_ACTION_TYPES)[number];
 export const toolActionTypeSchema = z.enum(TOOL_ACTION_TYPES);
 
@@ -233,13 +300,23 @@ export const TOOL_ACTIONS = {
 } as const;
 
 /**
- * Alle Aktionen, die die Datenbank in `rules.action` und `belege.action` zulässt.
- *
- * @deprecated Gleich `ACTION_TYPES`, seit die Werkzeug-Aufrufe in `ACTIONS` stehen.
+ * Aktionen, über die das Tor schon entscheiden kann, die die Datenbank aber noch nicht speichert:
+ * Die CHECKs `rules_action_werte` und `belege_action_werte` nehmen sie erst nach der nächsten
+ * Migration an. Bis dahin lässt sich für sie weder eine Regel noch ein Beleg speichern; das Tor
+ * scheitert dann beim Schreiben des Belegs „Entscheidung“ und führt nichts aus.
  */
-export const STORED_ACTION_TYPES = ACTION_TYPES;
-/** @deprecated Gleich `ActionType`. */
-export type StoredActionType = ActionType;
+export const UNSTORED_ACTION_TYPES = [
+  "werkzeug.freigeben",
+  "werkzeug.ausfuehren",
+] as const satisfies readonly ActionType[];
+export type UnstoredActionType = (typeof UNSTORED_ACTION_TYPES)[number];
+
+/** Alle Aktionen, die die Datenbank in `rules.action` und `belege.action` zulässt. */
+export const STORED_ACTION_TYPES = ACTION_TYPES.filter(
+  (type): type is Exclude<ActionType, UnstoredActionType> =>
+    !(UNSTORED_ACTION_TYPES as readonly string[]).includes(type),
+) as [Exclude<ActionType, UnstoredActionType>, ...Exclude<ActionType, UnstoredActionType>[]];
+export type StoredActionType = Exclude<ActionType, UnstoredActionType>;
 
 /** Akteur-Art, die eine Aktion auslösen darf. */
 export type ActorKindOf<T extends ActionType> = Actions[T]["actor"];

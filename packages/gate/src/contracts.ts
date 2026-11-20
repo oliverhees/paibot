@@ -22,6 +22,8 @@ export {
   factsSchema,
   TOOL_ACTION_TYPES,
   type ToolActionType,
+  UNSTORED_ACTION_TYPES,
+  type UnstoredActionType,
 } from "@paibot/shared/aktionen";
 export {
   ACTIVE_STANDARD_RULES,
@@ -72,4 +74,5 @@ export {
   STANDARD_RULES,
   type Stage,
   type StandardRuleId,
+  UNSTORED_STANDARD_RULE_VERSIONS,
 } from "@paibot/shared/tor";

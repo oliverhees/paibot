@@ -92,7 +92,7 @@ describe("Schnittstelle", () => {
 
   it("kennt alle Aktionen der Verträge, auch Besitzer-Aktionen und Werkzeug-Aufrufe", () => {
     expect(gate.ACTION_TYPES).toEqual(shared.ACTION_TYPES);
-    expect(gate.ACTION_TYPES).toHaveLength(19);
+    expect(gate.ACTION_TYPES).toHaveLength(21);
     expect(gate.ACTION_TYPES).toContain("werkzeug.aufrufen");
     expect(gate.ACTION_TYPES).toContain("zugang.passwort_aendern");
     expect(gate.ACTION_TYPES).toContain("unterhaltung.umbenennen");

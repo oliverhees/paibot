@@ -222,6 +222,8 @@ export const de = {
   "aktion.lauf.abbrechen": "Antwort abgebrochen",
   "aktion.belege.exportieren": "Belege exportiert",
   "aktion.werkzeug.aufrufen": "Werkzeug aufgerufen",
+  "aktion.werkzeug.freigeben": "Werkzeug-Aufruf beantwortet",
+  "aktion.werkzeug.ausfuehren": "Werkzeug nach Freigabe ausgeführt",
 
   // Regeln und Grenzen
   "regel.R-001": "Besitzer verwaltet seine Installation",
@@ -230,6 +232,8 @@ export const de = {
   "regel.R-004": "Anmelden mit Passwort",
   "regel.R-005": "Bot fragt vor Werkzeugen",
   "regel.R-006": "Nachweis passt nicht zur Aktion",
+  "regel.R-007": "Einmal erlaubt",
+  "regel.R-008": "Ausführen nur mit Freigabe",
   "regel.R-999": "Ohne passende Regel",
   "regel.G-01": "Datenschleuse gefordert",
   "regel.G-02": "Anbieter aktiv und Region erlaubt",
@@ -245,6 +249,8 @@ export const de = {
   "regel.V-05": "Lauf läuft",
   "regel.V-06": "Aktuelles Passwort bestätigt",
   "regel.V-07": "Einrichtung offen",
+  "regel.V-08": "Aufruf wartet auf Freigabe",
+  "regel.V-09": "Freigabe passt zum Aufruf",
   "tor.vorbedingung_verletzt":
     "Das Tor hat die Aktion abgelehnt. Vorbedingung nicht erfüllt: {vorbedingungen}.",
 
