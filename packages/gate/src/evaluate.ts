@@ -39,7 +39,7 @@ export const OUTCOME_ERROR_CODE = {
 } as const satisfies Record<Exclude<Outcome, "allow">, "abgelehnt" | "regel_fehlt">;
 
 /** Begründung, wenn keine einzige Regel passt. */
-export const NO_RULE_REASON = "Dafür gibt es noch keine Regel.";
+export const NO_RULE_REASON = t("fehler.regel_fehlt");
 
 const LIMIT_ID_BY_NAME = Object.fromEntries(
   Object.entries(LIMITS_BY_ID).map(([id, name]) => [name, id]),
@@ -74,9 +74,9 @@ function outcomeOf(rule: RuleDefinition): Outcome {
 function limitReason(violated: readonly LimitCheck[]): string {
   const names = violated.map((check) => {
     const id = LIMIT_ID_BY_NAME[check.name];
-    return `${id} „${t(`regel.${id}`)}“`;
+    return t("tor.grenze", { id, name: t(`regel.${id}`) });
   });
-  return `${t("fehler.abgelehnt")} Grenze nicht eingehalten: ${names.join(", ")}.`.slice(0, 500);
+  return t("tor.grenze_verletzt", { grenzen: names.join(", ") }).slice(0, 500);
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   receiptEntrySchema,
   receiptExportHeaderSchema,
 } from "@paibot/shared/belege";
+import { t } from "@paibot/shared/texte";
 import { type CanonicalValue, canonicalize } from "./canonical";
 
 /** Medientyp des Exports. */
@@ -63,7 +64,7 @@ export class ExportFormatError extends Error {
   readonly line: number;
 
   constructor(line: number, message: string) {
-    super(`Zeile ${line}: ${message}`);
+    super(t("belege.export.zeile", { zeile: line, grund: message }));
     this.name = "ExportFormatError";
     this.line = line;
   }
@@ -79,15 +80,12 @@ export class ExportFormatError extends Error {
 export function parseJsonl(text: string): ParsedExport {
   const lines = text.split("\n").map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line));
   while (lines.length > 0 && lines[lines.length - 1]?.trim() === "") lines.pop();
-  if (lines.length === 0) throw new ExportFormatError(1, "Die Datei ist leer.");
+  if (lines.length === 0) throw new ExportFormatError(1, t("belege.export.datei_leer"));
 
   const headerValue = parseLine(lines[0] ?? "", 1);
   const header = receiptExportHeaderSchema.safeParse(headerValue);
   if (!header.success) {
-    throw new ExportFormatError(
-      1,
-      "Die erste Zeile ist keine gültige Kopfzeile eines Beleg-Exports.",
-    );
+    throw new ExportFormatError(1, t("belege.export.kopfzeile"));
   }
 
   const entries: ReceiptEntry[] = [];
@@ -95,7 +93,7 @@ export function parseJsonl(text: string): ParsedExport {
     const lineNumber = index + 1;
     const value = parseLine(lines[index] ?? "", lineNumber);
     if (!receiptEntrySchema.safeParse(value).success) {
-      throw new ExportFormatError(lineNumber, "Die Zeile ist kein gültiger Beleg.");
+      throw new ExportFormatError(lineNumber, t("belege.export.kein_beleg"));
     }
     // Der gelesene Wert bleibt unverändert, damit die Prüfsumme über genau diese Daten läuft.
     entries.push(value as ReceiptEntry);
@@ -104,10 +102,10 @@ export function parseJsonl(text: string): ParsedExport {
 }
 
 function parseLine(line: string, lineNumber: number): unknown {
-  if (line.trim() === "") throw new ExportFormatError(lineNumber, "Die Zeile ist leer.");
+  if (line.trim() === "") throw new ExportFormatError(lineNumber, t("belege.export.zeile_leer"));
   try {
     return JSON.parse(line) as unknown;
   } catch {
-    throw new ExportFormatError(lineNumber, "Die Zeile ist kein JSON.");
+    throw new ExportFormatError(lineNumber, t("belege.export.kein_json"));
   }
 }

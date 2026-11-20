@@ -21,6 +21,7 @@ import {
   newId,
 } from "@paibot/shared/ids";
 import { EVENT_NOTIFY_CHANNEL } from "@paibot/shared/konstanten";
+import { t } from "@paibot/shared/texte";
 import { buildReceipt, type ReceiptDraft } from "./build";
 import { hashReceipt } from "./hash";
 import { signReceipt } from "./server";
@@ -83,9 +84,7 @@ export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptCha
     appendStart: (input) =>
       append(db, input.time, async (tx, chain) => {
         if (chain.head !== undefined) {
-          throw new PaiBotError("einrichtung_fertig", {
-            text: "Die Belege-Kette hat schon einen Start.",
-          });
+          throw new PaiBotError("einrichtung_fertig", { text: t("belege.kette.start_vorhanden") });
         }
         await requireStoredKey(tx, input.key.keyId, input.key.publicKey);
         return {
@@ -106,12 +105,10 @@ export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptCha
         const active = requireStarted(chain);
         const previousKeyId = input.previous?.keyId ?? active;
         if (previousKeyId !== active) {
-          throw new PaiBotError("intern", {
-            text: "Der bisherige Schlüssel ist nicht der aktive.",
-          });
+          throw new PaiBotError("intern", { text: t("belege.schluessel.nicht_aktiv") });
         }
         if (input.next.keyId === active) {
-          throw new PaiBotError("intern", { text: "Der neue Schlüssel ist schon der aktive." });
+          throw new PaiBotError("intern", { text: t("belege.schluessel.schon_aktiv") });
         }
         await requireStoredKey(tx, input.next.keyId, input.next.publicKey);
         const previousPrivate = input.previous?.privateKey;
@@ -245,7 +242,7 @@ async function readChainHead(tx: Tx): Promise<ChainHead> {
 
 function requireStarted(chain: ChainHead): KeyId {
   if (chain.head === undefined || chain.activeKeyId === undefined) {
-    throw new PaiBotError("einrichtung_offen", { text: "Die Belege-Kette hat noch keinen Start." });
+    throw new PaiBotError("einrichtung_offen", { text: t("belege.kette.ohne_start") });
   }
   return chain.activeKeyId;
 }
@@ -253,7 +250,7 @@ function requireStarted(chain: ChainHead): KeyId {
 async function currentKey(keys: ReceiptKeys, active: KeyId): Promise<SigningKeyRef> {
   const key = await keys.current();
   if (key.keyId !== active) {
-    throw new PaiBotError("intern", { text: "Der Signaturschlüssel ist nicht der aktive." });
+    throw new PaiBotError("intern", { text: t("belege.schluessel.signierer_nicht_aktiv") });
   }
   return key;
 }
@@ -264,7 +261,7 @@ async function requireStoredKey(tx: Tx, keyId: KeyId, publicKey: string): Promis
     columns: { publicKey: true },
   });
   if (row === undefined || row.publicKey !== publicKey) {
-    throw new PaiBotError("intern", { text: "Der Schlüssel ist nicht gespeichert." });
+    throw new PaiBotError("intern", { text: t("belege.schluessel.nicht_gespeichert") });
   }
 }
 
