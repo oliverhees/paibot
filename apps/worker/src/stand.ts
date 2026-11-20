@@ -1,5 +1,6 @@
 /**
- * PaiBot – Stand der Software für den Worker: aus `PAIBOT_BUILD` oder `<version>+dev`.
+ * PaiBot – Stand der Software für den Worker: aus `PAIBOT_BUILD` oder `<version>+dev`
+ * (gemeinsame Stelle in `@paibot/shared/stand`).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -8,15 +9,4 @@
  * @since     2026-11-20
  */
 
-import { notImplemented } from "@paibot/stub";
-
-/** Name der Umgebungsvariable mit dem Stand, z. B. `0.3.0+20261205.3f9c2ab`. */
-export const STAND_ENV = "PAIBOT_BUILD";
-
-/**
- * Stand der Software: der Wert von `PAIBOT_BUILD`, wenn gesetzt; sonst `<version>+dev` mit
- * `version` aus dem `package.json` im Projektstamm (beim Bündeln fest eingesetzt).
- */
-export function readStand(env: Readonly<Record<string, string | undefined>>): string {
-  return notImplemented("worker.readStand", env);
-}
+export { readStand, STAND_ENV } from "@paibot/shared/stand";

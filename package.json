@@ -1,5 +1,6 @@
 {
   "name": "paibot",
+  "version": "0.3.0-dev",
   "private": true,
   "description": "PaiBot – dein persönliches KI-Team, EU-souverän und selbst gehostet.",
   "license": "SEE LICENSE IN LICENSE",

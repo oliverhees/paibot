@@ -1,6 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["biome.json", "tsconfig.base.json", "tools/lint-regeln/*.grit"],
+  "globalDependencies": [
+    "package.json",
+    "biome.json",
+    "tsconfig.base.json",
+    "tools/lint-regeln/*.grit"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

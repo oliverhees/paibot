@@ -20,7 +20,8 @@
     "./api": "./src/api.ts",
     "./texte": "./src/i18n/index.ts",
     "./konstanten": "./src/constants.ts",
-    "./sprache": "./src/locale.ts"
+    "./sprache": "./src/locale.ts",
+    "./stand": "./src/stand.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

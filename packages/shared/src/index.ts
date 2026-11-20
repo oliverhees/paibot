@@ -22,3 +22,4 @@ export * from "./locale";
 export * from "./motor";
 export * from "./objects";
 export * from "./receipts";
+export * from "./stand";
