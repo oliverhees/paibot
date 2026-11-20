@@ -33,7 +33,7 @@ Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folg
 
 ## Bevor du loslegst
 
-- **Beitragsvereinbarung (CLA):** Mit deinem ersten Pull Request stimmst du der Beitragsvereinbarung zu (§ 5 der [Lizenz](LICENSE)). Sie räumt dem Projekt die Rechte an deinem Beitrag ein, auch für eine künftige andere Lizenzierung. Ein automatischer CLA-Check wird eingerichtet.
+- **Beitragsvereinbarung (CLA):** Bevor wir deinen ersten Pull Request aufnehmen, stimmst du einmal der [Beitragsvereinbarung](docs/BEITRAGSVEREINBARUNG.md) zu (§ 5 der [Lizenz](LICENSE)). Schreib dazu diesen Satz in deinen Pull Request: „Ich habe die Beitragsvereinbarung von PaiBot, Fassung 1.0, gelesen und stimme ihr für diesen und alle künftigen Beiträge zu.“ Du bleibst Urheber deines Beitrags und räumst dem Projekt die Rechte daran ein, auch für eine künftige andere Lizenzierung. Ohne Zustimmung können wir nicht mergen.
 - **Für eine Person:** PaiBot steht unter einer Fair-Code-Lizenz für die Nutzung durch eine Person, privat oder für die eigene Arbeit. Beiträge, die PaiBot für mehrere Nutzer umbauen (Mehrbenutzer, Rollen, Mandanten), nehmen wir nicht auf.
 - **Größere Änderungen:** bitte zuerst ein Issue eröffnen, damit wir die Richtung abstimmen. Die Roadmap folgt der YouTube-Serie.
 - **Sicherheitslücken:** nie als Issue, sondern nach [SECURITY.md](SECURITY.md).
@@ -62,15 +62,16 @@ Formatierungsfehler behebt `pnpm exec biome check --write .`.
 1. Fork anlegen und einen Branch erstellen: `feat/…`, `fix/…` oder `docs/…`
 2. Änderung umsetzen, mit Tests, wo es sinnvoll ist
 3. Checks lokal laufen lassen (siehe oben)
-4. Pull Request mit der Vorlage ausfüllen: was, warum, wie getestet
-5. Die CI muss grün sein; danach schauen wir uns den Pull Request an
+4. Beim ersten Pull Request: Zustimmung zur Beitragsvereinbarung (Satz oben)
+5. Pull Request mit der Vorlage ausfüllen: was, warum, wie getestet
+6. Die CI muss grün sein; danach schauen wir uns den Pull Request an
 
 ## Regeln für Code und Abhängigkeiten
 
 - TypeScript im strikten Modus, Validierung mit Zod, Texte in der App auf Deutsch (Englisch kommt mit den Übersetzungen)
 - Keine Geheimnisse (Passwörter, API-Keys) in Code, Commits oder Logs
 - Neue Abhängigkeiten nur mit erlaubter Lizenz (MIT, Apache-2.0, BSD, ISC); `pnpm licenses:check` prüft das, Details in [docs/LIZENZPOLITIK.md](docs/LIZENZPOLITIK.md). Danach `pnpm licenses:notices` ausführen.
-- Kein Code aus fremden Projekten ohne passende Lizenz
+- Kein Code, keine Texte und keine Gestaltung aus fremden Projekten
 - Jede neue Datei bekommt den Urheber-Kopf (Autor, Website, Copyright, Lizenz, Datum). `pnpm headers:write` fügt ihn ein, `pnpm headers:check` prüft das; ausgenommen sind Dateien, in die kein Kommentar passt (z. B. JSON) und `LICENSE`.
 - Jede neue Funktion bringt ihre Doku-Seite nach der [Vorlage](docs/VORLAGE-funktion.md) mit, sonst gilt sie nicht als fertig. Das Inhaltsverzeichnis steht in [docs/README.md](docs/README.md). Screenshots entstehen aus der laufenden App (`pnpm doku:screenshots`, Liste in `docs/screenshots.json`), nicht von Hand, und zeigen nur Beispiel-Daten.
 

@@ -10,4 +10,5 @@
 
 ## Beitragsvereinbarung
 
-- [ ] Ich stimme der Beitragsvereinbarung (§ 5 der LICENSE) zu
+- [ ] Ich habe die Beitragsvereinbarung von PaiBot, Fassung 1.0, gelesen und stimme ihr für diesen und alle künftigen Beiträge zu.
+      (Nur beim ersten Pull Request nötig. Der Satz muss in diesem Pull Request oder in einem Kommentar stehen.)

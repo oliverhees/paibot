@@ -14,6 +14,7 @@ Alle wichtigen Änderungen an PaiBot, sortiert nach Folge der YouTube-Serie. Jed
 
 ## Lizenz
 
+- Die Fair-Code-Lizenz ist jetzt Version 1.1: Forks sind erlaubt, wenn sie kostenlos bleiben, einen eigenen Namen tragen und „Powered by PaiBot“ mit Verweis auf paibot.de zeigen. Kurse, Bücher, Videos und Beratung bleiben erlaubt, bezahlter Betrieb oder Support für andere nicht. Dazu gibt es eine [Beitragsvereinbarung](docs/BEITRAGSVEREINBARUNG.md). Maßgeblich ist der Text in `LICENSE`.
 - Die Fair-Code-Lizenz ist Version 1.0 (kein Entwurf mehr) und gilt jetzt für die Nutzung durch eine Person, privat und für die eigene Arbeit. Die Nutzung mit mehreren Personen (Team, Unternehmen) braucht eine gesonderte Lizenz.
 
 ## Folge 2 – Server

@@ -1,4 +1,4 @@
-PaiBot Fair-Code-Lizenz, Version 1.0
+PaiBot Fair-Code-Lizenz, Version 1.1 vom 20. November 2026
 
 PaiBot ist "Fair-Code" bzw. "Source Available", nicht "Open Source".
 
@@ -27,7 +27,9 @@ Lizenzgeber: Oliver Hees, [Anschrift]
 
 1. Der Lizenzgeber räumt jedem Lizenznehmer ein einfaches, unentgeltliches,
    weltweites Recht ein, die Software für eigene Zwecke zu nutzen, zu
-   vervielfältigen und zu verändern.
+   vervielfältigen und zu verändern. Das Recht ist nicht übertragbar und
+   berechtigt nicht dazu, Dritten Unterlizenzen einzuräumen; Rechte Dritter
+   ergeben sich allein aus dieser Lizenz.
 2. Dazu gehört, die Software auf eigenen oder gemieteten Systemen zu
    installieren und zu betreiben.
 3. Die Nutzung für die eigene berufliche Tätigkeit ist gestattet, solange
@@ -41,11 +43,15 @@ Lizenzgeber: Oliver Hees, [Anschrift]
 § 3 Weitergabe
 
 1. Der Lizenznehmer darf die Software, auch in veränderter Form, an Dritte
-   weitergeben, wenn dies unentgeltlich und nicht zu kommerziellen Zwecken
-   geschieht.
+   weitergeben und öffentlich zugänglich machen (zusammen: Weitergabe), etwa
+   als Fork in einem öffentlichen Repository, wenn dies unentgeltlich und
+   nicht zu kommerziellen Zwecken geschieht. Freiwillige Spenden gelten nicht
+   als Entgelt, solange der Zugang zur Software nicht von ihnen abhängt.
 2. Bei jeder Weitergabe muss diese Lizenz vollständig beiliegen, und alle
    Urheber-, Marken- und Lizenzhinweise müssen erhalten bleiben. Veränderte
-   Fassungen müssen als solche gekennzeichnet sein.
+   Fassungen müssen als solche gekennzeichnet sein, mindestens durch einen gut
+   sichtbaren Hinweis in ihrer Beschreibung (etwa im README), dass und von wem
+   sie gegenüber PaiBot verändert wurden.
 3. Wer die Software weitergibt, darf den Empfängern keine Rechte einräumen,
    die über diese Lizenz hinausgehen.
 
@@ -59,33 +65,55 @@ Ohne schriftliche Zustimmung des Lizenzgebers ist untersagt:
 3. die Software Dritten als gehosteten oder verwalteten Dienst anzubieten,
    etwa als Software-as-a-Service;
 4. die Software gegen Entgelt für Dritte zu installieren, einzurichten, zu
-   betreiben oder zu warten;
+   betreiben, zu warten oder für ihren Betrieb Support zu leisten. Erlaubt
+   bleiben Schulungen, Kurse, Bücher, Videos und Beratung, die zeigen, wie
+   jemand die Software selbst für eigene Zwecke nutzt;
 5. ein Produkt oder einen Dienst anzubieten, dessen Wert ganz oder
    überwiegend aus der Software stammt;
-6. die Software umzubenennen, unter eigener Marke anzubieten (White-Label)
-   oder als eigenes Werk auszugeben;
+6. die Software oder eine veränderte Fassung als eigenes Werk auszugeben oder
+   ihre Herkunft vom Lizenzgeber zu verschleiern, insbesondere sie unter einem
+   anderen Namen oder einer anderen Marke ohne den Hinweis nach § 6 Abs. 3
+   anzubieten (White-Label). Ein eigener Name nach § 6 Abs. 3 ist kein
+   Verstoß;
 7. Lizenz-, Urheber- und Markenhinweise oder den Hinweis "Powered by PaiBot"
-   zu entfernen oder zu verbergen.
+   zu entfernen, zu verändern oder zu verbergen (zu Ort und Form des Hinweises
+   siehe § 6 Abs. 3);
+8. Erweiterungen, Module oder Dienste anzubieten oder weiterzugeben, die eine
+   nach diesem § 4 untersagte Nutzung ermöglichen sollen, insbesondere die
+   Mehrpersonennutzung.
 
 § 5 Beiträge
 
 1. Reicht jemand Änderungen, Fehlerbehebungen oder Erweiterungen beim
-   Lizenzgeber ein, etwa als Pull Request (Beitrag), räumt er dem
-   Lizenzgeber daran ein unentgeltliches, zeitlich und räumlich
-   unbeschränktes, übertragbares Nutzungsrecht für alle Nutzungsarten ein,
-   einschließlich kommerzieller Produkte des Lizenzgebers und einer
-   künftigen anderen Lizenzierung.
-2. Wer einen Beitrag einreicht, bestätigt, dass er die Rechte daran hat.
-   Einzelheiten regelt eine gesonderte Beitragsvereinbarung (CLA).
+   Lizenzgeber ein, etwa als Pull Request (Beitrag), räumt er dem Lizenzgeber
+   daran ein einfaches, unentgeltliches, zeitlich und räumlich unbeschränktes,
+   übertragbares und unterlizenzierbares Nutzungsrecht für alle bekannten und
+   unbekannten Nutzungsarten ein, einschließlich kommerzieller Produkte des
+   Lizenzgebers und einer künftigen anderen Lizenzierung.
+2. Wer einen Beitrag einreicht (Beitragender), bleibt Urheber seines Beitrags.
+   Er bestätigt, dass er die Rechte daran hat und dass keine Rechte Dritter,
+   etwa seines Arbeitgebers, entgegenstehen.
+3. Ein Beitrag wird erst aufgenommen, wenn der Beitragende der
+   Beitragsvereinbarung (CLA) zugestimmt hat. Sie regelt die Einzelheiten und
+   liegt in der Datei docs/BEITRAGSVEREINBARUNG.md.
 
 § 6 Marken
 
 1. Der Name "PaiBot", Logos, das Maskottchen und sonstige Kennzeichen des
    Lizenzgebers (Marken) werden nicht lizenziert.
 2. Der Lizenznehmer darf die Marken nur verwenden, um wahrheitsgemäß auf die
-   Herkunft der Software hinzuweisen. Veränderte oder weitergegebene
-   Fassungen dürfen nicht unter den Marken des Lizenzgebers auftreten, außer
-   im Hinweis "Powered by PaiBot".
+   Herkunft der Software hinzuweisen, etwa im Hinweis "Powered by PaiBot" oder
+   mit der Angabe, dass eine Fassung auf PaiBot beruht. Darüber hinaus dürfen
+   veränderte Fassungen die Marken nicht verwenden, insbesondere nicht in
+   ihrem Namen oder Logo.
+3. Unveränderte Fassungen dürfen unter dem Namen "PaiBot" weitergegeben
+   werden. Veränderte Fassungen müssen einen eigenen Namen tragen, der die
+   Marken nicht enthält und nicht mit ihnen verwechselt werden kann. Sie
+   müssen in ihrer Oberfläche und in ihrer Beschreibung (etwa im README) gut
+   sichtbar den Hinweis "Powered by PaiBot" zusammen mit einem Verweis auf
+   paibot.de zeigen. In der Oberfläche steht der Hinweis an der Stelle, an der
+   ihn der Lizenzgeber vorgesehen hat, oder an einer mindestens gleich gut
+   sichtbaren Stelle.
 
 § 7 Bestandteile Dritter
 
@@ -108,13 +136,19 @@ hi@paibot.de.
 
 1. Die Lizenz gilt zeitlich unbegrenzt, solange der Lizenznehmer sie
    einhält.
-2. Bei einem Verstoß endet das Nutzungsrecht automatisch. Beim ersten
-   Verstoß lebt es wieder auf, wenn der Lizenznehmer ihn innerhalb von 30
-   Tagen nach Hinweis des Lizenzgebers vollständig beseitigt. Das gilt nicht
-   für Verstöße gegen § 4 Nr. 1 bis 5.
+2. Bei einem Verstoß endet das Nutzungsrecht automatisch für alle Versionen
+   der Software. Beim ersten Verstoß lebt es rückwirkend wieder auf, wenn der
+   Lizenznehmer ihn innerhalb von 30 Tagen nach einem Hinweis des Lizenzgebers
+   in Textform vollständig beseitigt. Das gilt nicht für Verstöße gegen § 4
+   Nr. 1 bis 5.
 3. Mit dem Ende des Nutzungsrechts muss der Lizenznehmer die Nutzung
    einstellen. Ansprüche des Lizenzgebers auf Unterlassung und
    Schadensersatz bleiben unberührt.
+4. Das Ende des Nutzungsrechts eines Lizenznehmers lässt die Rechte von
+   Personen unberührt, die die Software rechtmäßig von ihm erhalten haben und
+   diese Lizenz einhalten. Wer eine Fassung erhält, die unter Verstoß gegen
+   diese Lizenz angeboten wird, erwirbt daran keine weitergehenden Rechte als
+   nach dieser Lizenz.
 
 § 10 Gewährleistung und Haftung
 
@@ -142,6 +176,7 @@ hi@paibot.de.
    unberührt.
 4. Der Lizenzgeber kann die Lizenz für künftige Versionen ändern. Für bereits
    veröffentlichte Versionen gilt die Fassung, unter der sie veröffentlicht
-   wurden.
+   wurden. Diese Fassung 1.1 gilt für Versionen, die ab dem 20. November 2026
+   veröffentlicht werden.
 5. Maßgeblich ist die deutsche Fassung; eine englische Übersetzung dient nur
    der Information.

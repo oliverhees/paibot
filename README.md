@@ -160,33 +160,34 @@ docs/              Dokumentation
 
 ## Lizenz: Fair-Code, für eine Person
 
-PaiBot ist **Fair-Code** („Source Available“), nicht Open Source. Kurz gesagt:
+PaiBot ist **Fair-Code** („Source Available“), nicht Open Source. Es gilt die PaiBot Fair-Code-Lizenz, Version 1.1. Kurz gesagt:
 
 **Du darfst**
 
 - PaiBot für dich herunterladen, installieren und nutzen: privat **und für deine eigene Arbeit**, auch als Selbstständiger oder Freiberufler
 - als Angestellter für deine eigenen Aufgaben nutzen, solange nicht dein Arbeitgeber PaiBot bereitstellt oder vorgibt
 - den Code für dich anpassen und erweitern
-- ihn kostenlos weitergeben, z. B. als Fork, solange die Lizenz dabei bleibt
+- ihn kostenlos weitergeben, z. B. als Fork, solange die Lizenz dabei bleibt, der Fork kostenlos bleibt, einen eigenen Namen trägt und „Powered by PaiBot“ mit Verweis auf [paibot.de](https://paibot.de) zeigt
+- Kurse, Bücher, Videos und Beratung dazu machen, die zeigen, wie man PaiBot selbst nutzt
 
 **Du darfst nicht**
 
 - PaiBot mit mehreren Personen nutzen – nicht im Team, nicht in einer Firma, auch nicht intern
 - PaiBot oder eine angepasste Fassung verkaufen oder vermieten
-- ihn als gehosteten Dienst für andere anbieten oder für Kunden einrichten
-- ihn umbenennen und als eigenes Produkt ausgeben
+- ihn als gehosteten Dienst für andere anbieten oder gegen Entgelt für andere einrichten, betreiben oder supporten
+- eine angepasste Fassung unter dem Namen „PaiBot“ oder ohne Herkunftshinweis als eigenes Produkt ausgeben
 - Lizenz- und Markenhinweise oder „Powered by PaiBot“ entfernen
 
 > **PaiBot ist für eine Person: für dich und deine eigene Arbeit.** Sobald mehrere Personen damit arbeiten sollen, im Team oder im Unternehmen, brauchst du **PaiBot Enterprise** mit Support (in Vorbereitung). Mehr dazu: [paibot.de/enterprise](https://paibot.de/enterprise).
 
-Rechtlich gilt nur der Text in [`LICENSE`](LICENSE). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Rechtlich gilt nur der Text in [`LICENSE`](LICENSE). Wer einen Beitrag einreichen will, findet die [Beitragsvereinbarung](docs/BEITRAGSVEREINBARUNG.md). Bausteine Dritter behalten ihre eigenen Lizenzen, siehe [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## FAQ
 
 <details>
 <summary><b>Ist PaiBot Open Source?</b></summary>
 
-Nein. Der Code ist öffentlich einsehbar und für eine Person kostenlos („Fair-Code“), aber die Nutzung mit mehreren Personen, Verkauf und Hosting für andere sind nicht erlaubt.
+Nein. Der Code ist öffentlich einsehbar und für eine Person kostenlos („Fair-Code“), aber die Nutzung mit mehreren Personen, Verkauf sowie bezahlter Betrieb oder Support für andere sind nicht erlaubt.
 </details>
 
 <details>

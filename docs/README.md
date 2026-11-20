@@ -14,18 +14,19 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ## Inhalt
 
-| Bereich              | Datei                                      | Stand                 |
-| -------------------- | ------------------------------------------ | --------------------- |
-| Installation         | [installation.md](installation.md)         | vorhanden             |
-| Server mit Coolify   | [deploy-coolify.md](deploy-coolify.md)     | vorhanden             |
-| Architektur          | [architektur.md](architektur.md)           | vorhanden, wächst mit |
-| Lizenzen der Pakete  | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)       | vorhanden             |
-| Vorlage für Funktion | [VORLAGE-funktion.md](VORLAGE-funktion.md) | vorhanden             |
-| Datenschleuse        | folgt mit der Funktion                     | geplant               |
-| Bots und Team        | folgt mit der Funktion                     | geplant               |
-| Apps per MCP         | folgt mit der Funktion                     | geplant               |
-| Browser-Dienst       | folgt mit der Funktion                     | geplant               |
-| Hintergrund-Jobs     | folgt mit der Funktion                     | geplant               |
+| Bereich              | Datei                                              | Stand                 |
+| -------------------- | -------------------------------------------------- | --------------------- |
+| Installation         | [installation.md](installation.md)                 | vorhanden             |
+| Server mit Coolify   | [deploy-coolify.md](deploy-coolify.md)             | vorhanden             |
+| Architektur          | [architektur.md](architektur.md)                   | vorhanden, wächst mit |
+| Lizenzen der Pakete  | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)               | vorhanden             |
+| Beitragsvereinbarung | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md) | vorhanden             |
+| Vorlage für Funktion | [VORLAGE-funktion.md](VORLAGE-funktion.md)         | vorhanden             |
+| Datenschleuse        | folgt mit der Funktion                             | geplant               |
+| Bots und Team        | folgt mit der Funktion                             | geplant               |
+| Apps per MCP         | folgt mit der Funktion                             | geplant               |
+| Browser-Dienst       | folgt mit der Funktion                             | geplant               |
+| Hintergrund-Jobs     | folgt mit der Funktion                             | geplant               |
 
 Die Doku ist auch unter https://paibot.de/doku zu lesen.
 

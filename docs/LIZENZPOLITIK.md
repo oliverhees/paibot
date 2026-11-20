@@ -10,7 +10,7 @@ Seit:      2026-11-07
 
 # Lizenzpolitik für Abhängigkeiten
 
-PaiBot steht unter der PaiBot Fair-Code-Lizenz. Damit das so bleiben kann, gelten für Abhängigkeiten diese Regeln.
+PaiBot steht unter der PaiBot Fair-Code-Lizenz, Version 1.1. Damit das so bleiben kann, gelten für Abhängigkeiten diese Regeln.
 
 | Lizenz                                     | Erlaubt?                 | Hinweis                                             |
 | ------------------------------------------ | ------------------------ | --------------------------------------------------- |
