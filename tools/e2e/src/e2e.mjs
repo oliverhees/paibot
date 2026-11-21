@@ -330,14 +330,8 @@ async function main() {
     ergebnis.zwischenstaende = laengen.length;
   });
   await schritt("Chat: Verlauf nach Neuladen", seite, async () => {
-    // Erst neu laden, wenn der Lauf auch in der Datenbank beendet ist: Zwischen dem Speichern der
-    // Antwort und dem Ende des Laufs liegt ein kurzer Moment, in dem die Seite beim Laden den
-    // gespeicherten Text und die Text-Ereignisse des noch aktiven Laufs zusammensetzt und den Text
-    // doppelt zeigt (offener Fehler der Chat-Ansicht). Dieser Schritt prüft den gespeicherten Verlauf.
-    for (let i = 0; i < 100 && (await stack.offeneLaeufe()) > 0; i += 1) {
-      await seite.waitForTimeout(100);
-    }
-    if ((await stack.offeneLaeufe()) > 0) throw new Error("Der Lauf endet nicht.");
+    // Sofort neu laden, auch wenn der Lauf in der Datenbank noch nicht beendet ist: Die Antwort
+    // steht dann genau einmal da, nicht doppelt.
     await seite.reload();
     await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
   });
