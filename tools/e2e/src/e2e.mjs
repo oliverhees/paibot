@@ -1,14 +1,12 @@
 /**
  * PaiBot – Ende-zu-Ende-Prüfung: startet den Stack im Produktions-Build (siehe `stack.mjs`) und
- * geht im Browser den ganzen Weg: Einrichtung mit Code, Anbieter, Modell, Chat mit gestreamter
- * Antwort, Beleg öffnen und prüfen, ganze Kette prüfen, Export, `pnpm belege:pruefen` auf dem
- * Export, Abmelden und Anmelden, Grenze setzen, Ablehnung durch das Tor. Dabei gilt „kein Verkehr
- * nach außen“: Im Browser wird jede Anfrage an einen anderen Host als die App abgebrochen und
- * gezählt, in Web-App und Worker protokolliert die Netz-Sperre jeden Verbindungsversuch nach
- * außen. Jeder Zähler über 0, jeder Konsolenfehler und jede CSP-Verletzung macht die Prüfung rot.
+ * geht im Browser den ganzen Weg (Einrichtung, Chat, Handy-Format, Datenschleuse, Passwort,
+ * Anmelde-Schutz, Belege, Grenzen; Liste in `docs/entwickeln.md`). Dabei gilt „kein Verkehr nach
+ * außen“: Browser und Netz-Sperre in Web-App und Worker zählen jeden Versuch; jeder Zähler über 0,
+ * jeder Konsolenfehler und jede CSP-Verletzung macht die Prüfung rot.
  *
  * Aufruf (nach `pnpm build`): `node tools/e2e/src/e2e.mjs [--ausgabe <ordner>] [--gegenprobe
- * browser|server]`. Ohne Playwright endet sie mit Exit 0 und einer klaren Meldung „übersprungen“.
+ * browser|server]`. Ohne Playwright endet sie mit Exit 0 und der Meldung „übersprungen“.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -108,6 +106,7 @@ async function schritt(name, seite, fn) {
     log(`FEHLER ${name}: ${error.message.split("\n")[0]}`);
     throw error;
   } finally {
+    erwarteteFehler.clear();
     const nummer = String(ergebnis.schritte.length).padStart(2, "0");
     await seite
       .screenshot({ path: path.join(bilder, `${nummer}-${name.replace(/[^a-z0-9]+/gi, "-")}.png`) })
@@ -128,25 +127,44 @@ function netzVerstoesse(datei) {
   };
 }
 
-async function main() {
-  log(`Ausgabe: ${ausgabe}`);
-  stack = await starteStack({
-    ausgabe,
-    log,
-    ...(gegenprobe === "server"
-      ? { zusatzWeb: fileURLToPath(new URL("./gegenprobe-fremdaufruf.cjs", import.meta.url)) }
-      : {}),
-  });
-  const app = new URL(stack.url).origin;
-  log(`Stack bereit: ${app}`);
+/**
+ * Erwartete Fehler-Antworten: Der Browser meldet jede Antwort ab 400 als Konsolenfehler. In den
+ * Schritten mit Absicht (falsches Passwort, Sperre) wird der Pfad mit den erwarteten Status hier
+ * eingetragen; nur solche Meldungen zählen nicht als Konsolenfehler.
+ */
+const erwarteteFehler = new Map();
+function erwarte(pfad, ...status) {
+  erwarteteFehler.set(pfad, new Set(status));
+}
+function istErwartet(nachricht) {
+  const treffer = /status of (\d{3})/.exec(nachricht.text());
+  if (!treffer) return false;
+  let pfad;
+  try {
+    pfad = new URL(nachricht.location().url).pathname;
+  } catch {
+    return false;
+  }
+  return erwarteteFehler.get(pfad)?.has(Number(treffer[1])) === true;
+}
 
-  browser = await chromium.launch();
+const DESKTOP = { width: 1440, height: 900 };
+const HANDY = { width: 390, height: 844 };
+
+/**
+ * Neuer Browser-Kontext (eigenes Gerät: eigene Cookies) mit Sperre für fremde Hosts, Sammeln von
+ * Konsolenfehlern und CSP-Verletzungen. `adresse`: Adresse, die die App über `X-Forwarded-For`
+ * sieht (die Prüfung startet die Web-App mit `TRUST_PROXY=1`), damit Limits je Adresse getrennt
+ * zählen.
+ */
+async function neuesGeraet(app, { viewport = DESKTOP, adresse } = {}) {
   const kontext = await browser.newContext({
     colorScheme: "dark",
     acceptDownloads: true,
-    viewport: { width: 1440, height: 900 },
+    viewport,
+    ...(adresse ? { extraHTTPHeaders: { "x-forwarded-for": adresse } } : {}),
   });
-  // (a) Browser: jede Anfrage an einen anderen Host als die App wird abgebrochen und gezählt.
+  // Jede Anfrage an einen anderen Host als die App wird abgebrochen und gezählt.
   await kontext.route("**/*", (route) => {
     const url = route.request().url();
     let herkunft;
@@ -170,13 +188,76 @@ async function main() {
       console.error(`CSP-Verletzung: ${e.violatedDirective} ${e.blockedURI}`);
     });
   });
-  const seite = await kontext.newPage();
+  kontext.on("page", (seite) => beobachte(seite));
+  return kontext;
+}
+
+function beobachte(seite) {
   seite.on("console", (m) => {
-    if (m.type() === "error" || m.type() === "warning") {
+    if ((m.type() === "error" || m.type() === "warning") && !istErwartet(m)) {
       ergebnis.konsole.push({ art: m.type(), text: m.text(), url: seite.url() });
     }
   });
   seite.on("pageerror", (e) => ergebnis.konsole.push({ art: "pageerror", text: e.message }));
+}
+
+/** Anmelden über die Seite `/anmelden`; liefert den Text der Meldung, falls eine erscheint. */
+async function anmeldeVersuch(seite, app, passwort) {
+  if (!new URL(seite.url()).pathname.startsWith("/anmelden")) await seite.goto(`${app}/anmelden`);
+  const feld = seite.getByLabel("Passwort", { exact: true });
+  await feld.fill(passwort);
+  const antwort = seite.waitForResponse(
+    (r) => new URL(r.url()).pathname === "/api/zugang/anmelden" && r.request().method() === "POST",
+  );
+  await seite.getByRole("button", { name: "Anmelden" }).click();
+  const status = (await antwort).status();
+  // Nach einem Fehler leert die Seite das Feld; erst danach ist sie für den nächsten Versuch bereit.
+  if (status !== 200) {
+    await seite.waitForFunction(
+      () => document.querySelector('input[name="password"]')?.value === "",
+    );
+  }
+  return status;
+}
+
+/**
+ * Anmelde-Anfrage direkt aus einer Seite unter `/anmelden` (wie die Oberfläche: Prüfzeichen aus der
+ * Seite), mit eigener Adresse. Für viele Versuche aus vielen Adressen, ohne je eine Seite zu laden.
+ */
+function anmeldeAnfrage(seite, passwort, adresse) {
+  return seite.evaluate(
+    async ({ passwort, adresse }) => {
+      const zeichen = document.querySelector('meta[name="pb-pruefzeichen"]')?.content ?? "";
+      const antwort = await fetch("/api/zugang/anmelden", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-pb-pruefzeichen": zeichen,
+          "x-forwarded-for": adresse,
+        },
+        body: JSON.stringify({ password: passwort, remember: false }),
+      });
+      return antwort.status;
+    },
+    { passwort, adresse },
+  );
+}
+
+async function main() {
+  log(`Ausgabe: ${ausgabe}`);
+  stack = await starteStack({
+    ausgabe,
+    log,
+    ...(gegenprobe === "server"
+      ? { zusatzWeb: fileURLToPath(new URL("./gegenprobe-fremdaufruf.cjs", import.meta.url)) }
+      : {}),
+  });
+  const app = new URL(stack.url).origin;
+  log(`Stack bereit: ${app}`);
+
+  browser = await chromium.launch();
+  const kontext = await neuesGeraet(app);
+  const seite = await kontext.newPage();
 
   if (gegenprobe === "browser") {
     // Zwei Wege: eine Navigation (die CSP greift nicht, die Sperre im Browser schon) und ein
@@ -244,6 +325,14 @@ async function main() {
     ergebnis.zwischenstaende = laengen.length;
   });
   await schritt("Chat: Verlauf nach Neuladen", seite, async () => {
+    // Erst neu laden, wenn der Lauf auch in der Datenbank beendet ist: Zwischen dem Speichern der
+    // Antwort und dem Ende des Laufs liegt ein kurzer Moment, in dem die Seite beim Laden den
+    // gespeicherten Text und die Text-Ereignisse des noch aktiven Laufs zusammensetzt und den Text
+    // doppelt zeigt (offener Fehler der Chat-Ansicht). Dieser Schritt prüft den gespeicherten Verlauf.
+    for (let i = 0; i < 100 && (await stack.offeneLaeufe()) > 0; i += 1) {
+      await seite.waitForTimeout(100);
+    }
+    if ((await stack.offeneLaeufe()) > 0) throw new Error("Der Lauf endet nicht.");
     await seite.reload();
     await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
   });
@@ -261,6 +350,234 @@ async function main() {
     await seite.getByRole("article").getByText("stimmt", { exact: true }).waitFor();
   });
 
+  // ---- Handy-Format: senden, Antwort streamt, Stopp, Beleg als Blatt ---------------------------
+  const HANDY_ANTWORT =
+    "Gern. Das hier ist eine lange Antwort, die der Test-Anbieter nach zwei Stücken anhält.";
+  const handy = await neuesGeraet(app, { viewport: HANDY });
+  await handy.addCookies(await kontext.cookies());
+  const handySeite = await handy.newPage();
+  await schritt("Handy: Nachricht senden, Antwort streamt", handySeite, async () => {
+    await stack.anbieter.verhalten({ reply: HANDY_ANTWORT, chunkChars: 8, holdAfterChunks: 2 });
+    await handySeite.goto(`${app}/`);
+    await handySeite.getByRole("textbox", { name: "Nachricht" }).fill("Erzähl mir etwas Langes.");
+    await handySeite.getByRole("button", { name: "Senden" }).click();
+    // Die ersten zwei Stücke (16 Zeichen) sind da, der Rest kommt nicht: die Antwort läuft noch.
+    await handySeite.getByText(HANDY_ANTWORT.slice(0, 16), { exact: false }).waitFor();
+    await handySeite.getByRole("button", { name: "Stopp" }).waitFor();
+    if (await handySeite.getByText(HANDY_ANTWORT, { exact: true }).count()) {
+      throw new Error("Die ganze Antwort ist schon da, obwohl der Anbieter angehalten hat.");
+    }
+  });
+  await schritt("Handy: Stopp bricht die Antwort beim Anbieter ab", handySeite, async () => {
+    await handySeite.getByRole("button", { name: "Stopp" }).click();
+    await handySeite.getByText("Abgebrochen. Der Text bis hierhin bleibt stehen.").waitFor();
+    // Gegenprobe beim Anbieter: Die Verbindung zur letzten Chat-Anfrage wurde vom Aufrufer
+    // geschlossen, nicht vom Anbieter beendet.
+    let letzte;
+    for (let i = 0; i < 50; i += 1) {
+      const chats = (await stack.anbieter.anfragen()).filter((a) =>
+        a.path.endsWith("/chat/completions"),
+      );
+      letzte = chats.at(-1);
+      if (letzte?.closedByClient) break;
+      await handySeite.waitForTimeout(200);
+    }
+    if (!letzte?.closedByClient) throw new Error("Der Anbieter hat keinen Abbruch gesehen.");
+    await stack.anbieter.verhalten({ reply: BEISPIEL_ANTWORT, holdAfterChunks: 0 });
+  });
+  await schritt("Handy: Beleg als Blatt öffnen", handySeite, async () => {
+    await handySeite
+      .getByRole("button", { name: /^Beleg prüfen: B-\d+/ })
+      .last()
+      .click();
+    await handySeite.getByRole("link", { name: "Als eigene Seite öffnen" }).last().waitFor();
+    // Der Beleg des abgebrochenen Laufs steht im Blatt, ganz im Bild.
+    await handySeite.getByText("abgebrochen", { exact: true }).last().waitFor();
+    const link = await handySeite
+      .getByRole("link", { name: "Als eigene Seite öffnen" })
+      .last()
+      .boundingBox();
+    if (
+      !link ||
+      link.x < 0 ||
+      link.x + link.width > HANDY.width ||
+      link.y + link.height > HANDY.height
+    ) {
+      throw new Error(`Blatt passt nicht ins Handy-Format (${JSON.stringify(link)}).`);
+    }
+    const breite = await handySeite.evaluate(() => document.documentElement.scrollWidth);
+    if (breite > HANDY.width) throw new Error(`Seite scrollt waagerecht (${breite} px).`);
+  });
+  await handy.close();
+
+  // ---- Datenschleuse (Beispiel-Umgebung: Attrappe statt echter Datenschleuse) --------------------
+  await schritt("Datenschleuse: bereit, Standard einschalten", seite, async () => {
+    await stack.schleuse("bereit");
+    await seite.goto(`${app}/datenschleuse`);
+    await seite.getByText("Die Datenschleuse ist bereit.").first().waitFor();
+    const schalter = seite.getByRole("switch", { name: "Neue Unterhaltungen mit Datenschleuse" });
+    await schalter.click();
+    await seite.getByText("Gespeichert: Neue Unterhaltungen starten mit Datenschleuse.").waitFor();
+  });
+  let anfragenVorher;
+  await schritt("Datenschleuse: Nachricht geht geschützt", seite, async () => {
+    anfragenVorher = (await stack.anbieter.anfragen()).length;
+    await seite.goto(`${app}/`);
+    await seite.getByRole("textbox", { name: "Nachricht" }).fill("Ruf bitte Max Mustermann an.");
+    await seite.getByRole("button", { name: "Senden" }).click();
+    const verlauf = seite.getByRole("log", { name: "Verlauf" });
+    await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor({ timeout: 60_000 });
+    await verlauf.getByText("geschützt über die Datenschleuse").first().waitFor();
+    if ((await stack.anbieter.anfragen()).length <= anfragenVorher) {
+      throw new Error("Die Anfrage kam nicht beim Anbieter an.");
+    }
+  });
+  await schritt("Datenschleuse: Schlüssel passt nicht, mit Ausweg", seite, async () => {
+    // Gegenprobe zum Weg: Nimmt die Datenschleuse den Schlüssel nicht an, scheitert die Nachricht,
+    // und beim Anbieter kommt nichts an (kein stiller Umweg direkt zum Anbieter).
+    stack.attrappeZustand("schluessel_falsch");
+    anfragenVorher = (await stack.anbieter.anfragen()).length;
+    await seite.getByRole("textbox", { name: "Nachricht" }).fill("Und schreib ihm eine Mail.");
+    await seite.getByRole("button", { name: "Senden" }).click();
+    const verlauf = seite.getByRole("log", { name: "Verlauf" });
+    await verlauf
+      .getByText("Die Datenschleuse nimmt den Schlüssel von PaiBot (SCHLEUSE_KEY) nicht an.", {
+        exact: false,
+      })
+      .first()
+      .waitFor({ timeout: 60_000 });
+    await verlauf.getByText("Prüf SCHLEUSE_KEY in deploy/.env", { exact: false }).first().waitFor();
+    if ((await stack.anbieter.anfragen()).length !== anfragenVorher) {
+      throw new Error("Trotz abgelehntem Schlüssel ging eine Anfrage an den Anbieter.");
+    }
+    // Ausweg: der Link führt zur Seite Datenschleuse; dort steht der Befund des Workers.
+    await stack.schleuse("schluessel_falsch");
+    await verlauf.getByRole("link", { name: "Zur Datenschleuse" }).first().click();
+    await seite.waitForURL((u) => u.pathname === "/datenschleuse");
+    await seite.getByText("Schlüssel passt nicht", { exact: true }).first().waitFor();
+    await seite.getByText("Prüf SCHLEUSE_KEY in deploy/.env", { exact: false }).first().waitFor();
+    // Standard wieder aus; die weiteren Schritte gehen direkt an den Anbieter.
+    await seite.getByRole("switch", { name: "Neue Unterhaltungen mit Datenschleuse" }).click();
+    await seite.getByText("Gespeichert: Neue Unterhaltungen starten ohne Datenschleuse.").waitFor();
+  });
+
+  // ---- Passwort ändern meldet alle anderen Geräte ab ---------------------------------------------
+  const NEUES_PASSWORT = `Neuer-${randomBytes(9).toString("base64url")}-Satz`;
+  const zweites = await neuesGeraet(app, { adresse: "198.51.100.20" });
+  const zweiteSeite = await zweites.newPage();
+  await schritt("Zweites Gerät meldet sich an", zweiteSeite, async () => {
+    const status = await anmeldeVersuch(zweiteSeite, app, PASSWORT);
+    if (status !== 200) throw new Error(`Anmeldung auf dem zweiten Gerät: ${status}.`);
+    await zweiteSeite.waitForURL((u) => !u.pathname.startsWith("/anmelden"));
+  });
+  await schritt("Passwort ändern: falsches aktuelles Passwort", seite, async () => {
+    // Gegenprobe: Ohne das richtige aktuelle Passwort ändert sich nichts, das zweite Gerät bleibt an.
+    erwarte("/api/zugang/passwort", 400, 401, 403);
+    await seite.goto(`${app}/einstellungen`);
+    await seite.getByLabel("Aktuelles Passwort").fill(`${PASSWORT}-falsch`);
+    await seite.getByLabel("Neues Passwort", { exact: true }).fill(NEUES_PASSWORT);
+    await seite.getByLabel("Neues Passwort wiederholen").fill(NEUES_PASSWORT);
+    const antwort = seite.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/api/zugang/passwort",
+    );
+    await seite.getByRole("button", { name: "Passwort ändern" }).click();
+    const status = (await antwort).status();
+    if (status < 400) throw new Error(`Falsches aktuelles Passwort angenommen (${status}).`);
+    await zweiteSeite.goto(`${app}/belege`);
+    await zweiteSeite.getByRole("heading", { name: "Belege" }).first().waitFor();
+    if (new URL(zweiteSeite.url()).pathname !== "/belege") {
+      throw new Error("Zweites Gerät wurde trotz abgelehnter Änderung abgemeldet.");
+    }
+  });
+  await schritt("Passwort ändern: andere Geräte abgemeldet", seite, async () => {
+    await seite.goto(`${app}/einstellungen`);
+    await seite.getByLabel("Aktuelles Passwort").fill(PASSWORT);
+    await seite.getByLabel("Neues Passwort", { exact: true }).fill(NEUES_PASSWORT);
+    await seite.getByLabel("Neues Passwort wiederholen").fill(NEUES_PASSWORT);
+    await seite.getByRole("button", { name: "Passwort ändern" }).click();
+    await seite
+      .getByText("Dein Passwort ist geändert. Alle anderen Geräte sind jetzt abgemeldet.")
+      .waitFor();
+    // Dieses Gerät bleibt angemeldet …
+    await seite.goto(`${app}/belege`);
+    await seite.getByRole("heading", { name: "Belege" }).first().waitFor();
+    if (new URL(seite.url()).pathname !== "/belege")
+      throw new Error("Dieses Gerät ist abgemeldet.");
+    // … das zweite nicht mehr.
+    await zweiteSeite.goto(`${app}/belege`);
+    await zweiteSeite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
+  });
+  await schritt("Zweites Gerät: altes Passwort abgelehnt, neues gilt", zweiteSeite, async () => {
+    erwarte("/api/zugang/anmelden", 401);
+    const alt = await anmeldeVersuch(zweiteSeite, app, PASSWORT);
+    if (alt !== 401) throw new Error(`Altes Passwort: ${alt} statt 401.`);
+    await zweiteSeite.getByText("Das Passwort stimmt nicht.").waitFor();
+    const neu = await anmeldeVersuch(zweiteSeite, app, NEUES_PASSWORT);
+    if (neu !== 200) throw new Error(`Neues Passwort: ${neu} statt 200.`);
+    await zweiteSeite.waitForURL((u) => !u.pathname.startsWith("/anmelden"));
+  });
+  await zweites.close();
+
+  // ---- Anmeldung: Sperre je Adresse, gemeinsame Bremse, bekanntes Gerät --------------------------
+  const fremd = await neuesGeraet(app, { adresse: "203.0.113.7" });
+  const fremdSeite = await fremd.newPage();
+  await schritt("Anmeldung: Fehlversuche bis zur Sperre", fremdSeite, async () => {
+    erwarte("/api/zugang/anmelden", 401, 429);
+    await fremdSeite.goto(`${app}/anmelden`);
+    for (let i = 1; i <= 5; i += 1) {
+      const status = await anmeldeVersuch(fremdSeite, app, `falsch-${i}-${PASSWORT}`);
+      if (status !== 401) throw new Error(`Fehlversuch ${i}: ${status} statt 401.`);
+    }
+    await fremdSeite.getByText("Das Passwort stimmt nicht.").waitFor();
+    const gesperrt = await anmeldeVersuch(fremdSeite, app, `falsch-6-${PASSWORT}`);
+    if (gesperrt !== 429) throw new Error(`Versuch 6: ${gesperrt} statt 429.`);
+    await fremdSeite
+      .getByText(/^Zu viele Versuche\. Versuch es in \d+ Sekunden noch einmal\.$/)
+      .waitFor();
+    // Gegenprobe: Auch das richtige Passwort kommt von dieser Adresse jetzt nicht durch.
+    const richtig = await anmeldeVersuch(fremdSeite, app, NEUES_PASSWORT);
+    if (richtig !== 429) throw new Error(`Richtiges Passwort trotz Sperre: ${richtig}.`);
+    if (!new URL(fremdSeite.url()).pathname.startsWith("/anmelden")) {
+      throw new Error("Trotz Sperre angemeldet.");
+    }
+  });
+  await schritt("Anmeldung: gemeinsame Bremse für unbekannte Geräte", fremdSeite, async () => {
+    erwarte("/api/zugang/anmelden", 401, 429);
+    // Viele Fehlversuche aus vielen Adressen: über 20 im Fenster greift die gemeinsame Bremse.
+    for (let i = 1; i <= 22; i += 1) {
+      const status = await anmeldeAnfrage(fremdSeite, `falsch-${PASSWORT}`, `192.0.2.${i}`);
+      if (status !== 401 && status !== 429) throw new Error(`Versuch aus 192.0.2.${i}: ${status}.`);
+    }
+    // Gegenprobe: Mehrere unbekannte Geräte gleichzeitig, auch mit richtigem Passwort: höchstens
+    // eines je Takt der Bremse wird geprüft, die anderen bekommen 429.
+    const gleichzeitig = await Promise.all(
+      [101, 102, 103, 104, 105].map((n) =>
+        anmeldeAnfrage(fremdSeite, NEUES_PASSWORT, `192.0.2.${n}`),
+      ),
+    );
+    ergebnis.bremse = gleichzeitig;
+    if (gleichzeitig.filter((s) => s === 429).length < 3) {
+      throw new Error(`Bremse greift nicht: ${gleichzeitig.join(", ")}.`);
+    }
+  });
+  await fremd.close();
+  await schritt("Anmeldung: bekanntes Gerät kommt durch", seite, async () => {
+    await seite.goto(`${app}${unterhaltung}`);
+    await seite
+      .getByRole("complementary", { name: "Navigation" })
+      .getByRole("button", { name: "Abmelden" })
+      .click();
+    await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
+    // Direkt davor ein Versuch eines unbekannten Geräts, der den Takt der Bremse belegt.
+    erwarte("/api/zugang/anmelden", 401, 429);
+    ergebnis.bremseVorBekannt = await anmeldeAnfrage(seite, `falsch-${PASSWORT}`, "192.0.2.200");
+    const status = await anmeldeVersuch(seite, app, NEUES_PASSWORT);
+    if (status !== 200) throw new Error(`Bekanntes Gerät: ${status} statt 200.`);
+    await seite.waitForURL((u) => !u.pathname.startsWith("/anmelden"));
+    await seite.getByRole("complementary", { name: "Navigation" }).waitFor();
+  });
+
+  // ---- Belege: ganze Kette, Export, eigenständiger Prüfer ----------------------------------------
   await schritt("Ganze Kette prüfen", seite, async () => {
     await seite.goto(`${app}/belege`);
     await seite.getByRole("button", { name: "Ganze Kette prüfen" }).click();
@@ -306,8 +623,8 @@ async function main() {
     await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
   });
   await schritt("Anmelden", seite, async () => {
-    await seite.getByLabel("Passwort", { exact: true }).fill(PASSWORT);
-    await seite.getByRole("button", { name: "Anmelden" }).click();
+    const status = await anmeldeVersuch(seite, app, NEUES_PASSWORT);
+    if (status !== 200) throw new Error(`Anmelden: ${status} statt 200.`);
     await seite.waitForURL((u) => !u.pathname.startsWith("/anmelden"));
     await seite.getByRole("complementary", { name: "Navigation" }).waitFor();
   });
@@ -331,7 +648,7 @@ async function main() {
 
   // Mobil: Kernansicht im Handy-Format, angemeldet.
   await schritt("Mobil: Chat im Handy-Format", seite, async () => {
-    await seite.setViewportSize({ width: 390, height: 844 });
+    await seite.setViewportSize(HANDY);
     await seite.goto(`${app}${unterhaltung}`);
     await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
   });

@@ -5,7 +5,8 @@
  * wieder ab.
  *
  * Wiederverwendet: Datenbank und Wegwerf-Werte aus `scripts/doku/datenbank.mjs` und
- * `scripts/doku/lauf.mjs`. `scripts/doku/app.mjs` startet schon beim Import und gibt den Prozessen
+ * `scripts/doku/lauf.mjs`, die Beispiel-Datenschleuse aus `scripts/doku/schleuse-attrappe.mjs`
+ * (nur 127.0.0.1, reicht Chat an den Test-Anbieter weiter). `scripts/doku/app.mjs` startet schon beim Import und gibt den Prozessen
  * eine feste Umgebung; die Start-Schritte stehen deshalb hier noch einmal, mit Sperre.
  *
  * @author    Oliver Hees
@@ -18,12 +19,14 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { cpSync, createWriteStream, existsSync, mkdirSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { legeDatenbankAn, starteEigenenServer } from "../../../scripts/doku/datenbank.mjs";
 import { wegwerfWert } from "../../../scripts/doku/lauf.mjs";
+import { starteAttrappe } from "../../../scripts/doku/schleuse-attrappe.mjs";
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const WEB = path.join(ROOT, "apps", "web");
@@ -94,6 +97,7 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
   const abbruch = [];
 
   function starte(name, programm, argumente, { env, cwd, logDatei }) {
+    let erwartet = false;
     const kind = spawn(programm, argumente, {
       cwd,
       env,
@@ -115,7 +119,7 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
       kind.once("exit", (code, signal) => {
         datei.end();
         for (const l of lauscher) l();
-        if (!stopp)
+        if (!stopp && !erwartet)
           for (const a of abbruch) a(new Error(`${name} hat sich beendet (${signal ?? code}).`));
         resolve(code ?? 1);
       }),
@@ -140,7 +144,26 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
         lauscher.push(pruefe);
         pruefe();
       });
-    return { kind, ende, warteAuf, ausgabe: () => text };
+    /** Beendet nur diesen Prozess (samt Gruppe), ohne dass es als Absturz zählt. */
+    async function stoppe() {
+      erwartet = true;
+      if (kind.exitCode !== null || kind.signalCode !== null) return;
+      try {
+        process.kill(-kind.pid, "SIGTERM");
+      } catch {
+        return;
+      }
+      const zeit = setTimeout(() => {
+        try {
+          process.kill(-kind.pid, "SIGKILL");
+        } catch {
+          // schon beendet
+        }
+      }, 10_000);
+      await ende;
+      clearTimeout(zeit);
+    }
+    return { kind, ende, warteAuf, stoppe, ausgabe: () => text };
   }
 
   async function stop() {
@@ -290,27 +313,94 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
       /Einrichtungs-Code: ([0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4})/,
     );
 
-    log("Worker (nur App-Rolle, mit Netz-Sperre) …");
-    const worker = starte("Worker", process.execPath, [WORKER], {
-      cwd: app,
-      env: grundUmgebung({
-        ...gemeinsam,
-        PAIBOT_WORKER_HEALTH_FILE: path.join(ordner, "worker.herzschlag"),
-        ...sperre("worker", [pg, `127.0.0.1:${anbieterPort}`]),
-      }),
-      logDatei: path.join(ausgabe, "worker.log"),
+    // 4. Beispiel-Datenschleuse (Attrappe) und Worker. Der Worker startet ohne SCHLEUSE_URL
+    //    (Datenschleuse „nicht eingerichtet“); `schleuse(zustand)` startet ihn mit der Attrappe neu.
+    const schleuseSchluessel = wegwerfWert(24);
+    const attrappe = await starteAttrappe({ schluessel: schleuseSchluessel, anbieterUrl });
+    aufgaben.push(() => attrappe.stop());
+    const attrappeZiel = new URL(attrappe.url).host;
+    let worker;
+    let workerLaeufe = 0;
+    let workerAusgabe = () => "";
+    const starteWorker = async (zustand) => {
+      if (worker) await worker.stoppe();
+      if (zustand !== "aus") attrappe.setzeZustand(zustand);
+      workerLaeufe += 1;
+      log(`Worker (nur App-Rolle, mit Netz-Sperre, Datenschleuse: ${zustand}) …`);
+      worker = starte("Worker", process.execPath, [WORKER], {
+        cwd: app,
+        env: grundUmgebung({
+          ...gemeinsam,
+          PAIBOT_WORKER_HEALTH_FILE: path.join(ordner, "worker.herzschlag"),
+          ...(zustand === "aus"
+            ? {}
+            : { SCHLEUSE_URL: `${attrappe.url}/v1`, SCHLEUSE_KEY: schleuseSchluessel }),
+          ...sperre("worker", [
+            pg,
+            `127.0.0.1:${anbieterPort}`,
+            ...(zustand === "aus" ? [] : [attrappeZiel]),
+          ]),
+        }),
+        logDatei: path.join(
+          ausgabe,
+          workerLaeufe === 1 ? "worker.log" : `worker-${workerLaeufe}.log`,
+        ),
+      });
+      workerAusgabe = worker.ausgabe;
+      await worker.warteAuf(/Bereit: nimmt Läufe an/);
+      await worker.warteAuf(new RegExp(`Datenschleuse: ${zustand}\\.`), 30);
+    };
+    await starteWorker("aus");
+
+    /** Steuerung des Test-Anbieters (nur 127.0.0.1). */
+    const anbieterSteuerung = async (pfad, koerper) => {
+      const antwort = await fetch(`${anbieterUrl}/_steuerung/${pfad}`, {
+        method: koerper === undefined ? "GET" : "POST",
+        ...(koerper === undefined
+          ? {}
+          : { headers: { "content-type": "application/json" }, body: JSON.stringify(koerper) }),
+      });
+      if (!antwort.ok)
+        throw new Error(`Test-Anbieter: Steuerung ${pfad} antwortet ${antwort.status}.`);
+      return antwort.json();
+    };
+
+    /** Nur lesend, mit der App-Rolle: Läufe, die noch nicht beendet sind. */
+    const postgres = createRequire(path.join(ROOT, "packages", "db", "package.json"))("postgres");
+    const sql = (typeof postgres === "function" ? postgres : postgres.default)(db.app, {
+      max: 1,
+      onnotice: () => undefined,
     });
-    await worker.warteAuf(/Bereit: nimmt Läufe an/);
+    aufgaben.push(() => sql.end({ timeout: 5 }));
+    const offeneLaeufe = async () => {
+      const [zeile] =
+        await sql`select count(*)::int as n from runs where status in ('queued', 'running')`;
+      return zeile.n;
+    };
 
     return {
       url,
       anbieterUrl,
+      offeneLaeufe,
       anbieterSchluessel,
       einrichtungsCode,
       netzLog,
       /** Wird abgelehnt, sobald Web-App, Worker oder Test-Anbieter unerwartet enden. */
       absturz: new Promise((_, reject) => abbruch.push(reject)),
-      ausgabeVon: { web: web.ausgabe, worker: worker.ausgabe },
+      ausgabeVon: { web: web.ausgabe, worker: () => workerAusgabe() },
+      /**
+       * Datenschleuse der Beispiel-Umgebung: „aus“ (Worker ohne SCHLEUSE_URL), „bereit“,
+       * „schluessel_falsch“ oder „nicht_erreichbar“. Startet den Worker neu und wartet, bis er den
+       * Zustand meldet.
+       */
+      schleuse: starteWorker,
+      /** Ändert den Zustand der Attrappe sofort, ohne den Worker neu zu starten. */
+      attrappeZustand: (zustand) => attrappe.setzeZustand(zustand),
+      /** Verhalten setzen (`verhalten`) oder protokollierte Anfragen lesen (`anfragen`). */
+      anbieter: {
+        verhalten: (aenderung) => anbieterSteuerung("verhalten", aenderung),
+        anfragen: async () => (await anbieterSteuerung("anfragen")).requests,
+      },
       stop,
     };
   } catch (error) {
