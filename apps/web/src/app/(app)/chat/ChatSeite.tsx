@@ -60,12 +60,15 @@ import {
 import {
   belegKennung,
   laengenHinweis,
+  schleuseFehler,
+  schleuseFehlerArt,
   tagSchluessel,
   tagText,
   titelAusNachricht,
   uhrzeit,
   wegAngabe,
   zielZuCode,
+  zielZuSchleuseFehler,
 } from "../../../lib/chat/anzeige";
 import { CHAT_PFADE, unterhaltungsAdresse } from "../../../lib/chat/pfade";
 import { useFlaeche, useKopf, useRahmen } from "../../../lib/chat/rahmen-kontext";
@@ -479,13 +482,27 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
     }
     const zustand =
       n.zustand === "fehler" ? "fehler" : n.zustand === "abgebrochen" ? "abgebrochen" : n.zustand;
+    const schleuseArt =
+      n.zustand === "fehler" && n.fehlerCode
+        ? schleuseFehlerArt({
+            ergebnis: "fehlgeschlagen",
+            code: n.fehlerCode,
+            ueberSchleuse: n.route === "schleuse",
+          })
+        : undefined;
     const hinweis =
       n.zustand === "abgebrochen"
         ? t("chat.ende.abgebrochen_teil")
-        : n.zustand === "fehler"
-          ? (n.fehlerText ?? (n.fehlerCode ? errorText(n.fehlerCode) : t("fehler.intern")))
-          : undefined;
-    const ziel = n.zustand === "fehler" && n.fehlerCode ? zielZuCode(n.fehlerCode) : undefined;
+        : schleuseArt
+          ? schleuseFehler(schleuseArt).text
+          : n.zustand === "fehler"
+            ? (n.fehlerText ?? (n.fehlerCode ? errorText(n.fehlerCode) : t("fehler.intern")))
+            : undefined;
+    const ziel = schleuseArt
+      ? zielZuSchleuseFehler(schleuseArt)
+      : n.zustand === "fehler" && n.fehlerCode
+        ? zielZuCode(n.fehlerCode)
+        : undefined;
     return (
       <ChatBubble
         key={n.id}
@@ -516,7 +533,13 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
   }
 
   function laufEnde(e: AnsichtLaufEnde): ReactNode {
-    const ziel = zielZuCode(e.code);
+    const schleuseArt = schleuseFehlerArt({
+      ergebnis: e.ergebnis,
+      code: e.code,
+      schleuseGemeldet: e.schleuseGrund !== undefined,
+    });
+    const schleuse = schleuseArt ? schleuseFehler(schleuseArt) : undefined;
+    const ziel = schleuseArt ? zielZuSchleuseFehler(schleuseArt) : zielZuCode(e.code);
     const b = belegZurAntwort(ansicht.belege, e.runId);
     const ueberschrift =
       e.ergebnis === "abgebrochen"
@@ -524,8 +547,10 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
         : e.ergebnis === "abgelehnt"
           ? t("chat.ende.abgelehnt")
           : t("chat.antwort.fehlgeschlagen");
-    const satz = e.ergebnis === "abgebrochen" ? undefined : (e.text ?? errorText(e.code));
-    const ausweg = e.ergebnis === "abgebrochen" ? undefined : errorWayOut(e.code);
+    const satz =
+      e.ergebnis === "abgebrochen" ? undefined : (schleuse?.text ?? e.text ?? errorText(e.code));
+    const ausweg =
+      e.ergebnis === "abgebrochen" ? undefined : (schleuse?.ausweg ?? errorWayOut(e.code));
     return (
       <ChatBubble
         key={`ende-${e.runId}`}
@@ -552,7 +577,9 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
         <div className={styles.ende}>
           <strong>{ueberschrift}</strong>
           {satz && <p>{satz}</p>}
-          {e.schleuseGrund && <p>{t("chat.ende.schleuse", { grund: e.schleuseGrund })}</p>}
+          {e.schleuseGrund && !schleuse && (
+            <p>{t("chat.ende.schleuse", { grund: e.schleuseGrund })}</p>
+          )}
           {ausweg && <p className={styles.leise}>{ausweg}</p>}
           {ziel && (
             <Link href={ziel.href} prefetch={false} className={styles.link}>

@@ -15,12 +15,15 @@ import {
   belegAdresse,
   belegKennung,
   laengenHinweis,
+  schleuseFehler,
+  schleuseFehlerArt,
   TITEL_ZEICHEN,
   tagText,
   titelAusNachricht,
   uhrzeit,
   wegAngabe,
   zielZuCode,
+  zielZuSchleuseFehler,
 } from "./anzeige";
 
 describe("titelAusNachricht", () => {
@@ -100,5 +103,61 @@ describe("laengenHinweis", () => {
       art: "zu_lang",
       text: "1.200 Zeichen zu viel. Kürze die Nachricht, dann lässt sie sich senden.",
     });
+  });
+});
+
+describe("Fehler der Datenschleuse", () => {
+  it("erkennt, woran es an der Datenschleuse lag", () => {
+    expect(schleuseFehlerArt({ ergebnis: "fehlgeschlagen", code: "schleuse_blockiert" })).toBe(
+      "blockiert",
+    );
+    // Abgelehnt mit schluessel_ungueltig gibt es nur, wenn die Datenschleuse den Schlüssel ablehnt.
+    expect(schleuseFehlerArt({ ergebnis: "abgelehnt", code: "schluessel_ungueltig" })).toBe(
+      "schluessel_passt_nicht",
+    );
+    expect(schleuseFehlerArt({ ergebnis: "fehlgeschlagen", code: "schluessel_passt_nicht" })).toBe(
+      "schluessel_passt_nicht",
+    );
+    expect(
+      schleuseFehlerArt({ ergebnis: "abgelehnt", code: "abgelehnt", schleuseGemeldet: true }),
+    ).toBe("nicht_erreichbar");
+    expect(
+      schleuseFehlerArt({
+        ergebnis: "fehlgeschlagen",
+        code: "antwort_zu_gross",
+        ueberSchleuse: true,
+      }),
+    ).toBe("antwort_zu_gross");
+  });
+
+  it("andere Fehler bleiben beim allgemeinen Text", () => {
+    // Der Schlüssel des Anbieters fällt im Lauf auf: das ist kein Fehler der Datenschleuse.
+    expect(
+      schleuseFehlerArt({ ergebnis: "fehlgeschlagen", code: "schluessel_ungueltig" }),
+    ).toBeUndefined();
+    expect(schleuseFehlerArt({ ergebnis: "abgelehnt", code: "abgelehnt" })).toBeUndefined();
+    expect(
+      schleuseFehlerArt({ ergebnis: "fehlgeschlagen", code: "antwort_zu_gross" }),
+    ).toBeUndefined();
+    expect(
+      schleuseFehlerArt({ ergebnis: "abgebrochen", code: "schleuse_blockiert" }),
+    ).toBeUndefined();
+  });
+
+  it("jede Art hat Satz und Ausweg; der Ausweg führt zur Datenschleuse, nicht zum Anbieter", () => {
+    for (const art of [
+      "blockiert",
+      "nicht_erreichbar",
+      "schluessel_passt_nicht",
+      "antwort_zu_gross",
+    ] as const) {
+      const f = schleuseFehler(art);
+      expect(f.text.length).toBeGreaterThan(10);
+      expect(f.ausweg.length).toBeGreaterThan(10);
+    }
+    expect(schleuseFehler("schluessel_passt_nicht").ausweg).toContain("SCHLEUSE_KEY");
+    expect(zielZuSchleuseFehler("schluessel_passt_nicht")?.href).toBe("/datenschleuse");
+    expect(zielZuSchleuseFehler("antwort_zu_gross")).toBeUndefined();
+    expect(zielZuCode("schluessel_passt_nicht")?.href).toBe("/datenschleuse");
   });
 });
