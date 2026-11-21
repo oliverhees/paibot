@@ -57,6 +57,24 @@ Sperr-Reihenfolge: erst die Beleg-Sperre, dann die Zeile der Unterhaltung (Komme
 
 In der Web-App liest `belegSchluesselAus` den aktiven Schlüssel aus `installation_keys` und entschlüsselt ihn, gebunden an Kennung und öffentlichen Teil (`apps/web/src/lib/gate.ts#belegSchluesselAus`).
 
+### Lesen, Schreiben und Inhalt je Fassung des Tors
+
+Jede Entscheidung gehört zu einer eingefrorenen Fassung der Tor-Auswertung (`GATE_FORMAT`, `GATE_FORMATS`, siehe [Das Tor – für Entwickler](tor.md)). Belege werden nach ihrer eigenen Fassung behandelt, auch Belege aus einer neueren PaiBot-Fassung:
+
+| Schritt   | Schema bzw. Funktion                                                                                                       | Prüft                                                                                                                                                                                                                             |
+| --------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lesen     | `packages/shared/src/receipts.ts#receiptEntryReadSchema`, `receiptBodyReadSchema`                                          | nur die **Form**: gemeinsame Felder streng, Aktion nach `actionReadSchema`, `decision.gateFormat` Ganzzahl 1–1000, unbekannte Schlüssel nur als `boundedJsonSchema` (Tiefe ≤ 8, Text ≤ 4 000, Liste ≤ 256, Objekt ≤ 64 Schlüssel) |
+| Schreiben | `packages/shared/src/receipts.ts#receiptBodyWriteSchema` in `packages/receipts/src/build.ts#buildReceipt`                  | streng, nur `GATE_FORMAT`; `buildReceipt` weist jede Entscheidung mit `decision.gateFormat !== GATE_FORMAT` ab                                                                                                                    |
+| Inhalt    | `packages/receipts/src/nachrechnen.ts#decisionFormat`, `resultFitsFormat` in `packages/receipts/src/verify.ts#verifyChain` | Entscheidung streng nach `GATE_FORMATS[gateFormat ?? 1]`; Ergebnis nach der Fassung der Entscheidung mit derselben `action.actionId`                                                                                              |
+
+- **Fassung 1 ohne Feld:** Solange `GATE_FORMAT` 1 ist, schreibt `buildReceipt` kein `gateFormat` in den Beleg (fehlend heißt 1). Ein Beleg sieht damit Byte für Byte so aus wie vorher; ein Test prüft jeden geschriebenen Beleg gegen eine feste Kopie des alten Lese-Schemas (`packages/receipts/src/testdaten/altes-lese-schema.ts`).
+- **Unbekannte Fassung:** Problem `fassung_unbekannt`, Stufe `nicht_pruefbar` (`packages/shared/src/receipts.ts#CHAIN_PROBLEM_LEVEL`). Das Nachrechnen meldet dann `nicht_pruefbar`, nicht `fehler` (`packages/receipts/src/nachrechnen.ts#reevaluate`). Ein Ergebnis zu einer solchen Entscheidung wird nur auf seine Form geprüft.
+- **Passt nicht zur Fassung:** unbekanntes Feld, Aktion außerhalb der Fassung, Fehlercode außerhalb von `errorCodes`: Problem `fassung_unpassend`, Stufe `ungueltig`.
+- **Rangfolge der Stufen:** `ungueltig` vor `nicht_pruefbar` vor `vertrauen_gebrochen` vor `vertrauenswuerdig` (`packages/shared/src/receipts.ts#chainTrustLevel`).
+- **Hinweis `fassung_rueckschritt`:** Folgt auf eine Entscheidung mit Feld `gateFormat` eine ohne, steht das in `verdict.notes` (`packages/shared/src/receipts.ts#chainVerdictSchema`); die Stufe ändert sich nie. In dieser Fassung schreibt PaiBot das Feld noch nicht; der Hinweis ist für die nächste Fassung schon da.
+- **Ein Ort für alle Wege:** Die Inhalts-Prüfung liegt in `verifyChain` (Klasse `ActionLedger`), nicht in `parseJsonl`. Damit urteilen Export, Befehl und Belege-Seite (`apps/web/src/lib/belege/pruefung.ts#pruefeKette`, Einträge direkt aus der Datenbank) gleich.
+- **Beleg prüfen (einzeln):** Bei einem Ergebnis nur die Form und der Hinweis, dass es mit der Kette geprüft wird (`apps/web/src/lib/belege/pruefung.ts#pruefeEinzeln`).
+
 ## Datenmodell und Migrationen
 
 | Tabelle             | Schema                          | Wofür                                                                                |
@@ -93,7 +111,7 @@ Rechte der App-Rolle: `belege` nur lesen und anhängen (`packages/db/src/rollen.
 | Unterpfad | `@paibot/receipts/pruefen` (Prüfer für den Browser)                                        | `packages/receipts/package.json`                     |
 | Befehl    | `pnpm belege:pruefen <datei.jsonl> [--anker …]`, `pnpm belege:pruefen anker <datei.jsonl>` | `packages/receipts/src/cli.ts`                       |
 
-Exit-Codes des Befehls (`packages/receipts/src/cli.ts#CLI_EXIT`): 0 gültig, 1 ungültig, 2 Aufruf, Datei oder Anker fehlerhaft, 3 Vertrauenskette gebrochen.
+Exit-Codes des Befehls (`packages/receipts/src/cli.ts#CLI_EXIT`): 0 gültig, 1 ungültig, 2 Aufruf, Datei oder Anker fehlerhaft, 3 Vertrauenskette gebrochen, 4 mit dieser Fassung nicht prüfbar (Belege aus einer neueren PaiBot-Fassung; nie 0).
 
 Prüfungen je Beleg: `inhalt`, `signatur`, `kette`, `entscheidung`, `kontext` (`packages/receipts/src/verify.ts#CHECK_NAMES`); `kontext` nur auf dem Server (`packages/receipts/src/server.ts#checkContext`).
 
@@ -107,21 +125,26 @@ Prüfungen je Beleg: `inhalt`, `signatur`, `kette`, `entscheidung`, `kontext` (`
 
 ## Tests
 
-| Test                                                                            | Prüft                                                                               |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `packages/receipts/src/verify.test.ts`                                          | gültige Kette und Manipulationen an der richtigen Stelle                            |
-| `packages/receipts/src/anker.test.ts`                                           | gekürzte, umgeschriebene, ausgetauschte Kette mit und ohne Anker                    |
-| `packages/receipts/src/writer.test.ts`                                          | Anhängen unter Sperre                                                               |
-| `packages/receipts/src/postgres.test.ts`                                        | gleichzeitiges Anhängen über zwei Verbindungen (nur mit `PAIBOT_TEST_DATABASE_URL`) |
-| `packages/receipts/src/tor.test.ts`                                             | Tor mit echtem Schreiber gegen PGlite                                               |
-| `packages/receipts/src/nachrechnen.test.ts`                                     | damaliger Regelstand, geänderte Regeln, ältere Belege ohne Regelstand               |
-| `packages/receipts/src/canonical.test.ts`, `packages/receipts/src/hash.test.ts` | kanonische Form und Prüfsumme                                                       |
-| `packages/receipts/src/jsonl.test.ts`, `packages/receipts/src/cli.test.ts`      | Export und Befehl                                                                   |
-| `packages/receipts/src/bundle.test.ts`                                          | Prüfer bündelbar für den Browser                                                    |
-| `packages/receipts/src/geraet-fakt.test.ts`                                     | Fakt `device` in Belegen, ältere Belege ohne ihn bleiben gültig                     |
-| `apps/web/src/lib/belege/routen.test.ts`                                        | Routen: nur mit Sitzung, Blättern, 404, Kette, Server-Prüfung, Export               |
-| `apps/web/src/lib/belege/pruefung.test.ts`                                      | Prüf-Logik der Seite mit echten Ketten                                              |
-| `apps/web/src/lib/belege/oberflaeche.test.ts`                                   | Browser-Module laden weder Zod noch Server-Code                                     |
+| Test                                                                                       | Prüft                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/receipts/src/verify.test.ts`                                                     | gültige Kette und Manipulationen an der richtigen Stelle                                                                                                           |
+| `packages/receipts/src/anker.test.ts`                                                      | gekürzte, umgeschriebene, ausgetauschte Kette mit und ohne Anker                                                                                                   |
+| `packages/receipts/src/writer.test.ts`                                                     | Anhängen unter Sperre                                                                                                                                              |
+| `packages/receipts/src/postgres.test.ts`                                                   | gleichzeitiges Anhängen über zwei Verbindungen (nur mit `PAIBOT_TEST_DATABASE_URL`)                                                                                |
+| `packages/receipts/src/tor.test.ts`                                                        | Tor mit echtem Schreiber gegen PGlite                                                                                                                              |
+| `packages/receipts/src/nachrechnen.test.ts`                                                | damaliger Regelstand, geänderte Regeln, ältere Belege ohne Regelstand                                                                                              |
+| `packages/receipts/src/canonical.test.ts`, `packages/receipts/src/hash.test.ts`            | kanonische Form und Prüfsumme                                                                                                                                      |
+| `packages/receipts/src/jsonl.test.ts`, `packages/receipts/src/cli.test.ts`                 | Export und Befehl                                                                                                                                                  |
+| `packages/receipts/src/bundle.test.ts`                                                     | Prüfer bündelbar für den Browser                                                                                                                                   |
+| `packages/receipts/src/geraet-fakt.test.ts`                                                | Fakt `device` in Belegen, ältere Belege ohne ihn bleiben gültig                                                                                                    |
+| `apps/web/src/lib/belege/routen.test.ts`                                                   | Routen: nur mit Sitzung, Blättern, 404, Kette, Server-Prüfung, Export                                                                                              |
+| `apps/web/src/lib/belege/pruefung.test.ts`                                                 | Prüf-Logik der Seite mit echten Ketten                                                                                                                             |
+| `apps/web/src/lib/belege/oberflaeche.test.ts`                                              | Browser-Module laden weder Zod noch Server-Code                                                                                                                    |
+| `packages/receipts/src/feste-kette.test.ts`, `apps/web/src/lib/belege/feste-kette.test.ts` | feste Kette vom Stand vor der Tor-Fassung (`packages/receipts/src/testdaten/kette-vor-fassung.jsonl`) bleibt über Export, Befehl und Belege-Seite vertrauenswürdig |
+| `packages/receipts/src/alte-fassung-lesen.test.ts`                                         | jeder neu geschriebene Beleg besteht das Lese-Schema von vorher                                                                                                    |
+| `packages/receipts/src/fassung.test.ts`, `packages/receipts/src/build-fassung.test.ts`     | Schreiben nur in `GATE_FORMAT`, Lesen nach der Form, Inhalt je Fassung, Ausgang 4, Hinweis Rückschritt                                                             |
+| `apps/web/src/lib/belege/fassung.test.ts`                                                  | Belege-Seite urteilt wie Export und Befehl                                                                                                                         |
+| `packages/shared/src/belege-lesen.test.ts`                                                 | Lese-Form, feste Grenzen, strenge Schreib-Form                                                                                                                     |
 
 Ausführen:
 
@@ -134,4 +157,5 @@ pnpm --filter @paibot/web test
 
 - **Abgeschnittenes Ende ohne Anker nicht erkennbar** und mit Anker nur bis zu dessen Stand (`packages/receipts/src/anker.test.ts`).
 - **Kontext-Prüfung nur, solange der Inhalt gespeichert ist:** Ohne Inhalt ergibt Prüfung 5 `entfaellt` (`packages/receipts/src/server.ts#checkContext`).
+- **Ältere PaiBot-Fassungen:** Eine ältere Fassung kann Belege einer neueren nicht vollständig prüfen; sie meldet „nicht prüfbar“ (ab dieser Fassung) oder lehnt sie als „kein Beleg“ ab (Fassungen davor) (`packages/receipts/src/cli.ts#CLI_EXIT`).
 - **Wartezeit auf die Sperre begrenzt:** Hält jemand die Beleg-Sperre länger als `RECEIPT_LOCK_WAIT_MS`, scheitert das Anhängen und damit die Aktion (`packages/receipts/src/writer.ts#RECEIPT_LOCK_WAIT_MS`).
