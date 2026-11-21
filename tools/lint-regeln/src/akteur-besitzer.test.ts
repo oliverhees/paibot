@@ -294,6 +294,7 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
     "packages/shared/src/actions.ts": "Vertrag: Art des Akteurs je Aktion, Typ Actor",
     "packages/shared/src/gate.ts": "Vertrag: Bedingungen über die Art des Akteurs",
     "packages/gate/src/fassungen/fassung-1.ts": "Vertrag Fassung 1: Art des Akteurs je Aktion",
+    "packages/gate/src/fassungen/fassung-2.ts": "Vertrag Fassung 2: Art des Akteurs je Aktion",
     "packages/db/src/rollen.ts": "Datenbank-Rolle mit dem Namen besitzer (kein Akteur)",
     // Anzeige und Wegweiser der Web-App.
     "apps/web/src/lib/routen.ts": "Zugang je Route (Sitzung nötig)",
@@ -310,6 +311,10 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
     "apps/web/src/lib/team/entwurf/format.ts": "Auswahlwert abnahme (leitung, besitzer, ohne)",
     // Testhilfen und Testdaten: bauen Besitzer-Anfragen nur für Tests.
     "packages/receipts/src/testhilfen.ts": "Testhilfe (in der Regel ausgenommen)",
+    "packages/receipts/src/testdaten/kette-l1-erzeugen.ts":
+      "Testdaten: erzeugt eine feste Beleg-Kette (in der Regel ausgenommen)",
+    "packages/receipts/src/testdaten/kette-l2.ts":
+      "Testdaten: Regel-Bedingung in einer festen Kette",
     "packages/gate/src/testdaten.ts": "Testdaten für die Tor-Tests",
     "packages/db/src/testdaten.ts": "Testdaten für die Datenbank-Tests",
   };

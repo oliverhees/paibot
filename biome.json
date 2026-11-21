@@ -26,6 +26,7 @@
         "!**/*.test.ts",
         "!**/*.test.tsx",
         "!packages/receipts/src/testhilfen.ts",
+        "!packages/receipts/src/testdaten/**",
         "!apps/web/src/app/%5Fkomponenten/**"
       ]
     },
