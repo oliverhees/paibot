@@ -74,7 +74,8 @@ jobs:
       postgres:
         image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
         env:
-          POSTGRES_PASSWORD: ci-wegwerf
+          # Mindestens 24 Zeichen: Der Migrations-Schritt startet sonst im Produktions-Modus nicht.
+          POSTGRES_PASSWORD: ci-wegwerf-nur-fuer-die-e2e-pruefung
         ports:
           - 5432:5432
         options: >-
@@ -83,7 +84,7 @@ jobs:
           --health-timeout 5s
           --health-retries 30
     env:
-      PAIBOT_E2E_DATABASE_URL: postgres://postgres:ci-wegwerf@127.0.0.1:5432/postgres
+      PAIBOT_E2E_DATABASE_URL: postgres://postgres:ci-wegwerf-nur-fuer-die-e2e-pruefung@127.0.0.1:5432/postgres
       # Fehlt Playwright, bricht die Prüfung ab, statt sich als übersprungen zu melden.
       PAIBOT_E2E_PFLICHT: "1"
       # Fest gepinnt; muss zur Playwright-Fassung passen, mit der die Prüfung lokal läuft.
@@ -217,7 +218,9 @@ jobs:
           [ -n "$code" ] || { echo "Kein Einrichtungs-Code im Log von web"; $COMPOSE logs web | tail -40; exit 1; }
           ausgabe="$RUNNER_TEMP/ohne-internet"
           mkdir -p "$ausgabe" && chmod 0777 "$ausgabe"
-          PAIBOT_PRUEF_CODE="$code" PAIBOT_PRUEF_AUSGABE_HOST="$ausgabe" $COMPOSE --profile pruefen run --rm pruefer
+          # --no-deps: Der Lauf darf web und migrate nicht neu anlegen; ein neuer Migrations-Schritt
+          # verwirft den Einrichtungs-Code, und web erzeugt beim Neustart einen anderen.
+          PAIBOT_PRUEF_CODE="$code" PAIBOT_PRUEF_AUSGABE_HOST="$ausgabe" $COMPOSE --profile pruefen run --rm --no-deps pruefer
       - name: Kein Ziel außerhalb aus web und worker erreichbar
         run: |
           set -eu
