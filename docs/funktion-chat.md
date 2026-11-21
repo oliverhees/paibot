@@ -18,22 +18,77 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 
 ## So benutzt du es
 
-Folgt mit der Oberfläche. Die Lauf-Steuerung im Hintergrund ist fertig; die Chat-Seite mit Eingabe, Stopp-Knopf und Schalter für die Datenschleuse kommt mit der Oberfläche. Der Ablauf wird dann so sein:
+**Eine neue Unterhaltung beginnen**
 
-1. Unterhaltung öffnen oder neu anlegen.
-2. Nachricht schreiben und senden. Der Schalter „Datenschleuse“ gilt für diese Unterhaltung.
-3. Die Antwort erscheint Stück für Stück. Mit „Stopp“ brichst du sie ab; was bis dahin geschrieben war, bleibt als „Abgebrochen“ stehen.
-4. Unter der Antwort steht, über welchen Weg sie kam (direkt oder über die Datenschleuse) und welches Modell geantwortet hat.
+1. Melde dich an. Du landest auf der Startseite mit der Überschrift „Frag deinen Bot etwas“. Das ist eine neue, noch leere Unterhaltung.
+2. Schreib deine Frage in das Feld „Schreib Pai eine Nachricht“ (statt „Pai“ steht dort der Name deines Bots). Oder klick auf eine der drei Beispiel-Fragen: Sie landet im Feld, gesendet wird noch nichts.
+3. Drück **Enter**, um zu senden. Für eine neue Zeile drückst du **Umschalt+Enter**.
+4. Die Unterhaltung erscheint links in der Seitenleiste unter deinem Bot. Ihr Titel ist der Anfang deiner ersten Nachricht (höchstens 60 Zeichen); ändern kannst du ihn später.
+
+**Die Antwort lesen**
+
+1. Unter deiner Nachricht erscheint die Antwort des Bots Stück für Stück. Oben steht neben dem Namen „wartet in der Schlange“ oder „schreibt“.
+2. Abgesetzte Blöcke (etwa ein Mail-Entwurf) haben rechts oben **Kopieren**. Ein Klick legt nur diesen Block in die Zwischenablage.
+3. Links in einer Antwort zeigen in Klammern, wohin sie führen. Bilder lädt PaiBot nie; statt eines Bildes steht ein Link.
+4. Ist die Antwort fertig, steht darunter eine Zeile mit drei Teilen: **Beleg** mit seiner Kennung (z. B. `B-0142`), der **Weg** („direkt · EU“ bzw. „geschützt über die Datenschleuse“) und das **Modell** mit Herkunft. Am Handy ist die Zeile gekürzt; ein Tipp auf den Weg klappt sie aus.
+5. Mit **Schritte** oben rechts blendest du diese Zeilen aus und wieder ein.
+
+**Antwort stoppen**
+
+1. Solange der Bot antwortet, steht in der Eingabe statt des Pfeils ein Quadrat: **Stopp**.
+2. Klick darauf. Binnen etwa einer halben Sekunde hört der Bot auf. Was bis dahin geschrieben war, bleibt stehen, darunter „Abgebrochen. Der Text bis hierhin bleibt stehen.“
+3. Solange eine Antwort läuft, kannst du in dieser Unterhaltung nichts Neues senden. Danach geht es wie gewohnt weiter.
+
+**Belege einer Unterhaltung ansehen**
+
+1. Klick in der Zeile unter einer Antwort auf **Beleg**. Rechts öffnet sich die Arbeitsfläche (am Handy als Blatt von unten) mit diesem Beleg: was geschah, wer es tat, die Entscheidung des Tors, die angewandten Regeln, das Ergebnis, Zeit und Kennung.
+2. **Als eigene Seite öffnen** führt zur Seite des Belegs unter „Belege“; dort lässt er sich prüfen.
+3. **Alle Belege dieser Unterhaltung** zeigt die Liste, neuester oben. Neue Belege erscheinen dort von selbst, während der Bot arbeitet.
+4. Ohne Klick auf einen Beleg öffnest du die Liste über das Symbol rechts oben in der Kopfzeile oder über **⋯ → Belege dieser Unterhaltung**. Mit dem Kreuz schließt du sie.
+
+**Datenschleuse für diese Unterhaltung**
+
+1. Unten in der Eingabe steht der Schalter **Datenschleuse an/aus**. Er gilt nur für diese Unterhaltung; neue Unterhaltungen beginnen mit dem Standard aus der Einrichtung.
+2. Ist die Datenschleuse auf deinem Server nicht eingerichtet, lässt sich der Schalter nicht einschalten. Über dem Feld steht dann „Die Datenschleuse ist auf diesem Server nicht eingerichtet.“ mit dem Link **So schaltest du sie zu** (siehe [Datenschleuse](funktion-datenschleuse.md)). Ausschalten geht immer.
+3. Hat die Datenschleuse die letzte Anfrage gestoppt, steht über dem Feld „Datenschleuse nicht bereit“. Die Nachricht ging dann nicht an das Modell; es gibt keinen Rückfall auf den direkten Weg.
+
+**Unterhaltung umbenennen oder löschen**
+
+1. Klick oben rechts auf **⋯** (Weitere Aktionen).
+2. **Umbenennen**: neuen Titel eintragen, **Speichern** oder Enter. Die Seitenleiste zeigt den neuen Titel sofort.
+3. **Unterhaltung löschen …**: PaiBot fragt nach. **Löschen** entfernt Nachrichten und Antworten; die Belege bleiben, damit die Kette vollständig bleibt. Danach bist du wieder auf der Startseite.
+4. Solange der Bot in der Unterhaltung antwortet, lässt sie sich nicht löschen. Erst stoppen oder die Antwort abwarten.
+
+**Eine andere Unterhaltung öffnen**
+
+1. Klick links in der Seitenleiste auf ihren Titel (am Handy zuerst auf das Menü oben links). Die zuletzt benutzte steht oben.
+2. Das **+** oben in der Seitenleiste beginnt eine neue Unterhaltung.
+3. Einen angefangenen, nicht gesendeten Text merkt sich der Browser je Unterhaltung, bis du den Tab schließt.
 
 ## So sieht es aus
 
 Folgt mit der Oberfläche.
 
+<!--
+Gewünschte Aufnahmen (dunkel, Beispiel-Daten, Test-Anbieter mit Verzögerung je Stück):
+1. chat-leer – Rechner 1440×900, Adresse `/` direkt nach der Einrichtung: Überschrift „Frag deinen Bot etwas“, drei Beispiel-Fragen, Eingabe mit Schalter.
+2. chat-antwort – Rechner 1440×900: Beispiel-Frage „Schreib mir eine freundliche Absage für einen Termin.“ anklicken, Enter, warten bis fertig. Antwort mit Entwurfs-Block („Kopieren“) und Zeile „Beleg · direkt · … · Modell“ sichtbar.
+3. chat-streamt – Rechner 1440×900: wie 2, Aufnahme mitten in der Antwort (Text halb da, „schreibt“, Knopf „Stopp“).
+4. chat-abgebrochen – Rechner 1440×900: zweite Frage senden, nach den ersten Wörtern „Stopp“ klicken; „Abgebrochen. Der Text bis hierhin bleibt stehen.“ sichtbar.
+5. chat-beleg – Rechner 1440×900: in der Zeile unter der Antwort auf „Beleg“ klicken; Arbeitsfläche rechts mit dem Beleg (Was, Wer, Entscheidung, Regeln, Ergebnis).
+6. chat-belege-liste – Rechner 1440×900: in der Arbeitsfläche „Alle Belege dieser Unterhaltung“.
+7. chat-menue – Rechner 1440×900: Kopfzeile „⋯“ geöffnet (Umbenennen, Belege dieser Unterhaltung, Unterhaltung löschen …).
+8. chat-loeschen – Rechner 1440×900: „Unterhaltung löschen …“ gewählt, Rückfrage sichtbar.
+9. chat-handy – Handy 390×844: Unterhaltung mit fertiger Antwort, Zeile gekürzt; dazu chat-handy-zeile mit aufgeklappter Zeile (Tipp auf „direkt“).
+10. chat-handy-beleg – Handy 390×844: Beleg als Blatt von unten.
+11. chat-kein-modell – Rechner 1440×900: Bot ohne Modell (in den Beispiel-Daten kein Modell wählen), Adresse `/`: „… hat noch kein Modell“ mit Knopf „Modell und Anbieter öffnen“.
+-->
+
 ## Einstellungen
 
 | Einstellung            | Wo                                 | Bedeutung                                                                                 | Standard            |
 | ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | ------------------- |
-| Modell des Bots        | Seite „Modelle“ (folgt)            | Ohne gewähltes Modell antwortet der Bot nicht („Für deinen Bot ist kein Modell gewählt.“) | keins               |
+| Modell des Bots        | Seite „Modell und Anbieter“        | Ohne gewähltes Modell antwortet der Bot nicht („Für deinen Bot ist kein Modell gewählt.“) | keins               |
 | Anweisung des Bots     | Seite „Bot“ (folgt)                | Steht am Ende der Anweisung an das Modell                                                 | leer                |
 | Ausgabegrenze des Bots | Seite „Bot“ (folgt)                | Höchstens so viele Token je Antwort                                                       | 4096                |
 | Datenschleuse          | Schalter je Unterhaltung, Standard | `An`: jede Anfrage geht über die Datenschleuse oder gar nicht                             | aus                 |
@@ -59,7 +114,7 @@ Feste Werte der Lauf-Steuerung (im Code, `RUN_TUNING`):
 
 Eine Nachricht wird in diesen Schritten zur Antwort:
 
-1. **Senden (Web-App):** Das Tor prüft die Aktion `nachricht.senden`. In einer Transaktion entstehen die Nachricht, ein Lauf im Zustand „wartet“ und die Ereignisse `message.created` und `run.queued`; dazu ein Auftrag in der Warteschlange.
+1. **Senden (Web-App):** Steht der Schalter „Datenschleuse“ anders als bisher für die Unterhaltung, wird zuerst umgeschaltet (Aktion `schleuse.umschalten`, eigene Belege). Dann prüft das Tor die Aktion `nachricht.senden` (Unterhaltung vorhanden, kein Lauf aktiv, Länge, Not-Aus). Erst mit Erlaubnis entstehen in **einer** Transaktion die Nachricht, ein Lauf im Zustand „wartet“, die Ereignisse `message.created` und `run.queued` und der Auftrag in der Warteschlange. Scheitert ein Teil, entsteht nichts davon. Die erste Nachricht einer neuen Unterhaltung legt diese vorher an (Aktion `unterhaltung.anlegen`).
 2. **Abholen (Worker):** Der Worker holt den Auftrag ab und liest Lauf, Unterhaltung, Bot, Einstellungen, Modell, Anbieter, Verlauf und den Tagesverbrauch **in einem Lesestand**. Der Lauf geht auf „läuft“ (Ereignis `run.started`).
 3. **Fakten bilden:** Aus der Datenbank, nie aus dem Text der Nachricht: Anbieter, Region, Ziel-Adresse (als Abdruck), Weg (direkt oder Datenschleuse), ob die Datenschleuse erreichbar ist, Länge der Anfrage, Ausgabegrenze, Tagesverbrauch, Not-Aus.
 4. **Tor:** Aktion `modell.anfragen` mit dem Bot als Akteur. Der Beleg „Entscheidung“ enthält die Fakten und eine Prüfsumme der ausgehenden Anfrage, nicht den Text.
@@ -86,7 +141,9 @@ Was die Seite live bekommt (über den Ereignis-Strom der Unterhaltung):
 
 **Reihenfolge der Sperren:** Die Lauf-Steuerung hält nie eine Transaktion auf der Unterhaltung offen, während sie das Tor fragt. So können Web-App und Worker gleichzeitig Ereignisse und Belege schreiben, ohne sich zu verklemmen; die Beleg-Kette bleibt lückenlos.
 
-Beteiligte Teile: `packages/agents/src/run/` (Lauf-Steuerung), `packages/agents/src/prompt.ts` (Anweisung an das Modell), `packages/gate` (Tor), `packages/llm` (Modell-Zugang), `packages/receipts` (Belege), `apps/worker` (Dienst im Hintergrund).
+**Die Seite:** Beim Öffnen liest die Seite den Verlauf in einem einzigen Lesestand (Nachrichten, Läufe, die Ereignisse einer gerade laufenden Antwort, die letzte Nummer im Ereignis-Strom und die Belege). Danach verbindet sie sich mit dem Ereignis-Strom ab genau dieser Nummer. Reißt die Verbindung ab, steht über der Eingabe „verbindet neu …“; danach holt die Seite alles ab der letzten gesehenen Nummer nach, ohne Lücke und ohne Doppel. Lädst du die Seite mitten in einer Antwort neu, erscheint der Text bis dahin sofort, und die Antwort läuft live weiter.
+
+Beteiligte Teile: `apps/web/src/app/(app)/chat/` und `apps/web/src/lib/chat/` (Seite und Routen), `packages/agents/src/run/` (Lauf-Steuerung), `packages/agents/src/prompt.ts` (Anweisung an das Modell), `packages/gate` (Tor), `packages/llm` (Modell-Zugang), `packages/receipts` (Belege), `apps/worker` (Dienst im Hintergrund).
 
 ## Grenzen
 
@@ -97,17 +154,24 @@ Beteiligte Teile: `packages/agents/src/run/` (Lauf-Steuerung), `packages/agents/
 - Pro Unterhaltung antwortet der Bot immer nur auf eine Nachricht zur selben Zeit.
 - Die Token-Zahlen meldet der Anbieter; PaiBot rechnet sie nicht nach.
 - Der Schalter „Datenschleuse“ gilt je Unterhaltung (oder als Standard). Ein eigener Schalter nur für eine einzelne Nachricht ist geplant.
+- Ob die Datenschleuse gerade bereit ist, erfährt die Seite erst, wenn eine Anfrage gestoppt wurde („Datenschleuse nicht bereit“). Einen laufenden Zustand vorab zeigt sie nicht.
+- Unter einer Antwort steht nicht, wie viele Angaben die Datenschleuse ersetzt hat; diese Zahl wird nicht festgehalten.
+- Die Seitenleiste zeigt die 100 zuletzt benutzten Unterhaltungen.
+- Eine Nachricht hat höchstens 32.000 Zeichen. Kurz vor der Grenze zeigt die Eingabe, wie viele noch gehen; darüber wird nicht gesendet.
 
 ## Fehlerbehebung
 
-| Beobachtung                                        | Ursache                                                                     | Was tun                                                                                       |
-| -------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| „Für deinen Bot ist kein Modell gewählt.“          | Der Bot hat kein Modell, oder es ist abgeschaltet                           | Modell wählen (siehe [Anbieter und Modelle](funktion-anbieter-und-modelle.md))                |
-| „Dein Bot antwortet gerade noch.“                  | In dieser Unterhaltung läuft schon eine Antwort                             | Abwarten oder „Stopp“                                                                         |
-| „Das Tor hat die Aktion abgelehnt.“                | Eine Grenze greift: Not-Aus, Tagesbudget, Anbieter abgeschaltet, Region     | Im Beleg „Entscheidung“ steht, welche Grenze (siehe [Das Tor](funktion-tor.md))               |
-| `schleuse.blockiert`, keine Antwort                | Datenschleuse an, aber nicht installiert, nicht erreichbar oder gestoppt    | Datenschleuse prüfen ([Datenschleuse](funktion-datenschleuse.md)) oder ausschalten            |
-| „Der Anbieter hat den Schlüssel nicht angenommen.“ | Schlüssel falsch, abgelaufen, oder die Adresse des Anbieters wurde geändert | Schlüssel neu eintragen                                                                       |
-| „Ein Limit ist erreicht.“                          | Der Anbieter meldet ein Limit, oder die Antwort wurde zu lang               | Kurz warten; Tagesbudget prüfen                                                               |
-| „Der Anbieter des Modells ist nicht erreichbar.“   | Netz, Anbieter gestört, oder keine Antwort innerhalb der Zeitgrenze         | Später noch einmal senden                                                                     |
-| „Die Antwort wurde unterbrochen.“                  | Abgebrochen oder der Worker wurde beendet                                   | Nachricht noch einmal senden                                                                  |
-| Antwort bleibt lange bei „schreibt …“              | Worker läuft nicht                                                          | `docker compose logs worker` ansehen; Zeilen wie `Lauf lau_… beendet: succeeded` zeigen Läufe |
+| Beobachtung                                           | Ursache                                                                     | Was tun                                                                                         |
+| ----------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| „Für deinen Bot ist kein Modell gewählt.“             | Der Bot hat kein Modell, oder es ist abgeschaltet                           | Modell wählen (siehe [Anbieter und Modelle](funktion-anbieter-und-modelle.md))                  |
+| „Dein Bot antwortet gerade noch.“                     | In dieser Unterhaltung läuft schon eine Antwort                             | Abwarten oder „Stopp“                                                                           |
+| „Das Tor hat die Aktion abgelehnt.“                   | Eine Grenze greift: Not-Aus, Tagesbudget, Anbieter abgeschaltet, Region     | Im Beleg „Entscheidung“ steht, welche Grenze (siehe [Das Tor](funktion-tor.md))                 |
+| `schleuse.blockiert`, keine Antwort                   | Datenschleuse an, aber nicht installiert, nicht erreichbar oder gestoppt    | Datenschleuse prüfen ([Datenschleuse](funktion-datenschleuse.md)) oder ausschalten              |
+| „Der Anbieter hat den Schlüssel nicht angenommen.“    | Schlüssel falsch, abgelaufen, oder die Adresse des Anbieters wurde geändert | Schlüssel neu eintragen                                                                         |
+| „Ein Limit ist erreicht.“                             | Der Anbieter meldet ein Limit, oder die Antwort wurde zu lang               | Kurz warten; Tagesbudget prüfen                                                                 |
+| „Der Anbieter des Modells ist nicht erreichbar.“      | Netz, Anbieter gestört, oder keine Antwort innerhalb der Zeitgrenze         | Später noch einmal senden                                                                       |
+| „Die Antwort wurde unterbrochen.“                     | Abgebrochen oder der Worker wurde beendet                                   | Nachricht noch einmal senden                                                                    |
+| Antwort bleibt lange bei „schreibt …“                 | Worker läuft nicht                                                          | `docker compose logs worker` ansehen; Zeilen wie `Lauf lau_… beendet: succeeded` zeigen Läufe   |
+| „verbindet neu …“ bleibt stehen                       | Die Web-App ist nicht erreichbar                                            | Warten; sonst „Neu verbinden“ oder die Seite neu laden. Die Antwort läuft im Hintergrund weiter |
+| Schalter „Datenschleuse“ lässt sich nicht einschalten | Die Datenschleuse ist auf diesem Server nicht eingerichtet                  | [Datenschleuse](funktion-datenschleuse.md) einrichten                                           |
+| „… Zeichen zu viel“ über dem Feld                     | Die Nachricht ist länger als 32.000 Zeichen                                 | Kürzen oder auf mehrere Nachrichten verteilen                                                   |

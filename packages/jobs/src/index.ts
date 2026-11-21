@@ -13,6 +13,7 @@ import { PgBoss } from "pg-boss";
 import { buildQueue } from "./pgboss-queue";
 import { QUEUE_SCHEMA, QUEUE_SUPERVISION, type Queue, type QueueOptions } from "./vertrag";
 
+export * from "./sql-text";
 export * from "./vertrag";
 
 /**
