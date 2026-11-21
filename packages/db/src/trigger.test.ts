@@ -257,3 +257,17 @@ describe("Installations-ID", () => {
     expect(result.rows).toEqual([{ installation_id: id }]);
   });
 });
+
+describe("Funktionen der Trigger", () => {
+  it("hängen nicht vom Suchpfad der Verbindung ab (fester Suchpfad an jeder Funktion)", async () => {
+    const { rows } = await ctx.client.query<{ name: string; config: string[] | null }>(
+      `select p.proname as name, p.proconfig as config from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname like 'paibot\\_%'`,
+    );
+    expect(rows.length).toBeGreaterThanOrEqual(8);
+    for (const row of rows) {
+      expect(row.config, row.name).toContain("search_path=pg_catalog, public");
+    }
+  });
+});

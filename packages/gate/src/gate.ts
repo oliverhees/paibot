@@ -174,69 +174,89 @@ export function createGate(ports: GatePorts): Gate {
       if (!parsedFacts.success) throw invalidInput(parsedFacts.error, facts);
       const checkedFacts = parsedFacts.data as Facts<T>;
 
-      // 2. Regelstand laden, prüfen und entscheiden.
-      const loaded = await loadRules(rules);
-      const decision = evaluate(checkedAction, checkedFacts, loaded);
-
-      // 3. Beleg „Entscheidung“. Scheitert er, wird nichts ausgeführt.
-      const decisionRecord: DecisionRecord = {
-        action: checkedAction,
-        facts: checkedFacts,
-        decision,
-        time: clock.now(),
-      };
-      if (options.context !== undefined) decisionRecord.context = options.context;
-      if (options.undo !== undefined) decisionRecord.undo = options.undo;
-      const decisionRef = await receipts.appendDecision(decisionRecord);
-
-      // 5. Nicht erlaubt: nichts ausführen, Ergebnis „abgelehnt“ belegen.
-      if (decision.outcome !== "allow") {
-        const resultRef = await receipts.appendResult({
-          action: checkedAction,
-          result: { status: "denied", code: denialCode(decision) },
-          time: clock.now(),
-        });
-        throw new GateDenied(
-          decision,
-          { decision: decisionRef, result: resultRef },
-          { actionId: checkedAction.actionId, type: checkedAction.type },
-        );
-      }
-
-      // 4. Erlaubt: mit Berechtigung ausführen und das Ergebnis belegen.
-      const permit = issuePermit(
-        checkedAction,
-        checkedFacts,
-        decisionRef.receiptId,
-        toIsoTime(clock.now()),
-      );
-      let executed: Executed<R>;
+      // Dieselbe Aktion läuft in diesem Prozess nie zweimal gleichzeitig durchs Tor. Über Prozesse
+      // hinweg verhindert die Datenbank eine zweite Entscheidung derselben Aktion.
+      if (inFlight.has(checkedAction.actionId)) failClosed();
+      inFlight.add(checkedAction.actionId);
       try {
-        executed = await execute(permit);
-      } catch (error) {
-        revokePermit(permit);
-        await receipts.appendResult({
-          action: checkedAction,
-          result: failureResult(error),
-          time: clock.now(),
-        });
-        throw error;
+        return await decideAndRun(checkedAction, checkedFacts, execute, options);
+      } finally {
+        inFlight.delete(checkedAction.actionId);
       }
-      revokePermit(permit);
-
-      const resultRef = await receipts.appendResult({
-        action: checkedAction,
-        result: executed.result,
-        time: clock.now(),
-      });
-      return {
-        value: executed.value,
-        decision,
-        receipts: { decision: decisionRef, result: resultRef },
-      };
     },
   };
+
+  async function decideAndRun<T extends ActionType, R>(
+    checkedAction: ActionRequest<T>,
+    checkedFacts: Facts<T>,
+    execute: Execute<T, R>,
+    options: GateRunOptions,
+  ): Promise<GateRunResult<R>> {
+    // 2. Regelstand laden, prüfen und entscheiden.
+    const loaded = await loadRules(rules);
+    const decision = evaluate(checkedAction, checkedFacts, loaded);
+
+    // 3. Beleg „Entscheidung“. Scheitert er, wird nichts ausgeführt.
+    const decisionRecord: DecisionRecord = {
+      action: checkedAction,
+      facts: checkedFacts,
+      decision,
+      time: clock.now(),
+    };
+    if (options.context !== undefined) decisionRecord.context = options.context;
+    if (options.undo !== undefined) decisionRecord.undo = options.undo;
+    const decisionRef = await receipts.appendDecision(decisionRecord);
+
+    // 5. Nicht erlaubt: nichts ausführen, Ergebnis „abgelehnt“ belegen.
+    if (decision.outcome !== "allow") {
+      const resultRef = await receipts.appendResult({
+        action: checkedAction,
+        result: { status: "denied", code: denialCode(decision) },
+        time: clock.now(),
+      });
+      throw new GateDenied(
+        decision,
+        { decision: decisionRef, result: resultRef },
+        { actionId: checkedAction.actionId, type: checkedAction.type },
+      );
+    }
+
+    // 4. Erlaubt: mit Berechtigung ausführen und das Ergebnis belegen.
+    const permit = issuePermit(
+      checkedAction,
+      checkedFacts,
+      decisionRef.receiptId,
+      toIsoTime(clock.now()),
+    );
+    let executed: Executed<R>;
+    try {
+      executed = await execute(permit);
+    } catch (error) {
+      revokePermit(permit);
+      await receipts.appendResult({
+        action: checkedAction,
+        result: failureResult(error),
+        time: clock.now(),
+      });
+      throw error;
+    }
+    revokePermit(permit);
+
+    const resultRef = await receipts.appendResult({
+      action: checkedAction,
+      result: executed.result,
+      time: clock.now(),
+    });
+    return {
+      value: executed.value,
+      decision,
+      receipts: { decision: decisionRef, result: resultRef },
+    };
+  }
 }
+
+/** Kennungen der Aktionen, die gerade durchs Tor laufen (alle Tore dieses Prozesses). */
+const inFlight = new Set<string>();
 
 function isAbortError(error: unknown): boolean {
   return (

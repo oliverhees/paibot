@@ -875,3 +875,29 @@ describe("Ziel der Modell-Anfrage in der Berechtigung", () => {
     });
   });
 });
+
+describe("dieselbe Aktion zweimal gleichzeitig", () => {
+  it("die zweite wird ohne Beleg und ohne Ausführung abgewiesen", async () => {
+    const { ports, entries } = memoryPorts();
+    const gate = createGate(ports);
+    const action = sampleAction("zugang.abmelden");
+    let executions = 0;
+    let release: () => void = () => undefined;
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const execute = async () => {
+      executions++;
+      await waiting;
+      return { value: 1, result: { status: "ok" as const } };
+    };
+    const first = gate.run(action, sampleFacts("zugang.abmelden"), execute);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const second = await caught(gate.run(action, sampleFacts("zugang.abmelden"), execute));
+    release();
+    await first;
+    expect((second as PaiBotError).code).toBe("intern");
+    expect(executions).toBe(1);
+    expect(entries.map((e) => e.kind)).toEqual(["decision", "result"]);
+  });
+});

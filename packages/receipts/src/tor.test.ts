@@ -209,6 +209,9 @@ describe("Tor mit dem echten Beleg-Schreiber", () => {
     ]);
     expect(results.map((r) => r.status).sort()).toEqual(["fulfilled", "rejected"]);
     expect(executions).toBe(1);
+    // Auch danach nicht noch einmal: Die Datenbank nimmt keine zweite Entscheidung derselben Aktion.
+    await expect(gate.run(action, facts, execute)).rejects.toThrow();
+    expect(executions).toBe(1);
     const own = (await chain(ctx.db)).filter(
       (e) => (e.body as { action?: { actionId?: string } }).action?.actionId === action.actionId,
     );
