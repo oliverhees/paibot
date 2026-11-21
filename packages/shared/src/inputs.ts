@@ -11,6 +11,7 @@
 
 import { z } from "zod";
 import { actionTypeSchema } from "./actions";
+import { anzeigeText } from "./anzeigetext";
 import { LIMITS } from "./constants";
 import { timezoneSchema } from "./grundtypen";
 import { idSchema } from "./id";
@@ -52,6 +53,16 @@ export const passwordSchema = z.string().min(1).max(LIMITS.passwordMaxChars);
 
 const apiKeySchema = z.string().trim().min(1).max(LIMITS.apiKeyChars);
 
+/**
+ * Name einer Routing-Regel: sichtbarer Text ohne Steuer- und Formatzeichen, ohne Leerraum an den
+ * Enden und ohne doppelte Leerzeichen, höchstens `LIMITS.routingRuleNameChars` Zeichen.
+ */
+const routingRuleNameSchema = z
+  .string()
+  .min(1)
+  .max(LIMITS.routingRuleNameChars)
+  .refine((name) => anzeigeText(name, LIMITS.routingRuleNameChars) === name);
+
 /** Text einer Nachricht: nicht leer, höchstens `LIMITS.messageChars` Zeichen. */
 export const messageTextSchema = z
   .string()
@@ -68,6 +79,12 @@ export const setupInput = z
     apiKey: apiKeySchema.optional(),
     /** Modell aus der Liste des Anbieters; nur mit Schlüssel. */
     modelSlug: z.string().min(1).max(LIMITS.modelSlugChars).optional(),
+    /** Gewählter Anbieter; ohne Angabe der Anbieter, den der Server für die Einrichtung vorsieht. */
+    templateKey: providerTemplateKeySchema.optional(),
+    /** Nur bei EUrouter: Routing-Regeln, die gespeichert werden (jede wird geprüft). */
+    ruleNames: z.array(routingRuleNameSchema).min(1).max(LIMITS.routingRulesPerCheck).optional(),
+    /** Nur bei EUrouter: die Regel, die der Bot benutzt; muss in `ruleNames` stehen. */
+    ruleName: routingRuleNameSchema.optional(),
     schleuseModeDefault: schleuseModeSchema,
     botName: z.string().trim().min(1).max(LIMITS.botNameChars),
     timezone: timezoneSchema.optional(),
@@ -75,7 +92,14 @@ export const setupInput = z
   .refine((input) => input.password === input.passwordRepeat, { path: ["passwordRepeat"] })
   .refine((input) => input.modelSlug === undefined || input.apiKey !== undefined, {
     path: ["modelSlug"],
-  });
+  })
+  .refine((input) => input.ruleNames === undefined || input.apiKey !== undefined, {
+    path: ["ruleNames"],
+  })
+  .refine(
+    (input) => input.ruleName === undefined || (input.ruleNames ?? []).includes(input.ruleName),
+    { path: ["ruleName"] },
+  );
 export type SetupInput = z.infer<typeof setupInput>;
 
 /** Anmelden mit Passwort, optional „angemeldet bleiben“. */
@@ -155,6 +179,10 @@ export type ProviderInput = z.infer<typeof providerInput>;
 export const setupConnectionTestInput = z.strictObject({
   setupCode: setupCodeSchema,
   apiKey: apiKeySchema,
+  /** Gewählter Anbieter; ohne Angabe der Anbieter, den der Server für die Einrichtung vorsieht. */
+  templateKey: providerTemplateKeySchema.optional(),
+  /** Nur bei EUrouter: Namen der Routing-Regeln, die geprüft werden (je eine kleine Anfrage). */
+  ruleNames: z.array(routingRuleNameSchema).min(1).max(LIMITS.routingRulesPerCheck).optional(),
 });
 export type SetupConnectionTestInput = z.infer<typeof setupConnectionTestInput>;
 
@@ -184,6 +212,13 @@ export type BotInput = z.infer<typeof botInput>;
 
 /** Modell des Bots festlegen. */
 export const modelChoiceInput = z.strictObject({ modelId: idSchema("model") });
+
+/**
+ * Routing-Regel eines Anbieters (EUrouter) hinzufügen: der Name, genau wie im Konto (Groß- und
+ * Kleinschreibung zählt). PaiBot prüft ihn mit einer sehr kleinen echten Anfrage.
+ */
+export const routingRuleInput = z.strictObject({ name: routingRuleNameSchema });
+export type RoutingRuleInput = z.infer<typeof routingRuleInput>;
 export type ModelChoiceInput = z.infer<typeof modelChoiceInput>;
 
 /** Einstellungen ändern. `null` entfernt eine Grenze. Mindestens ein Feld. */

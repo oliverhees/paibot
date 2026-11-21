@@ -10,10 +10,18 @@
  */
 
 import type { Database } from "@paibot/db";
-import { type ConnectionTestResult, schleuseFromEnv, testConnection } from "@paibot/llm";
+import {
+  type ConnectionTestResult,
+  checkRoutingRule,
+  type RoutingRuleCheck,
+  schleuseFromEnv,
+  testConnection,
+} from "@paibot/llm";
 import type { ReceiptKeys } from "@paibot/receipts";
 import { datenbank } from "../datenbank";
 import { belegSchluesselAus, type Uhr } from "../gate";
+import type { UnterAnbieterListe } from "../modelle/herkunft";
+import { unterAnbieterListe } from "../modelle/unter-anbieter";
 import { stand } from "../stand";
 import {
   appOrigin,
@@ -22,6 +30,8 @@ import {
   hinterProxy,
   prozessSchluessel,
   type Schluessel,
+  type VorlagenSchluessel,
+  vorlageAnbieter,
 } from "../umgebung";
 import { type CodeHalter, prozessCodeHalter } from "./einrichtungs-code";
 
@@ -44,6 +54,18 @@ export interface ZugangsDienste {
   warten(ms: number): Promise<void>;
   code: CodeHalter;
   einrichtungsAnbieter(): EinrichtungsAnbieter;
+  /** Anbieter einer Vorlage (EUrouter, Mistral) für Auswahl, Anlegen und Prüfung der Adresse. */
+  vorlage(schluessel: VorlagenSchluessel): EinrichtungsAnbieter;
+  /** Prüft eine Routing-Regel mit einer sehr kleinen echten Anfrage (kostet wenige Token). */
+  regelPruefen(
+    anbieter: EinrichtungsAnbieter,
+    schluessel: string,
+    name: string,
+  ): Promise<RoutingRuleCheck>;
+  /** Öffentliche Anbieter-Liste von EUrouter (Namen, Sitz), zwischengespeichert. */
+  unterAnbieter(
+    anbieter: Pick<EinrichtungsAnbieter, "templateKey" | "baseUrl" | "region"> | undefined,
+  ): Promise<UnterAnbieterListe | undefined>;
   schleuseInstalliert(): boolean;
   verbindungTesten(
     anbieter: EinrichtungsAnbieter,
@@ -96,6 +118,9 @@ export function prozessDienste(): ZugangsDienste {
     warten: (ms) => new Promise((fertig) => setTimeout(fertig, ms)),
     code: prozessCodeHalter(),
     einrichtungsAnbieter: () => einrichtungsAnbieter(process.env),
+    vorlage: (schluessel) => vorlageAnbieter(schluessel, process.env),
+    regelPruefen: (anbieter, schluessel, name) => checkRoutingRule(anbieter, schluessel, name),
+    unterAnbieter: (anbieter) => unterAnbieterListe(anbieter),
     schleuseInstalliert: () => {
       try {
         return schleuseFromEnv(process.env) !== undefined;

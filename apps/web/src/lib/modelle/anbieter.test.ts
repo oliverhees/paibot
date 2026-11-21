@@ -19,7 +19,13 @@ import { PaiBotError } from "@paibot/shared/fehler";
 import { newId, type ProviderId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { anfrage, Keksdose, TEST_MODELLE, TEST_SCHLUESSEL } from "../zugang/testing";
+import {
+  anfrage,
+  Keksdose,
+  TEST_MODELLE,
+  TEST_SCHLUESSEL,
+  TEST_VORLAGEN_URL,
+} from "../zugang/testing";
 import { adresseGeaendert, pruefeAdresse, verbindungsFehler } from "./anbieter";
 import {
   belegeAlsText,
@@ -334,8 +340,8 @@ describe("PUT /api/anbieter/:id", () => {
       koerper: {
         templateKey: "eurouter",
         name: "EUrouter",
-        baseUrl: "https://api.eurouter.ai/v1",
-        region: "eu",
+        baseUrl: TEST_VORLAGEN_URL,
+        region: "local",
         apiKey: TEST_SCHLUESSEL,
       },
     });

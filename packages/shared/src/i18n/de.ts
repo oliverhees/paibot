@@ -1481,4 +1481,37 @@ export const de = {
   "anbieter.url.nicht_lokal":
     "Diese Adresse liegt nicht auf deinem Rechner und nicht in deinem Netz. „Lokal“ geht nur für Adressen dort; für einen Dienst im Internet wähl einen anderen Ort und eine Adresse mit https.",
   "modelle.anbieter.vorlage.mistral": "Vorlage Mistral AI (EU-Endpunkt)",
+  "herkunft.ueber": "über {anbieter}",
+  "herkunft.eigen": "{anbieter} · {ort} laut deiner Einstellung",
+  "herkunft.antwort": "Antwort von {unter} (laut {anbieter})",
+  "herkunft.antwort_sitz": "Antwort von {unter} · Sitz {land} laut {anbieter}",
+  "regel.nur_eurouter": "Routing-Regeln gibt es nur bei EUrouter.",
+  "regel.schluessel_fehlt.ausweg": "Trag zuerst den Schlüssel für EUrouter ein, dann die Regel.",
+  "regel.fehler.regel_unbekannt":
+    "{anbieter} kennt keine eingeschaltete Regel mit dem Namen „{name}“.",
+  "regel.fehler.regel_unbekannt.ausweg":
+    "Prüf den Namen in deinem Konto bei {anbieter} unter „Routing“: Er muss genau gleich geschrieben sein, auch groß und klein. Ist die Regel ausgeschaltet, schalte sie dort ein.",
+  "regel.fehler.abgelehnt": "{anbieter} hat die Anfrage mit der Regel „{name}“ abgelehnt.",
+  "regel.fehler.abgelehnt.ausweg":
+    "Prüf die Regel in deinem Konto bei {anbieter}: Lässt sie überhaupt einen Anbieter zu?",
+  "regel.fehler.schluessel_ungueltig": "{anbieter} hat den Schlüssel nicht angenommen.",
+  "regel.fehler.schluessel_ungueltig.ausweg":
+    "Kopier den Schlüssel noch einmal aus deinem Konto bei {anbieter}.",
+  "regel.fehler.limit_erreicht":
+    "Bei {anbieter} ist ein Limit erreicht (Guthaben oder zu viele Anfragen).",
+  "regel.fehler.limit_erreicht.ausweg":
+    "Prüf dein Guthaben bei {anbieter} oder versuch es in ein paar Minuten noch einmal.",
+  "regel.fehler.anbieter_nicht_erreichbar": "{anbieter} ist gerade nicht erreichbar.",
+  "regel.fehler.anbieter_nicht_erreichbar.ausweg":
+    "Versuch es gleich noch einmal. Klappt es dauerhaft nicht, prüf die Internet-Verbindung deines Servers.",
+  "regel.liste_nicht":
+    "Bei {anbieter} wählst du keine Modelle aus einer Liste, sondern eine deiner Routing-Regeln.",
+  "regel.liste_nicht.ausweg":
+    "Trag unter „Routing-Regeln“ den Namen einer Regel aus deinem Konto ein.",
+  "modelle.nicht_lokal.ausweg":
+    "Wähl als Ort „EU“ oder „außerhalb der EU“ und eine Adresse mit https – oder trag eine Adresse auf deinem Rechner bzw. in deinem Netz ein.",
+  "anbieterwahl.eigen.spaeter":
+    "Einen eigenen oder lokalen Anbieter richtest du nach der Einrichtung unter „Modell und Anbieter“ ein.",
+  "anbieterwahl.regeln.leer":
+    "Trag mindestens eine Routing-Regel aus deinem Konto bei {anbieter} ein.",
 } as const satisfies Record<string, string | readonly string[]>;

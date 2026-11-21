@@ -23,6 +23,7 @@ import {
   providerInput,
   receiptChainQuery,
   receiptListQuery,
+  routingRuleInput,
   schleuseInput,
   sendMessageInput,
   settingsInput,
@@ -355,6 +356,29 @@ export const API_ROUTEN = {
   anbieterModelle: {
     methode: "POST",
     pfad: "/api/anbieter/:id/modelle",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "anbieter.speichern",
+  },
+  /**
+   * Routing-Regel (nur EUrouter) prüfen und als wählbaren Eintrag speichern. Die Prüfung ist eine
+   * sehr kleine echte Anfrage an ein Modell; sie zählt auf das Limit des Verbindungstests.
+   */
+  anbieterRegelHinzufuegen: {
+    methode: "POST",
+    pfad: "/api/anbieter/:id/regeln",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "anbieter.speichern",
+    eingabe: routingRuleInput,
+    limits: ["verbindungstest"],
+  },
+  /** Gespeicherte Routing-Regel entfernen. */
+  anbieterRegelEntfernen: {
+    methode: "DELETE",
+    pfad: "/api/anbieter/:id/regeln/:modellId",
     zugang: "besitzer",
     antwort: "json",
     veraendernd: true,

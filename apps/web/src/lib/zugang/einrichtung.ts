@@ -11,7 +11,7 @@
 
 import { encryptSecret, fingerprint, generateSigningKey } from "@paibot/crypto";
 import { type Database, repo } from "@paibot/db";
-import type { ModelInfo } from "@paibot/llm";
+import { type ModelInfo, routingRuleSlug, supportsRoutingRules } from "@paibot/llm";
 import type { ReceiptKeys } from "@paibot/receipts";
 import { createReceiptWriter } from "@paibot/receipts";
 import { providerSecretBinding, secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
@@ -19,9 +19,13 @@ import type { SetupConnectionTestInput, SetupInput } from "@paibot/shared/eingab
 import { type ErrorCode, PaiBotError } from "@paibot/shared/fehler";
 import { type BotId, type KeyId, newId, type OwnerId, type ProviderId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
+import type { ProviderTemplateKey } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
+import { verbindungsFehler } from "../modelle/anbieter";
+import { type RegelErgebnis, regelnPruefen } from "../modelle/regeln";
 import { schleuseEingerichtet } from "../schleuse/schleuse";
+import type { EinrichtungsAnbieter } from "../umgebung";
 import { geraetHinzufuegen } from "./anmeldung";
 import type { ZugangsDienste } from "./dienste";
 import { codeSicherstellen } from "./einrichtungs-code";
@@ -41,8 +45,13 @@ export interface EinrichtungsStatus {
   offen: boolean;
   /** Ist die Datenschleuse eingerichtet? Nur dann ist „An“ wählbar. */
   schleuseInstalliert: boolean;
-  /** Name des Anbieters, den die Einrichtung verbindet. */
+  /** Name des Anbieters, den die Einrichtung ohne Auswahl verbindet. */
   anbieter: string;
+  /**
+   * Auswahl der Anbieter: Namen der Vorlagen und, wenn der Server einen eigenen Anbieter für die
+   * Einrichtung vorsieht (`PAIBOT_EINRICHTUNG_ANBIETER_URL`), dessen Name.
+   */
+  wahl: { eurouter: string; mistral: string; eigener?: string };
   passwortMin: number;
   botVorschlag: string;
   /** Ohne `TRUST_PROXY=1`: Hinweis, dass Versuche nur gebremst werden. */
@@ -60,6 +69,13 @@ export async function einrichtungsStatus(
     offen,
     schleuseInstalliert: await schleuseEingerichtet(db, d, d.uhr.now()),
     anbieter: d.einrichtungsAnbieter().name,
+    wahl: {
+      eurouter: d.vorlage("eurouter").name,
+      mistral: d.vorlage("mistral").name,
+      ...(d.einrichtungsAnbieter().templateKey === "eigener"
+        ? { eigener: d.einrichtungsAnbieter().name }
+        : {}),
+    },
     passwortMin: LIMITS.passwordMinChars,
     botVorschlag: t("einrichtung.bot.vorschlag"),
     ohneProxy: !d.hinterProxy(),
@@ -89,9 +105,40 @@ function anbieterFehler(code: ErrorCode): PaiBotError {
   return new PaiBotError(code, { felder: [{ feld: "apiKey", code: "ungueltig" }] });
 }
 
-/** Ergebnis des Verbindungstests: die Modelle, aus denen die Einrichtung eins wählt. */
+/** Ergebnis des Verbindungstests: Modelle bzw. (bei EUrouter) die geprüften Regeln. */
 export interface VerbindungsErgebnis {
   modelle: ModelInfo[];
+  /** Nur bei EUrouter: je Name, ob es die Regel gibt und wer geantwortet hat. */
+  regeln?: RegelErgebnis[];
+}
+
+/**
+ * Anbieter der Einrichtung zur Auswahl: Vorlage (EUrouter, Mistral) oder der eigene Anbieter, den
+ * der Server vorsieht. Ohne Auswahl wie bisher der Anbieter des Servers. Einen eigenen Anbieter
+ * ohne Vorgabe des Servers richtet der Besitzer nach der Einrichtung ein.
+ */
+export function gewaehlterAnbieter(
+  d: ZugangsDienste,
+  wahl: ProviderTemplateKey | undefined,
+): EinrichtungsAnbieter {
+  if (wahl === undefined) return d.einrichtungsAnbieter();
+  if (wahl !== "eigener") return d.vorlage(wahl);
+  const eigener = d.einrichtungsAnbieter();
+  if (eigener.templateKey !== "eigener") {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("anbieterwahl.eigen.spaeter"),
+      felder: [{ feld: "templateKey", code: "ungueltig" }],
+    });
+  }
+  return eigener;
+}
+
+/** Bei EUrouter ohne Regel: Fehler am Feld „Regeln“. */
+function regelnFehlen(anbieter: EinrichtungsAnbieter): PaiBotError {
+  return new PaiBotError("eingabe_ungueltig", {
+    text: t("anbieterwahl.regeln.leer", { anbieter: anbieter.name }),
+    felder: [{ feld: "ruleNames", code: "fehlt" }],
+  });
 }
 
 /** `POST /api/einrichtung/verbindungstest`: nur mit gültigem Code, nur mit neuem Schlüssel. */
@@ -100,11 +147,24 @@ export async function einrichtungVerbindungstest(
 ): Promise<VerbindungsErgebnis> {
   const eingabe: SetupConnectionTestInput = kontext.eingabe;
   await codePruefen(kontext, eingabe.setupCode);
-  const ergebnis = await kontext.dienste.verbindungTesten(
-    kontext.dienste.einrichtungsAnbieter(),
-    eingabe.apiKey,
-  );
-  if (!ergebnis.ok) throw anbieterFehler(ergebnis.code);
+  const anbieter = gewaehlterAnbieter(kontext.dienste, eingabe.templateKey);
+  if (supportsRoutingRules(anbieter.templateKey)) {
+    if (eingabe.ruleNames === undefined) throw regelnFehlen(anbieter);
+    const regeln = await regelnPruefen(
+      kontext.dienste,
+      anbieter,
+      eingabe.apiKey,
+      eingabe.ruleNames,
+    );
+    return { modelle: [], regeln };
+  }
+  const ergebnis = await kontext.dienste.verbindungTesten(anbieter, eingabe.apiKey);
+  if (!ergebnis.ok) {
+    if (ergebnis.detail !== undefined) {
+      throw verbindungsFehler(ergebnis.code, anbieter.name, true, ergebnis.detail);
+    }
+    throw anbieterFehler(ergebnis.code);
+  }
   return { modelle: ergebnis.models };
 }
 
@@ -121,6 +181,8 @@ export interface AbschlussErgebnis {
   botId: BotId;
   botName: string;
   anbieter: boolean;
+  /** Name des verbundenen Anbieters (nur mit Schlüssel). */
+  anbieterName?: string;
   modell?: string;
   schleuse: "on" | "off";
 }
@@ -159,11 +221,43 @@ export async function einrichtungAbschliessen(
     });
   }
 
-  const anbieter = d.einrichtungsAnbieter();
+  const anbieter = gewaehlterAnbieter(d, eingabe.templateKey);
+  const mitRegeln = supportsRoutingRules(anbieter.templateKey);
   let modell: ModelInfo | undefined;
-  if (eingabe.apiKey !== undefined) {
+  /** Bei EUrouter: die geprüften Regeln (Name als Modell `rule:<Name>`). */
+  const regeln: ModelInfo[] = [];
+  if (eingabe.apiKey !== undefined && mitRegeln) {
+    if (eingabe.ruleNames === undefined || eingabe.modelSlug !== undefined) {
+      throw regelnFehlen(anbieter);
+    }
+    // Gerade geprüfte Regeln nicht noch einmal (jede Prüfung kostet beim Anbieter Token).
+    const ergebnisse = await regelnPruefen(d, anbieter, eingabe.apiKey, eingabe.ruleNames, {
+      nurNeue: true,
+    });
+    const falsch = ergebnisse.find((r) => !r.ok);
+    if (falsch !== undefined) {
+      throw new PaiBotError("eingabe_ungueltig", {
+        text: falsch.text ?? "",
+        ...(falsch.ausweg ? { ausweg: falsch.ausweg } : {}),
+        felder: [{ feld: "ruleNames", code: "ungueltig" }],
+      });
+    }
+    for (const r of ergebnisse) regeln.push({ slug: routingRuleSlug(r.name), displayName: r.name });
+    const gewaehlt = eingabe.ruleName ?? eingabe.ruleNames[0];
+    modell = regeln.find((r) => r.displayName === gewaehlt);
+  } else if (eingabe.ruleNames !== undefined || eingabe.ruleName !== undefined) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("regel.nur_eurouter"),
+      felder: [{ feld: "ruleNames", code: "ungueltig" }],
+    });
+  } else if (eingabe.apiKey !== undefined) {
     const test = await d.verbindungTesten(anbieter, eingabe.apiKey);
-    if (!test.ok) throw anbieterFehler(test.code);
+    if (!test.ok) {
+      if (test.detail !== undefined) {
+        throw verbindungsFehler(test.code, anbieter.name, true, test.detail);
+      }
+      throw anbieterFehler(test.code);
+    }
     if (eingabe.modelSlug !== undefined) {
       modell = test.models.find((m) => m.slug === eingabe.modelSlug);
       if (modell === undefined) {
@@ -281,6 +375,15 @@ export async function einrichtungAbschliessen(
               aad: secretAad(providerSecretBinding(providerId, anbieter.baseUrl)),
             }),
           });
+          // Die übrigen geprüften Regeln stehen danach zur Wahl; die gewählte legt `modell.waehlen` an.
+          for (const regel of regeln) {
+            if (regel.slug === modell?.slug) continue;
+            await repo.models.create(tx, {
+              providerId,
+              slug: regel.slug,
+              displayName: regel.displayName,
+            });
+          }
           stoeren(optionen, "anbieter");
           return { value: undefined, result: { status: "ok" } };
         },
@@ -335,6 +438,7 @@ export async function einrichtungAbschliessen(
         botId,
         botName: eingabe.botName,
         anbieter: eingabe.apiKey !== undefined,
+        ...(eingabe.apiKey === undefined ? {} : { anbieterName: anbieter.name }),
         ...(modell === undefined ? {} : { modell: modell.displayName }),
         schleuse: eingabe.schleuseModeDefault,
       } satisfies AbschlussErgebnis,
