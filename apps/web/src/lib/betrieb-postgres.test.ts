@@ -102,7 +102,6 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
     const appUrl = newRole(db);
     const exit = (() => undefined) as unknown as (code: number) => never;
     const migrate = {
-      NODE_ENV: "production",
       PAIBOT_ROLE: "migrate",
       DATABASE_URL: appUrl,
       DATABASE_MIGRATION_URL: db.url,
