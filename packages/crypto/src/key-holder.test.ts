@@ -98,4 +98,99 @@ describe("createSigningKeyHolder", () => {
     expect((await holder.current()).privateKey).toBe(second.privateKey);
     expect(() => old.privateKey).toThrow();
   });
+
+  it("derselbe Schlüssel erneut geladen: das Fach bleibt, früher herausgegebene Objekte gelten weiter", async () => {
+    const pair = generateSigningKey();
+    // Der Lader liefert jedes Mal ein neues Objekt mit demselben Inhalt (wie aus der Datenbank).
+    const holder = createSigningKeyHolder(async () => ({ keyId: KEY_ID, ...pair }));
+    const first = await holder.load();
+    const again = await holder.load();
+    expect(again).toBe(first);
+    expect(await holder.current()).toBe(first);
+    const data = new TextEncoder().encode("Beleg");
+    expect(verify(pair.publicKey, data, sign(first.privateKey, data))).toBe(true);
+  });
+
+  it("gleichzeitige Ladevorgänge mit demselben Schlüssel: alle Objekte bleiben gültig", async () => {
+    const pair = generateSigningKey();
+    const holder = createSigningKeyHolder(async () => ({ keyId: KEY_ID, ...pair }));
+    const views = await Promise.all(Array.from({ length: 5 }, () => holder.load()));
+    for (const view of views) expect(view.privateKey).toBe(pair.privateKey);
+    expect(new Set(views).size).toBe(1);
+  });
+
+  it("gleichzeitige Ladevorgänge mit verschiedenen Schlüsseln: das zuletzt begonnene zählt", async () => {
+    const older = generateSigningKey();
+    const newer = generateSigningKey();
+    const NEWER_ID = `sch_0${"9".repeat(25)}`;
+    const pending: ((value: { keyId: string; publicKey: string; privateKey: string }) => void)[] =
+      [];
+    const holder = createSigningKeyHolder(
+      () =>
+        new Promise<{ keyId: string; publicKey: string; privateKey: string }>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+    const first = holder.load();
+    const second = holder.load();
+    // Das später begonnene Laden wird zuerst fertig, das ältere danach.
+    pending[1]?.({ keyId: NEWER_ID, ...newer });
+    const secondView = await second;
+    pending[0]?.({ keyId: KEY_ID, ...older });
+    const firstView = await first;
+    expect(firstView).toBe(secondView);
+    expect((await holder.current()).keyId).toBe(NEWER_ID);
+    expect(secondView.privateKey).toBe(newer.privateKey);
+    expect(inspect(holder, { showHidden: true, depth: 5 })).not.toContain(older.privateKey);
+  });
+
+  it("discard während eines Ladens: der Schlüssel kommt danach nicht zurück", async () => {
+    const pair = generateSigningKey();
+    let resolveLoad: (value: { keyId: string; publicKey: string; privateKey: string }) => void =
+      () => undefined;
+    const holder = createSigningKeyHolder(
+      () =>
+        new Promise<{ keyId: string; publicKey: string; privateKey: string }>((resolve) => {
+          resolveLoad = resolve;
+        }),
+    );
+    const loading = holder.load();
+    holder.discard();
+    resolveLoad({ keyId: KEY_ID, ...pair });
+    await expect(loading).rejects.toSatisfy(
+      (e: unknown) => reasonOf(e) === "schluessel_nicht_geladen",
+    );
+    expect(holder.loaded).toBe(false);
+  });
+
+  it("scheitert ein Laden, bleiben gehaltener Schlüssel und früher herausgegebene Objekte gültig, ohne Geheimnis im Fehler", async () => {
+    const good = generateSigningKey();
+    const other = generateSigningKey();
+    let mode: "ok" | "falsch" | "wirft" = "ok";
+    const holder = createSigningKeyHolder(async () => {
+      if (mode === "wirft") throw new Error("Datenbank nicht erreichbar");
+      if (mode === "falsch") {
+        return { keyId: KEY_ID, publicKey: good.publicKey, privateKey: other.privateKey };
+      }
+      return { keyId: KEY_ID, ...good };
+    });
+    const view = await holder.load();
+    mode = "falsch";
+    const error = await holder.load().catch((e: unknown) => e);
+    expect(reasonOf(error)).toBe("schluessel_nicht_geladen");
+    const shown = [
+      String(error),
+      (error as Error).stack ?? "",
+      JSON.stringify(error),
+      inspect(error),
+    ];
+    for (const text of shown) {
+      expect(text).not.toContain(other.privateKey);
+      expect(text).not.toContain(good.privateKey);
+    }
+    mode = "wirft";
+    await expect(holder.load()).rejects.toThrow("Datenbank nicht erreichbar");
+    expect(view.privateKey).toBe(good.privateKey);
+    expect(await holder.current()).toBe(view);
+  });
 });
