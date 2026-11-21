@@ -1377,7 +1377,8 @@
       ],
       "verdecke": [
         "dt:has-text('Kennung') + dd [class*='_leise']",
-        "li:has-text('Signatur gültig (Schlüssel')"
+        "li:has-text('Signatur gültig (Schlüssel')",
+        "dt:has-text('Gerät') + dd [class*='_leise']"
       ],
       "beschreibung": "Entscheidung des Tors als Beleg, nachgerechnet"
     },
