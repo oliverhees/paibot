@@ -42,21 +42,21 @@ Die Bilder zu den Schritten stehen oben (Beispiel-Daten, Beispiel-Installation a
 
 Am Selbsttest selbst gibt es nichts einzustellen. Er liest diese Einstellungen deiner Installation:
 
-| Prüfung                    | Woher                                                      | In Ordnung, wenn …                                                                       |
-| -------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Adresse (APP_URL)          | Umgebungsvariable `APP_URL` und die Adresse dieser Anfrage | sie mit `https://` beginnt und zur Adresse passt, über die du die Seite geöffnet hast    |
-| Vorgeschalteter Proxy      | `TRUST_PROXY` und ob die Anfrage Zeichen eines Proxys trägt | `TRUST_PROXY=1` und ein Proxy erkennbar ist, oder `TRUST_PROXY` aus und keiner erkennbar  |
-| Verbindung deines Browsers | dein Browser                                               | die Seite über https kommt (über http zum eigenen Rechner: Hinweis)                      |
-| Schutz-Kopfzeilen          | die Antwort, wie sie bei deinem Browser ankommt            | Content-Security-Policy und die weiteren Schutz-Kopfzeilen da sind, über https auch HSTS |
-| Rechte der Datenbank-Rolle | Verbindung aus `DATABASE_URL`                              | die Rolle eingeschränkt ist (kein Superuser, kann Belege und Regeln nicht ändern)        |
-| Schalter erhöhte Rechte    | Umgebungsvariable `PAIBOT_ALLOW_PRIVILEGED_DB`             | sie nicht gesetzt ist                                                                    |
-| Stand der Datenbank        | angewendete Migrationen gegenüber dieser Version           | alle angewendet sind                                                                     |
-| Worker                     | letzte Meldung des Workers (alle 30 Sekunden)              | die Meldung jünger als 5 Minuten ist                                                     |
-| Datenschleuse              | letzte Meldung des Workers                                 | sie aus (freiwillig) oder bereit ist                                                     |
-| Einrichtung                | Einstellungen in der Datenbank                             | sie abgeschlossen ist                                                                    |
-| Not-Aus                    | Einstellungen in der Datenbank                             | er aus ist (an: Hinweis)                                                                 |
-| Geräte und Sitzungen       | bekannte Geräte und offene Sitzungen                       | immer; die Zahlen helfen dir, fremde Geräte zu bemerken                                  |
-| Version                    | Stand dieser Installation                                  | immer; ob es eine neuere gibt, prüft PaiBot nicht                                        |
+| Prüfung                    | Woher                                                       | In Ordnung, wenn …                                                                       |
+| -------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Adresse (APP_URL)          | Umgebungsvariable `APP_URL` und die Adresse dieser Anfrage  | sie mit `https://` beginnt und zur Adresse passt, über die du die Seite geöffnet hast    |
+| Vorgeschalteter Proxy      | `TRUST_PROXY` und ob die Anfrage Zeichen eines Proxys trägt | `TRUST_PROXY=1` und ein Proxy erkennbar ist, oder `TRUST_PROXY` aus und keiner erkennbar |
+| Verbindung deines Browsers | dein Browser                                                | die Seite über https kommt (über http zum eigenen Rechner: Hinweis)                      |
+| Schutz-Kopfzeilen          | die Antwort, wie sie bei deinem Browser ankommt             | Content-Security-Policy und die weiteren Schutz-Kopfzeilen da sind, über https auch HSTS |
+| Rechte der Datenbank-Rolle | Verbindung aus `DATABASE_URL`                               | die Rolle eingeschränkt ist (kein Superuser, kann Belege und Regeln nicht ändern)        |
+| Schalter erhöhte Rechte    | Umgebungsvariable `PAIBOT_ALLOW_PRIVILEGED_DB`              | sie nicht gesetzt ist                                                                    |
+| Stand der Datenbank        | angewendete Migrationen gegenüber dieser Version            | alle angewendet sind                                                                     |
+| Worker                     | letzte Meldung des Workers (alle 30 Sekunden)               | die Meldung jünger als 5 Minuten ist                                                     |
+| Datenschleuse              | letzte Meldung des Workers                                  | sie aus (freiwillig) oder bereit ist                                                     |
+| Einrichtung                | Einstellungen in der Datenbank                              | sie abgeschlossen ist                                                                    |
+| Not-Aus                    | Einstellungen in der Datenbank                              | er aus ist (an: Hinweis)                                                                 |
+| Geräte und Sitzungen       | bekannte Geräte und offene Sitzungen                        | immer; die Zahlen helfen dir, fremde Geräte zu bemerken                                  |
+| Version                    | Stand dieser Installation                                   | immer; ob es eine neuere gibt, prüft PaiBot nicht                                        |
 
 ## So funktioniert es
 
@@ -75,11 +75,11 @@ Am Selbsttest selbst gibt es nichts einzustellen. Er liest diese Einstellungen d
 
 ## Fehlerbehebung
 
-| Beobachtung                                     | Ursache                                                           | Was tun                                                                                     |
-| ----------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| „Der Selbsttest konnte nicht geladen werden.“   | Web-App oder Datenbank antwortet gerade nicht                     | Kurz warten, **Erneut prüfen**; sonst das Log von `web` ansehen                             |
-| „Konnte gerade nicht geprüft werden.“ bei Rolle | Die Datenbank war bei der Prüfung nicht erreichbar                | Seite in ein paar Sekunden neu laden                                                        |
-| Adresse: „über eine andere Adresse geöffnet“    | `APP_URL` passt nicht zur Adresse im Browser                      | PaiBot über die Adresse aus `APP_URL` öffnen oder `APP_URL` anpassen und `web` neu starten  |
+| Beobachtung                                     | Ursache                                                            | Was tun                                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| „Der Selbsttest konnte nicht geladen werden.“   | Web-App oder Datenbank antwortet gerade nicht                      | Kurz warten, **Erneut prüfen**; sonst das Log von `web` ansehen                               |
+| „Konnte gerade nicht geprüft werden.“ bei Rolle | Die Datenbank war bei der Prüfung nicht erreichbar                 | Seite in ein paar Sekunden neu laden                                                          |
+| Adresse: „über eine andere Adresse geöffnet“    | `APP_URL` passt nicht zur Adresse im Browser                       | PaiBot über die Adresse aus `APP_URL` öffnen oder `APP_URL` anpassen und `web` neu starten    |
 | Proxy: „nicht feststellbar“ trotz Proxy         | Der Proxy setzt keine der erkennbaren Kopfzeilen (siehe „Grenzen“) | Selbst prüfen, dass er `X-Forwarded-For` setzt und der Port der App nicht frei erreichbar ist |
-| Worker: „hat sich noch nie gemeldet“            | Der Dienst `worker` läuft nicht oder erreicht die Datenbank nicht | `docker compose ps` und das Log von `worker` ansehen                                        |
-| Stand der Datenbank: Migrationen fehlen         | Der Migrations-Schritt lief nach einem Update nicht               | Dienst `migrate` erneut starten (z. B. `docker compose up -d`)                              |
+| Worker: „hat sich noch nie gemeldet“            | Der Dienst `worker` läuft nicht oder erreicht die Datenbank nicht  | `docker compose ps` und das Log von `worker` ansehen                                          |
+| Stand der Datenbank: Migrationen fehlen         | Der Migrations-Schritt lief nach einem Update nicht                | Dienst `migrate` erneut starten (z. B. `docker compose up -d`)                                |
