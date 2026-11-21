@@ -18,6 +18,7 @@ import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
 import { routingRuleSlug, SCHLEUSE_SESSION_HEADER, type SchleuseConnection } from "@paibot/llm";
 import { type FakeSchleuse, startFakeSchleuse } from "@paibot/llm/testing";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
+import { errorText, errorWayOut } from "@paibot/shared/texte";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createAiSdkMotor } from "../motor-aisdk";
 import { type RunSetup, type RunSetupOptions, setupRun } from "../testing/lauf-umgebung";
@@ -219,6 +220,29 @@ describe("mit dem echten Motor", () => {
     const receiptsJson = JSON.stringify(await env.receipts());
     expect(receiptsJson).not.toContain(MARKER);
     expect(receiptsJson).not.toContain(PROVIDER_KEY);
+    expect((await env.verify()).ok).toBe(true);
+  });
+
+  it("Regel beim Anbieter nicht mehr da: Lauf scheitert mit eigenem Code, Satz mit Ausweg, Beleg mit Code", async () => {
+    const env = await setup({
+      templateKey: "eurouter",
+      modelSlug: routingRuleSlug("Verschwundene Regel"),
+    });
+    provider.configure({
+      routingRules: [
+        { name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/modell-1" },
+      ],
+    });
+    const { runId } = await env.queueMessage(QUESTION);
+    const outcome = await executeRun(runId, env.deps, never());
+    expect(outcome).toMatchObject({ status: "failed", code: "regel_unbekannt" });
+    const gescheitert = (await env.events()).find((e) => e.type === "run.failed");
+    expect(gescheitert?.data).toMatchObject({
+      code: "regel_unbekannt",
+      text: errorText("regel_unbekannt"),
+    });
+    expect(errorWayOut("regel_unbekannt")).toContain("Modell und Anbieter");
+    expect(JSON.stringify(await env.receipts())).toContain("regel_unbekannt");
     expect((await env.verify()).ok).toBe(true);
   });
 

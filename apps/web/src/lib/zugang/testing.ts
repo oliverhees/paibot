@@ -31,6 +31,9 @@ export const TEST_SCHLUESSEL = "beispiel-schluessel-0001";
 export const TEST_REGELN: Record<string, { provider: string; model: string }> = {
   "Beispiel-Regel": { provider: "beispiel-nord", model: "beispiel/modell-1" },
   "Zweite Regel": { provider: "beispiel-zwei", model: "beispiel/modell-2" },
+  "Regel ohne Vorgabe": { provider: "beispiel-nord", model: "beispiel/modell-1" },
+  "Regel mit anderem Wert": { provider: "beispiel-nord", model: "beispiel/modell-1" },
+  "Regel nur Name": { provider: "beispiel-nord", model: "beispiel/modell-1" },
 };
 /** Zweiter Schlüssel (nur zum Lesen der Regel-Liste), den der Ersatz für den Anbieter annimmt. */
 export const TEST_VERWALTUNGSSCHLUESSEL = "beispiel-verwaltung-0002";
@@ -115,7 +118,7 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
         ? { ok: false, code: "regel_unbekannt" }
         : { ok: true, servedBy: { ...regel } };
     },
-    regelnLesen: async (_anbieter, key): Promise<RoutingRulesRead> => {
+    kontoRegelnLesen: async (_anbieter, key): Promise<RoutingRulesRead> => {
       listeAufrufe.push(key);
       if (zustand.listeErsatz !== undefined) return zustand.listeErsatz;
       if (key !== TEST_VERWALTUNGSSCHLUESSEL) return { ok: false, code: "schluessel_ungueltig" };

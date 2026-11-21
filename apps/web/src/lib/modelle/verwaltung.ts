@@ -104,7 +104,7 @@ export async function listeLesen(
   anbieter: EinrichtungsAnbieter,
   verwaltungsschluessel: string,
 ): Promise<GeleseneListe> {
-  const ergebnis = await d.regelnLesen(anbieter, verwaltungsschluessel);
+  const ergebnis = await d.kontoRegelnLesen(anbieter, verwaltungsschluessel);
   if (!ergebnis.ok) throw listenFehler(ergebnis.code, anbieter.name);
   return ergebnis;
 }

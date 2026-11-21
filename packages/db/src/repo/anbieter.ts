@@ -35,6 +35,8 @@ export interface ProviderCreate {
    * (`providerSecretBinding`); `v1` nur noch aus alten Daten.
    */
   apiKeyEnc?: string;
+  /** Zweiter Schlüssel (nur zum Lesen der Routing-Regeln), bereits verschlüsselt und gebunden. */
+  managementKeyEnc?: string;
   region: Region;
   country?: string;
   enabled?: boolean;
@@ -70,6 +72,7 @@ export async function create(db: Database, input: ProviderCreate): Promise<Provi
           name: input.name,
           baseUrl: input.baseUrl,
           apiKeyEnc: input.apiKeyEnc ?? null,
+          managementKeyEnc: input.managementKeyEnc ?? null,
           region: input.region,
           country: input.country ?? null,
           enabled: input.enabled ?? true,

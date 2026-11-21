@@ -176,6 +176,7 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   "web/src/lib/einstellungen/grenzen.ts": { art: "aktion" },
   "web/src/lib/modelle/anbieter.ts": { art: "aktion" },
   "web/src/lib/modelle/regeln.ts": { art: "aktion" },
+  "web/src/lib/modelle/verwaltung.ts": { art: "aktion" },
   "web/src/lib/schleuse/schleuse.ts": { art: "aktion" },
   "web/src/lib/zugang/anmeldung.ts": { art: "aktion" },
   "web/src/lib/zugang/einrichtung.ts": { art: "aktion" },

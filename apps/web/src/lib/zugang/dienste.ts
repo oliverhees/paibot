@@ -67,7 +67,7 @@ export interface ZugangsDienste {
   /**
    * Liest die Regel-Liste des Kontos mit dem zweiten Schlüssel (nur lesend, nur für diesen Zweck).
    */
-  regelnLesen(
+  kontoRegelnLesen(
     anbieter: EinrichtungsAnbieter,
     verwaltungsschluessel: string,
   ): Promise<RoutingRulesRead>;
@@ -129,7 +129,7 @@ export function prozessDienste(): ZugangsDienste {
     einrichtungsAnbieter: () => einrichtungsAnbieter(process.env),
     vorlage: (schluessel) => vorlageAnbieter(schluessel, process.env),
     regelPruefen: (anbieter, schluessel, name) => checkRoutingRule(anbieter, schluessel, name),
-    regelnLesen: (anbieter, schluessel) => readRoutingRules(anbieter, schluessel),
+    kontoRegelnLesen: (anbieter, schluessel) => readRoutingRules(anbieter, schluessel),
     unterAnbieter: (anbieter) => unterAnbieterListe(anbieter),
     schleuseInstalliert: () => {
       try {

@@ -161,6 +161,12 @@ export async function einrichtungVerbindungstest(
   const eingabe: SetupConnectionTestInput = kontext.eingabe;
   await codePruefen(kontext, eingabe.setupCode);
   const anbieter = gewaehlterAnbieter(kontext.dienste, eingabe.templateKey);
+  if (eingabe.managementKey !== undefined && !supportsRoutingRules(anbieter.templateKey)) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("routingregel.nur_eurouter"),
+      felder: [{ feld: "managementKey", code: "ungueltig" }],
+    });
+  }
   if (supportsRoutingRules(anbieter.templateKey)) {
     if (eingabe.ruleNames === undefined) throw regelnFehlen(anbieter);
     const regeln = await regelnPruefen(

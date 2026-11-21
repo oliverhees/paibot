@@ -79,6 +79,21 @@ describe("Motor mit Routing-Regel", () => {
       slug: routingRuleSlug("Gibt es nicht"),
     });
     const events = await zugang.step(createAiSdkMotor(), TURN);
-    expect(events.at(-1)).toMatchObject({ type: "error" });
+    expect(events.at(-1)).toMatchObject({
+      type: "error",
+      code: "regel_unbekannt",
+      retryable: false,
+      detail: "http_400",
+    });
+    // Gegenprobe: ein anderer Fehler mit demselben Status bleibt beim allgemeinen Fehler.
+    provider.failNext({ kind: "status", status: 400 });
+    const bekannt = modelAccess({
+      baseUrl,
+      apiKey: API_KEY,
+      templateKey: "eurouter",
+      slug: routingRuleSlug("Beispiel-Regel"),
+    });
+    const andere = await bekannt.step(createAiSdkMotor(), TURN);
+    expect(andere.at(-1)).toMatchObject({ type: "error", code: "intern" });
   });
 });
