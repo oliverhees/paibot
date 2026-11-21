@@ -327,7 +327,7 @@ async function main() {
   await schritt("Einrichtung: Anbieter eintragen", seite, async () => {
     await seite.getByLabel("Schlüssel für", { exact: false }).fill(stack.anbieterSchluessel);
     await seite.getByRole("button", { name: "Verbindung testen" }).click();
-    await seite.getByText("Verbindung steht").waitFor();
+    await seite.getByText("Verbindung steht").first().waitFor();
     await seite.getByRole("button", { name: "Weiter" }).click();
     await seite.getByRole("heading", { name: "Modell wählen" }).waitFor();
   });
