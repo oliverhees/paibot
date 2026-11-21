@@ -67,6 +67,7 @@ describe("Navigation", () => {
       "/info": t("seite.info"),
       "/modelle": t("seite.modelle"),
       "/regeln": t("seite.regeln"),
+      "/einstellungen/selbsttest": t("seite.einstellungen"),
     };
     const ohneEigeneKopfzeile = seiten().filter((s) => !s.startsWith("/chat/"));
     // Kommt eine Seite dazu, muss sie hier mit ihrem Titel stehen.

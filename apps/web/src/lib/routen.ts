@@ -461,6 +461,14 @@ export const API_ROUTEN = {
     aktion: "notaus.umschalten",
     eingabe: killSwitchInput,
   },
+  /** Selbsttest der Installation: liest nur, nennt keine Geheimnisse und keine Adressen. */
+  selbsttest: {
+    methode: "GET",
+    pfad: "/api/selbsttest",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
 } as const satisfies Record<string, RoutenDefinition>;
 
 export type RoutenName = keyof typeof API_ROUTEN;

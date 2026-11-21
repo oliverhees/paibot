@@ -1194,7 +1194,7 @@ export const de = {
   "selbsttest.liste": "Prüfungen",
   "selbsttest.selbst.titel": "Bitte selbst prüfen",
   "selbsttest.selbst.vorspann":
-    "Diese Punkte kann PaiBot von innen nicht wissen. Hake sie für dich ab, wenn du sie geprüft hast.",
+    "Diese Punkte kann PaiBot von innen nicht wissen. Prüfe sie selbst, am besten nach jeder größeren Änderung an deinem Server.",
   "selbsttest.selbst.proxy":
     "Grenzen im Reverse-Proxy: Der Proxy begrenzt die Größe einer Anfrage und die Zahl gleichzeitiger Anfragen je Adresse, bevor sie PaiBot erreichen.",
   "selbsttest.selbst.sicherung":

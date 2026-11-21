@@ -508,6 +508,7 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
   belegeKette: { vorher: einrichten, aufruf: async () => ({ abfrage: "?ab=1&anzahl=10" }) },
   belegeSchluessel: { vorher: einrichten, aufruf: async () => ({}) },
   regeln: { vorher: einrichten, aufruf: async () => ({}) },
+  selbsttest: { vorher: einrichten, aufruf: async () => ({}) },
 };
 
 /**
