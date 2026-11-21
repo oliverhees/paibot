@@ -98,6 +98,7 @@ describe("Navigation", () => {
       "/bot": t("seite.bot"),
       "/datenschleuse": t("seite.datenschleuse"),
       "/einstellungen": t("seite.einstellungen"),
+      "/einstellungen/darstellung": t("seite.einstellungen"),
       "/einstellungen/grenzen": t("seite.einstellungen"),
       "/info": t("seite.info"),
       "/modelle": t("seite.modelle"),

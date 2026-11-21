@@ -78,7 +78,7 @@ import {
   zielZuCode,
   zielZuSchleuseFehler,
 } from "../../../lib/chat/anzeige";
-import { antwortHatText, avatarWort, avatarZustand } from "../../../lib/chat/avatar";
+import { antwortHatText, avatarWort, chatAvatarZustand } from "../../../lib/chat/avatar";
 import { type Fassung, fassungenVon } from "../../../lib/chat/fassungen";
 import { CHAT_PFADE, unterhaltungsAdresse } from "../../../lib/chat/pfade";
 import { useFlaeche, useKopf, useRahmen } from "../../../lib/chat/rahmen-kontext";
@@ -437,13 +437,9 @@ export function ChatSeite({
   const lauf = ansicht.lauf;
   const botZustand = lauf ? "arbeitet" : "bereit";
   const hatText = antwortHatText(ansicht);
-  const avatarZ = avatarZustand({
+  const avatarZ = chatAvatarZustand(ansicht, avatar.merkmale, {
     notAus: rahmen.notAus === true,
-    lauf: lauf !== undefined,
-    text: hatText,
-    fehler: avatar.merkmale.fehler,
-    fertig: avatar.merkmale.fertig,
-    hoertZu: text !== "",
+    eingabe: text,
   });
   // Das Wort neben dem Avatar folgt seinem Zustand; „in der Schlange“ und „wird gestoppt“ sind genauer.
   const statusText = lauf?.abbruch

@@ -77,6 +77,22 @@ export function avatarZustand(e: AvatarEingabe): ChatAvatarZustand {
   return "ruhig";
 }
 
+/** Der Zustand für die Chat-Seite aus Ansicht, Merkmalen, Not-Aus und Text im Eingabefeld. */
+export function chatAvatarZustand(
+  ansicht: ChatAnsicht,
+  merkmale: { fertig: boolean; fehler: boolean },
+  aussen: { notAus: boolean; eingabe: string },
+): ChatAvatarZustand {
+  return avatarZustand({
+    notAus: aussen.notAus,
+    lauf: ansicht.lauf !== undefined,
+    text: antwortHatText(ansicht),
+    fehler: merkmale.fehler,
+    fertig: merkmale.fertig,
+    hoertZu: aussen.eingabe !== "",
+  });
+}
+
 /** Das Wort neben dem Avatar zu seinem Zustand (Text-Schlüssel). */
 export function avatarWort(
   z: ChatAvatarZustand,

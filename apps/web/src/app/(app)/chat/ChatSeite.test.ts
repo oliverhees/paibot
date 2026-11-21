@@ -85,9 +85,7 @@ describe("Chat-Ansicht", () => {
   });
 
   it("die gewählte Fassung bestimmt den Startbereich schon im ersten Bild", () => {
-    const stille = renderToStaticMarkup(
-      h(ChatSeite, { bereitschaft: BEREIT, fassung: "stille" }),
-    );
+    const stille = renderToStaticMarkup(h(ChatSeite, { bereitschaft: BEREIT, fassung: "stille" }));
     expect(stille).toContain('data-fassung="stille"');
     expect(stille).toContain("Womit fangen wir an?");
     expect(stille).not.toContain("Ich bin Pai");
