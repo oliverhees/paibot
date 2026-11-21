@@ -57,6 +57,8 @@
 //   verdecke    Liste von Selectoren (CSS oder Playwright, z. B. dd:has-text("blg_")), deren
 //               Stellen im Bild mit der Farbe ihrer Umgebung gefüllt werden (Uhrzeit der Datenbank,
 //               Kennungen, Prüfsummen)
+//   zeigeFertig true: Das Bild soll den kurzen Moment „fertig“ des Avatars zeigen. Sonst wartet das
+//               Skript, bis er vorbei ist, damit ein zweiter Lauf dasselbe Bild liefert.
 //   thema       "dunkel" (Standard) oder "hell"
 //   beschreibung  Notiz für Menschen, wird nicht ausgewertet (optional)
 // Oben in der Datei: "ablaeufe": { "<name>": [Schritte] } für wiederkehrende Folgen.
@@ -464,6 +466,15 @@ async function shoot(browser, entry, baseUrl) {
     };
     // Erst wenn zwei Aufnahmen kurz nacheinander gleich sind, steht die Seite still (späte Daten,
     // Übergänge). Sonst nach fünf Versuchen mit Fehler abbrechen.
+    // Der Avatar zeigt nach einer fertigen Antwort knapp zwei Sekunden „fertig“. Das Bild entsteht
+    // erst danach, außer die Aufnahme will genau diesen Moment.
+    if (entry.zeigeFertig !== true) {
+      await page
+        .locator('[data-zustand="fertig"]')
+        .first()
+        .waitFor({ state: "detached", timeout: 10_000 })
+        .catch(() => undefined);
+    }
     let bild = await aufnehmen();
     for (let versuch = 1; ; versuch += 1) {
       await page.waitForTimeout(250);

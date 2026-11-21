@@ -588,7 +588,9 @@ export function ChatSeite({
       return (
         <p className={styles.arbeitet}>
           <span className={styles.status} data-zustand="arbeitet">
-            {lauf?.phase === "wartet" ? t("chat.lauf.wartet") : t("chat.lauf.schreibt")}
+            {lauf?.phase === "wartet"
+              ? t("chat.lauf.wartet")
+              : t(avatarWort(hatText ? "schreibt" : "denkt"))}
           </span>
           <span>{t("chat.lauf.beleg_folgt")}</span>
         </p>
@@ -1017,7 +1019,7 @@ export function ChatSeite({
                         ? t("chat.lauf.stoppt")
                         : lauf.phase === "wartet"
                           ? t("chat.lauf.wartet")
-                          : t("chat.lauf.schreibt")}
+                          : t(avatarWort(hatText ? "schreibt" : "denkt"))}
                     </span>
                     <span>{t("chat.lauf.beleg_folgt")}</span>
                   </p>
