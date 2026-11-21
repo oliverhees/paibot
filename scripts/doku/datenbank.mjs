@@ -13,7 +13,7 @@
 //
 //   1. PAIBOT_DOKU_DATABASE_URL gesetzt: Adresse eines Postgres-Servers mit einem Benutzer, der
 //      Datenbanken und Rollen anlegen darf. Angelegt werden die Datenbank paibot_doku_<zufall> und
-//      (von der App beim Start) die Rolle paibot_doku_<zufall>_app. Gelöscht wird nur, was diesen
+//      (vom Migrations-Schritt) die Rolle paibot_doku_<zufall>_app. Gelöscht wird nur, was diesen
 //      Namen trägt UND an der Datenbank den Vermerk mit der Kennung dieses Laufs hat.
 //   2. Sonst: ein eigener Postgres-Server aus den Programmen des Systems (initdb, pg_ctl) in einem
 //      neuen temporären Ordner, nur an 127.0.0.1. Am Ende gestoppt und der Ordner gelöscht.
@@ -160,7 +160,7 @@ function mitDatenbank(adresse, name) {
 
 /**
  * Legt auf dem Server `verwalter` eine neue Datenbank mit Vermerk an. Liefert die Adressen für
- * Migration (Verwalter) und App (eigene Rolle, legt die App beim Start an) und `loesche()`.
+ * Migration (Verwalter) und App (eigene Rolle, legt der Migrations-Schritt an) und `loesche()`.
  */
 export async function legeDatenbankAn(root, verwalter, kennung) {
   const postgres = postgresTreiber(root);
