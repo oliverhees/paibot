@@ -112,6 +112,10 @@
   background: var(--danger-soft);
 }
 
+.meldung[data-art="warn"] {
+  background: var(--warn-soft);
+}
+
 .ausweg {
   color: var(--ink-soft);
 }
@@ -186,6 +190,37 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 8px;
+}
+
+.eigenForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.eigenTitel {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 600;
+}
+
+.schalterZeile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feldFehler {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--schrift-s);
+}
+
+.eigenListe {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 

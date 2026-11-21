@@ -1,6 +1,7 @@
 /**
  * PaiBot – Seite „Modell und Anbieter“ im Browser: Anbieter mit Region, Schlüssel eintragen,
- * ersetzen oder entfernen (mit Verbindungstest), Modell aus der Liste des Anbieters wählen.
+ * ersetzen oder entfernen (mit Verbindungstest), Modell aus der Liste des Anbieters wählen. Eigene
+ * oder lokale Anbieter lassen sich hinzufügen, ändern und entfernen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -23,16 +24,18 @@ import {
   Karte,
   LoadingState,
   SeitenSpalte,
+  Select,
   StatusChip,
   TextField,
 } from "@paibot/ui";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
 import type { BotModell } from "../../../lib/bot/bot";
 import type { AnbieterVorlage } from "../../../lib/modelle/anbieter";
 import {
   anbieterStatus,
+  eigenerAnbieter,
   listeLeerAusweg,
   listeMoeglich,
   type ModellZeile,
@@ -40,11 +43,14 @@ import {
   regionText,
   sucheZeigen,
 } from "../../../lib/modelle/ansicht";
+import { gezeigterAnbieter } from "../../../lib/modelle/eigen";
+import { EigenerAnbieterForm } from "./EigenerAnbieterForm";
 import styles from "./modelle.module.css";
 
 export interface ModelleAnsichtProps {
   botName: string;
-  anbieter?: Provider;
+  /** Alle gespeicherten Anbieter, ohne Schlüssel. */
+  anbieterListe: Provider[];
   vorlage: AnbieterVorlage;
   modell?: BotModell;
 }
@@ -78,9 +84,17 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
   const { botName, vorlage } = props;
   // Die Seitenleiste zeigt die Herkunft der Modelle; nach einer Änderung neu vom Server holen.
   const router = useRouter();
-  const [anbieter, setAnbieter] = useState<Provider | undefined>(props.anbieter);
+  const [alle, setAlle] = useState<Provider[]>(props.anbieterListe);
   const [modell, setModell] = useState<BotModell | undefined>(props.modell);
-  const [formOffen, setFormOffen] = useState(props.anbieter === undefined);
+  const [gezeigtId, setGezeigtId] = useState<string | undefined>(
+    gezeigterAnbieter(props.anbieterListe, undefined, props.modell?.anbieterId)?.id,
+  );
+  const anbieter = gezeigterAnbieter(alle, gezeigtId, modell?.anbieterId);
+  const erster = gezeigterAnbieter(props.anbieterListe, undefined, props.modell?.anbieterId);
+  const [formOffen, setFormOffen] = useState(erster === undefined);
+  const [bearbeiten, setBearbeiten] = useState(false);
+  const [neuOffen, setNeuOffen] = useState(false);
+  const [neuMeldung, setNeuMeldung] = useState<Meldung>();
   const [schluessel, setSchluessel] = useState("");
   const [feldFehler, setFeldFehler] = useState<string | undefined>();
   const [testLaeuft, setTestLaeuft] = useState(false);
@@ -89,7 +103,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
   const [dialogOffen, setDialogOffen] = useState(false);
   const [entfernt, setEntfernt] = useState(false);
   const [liste, setListe] = useState<Liste>({
-    zustand: listeMoeglich(props.anbieter) ? "laedt" : "aus",
+    zustand: listeMoeglich(erster) ? "laedt" : "aus",
   });
   const [suche, setSuche] = useState("");
   const [auswahl, setAuswahl] = useState<string | undefined>(props.modell?.id);
@@ -100,23 +114,51 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
   const name = anbieter?.name ?? vorlage.name;
   const region = anbieter?.region ?? vorlage.region;
 
-  const listeLaden = useCallback(async (a: Provider | undefined) => {
+  const listeLaden = useCallback(async (a: Provider | undefined): Promise<number | undefined> => {
     if (!listeMoeglich(a) || a === undefined) {
       setListe({ zustand: "aus" });
-      return;
+      return undefined;
     }
     setListe({ zustand: "laedt" });
     const antwort = await apiFetch<{ modelle: ModellZeile[] }>(
       "POST",
       `/api/anbieter/${encodeURIComponent(a.id)}/modelle`,
     );
-    if (antwort.ok) setListe({ zustand: "fertig", modelle: antwort.daten.modelle });
-    else setListe({ zustand: "fehler", fehler: antwort.fehler });
+    if (antwort.ok) {
+      setListe({ zustand: "fertig", modelle: antwort.daten.modelle });
+      return antwort.daten.modelle.length;
+    }
+    setListe({ zustand: "fehler", fehler: antwort.fehler });
+    return undefined;
   }, []);
 
+  const ersterRef = useRef(erster);
   useEffect(() => {
-    void listeLaden(props.anbieter);
-  }, [listeLaden, props.anbieter]);
+    void listeLaden(ersterRef.current);
+  }, [listeLaden]);
+
+  /** Gespeicherten Anbieter in der Liste ersetzen bzw. anhängen und anzeigen. */
+  function anbieterUebernehmen(neu: Provider) {
+    setAlle((liste) =>
+      liste.some((a) => a.id === neu.id)
+        ? liste.map((a) => (a.id === neu.id ? neu : a))
+        : [...liste, neu],
+    );
+    setGezeigtId(neu.id);
+  }
+
+  function anbieterZeigen(id: string) {
+    const neu = alle.find((a) => a.id === id);
+    if (neu === undefined || neu.id === anbieter?.id) return;
+    setGezeigtId(id);
+    formSchliessen();
+    setBearbeiten(false);
+    setSchluesselMeldung(undefined);
+    setModellMeldung(undefined);
+    setSuche("");
+    setAuswahl(modell?.id);
+    void listeLaden(neu);
+  }
 
   function formSchliessen() {
     setFormOffen(false);
@@ -185,7 +227,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
       });
       return;
     }
-    setAnbieter(antwort.daten.anbieter);
+    anbieterUebernehmen(antwort.daten.anbieter);
     setEntfernt(false);
     formSchliessen();
     setSchluesselMeldung({
@@ -210,14 +252,66 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
       });
       return;
     }
-    setAnbieter(undefined);
-    setModell(undefined);
-    setAuswahl(undefined);
-    setListe({ zustand: "aus" });
-    setEntfernt(true);
-    setSchluesselMeldung({ art: "ok", text: t("modelle.schluessel.entfernt") });
-    setFormOffen(true);
+    const weg = anbieter;
+    const rest = alle.filter((a) => a.id !== weg.id);
+    const modellWeg = modell?.anbieterId === weg.id;
+    setAlle(rest);
+    setBearbeiten(false);
+    if (modellWeg) {
+      setModell(undefined);
+      setAuswahl(undefined);
+    }
+    const naechster = gezeigterAnbieter(
+      rest,
+      undefined,
+      modellWeg ? undefined : modell?.anbieterId,
+    );
+    setGezeigtId(naechster?.id);
+    if (naechster === undefined) {
+      setListe({ zustand: "aus" });
+      setEntfernt(true);
+      setSchluesselMeldung({
+        art: "ok",
+        text: eigenerAnbieter(weg)
+          ? t("modelle.eigen.entfernt", { anbieter: weg.name })
+          : t("modelle.schluessel.entfernt"),
+      });
+      setFormOffen(true);
+    } else {
+      setSchluesselMeldung({
+        art: "ok",
+        text: t("modelle.eigen.entfernt", { anbieter: weg.name }),
+      });
+      void listeLaden(naechster);
+    }
     router.refresh();
+  }
+
+  function eigenGespeichert(neu: Provider, angelegt: boolean) {
+    const vorher = anbieter;
+    anbieterUebernehmen(neu);
+    setBearbeiten(false);
+    setNeuOffen(false);
+    setEntfernt(false);
+    formSchliessen();
+    setModellMeldung(undefined);
+    setSchluesselMeldung({
+      art: "ok",
+      text: t("modelle.eigen.gespeichert", { anbieter: neu.name }),
+    });
+    if (angelegt || vorher?.id !== neu.id) setSuche("");
+    void listeLaden(neu);
+    router.refresh();
+    if (angelegt)
+      setNeuMeldung({ art: "ok", text: t("modelle.eigen.gespeichert", { anbieter: neu.name }) });
+  }
+
+  async function listeAbgleichen() {
+    setModellMeldung(undefined);
+    const anzahl = await listeLaden(anbieter);
+    if (anzahl !== undefined) {
+      setModellMeldung({ art: "ok", text: t("modelle.liste.abgeglichen", { anzahl }) });
+    }
   }
 
   async function modellUebernehmen() {
@@ -259,6 +353,19 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         titel={t("modelle.anbieter.titel")}
         rechts={status && <StatusChip art={status.art}>{status.text}</StatusChip>}
       >
+        {alle.length > 1 && anbieter !== undefined && (
+          <Select
+            label={t("modelle.eigen.auswahl")}
+            name="anbieter"
+            value={anbieter.id}
+            optionen={alle.map((a) => ({
+              wert: a.id,
+              text: `${a.name} · ${regionText(a.region)}`,
+            }))}
+            onChange={(e) => anbieterZeigen(e.target.value)}
+            hilfe={t("modelle.eigen.auswahl.hilfe")}
+          />
+        )}
         <div className={styles.anbieterKopf}>
           <span className={styles.anbieterSymbol} aria-hidden="true">
             <Icon name="zahnrad" />
@@ -306,7 +413,16 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         )}
         <p className={styles.leise}>{t("modelle.schluessel.verdeckt")}</p>
 
-        {formOffen && (
+        {bearbeiten && anbieter !== undefined && (
+          <EigenerAnbieterForm
+            key={anbieter.id}
+            anbieter={anbieter}
+            onGespeichert={(neu) => eigenGespeichert(neu, false)}
+            onAbbrechen={() => setBearbeiten(false)}
+          />
+        )}
+
+        {formOffen && !bearbeiten && (
           <div className={styles.form}>
             <TextField
               label={t("modelle.schluessel.neu", { anbieter: name })}
@@ -334,7 +450,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
           </div>
         )}
 
-        <div className={styles.knoepfe}>
+        <div className={styles.knoepfe} hidden={bearbeiten}>
           {formOffen ? (
             <>
               <Button art="zweit" onClick={() => void verbindungTesten()} laedt={testLaeuft}>
@@ -354,6 +470,18 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
               <Button art="zweit" onClick={() => void verbindungTesten()} laedt={testLaeuft}>
                 {t("modelle.verbindungstest")}
               </Button>
+              {anbieter !== undefined && eigenerAnbieter(anbieter) && (
+                <Button
+                  art="leise"
+                  icon="stift"
+                  onClick={() => {
+                    setSchluesselMeldung(undefined);
+                    setBearbeiten(true);
+                  }}
+                >
+                  {t("modelle.eigen.aendern")}
+                </Button>
+              )}
               <Button
                 art="leise"
                 onClick={() => {
@@ -367,7 +495,9 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
               </Button>
               {anbieter !== undefined && (
                 <Button art="leise" icon="papierkorb" onClick={() => setDialogOffen(true)}>
-                  {t("modelle.schluessel.entfernen")}
+                  {eigenerAnbieter(anbieter)
+                    ? t("modelle.eigen.entfernen")
+                    : t("modelle.schluessel.entfernen")}
                 </Button>
               )}
             </>
@@ -488,6 +618,9 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
               >
                 {t("modelle.uebernehmen")}
               </Button>
+              <Button art="leise" onClick={() => void listeAbgleichen()}>
+                {t("modelle.liste.abgleichen")}
+              </Button>
             </div>
           </>
         )}
@@ -496,10 +629,40 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         </div>
       </Karte>
 
+      <Karte titel={t("modelle.eigen.titel")}>
+        <p className={styles.leise}>{t("modelle.eigen.text")}</p>
+        {neuOffen ? (
+          <EigenerAnbieterForm
+            onGespeichert={(neu) => eigenGespeichert(neu, true)}
+            onAbbrechen={() => setNeuOffen(false)}
+          />
+        ) : (
+          <div className={styles.knoepfe}>
+            <Button
+              art="zweit"
+              icon="plus"
+              onClick={() => {
+                setNeuMeldung(undefined);
+                setNeuOffen(true);
+              }}
+            >
+              {t("modelle.eigen.hinzufuegen")}
+            </Button>
+          </div>
+        )}
+        <div role="status" aria-live="polite" className={styles.live}>
+          <MeldungZeile meldung={neuMeldung} />
+        </div>
+      </Karte>
+
       <Dialog
         offen={dialogOffen}
         onSchliessen={() => setDialogOffen(false)}
-        titel={t("modelle.schluessel.entfernen.titel")}
+        titel={
+          anbieter !== undefined && eigenerAnbieter(anbieter)
+            ? t("modelle.eigen.entfernen.titel", { anbieter: name })
+            : t("modelle.schluessel.entfernen.titel")
+        }
         schliessenLabel={t("allgemein.abbrechen")}
         rueckfrage
         aktionen={
@@ -513,7 +676,22 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
           </>
         }
       >
-        <p>{t("modelle.schluessel.entfernen.text", { anbieter: name, name: botName })}</p>
+        {anbieter !== undefined && eigenerAnbieter(anbieter) ? (
+          <>
+            <p>{t("modelle.eigen.entfernen.text", { anbieter: name })}</p>
+            {modell !== undefined && modell.anbieterId === anbieter.id && (
+              <p>
+                {t("modelle.eigen.entfernen.modell", {
+                  name: botName,
+                  modell: modell.displayName,
+                  anbieter: name,
+                })}
+              </p>
+            )}
+          </>
+        ) : (
+          <p>{t("modelle.schluessel.entfernen.text", { anbieter: name, name: botName })}</p>
+        )}
       </Dialog>
     </SeitenSpalte>
   );
