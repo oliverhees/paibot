@@ -43,20 +43,22 @@ describe("GET /api/health", () => {
     expect(body.version).toBe("0.3.0");
   });
 
-  it("verbietet das Zwischenspeichern und zeigt keine Rollen-Kopfzeile, wenn alles passt", async () => {
+  it("verbietet das Zwischenspeichern", async () => {
     vi.stubEnv("DATABASE_URL", "");
     const response = await GET();
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get(health.DB_ROLE_HEADER)).toBeNull();
   });
 
-  it("meldet zu viele Rechte nur in der Kopfzeile, die Felder bleiben gleich", async () => {
+  it("verrät Fremden nichts über die Rechte der Datenbank-Verbindung, nur das Log nennt sie", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.spyOn(health, "databaseHealth").mockResolvedValue({ db: "ok", role: "zu_viele_rechte" });
     const response = await GET();
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(response.headers.get(health.DB_ROLE_HEADER)).toBe("zu_viele_rechte");
+    expect([...response.headers.keys()].filter((k) => k.startsWith("x-pb"))).toEqual([]);
     expect(Object.keys(body)).toEqual(["status", "app", "db", "time", "version"]);
+    expect(JSON.stringify(body)).not.toContain("rechte");
+    expect(warn.mock.calls.flat().join(" ")).toContain("zu viele Rechte");
   });
 
   it("antwortet mit 503, wenn die Datenbank nicht erreichbar ist", async () => {

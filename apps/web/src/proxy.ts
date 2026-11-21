@@ -1,5 +1,6 @@
 /**
- * PaiBot – Proxy vor jeder Anfrage: Sicherheits-Kopfzeilen mit frischer Nonce, Stand der Software,
+ * PaiBot – Proxy vor jeder Anfrage: Sicherheits-Kopfzeilen mit frischer Nonce, Stand der Software
+ * (nur angemeldet), Grenze für den Körper,
  * Weiterleitung zu Einrichtung bzw. Anmeldung und 401 für API-Routen ohne Sitzung.
  *
  * @author    Oliver Hees
@@ -13,17 +14,57 @@ import { errorBody } from "@paibot/shared/api";
 import { STAND_HEADER } from "@paibot/shared/konstanten";
 import { type NextRequest, NextResponse } from "next/server";
 import { kopfzeilenMitNonce } from "./lib/kopfzeilen";
+import { koerperGrenzeFuerPfad } from "./lib/routen";
 import { stand } from "./lib/stand";
-import { istHttps } from "./lib/umgebung";
+import { hostPasstNicht, istHttps } from "./lib/umgebung";
 import { prozessDienste } from "./lib/zugang/dienste";
 import { cookieLesen, neuerVorabWert, vorabCookie, vorabCookieName } from "./lib/zugang/sitzung";
 import { brauchtZustand, entscheide, istDatei } from "./lib/zugang/weiterleitung";
 import { zustandFuer } from "./lib/zugang/zustand";
 
-function kopfzeilenSetzen(antwort: NextResponse, kopfzeilen: { key: string; value: string }[]) {
+/**
+ * Setzt die Sicherheits-Kopfzeilen. Den Stand der Software (`X-Pb-Stand`) bekommt nur, wer
+ * angemeldet ist; Fremde erfahren so nicht, welche Version läuft.
+ */
+function kopfzeilenSetzen(
+  antwort: NextResponse,
+  kopfzeilen: { key: string; value: string }[],
+  angemeldet = false,
+) {
   for (const zeile of kopfzeilen) antwort.headers.set(zeile.key, zeile.value);
-  antwort.headers.set(STAND_HEADER, stand());
+  if (angemeldet) antwort.headers.set(STAND_HEADER, stand());
   return antwort;
+}
+
+/** Angegebene Länge des Körpers über der Grenze (oder keine gültige Zahl)? */
+export function laengeZuGross(laenge: string | null, grenze: number): boolean {
+  if (laenge === null) return false;
+  const text = laenge.trim();
+  return !/^\d{1,15}$/.test(text) || Number(text) > grenze;
+}
+
+const HOST_GEMELDET = Symbol.for("paibot.web.host-gemeldet");
+
+/**
+ * Schreibt einmal je Prozess einen Hinweis ins Log, wenn eine Anfrage an einen anderen Host geht
+ * als `APP_URL` nennt (dann scheitern Anmelden und Einrichtung). Der Host steht nur gekürzt und
+ * ohne Sonderzeichen im Log.
+ */
+export function hostHinweis(
+  host: string | null,
+  origin: string | undefined,
+  warnen: (zeile: string) => void,
+): void {
+  const halter = globalThis as { [HOST_GEMELDET]?: true };
+  if (halter[HOST_GEMELDET] || !hostPasstNicht(host, origin)) return;
+  halter[HOST_GEMELDET] = true;
+  const sauber = (host ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9.:[\]-]/g, "")
+    .slice(0, 100);
+  warnen(
+    `[paibot] Anfrage an ${sauber}, APP_URL ist aber ${origin}. Anmelden und Einrichtung klappen nur über die Adresse aus APP_URL; trage dort genau die Adresse ein, die im Browser steht.`,
+  );
 }
 
 export async function proxy(request: NextRequest) {
@@ -32,10 +73,27 @@ export async function proxy(request: NextRequest) {
   const { nonce, kopfzeilen, csp } = kopfzeilenMitNonce(entwicklung, istHttps(process.env));
   const pfad = request.nextUrl.pathname;
 
+  // Zu große Körper gleich hier abweisen, bevor irgendetwas sie liest (Grenze je Route).
+  if (
+    laengeZuGross(
+      request.headers.get("content-length"),
+      koerperGrenzeFuerPfad(pfad, request.method),
+    )
+  ) {
+    const antwort = NextResponse.json(
+      errorBody("eingabe_ungueltig", { felder: [{ feld: "eingabe", code: "zu_gross" }] }),
+      { status: 413, headers: { "Cache-Control": "no-store", Connection: "close" } },
+    );
+    return kopfzeilenSetzen(antwort, kopfzeilen);
+  }
+
   if (istDatei(pfad)) return kopfzeilenSetzen(NextResponse.next(), kopfzeilen);
 
   const dienste = prozessDienste();
   const rahmen = { appUrl: dienste.appOrigin() };
+  if (!entwicklung && pfad !== "/api/health") {
+    hostHinweis(request.headers.get("host"), rahmen.appUrl, (zeile) => console.warn(zeile));
+  }
   const cookieKopf = request.headers.get("cookie");
   const vorabName = vorabCookieName(rahmen);
   const vorabVorhanden = cookieLesen(cookieKopf, vorabName) !== undefined;
@@ -53,7 +111,7 @@ export async function proxy(request: NextRequest) {
   }
   if (entscheidung.art === "umleiten") {
     const ziel = new URL(entscheidung.ziel, request.nextUrl);
-    return kopfzeilenSetzen(NextResponse.redirect(ziel, 307), kopfzeilen);
+    return kopfzeilenSetzen(NextResponse.redirect(ziel, 307), kopfzeilen, zustand.angemeldet);
   }
 
   const anfrageKopf = new Headers(request.headers);
@@ -71,7 +129,7 @@ export async function proxy(request: NextRequest) {
   }
   const antwort = NextResponse.next({ request: { headers: anfrageKopf } });
   if (vorabZeile !== undefined) antwort.headers.append("Set-Cookie", vorabZeile);
-  return kopfzeilenSetzen(antwort, kopfzeilen);
+  return kopfzeilenSetzen(antwort, kopfzeilen, zustand.angemeldet);
 }
 
 export const config = {

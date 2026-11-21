@@ -126,7 +126,7 @@ describe.skipIf(!basis)("Einrichtung gegen Postgres", () => {
       );
       expect(abschluss.status).toBe(200);
       expect(await repo.settings.getSetupCode(eins.db)).toBeUndefined();
-      expect(await u.dienste.code.pruefen(eins.db, TEST_CODE)).toBe(false);
+      expect(await u.dienste.code.pruefen(eins.db, TEST_CODE, u.zeit())).toBe(false);
 
       const aendern = await anfrage(
         u,

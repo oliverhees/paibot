@@ -66,7 +66,16 @@ Lief bei dir schon ein Stand, in dem `web` selbst migriert hat, reicht ein neues
 
 Musst du sofort wieder online sein, ohne umzustellen: `PAIBOT_ALLOW_PRIVILEGED_DB=1` setzen. PaiBot startet dann mit Warnung im Log. Das ist nur für den Übergang gedacht.
 
-**Hinter Coolify `TRUST_PROXY=1` setzen.** Coolify stellt einen Proxy (Traefik) vor PaiBot. Trag beim Dienst `web` die Umgebungsvariable `TRUST_PROXY=1` ein, damit PaiBot die Adresse der Besucher aus dem Eintrag kennt, den der Proxy anhängt. Ohne sie bremst PaiBot Anmelde-Versuche nur, statt sie je Adresse zu sperren, und meldet das beim Start im Log und auf der Seite „Einrichtung“. Mehr dazu in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
+**Hinter Coolify gilt `TRUST_PROXY=1`.** Coolify stellt einen Proxy (Traefik) vor PaiBot. Im Compose steht `TRUST_PROXY` für `web` schon auf `1`, damit PaiBot die Adresse der Besucher aus dem Eintrag kennt, den der Proxy anhängt. Setzt du es auf `0`, sperrt PaiBot Anmelde-Versuche nicht mehr je Adresse (die gemeinsame Bremse gilt weiter) und meldet das beim Start im Log und auf der Seite „Einrichtung“. Mehr dazu in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
+
+**Größe von Anfragen im Proxy begrenzen.** PaiBot weist zu große Anfragen selbst ab (16 KiB, Nachrichten 256 KiB). Damit große Anfragen gar nicht erst bis zur App kommen, begrenze sie auch in Traefik: Trag beim Dienst `web` unter „Container Labels“ eine Middleware ein und häng sie an den Router, den Coolify für `web` anlegt (dessen Name steht schon in den Labels):
+
+```text
+traefik.http.middlewares.paibot-groesse.buffering.maxRequestBodyBytes=1048576
+traefik.http.routers.<router-von-web>.middlewares=paibot-groesse
+```
+
+Steht beim Router schon eine Zeile `…middlewares=…`, häng `,paibot-groesse` an. Danach prüfen: `curl -s -o /dev/null -w '%{http_code}\n' -X POST --data-binary @<datei-über-1-MiB> https://paibot.deine-domain.de/x` antwortet `413`.
 
 ## Datenschleuse zuschalten
 
@@ -95,15 +104,15 @@ curl https://paibot.deine-domain.de/api/health
 
 Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`. In Coolify stehen `web` und `worker` auf „healthy“; im Log von `worker` steht „Bereit: nimmt Läufe an“.
 
-| Ergebnis                                               | Bedeutung                                                                     | Was tun                                                                                      |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `"db":"ok"`                                            | alles läuft                                                                   | –                                                                                            |
-| `"db":"down"`, HTTP 503                                | App läuft, Datenbank nicht erreichbar                                         | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen                        |
-| Kopfzeile `X-Pb-Db-Rolle: zu_viele_rechte` (`curl -I`) | App arbeitet mit zu vielen Rechten                                            | „Bestehende Installation umstellen“ und `PAIBOT_ALLOW_PRIVILEGED_DB` wieder entfernen        |
-| Deploy bricht ab, Log: „Start abgebrochen“             | Pflichtwert fehlt, zu kurz oder Platzhalter; oder „Datenbank nicht auf Stand“ | die Zeile davor im Log nennt den Wert; Werte wie in Schritt 4 erzeugen                       |
-| `web` und `worker` starten nicht                       | `migrate` ist mit Fehler beendet                                              | Log von `migrate` in Coolify lesen                                                           |
-| keine Antwort                                          | Domain, DNS oder Proxy falsch                                                 | A-Record und Domain-Eintrag beim Dienst `web` prüfen                                         |
-| Dienst `worker` nicht „healthy“                        | Worker wartet noch auf `migrate` oder die Datenbank, oder sein Start brach ab | Logs von `worker` in Coolify lesen; die letzte Zeile vor „Start abgebrochen“ nennt den Grund |
+| Ergebnis                                         | Bedeutung                                                                     | Was tun                                                                                      |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `"db":"ok"`                                      | alles läuft                                                                   | –                                                                                            |
+| `"db":"down"`, HTTP 503                          | App läuft, Datenbank nicht erreichbar                                         | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen                        |
+| Im Log von `web`: „WARNUNG: … zu vielen Rechten“ | App arbeitet mit zu vielen Rechten                                            | „Bestehende Installation umstellen“ und `PAIBOT_ALLOW_PRIVILEGED_DB` wieder entfernen        |
+| Deploy bricht ab, Log: „Start abgebrochen“       | Pflichtwert fehlt, zu kurz oder Platzhalter; oder „Datenbank nicht auf Stand“ | die Zeile davor im Log nennt den Wert; Werte wie in Schritt 4 erzeugen                       |
+| `web` und `worker` starten nicht                 | `migrate` ist mit Fehler beendet                                              | Log von `migrate` in Coolify lesen                                                           |
+| keine Antwort                                    | Domain, DNS oder Proxy falsch                                                 | A-Record und Domain-Eintrag beim Dienst `web` prüfen                                         |
+| Dienst `worker` nicht „healthy“                  | Worker wartet noch auf `migrate` oder die Datenbank, oder sein Start brach ab | Logs von `worker` in Coolify lesen; die letzte Zeile vor „Start abgebrochen“ nennt den Grund |
 
 ## So sieht es aus
 

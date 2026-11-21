@@ -20,11 +20,16 @@ const url = (user: string, password: string) =>
 describe("checkProductionEnv", () => {
   it("nimmt vollständige, zufällige Werte an (web ohne, migrate mit Migrations-Zugang)", () => {
     expect(
-      checkProductionEnv({ PAIBOT_SECRET: secret(), DATABASE_URL: url("paibot_app", pw()) }),
+      checkProductionEnv({
+        APP_URL: "https://paibot.example.de",
+        PAIBOT_SECRET: secret(),
+        DATABASE_URL: url("paibot_app", pw()),
+      }),
     ).toEqual([]);
     expect(
       checkProductionEnv(
         {
+          APP_URL: "https://paibot.example.de",
           PAIBOT_SECRET: secret(),
           DATABASE_URL: url("paibot_app", pw()),
           DATABASE_MIGRATION_URL: url("paibot", pw()),
@@ -35,7 +40,11 @@ describe("checkProductionEnv", () => {
   });
 
   it("web lehnt den Migrations-Zugang ab, migrate verlangt ihn", () => {
-    const base = { PAIBOT_SECRET: secret(), DATABASE_URL: url("paibot_app", pw()) };
+    const base = {
+      APP_URL: "https://paibot.example.de",
+      PAIBOT_SECRET: secret(),
+      DATABASE_URL: url("paibot_app", pw()),
+    };
     const migration = url("paibot", pw());
     const [web] = checkProductionEnv({ ...base, DATABASE_MIGRATION_URL: migration });
     expect(web).toContain("nur zum Dienst migrate");
@@ -56,6 +65,7 @@ describe("checkProductionEnv", () => {
     const same = pw();
     const errors = checkProductionEnv(
       {
+        APP_URL: "https://paibot.example.de",
         PAIBOT_SECRET: secret(),
         DATABASE_URL: url("paibot_app", same),
         DATABASE_MIGRATION_URL: url("paibot", same),
@@ -68,7 +78,7 @@ describe("checkProductionEnv", () => {
   });
 
   it("Mindestlänge des Passworts: 23 Zeichen abgelehnt, 24 angenommen", () => {
-    const base = { PAIBOT_SECRET: secret() };
+    const base = { APP_URL: "https://paibot.example.de", PAIBOT_SECRET: secret() };
     const password = (n: number) => "k7Qz".repeat(10).slice(0, n);
     expect(MIN_DB_PASSWORD_LENGTH).toBe(24);
     expect(checkProductionEnv({ ...base, DATABASE_URL: url("a", password(23)) })[0]).toContain(
@@ -87,17 +97,27 @@ describe("checkProductionEnv", () => {
   it("lehnt fehlendes, falsches oder Platzhalter-Geheimnis ab", () => {
     const db = { DATABASE_URL: url("paibot_app", pw()) };
     expect(checkProductionEnv(db)[0]).toContain("PAIBOT_SECRET fehlt");
-    expect(checkProductionEnv({ ...db, PAIBOT_SECRET: "bitte-erzeugen" })[0]).toContain(
-      "Platzhalter",
-    );
-    expect(checkProductionEnv({ ...db, PAIBOT_SECRET: "kurz" })[0]).toContain("falsche Form");
+    expect(
+      checkProductionEnv({
+        ...db,
+        APP_URL: "https://paibot.example.de",
+        PAIBOT_SECRET: "bitte-erzeugen",
+      })[0],
+    ).toContain("Platzhalter");
+    expect(
+      checkProductionEnv({ ...db, APP_URL: "https://paibot.example.de", PAIBOT_SECRET: "kurz" })[0],
+    ).toContain("falsche Form");
   });
 
   it("meldet ein Geheimnis mit richtiger Länge, aber ohne Zufall, mit eigenem Text", () => {
     const db = { DATABASE_URL: url("paibot_app", pw()) };
     for (const weak of [Buffer.alloc(32, 7), Buffer.from("das-ist-kein-zufall-sondern-text")]) {
       const value = weak.toString("base64");
-      const [message, ...rest] = checkProductionEnv({ ...db, PAIBOT_SECRET: value });
+      const [message, ...rest] = checkProductionEnv({
+        ...db,
+        APP_URL: "https://paibot.example.de",
+        PAIBOT_SECRET: value,
+      });
       expect(rest).toEqual([]);
       expect(message).toContain("nicht zufällig");
       expect(message).not.toContain("falsche Form");
@@ -106,7 +126,7 @@ describe("checkProductionEnv", () => {
   });
 
   it("lehnt kurze, fehlende und Platzhalter-Passwörter ab, ohne sie zu nennen", () => {
-    const base = { PAIBOT_SECRET: secret() };
+    const base = { APP_URL: "https://paibot.example.de", PAIBOT_SECRET: secret() };
     const kurz = checkProductionEnv({ ...base, DATABASE_URL: url("a", "kurz123") });
     expect(kurz[0]).toContain("zu kurz");
     expect(kurz.join()).not.toContain("kurz123");
@@ -170,6 +190,7 @@ describe("prepareStart", () => {
     await prepareStart(
       {
         NODE_ENV: "production",
+        APP_URL: "https://paibot.example.de",
         PAIBOT_SECRET: secret(),
         DATABASE_URL: url("paibot_app", pw()),
         DATABASE_MIGRATION_URL: url("paibot", pw()),

@@ -13,4 +13,4 @@ import { anbieterModelle } from "../../../../../lib/modelle/anbieter";
 
 export const dynamic = "force-dynamic";
 
-export const GET = route("anbieterModelle", anbieterModelle);
+export const POST = route("anbieterModelle", anbieterModelle);

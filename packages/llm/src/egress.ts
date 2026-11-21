@@ -32,6 +32,11 @@ export interface EgressTarget {
    * auflösen lässt, sperrt nichts.
    */
   denyAddressesOf?: readonly string[];
+  /**
+   * Pfad der Basis-URL (z. B. `/mandant/v1`). Führt eine Weiterleitung aus diesem Pfad heraus,
+   * geht `Authorization` nicht mit, auch auf demselben Host.
+   */
+  basePath?: string;
 }
 
 /** Warum ein Aufruf abgelehnt wurde. */
@@ -114,7 +119,11 @@ export function egressTargetOf(baseUrl: string): EgressTarget {
  * und dort nie die Adressen der eigenen Dienste (`INTERNAL_SERVICE_HOSTS`, z. B. die Datenbank).
  */
 export function providerEgressTarget(baseUrl: string, region: Region): EgressTarget {
-  const target = egressTargetOf(baseUrl);
+  const pfad = new URL(baseUrl).pathname.replace(/\/+$/, "");
+  const target: EgressTarget = {
+    ...egressTargetOf(baseUrl),
+    ...(pfad === "" ? {} : { basePath: pfad }),
+  };
   if (region !== "local") return target;
   return { ...target, allowPrivate: true, denyAddressesOf: INTERNAL_SERVICE_HOSTS };
 }
@@ -177,7 +186,8 @@ function canonicalAddress(address: string): string {
  * geprüften Adressen (`pinnedFetch`), der Name wird kein zweites Mal aufgelöst; Proxy-Variablen der
  * Umgebung wirken nicht. Mit `baseFetch` (nur für Tests) entscheidet dieses `fetch` selbst, wohin
  * es verbindet. Weiterleitungen folgt die Hülle selbst, höchstens fünf, und nur zu erlaubten
- * Zielen, mit derselben Prüfung je Etappe; `Authorization` wird bei einem Wechsel des Ziels entfernt.
+ * Zielen, mit derselben Prüfung je Etappe; `Authorization` wird bei einem Wechsel des Ziels oder beim
+ * Verlassen von `basePath` entfernt.
  */
 export function createEgressFetch(
   allowed: readonly EgressTarget[],
@@ -285,7 +295,11 @@ export function createEgressFetch(
           kind === "[object Blob]";
         if (!replayable) return block(next, "weiterleitung");
       }
-      if (next.host !== url.host || next.protocol !== url.protocol) {
+      const ausDemPfad =
+        match.basePath !== undefined &&
+        next.pathname !== match.basePath &&
+        !next.pathname.startsWith(`${match.basePath}/`);
+      if (next.host !== url.host || next.protocol !== url.protocol || ausDemPfad) {
         headers.delete("authorization");
         headers.delete("proxy-authorization");
         headers.delete("cookie");

@@ -51,6 +51,7 @@ describe("wer migriert", () => {
     await prepareStart(
       {
         NODE_ENV: "production",
+        APP_URL: "https://paibot.example.de",
         PAIBOT_SECRET: randomBytes(32).toString("base64"),
         DATABASE_URL: url("paibot_app"),
       } as NodeJS.ProcessEnv,

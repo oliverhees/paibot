@@ -21,8 +21,10 @@ import { type BotId, type KeyId, newId, type OwnerId, type ProviderId } from "@p
 import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
+import { schleuseEingerichtet } from "../schleuse/schleuse";
 import type { ZugangsDienste } from "./dienste";
 import { codeSicherstellen } from "./einrichtungs-code";
+import { geraetCookie, neuerGeraetWert } from "./geraet";
 import { _nachweisCode, type Nachweis, nachweisAusSitzung } from "./nachweis";
 import { neuerPasswortHash } from "./passwort";
 import {
@@ -55,7 +57,7 @@ export async function einrichtungsStatus(
   if (offen) await codeSicherstellen(d.code, db, d.uhr.now(), d.log.info);
   return {
     offen,
-    schleuseInstalliert: d.schleuseInstalliert(),
+    schleuseInstalliert: await schleuseEingerichtet(db, d, d.uhr.now()),
     anbieter: d.einrichtungsAnbieter().name,
     passwortMin: LIMITS.passwordMinChars,
     botVorschlag: t("einrichtung.bot.vorschlag"),
@@ -72,7 +74,7 @@ async function codePruefen(
   kontext: RoutenKontext<"einrichtungAbschliessen" | "einrichtungVerbindungstest">,
   code: string,
 ): Promise<Nachweis> {
-  if (!(await kontext.dienste.code.pruefen(kontext.db, code))) {
+  if (!(await kontext.dienste.code.pruefen(kontext.db, code, kontext.dienste.uhr.now()))) {
     throw new PaiBotError("einrichtungs_code_falsch", {
       felder: [{ feld: "setupCode", code: "ungueltig" }],
     });
@@ -147,7 +149,10 @@ export async function einrichtungAbschliessen(
   const d = kontext.dienste;
   const codeNachweis = await codePruefen(kontext, eingabe.setupCode);
 
-  if (eingabe.schleuseModeDefault === "on" && !d.schleuseInstalliert()) {
+  if (
+    eingabe.schleuseModeDefault === "on" &&
+    !(await schleuseEingerichtet(kontext.db, d, d.uhr.now()))
+  ) {
     throw new PaiBotError("schleuse_nicht_installiert", {
       felder: [{ feld: "schleuseModeDefault", code: "ungueltig" }],
     });
@@ -180,7 +185,7 @@ export async function einrichtungAbschliessen(
       throw new PaiBotError("einrichtung_fertig");
     }
     // Unter der Sperre noch einmal: Gilt der geprüfte Code noch (nicht inzwischen ersetzt)?
-    if (!(await d.code.pruefen(tx, eingabe.setupCode))) {
+    if (!(await d.code.pruefen(tx, eingabe.setupCode, d.uhr.now()))) {
       throw new PaiBotError("einrichtungs_code_falsch", {
         felder: [{ feld: "setupCode", code: "ungueltig" }],
       });
@@ -335,6 +340,7 @@ export async function einrichtungAbschliessen(
   // Den Prüfwert des Codes hat `completeSetup` in derselben Transaktion gelöscht.
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.sitzung.token, false));
+  kontext.cookie(geraetCookie(rahmen, neuerGeraetWert(kontext.dienste.schluessel().sitzung)));
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));
   return ergebnis.daten;
 }

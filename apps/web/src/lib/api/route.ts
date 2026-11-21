@@ -22,7 +22,6 @@ import type {
 import { apiErrorFrom, errorBody, okBody } from "@paibot/shared/api";
 import { invalidInput, isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
-import type { RateLimitName } from "@paibot/shared/konstanten";
 import type { z } from "zod";
 import {
   istVeraendernd,
@@ -34,9 +33,16 @@ import {
 } from "../csrf";
 import { torAuf } from "../gate";
 import { clientAdresse } from "../kopfzeilen";
-import { type LimitBezug, setzeLimitZurueck, zaehleLimits } from "../rate-limit";
-import { API_ROUTEN, type RoutenDefinition, type RoutenName } from "../routen";
+import { type LimitBezug, type LimitName, setzeLimitZurueck, zaehleLimits } from "../rate-limit";
+import {
+  API_ROUTEN,
+  GROESSTER_KOERPER_BYTES,
+  koerperGrenze,
+  type RoutenDefinition,
+  type RoutenName,
+} from "../routen";
 import { prozessDienste, type ZugangsDienste } from "../zugang/dienste";
+import { geraetCookieName, istBekanntesGeraet } from "../zugang/geraet";
 import {
   type GepruefteSitzung,
   istNachweis,
@@ -45,6 +51,8 @@ import {
 } from "../zugang/nachweis";
 import {
   cookieLesen,
+  cookieLoeschen,
+  sitzungBeenden,
   sitzungPruefen,
   sitzungsCookieName,
   vorabCookieName,
@@ -87,7 +95,7 @@ export interface RoutenKontext<N extends RoutenName> {
   /** Hängt eine `Set-Cookie`-Zeile an die Antwort. */
   cookie(setCookie: string): void;
   /** Setzt ein Limit dieser Anfrage zurück (z. B. nach richtigem Passwort). */
-  limitZuruecksetzen(name: RateLimitName): Promise<void>;
+  limitZuruecksetzen(name: LimitName): Promise<void>;
   /**
    * Führt eine Aktion über das Tor aus. Akteur ist der Besitzer, `credential` setzt der Rahmen aus
    * dem Nachweis (nie aus der Eingabe). Die Aktion der Route verlangt den Nachweis laut
@@ -161,8 +169,8 @@ type Handler = (
 /** Markierung an jeder Handler-Funktion, die über den Rahmen läuft (für Tests). */
 export const RAHMEN = Symbol.for("paibot.web.routen-rahmen");
 
-/** Größter erlaubter JSON-Körper in Byte. */
-export const MAX_KOERPER_BYTES = 256 * 1024;
+/** Größter erlaubter JSON-Körper in Byte (die größte Grenze einer Route). */
+export const MAX_KOERPER_BYTES = GROESSTER_KOERPER_BYTES;
 
 const OHNE_SPEICHERN = { "Cache-Control": "no-store" } as const;
 
@@ -171,11 +179,45 @@ function nachweisDerRoute(def: RoutenDefinition): Credential | undefined {
   return def.zugang === "besitzer" ? "sitzung" : undefined;
 }
 
-async function koerperLesen(request: Request): Promise<unknown> {
-  const text = await request.text();
-  if (new TextEncoder().encode(text).length > MAX_KOERPER_BYTES) {
-    throw new PaiBotError("eingabe_ungueltig", { felder: [{ feld: "eingabe", code: "zu_gross" }] });
+function zuGross(): PaiBotError {
+  return new PaiBotError("eingabe_ungueltig", { felder: [{ feld: "eingabe", code: "zu_gross" }] });
+}
+
+/**
+ * Liest den Körper höchstens bis `grenze` Byte. Eine angegebene Länge über der Grenze lehnt es ab,
+ * bevor ein Byte gelesen ist; sonst bricht es ab, sobald mehr ankommt. So liegt nie mehr als die
+ * Grenze im Speicher, auch wenn die Länge fehlt oder nicht stimmt.
+ */
+export async function koerperText(request: Request, grenze: number): Promise<string> {
+  const laenge = request.headers.get("content-length");
+  if (laenge !== null && (!/^\d{1,15}$/.test(laenge.trim()) || Number(laenge) > grenze)) {
+    throw zuGross();
   }
+  if (request.body === null) return "";
+  const leser = request.body.getReader();
+  const teile: Uint8Array[] = [];
+  let summe = 0;
+  for (;;) {
+    const { done, value } = await leser.read();
+    if (done) break;
+    summe += value.byteLength;
+    if (summe > grenze) {
+      await leser.cancel().catch(() => undefined);
+      throw zuGross();
+    }
+    teile.push(value);
+  }
+  const alles = new Uint8Array(summe);
+  let stelle = 0;
+  for (const teil of teile) {
+    alles.set(teil, stelle);
+    stelle += teil.byteLength;
+  }
+  return new TextDecoder().decode(alles);
+}
+
+async function koerperLesen(request: Request, grenze: number): Promise<unknown> {
+  const text = await koerperText(request, grenze);
   if (text.trim() === "") return undefined;
   const art = request.headers.get("content-type") ?? "";
   if (!art.toLowerCase().startsWith("application/json")) {
@@ -262,9 +304,26 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
         const bezug: LimitBezug = {
           adresse,
           ...(sitzung === undefined ? {} : { ownerId: sitzung.ownerId }),
+          bekanntesGeraet: istBekanntesGeraet(
+            d.schluessel().sitzung,
+            cookieLesen(cookieKopf, geraetCookieName({ appUrl })),
+          ),
         };
         if (def.limits !== undefined && def.limits.length > 0) {
-          await zaehleLimits(db, def.limits, bezug, { now, warten: d.warten });
+          try {
+            await zaehleLimits(db, def.limits, bezug, { now, warten: d.warten });
+          } catch (error) {
+            if (
+              def.beiLimitAbmelden === true &&
+              sitzung !== undefined &&
+              isPaiBotError(error) &&
+              error.code === "zu_viele_versuche"
+            ) {
+              await sitzungBeenden(db, sitzung);
+              cookies.push(cookieLoeschen(sitzungsCookieName({ appUrl }), { appUrl }, "Lax"));
+            }
+            throw error;
+          }
         }
 
         // 6. Eingabe mit Zod
@@ -273,7 +332,7 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
           const roh =
             def.methode === "GET"
               ? Object.fromEntries(new URL(request.url).searchParams)
-              : await koerperLesen(request);
+              : await koerperLesen(request, koerperGrenze(def));
           const geprueft = def.eingabe.safeParse(roh ?? {});
           if (!geprueft.success) throw invalidInput(geprueft.error, roh);
           eingabe = geprueft.data;

@@ -442,6 +442,10 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
     aufruf: async () => ({ koerper: { dailyTokenBudget: 50_000 } }),
   },
   belegeExport: { vorher: einrichten, aufruf: async () => ({}), nurBeleg: true },
+  anbieterModelle: {
+    vorher: einrichten,
+    aufruf: async (s) => ({ params: { id: await anbieterId(s) } }),
+  },
 };
 
 /**
@@ -473,10 +477,6 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
     vorher: einrichten,
     aufruf: async (s) => ({ koerper: { providerId: await anbieterId(s) } }),
   },
-  anbieterModelle: {
-    vorher: einrichten,
-    aufruf: async (s) => ({ params: { id: await anbieterId(s) } }),
-  },
   datenschleuse: { vorher: einrichten, aufruf: async () => ({}) },
   einstellungen: { vorher: einrichten, aufruf: async () => ({}) },
   belege: { vorher: einrichten, aufruf: async () => ({}) },
@@ -506,10 +506,7 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
  * Eintrag nennt die Tabellen; ein Test meldet, sobald die Lücke geschlossen ist und der Eintrag weg
  * kann. Neue Einträge nur mit Issue.
  */
-const BEKANNTE_LUECKEN: Partial<Record<LeseRoute, readonly string[]>> = {
-  // Die Modell-Liste des Anbieters wird beim Abruf in `models` übernommen (ohne Beleg).
-  anbieterModelle: ["models"],
-};
+const BEKANNTE_LUECKEN: Partial<Record<LeseRoute, readonly string[]>> = {};
 
 const ALLE = Object.keys(API_ROUTEN) as RoutenName[];
 const MIT_AKTION = ALLE.filter((n) => "aktion" in API_ROUTEN[n]) as AktionsRoute[];

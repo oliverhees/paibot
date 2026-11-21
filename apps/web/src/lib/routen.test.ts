@@ -12,6 +12,7 @@ import { ACTION_TYPES, ACTIONS, UNSTORED_ACTION_TYPES } from "@paibot/shared/akt
 import { RATE_LIMITS } from "@paibot/shared/konstanten";
 import { CREDENTIAL_SCOPE } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
+import { LIMIT_DEFINITIONEN } from "./rate-limit";
 import {
   API_ROUTEN,
   ROUTEN_OHNE_AKTION,
@@ -99,13 +100,13 @@ describe("API-Routen", () => {
         limits.some((l) => l.endsWith("Ip")),
         name,
       ).toBe(true);
-      for (const l of limits) expect(Object.keys(RATE_LIMITS), name).toContain(l);
+      for (const l of limits) expect(Object.keys(LIMIT_DEFINITIONEN), name).toContain(l);
     }
   });
 
-  it("Anmelden: Gesamt-Limit verzögert nur, damit niemand den Besitzer aussperren kann", () => {
-    expect(API_ROUTEN.anmelden.limits).toEqual(["anmeldenIp", "anmeldenGesamt"]);
-    expect(RATE_LIMITS.anmeldenGesamt.effect).toBe("verzoegern");
+  it("Anmelden: erst je Adresse (15 Minuten, dann Tag), danach die gemeinsame Bremse", () => {
+    expect(API_ROUTEN.anmelden.limits).toEqual(["anmeldenIp", "anmeldenIpTag", "anmeldenGesamt"]);
+    expect(LIMIT_DEFINITIONEN.anmeldenIpTag.effect).toBe("sperren");
     expect(RATE_LIMITS.anmeldenIp.effect).toBe("sperren");
   });
 

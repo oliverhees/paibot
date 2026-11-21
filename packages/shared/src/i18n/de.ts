@@ -1104,4 +1104,8 @@ export const de = {
     "Bitte um eine kürzere Antwort oder teil die Frage in mehrere Nachrichten auf.",
   "modelle.anbieter.name.lokal": "Lokaler Anbieter",
   "modelle.anbieter.name.eigener": "Eigener Anbieter",
+
+  // Schutz von Anmeldung und Eingängen
+  "einrichtung.code.log_frist":
+    "Einrichtungs-Code: {code} (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)",
 } as const satisfies Record<string, string | readonly string[]>;

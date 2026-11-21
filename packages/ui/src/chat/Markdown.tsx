@@ -13,7 +13,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { EntwurfBlock, type EntwurfTexte } from "./EntwurfBlock";
 import styles from "./Markdown.module.css";
-import { sichereUrl } from "./sichereUrl";
+import { ohneSchreibrichtung, sichereUrl } from "./sichereUrl";
 
 interface HastKnoten {
   type: string;
@@ -127,7 +127,7 @@ export function Markdown({ text, blockTexte }: MarkdownProps) {
         urlTransform={(url) => sichereUrl(url) ?? ""}
         components={komponenten}
       >
-        {text}
+        {ohneSchreibrichtung(text)}
       </ReactMarkdown>
     </div>
   );

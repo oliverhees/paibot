@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { sichereUrl } from "./sichereUrl";
+import { ohneSchreibrichtung, sichereUrl } from "./sichereUrl";
 
 describe("sichere Links", () => {
   it("lässt http und https durch", () => {
@@ -37,5 +37,15 @@ describe("sichere Links", () => {
     }
     expect(sichereUrl(undefined)).toBeNull();
     expect(sichereUrl(null)).toBeNull();
+  });
+});
+
+describe("Schreibrichtung", () => {
+  it("entfernt Steuerzeichen der Schreibrichtung, lässt alles andere stehen", () => {
+    expect(ohneSchreibrichtung("harmlos‮gnp.exe")).toBe("harmlosgnp.exe");
+    for (const z of ["‎", "‏", "‪", "‫", "‬", "‭", "⁦", "⁩"]) {
+      expect(ohneSchreibrichtung(`a${z}b`)).toBe("ab");
+    }
+    expect(ohneSchreibrichtung("Grüße, שלום, مرحبا")).toBe("Grüße, שלום, مرحبا");
   });
 });

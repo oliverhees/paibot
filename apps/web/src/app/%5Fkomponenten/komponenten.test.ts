@@ -37,6 +37,13 @@ const mitKindern = <P extends object>(
 describe("Markdown der Antworten", () => {
   const md = (text: string) => html(h(Markdown, { text, blockTexte: BLOCK_TEXTE }));
 
+  it("Linktexte und Code zeigen keine Steuerzeichen der Schreibrichtung", () => {
+    const aus = md("[harmlos\u202Egnp.exe](https://example.org/datei) `rm\u2066 -rf`");
+    expect(aus).toContain(">harmlosgnp.exe</a>");
+    expect(aus).toContain("rm -rf");
+    expect(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/.test(aus)).toBe(false);
+  });
+
   it("zeigt Bild-Markdown als Link und lädt nie ein Bild", () => {
     const aus = md("![Logo der Musterfirma](https://example.org/logo.png)");
     expect(aus).not.toContain("<img");

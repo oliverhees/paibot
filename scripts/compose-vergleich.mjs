@@ -127,6 +127,20 @@ if (/latest/i.test(readFileSync(imagePfad, "utf8").replace(/^\s*#.*$/gm, ""))) {
   fehler.push(`${imagePfad}: „latest“ ist nicht erlaubt; die Version kommt aus PAIBOT_VERSION.`);
 }
 
+// Feste Betriebswerte der Dienste von PaiBot (gelten durch den Vergleich auch für das Image).
+for (const dienst of PAIBOT_DIENSTE) {
+  const eigene = bau.filter((z) => z.dienst === dienst).map((z) => z.text.trim());
+  if (!eigene.includes("pids_limit: 256")) {
+    fehler.push(`${bauPfad}: Dienst ${dienst} braucht „pids_limit: 256“.`);
+  }
+}
+const PROXY_ZEILE = ["TRUST_PROXY: $", "{TRUST_PROXY:-1}"].join("");
+if (!bau.some((z) => z.dienst === "web" && z.text.trim() === PROXY_ZEILE)) {
+  fehler.push(
+    `${bauPfad}: Dienst web braucht „TRUST_PROXY: \${TRUST_PROXY:-1}“ (Standard: hinter dem Proxy).`,
+  );
+}
+
 const laenge = Math.max(bau.length, image.length);
 for (let i = 0; i < laenge; i++) {
   const a = bau[i];

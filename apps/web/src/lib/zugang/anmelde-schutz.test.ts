@@ -1,0 +1,234 @@
+/**
+ * PaiBot – Tests des Schutzes beim Anmelden und beim Ändern des Passworts: Netze statt einzelner
+ * IPv6-Adressen, gemeinsame Bremse auch bei gleichzeitigen Versuchen, wachsende Sperrzeit,
+ * bekannte Geräte als Ausweg, Aufheben der Sperren und Limit beim Passwort ändern.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+import { describe, expect, it, vi } from "vitest";
+import { adressGruppe } from "../kopfzeilen";
+import { anmeldeSperrenAufheben, BREMSE, bremsTakt } from "../rate-limit";
+import { schluesselAus } from "../umgebung";
+import { anmelden, passwortAendern, sitzungenListe } from "./anmeldung";
+import { einrichtungAbschliessen } from "./einrichtung";
+import { geraetCookie, istBekanntesGeraet, neuerGeraetWert } from "./geraet";
+import {
+  anfrage,
+  Keksdose,
+  TEST_CODE,
+  TEST_PASSWORT,
+  type TestUmgebung,
+  testGeheimnis,
+  testUmgebung,
+  vorabDose,
+} from "./testing";
+
+vi.setConfig({ testTimeout: 120_000 });
+
+const MINUTE = 60_000;
+
+async function eingerichtet(hinterProxy = true) {
+  const u = await testUmgebung({ hinterProxy });
+  u.neuerCode(TEST_CODE);
+  const abschluss = u.handler("einrichtungAbschliessen", async (k) => ({
+    daten: await einrichtungAbschliessen(k),
+  }));
+  const dose = vorabDose();
+  const r = await anfrage(u, abschluss, "POST", "/api/einrichtung", {
+    dose,
+    adresse: "192.0.2.1",
+    koerper: {
+      setupCode: TEST_CODE,
+      password: TEST_PASSWORT,
+      passwordRepeat: TEST_PASSWORT,
+      schleuseModeDefault: "off",
+      botName: "Pai",
+    },
+  });
+  if (r.status !== 200) throw new Error(`Einrichtung: ${r.status}`);
+  const h = {
+    anmelden: u.handler("anmelden", async (k) => ({ daten: await anmelden(k) })),
+    passwort: u.handler("passwortAendern", async (k) => ({ daten: await passwortAendern(k) })),
+    sitzungen: u.handler("sitzungen", async (k) => ({ daten: await sitzungenListe(k) })),
+  };
+  return { u, h, einrichtungsDose: dose };
+}
+
+type Umgebung = Awaited<ReturnType<typeof eingerichtet>>;
+
+function versuch(
+  { u, h }: Umgebung,
+  passwort: string,
+  adresse: string,
+  dose: Keksdose = vorabDose(),
+) {
+  return anfrage(u, h.anmelden, "POST", "/api/zugang/anmelden", {
+    dose,
+    adresse,
+    koerper: { password: passwort, remember: false },
+  });
+}
+
+/** Zählt, wie oft das Passwort wirklich geprüft wurde (Antwort „passwort_falsch“). */
+function geprueft(antworten: { body: { fehler?: { code: string } } }[]) {
+  return antworten.filter((a) => a.body.fehler?.code === "passwort_falsch").length;
+}
+
+describe("Adressen", () => {
+  it("IPv6 zählt je /64, IPv4 je Adresse", () => {
+    expect(adressGruppe("2001:db8:aa:bb::1")).toBe("2001:db8:aa:bb::/64");
+    expect(adressGruppe("2001:db8:aa:bb:ffff:1:2:3")).toBe("2001:db8:aa:bb::/64");
+    expect(adressGruppe("2001:0db8:00aa:00bb::9")).toBe("2001:db8:aa:bb::/64");
+    expect(adressGruppe("::1")).toBe("0:0:0:0::/64");
+    expect(adressGruppe("64:ff9b::192.0.2.1")).toBe("64:ff9b:0:0::/64");
+    expect(adressGruppe("203.0.113.7")).toBe("203.0.113.7");
+  });
+
+  it("wechselnde Adressen aus einem /64 teilen sich das Limit je Adresse", async () => {
+    const e = await eingerichtet();
+    for (let i = 1; i <= 5; i += 1) {
+      expect(
+        (await versuch(e, "falsch-falsch-1", `2001:db8:aa:bb::${i.toString(16)}`)).status,
+      ).toBe(401);
+    }
+    const gesperrt = await versuch(e, TEST_PASSWORT, "2001:db8:aa:bb:9:9:9:9");
+    expect(gesperrt.status).toBe(429);
+    expect((await versuch(e, TEST_PASSWORT, "2001:db8:aa:cc::1")).status).toBe(200);
+  });
+});
+
+describe("Gemeinsame Bremse", () => {
+  for (const hinterProxy of [true, false]) {
+    it(`gleichzeitige Versuche von vielen Adressen: höchstens einer je Takt wird geprüft (TRUST_PROXY ${hinterProxy ? "an" : "aus"})`, async () => {
+      const e = await eingerichtet(hinterProxy);
+      const flut = await Promise.all(
+        Array.from({ length: 60 }, (_, i) =>
+          versuch(e, `raten-${i}`, `2001:db8:${(i + 1).toString(16)}::1`),
+        ),
+      );
+      // Bis zur Schwelle (20) laufen alle durch, danach je Takt-Stufe höchstens einer (60 Versuche
+      // erreichen zwei Stufen).
+      expect(geprueft(flut)).toBeLessThanOrEqual(22);
+      expect(flut.filter((a) => a.status === 429).length).toBeGreaterThanOrEqual(38);
+      const gesperrt = flut.find((a) => a.status === 429);
+      expect(Number(gesperrt?.antwort.headers.get("retry-after"))).toBeGreaterThan(0);
+    });
+  }
+
+  it("der Takt wächst mit den Versuchen bis höchstens eine Minute", () => {
+    expect(bremsTakt(1)).toBe(BREMSE.startSekunden);
+    expect(bremsTakt(BREMSE.verdoppelnNach + 1)).toBe(2 * BREMSE.startSekunden);
+    expect(bremsTakt(10_000)).toBe(BREMSE.maxSekunden);
+    expect(BREMSE.maxSekunden).toBeLessThanOrEqual(60);
+  });
+
+  it("die Sperrzeit je Adresse wächst: nach 20 Fehlversuchen am Tag bis zum Ende des Tages", async () => {
+    const e = await eingerichtet();
+    // Vier Fenster zu je 15 Minuten mit je 5 Fehlversuchen: 20 an diesem Tag.
+    for (let runde = 0; runde < 4; runde += 1) {
+      for (let i = 0; i < 5; i += 1) {
+        expect((await versuch(e, "falsch-falsch-1", "198.51.100.9")).status).toBe(401);
+      }
+      e.u.spaeter(16 * MINUTE);
+    }
+    const danach = await versuch(e, TEST_PASSWORT, "198.51.100.9");
+    expect(danach.status).toBe(429);
+    expect(Number(danach.antwort.headers.get("retry-after"))).toBeGreaterThan(15 * 60);
+  });
+});
+
+describe("Ausweg für den Besitzer", () => {
+  it("ein bekanntes Gerät kommt während einer Flut an, ein unbekanntes nicht", async () => {
+    const e = await eingerichtet(false);
+    const bekannt = e.einrichtungsDose.werte.get("pb_geraet");
+    expect(bekannt).toBeDefined();
+    await Promise.all(
+      Array.from({ length: 50 }, (_, i) => versuch(e, `raten-${i}`, `198.51.100.${i + 1}`)),
+    );
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.77")).status).toBe(429);
+    const dose = vorabDose();
+    dose.werte.set("pb_geraet", bekannt ?? "");
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.77", dose)).status).toBe(200);
+  });
+
+  it("ein gefälschtes oder fremdes Geräte-Cookie hilft nicht", async () => {
+    const e = await eingerichtet(false);
+    await Promise.all(
+      Array.from({ length: 50 }, (_, i) => versuch(e, `raten-${i}`, `198.51.100.${i + 1}`)),
+    );
+    const fremd = neuerGeraetWert(schluesselAus({ PAIBOT_SECRET: testGeheimnis() }).sitzung);
+    for (const wert of [fremd, `${"a".repeat(32)}.${"b".repeat(43)}`, "x"]) {
+      const dose = vorabDose();
+      dose.werte.set("pb_geraet", wert);
+      expect((await versuch(e, TEST_PASSWORT, "192.0.2.78", dose)).status).toBe(429);
+    }
+    expect(istBekanntesGeraet(e.u.schluessel.sitzung, fremd)).toBe(false);
+    expect(
+      istBekanntesGeraet(e.u.schluessel.sitzung, neuerGeraetWert(e.u.schluessel.sitzung)),
+    ).toBe(true);
+  });
+
+  it("das Aufheben der Sperren (Migrations-Schritt) gibt die Anmeldung sofort wieder frei", async () => {
+    const e = await eingerichtet(false);
+    await Promise.all(
+      Array.from({ length: 50 }, (_, i) => versuch(e, `raten-${i}`, `198.51.100.${i + 1}`)),
+    );
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.79")).status).toBe(429);
+    expect(await anmeldeSperrenAufheben(e.u.db)).toBeGreaterThan(0);
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.79")).status).toBe(200);
+  });
+
+  it("Geräte-Cookie nur über http-Anfragen von PaiBot selbst, langlebig", () => {
+    const zeile = geraetCookie({ appUrl: "https://paibot.example.de" }, "w");
+    expect(zeile).toBe(
+      "__Host-pb_geraet=w; Path=/; HttpOnly; SameSite=Strict; Max-Age=34560000; Secure",
+    );
+  });
+});
+
+describe("Passwort ändern", () => {
+  async function angemeldet() {
+    const e = await eingerichtet();
+    const dose = vorabDose();
+    const r = await versuch(e, TEST_PASSWORT, "192.0.2.2", dose);
+    if (r.status !== 200) throw new Error(`Anmelden: ${r.status}`);
+    dose.werte.delete("pb_vorab");
+    return { ...e, dose };
+  }
+
+  function aendern(u: TestUmgebung, e: Umgebung, dose: Keksdose, aktuell: string) {
+    return anfrage(u, e.h.passwort, "POST", "/api/zugang/passwort", {
+      dose,
+      koerper: { currentPassword: aktuell, newPassword: "Neues-Passwort-Lang-77" },
+    });
+  }
+
+  it("nach 5 Versuchen in 15 Minuten: gesperrt und die Sitzung der Anfrage endet", async () => {
+    const e = await angemeldet();
+    for (let i = 0; i < 5; i += 1) {
+      expect((await aendern(e.u, e, e.dose, `falsch-${i}-xxxxxx`)).status).toBe(401);
+    }
+    const zuViele = await aendern(e.u, e, e.dose, TEST_PASSWORT);
+    expect(zuViele.status).toBe(429);
+    expect(zuViele.body.fehler?.code).toBe("zu_viele_versuche");
+    expect(
+      zuViele.antwort.headers.getSetCookie().some((z) => /^pb_sitzung=;.*Max-Age=0/.test(z)),
+    ).toBe(true);
+    expect(e.dose.werte.has("pb_sitzung")).toBe(false);
+  });
+
+  it("das alte Sitzungs-Cookie gilt nach der Sperre nicht mehr", async () => {
+    const e = await angemeldet();
+    const sitzung = e.dose.werte.get("pb_sitzung") ?? "";
+    for (let i = 0; i < 6; i += 1) await aendern(e.u, e, e.dose, `falsch-${i}-xxxxxx`);
+    const alt = new Keksdose();
+    alt.werte.set("pb_sitzung", sitzung);
+    const r = await anfrage(e.u, e.h.sitzungen, "GET", "/api/zugang/sitzungen", { dose: alt });
+    expect(r.status).toBe(401);
+  });
+});

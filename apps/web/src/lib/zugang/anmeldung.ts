@@ -14,6 +14,7 @@ import type { LoginInput, PasswordChangeInput } from "@paibot/shared/eingaben";
 import { PaiBotError } from "@paibot/shared/fehler";
 import type { OwnerId } from "@paibot/shared/ids";
 import type { RoutenKontext } from "../api/route";
+import { geraetCookie, neuerGeraetWert } from "./geraet";
 import { _nachweisPasswort } from "./nachweis";
 import { neuerPasswortHash, pruefePasswort } from "./passwort";
 import {
@@ -57,8 +58,10 @@ export async function anmelden(kontext: RoutenKontext<"anmelden">): Promise<{ an
     },
   );
   await kontext.limitZuruecksetzen("anmeldenIp");
+  await kontext.limitZuruecksetzen("anmeldenIpTag");
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.value.token, eingabe.remember));
+  kontext.cookie(geraetCookie(rahmen, neuerGeraetWert(d.schluessel().sitzung)));
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));
   return { angemeldet: true };
 }

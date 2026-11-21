@@ -80,6 +80,8 @@ export interface RoleCheck {
   /** Name der Rolle, mit der die Verbindung arbeitet. */
   role: string;
   issues: RoleIssue[];
+  /** Bei `schatten_tabellen`: die gefundenen Tabellen als `schema.name`. */
+  shadowTables?: string[];
 }
 
 /** Kurze deutsche Beschreibung der Gründe für das Log. */
@@ -116,6 +118,7 @@ export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
       belege_aenderbar: boolean;
       rolleneinstellungen: boolean;
       schatten_tabellen: boolean;
+      schatten_namen: string[];
       suchpfad: boolean;
     }[]
   >`
@@ -180,6 +183,19 @@ export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
             where an.nspname = 'public' and a.relkind in ('r', 'p')
           )
       ) as schatten_tabellen,
+      coalesce((
+        select pg_catalog.array_agg(n.nspname || '.' || c.relname order by n.nspname, c.relname)
+        from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        where n.nspname not in ('public', 'pg_catalog', 'information_schema')
+          and n.nspname not like 'pg\_toast%'
+          and c.relkind in ('r', 'p', 'v', 'm', 'f')
+          and c.relname in (
+            select a.relname from pg_catalog.pg_class a
+            join pg_catalog.pg_namespace an on an.oid = a.relnamespace
+            where an.nspname = 'public' and a.relkind in ('r', 'p')
+          )
+      ), '{}') as schatten_namen,
       pg_catalog.current_schemas(true) <> array['pg_catalog', 'public']::name[] as suchpfad
     from pg_catalog.pg_roles r
     where r.rolname = current_user`;
@@ -205,6 +221,7 @@ export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
     status: issues.length === 0 ? "eingeschraenkt" : "zu_viele_rechte",
     role: row.role,
     issues,
+    ...(row.schatten_tabellen ? { shadowTables: row.schatten_namen } : {}),
   };
 }
 
@@ -279,7 +296,16 @@ export interface AppRoleSetup {
   role: string;
   /** `true`, wenn die Rolle bei diesem Aufruf neu angelegt wurde. */
   created: boolean;
+  /** Gleichnamige Tabellen außerhalb von `public`, die in `QUARANTINE_SCHEMA_NAME` verschoben wurden (alter und neuer Name). */
+  quarantined: string[];
 }
+
+/**
+ * Schema für gleichnamige Tabellen, die außerhalb von `public` gefunden werden (siehe
+ * `checkAppRole`). Gehört der Migrations-Rolle; die App-Rolle hat darauf keine Rechte. Der Inhalt
+ * bleibt zum Nachsehen erhalten und lässt sich danach von Hand löschen.
+ */
+export const QUARANTINE_SCHEMA_NAME = "paibot_quarantaene";
 
 /**
  * Richtet die App-Rolle aus `appUrl` ein. Läuft mit der Migrations-Verbindung `sql` (Besitzer
@@ -301,6 +327,10 @@ export interface AppRoleSetup {
  * 7. Was die App nicht braucht, wird entzogen, soweit Postgres es zulässt: Nummern der Regeln
  *    ziehen, temporäre Tabellen, große Objekte anlegen, fremde Verbindungen beenden. Fehlen dafür
  *    die Rechte (die Migrations-Rolle ist kein Superuser), bleibt es beim Rest.
+ *
+ * 8. Gleichnamige Tabellen der App außerhalb von `public` (etwa im Schema der Warteschlange)
+ *    wandern in das Schema `QUARANTINE_SCHEMA_NAME`, das nur der Migrations-Rolle gehört; ihr
+ *    Besitzer wird die Migrations-Rolle. So startet PaiBot wieder, und nichts geht verloren.
  *
  * Nutzt `appUrl` dieselbe Rolle wie `sql`, wird nur das Schema der Warteschlange angelegt (falls es
  * fehlt), und das Ergebnis ist `undefined`.
@@ -335,6 +365,7 @@ export async function prepareAppRole(
     created = true;
   }
 
+  let quarantined: string[] = [];
   await sql.begin(async (tx) => {
     const role = tx(user);
     const database = await databaseName(tx);
@@ -399,9 +430,68 @@ export async function prepareAppRole(
 
     await prepareQueueSchema(tx, user);
     await withdrawExtras(tx, user, database);
+    // Fehlen der Migrations-Rolle die Rechte dafür, bleibt alles, wie es ist; die Prüfung danach
+    // nennt die Tabellen dann mit Namen.
+    quarantined = await tx
+      .savepoint((sp) => quarantineShadowTables(sp, user))
+      .catch((error: { code?: string }) => {
+        if (error.code === "42501") return [];
+        throw error;
+      });
   });
 
-  return { role: user, created };
+  return { role: user, created, quarantined };
+}
+
+/**
+ * Verschiebt gleichnamige Tabellen (und Sichten) außerhalb von `public` in das Schema der
+ * Quarantäne, mit Zeitstempel im Namen. Liefert `alt -> neu` je verschobenem Objekt.
+ */
+async function quarantineShadowTables(
+  tx: postgres.TransactionSql,
+  user: string,
+): Promise<string[]> {
+  const found = await tx<{ schema: string; name: string; kind: string }[]>`
+    select n.nspname as schema, c.relname as name, c.relkind::text as kind
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where n.nspname not in ('public', 'pg_catalog', 'information_schema', ${QUARANTINE_SCHEMA_NAME})
+      and n.nspname not like 'pg\_toast%'
+      and c.relkind in ('r', 'p', 'v', 'm', 'f')
+      and c.relname in (
+        select a.relname from pg_catalog.pg_class a
+        join pg_catalog.pg_namespace an on an.oid = a.relnamespace
+        where an.nspname = 'public' and a.relkind in ('r', 'p'))
+    order by n.nspname, c.relname`;
+  if (found.length === 0) return [];
+  await tx`create schema if not exists ${tx(QUARANTINE_SCHEMA_NAME)}`;
+  await tx`revoke all on schema ${tx(QUARANTINE_SCHEMA_NAME)} from public`;
+  await tx`revoke all on schema ${tx(QUARANTINE_SCHEMA_NAME)} from ${tx(user)}`;
+  const [self] = await tx<{ name: string }[]>`select current_user as name`;
+  const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+  const moved: string[] = [];
+  for (const { schema, name, kind } of found) {
+    const art =
+      kind === "v"
+        ? "view"
+        : kind === "m"
+          ? "materialized view"
+          : kind === "f"
+            ? "foreign table"
+            : "table";
+    const target = `${name}_${stamp}`.slice(0, 63);
+    await tx.unsafe(
+      `alter ${art} ${quoteIdent(schema)}.${quoteIdent(name)} rename to ${quoteIdent(target)}`,
+    );
+    await tx.unsafe(
+      `alter ${art} ${quoteIdent(schema)}.${quoteIdent(target)} set schema ${quoteIdent(QUARANTINE_SCHEMA_NAME)}`,
+    );
+    await tx.unsafe(
+      `alter ${art} ${quoteIdent(QUARANTINE_SCHEMA_NAME)}.${quoteIdent(target)} owner to ${quoteIdent(self?.name ?? "")}`,
+    );
+    moved.push(`${schema}.${name} -> ${QUARANTINE_SCHEMA_NAME}.${target}`);
+  }
+  return moved;
 }
 
 async function databaseName(sql: postgres.TransactionSql): Promise<string> {

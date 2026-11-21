@@ -43,7 +43,7 @@ describe("Zugang beim Start", () => {
     expect(neustart.log).toContain(
       t("einrichtung.code.vorhanden", { zeit: u.zeit().toISOString() }),
     );
-    expect(await neustart.dienste.code.pruefen(u.db, code)).toBe(true);
+    expect(await neustart.dienste.code.pruefen(u.db, code, u.zeit())).toBe(true);
   });
 
   it("nach der Einrichtung: kein Code", async () => {

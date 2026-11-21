@@ -20,6 +20,7 @@ import {
   type StartLog,
 } from "@paibot/db/migrate";
 import { t } from "@paibot/shared/texte";
+import { proxyWarnung, pruefeAppUrl } from "./umgebung";
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -75,7 +76,7 @@ function checkSecret(env: Env): string[] {
 
 /**
  * Prüft die Pflicht-Einstellungen für den Betrieb und liefert verständliche Fehler (nie mit den
- * Werten selbst): `PAIBOT_SECRET` (nur Rolle `web`, der Migrations-Schritt braucht es nicht) und
+ * Werten selbst): `PAIBOT_SECRET` und `APP_URL` (nur Rolle `web`, siehe `pruefeAppUrl`) und
  * `DATABASE_URL` mit einem Passwort ab 24 Zeichen, das kein Platzhalter ist.
  *
  * - Rolle `web`: `DATABASE_MIGRATION_URL` darf nicht gesetzt sein; die Zugangsdaten der
@@ -94,7 +95,11 @@ export function checkProductionEnv(env: Env, role: StartRole = "web"): string[] 
   if (role === "migrate" && (migration === undefined || migration === "")) {
     errors.push("DATABASE_MIGRATION_URL fehlt (Zugang der Migrations-Rolle).");
   }
-  if (role === "web") errors.push(...checkSecret(env));
+  if (role === "web") {
+    errors.push(...checkSecret(env));
+    const appUrl = pruefeAppUrl(env).fehler;
+    if (appUrl !== undefined) errors.push(appUrl);
+  }
   const names =
     role === "migrate"
       ? (["DATABASE_URL", "DATABASE_MIGRATION_URL"] as const)
@@ -130,6 +135,14 @@ export function checkProductionEnv(env: Env, role: StartRole = "web"): string[] 
     );
   }
   return errors;
+}
+
+/** Hinweise für den Betrieb, die den Start nicht abbrechen (Rolle `web`). */
+export function productionWarnings(env: Env): string[] {
+  const warnungen = [...pruefeAppUrl(env).warnungen];
+  const proxy = proxyWarnung(env);
+  if (proxy !== undefined) warnungen.push(proxy);
+  return warnungen;
 }
 
 const consoleLog: StartLog = {
@@ -168,11 +181,30 @@ async function einrichtungsCodeVerwerfen(url: string, log: StartLog): Promise<vo
 }
 
 /**
+ * Hebt Sperren und Bremsen der Anmeldung auf. Ausweg, wenn der Besitzer sich nicht mehr anmelden
+ * kann (z. B. während vieler fremder Fehlversuche): Migrations-Schritt erneut starten. Ein Fehler
+ * hier bricht den Migrations-Schritt nicht ab.
+ */
+export async function anmeldeSperrenAufheben(url: string, log: StartLog): Promise<void> {
+  const { db, sql } = createDb(url);
+  try {
+    const anzahl = await repo.rateLimit.deleteByPrefix(db, "anmelden:");
+    if (anzahl > 0) log.info("Sperren der Anmeldung aufgehoben.");
+  } catch (error) {
+    const art = error instanceof Error ? error.name : typeof error;
+    log.warn(`Sperren der Anmeldung nicht aufgehoben (${art}).`);
+  } finally {
+    await sql.end({ timeout: 2 });
+  }
+}
+
+/**
  * Läuft einmal beim Start des Servers, je nach `PAIBOT_ROLE`:
  *
  * - `migrate` (eigener Einmal-Dienst): Migrationen mit `DATABASE_MIGRATION_URL`, App-Rolle aus
  *   `DATABASE_URL` einrichten, Rechte prüfen; ist die Einrichtung noch offen, den bisherigen
- *   Einrichtungs-Code verwerfen (`web` erzeugt dann einen neuen). Danach Ende mit Exit 0 (Fehler:
+ *   Einrichtungs-Code verwerfen (`web` erzeugt dann einen neuen) und Sperren der Anmeldung
+ *   aufheben. Danach Ende mit Exit 0 (Fehler:
  *   Exit 1). Startet keinen Server.
  * - `web` (Standard): In Produktion wird nie migriert, nur mit `DATABASE_URL` geprüft, ob die
  *   Datenbank auf Stand ist und die Rolle nicht zu viel darf; ein Fehler bricht den Start ab
@@ -193,6 +225,9 @@ export async function prepareStart(env: NodeJS.ProcessEnv, options: StartOptions
       log.error("Start abgebrochen: Einstellungen unvollständig.");
       exit(1);
       return;
+    }
+    if (production && role === "web") {
+      for (const message of productionWarnings(env)) log.warn(message);
     }
   } else if (!env.DATABASE_URL) {
     log.warn("DATABASE_URL fehlt – Migrationen übersprungen.");
@@ -219,6 +254,7 @@ export async function prepareStart(env: NodeJS.ProcessEnv, options: StartOptions
       return;
     }
     await einrichtungsCodeVerwerfen(env.DATABASE_URL ?? "", log);
+    await anmeldeSperrenAufheben(env.DATABASE_URL ?? "", log);
     log.info("Migrations-Schritt fertig.");
     exit(0);
     return;
