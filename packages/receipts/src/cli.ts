@@ -14,7 +14,7 @@ import {
   encodeAnchor,
   parseAnchor,
 } from "@paibot/shared/belege";
-import { isTextKey, t } from "@paibot/shared/texte";
+import { t } from "@paibot/shared/texte";
 import { ExportFormatError, parseJsonl } from "./jsonl";
 import { type ChainReport, type CheckResult, createAnchor, verifyChain } from "./verify";
 
@@ -26,10 +26,9 @@ import { type ChainReport, type CheckResult, createAnchor, verifyChain } from ".
  * - 3: Kette in sich gültig, aber die Vertrauenskette ist gebrochen (Schlüsselwechsel ohne
  *   Beglaubigung).
  */
-/** Text zu einem Problem der Kette; ohne eigenen Text die Kennung des Problems. */
+/** Text zu einem Problem der Kette (jedes Problem hat einen Text-Schlüssel). */
 function problemText(problem: ChainProblem): string {
-  const key = `belege.problem.${problem}`;
-  return isTextKey(key) ? (t as (k: string) => string)(key) : problem;
+  return t(`belege.problem.${problem}`);
 }
 
 export const CLI_EXIT = { gueltig: 0, ungueltig: 1, fehler: 2, vertrauenGebrochen: 3 } as const;

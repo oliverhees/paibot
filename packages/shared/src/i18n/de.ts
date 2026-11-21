@@ -605,4 +605,18 @@ export const de = {
   "chat.entwurf.etikett": "Entwurf",
   "chat.entwurf.kopieren": "Kopieren",
   "chat.entwurf.kopiert": "Kopiert",
+
+  // Prüfer der Kette: Ergebnis und Entscheidung je Aktion, Regelstand
+  "belege.problem.ergebnis_ohne_entscheidung":
+    "Ein Ergebnis-Beleg hat keine Entscheidung derselben Aktion vor sich.",
+  "belege.problem.ergebnis_passt_nicht_zur_entscheidung":
+    "Ein Ergebnis passt nicht zu seiner Entscheidung: andere Aktion, „ausgeführt“ ohne Erlaubnis oder „abgelehnt“ trotz Erlaubnis.",
+  "belege.problem.aktion_doppelt":
+    "Eine Aktion hat mehr als eine Entscheidung oder mehr als ein Ergebnis.",
+  "belege.problem.regelstand_fehlt":
+    "Eine Entscheidung nennt keinen Regelstand oder keine Prüfsumme ihrer Regeln.",
+
+  // Einrichtungs-Code beim Start
+  "einrichtung.code.vorhanden":
+    "Einrichtung offen: Der Einrichtungs-Code wurde am {zeit} erzeugt und steht im Log dieses Starts. Er gilt bis zum Ende der Einrichtung.",
 } as const satisfies Record<string, string | readonly string[]>;
