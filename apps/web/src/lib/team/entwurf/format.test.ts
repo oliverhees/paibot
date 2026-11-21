@@ -9,13 +9,16 @@
  * @since     2026-11-21
  */
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { AVATAR_SHAPES, BOT_COLORS } from "@paibot/shared/objekte";
 import { describe, expect, it } from "vitest";
 import {
   ENTWURF_GRENZEN,
   entwurfAbdruck,
+  entwurfAbdruckV1,
   leseEntwurf,
+  leseEntwurfV1,
   ordneModelleZu,
   pruefeEntwurf,
   pruefeEntwurfText,
@@ -26,7 +29,28 @@ function bot(name: string, extra: Record<string, unknown> = {}) {
   return { name, aufgabe: "Beispiel-Aufgabe", anweisung: "Beispiel-Anweisung.", ...extra };
 }
 
+const TEAM = {
+  name: "Beispiel",
+  leitung: { name: "Eins" },
+  zusammenarbeit: "aus",
+  abnahme: "besitzer",
+};
+
+/** Beispiel-Entwurf in Fassung 2; die Leitung ist, wenn nichts anderes gesagt wird, der erste Bot. */
 function entwurf(extra: Record<string, unknown> = {}) {
+  const bots = "bots" in extra ? extra.bots : [bot("Eins"), bot("Zwei")];
+  const erster = Array.isArray(bots) ? (bots[0] as { name?: string } | undefined)?.name : undefined;
+  return {
+    format: "pb-teamentwurf/v2",
+    titel: "Beispiel-Team",
+    team: { ...TEAM, leitung: { name: erster ?? "Eins" } },
+    bots,
+    ...extra,
+  };
+}
+
+/** Beispiel-Entwurf in Fassung 1. */
+function entwurfV1(extra: Record<string, unknown> = {}) {
   return {
     format: "pb-teamentwurf/v1",
     titel: "Beispiel-Team",
@@ -90,11 +114,7 @@ describe("unbekannte Felder und falsche Typen werden abgelehnt", () => {
     ["App-Zugriffe", entwurf({ appZugriffe: [] }), "appZugriffe"],
     ["Regeln", entwurf({ regelVorschlaege: [] }), "regelVorschlaege"],
     ["Automationen", entwurf({ automationen: [] }), "automationen"],
-    [
-      "Feld im Team",
-      entwurf({ team: { name: "X", ansprechpartner: { art: "pai" }, admin: true } }),
-      "team.admin",
-    ],
+    ["Feld im Team", entwurf({ team: { ...TEAM, admin: true } }), "team.admin"],
     ["Feld am Bot", entwurf({ bots: [bot("Eins", { darf: "alles" })] }), "bots[0].darf"],
     [
       "Feld im Modell",
@@ -102,13 +122,18 @@ describe("unbekannte Felder und falsche Typen werden abgelehnt", () => {
       "bots[0].modell",
     ],
     [
-      "Feld am Ansprechpartner",
-      entwurf({ team: { name: "X", ansprechpartner: { art: "pai", rolle: "chef" } } }),
+      "Feld an der Leitung",
+      entwurf({ team: { ...TEAM, leitung: { name: "Eins", rechte: ["alles"] } } }),
+      "team.leitung",
+    ],
+    [
+      "Ansprechpartner aus Fassung 1",
+      entwurf({ team: { ...TEAM, ansprechpartner: { art: "pai" } } }),
       "team.ansprechpartner",
     ],
     [
       "Schlüssel __proto__",
-      JSON.parse(`{"__proto__":{"admin":true},"format":"pb-teamentwurf/v1"}`),
+      JSON.parse(`{"__proto__":{"admin":true},"format":"pb-teamentwurf/v2"}`),
       "__proto__",
     ],
   ];
@@ -145,7 +170,7 @@ describe("unbekannte Felder und falsche Typen werden abgelehnt", () => {
   });
 
   it("falsche Fassung im Feld format", () => {
-    expect(fehlerVon(entwurf({ format: "pb-teamentwurf/v2" }))[0]).toEqual({
+    expect(fehlerVon(entwurf({ format: "pb-teamentwurf/v3" }))[0]).toEqual({
       pfad: "format",
       code: "ungueltiger_wert",
     });
@@ -219,10 +244,9 @@ describe("Grenzen", () => {
       "bots[0].aufgabe",
     );
     expect(fehlerVon(entwurf({ titel: "x".repeat(101) }))[0]?.pfad).toBe("titel");
-    expect(
-      fehlerVon(entwurf({ team: { name: "x".repeat(61), ansprechpartner: { art: "pai" } } }))[0]
-        ?.pfad,
-    ).toBe("team.name");
+    expect(fehlerVon(entwurf({ team: { ...TEAM, name: "x".repeat(61) } }))[0]?.pfad).toBe(
+      "team.name",
+    );
     expect(fehlerVon(entwurf({ beschreibung: "x".repeat(301) }))[0]?.pfad).toBe("beschreibung");
     expect(
       fehlerVon(entwurf({ bots: [bot("A", { modell: { slug: "x".repeat(201) } })] }))[0]?.pfad,
@@ -325,7 +349,7 @@ describe("Texte", () => {
   });
 });
 
-describe("Namen und Ansprechpartner", () => {
+describe("Namen der Bots", () => {
   it("doppelte Namen, auch in anderer Schreibweise, werden abgelehnt", () => {
     expect(fehlerVon(entwurf({ bots: [bot("Ideen"), bot("ideen")] }))).toContainEqual({
       pfad: "bots[1].name",
@@ -336,22 +360,134 @@ describe("Namen und Ansprechpartner", () => {
     );
   });
 
-  it("Ansprechpartner muss ein Bot des Entwurfs sein", () => {
-    const team = (name: string) => ({ name: "T", ansprechpartner: { art: "bot", name } });
-    expect(fehlerVon(entwurf({ team: team("Fremd") }))).toContainEqual({
-      pfad: "team.ansprechpartner.name",
-      code: "ansprechpartner_unbekannt",
+  it.each(["Team Content", "team content", "TEAM X"])(
+    "ein Name, der mit „Team “ beginnt, wird abgelehnt: %s",
+    (name) => {
+      expect(fehlerVon(entwurf({ bots: [bot("Eins"), bot(name)] }))).toContainEqual({
+        pfad: "bots[1].name",
+        code: "name_reserviert",
+      });
+    },
+  );
+
+  it("Namen, die nur ähnlich beginnen, bleiben erlaubt", () => {
+    for (const name of ["Team", "Teams", "Teamleiter", "Mein Team", "Steam Team"]) {
+      expect(leseEntwurf(entwurf({ bots: [bot("Eins"), bot(name)] })).ok).toBe(true);
+    }
+  });
+});
+
+describe("Leitung", () => {
+  const mitLeitung = (name: unknown, bots = [bot("Redaktion"), bot("Ideen")]) =>
+    entwurf({ bots, team: { ...TEAM, leitung: { name } } });
+
+  it("ist ein Bot des Entwurfs; Schreibweise und Leerraum werden zur Schreibweise des Bots", () => {
+    const ergebnis = leseEntwurf(mitLeitung("  redaktion "));
+    expect(ergebnis.ok && ergebnis.entwurf.team.leitung).toEqual({ name: "Redaktion" });
+  });
+
+  it("jeder Bot kann Leitung sein, auch der letzte", () => {
+    const ergebnis = leseEntwurf(mitLeitung("Ideen"));
+    expect(ergebnis.ok && ergebnis.entwurf.team.leitung).toEqual({ name: "Ideen" });
+  });
+
+  it("ein Name, der kein Bot des Entwurfs ist, wird abgelehnt (Gegenprobe: Pai, fremder Name)", () => {
+    for (const name of ["Pai", "Fremd", "Redaktio"]) {
+      expect(fehlerVon(mitLeitung(name))).toContainEqual({
+        pfad: "team.leitung.name",
+        code: "leitung_unbekannt",
+      });
+    }
+  });
+
+  it("fehlt die Leitung oder hat sie die falsche Form, wird der Entwurf abgelehnt", () => {
+    const ohne = entwurf();
+    const { leitung: _l, ...teamOhne } = ohne.team;
+    expect(fehlerVon({ ...ohne, team: teamOhne })).toContainEqual({
+      pfad: "team.leitung",
+      code: "falscher_typ",
     });
-    const ergebnis = leseEntwurf(entwurf({ team: team("zwei") }));
-    expect(ergebnis.ok && ergebnis.entwurf.team.ansprechpartner).toEqual({
-      art: "bot",
-      name: "Zwei",
+    expect(fehlerVon(mitLeitung(5))[0]?.pfad).toBe("team.leitung.name");
+    expect(fehlerVon(entwurf({ team: { ...TEAM, leitung: "Eins" } }))[0]?.pfad).toBe(
+      "team.leitung",
+    );
+    expect(
+      fehlerVon(entwurf({ team: { ...TEAM, leitung: { art: "pai" } } })).every((f) =>
+        f.pfad.startsWith("team.leitung"),
+      ),
+    ).toBe(true);
+  });
+
+  it("genau ein Mitglied ist Leitung: eine Liste von Leitungen wird abgelehnt", () => {
+    expect(
+      fehlerVon(entwurf({ team: { ...TEAM, leitung: [{ name: "Eins" }, { name: "Zwei" }] } }))[0]
+        ?.pfad,
+    ).toBe("team.leitung");
+    expect(
+      fehlerVon(entwurf({ team: { ...TEAM, leitung: { name: "Eins" }, leitungen: ["Zwei"] } })),
+    ).toContainEqual({ pfad: "team.leitungen", code: "unbekanntes_feld" });
+  });
+
+  it("die Leitung ist ein Bot des Teams und nicht Pai: ein Entwurf ohne Bot hat keine Leitung", () => {
+    expect(fehlerVon(entwurf({ bots: [] }))).toContainEqual({ pfad: "bots", code: "zu_wenige" });
+  });
+});
+
+describe("Zusammenarbeit und Abnahme", () => {
+  const mit = (team: Record<string, unknown>) => entwurf({ team: { ...TEAM, ...team } });
+
+  it.each(["aus", "leitung_fuehrt"])("Zusammenarbeit „%s“ wird gelesen", (wert) => {
+    const ergebnis = leseEntwurf(mit({ zusammenarbeit: wert }));
+    expect(ergebnis.ok && ergebnis.entwurf.team.zusammenarbeit).toBe(wert);
+  });
+
+  it.each(["leitung", "besitzer", "ohne"])("Abnahme „%s“ wird gelesen", (wert) => {
+    const ergebnis = leseEntwurf(mit({ abnahme: wert }));
+    expect(ergebnis.ok && ergebnis.entwurf.team.abnahme).toBe(wert);
+  });
+
+  it("fehlt die Zusammenarbeit oder die Abnahme, ist der Entwurf ungültig (kein stiller Standard)", () => {
+    const { zusammenarbeit: _z, ...ohneZ } = TEAM;
+    const { abnahme: _a, ...ohneA } = TEAM;
+    expect(fehlerVon(entwurf({ team: { ...ohneZ, leitung: { name: "Eins" } } }))).toContainEqual({
+      pfad: "team.zusammenarbeit",
+      code: "ungueltiger_wert",
+    });
+    expect(fehlerVon(entwurf({ team: { ...ohneA, leitung: { name: "Eins" } } }))).toContainEqual({
+      pfad: "team.abnahme",
+      code: "ungueltiger_wert",
     });
   });
 
-  it("Pai als Ansprechpartner", () => {
-    const ergebnis = leseEntwurf(entwurf());
-    expect(ergebnis.ok && ergebnis.entwurf.team.ansprechpartner).toEqual({ art: "pai" });
+  it.each([
+    ["Zusammenarbeit", "alle_frei"],
+    ["Zusammenarbeit", "Leitung_fuehrt"],
+    ["Zusammenarbeit", "leitung führt"],
+    ["Zusammenarbeit", ""],
+    ["Zusammenarbeit", true],
+    ["Zusammenarbeit", null],
+    ["Abnahme", "freigeben"],
+    ["Abnahme", "Leitung"],
+    ["Abnahme", "pai"],
+    ["Abnahme", 1],
+  ])("unbekannter Wert wird abgelehnt: %s = %j", (feld, wert) => {
+    const schluessel = feld === "Abnahme" ? "abnahme" : "zusammenarbeit";
+    const fehler = fehlerVon(mit({ [schluessel]: wert }));
+    expect(fehler.some((f) => f.pfad === `team.${schluessel}`)).toBe(true);
+  });
+
+  it("ein Wert wird nie gekürzt oder bereinigt: Leerraum macht ihn ungültig", () => {
+    expect(fehlerVon(mit({ zusammenarbeit: " aus" }))[0]?.pfad).toBe("team.zusammenarbeit");
+  });
+
+  it("keine Variante C: weitere Felder der Zusammenarbeit werden abgelehnt", () => {
+    expect(fehlerVon(mit({ zusammenarbeit: { art: "frei" } }))[0]?.pfad).toBe(
+      "team.zusammenarbeit",
+    );
+    expect(fehlerVon(mit({ uebergaben: ["Eins"] }))).toContainEqual({
+      pfad: "team.uebergaben",
+      code: "unbekanntes_feld",
+    });
   });
 });
 
@@ -410,9 +546,14 @@ describe("Modelle nur aus der eigenen Liste", () => {
 
 describe("Abdruck", () => {
   const klein = {
-    format: "pb-teamentwurf/v1",
+    format: "pb-teamentwurf/v2",
     titel: "Mini-Team",
-    team: { name: "Mini", ansprechpartner: { art: "pai" } },
+    team: {
+      name: "Mini",
+      leitung: { name: "Ideen" },
+      zusammenarbeit: "aus",
+      abnahme: "besitzer",
+    },
     bots: [{ name: "Ideen", aufgabe: "Themen sammeln", anweisung: "Sammle Themen." }],
   };
 
@@ -424,16 +565,21 @@ describe("Abdruck", () => {
 
   it("hat die festgelegte Form (Bekannter Wert, unabhängig mit sha256sum berechnet)", async () => {
     expect(await abdruckVon(klein)).toBe(
-      "sha256:9c49b4b41911485411ba90eaef5551edcb47b4ccd4d5709fadb70fd451271e6f",
+      "sha256:be4ab78bb3a2cbd96082e4d9aaa65380c780e1b55a4bac76f1994c79c4509087",
     );
   });
 
   it("hängt nicht von der Reihenfolge der Felder ab", async () => {
     const umgedreht = {
       bots: [{ anweisung: "Sammle Themen.", aufgabe: "Themen sammeln", name: "Ideen" }],
-      team: { ansprechpartner: { art: "pai" }, name: "Mini" },
+      team: {
+        abnahme: "besitzer",
+        zusammenarbeit: "aus",
+        leitung: { name: "Ideen" },
+        name: "Mini",
+      },
       titel: "Mini-Team",
-      format: "pb-teamentwurf/v1",
+      format: "pb-teamentwurf/v2",
     };
     expect(await abdruckVon(umgedreht)).toBe(await abdruckVon(klein));
   });
@@ -448,8 +594,19 @@ describe("Abdruck", () => {
       { ...klein, titel: "Mini-Team." },
       { ...klein, beschreibung: "Eine Beschreibung" },
       { ...klein, team: { ...klein.team, name: "Mini2" } },
-      { ...klein, team: { ...klein.team, ansprechpartner: { art: "bot", name: "Ideen" } } },
-      { ...klein, bots: [{ ...klein.bots[0], name: "Ideen2" }] },
+      { ...klein, team: { ...klein.team, zusammenarbeit: "leitung_fuehrt" } },
+      { ...klein, team: { ...klein.team, abnahme: "leitung" } },
+      { ...klein, team: { ...klein.team, abnahme: "ohne" } },
+      {
+        ...klein,
+        team: { ...klein.team, leitung: { name: "Zwei" } },
+        bots: [...klein.bots, { name: "Zwei", aufgabe: "a", anweisung: "b" }],
+      },
+      {
+        ...klein,
+        team: { ...klein.team, leitung: { name: "Ideen2" } },
+        bots: [{ ...klein.bots[0], name: "Ideen2" }],
+      },
       { ...klein, bots: [{ ...klein.bots[0], aufgabe: "Themen sammeln." }] },
       { ...klein, bots: [{ ...klein.bots[0], anweisung: "Sammle Themen. " }] },
       { ...klein, bots: [{ ...klein.bots[0], modell: { slug: "m" } }] },
@@ -465,8 +622,16 @@ describe("Abdruck", () => {
   });
 
   it("gleicher Inhalt in anderer Schreibweise (NFC, Leerraum) ergibt denselben Abdruck", async () => {
-    const a = { ...klein, bots: [{ ...klein.bots[0], name: "Café" }] };
-    const b = { ...klein, bots: [{ ...klein.bots[0], name: "  Café " }] };
+    const a = {
+      ...klein,
+      team: { ...klein.team, leitung: { name: "Café" } },
+      bots: [{ ...klein.bots[0], name: "Café" }],
+    };
+    const b = {
+      ...klein,
+      team: { ...klein.team, leitung: { name: "   Café " } },
+      bots: [{ ...klein.bots[0], name: "    Café  " }],
+    };
     expect(await abdruckVon(a)).toBe(await abdruckVon(b));
   });
 
@@ -491,7 +656,7 @@ describe("Text-Eingabe", () => {
   });
 
   it("kein JSON", async () => {
-    for (const text of ["", "Hallo", "{", "{'a':1}", "format: pb-teamentwurf/v1"]) {
+    for (const text of ["", "Hallo", "{", "{'a':1}", "format: pb-teamentwurf/v2"]) {
       expect(await pruefeEntwurfText(text)).toEqual({
         ok: false,
         fehler: [{ pfad: "", code: "kein_json" }],
@@ -531,29 +696,28 @@ describe("Text-Eingabe", () => {
   });
 });
 
-describe("Fassung 1 kennt keine Übergaben zwischen Bots", () => {
+describe("Fassung 2 kennt keine Übergabe-Regeln, Rechte und App-Zugriffe", () => {
   const teile = [
     "uebergaben",
     "uebergabe",
-    "zusammenarbeit",
     "handoff",
     "delegation",
     "uebergabeWege",
+    "rechte",
+    "appZugriffe",
+    "regeln",
   ];
 
-  it("kein Übergabe-Teil am Entwurf, am Team oder am Bot: unbekannte Felder werden abgelehnt", () => {
+  it("kein solcher Teil am Entwurf, am Team oder am Bot: unbekannte Felder werden abgelehnt", () => {
     for (const name of teile) {
       expect(fehlerVon(entwurf({ [name]: true }))).toContainEqual({
         pfad: name,
         code: "unbekanntes_feld",
       });
-      expect(
-        fehlerVon(
-          entwurf({
-            team: { name: "T", ansprechpartner: { art: "pai" }, [name]: { erlaubt: true } },
-          }),
-        ),
-      ).toContainEqual({ pfad: `team.${name}`, code: "unbekanntes_feld" });
+      expect(fehlerVon(entwurf({ team: { ...TEAM, [name]: { erlaubt: true } } }))).toContainEqual({
+        pfad: `team.${name}`,
+        code: "unbekanntes_feld",
+      });
       expect(fehlerVon(entwurf({ bots: [bot("A", { [name]: ["B"] })] }))).toContainEqual({
         pfad: `bots[0].${name}`,
         code: "unbekanntes_feld",
@@ -561,19 +725,193 @@ describe("Fassung 1 kennt keine Übergaben zwischen Bots", () => {
     }
   });
 
-  it("ein Entwurf ohne Übergabe-Teil legt nichts fest: das geprüfte Ergebnis hat keinen", () => {
+  it("das geprüfte Ergebnis hat genau die Felder der Fassung", () => {
     const ergebnis = leseEntwurf(entwurf());
     if (!ergebnis.ok) throw new Error("ungültig");
     expect(Object.keys(ergebnis.entwurf).sort()).toEqual(["bots", "format", "team", "titel"]);
-    expect(Object.keys(ergebnis.entwurf.team).sort()).toEqual(["ansprechpartner", "name"]);
+    expect(Object.keys(ergebnis.entwurf.team).sort()).toEqual([
+      "abnahme",
+      "leitung",
+      "name",
+      "zusammenarbeit",
+    ]);
   });
 
-  it("ein späterer Übergabe-Teil kann nur mit neuer Fassung kommen: eine andere Fassung wird abgelehnt", () => {
+  it("eine spätere Fassung wird nicht geraten: eine andere Fassung wird abgelehnt", () => {
     expect(
-      fehlerVon(entwurf({ format: "pb-teamentwurf/v2", zusammenarbeit: { uebergaben: false } })),
-    ).toContainEqual({
-      pfad: "format",
-      code: "ungueltiger_wert",
+      fehlerVon(entwurf({ format: "pb-teamentwurf/v3", zusammenarbeit: { uebergaben: false } })),
+    ).toContainEqual({ pfad: "format", code: "ungueltiger_wert" });
+  });
+});
+
+describe("Fassung 1 wird weiter gelesen und in Fassung 2 überführt", () => {
+  const alt = (extra: Record<string, unknown> = {}) => entwurfV1(extra);
+  const mitBot = (name: string) => ({ name: "Beispiel", ansprechpartner: { art: "bot", name } });
+
+  it("Ansprechpartner Bot wird die Leitung; Zusammenarbeit „aus“, Abnahme „besitzer“", () => {
+    const ergebnis = leseEntwurf(alt({ team: mitBot("zwei") }));
+    if (!ergebnis.ok) throw new Error("ungültig");
+    expect(ergebnis.herkunft).toBe("v1");
+    expect(ergebnis.entwurf.format).toBe("pb-teamentwurf/v2");
+    expect(ergebnis.entwurf.team).toEqual({
+      name: "Beispiel",
+      leitung: { name: "Zwei" },
+      zusammenarbeit: "aus",
+      abnahme: "besitzer",
+    });
+  });
+
+  it("verliert nichts: Titel, Beschreibung, Teamname und alle Felder aller Bots bleiben gleich", () => {
+    const roh = alt({
+      beschreibung: "Eine Beschreibung",
+      team: mitBot("Eins"),
+      bots: [
+        bot("Eins", { modell: { slug: "m-1" }, form: "wabe", farbe: "pink", antwortLaenge: 900 }),
+        bot("Zwei", { anweisung: "  Zeile 1\n\tZeile 2\n" }),
+      ],
+    });
+    const alt1 = leseEntwurfV1(roh);
+    const neu = leseEntwurf(roh);
+    if (!alt1.ok || !neu.ok) throw new Error("ungültig");
+    expect(neu.entwurf.bots).toEqual(alt1.entwurf.bots);
+    expect(neu.entwurf.titel).toBe(alt1.entwurf.titel);
+    expect(neu.entwurf.beschreibung).toBe("Eine Beschreibung");
+    expect(neu.entwurf.team.name).toBe(alt1.entwurf.team.name);
+  });
+
+  it("Ansprechpartner Pai: ohne Angabe der Leitung wird nichts erraten", () => {
+    expect(fehlerVon(alt())).toEqual([{ pfad: "team.leitung", code: "leitung_fehlt" }]);
+  });
+
+  it("Ansprechpartner Pai: mit ausdrücklich genannter Leitung geht es", () => {
+    const ergebnis = leseEntwurf(alt(), { leitungFuerV1: "zwei" });
+    expect(ergebnis.ok && ergebnis.entwurf.team.leitung).toEqual({ name: "Zwei" });
+    const falsch = leseEntwurf(alt(), { leitungFuerV1: "Fremd" });
+    expect(falsch.ok).toBe(false);
+  });
+
+  it("hat der Entwurf einen Bot als Ansprechpartner, gilt dieser und nicht die Angabe", () => {
+    const ergebnis = leseEntwurf(alt({ team: mitBot("Eins") }), { leitungFuerV1: "Zwei" });
+    expect(ergebnis.ok && ergebnis.entwurf.team.leitung).toEqual({ name: "Eins" });
+  });
+
+  it("die Prüfungen von Fassung 2 gelten auch für überführte Entwürfe (Name „Team …“)", () => {
+    const roh = alt({ team: mitBot("Eins"), bots: [bot("Eins"), bot("Team Zwei")] });
+    expect(leseEntwurfV1(roh).ok).toBe(true);
+    expect(fehlerVon(roh)).toContainEqual({ pfad: "bots[1].name", code: "name_reserviert" });
+  });
+
+  it("Fassung 1 gilt weiter streng: unbekannte Felder und ein unbekannter Ansprechpartner", () => {
+    expect(fehlerVon(alt({ rechte: [] }))).toContainEqual({
+      pfad: "rechte",
+      code: "unbekanntes_feld",
+    });
+    expect(fehlerVon(alt({ team: mitBot("Fremd") }))).toContainEqual({
+      pfad: "team.ansprechpartner.name",
+      code: "ansprechpartner_unbekannt",
+    });
+    expect(fehlerVon(alt({ team: { ...mitBot("Eins"), zusammenarbeit: "aus" } }))).toContainEqual({
+      pfad: "team.zusammenarbeit",
+      code: "unbekanntes_feld",
+    });
+  });
+
+  it("Fassung 2 mit einem Feld aus Fassung 1 (Ansprechpartner) wird abgelehnt, nicht überführt", () => {
+    const roh = entwurf({ team: { ...TEAM, ansprechpartner: { art: "pai" } } });
+    expect(fehlerVon(roh)).toContainEqual({
+      pfad: "team.ansprechpartner",
+      code: "unbekanntes_feld",
+    });
+  });
+
+  it("pruefeEntwurf liest Fassung 1, überführt und bildet den Abdruck der Fassung 2", async () => {
+    const ergebnis = await pruefeEntwurf(alt({ team: mitBot("Eins") }));
+    if (!ergebnis.ok) throw new Error("ungültig");
+    expect(ergebnis.herkunft).toBe("v1");
+    expect(ergebnis.abdruck).toBe(await entwurfAbdruck(ergebnis.entwurf));
+  });
+});
+
+describe("Der Abdruck bindet die Fassung", () => {
+  it("derselbe Entwurf in Fassung 1 und in Fassung 2 hat verschiedene Abdrücke", async () => {
+    const roh = entwurfV1({
+      team: { name: "Beispiel", ansprechpartner: { art: "bot", name: "Eins" } },
+    });
+    const alt = leseEntwurfV1(roh);
+    const neu = leseEntwurf(roh);
+    if (!alt.ok || !neu.ok) throw new Error("ungültig");
+    const abdruckAlt = await entwurfAbdruckV1(alt.entwurf);
+    const abdruckNeu = await entwurfAbdruck(neu.entwurf);
+    expect(abdruckAlt).not.toBe(abdruckNeu);
+    expect(abdruckAlt).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it("derselbe Inhalt mit dem Vorsatz der anderen Fassung ergibt einen anderen Abdruck", async () => {
+    const neu = leseEntwurf(entwurf());
+    if (!neu.ok) throw new Error("ungültig");
+    const text = JSON.stringify(neu.entwurf);
+    expect(text.length).toBeGreaterThan(0);
+    // Unabhängig berechnet: Vorsatz v2 ergibt den Abdruck der Funktion, Vorsatz v1 nicht.
+    const sha = async (vorsatz: string) => {
+      const kanon = (w: unknown): string =>
+        Array.isArray(w)
+          ? `[${w.map(kanon).join(",")}]`
+          : typeof w === "object" && w !== null
+            ? `{${Object.keys(w)
+                .sort()
+                .map((k) => `${JSON.stringify(k)}:${kanon((w as Record<string, unknown>)[k])}`)
+                .join(",")}}`
+            : JSON.stringify(w);
+      const summe = createHash("sha256")
+        .update(`${vorsatz}${kanon(neu.entwurf)}`)
+        .digest("hex");
+      return `sha256:${summe}`;
+    };
+    expect(await entwurfAbdruck(neu.entwurf)).toBe(await sha("pb-teamentwurf/v2\n"));
+    expect(await entwurfAbdruck(neu.entwurf)).not.toBe(await sha("pb-teamentwurf/v1\n"));
+  });
+
+  it("Zusammenarbeit und Abnahme gehören zum Abdruck", async () => {
+    const abdruck = async (team: Record<string, unknown>) => {
+      const e = await pruefeEntwurf(entwurf({ team: { ...TEAM, ...team } }));
+      if (!e.ok) throw new Error("ungültig");
+      return e.abdruck;
+    };
+    const basis = await abdruck({});
+    expect(await abdruck({ zusammenarbeit: "leitung_fuehrt" })).not.toBe(basis);
+    expect(await abdruck({ abnahme: "leitung" })).not.toBe(basis);
+  });
+});
+
+describe("Entwürfe, die ein Modell schreibt, haben keine Zusammenarbeit", () => {
+  const fuehrt = entwurf({ team: { ...TEAM, zusammenarbeit: "leitung_fuehrt" } });
+
+  it("„Leitung führt“ wird „aus“, mit Hinweis; der Abdruck gilt für den geänderten Entwurf", async () => {
+    const ergebnis = await pruefeEntwurf(fuehrt, { quelle: "assistent" });
+    if (!ergebnis.ok) throw new Error("ungültig");
+    expect(ergebnis.entwurf.team.zusammenarbeit).toBe("aus");
+    expect(ergebnis.hinweise).toContainEqual({ code: "zusammenarbeit_auf_aus" });
+    expect(ergebnis.abdruck).toBe(await entwurfAbdruck(ergebnis.entwurf));
+  });
+
+  it("steht schon „aus“ da, gibt es keinen Hinweis", async () => {
+    const ergebnis = await pruefeEntwurf(entwurf(), { quelle: "assistent" });
+    expect(ergebnis.ok && ergebnis.hinweise).toEqual([]);
+  });
+
+  it("eine Vorlage oder Datei behält ihren Wert (die Vorschau zeigt ihn)", async () => {
+    const ergebnis = await pruefeEntwurf(fuehrt);
+    expect(ergebnis.ok && ergebnis.entwurf.team.zusammenarbeit).toBe("leitung_fuehrt");
+  });
+
+  it("die Leitung und die Abnahme bleiben, wie sie sind", async () => {
+    const roh = entwurf({
+      team: { ...TEAM, zusammenarbeit: "leitung_fuehrt", abnahme: "leitung" },
+    });
+    const ergebnis = await pruefeEntwurf(roh, { quelle: "assistent" });
+    expect(ergebnis.ok && ergebnis.entwurf.team).toMatchObject({
+      leitung: { name: "Eins" },
+      abnahme: "leitung",
     });
   });
 });
