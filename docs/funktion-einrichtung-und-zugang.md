@@ -140,14 +140,16 @@ Eine Adresse, die es in PaiBot nicht gibt, führt zu dieser Seite mit einem Link
 
 **Beim Start in Produktion prüft PaiBot `APP_URL`:**
 
-| `APP_URL`                                                         | Ergebnis                                                                 |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| fehlt, ist keine Adresse oder enthält Benutzer und Passwort       | Start bricht ab, mit Meldung im Log                                      |
-| `http://` mit öffentlicher Adresse oder öffentlichem Namen        | Start bricht ab: Passwort und Sitzung gingen unverschlüsselt durchs Netz |
-| `http://` im eigenen Netz (`192.168.…`, `10.…`, `nas`, `….local`) | Start mit Warnung                                                        |
-| `http://localhost`, `http://127.0.0.1`                            | Start ohne Warnung (eigener Rechner)                                     |
-| `https://…`                                                       | Start ohne Warnung                                                       |
-| mit Pfad oder Abfrage (`https://…/app`)                           | Start mit Warnung; es zählt nur der Ursprung                             |
+| `APP_URL`                                                                                      | Ergebnis                                                                 |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| fehlt, ist keine Adresse oder enthält Benutzer und Passwort                                    | Start bricht ab, mit Meldung im Log                                      |
+| `http://` mit öffentlicher Adresse (IPv4 oder IPv6) oder öffentlichem Namen                    | Start bricht ab: Passwort und Sitzung gingen unverschlüsselt durchs Netz |
+| `http://` im eigenen Netz (`192.168.…`, `10.…`, `[fd…]`, `[fe80…]`, `nas`, `….local`, `….lan`) | Start mit Warnung                                                        |
+| `http://localhost`, `http://127.0.0.1`, `http://[::1]`                                         | Start ohne Warnung (eigener Rechner)                                     |
+| `https://…`                                                                                    | Start ohne Warnung                                                       |
+| mit Pfad oder Abfrage (`https://…/app`)                                                        | Start mit Warnung; es zählt nur der Ursprung                             |
+
+Ein Name, der nur wie eine Adresse beginnt (etwa `127.irgendwas.de` oder `10.irgendwas.de`), ist ein öffentlicher Name und zählt nicht als eigener Rechner oder eigenes Netz.
 
 Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal einen Hinweis ins Log. Dann scheitern Anmelden und Einrichtung, bis `APP_URL` genau die Adresse im Browser ist.
 

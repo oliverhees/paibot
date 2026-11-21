@@ -30,7 +30,7 @@ flowchart LR
 
 ### Healthcheck
 
-`GET /api/health` fragt die Datenbank ab und antwortet mit JSON, zum Beispiel `{"status":"ok","app":"PaiBot","db":"ok","time":"2026-11-20T10:00:00.000Z","version":"0.3.0"}`. `version` ist die Version von PaiBot ohne den Teil ab `+`.
+`GET /api/health` fragt die Datenbank ab und antwortet mit JSON, zum Beispiel `{"status":"ok","app":"PaiBot","db":"ok","time":"2026-11-20T10:00:00.000Z"}`. Er ist ohne Anmeldung erreichbar und nennt deshalb keine Version; die steht für Angemeldete in der Kopfzeile `X-Pb-Stand` und auf der Seite „Info“.
 
 | `db`             | `status`   | HTTP | Bedeutung                    |
 | ---------------- | ---------- | ---- | ---------------------------- |

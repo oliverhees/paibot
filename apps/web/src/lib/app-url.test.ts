@@ -29,6 +29,13 @@ describe("APP_URL in Produktion", () => {
       "ftp://paibot.example.de",
       "http://paibot.example.de",
       "http://203.0.113.7:3000",
+      "http://[2a01:4f8:c0c:1::1]",
+      "http://[2001:db8::1]:3000",
+      "http://[::ffff:8.8.8.8]",
+      "http://127.paibot-test.example.de",
+      "http://10.paibot-test.example.de",
+      "http://192.168.paibot.example.de",
+      "http://localhost.example.de",
       "https://nutzer:geheim@paibot.example.de",
     ]) {
       const env = { ...basis(), ...(wert === undefined ? {} : { APP_URL: wert }) };
@@ -45,6 +52,9 @@ describe("APP_URL in Produktion", () => {
       "http://localhost:3000",
       "http://127.0.0.1:41234",
       "http://[::1]:3000",
+      "http://[0:0:0:0:0:0:0:1]:3000",
+      "http://127.1.2.3",
+      "http://paibot.localhost",
     ]) {
       expect(checkProductionEnv({ ...basis(), APP_URL: wert }), wert).toEqual([]);
       expect(pruefeAppUrl({ APP_URL: wert }).warnungen, wert).toEqual([]);
@@ -52,7 +62,17 @@ describe("APP_URL in Produktion", () => {
   });
 
   it("warnt bei http im eigenen Netz und bei einem Pfad, bricht aber nicht ab", () => {
-    for (const wert of ["http://192.168.1.20:3000", "http://nas:3000", "http://paibot.local"]) {
+    for (const wert of [
+      "http://192.168.1.20:3000",
+      "http://10.0.0.5",
+      "http://172.20.1.1",
+      "http://[fd12:3456::1]:3000",
+      "http://[fe80::1]",
+      "http://[::ffff:192.168.1.2]",
+      "http://nas:3000",
+      "http://paibot.local",
+      "http://paibot.home.arpa",
+    ]) {
       expect(checkProductionEnv({ ...basis(), APP_URL: wert }), wert).toEqual([]);
       expect(pruefeAppUrl({ APP_URL: wert }).warnungen[0], wert).toContain("unverschlüsselt");
     }
