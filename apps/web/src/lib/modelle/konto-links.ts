@@ -9,6 +9,9 @@
  * @since     2026-11-21
  */
 
+/** Tag, an dem die Angaben der Anbieter (Aussagen, Bedingungen, Konto-Seiten) gelesen wurden. */
+export const ANGABEN_STAND = "21.11.2026";
+
 /** Anbieter, die die Auswahl in Einrichtung und auf „Modell und Anbieter“ anbietet. */
 export type AnbieterWahl = "eurouter" | "mistral" | "eigener";
 

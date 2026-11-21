@@ -12,7 +12,7 @@
 "use client";
 
 import "../../lib/ohne-auswertung";
-import type { BotColor, Region } from "@paibot/shared/objekte";
+import type { BotColor } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { AppShell, type AppShellFlaeche, type AppShellTexte, Icon } from "@paibot/ui";
 import Link from "next/link";
@@ -44,8 +44,8 @@ import { useSuche } from "./Suche";
 
 export interface AppRahmenProps {
   bot: { name: string; farbe: BotColor };
-  /** Region des Anbieters, über den der Bot sein Modell bezieht; fehlt ohne Anbieter oder Modell. */
-  region?: Region;
+  /** Herkunft der Modelle in Worten (`anbieterHerkunft`); fehlt ohne Anbieter. */
+  herkunft?: string;
   /** Unterhaltungen des Bots, neueste zuerst (vom Server; danach hält der Rahmen sie aktuell). */
   unterhaltungen: readonly UnterhaltungKurz[];
   /** Not-Aus an (vom Server); danach hält der Rahmen den Zustand selbst aktuell. */
@@ -119,7 +119,7 @@ function neuesteZuerst(liste: readonly UnterhaltungKurz[]): UnterhaltungKurz[] {
 
 export function AppRahmen({
   bot,
-  region,
+  herkunft,
   unterhaltungen: vomServer,
   notAus: notAusVomServer = false,
   hinweise,
@@ -173,7 +173,7 @@ export function AppRahmen({
         texte={shellTexte(bot.name)}
         navigation={{
           ort: t("navigation.ort"),
-          modelle: modelleHerkunft(region),
+          modelle: modelleHerkunft(herkunft),
           neu: { href: "/" },
           bot: {
             name: bot.name,

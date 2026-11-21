@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({
 const BEREIT: ChatBereitschaft = {
   botName: "Pai",
   botFarbe: "limette",
-  modell: { name: "Beispiel-Modell A", region: "eu" },
+  modell: { name: "Beispiel-Modell A", herkunft: "über EUrouter" },
   schluessel: true,
   schleuseInstalliert: false,
   schleuseStandard: "off",
@@ -117,7 +117,7 @@ describe("Chat-Ansicht", () => {
             }),
           ],
           belege: [beleg],
-          modelle: { mod_a: { name: "Beispiel-Modell A", region: "eu" } },
+          modelle: { mod_a: { name: "Beispiel-Modell A", herkunft: "über EUrouter" } },
         }),
       }),
     );

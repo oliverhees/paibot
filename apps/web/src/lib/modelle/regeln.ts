@@ -27,6 +27,7 @@ import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
 import type { EinrichtungsAnbieter } from "../umgebung";
 import type { ZugangsDienste } from "../zugang/dienste";
+import { antwortHerkunft, type UnterAnbieterListe } from "./herkunft";
 
 /** Ergebnis der Prüfung eines Namens, wie die Oberfläche es zeigt (nie mit Schlüssel). */
 export interface RegelErgebnis {
@@ -34,6 +35,8 @@ export interface RegelErgebnis {
   ok: boolean;
   /** Wer laut Antwort geantwortet hat (nur bei Erfolg, wenn gemeldet). */
   servedBy?: ServedBy;
+  /** Herkunft in Worten, z. B. „Antwort von Nebul · Sitz Niederlande laut EUrouter“. */
+  herkunft?: string;
   /** Satz zum Fehler mit Ausweg (nur bei Misserfolg). */
   text?: string;
   ausweg?: string;
@@ -91,6 +94,13 @@ export async function regelnPruefen(
   const jetzt = d.uhr.now().getTime();
   for (const [k, bis] of speicher) if (bis <= jetzt) speicher.delete(k);
   const ergebnisse: RegelErgebnis[] = [];
+  let liste: UnterAnbieterListe | undefined | null = null;
+  const herkunft = async (servedBy: ServedBy | undefined) => {
+    if (servedBy === undefined) return {};
+    if (liste === null) liste = await d.unterAnbieter(anbieter);
+    const text = antwortHerkunft(anbieter, servedBy, liste);
+    return text === undefined ? {} : { herkunft: text };
+  };
   for (const name of [...new Set(namen)]) {
     const m = merkmal(anbieter.baseUrl, schluessel, name);
     if (optionen.nurNeue === true && (speicher.get(m) ?? 0) > jetzt) {
@@ -104,6 +114,7 @@ export async function regelnPruefen(
         name,
         ok: true,
         ...(pruefung.servedBy === undefined ? {} : { servedBy: pruefung.servedBy }),
+        ...(await herkunft(pruefung.servedBy)),
       });
       continue;
     }
@@ -212,7 +223,11 @@ export async function anbieterRegelHinzufuegen(k: RoutenKontext<"anbieterRegelHi
   );
   const regel: RegelEintrag = { id: gespeichert.value.id as ModelId, name };
   return {
-    daten: { regel, ...(ergebnis.servedBy === undefined ? {} : { servedBy: ergebnis.servedBy }) },
+    daten: {
+      regel,
+      ...(ergebnis.servedBy === undefined ? {} : { servedBy: ergebnis.servedBy }),
+      ...(ergebnis.herkunft === undefined ? {} : { herkunft: ergebnis.herkunft }),
+    },
     status: 201,
   };
 }

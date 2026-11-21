@@ -38,7 +38,11 @@ export default async function UnterhaltungSeite({
   const db = datenbank();
   const verlauf = await ladeVerlauf(db, id);
   if (verlauf === undefined) notFound();
-  const bereitschaft = await ladeBereitschaft(db, await schleuseEingerichtet(db, prozessDienste()));
+  const bereitschaft = await ladeBereitschaft(
+    db,
+    await schleuseEingerichtet(db, prozessDienste()),
+    (anbieter) => prozessDienste().unterAnbieter(anbieter),
+  );
   return (
     <ChatSeite
       key={id}

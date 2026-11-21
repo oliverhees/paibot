@@ -38,8 +38,15 @@ export interface SchleuseAngabe {
 
 export interface ModellAngabe {
   name: string;
-  /** Herkunft des Modells; ergibt „EU“, „außerhalb der EU“ oder „lokal“. */
-  region: "eu" | "non_eu" | "local";
+  /** Herkunft des Modells; ergibt „EU“, „außerhalb der EU“ oder „lokal“ (nur für Beispiele). */
+  region?: "eu" | "non_eu" | "local";
+  /** Belegbare Herkunft in Worten; geht vor `region`. Fehlt beides, steht nur der Name. */
+  herkunft?: string;
+}
+
+function herkunftText(modell: ModellAngabe): string | undefined {
+  if (modell.herkunft !== undefined) return modell.herkunft;
+  return modell.region === undefined ? undefined : t(`modelle.region.${modell.region}`);
 }
 
 function belegText(beleg: BelegAngabe): string {
@@ -85,7 +92,7 @@ export function BelegZeile({ beleg }: { beleg: BelegAngabe }) {
 function schleuseText(s: SchleuseAngabe): string {
   return (
     s.text ??
-    (s.modus === "schleuse" ? t("schleuse.hinweis.schleuse") : t("schleuse.hinweis.direkt"))
+    (s.modus === "schleuse" ? t("schleuse.hinweis.schleuse") : t("schleuse.hinweis.direkt_neutral"))
   );
 }
 
@@ -135,7 +142,14 @@ export function SchleuseHinweis({
 
 /** Teil „Modell“: Name und Herkunft; schmal nur die Herkunft. */
 export function ModellHerkunft({ modell }: { modell: ModellAngabe }) {
-  const region = t(`modelle.region.${modell.region}`);
+  const region = herkunftText(modell);
+  if (region === undefined) {
+    return (
+      <span className={klassen(styles.teil, styles.modell)} title={modell.name}>
+        <span>{modell.name}</span>
+      </span>
+    );
+  }
   return (
     <span className={klassen(styles.teil, styles.modell)} title={`${modell.name} · ${region}`}>
       <span className={styles.lang}>{modell.name}</span>
@@ -162,7 +176,7 @@ export interface AntwortZeileProps {
 export function AntwortZeile({ beleg, schleuse, modell, details }: AntwortZeileProps) {
   const [offen, setOffen] = useState(false);
   const panelId = useId();
-  const region = t(`modelle.region.${modell.region}`);
+  const region = herkunftText(modell);
   return (
     <div className={styles.huelle}>
       <div className={styles.zeile}>
@@ -183,9 +197,7 @@ export function AntwortZeile({ beleg, schleuse, modell, details }: AntwortZeileP
             </li>
           )}
           <li>{schleuseText(schleuse)}</li>
-          <li>
-            {modell.name} · {region}
-          </li>
+          <li>{region === undefined ? modell.name : `${modell.name} · ${region}`}</li>
         </ul>
         {details}
       </div>

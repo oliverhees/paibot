@@ -1,7 +1,8 @@
 /**
- * PaiBot – Seite „Modell und Anbieter“ im Browser: Anbieter mit Region, Schlüssel eintragen,
- * ersetzen oder entfernen (mit Verbindungstest), Modell aus der Liste des Anbieters wählen. Eigene
- * oder lokale Anbieter lassen sich hinzufügen, ändern und entfernen.
+ * PaiBot – Seite „Modell und Anbieter“ im Browser: Anbieter mit belegbarer Herkunfts-Angabe,
+ * Schlüssel ersetzen oder entfernen (mit deutlichem Verbindungstest), Modell aus der Liste des
+ * Anbieters bzw. bei EUrouter eine Routing-Regel wählen. Anbieter (EUrouter, Mistral AI, eigener
+ * oder lokaler) lassen sich hinzufügen; eigene ändern und entfernen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -26,6 +27,7 @@ import {
   SeitenSpalte,
   Select,
   StatusChip,
+  TestErgebnis,
   TextField,
 } from "@paibot/ui";
 import { useRouter } from "next/navigation";
@@ -44,14 +46,22 @@ import {
   sucheZeigen,
 } from "../../../lib/modelle/ansicht";
 import { gezeigterAnbieter } from "../../../lib/modelle/eigen";
+import { anbieterHerkunft } from "../../../lib/modelle/herkunft";
+import type { ModelleSeitenDaten } from "../../../lib/modelle/seite";
+import { AnbieterAngaben, KontoLink } from "../../AnbieterAuswahl";
+import { AnbieterHinzufuegen } from "./AnbieterHinzufuegen";
 import { EigenerAnbieterForm } from "./EigenerAnbieterForm";
 import styles from "./modelle.module.css";
+import { type RegelEintragAnsicht, RegelnKarte } from "./RegelnKarte";
 
 export interface ModelleAnsichtProps {
   botName: string;
   /** Alle gespeicherten Anbieter, ohne Schlüssel. */
   anbieterListe: Provider[];
   vorlage: AnbieterVorlage;
+  vorlagen?: ModelleSeitenDaten["vorlagen"];
+  regeln?: Record<string, RegelEintragAnsicht[]>;
+  alteEintraege?: ModelleSeitenDaten["alteEintraege"];
   modell?: BotModell;
 }
 
@@ -62,6 +72,11 @@ type Liste =
   | { zustand: "fertig"; modelle: ModellZeile[] };
 
 type Meldung = { art: "ok" | "fehler"; text: string; ausweg?: string } | undefined;
+
+/** Kann die Seite die Modell-Liste holen? Bei EUrouter nie (dort Routing-Regeln). */
+function listeHolbar(a: Provider | undefined): boolean {
+  return a !== undefined && a.templateKey !== "eurouter" && listeMoeglich(a);
+}
 
 function koerperVon(a: Pick<Provider, "templateKey" | "name" | "baseUrl" | "region">) {
   return { templateKey: a.templateKey, name: a.name, baseUrl: a.baseUrl, region: a.region };
@@ -91,19 +106,20 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
   );
   const anbieter = gezeigterAnbieter(alle, gezeigtId, modell?.anbieterId);
   const erster = gezeigterAnbieter(props.anbieterListe, undefined, props.modell?.anbieterId);
-  const [formOffen, setFormOffen] = useState(erster === undefined);
+  const [formOffen, setFormOffen] = useState(false);
+  const [regeln, setRegeln] = useState<Record<string, RegelEintragAnsicht[]>>(props.regeln ?? {});
+  const [testErgebnis, setTestErgebnis] = useState<
+    { art: "ok" | "fehler"; titel: string; text: string } | undefined
+  >();
   const [bearbeiten, setBearbeiten] = useState(false);
-  const [neuOffen, setNeuOffen] = useState(false);
-  const [neuMeldung, setNeuMeldung] = useState<Meldung>();
   const [schluessel, setSchluessel] = useState("");
   const [feldFehler, setFeldFehler] = useState<string | undefined>();
   const [testLaeuft, setTestLaeuft] = useState(false);
   const [speichert, setSpeichert] = useState(false);
   const [schluesselMeldung, setSchluesselMeldung] = useState<Meldung>();
   const [dialogOffen, setDialogOffen] = useState(false);
-  const [entfernt, setEntfernt] = useState(false);
   const [liste, setListe] = useState<Liste>({
-    zustand: listeMoeglich(erster) ? "laedt" : "aus",
+    zustand: listeHolbar(erster) ? "laedt" : "aus",
   });
   const [suche, setSuche] = useState("");
   const [auswahl, setAuswahl] = useState<string | undefined>(props.modell?.id);
@@ -112,10 +128,9 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
   const listenName = useId();
 
   const name = anbieter?.name ?? vorlage.name;
-  const region = anbieter?.region ?? vorlage.region;
 
   const listeLaden = useCallback(async (a: Provider | undefined): Promise<number | undefined> => {
-    if (!listeMoeglich(a) || a === undefined) {
+    if (!listeHolbar(a) || a === undefined) {
       setListe({ zustand: "aus" });
       return undefined;
     }
@@ -168,6 +183,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
 
   async function verbindungTesten() {
     setSchluesselMeldung(undefined);
+    setTestErgebnis(undefined);
     if (formOffen && schluessel.trim() === "") {
       setFeldFehler(t("modelle.schluessel.leer"));
       return;
@@ -177,22 +193,28 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     const koerper: { providerId?: string; apiKey?: string } = {};
     if (anbieter !== undefined) koerper.providerId = anbieter.id;
     if (formOffen) koerper.apiKey = schluessel;
-    const antwort = await apiFetch<{ anzahl: number }>(
+    const antwort = await apiFetch<{ anzahl: number; regel?: string }>(
       "POST",
       "/api/anbieter/verbindungstest",
       koerper,
     );
     setTestLaeuft(false);
     if (antwort.ok) {
-      setSchluesselMeldung({
+      setTestErgebnis({
         art: "ok",
-        text: t("modelle.verbindung.ok_anzahl", { anzahl: antwort.daten.anzahl }),
+        titel: t("anbieterwahl.test.ok"),
+        text:
+          antwort.daten.regel !== undefined
+            ? t("modelle.verbindung.ok_regel", { name: antwort.daten.regel })
+            : anbieter?.templateKey === "eurouter"
+              ? t("modelle.verbindung.ok_ohne_regel")
+              : t("modelle.verbindung.ok_anzahl", { anzahl: antwort.daten.anzahl }),
       });
     } else {
-      setSchluesselMeldung({
+      setTestErgebnis({
         art: "fehler",
-        text: antwort.fehler.text,
-        ...(antwort.fehler.ausweg ? { ausweg: antwort.fehler.ausweg } : {}),
+        titel: t("anbieterwahl.test.fehler"),
+        text: [antwort.fehler.text, antwort.fehler.ausweg].filter(Boolean).join(" "),
       });
     }
   }
@@ -228,7 +250,6 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
       return;
     }
     anbieterUebernehmen(antwort.daten.anbieter);
-    setEntfernt(false);
     formSchliessen();
     setSchluesselMeldung({
       art: "ok",
@@ -269,14 +290,12 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     setGezeigtId(naechster?.id);
     if (naechster === undefined) {
       setListe({ zustand: "aus" });
-      setEntfernt(true);
       setSchluesselMeldung({
         art: "ok",
         text: eigenerAnbieter(weg)
           ? t("modelle.eigen.entfernt", { anbieter: weg.name })
           : t("modelle.schluessel.entfernt"),
       });
-      setFormOffen(true);
     } else {
       setSchluesselMeldung({
         art: "ok",
@@ -291,17 +310,13 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     const vorher = anbieter;
     anbieterUebernehmen(neu);
     setBearbeiten(false);
-    setNeuOffen(false);
-    setEntfernt(false);
     formSchliessen();
     setModellMeldung(undefined);
     const gespeichert: Meldung = {
       art: "ok",
       text: t("modelle.eigen.gespeichert", { anbieter: neu.name }),
     };
-    // Beim Anlegen steht die Meldung an der Karte, aus der gespeichert wurde.
-    if (angelegt) setNeuMeldung(gespeichert);
-    else setSchluesselMeldung(gespeichert);
+    setSchluesselMeldung(gespeichert);
     if (angelegt || vorher?.id !== neu.id) setSuche("");
     void listeLaden(neu);
     router.refresh();
@@ -361,7 +376,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
             value={anbieter.id}
             optionen={alle.map((a) => ({
               wert: a.id,
-              text: `${a.name} · ${regionText(a.region)}`,
+              text: a.templateKey === "eigener" ? anbieterHerkunft(a) : a.name,
             }))}
             onChange={(e) => anbieterZeigen(e.target.value)}
             hilfe={t("modelle.eigen.auswahl.hilfe")}
@@ -381,12 +396,26 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         <dl className={styles.angaben}>
           <dt>{t("modelle.anbieter.adresse")}</dt>
           <dd className={styles.mono}>{anbieter?.baseUrl ?? vorlage.baseUrl}</dd>
-          <dt>{t("modelle.anbieter.region")}</dt>
+          <dt>{t("herkunft.titel")}</dt>
           <dd>
-            <StatusChip art="eu">{regionText(region)}</StatusChip>{" "}
-            <span className={styles.leise}>
-              {t(`modelle.region.text.${region}`, { anbieter: name })}
-            </span>
+            {anbieter === undefined ? (
+              <span className={styles.leise}>{t("herkunft.keiner")}</span>
+            ) : anbieter.templateKey === "eigener" ? (
+              <>
+                <StatusChip art="neutral">{regionText(anbieter.region)}</StatusChip>{" "}
+                <span className={styles.leise}>{t("herkunft.eigen.text")}</span>
+              </>
+            ) : (
+              <span className={styles.herkunftAngaben}>
+                {anbieter.templateKey === "eurouter" && (
+                  <span className={styles.leise}>
+                    {t("herkunft.eurouter.text", { anbieter: anbieter.name })}
+                  </span>
+                )}
+                <AnbieterAngaben wahl={anbieter.templateKey} />
+                <KontoLink wahl={anbieter.templateKey} />
+              </span>
+            )}
           </dd>
           <dt>{t("modelle.schluessel")}</dt>
           <dd>
@@ -406,10 +435,10 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
             )}
           </dd>
         </dl>
-        {anbieter === undefined && !entfernt && (
+        {anbieter === undefined && (
           <EmptyState
             titel={t("modelle.anbieter.keiner.titel")}
-            text={t("modelle.anbieter.keiner.text", { anbieter: name, name: botName })}
+            text={t("anbieterwahl.keiner.text", { name: botName })}
           />
         )}
         <p className={styles.leise}>{t("modelle.schluessel.verdeckt")}</p>
@@ -423,7 +452,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
           />
         )}
 
-        {formOffen && !bearbeiten && (
+        {formOffen && !bearbeiten && anbieter !== undefined && (
           <div className={styles.form}>
             <TextField
               label={t("modelle.schluessel.neu", { anbieter: name })}
@@ -451,7 +480,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
           </div>
         )}
 
-        {!bearbeiten && (
+        {!bearbeiten && anbieter !== undefined && (
           <div className={styles.knoepfe}>
             {formOffen ? (
               <>
@@ -510,155 +539,160 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         )}
         <div role="status" aria-live="polite" className={styles.live}>
           {testLaeuft && <span className={styles.leise}>{t("modelle.verbindung.laeuft")}</span>}
+          {testErgebnis && (
+            <TestErgebnis art={testErgebnis.art} titel={testErgebnis.titel}>
+              {testErgebnis.text}
+            </TestErgebnis>
+          )}
           <MeldungZeile meldung={schluesselMeldung} />
         </div>
       </Karte>
 
-      <Karte
-        titel={t("modelle.liste.titel", { name: botName })}
-        rechts={
-          liste.zustand === "fertig" ? (
-            <span className={styles.leise}>
-              {t("modelle.liste.anzahl", { anzahl: liste.modelle.length })}
-            </span>
-          ) : undefined
-        }
-      >
-        <p className={styles.aktuell}>
-          {modell
-            ? t("modelle.aktuell.text", { name: botName, modell: modell.displayName })
-            : t("modelle.aktuell.keins", { name: botName })}
-        </p>
-        <p className={styles.leise}>{t("modelle.liste.text", { anbieter: name })}</p>
+      {anbieter?.templateKey === "eurouter" ? (
+        <RegelnKarte
+          key={anbieter.id}
+          anbieter={anbieter}
+          botName={botName}
+          regeln={regeln[anbieter.id] ?? []}
+          alte={props.alteEintraege?.[anbieter.id] ?? []}
+          {...(modell === undefined ? {} : { modell })}
+          onRegeln={(neu) => setRegeln((alt) => ({ ...alt, [anbieter.id]: neu }))}
+          onModell={(neu) => {
+            setModell(neu);
+            router.refresh();
+          }}
+        />
+      ) : (
+        <Karte
+          titel={t("modelle.liste.titel", { name: botName })}
+          rechts={
+            liste.zustand === "fertig" ? (
+              <span className={styles.leise}>
+                {t("modelle.liste.anzahl", { anzahl: liste.modelle.length })}
+              </span>
+            ) : undefined
+          }
+        >
+          <p className={styles.aktuell}>
+            {modell
+              ? t("modelle.aktuell.text", { name: botName, modell: modell.displayName })
+              : t("modelle.aktuell.keins", { name: botName })}
+          </p>
+          <p className={styles.leise}>{t("modelle.liste.text", { anbieter: name })}</p>
 
-        {liste.zustand === "aus" && (
-          <p className={styles.leise}>{t("modelle.liste.ohne_schluessel")}</p>
-        )}
-        {liste.zustand === "laedt" && (
-          <LoadingState text={t("modelle.liste.laedt", { anbieter: name })} />
-        )}
-        {liste.zustand === "fehler" && (
-          <ErrorState
-            code={liste.fehler.code}
-            titel={liste.fehler.text}
-            {...(liste.fehler.ausweg ? { ausweg: liste.fehler.ausweg } : {})}
-            aktion={
-              <Button art="zweit" onClick={() => void listeLaden(anbieter)}>
-                {t("modelle.liste.neu_laden")}
-              </Button>
-            }
-          />
-        )}
-        {liste.zustand === "fertig" && liste.modelle.length === 0 && (
-          <ErrorState
-            titel={t("modelle.liste.leer", { anbieter: name })}
-            ausweg={listeLeerAusweg({
-              name,
-              templateKey: anbieter?.templateKey ?? vorlage.templateKey,
-            })}
-            aktion={
-              <Button art="zweit" onClick={() => void listeLaden(anbieter)}>
-                {t("modelle.liste.neu_laden")}
-              </Button>
-            }
-          />
-        )}
-        {liste.zustand === "fertig" && liste.modelle.length > 0 && (
-          <>
-            {sucheZeigen(liste.modelle) && (
-              <TextField
-                label={t("modelle.suche")}
-                type="search"
-                value={suche}
-                onChange={(e) => setSuche(e.target.value)}
-              />
-            )}
-            {gefiltert.length === 0 ? (
-              <p className={styles.leise}>{t("modelle.liste.keine_treffer", { suche })}</p>
-            ) : (
-              <fieldset className={styles.liste}>
-                <legend className={styles.unsichtbar}>
-                  {t("modelle.liste.name", { anbieter: name })}
-                </legend>
-                {gefiltert.map((m) => {
-                  const istAktuell = modell?.id === m.id;
-                  return (
-                    <label
-                      key={m.id}
-                      className={styles.modell}
-                      data-gewaehlt={auswahl === m.id || undefined}
-                    >
-                      <input
-                        type="radio"
-                        name={listenName}
-                        value={m.id}
-                        checked={auswahl === m.id}
-                        onChange={() => {
-                          setAuswahl(m.id);
-                          setModellMeldung(undefined);
-                        }}
-                      />
-                      <span className={styles.modellText}>
-                        <span className={styles.modellName}>
-                          <strong>{m.displayName}</strong>
-                          {istAktuell && <StatusChip art="ok">{t("modelle.aktuell")}</StatusChip>}
+          {liste.zustand === "aus" && (
+            <p className={styles.leise}>{t("modelle.liste.ohne_schluessel")}</p>
+          )}
+          {liste.zustand === "laedt" && (
+            <LoadingState text={t("modelle.liste.laedt", { anbieter: name })} />
+          )}
+          {liste.zustand === "fehler" && (
+            <ErrorState
+              code={liste.fehler.code}
+              titel={liste.fehler.text}
+              {...(liste.fehler.ausweg ? { ausweg: liste.fehler.ausweg } : {})}
+              aktion={
+                <Button art="zweit" onClick={() => void listeLaden(anbieter)}>
+                  {t("modelle.liste.neu_laden")}
+                </Button>
+              }
+            />
+          )}
+          {liste.zustand === "fertig" && liste.modelle.length === 0 && (
+            <ErrorState
+              titel={t("modelle.liste.leer", { anbieter: name })}
+              ausweg={listeLeerAusweg({
+                name,
+                templateKey: anbieter?.templateKey ?? vorlage.templateKey,
+              })}
+              aktion={
+                <Button art="zweit" onClick={() => void listeLaden(anbieter)}>
+                  {t("modelle.liste.neu_laden")}
+                </Button>
+              }
+            />
+          )}
+          {liste.zustand === "fertig" && liste.modelle.length > 0 && (
+            <>
+              {sucheZeigen(liste.modelle) && (
+                <TextField
+                  label={t("modelle.suche")}
+                  type="search"
+                  value={suche}
+                  onChange={(e) => setSuche(e.target.value)}
+                />
+              )}
+              {gefiltert.length === 0 ? (
+                <p className={styles.leise}>{t("modelle.liste.keine_treffer", { suche })}</p>
+              ) : (
+                <fieldset className={styles.liste}>
+                  <legend className={styles.unsichtbar}>
+                    {t("modelle.liste.name", { anbieter: name })}
+                  </legend>
+                  {gefiltert.map((m) => {
+                    const istAktuell = modell?.id === m.id;
+                    return (
+                      <label
+                        key={m.id}
+                        className={styles.modell}
+                        data-gewaehlt={auswahl === m.id || undefined}
+                      >
+                        <input
+                          type="radio"
+                          name={listenName}
+                          value={m.id}
+                          checked={auswahl === m.id}
+                          onChange={() => {
+                            setAuswahl(m.id);
+                            setModellMeldung(undefined);
+                          }}
+                        />
+                        <span className={styles.modellText}>
+                          <span className={styles.modellName}>
+                            <strong>{m.displayName}</strong>
+                            {istAktuell && <StatusChip art="ok">{t("modelle.aktuell")}</StatusChip>}
+                          </span>
+                          <span className={styles.leise}>
+                            <span className={styles.mono}>{m.slug}</span>
+                            {anbieter !== undefined && ` · ${anbieterHerkunft(anbieter)}`}
+                          </span>
                         </span>
-                        <span className={styles.leise}>
-                          <span className={styles.mono}>{m.slug}</span> ·{" "}
-                          {t("modelle.herkunft", { anbieter: name, region: regionText(region) })}
-                        </span>
-                      </span>
-                      <StatusChip art="eu">{regionText(region)}</StatusChip>
-                    </label>
-                  );
-                })}
-              </fieldset>
-            )}
-            <div className={styles.knoepfe}>
-              <Button
-                art="primaer"
-                onClick={() => void modellUebernehmen()}
-                laedt={uebernimmt}
-                disabled={auswahl === undefined || auswahl === modell?.id}
-              >
-                {t("modelle.uebernehmen")}
-              </Button>
-              <Button art="leise" onClick={() => void listeAbgleichen()}>
-                {t("modelle.liste.abgleichen")}
-              </Button>
-            </div>
-          </>
-        )}
-        <div role="status" aria-live="polite" className={styles.live}>
-          <MeldungZeile meldung={modellMeldung} />
-        </div>
-      </Karte>
-
-      <Karte titel={t("modelle.eigen.titel")}>
-        <p className={styles.leise}>{t("modelle.eigen.text")}</p>
-        {neuOffen ? (
-          <EigenerAnbieterForm
-            onGespeichert={(neu) => eigenGespeichert(neu, true)}
-            onAbbrechen={() => setNeuOffen(false)}
-          />
-        ) : (
-          <div className={styles.knoepfe}>
-            <Button
-              art="zweit"
-              icon="plus"
-              onClick={() => {
-                setNeuMeldung(undefined);
-                setNeuOffen(true);
-              }}
-            >
-              {t("modelle.eigen.hinzufuegen")}
-            </Button>
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              )}
+              <div className={styles.knoepfe}>
+                <Button
+                  art="primaer"
+                  onClick={() => void modellUebernehmen()}
+                  laedt={uebernimmt}
+                  disabled={auswahl === undefined || auswahl === modell?.id}
+                >
+                  {t("modelle.uebernehmen")}
+                </Button>
+                <Button art="leise" onClick={() => void listeAbgleichen()}>
+                  {t("modelle.liste.abgleichen")}
+                </Button>
+              </div>
+            </>
+          )}
+          <div role="status" aria-live="polite" className={styles.live}>
+            <MeldungZeile meldung={modellMeldung} />
           </div>
-        )}
-        <div role="status" aria-live="polite" className={styles.live}>
-          <MeldungZeile meldung={neuMeldung} />
-        </div>
-      </Karte>
+        </Karte>
+      )}
+
+      <AnbieterHinzufuegen
+        vorlagen={props.vorlagen ?? { eurouter: vorlage, mistral: vorlage }}
+        vorhanden={alle}
+        onGespeichert={(neu) => {
+          if (neu.templateKey === "eurouter") {
+            setRegeln((alt) => ({ ...alt, [neu.id]: alt[neu.id] ?? [] }));
+          }
+          eigenGespeichert(neu, true);
+        }}
+      />
 
       <Dialog
         offen={dialogOffen}

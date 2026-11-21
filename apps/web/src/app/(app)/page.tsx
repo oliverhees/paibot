@@ -24,6 +24,10 @@ export const metadata: Metadata = { title: `${t("seite.chat")} · PaiBot` };
 export default async function StartSeite() {
   await besitzerSeite();
   const db = datenbank();
-  const bereitschaft = await ladeBereitschaft(db, await schleuseEingerichtet(db, prozessDienste()));
+  const bereitschaft = await ladeBereitschaft(
+    db,
+    await schleuseEingerichtet(db, prozessDienste()),
+    (anbieter) => prozessDienste().unterAnbieter(anbieter),
+  );
   return <ChatSeite key="neu" bereitschaft={bereitschaft} />;
 }

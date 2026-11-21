@@ -11,6 +11,7 @@
 
 import type { ConversationEvent } from "@paibot/shared/ereignisse";
 import type { ErrorCode } from "@paibot/shared/fehler";
+import type { ServedBy } from "@paibot/shared/grundtypen";
 import type { Message, Route, Run } from "@paibot/shared/objekte";
 import type { BelegKurz, ChatVerlauf, ModellInfo } from "./typen";
 
@@ -27,6 +28,8 @@ export interface AnsichtNachricht {
   runId?: string;
   route?: Route;
   modell?: ModellInfo;
+  /** Wer laut Antwort der Schnittstelle geantwortet hat (nur, wenn sie einen Anbieter nennt). */
+  servedBy?: ServedBy;
   fehlerCode?: ErrorCode;
   /** Satz zum Fehler aus dem Ereignis (sonst gilt der Text zum Code). */
   fehlerText?: string;
@@ -100,6 +103,7 @@ function ausNachricht(m: Message, modelle: Record<string, ModellInfo>): AnsichtN
     ...(m.runId === undefined ? {} : { runId: m.runId }),
     ...(m.route === undefined ? {} : { route: m.route }),
     ...(modell === undefined ? {} : { modell }),
+    ...(m.servedBy === undefined ? {} : { servedBy: m.servedBy }),
     ...(m.errorCode === undefined ? {} : { fehlerCode: m.errorCode }),
   };
 }
@@ -286,15 +290,18 @@ export function ereignisAnwenden(
     }
     case "message.completed": {
       const nachricht = findeNachricht(weiter, e.data.messageId);
+      // Herkunft vom Modell der Nachricht bzw. des Bots; ohne beides nur der Name, nie ein „EU“.
       const modell: ModellInfo = {
+        ...(nachricht?.modell ?? kontext.modell ?? {}),
         name: e.data.modelLabel,
-        region: kontext.modell?.region ?? nachricht?.modell?.region ?? "eu",
       };
+      const servedBy = e.data.servedBy;
       const eintraege = ersetze(weiter.eintraege, e.data.messageId, (n) => ({
         ...n,
         zustand: "fertig",
         route: e.data.route,
         modell,
+        ...(servedBy === undefined ? {} : { servedBy }),
       }));
       const lauf = runId ?? nachricht?.runId;
       const mit = { ...weiter, eintraege, fertigeAntwort: e.data.messageId };

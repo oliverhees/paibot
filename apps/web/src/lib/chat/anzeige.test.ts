@@ -71,10 +71,10 @@ describe("Belege", () => {
 });
 
 describe("wegAngabe", () => {
-  it("direkt mit Herkunft, über die Datenschleuse ohne Zahl", () => {
-    expect(wegAngabe("direct", "eu")).toMatchObject({ modus: "direkt", text: "direkt · EU" });
-    expect(wegAngabe("direct", "local").text).toBe("direkt · lokal");
-    expect(wegAngabe("schleuse", "eu")).toMatchObject({
+  it("direkt ohne pauschale Herkunft, über die Datenschleuse ohne Zahl", () => {
+    expect(wegAngabe("direct")).toMatchObject({ modus: "direkt", text: "direkt an den Anbieter" });
+    expect(wegAngabe("direct").text).not.toContain("EU");
+    expect(wegAngabe("schleuse")).toMatchObject({
       modus: "schleuse",
       text: "geschützt über die Datenschleuse",
     });

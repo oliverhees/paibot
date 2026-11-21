@@ -12,13 +12,17 @@
 import type { ActionType } from "@paibot/shared/aktionen";
 import type { ConversationEvent } from "@paibot/shared/ereignisse";
 import type { ErrorCode } from "@paibot/shared/fehler";
-import type { BotColor, Message, Region, Run, SchleuseMode } from "@paibot/shared/objekte";
+import type { BotColor, Message, Run, SchleuseMode } from "@paibot/shared/objekte";
 import type { Outcome } from "@paibot/shared/tor";
+import type { AnbieterKurz, UnterAnbieterListe } from "../modelle/herkunft";
 
 /** Modell mit Herkunft, z. B. „Beispiel-Modell A · EU“. */
 export interface ModellInfo {
   name: string;
-  region: Region;
+  /** Belegbare Herkunft des Anbieters in Worten (`anbieterHerkunft`); nie ein pauschales „EU“. */
+  herkunft?: string;
+  /** Anbieter des Modells, für die Herkunft einer einzelnen Antwort (`antwortHerkunft`). */
+  anbieter?: AnbieterKurz;
 }
 
 /** Eintrag der Seitenleiste. */
@@ -99,4 +103,6 @@ export interface ChatBereitschaft {
   modellId?: string;
   /** Modelle, die sich wählen lassen (Anbieter an, Schlüssel da oder lokal), nach Namen. */
   waehlbar?: ModellWahl[];
+  /** Anbieter-Liste von EUrouter (Namen, Sitz) für die Herkunft der Antworten, wenn geholt. */
+  unterAnbieter?: UnterAnbieterListe;
 }

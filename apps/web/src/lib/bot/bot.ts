@@ -18,6 +18,7 @@ import type { Bot, Region } from "@paibot/shared/objekte";
 import { isTextKey, t } from "@paibot/shared/texte";
 import { ACTOR_FACT, type RuleDefinition } from "@paibot/shared/tor";
 import type { RoutenKontext } from "../api/route";
+import { anbieterHerkunft } from "../modelle/herkunft";
 
 type BotFeld = (typeof BOT_FIELDS)[number];
 
@@ -41,6 +42,8 @@ export interface BotModell {
   /** Kennung des Anbieters, zu dem das Modell gehört. */
   anbieterId: ProviderId;
   region: Region;
+  /** Belegbare Herkunft in Worten (`anbieterHerkunft`), nie ein pauschales „EU“. */
+  herkunft: string;
 }
 
 export async function modellVon(db: Database, bot: Bot): Promise<BotModell | undefined> {
@@ -56,6 +59,7 @@ export async function modellVon(db: Database, bot: Bot): Promise<BotModell | und
     anbieter: anbieter.name,
     anbieterId: anbieter.id as ProviderId,
     region: anbieter.region,
+    herkunft: anbieterHerkunft(anbieter),
   };
 }
 
