@@ -1,7 +1,9 @@
 /**
  * PaiBot – Unterhaltung als Datei sichern: lesbares Markdown mit Titel, Datum und je Nachricht
  * wer und wann; abgebrochene, fehlgeschlagene und ersetzte Antworten sind gekennzeichnet. Die
- * Datei enthält keine internen Kennungen und keine Schlüssel. Der Export läuft durch das Tor.
+ * Datei enthält keine internen Kennungen und keine Schlüssel. HTML, Bilder und Steuerzeichen aus
+ * den Nachrichten sind entschärft: als Text sichtbar, in einer Vorschau nie wirksam. Der Export
+ * läuft durch das Tor.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -75,14 +77,89 @@ function isoDatum(datum: Date, zeitzone: string): string {
   }).format(datum);
 }
 
-/** Eine Zeile Text ohne Steuerzeichen (für Überschriften und Kopf). */
+/**
+ * Steuerzeichen der Schreibrichtung (U+200E, U+200F, U+202A–U+202E, U+2066–U+2069) und
+ * unsichtbare Zeichen, mit denen sich ein Text anders anzeigen lässt, als er ist.
+ */
+const UNSICHTBAR = /[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g;
+
+/** Ohne Steuerzeichen (außer Zeilenumbruch und Tabulator) und ohne Zeichen der Schreibrichtung. */
+function ohneSteuerzeichen(text: string): string {
+  let aus = "";
+  for (const z of text.replace(UNSICHTBAR, "")) {
+    const code = z.codePointAt(0) ?? 0;
+    const steuer = (code < 0x20 && z !== "\n" && z !== "\t") || (code >= 0x7f && code <= 0x9f);
+    if (!steuer) aus += z;
+  }
+  return aus;
+}
+
+/**
+ * Text außerhalb von Code als Markdown entschärft: `<` wird zu `\<` (HTML erscheint als Text),
+ * `![` zu `!\[` (kein Bild wird aus dem Netz geladen), und Links auf `javascript:`, `data:` und
+ * `vbscript:` verlieren ihr Schema. In einem Texteditor bleibt alles lesbar.
+ */
+function entschaerfeText(text: string): string {
+  return text
+    .replace(/</g, "\\<")
+    .replace(/!\[/g, "!\\[")
+    .replace(/\]\(\s*(javascript|data|vbscript):/gi, "](\\$1:");
+}
+
+/** Code-Spannen (gleich lange Folgen von Backticks) bleiben, wie sie sind; sie zeigen nie HTML. */
+function entschaerfeZeile(zeileText: string): string {
+  let aus = "";
+  let rest = zeileText;
+  for (;;) {
+    const start = /`+/.exec(rest);
+    if (start === null) return aus + entschaerfeText(rest);
+    const zaun = start[0];
+    const nach = rest.slice(start.index + zaun.length);
+    const ende = new RegExp(`(?<!\`)${zaun}(?!\`)`).exec(nach);
+    if (ende === null) return aus + entschaerfeText(rest);
+    aus +=
+      entschaerfeText(rest.slice(0, start.index)) + zaun + nach.slice(0, ende.index + zaun.length);
+    rest = nach.slice(ende.index + zaun.length);
+  }
+}
+
+/**
+ * Inhalt einer Nachricht für die Datei: ohne Steuerzeichen, HTML und Bilder außerhalb von
+ * Code-Blöcken entschärft (siehe `entschaerfeText`). Code-Blöcke (``` oder ~~~) bleiben wörtlich.
+ */
+export function sichererInhalt(text: string): string {
+  const zeilen = ohneSteuerzeichen(text.replace(/\r\n?/g, "\n")).split("\n");
+  let zaun: string | undefined;
+  return zeilen
+    .map((z) => {
+      const treffer = /^ {0,3}(`{3,}|~{3,})/.exec(z);
+      if (zaun !== undefined) {
+        if (
+          treffer?.[1] !== undefined &&
+          treffer[1][0] === zaun[0] &&
+          treffer[1].length >= zaun.length
+        ) {
+          zaun = undefined;
+        }
+        return z;
+      }
+      if (treffer?.[1] !== undefined) {
+        zaun = treffer[1];
+        return z;
+      }
+      return entschaerfeZeile(z);
+    })
+    .join("\n");
+}
+
+/** Eine Zeile Text ohne Steuerzeichen (für Überschriften und Kopf), HTML entschärft. */
 function zeile(text: string): string {
   let aus = "";
-  for (const z of text) {
+  for (const z of text.replace(UNSICHTBAR, "")) {
     const code = z.codePointAt(0) ?? 0;
-    aus += code < 0x20 || code === 0x7f ? " " : z;
+    aus += code < 0x20 || (code >= 0x7f && code <= 0x9f) ? " " : z;
   }
-  return aus.replace(/ {2,}/g, " ").trim();
+  return entschaerfeText(aus.replace(/ {2,}/g, " ").trim());
 }
 
 export interface ExportEingabe {
@@ -155,7 +232,7 @@ export function unterhaltungAlsMarkdown(e: ExportEingabe): string {
     }
     for (const v of vermerke) teile.push(`> ${v}`);
     if (vermerke.length > 0) teile.push("");
-    if (m.content !== "") teile.push(m.content.replace(/\r\n?/g, "\n").trimEnd(), "");
+    if (m.content !== "") teile.push(sichererInhalt(m.content).trimEnd(), "");
     // Läufe zu dieser Nachricht, die ohne Antwort endeten.
     for (const l of ohneAntwort.filter((x) => x.triggerMessageId === m.id)) {
       teile.push(
