@@ -49,16 +49,29 @@ function aufstellung(art: "bau" | "image", extra: Partial<Record<string, string[
       ? ["    image: paibot:lokal", "    build:", "      context: ..", "      target: app"]
       : [IMAGE]),
     "    read_only: true",
+    "    logging: *logging",
     "    mem_limit: 512m",
     "    pids_limit: 256",
-    ...(name === "web" ? ["    environment:", `      TRUST_PROXY: ${"$"}{TRUST_PROXY:-1}`] : []),
+    ...(name === "web"
+      ? [
+          "    environment:",
+          `      APP_URL: ${"$"}{APP_URL:?APP_URL fehlt}`,
+          `      TRUST_PROXY: ${"$"}{TRUST_PROXY:-1}`,
+        ]
+      : []),
     ...(extra[name] ?? []),
   ];
   return [
     "# Kommentar zählt nicht",
+    "x-logging: &logging",
+    "  driver: json-file",
+    "  options:",
+    '    max-size: "10m"',
+    '    max-file: "3"',
     "services:",
     "  postgres:",
     "    image: postgres:18",
+    "    logging: *logging",
     ...(extra.postgres ?? []),
     "",
     ...dienst("migrate"),
@@ -81,6 +94,27 @@ describe("compose:vergleich", () => {
     const r = vergleich({ bau: aufstellung("bau"), image: aufstellung("image") });
     expect(r.ausgabe).toContain("Compose-Vergleich ok");
     expect(r.code).toBe(0);
+  });
+
+  it("Dienst ohne Log-Grenzen oder APP_URL mit Standard: jeweils Exit 1", () => {
+    const ohneLog = aufstellung("bau").replace(
+      "  postgres:\n    image: postgres:18\n    logging: *logging",
+      "  postgres:\n    image: postgres:18",
+    );
+    const r1 = vergleich({
+      bau: ohneLog,
+      image: aufstellung("image").replace(
+        "  postgres:\n    image: postgres:18\n    logging: *logging",
+        "  postgres:\n    image: postgres:18",
+      ),
+    });
+    expect(r1.code).toBe(1);
+    expect(r1.ausgabe).toContain("Dienst postgres braucht „logging: *logging“");
+    const mitStandard = (art: "bau" | "image") =>
+      aufstellung(art).replace("APP_URL:?APP_URL fehlt", "APP_URL:-http://localhost:3000");
+    const r2 = vergleich({ bau: mitStandard("bau"), image: mitStandard("image") });
+    expect(r2.code).toBe(1);
+    expect(r2.ausgabe).toContain("APP_URL");
   });
 
   it("andere Grenze in nur einer Datei: Exit 1 mit der Stelle", () => {
