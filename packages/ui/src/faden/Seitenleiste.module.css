@@ -33,6 +33,8 @@
 }
 
 .plus {
+  border: 0;
+  font: inherit;
   color: var(--ink-soft);
   display: flex;
   background: none;
@@ -72,6 +74,7 @@
 }
 
 .notaus button {
+  border: 0;
   font: 600 12.5px / 1 var(--font-sans);
   color: var(--danger);
   background: var(--danger-soft);
@@ -95,6 +98,8 @@
 }
 
 .post {
+  border: 0;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -140,6 +145,8 @@
 }
 
 .zeile {
+  border: 0;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -215,6 +222,8 @@
 }
 
 .teamKopf {
+  border: 0;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -241,6 +250,8 @@
 }
 
 .faden {
+  border: 0;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 8px;

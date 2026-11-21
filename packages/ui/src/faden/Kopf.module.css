@@ -72,6 +72,8 @@
 }
 
 .griff {
+  padding: 0;
+  font: inherit;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -374,6 +376,7 @@
 }
 
 .eng {
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 12px;

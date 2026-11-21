@@ -102,13 +102,6 @@
   color: var(--warn);
 }
 
-.fuehrtZeichen {
-  position: absolute;
-  top: -6px;
-  left: 8px;
-  z-index: 3;
-}
-
 /* Verdichtet: führt · dran · als Nächstes · Stapel */
 .verdichtet {
   display: flex;

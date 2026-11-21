@@ -89,5 +89,5 @@ export { FadenSeitenleiste, type FadenSeitenleisteProps } from "./Seitenleiste";
 export { StabBahn, StabVerdichtet } from "./Staffelstab";
 export { ersteZeile, hatLink, kuerze, reinerText, sauberName } from "./text";
 export type * from "./typen";
-export { AuftragsZettel, ErkannteZeileAnsicht } from "./Zeilen";
+export { AuftragsZettel, ErkannteZeileAnsicht, ErkannteZeilen } from "./Zeilen";
 export { ZulieferKarte, type ZulieferKarteProps } from "./Zulieferung";

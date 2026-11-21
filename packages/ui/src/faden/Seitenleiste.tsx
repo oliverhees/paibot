@@ -77,6 +77,7 @@ function BotZeile({
         farbe={bot.farbe}
         {...(bot.form ? { form: bot.form } : {})}
         zustand={bot.zustand}
+        ohneEck
         groesse={klein ? 22 : 24}
         still
       />
@@ -261,6 +262,7 @@ export function FadenSeitenleiste(p: FadenSeitenleisteProps) {
             farbe={pai.farbe}
             {...(pai.form ? { form: pai.form } : {})}
             zustand={pai.zustand}
+            ohneEck
             groesse={24}
             still
           />

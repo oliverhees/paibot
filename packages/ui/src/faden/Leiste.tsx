@@ -169,6 +169,7 @@ function Mitglied({ bot, gross }: { bot: FadenBot; gross?: boolean }) {
         farbe={bot.farbe}
         {...(bot.form ? { form: bot.form } : {})}
         zustand={bot.zustand}
+        ohneEck
         groesse={gross ? 30 : 22}
         still
       />
@@ -411,7 +412,13 @@ export function FadenLeiste({
                   <p className={styles.leer}>{t("faden.leiste.lieferungen_leer")}</p>
                 ) : (
                   daten.lieferungen.map((z) => (
-                    <ZulieferKarte key={z.id} zulieferung={z} bot={bots[z.von]} mitAbsender />
+                    <ZulieferKarte
+                      key={z.id}
+                      zulieferung={z}
+                      bot={bots[z.von]}
+                      bots={bots}
+                      mitAbsender
+                    />
                   ))
                 ))}
 

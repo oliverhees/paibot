@@ -11,7 +11,7 @@
 import { t } from "@paibot/shared/texte";
 import { AvatarStapel, BotAvatar } from "./BotAvatar";
 import { stapelRest } from "./funktionen";
-import { DranMarke, FuehrtMarke } from "./Marken";
+import { DranMarke } from "./Marken";
 import styles from "./Staffelstab.module.css";
 import { reinerText, sauberName } from "./text";
 import type { StabPlatz } from "./typen";
@@ -26,6 +26,7 @@ function Figur({ p, groesse }: { p: StabPlatz; groesse: number }) {
         farbe={p.farbe}
         {...(p.form ? { form: p.form } : {})}
         zustand={p.zustand ?? "ruhig"}
+        ohneEck
         groesse={groesse}
         still
       />
@@ -44,11 +45,6 @@ export function StabBahn({ plaetze }: { plaetze: readonly StabPlatz[] }) {
             {p.dran && (
               <span className={styles.pille}>
                 <DranMarke />
-              </span>
-            )}
-            {p.fuehrt && (
-              <span className={styles.fuehrtZeichen}>
-                <FuehrtMarke />
               </span>
             )}
             <Figur p={p} groesse={30} />
@@ -84,6 +80,7 @@ export function StabVerdichtet({
         farbe={p.farbe}
         {...(p.form ? { form: p.form } : {})}
         zustand={p.zustand ?? "ruhig"}
+        ohneEck
         groesse={24}
         still
       />

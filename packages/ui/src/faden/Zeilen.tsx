@@ -164,3 +164,63 @@ export function ErkannteZeileAnsicht({
     </div>
   );
 }
+
+/** Ab so vielen erkannten Zeilen in einer Antwort werden sie zu einer Zeile zusammengefasst. */
+export const ZEILEN_OHNE_ZUSAMMENFASSUNG = 2;
+
+/**
+ * Die erkannten Zeilen einer Antwort. Bis zu zwei stehen einzeln da; bei mehr zeigt eine
+ * Zusammenfassung die Zahl und das Ergebnis des Tors, und „Alle zeigen“ klappt jede einzeln auf.
+ */
+export function ErkannteZeilen({ zeilen }: { zeilen: readonly ErkannteZeile[] }) {
+  const [offen, setOffen] = useState(false);
+  const id = useId();
+  if (zeilen.length <= ZEILEN_OHNE_ZUSAMMENFASSUNG) {
+    return (
+      <>
+        {zeilen.map((z, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: Zeilen einer Antwort in fester Reihenfolge
+          <ErkannteZeileAnsicht key={`${z.art}-${i}`} zeile={z} />
+        ))}
+      </>
+    );
+  }
+  const abgelehnt = zeilen.filter((z) => z.ergebnis === "abgelehnt" && z.art !== "unklar").length;
+  return (
+    <div className={styles.zeile} data-baustein="erkannte-zeilen">
+      {/* biome-ignore lint/a11y/useSemanticElements: benannte Gruppe von Bedienelementen, fieldset passt hier nicht */}
+      <div
+        className={styles.chip}
+        data-ergebnis={abgelehnt > 0 ? "abgelehnt" : "erlaubt"}
+        role="group"
+        aria-label={t("faden.zeile.region")}
+      >
+        <Sym name="doku" groesse={14} />
+        <span>{t("faden.zeile.mehrere", { anzahl: zeilen.length })}</span>
+        <span className={styles.stand} data-ergebnis={abgelehnt > 0 ? "abgelehnt" : "erlaubt"}>
+          ·{" "}
+          {abgelehnt > 0
+            ? t("faden.zeile.teils_abgelehnt", { anzahl: abgelehnt })
+            : t("faden.zeile.alle_erlaubt")}
+        </span>
+        <button
+          type="button"
+          className={styles.umschalter}
+          aria-expanded={offen}
+          aria-controls={id}
+          onClick={() => setOffen(!offen)}
+        >
+          <Sym name="rechts" groesse={12} />
+          {offen ? t("faden.zeile.alle_verbergen") : t("faden.zeile.alle_zeigen")}
+        </button>
+      </div>
+      <div id={id} className={styles.liste} hidden={!offen}>
+        {offen &&
+          zeilen.map((z, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: Zeilen einer Antwort in fester Reihenfolge
+            <ErkannteZeileAnsicht key={`${z.art}-${i}`} zeile={z} />
+          ))}
+      </div>
+    </div>
+  );
+}

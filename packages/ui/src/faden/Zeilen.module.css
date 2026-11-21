@@ -56,6 +56,7 @@
 }
 
 .umschalter {
+  border: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -181,4 +182,14 @@
     margin-top: 6px;
     font-size: 12px;
   }
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.liste[hidden] {
+  display: none;
 }

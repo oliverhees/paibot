@@ -89,6 +89,8 @@
 }
 
 .gruppeKopf {
+  border: 0;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -193,6 +195,7 @@
 }
 
 .wahl {
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -303,6 +306,8 @@
 }
 
 .filter button {
+  border: 0;
+  font: inherit;
   height: 28px;
   padding: 0 11px;
   border-radius: var(--radius-pill);
@@ -396,4 +401,8 @@
   .stempel {
     transform: none;
   }
+}
+
+.inhalt[hidden] {
+  display: none;
 }

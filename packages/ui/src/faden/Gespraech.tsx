@@ -22,7 +22,7 @@ import { DirekteBitteMarke, FremdMarke } from "./Marken";
 import { Sym } from "./symbole";
 import { reinerText, sauberName } from "./text";
 import type { Beitrag, FadenBot, GespraechsEintrag, GrenzenKarteDaten, Gruppe } from "./typen";
-import { ErkannteZeileAnsicht } from "./Zeilen";
+import { ErkannteZeilen } from "./Zeilen";
 import { ZulieferKarte } from "./Zulieferung";
 
 type Bots = Readonly<Record<string, FadenBot>>;
@@ -109,7 +109,7 @@ export function GespraechsBeitrag({ beitrag: b, bots }: GespraechsBeitragProps) 
           <BeitragsText text={b.text} />
           {b.streamt && <span className={bubble.marke} aria-hidden="true" />}
           {b.zulieferungen?.map((z) => (
-            <ZulieferKarte key={z.id} zulieferung={z} />
+            <ZulieferKarte key={z.id} zulieferung={z} bots={bots} />
           ))}
           {b.abnahme && (
             <div
@@ -128,10 +128,7 @@ export function GespraechsBeitrag({ beitrag: b, bots }: GespraechsBeitragProps) 
               )}
             </div>
           )}
-          {b.zeilen?.map((z, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Zeilen einer Antwort in fester Reihenfolge
-            <ErkannteZeileAnsicht key={`${z.art}-${i}`} zeile={z} />
-          ))}
+          {b.zeilen && b.zeilen.length > 0 && <ErkannteZeilen zeilen={b.zeilen} />}
         </div>
       </div>
     </div>

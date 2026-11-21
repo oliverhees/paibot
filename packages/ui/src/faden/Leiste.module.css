@@ -22,6 +22,9 @@
 }
 
 .griff {
+  border: 0;
+  padding: 0;
+  font: inherit;
   display: none;
 }
 
@@ -42,6 +45,8 @@
 }
 
 .reiter button {
+  border: 0;
+  font: inherit;
   height: 34px;
   padding: 0 7px;
   font-size: 12.5px;
@@ -124,6 +129,8 @@
 }
 
 .etappeKopf {
+  border: 0;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -175,6 +182,8 @@
 }
 
 .ziel {
+  border: 0;
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -543,4 +552,9 @@ button.ziel:hover {
   .leiste {
     transition: none;
   }
+}
+
+.ziele[hidden],
+.panel[hidden] {
+  display: none;
 }

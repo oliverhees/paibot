@@ -23,13 +23,20 @@ export interface ZulieferKarteProps {
   bot?: FadenBot | undefined;
   /** Mit Absender-Avatar und „von → an“ unter dem Titel (Leiste). */
   mitAbsender?: boolean;
+  /** Alle Bots des Fadens: `von` und `an` der Zulieferung sind Kennungen und werden hier zu Namen. */
+  bots?: Readonly<Record<string, FadenBot>>;
 }
 
 /** Eine Zulieferung. Titel und Angaben sind Text eines Bots: nur Text, bereinigt und begrenzt. */
-export function ZulieferKarte({ zulieferung: z, bot, mitAbsender = false }: ZulieferKarteProps) {
+export function ZulieferKarte({
+  zulieferung: z,
+  bot,
+  mitAbsender = false,
+  bots,
+}: ZulieferKarteProps) {
   const titel = reinerText(z.titel, 80);
-  const von = sauberName(z.von);
-  const an = sauberName(z.an);
+  const von = sauberName(bots?.[z.von]?.name ?? z.von);
+  const an = sauberName(bots?.[z.an]?.name ?? z.an);
   return (
     // biome-ignore lint/a11y/useSemanticElements: benannte Gruppe von Bedienelementen, fieldset passt hier nicht
     <div

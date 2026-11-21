@@ -21,6 +21,8 @@ export interface BotAvatarProps {
   still?: boolean;
   /** Name für Bildschirmleser; ohne ihn ist der Avatar Schmuck neben einem sichtbaren Namen. */
   titel?: string;
+  /** In Listen: „wartet“ zeigt das Gesicht ruhig, ohne das Warnzeichen an der Ecke. */
+  ohneEck?: boolean;
 }
 
 /**
@@ -34,12 +36,13 @@ export function BotAvatar({
   groesse = 24,
   still,
   titel,
+  ohneEck,
 }: BotAvatarProps) {
   return (
     <AvatarLebendig
       farbe={farbe}
       {...(form ? { form } : {})}
-      zustand={zustand}
+      zustand={ohneEck && zustand === "wartet" ? "ruhig" : zustand}
       groesse={groesse}
       {...(still !== undefined ? { still } : {})}
       {...(titel ? { titel } : {})}
@@ -69,7 +72,7 @@ export function AvatarStapel({
           <BotAvatar
             farbe={b.farbe}
             {...(b.form ? { form: b.form } : {})}
-            zustand={b.zustand ?? "ruhig"}
+            zustand="ruhig"
             groesse={groesse}
             still
           />
