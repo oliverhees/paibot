@@ -49,18 +49,36 @@ function belegIcon(b: BelegKurz) {
   return gut ? "check" : "beleg";
 }
 
+/** Entscheidung und Ergebnis derselben Aktion gehören zusammen (gleicher Lauf bzw. gleiche Nachricht). */
+export function partnerBeleg(b: BelegKurz, belege: readonly BelegKurz[]): BelegKurz | undefined {
+  return belege.find(
+    (x) =>
+      x.id !== b.id &&
+      x.vollstaendig &&
+      x.aktion === b.aktion &&
+      x.art !== b.art &&
+      ((b.runId !== undefined && x.runId === b.runId) ||
+        (b.messageId !== undefined && x.messageId === b.messageId)),
+  );
+}
+
 function Detail({
   beleg,
+  belege,
   zeitzone,
   botName,
 }: {
   beleg: BelegKurz;
+  belege: readonly BelegKurz[];
   zeitzone: string;
   botName: string;
 }) {
   if (!beleg.vollstaendig || beleg.seq === undefined) {
     return <LoadingState text={t("chat.belege.laedt")} />;
   }
+  const partner = partnerBeleg(beleg, belege);
+  const entscheidung = beleg.entscheidung ?? partner?.entscheidung;
+  const ergebnis = beleg.ergebnis ?? partner?.ergebnis;
   const kennung = belegKennung(beleg.seq);
   const wer = werText(beleg, botName);
   return (
@@ -91,17 +109,17 @@ function Detail({
             <dd>{wer}</dd>
           </>
         )}
-        {beleg.entscheidung && (
+        {entscheidung && (
           <>
             <dt>{t("chat.beleg.feld.entscheidung")}</dt>
-            <dd>{t(`chat.beleg.outcome.${beleg.entscheidung.outcome}`)}</dd>
+            <dd>{t(`chat.beleg.outcome.${entscheidung.outcome}`)}</dd>
             <dt>{t("chat.beleg.feld.regeln")}</dt>
             <dd>
-              {beleg.entscheidung.regeln.length === 0 ? (
+              {entscheidung.regeln.length === 0 ? (
                 t("chat.beleg.keine_regeln")
               ) : (
                 <ul className={styles.regeln}>
-                  {beleg.entscheidung.regeln.map((r) => (
+                  {entscheidung.regeln.map((r) => (
                     <li key={`${r.id}-${r.version}`}>
                       {regelText(r.id)} <span className={styles.mono}>v{r.version}</span>
                     </li>
@@ -110,18 +128,18 @@ function Detail({
               )}
             </dd>
             <dt>{t("chat.beleg.feld.grund")}</dt>
-            <dd>{beleg.entscheidung.grund}</dd>
+            <dd>{entscheidung.grund}</dd>
           </>
         )}
-        {beleg.ergebnis && (
+        {ergebnis && (
           <>
             <dt>{t("chat.beleg.feld.ergebnis")}</dt>
             <dd>
-              {t(`ergebnis.${beleg.ergebnis.status}`)}
-              {beleg.ergebnis.code && (
+              {t(`ergebnis.${ergebnis.status}`)}
+              {ergebnis.code && (
                 <>
                   <br />
-                  <span className={styles.leise}>{errorText(beleg.ergebnis.code)}</span>
+                  <span className={styles.leise}>{errorText(ergebnis.code)}</span>
                 </>
               )}
             </dd>
@@ -153,7 +171,7 @@ export function BelegeFlaeche({ belege, zeitzone, botName, offen, onOeffnen }: B
           <span aria-hidden="true">←</span>
           {t("chat.belege.zurueck")}
         </button>
-        <Detail beleg={geoeffnet} zeitzone={zeitzone} botName={botName} />
+        <Detail beleg={geoeffnet} belege={belege} zeitzone={zeitzone} botName={botName} />
       </div>
     );
   }

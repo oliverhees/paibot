@@ -178,10 +178,11 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
     if (id !== undefined) entwurfMerken(id, text);
   }, [id, text]);
 
-  // Angekündigte Belege vollständig holen.
+  // Angekündigte Belege vollständig holen (nicht, während die Unterhaltung gelöscht wird).
   const offeneBelege = ansicht.belege.filter((b) => !b.vollstaendig).length;
+  const loescht = dialog === "loeschen";
   useEffect(() => {
-    if (id === undefined || offeneBelege === 0) return;
+    if (id === undefined || offeneBelege === 0 || loescht) return;
     let aktiv = true;
     const zeitgeber = setTimeout(async () => {
       const r = await apiFetch<{ belege: BelegKurz[] }>("GET", CHAT_PFADE.unterhaltung(id));
@@ -191,7 +192,7 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
       aktiv = false;
       clearTimeout(zeitgeber);
     };
-  }, [id, offeneBelege]);
+  }, [id, offeneBelege, loescht]);
 
   // Fertige Antwort im Live-Bereich ansagen (nicht jedes Stück).
   useEffect(() => {

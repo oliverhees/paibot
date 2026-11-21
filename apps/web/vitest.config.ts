@@ -11,6 +11,9 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Seiten-Komponenten (JSX) für Render-Tests über react-dom/server übersetzen; Next selbst baut mit
+  // `jsx: preserve` aus der tsconfig.
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     testTimeout: 30_000,
     hookTimeout: 30_000,
