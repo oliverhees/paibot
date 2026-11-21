@@ -450,6 +450,23 @@ describe.skipIf(!bereit && !erzwungen)("Tastatur-Bedienung im Browser", { timeou
     expect(fehler).toEqual([]);
   });
 
+  it("AppShell am Handy: Escape im Menü „Du“ schließt nur dieses Menü, das Menü der Seitenleiste bleibt offen", async () => {
+    await oeffne("/?ansicht=shell", { width: 390, height: 800 });
+    const leiste = "aside[aria-label=Navigation]";
+    await page.focus("button[aria-label='Menü öffnen']");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(`${leiste}[role=dialog]`);
+    await page.focus("[data-du]");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector("[role=menu]");
+    await page.keyboard.press("Escape");
+    expect(await page.$("[role=menu]")).toBeNull();
+    expect(await page.$(`${leiste}[role=dialog]`)).not.toBeNull();
+    expect(await fokus()).toBe("button:Du");
+    await page.keyboard.press("Escape");
+    await page.waitForSelector(`${leiste}:not([role=dialog])`, { state: "attached" });
+  });
+
   it("AppShell breit: Werkzeuge per Tastatur ein- und ausklappen (aria-expanded)", async () => {
     await oeffne("/?ansicht=shell", { width: 1200, height: 800 });
     const knopf = "button[aria-controls][aria-expanded]:has-text('Werkzeuge')";
