@@ -105,6 +105,8 @@ services:
       # SCHLEUSE_URL=http://datenschleuse:4000/v1, SCHLEUSE_KEY aus deploy/env-erzeugen.sh.
       SCHLEUSE_URL: ${SCHLEUSE_URL:-}
       SCHLEUSE_KEY: ${SCHLEUSE_KEY:-}
+      # anfrage (Standard): der Worker schickt den Anbieter-Schlüssel mit jeder Anfrage mit.
+      SCHLEUSE_SCHLUESSEL_WEG: ${SCHLEUSE_SCHLUESSEL_WEG:-anfrage}
       # Bewusst ohne DATABASE_MIGRATION_URL: Der Worker migriert nie.
     depends_on:
       postgres:
@@ -187,7 +189,7 @@ services:
       PYTHONPATH: /app
       PYTHONDONTWRITEBYTECODE: "1"
       DATENSCHLEUSE_MASTER_KEY: ${SCHLEUSE_KEY:-}
-      # Nur bei SCHLEUSE_SCHLUESSEL_WEG=umgebung; bei „anfrage“ leer lassen.
+      # Nur beim Rückfall SCHLEUSE_SCHLUESSEL_WEG=umgebung; im Standard „anfrage“ leer lassen.
       SCHLEUSE_ANBIETER_SCHLUESSEL: ${SCHLEUSE_ANBIETER_SCHLUESSEL:-}
       DATENSCHLEUSE_STATE_KEY: ${SCHLEUSE_STATE_KEY:-}
       DATENSCHLEUSE_STATE_DB: /app/state/qi_state.db
