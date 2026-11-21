@@ -151,7 +151,7 @@ describe("Einrichtungs-Code", () => {
     });
     await anfrage(u, handler(u).status, "GET", "/api/einrichtung", { dose: vorabDose() });
     expect(u.log.filter((z) => z.startsWith("Einrichtungs-Code:"))).toEqual([
-      `Einrichtungs-Code: ${TEST_CODE} (gilt bis zum Ende der Einrichtung)`,
+      `Einrichtungs-Code: ${TEST_CODE} (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)`,
     ]);
   });
 });

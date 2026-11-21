@@ -42,6 +42,8 @@ beforeEach(async () => {
 afterEach(() => {
   _ersetzeProzessDienste(undefined);
   vi.unstubAllEnvs();
+  // „eingerichtet“ merkt sich der Prozess; jeder Test beginnt mit einer frischen Datenbank.
+  delete (globalThis as Record<symbol, unknown>)[Symbol.for("paibot.web.eingerichtet")];
 });
 
 function req(pfad: string, optionen: { methode?: string; cookie?: string } = {}) {
@@ -89,7 +91,7 @@ describe("Kopfzeilen", () => {
     expect(a.headers.get("x-middleware-request-x-nonce")).toBe(nonceA);
   });
 
-  it("Stand-Kopfzeile an jeder Antwort, auch an Dateien, Umleitungen und 401", async () => {
+  it("Stand-Kopfzeile nur mit Sitzung, nie für Fremde (Seiten, Dateien, Umleitungen, 401)", async () => {
     vi.stubEnv("PAIBOT_BUILD", "0.3.0+20261205.3f9c2ab");
     for (const pfad of [
       "/",
@@ -97,9 +99,15 @@ describe("Kopfzeilen", () => {
       "/fonts/inter.woff2",
       "/api/zugang/sitzungen",
       "/einrichtung",
+      "/gibtsnicht",
     ]) {
       const antwort = await proxy(req(pfad));
-      expect(antwort.headers.get("x-pb-stand")).toBe(readStand(process.env));
+      expect(antwort.headers.get("x-pb-stand"), pfad).toBeNull();
+    }
+    const cookie = await einrichten();
+    for (const pfad of ["/", "/anmelden", "/api/zugang/sitzungen"]) {
+      const antwort = await proxy(req(pfad, { cookie }));
+      expect(antwort.headers.get("x-pb-stand"), pfad).toBe(readStand(process.env));
       expect(antwort.headers.get("x-pb-stand")).toBe("0.3.0+20261205.3f9c2ab");
     }
   });

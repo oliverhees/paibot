@@ -10,7 +10,9 @@
 
 import { APP_NAME } from "@paibot/shared";
 import { readStand, versionOf } from "@paibot/shared/stand";
-import { DB_ROLE_HEADER, databaseHealth } from "../../../lib/health";
+import { databaseHealth } from "../../../lib/health";
+
+const ROLLE_GEMELDET = Symbol.for("paibot.web.health-rolle-gemeldet");
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,12 @@ export async function GET() {
   const { db, role } = await databaseHealth();
   const healthy = db !== "down";
   const headers: Record<string, string> = { "Cache-Control": "no-store" };
-  if (role === "zu_viele_rechte") headers[DB_ROLE_HEADER] = role;
+  // Zu viele Rechte stehen nur im Log (einmal je Prozess), nie in der Antwort an Fremde.
+  const halter = globalThis as { [ROLLE_GEMELDET]?: true };
+  if (role === "zu_viele_rechte" && !halter[ROLLE_GEMELDET]) {
+    halter[ROLLE_GEMELDET] = true;
+    console.warn("[paibot] WARNUNG: Die App-Verbindung zur Datenbank hat zu viele Rechte.");
+  }
   return Response.json(
     {
       status: healthy ? "ok" : "degraded",

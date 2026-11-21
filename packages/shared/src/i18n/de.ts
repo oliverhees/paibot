@@ -1061,4 +1061,8 @@ export const de = {
   "regeln.vorbedingung.V-07": "Die Einrichtung ist noch offen.",
   "regeln.vorbedingung.V-08": "Der Aufruf wartet auf deine Freigabe.",
   "regeln.vorbedingung.V-09": "Die Freigabe passt genau zum Aufruf.",
+
+  // Schutz von Anmeldung und Eingängen
+  "einrichtung.code.log_frist":
+    "Einrichtungs-Code: {code} (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)",
 } as const satisfies Record<string, string | readonly string[]>;

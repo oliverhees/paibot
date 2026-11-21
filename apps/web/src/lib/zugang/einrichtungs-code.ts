@@ -29,7 +29,7 @@ export function neuerEinrichtungsCode(): string {
 
 /** Die Zeile, die beim Erzeugen genau einmal ins Log geht. */
 export function codeLogZeile(code: string): string {
-  return t("einrichtung.code.log", { code });
+  return t("einrichtung.code.log_frist", { code });
 }
 
 /** Prüfwert eines Codes, wie er in der Datenbank steht (`sha256:` und 64 Hex-Zeichen). */
@@ -58,7 +58,8 @@ export interface CodeHalter {
   aktiv(db: Database): Promise<boolean>;
   /**
    * Sorgt dafür, dass während der offenen Einrichtung ein Code gilt. Unter einer Sperre der Zeile
-   * der Einstellungen: Gilt schon einer, bleibt er; sonst entsteht genau einer. Auch bei
+   * der Einstellungen: Gilt schon einer (jünger als `CODE_GUELTIG_MS`), bleibt er; sonst entsteht
+   * genau einer. Auch bei
    * gleichzeitigen Aufrufen (mehrere Prozesse) entsteht so nur ein Code.
    */
   sicherstellen(db: Database, jetzt: Date): Promise<CodeStand>;
@@ -67,8 +68,11 @@ export interface CodeHalter {
    * Abschluss der Einrichtung; sonst `undefined`.
    */
   ersetzen(db: Database, jetzt: Date): Promise<string | undefined>;
-  /** Prüft eine Eingabe (schon in der Form `XXXX-XXXX-XXXX`) in konstanter Zeit. */
-  pruefen(db: Database, eingabe: string): Promise<boolean>;
+  /**
+   * Prüft eine Eingabe (schon in der Form `XXXX-XXXX-XXXX`) in konstanter Zeit. Ein Code älter als
+   * `CODE_GUELTIG_MS` gilt nicht mehr.
+   */
+  pruefen(db: Database, eingabe: string, jetzt: Date): Promise<boolean>;
 }
 
 function neuerCode(erzeuge: () => string): string {
@@ -83,6 +87,13 @@ async function zeileSperren(tx: Database): Promise<void> {
   await tx.execute(`select 1 from "public"."settings" where id = 'singleton' for update`);
 }
 
+/** So lange gilt ein Einrichtungs-Code; danach entsteht beim nächsten Aufruf ein neuer im Log. */
+export const CODE_GUELTIG_MS = 24 * 60 * 60 * 1000;
+
+function abgelaufen(seit: Date, jetzt: Date): boolean {
+  return jetzt.getTime() - seit.getTime() >= CODE_GUELTIG_MS;
+}
+
 export function erstelleCodeHalter(erzeuge: () => string = neuerEinrichtungsCode): CodeHalter {
   return {
     aktiv: async (db) => (await repo.settings.getSetupCode(db)) !== undefined,
@@ -91,7 +102,9 @@ export function erstelleCodeHalter(erzeuge: () => string = neuerEinrichtungsCode
         await zeileSperren(tx);
         if (await repo.settings.isSetupComplete(tx)) return { art: "fertig" };
         const vorhanden = await repo.settings.getSetupCode(tx);
-        if (vorhanden !== undefined) return { art: "vorhanden", seit: vorhanden.createdAt };
+        if (vorhanden !== undefined && !abgelaufen(vorhanden.createdAt, jetzt)) {
+          return { art: "vorhanden", seit: vorhanden.createdAt };
+        }
         const code = neuerCode(erzeuge);
         const gesetzt = await repo.settings.setSetupCode(tx, {
           hash: codePruefwert(code),
@@ -109,8 +122,12 @@ export function erstelleCodeHalter(erzeuge: () => string = neuerEinrichtungsCode
         });
         return gesetzt ? code : undefined;
       }),
-    async pruefen(db, eingabe) {
-      const erwartet = (await repo.settings.getSetupCode(db))?.hash;
+    async pruefen(db, eingabe, jetzt) {
+      const gespeichert = await repo.settings.getSetupCode(db);
+      const erwartet =
+        gespeichert === undefined || abgelaufen(gespeichert.createdAt, jetzt)
+          ? undefined
+          : gespeichert.hash;
       // Auch ohne gültigen Code wird gerechnet und verglichen, damit die Dauer gleich bleibt.
       const vergleich = codePruefwert(eingabe);
       return safeEqual(vergleich, erwartet ?? `sha256:${"0".repeat(64)}`) && erwartet !== undefined;

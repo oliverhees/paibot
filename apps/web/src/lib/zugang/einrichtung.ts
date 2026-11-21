@@ -73,7 +73,7 @@ async function codePruefen(
   kontext: RoutenKontext<"einrichtungAbschliessen" | "einrichtungVerbindungstest">,
   code: string,
 ): Promise<Nachweis> {
-  if (!(await kontext.dienste.code.pruefen(kontext.db, code))) {
+  if (!(await kontext.dienste.code.pruefen(kontext.db, code, kontext.dienste.uhr.now()))) {
     throw new PaiBotError("einrichtungs_code_falsch", {
       felder: [{ feld: "setupCode", code: "ungueltig" }],
     });
@@ -181,7 +181,7 @@ export async function einrichtungAbschliessen(
       throw new PaiBotError("einrichtung_fertig");
     }
     // Unter der Sperre noch einmal: Gilt der geprüfte Code noch (nicht inzwischen ersetzt)?
-    if (!(await d.code.pruefen(tx, eingabe.setupCode))) {
+    if (!(await d.code.pruefen(tx, eingabe.setupCode, d.uhr.now()))) {
       throw new PaiBotError("einrichtungs_code_falsch", {
         felder: [{ feld: "setupCode", code: "ungueltig" }],
       });

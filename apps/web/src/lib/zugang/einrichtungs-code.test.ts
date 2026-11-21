@@ -15,6 +15,7 @@ import { SETUP_CODE_PATTERN } from "@paibot/shared/eingaben";
 import { describe, expect, it, vi } from "vitest";
 import {
   CODE_ALPHABET,
+  CODE_GUELTIG_MS,
   codeLogZeile,
   codePruefwert,
   codeSicherstellen,
@@ -26,7 +27,7 @@ vi.setConfig({ testTimeout: 60_000 });
 
 const JETZT = new Date("2026-11-20T10:00:00.000Z");
 const LOG_MUSTER =
-  /^Einrichtungs-Code: [0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4} \(gilt bis zum Ende der Einrichtung\)$/;
+  /^Einrichtungs-Code: [0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4} \(gilt 24 Stunden, längstens bis zum Ende der Einrichtung\)$/;
 
 describe("Einrichtungs-Code", () => {
   it("hat die Form XXXX-XXXX-XXXX aus Crockford-Base32 in Großbuchstaben und ist zufällig", () => {
@@ -42,7 +43,7 @@ describe("Einrichtungs-Code", () => {
 
   it("Log-Zeile genau im festen Wortlaut", () => {
     expect(codeLogZeile("K7QD-9M2F-XW4H")).toBe(
-      "Einrichtungs-Code: K7QD-9M2F-XW4H (gilt bis zum Ende der Einrichtung)",
+      "Einrichtungs-Code: K7QD-9M2F-XW4H (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)",
     );
   });
 
@@ -50,19 +51,19 @@ describe("Einrichtungs-Code", () => {
     const { db } = await createTestDb();
     let naechster = "K7QD-9M2F-XW4H";
     const halter = erstelleCodeHalter(() => naechster);
-    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H")).toBe(false);
+    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H", JETZT)).toBe(false);
     expect(await halter.sicherstellen(db, JETZT)).toEqual({ art: "neu", code: "K7QD-9M2F-XW4H" });
-    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H")).toBe(true);
-    expect(await halter.pruefen(db, "K7QD-9M2F-XW4J")).toBe(false);
+    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H", JETZT)).toBe(true);
+    expect(await halter.pruefen(db, "K7QD-9M2F-XW4J", JETZT)).toBe(false);
     naechster = "AAAA-BBBB-CCCC";
     expect(await halter.ersetzen(db, JETZT)).toBe("AAAA-BBBB-CCCC");
-    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H")).toBe(false);
-    expect(await halter.pruefen(db, "AAAA-BBBB-CCCC")).toBe(true);
+    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H", JETZT)).toBe(false);
+    expect(await halter.pruefen(db, "AAAA-BBBB-CCCC", JETZT)).toBe(true);
     await repo.settings.completeSetup(db, {
       installationId: "ins_06f8k2m9qz3w7x1c4b5n8p0r2t" as never,
     });
     expect(await halter.aktiv(db)).toBe(false);
-    expect(await halter.pruefen(db, "AAAA-BBBB-CCCC")).toBe(false);
+    expect(await halter.pruefen(db, "AAAA-BBBB-CCCC", JETZT)).toBe(false);
     // Nach dem Abschluss entsteht keiner mehr.
     expect(await halter.sicherstellen(db, JETZT)).toEqual({ art: "fertig" });
     expect(await halter.ersetzen(db, JETZT)).toBeUndefined();
@@ -102,11 +103,11 @@ describe("Einrichtungs-Code", () => {
       (z) => log.push(z),
     );
     const nachNeustart = erstelleCodeHalter(() => "AAAA-BBBB-CCCC");
-    const stand = await codeSicherstellen(nachNeustart, db, new Date(), (z) => log.push(z));
+    const stand = await codeSicherstellen(nachNeustart, db, JETZT, (z) => log.push(z));
     expect(stand).toEqual({ art: "vorhanden", seit: JETZT });
     expect(log).toEqual([codeLogZeile("K7QD-9M2F-XW4H")]);
-    expect(await nachNeustart.pruefen(db, "K7QD-9M2F-XW4H")).toBe(true);
-    expect(await nachNeustart.pruefen(db, "AAAA-BBBB-CCCC")).toBe(false);
+    expect(await nachNeustart.pruefen(db, "K7QD-9M2F-XW4H", JETZT)).toBe(true);
+    expect(await nachNeustart.pruefen(db, "AAAA-BBBB-CCCC", JETZT)).toBe(false);
   });
 
   it("zwei Prozesse gleichzeitig: genau ein Code, genau eine Log-Zeile", async () => {
@@ -122,6 +123,28 @@ describe("Einrichtungs-Code", () => {
     const neu = staende.find((s) => s.art === "neu");
     if (neu?.art !== "neu") throw new Error("kein neuer Code");
     expect((await repo.settings.getSetupCode(db))?.hash).toBe(codePruefwert(neu.code));
-    for (const h of halter) expect(await h.pruefen(db, neu.code)).toBe(true);
+    for (const h of halter) expect(await h.pruefen(db, neu.code, JETZT)).toBe(true);
+  });
+});
+
+describe("Ablauf des Einrichtungs-Codes", () => {
+  it("nach 24 Stunden gilt der Code nicht mehr; der nächste Aufruf schreibt einen neuen ins Log", async () => {
+    const { db } = await createTestDb();
+    let naechster = "K7QD-9M2F-XW4H";
+    const halter = erstelleCodeHalter(() => naechster);
+    const log: string[] = [];
+    await codeSicherstellen(halter, db, JETZT, (z) => log.push(z));
+    const knappDavor = new Date(JETZT.getTime() + CODE_GUELTIG_MS - 1000);
+    const danach = new Date(JETZT.getTime() + CODE_GUELTIG_MS);
+    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H", knappDavor)).toBe(true);
+    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H", danach)).toBe(false);
+    naechster = "AAAA-BBBB-CCCC";
+    expect(await codeSicherstellen(halter, db, danach, (z) => log.push(z))).toEqual({
+      art: "neu",
+      code: "AAAA-BBBB-CCCC",
+    });
+    expect(log).toEqual([codeLogZeile("K7QD-9M2F-XW4H"), codeLogZeile("AAAA-BBBB-CCCC")]);
+    expect(await halter.pruefen(db, "AAAA-BBBB-CCCC", danach)).toBe(true);
+    expect(await halter.pruefen(db, "K7QD-9M2F-XW4H", danach)).toBe(false);
   });
 });

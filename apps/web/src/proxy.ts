@@ -1,5 +1,6 @@
 /**
- * PaiBot – Proxy vor jeder Anfrage: Sicherheits-Kopfzeilen mit frischer Nonce, Stand der Software,
+ * PaiBot – Proxy vor jeder Anfrage: Sicherheits-Kopfzeilen mit frischer Nonce, Stand der Software
+ * (nur angemeldet), Grenze für den Körper,
  * Weiterleitung zu Einrichtung bzw. Anmeldung und 401 für API-Routen ohne Sitzung.
  *
  * @author    Oliver Hees
@@ -21,9 +22,17 @@ import { cookieLesen, neuerVorabWert, vorabCookie, vorabCookieName } from "./lib
 import { brauchtZustand, entscheide, istDatei } from "./lib/zugang/weiterleitung";
 import { zustandFuer } from "./lib/zugang/zustand";
 
-function kopfzeilenSetzen(antwort: NextResponse, kopfzeilen: { key: string; value: string }[]) {
+/**
+ * Setzt die Sicherheits-Kopfzeilen. Den Stand der Software (`X-Pb-Stand`) bekommt nur, wer
+ * angemeldet ist; Fremde erfahren so nicht, welche Version läuft.
+ */
+function kopfzeilenSetzen(
+  antwort: NextResponse,
+  kopfzeilen: { key: string; value: string }[],
+  angemeldet = false,
+) {
   for (const zeile of kopfzeilen) antwort.headers.set(zeile.key, zeile.value);
-  antwort.headers.set(STAND_HEADER, stand());
+  if (angemeldet) antwort.headers.set(STAND_HEADER, stand());
   return antwort;
 }
 
@@ -102,7 +111,7 @@ export async function proxy(request: NextRequest) {
   }
   if (entscheidung.art === "umleiten") {
     const ziel = new URL(entscheidung.ziel, request.nextUrl);
-    return kopfzeilenSetzen(NextResponse.redirect(ziel, 307), kopfzeilen);
+    return kopfzeilenSetzen(NextResponse.redirect(ziel, 307), kopfzeilen, zustand.angemeldet);
   }
 
   const anfrageKopf = new Headers(request.headers);
@@ -120,7 +129,7 @@ export async function proxy(request: NextRequest) {
   }
   const antwort = NextResponse.next({ request: { headers: anfrageKopf } });
   if (vorabZeile !== undefined) antwort.headers.append("Set-Cookie", vorabZeile);
-  return kopfzeilenSetzen(antwort, kopfzeilen);
+  return kopfzeilenSetzen(antwort, kopfzeilen, zustand.angemeldet);
 }
 
 export const config = {
