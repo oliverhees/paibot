@@ -15,7 +15,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { repo } from "@paibot/db";
+import { geraete, repo } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
 import { CSRF } from "@paibot/shared/konstanten";
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -332,6 +332,13 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
   },
   abmelden: { vorher: einrichten, aufruf: async () => ({}) },
   alleAbmelden: { vorher: einrichten, aufruf: async () => ({}) },
+  geraetEntfernen: {
+    vorher: einrichten,
+    aufruf: async (s) => {
+      const [g] = await s.u.db.select().from(geraete);
+      return { params: { id: g?.id ?? "" } };
+    },
+  },
   passwortAendern: {
     vorher: einrichten,
     aufruf: async () => ({
@@ -462,6 +469,7 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
     aufruf: async () => ({ koerper: { setupCode: TEST_CODE, apiKey: TEST_SCHLUESSEL } }),
   },
   sitzungen: { vorher: einrichten, aufruf: async () => ({}) },
+  geraete: { vorher: einrichten, aufruf: async () => ({}) },
   unterhaltungen: { vorher: mitUnterhaltung, aufruf: async () => ({}) },
   unterhaltung: {
     vorher: mitUnterhaltung,

@@ -9,6 +9,7 @@
  */
 
 import {
+  type DeviceId,
   type OwnerId,
   PaiBotError,
   SESSION,
@@ -17,9 +18,9 @@ import {
   type SessionMethod,
   sessionIdSchema,
 } from "@paibot/shared";
-import { and, desc, eq, gt, lte, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { sessions } from "../schema";
+import { geraete, sessions } from "../schema";
 import { toSession } from "./abbildung";
 import { standardFehler, uebersetzen } from "./fehler";
 
@@ -34,6 +35,8 @@ export interface SessionCreate {
   method: SessionMethod;
   userAgent?: string;
   now?: Date;
+  /** Bekanntes Gerät, zu dem die Sitzung gehört. */
+  deviceId?: DeviceId;
 }
 
 function pruefeHash(tokenHash: string): void {
@@ -44,11 +47,18 @@ function pruefeHash(tokenHash: string): void {
   }
 }
 
-/** Bedingung „noch gültig“: gleitendes Ende nicht erreicht und höchste Dauer nicht überschritten. */
+/**
+ * Bedingung „noch gültig“: gleitendes Ende nicht erreicht, höchste Dauer nicht überschritten und,
+ * wenn die Sitzung zu einem Gerät gehört, das Gerät nicht widerrufen.
+ */
 function gueltig(now: Date) {
   return and(
     gt(sessions.expiresAt, now),
     gt(sessions.createdAt, new Date(now.getTime() - SESSION.maxDays * TAG_MS)),
+    or(
+      isNull(sessions.deviceId),
+      sql`exists (select 1 from ${geraete} where ${geraete.id} = ${sessions.deviceId} and ${geraete.revokedAt} is null)`,
+    ),
   );
 }
 
@@ -70,6 +80,7 @@ export async function create(db: Database, input: SessionCreate): Promise<Sessio
           expiresAt: new Date(now.getTime() + SESSION.slidingDays * TAG_MS),
           userAgent:
             input.userAgent === undefined ? null : input.userAgent.slice(0, MAX_USER_AGENT),
+          deviceId: input.deviceId ?? null,
         })
         .returning(),
     standardFehler,
@@ -113,7 +124,38 @@ export async function extend(
     })
     .where(and(eq(sessions.id, tokenHash), gueltig(now)))
     .returning();
+  if (row?.deviceId != null) {
+    await db
+      .update(geraete)
+      .set({ lastSeenAt: now })
+      .where(and(eq(geraete.id, row.deviceId), isNull(geraete.revokedAt)));
+  }
   return row === undefined ? undefined : toSession(row, true);
+}
+
+/** Ordnet eine gültige Sitzung einem Gerät zu (nach dem Anmelden). `true`, wenn es sie gab. */
+export async function attachDevice(
+  db: Database,
+  tokenHash: string,
+  deviceId: DeviceId,
+): Promise<boolean> {
+  if (!sessionIdSchema.safeParse(tokenHash).success) return false;
+  const rows = await db
+    .update(sessions)
+    .set({ deviceId })
+    .where(eq(sessions.id, tokenHash))
+    .returning({ id: sessions.id });
+  return rows.length > 0;
+}
+
+/** Gerät einer Sitzung (Hash des Tokens), falls sie zu einem gehört. */
+export async function deviceOf(db: Database, tokenHash: string): Promise<DeviceId | undefined> {
+  if (!sessionIdSchema.safeParse(tokenHash).success) return undefined;
+  const [row] = await db
+    .select({ deviceId: sessions.deviceId })
+    .from(sessions)
+    .where(eq(sessions.id, tokenHash));
+  return row?.deviceId ?? undefined;
 }
 
 /** Beendet eine Sitzung (Abmelden). `true`, wenn es sie gab. */

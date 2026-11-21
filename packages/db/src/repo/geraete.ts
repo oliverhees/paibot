@@ -1,6 +1,6 @@
 /**
- * PaiBot – Zugriff auf bekannte Geräte. Gespeichert wird nur der SHA-256 der Kennung aus dem
- * Cookie; Abmelden, „Alle Sitzungen beenden“ und ein neues Passwort löschen die Einträge.
+ * PaiBot – Zugriff auf bekannte Geräte. Vom Cookie eines Geräts steht nur der SHA-256 da. Ein
+ * Widerruf beendet auch alle Sitzungen des Geräts.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -9,34 +9,59 @@
  * @since     2026-11-21
  */
 
-import { type OwnerId, PaiBotError, sessionIdSchema } from "@paibot/shared";
-import { and, asc, eq, gt, lte, notInArray, or } from "drizzle-orm";
+import {
+  type DeviceId,
+  type DeviceKind,
+  type DeviceRight,
+  newId,
+  type OwnerId,
+  PaiBotError,
+  sessionIdSchema,
+} from "@paibot/shared";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import type { Database } from "../client";
-import { geraete } from "../schema";
+import { geraete, sessions } from "../schema";
 import { standardFehler, uebersetzen } from "./fehler";
 
-/** Höchstens so viele Geräte je Besitzer; beim Anlegen eines weiteren fällt das älteste weg. */
+/** Höchstens so viele gültige Geräte je Besitzer; ein weiteres widerruft das älteste. */
 export const MAX_GERAETE = 10;
 
+/** Widerrufene und abgelaufene Einträge bleiben so lange stehen, dann fallen sie weg. */
+export const AUFBEWAHREN_TAGE = 30;
+
+const TAG_MS = 24 * 60 * 60 * 1000;
+const MAX_NAME = 200;
+
 export interface GeraetCreate {
-  /** SHA-256 der Kennung als 64 Hex-Zeichen. */
-  idHash: string;
+  /** SHA-256 der Kennung aus dem Cookie als 64 Hex-Zeichen. */
+  tokenHash: string;
   ownerId: OwnerId;
-  /** Ende der Gültigkeit (fest, ohne Verlängerung). */
+  kind: DeviceKind;
+  /** Browser-Kennung (gekürzt); die Anzeige macht daraus eine grobe Angabe. */
+  name?: string;
   expiresAt: Date;
   now?: Date;
+  /** Kennung vorgeben (sonst neu), etwa weil sie schon im Beleg steht. */
+  id?: DeviceId;
 }
 
 export interface GeraetEintrag {
-  id: string;
+  id: DeviceId;
   ownerId: OwnerId;
+  kind: DeviceKind;
+  name?: string;
+  rights: DeviceRight;
   createdAt: string;
+  lastSeenAt: string;
   expiresAt: string;
+  revokedAt?: string;
 }
 
-function pruefeHash(idHash: string): void {
-  if (!sessionIdSchema.safeParse(idHash).success) {
-    throw new PaiBotError("eingabe_ungueltig", { felder: [{ feld: "idHash", code: "format" }] });
+function pruefeHash(tokenHash: string): void {
+  if (!sessionIdSchema.safeParse(tokenHash).success) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      felder: [{ feld: "tokenHash", code: "format" }],
+    });
   }
 }
 
@@ -44,81 +69,164 @@ function eintrag(row: typeof geraete.$inferSelect): GeraetEintrag {
   return {
     id: row.id,
     ownerId: row.ownerId,
+    kind: row.kind,
+    ...(row.name === null ? {} : { name: row.name }),
+    rights: row.rights,
     createdAt: row.createdAt.toISOString(),
+    lastSeenAt: row.lastSeenAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
+    ...(row.revokedAt === null ? {} : { revokedAt: row.revokedAt.toISOString() }),
   };
 }
 
+/** Bedingung „gilt“: nicht widerrufen und nicht abgelaufen. */
+function aktiv(now: Date) {
+  return and(isNull(geraete.revokedAt), gt(geraete.expiresAt, now));
+}
+
+async function revokeIds(db: Database, ids: DeviceId[], now: Date): Promise<number> {
+  const rows = await db
+    .update(geraete)
+    .set({ revokedAt: now })
+    .where(and(inArray(geraete.id, ids), isNull(geraete.revokedAt)))
+    .returning({ id: geraete.id });
+  await db.delete(sessions).where(inArray(sessions.deviceId, ids));
+  return rows.length;
+}
+
 /**
- * Legt ein Gerät an. Abgelaufene Geräte des Besitzers fallen dabei weg, und es bleiben höchstens
- * `MAX_GERAETE` (die neuesten).
+ * Legt ein Gerät an. Danach gelten höchstens `MAX_GERAETE` Geräte des Besitzers (ältere werden
+ * widerrufen), und Einträge, die seit `AUFBEWAHREN_TAGE` widerrufen oder abgelaufen sind, fallen weg.
  */
 export async function create(db: Database, input: GeraetCreate): Promise<GeraetEintrag> {
-  pruefeHash(input.idHash);
+  pruefeHash(input.tokenHash);
   const now = input.now ?? new Date();
   const [row] = await uebersetzen(
     () =>
       db
         .insert(geraete)
         .values({
-          id: input.idHash,
+          id: input.id ?? newId("device"),
           ownerId: input.ownerId,
+          tokenHash: input.tokenHash,
+          kind: input.kind,
+          name: input.name === undefined ? null : input.name.slice(0, MAX_NAME),
           createdAt: now,
+          lastSeenAt: now,
           expiresAt: input.expiresAt,
         })
         .returning(),
     standardFehler,
   );
   if (row === undefined) throw new PaiBotError("intern");
-  const neueste = await db
+  const gueltige = await db
     .select({ id: geraete.id })
     .from(geraete)
-    .where(and(eq(geraete.ownerId, input.ownerId), gt(geraete.expiresAt, now)))
-    .orderBy(asc(geraete.createdAt), asc(geraete.id));
-  // Das neue Gerät bleibt immer, dazu die jüngsten anderen.
-  const andere = neueste.map((g) => g.id).filter((id) => id !== input.idHash);
-  const bleiben = [input.idHash, ...andere.slice(-(MAX_GERAETE - 1))];
+    .where(and(eq(geraete.ownerId, input.ownerId), aktiv(now)))
+    .orderBy(desc(geraete.createdAt), desc(geraete.id));
+  const zuViele = gueltige
+    .map((g) => g.id)
+    .filter((id) => id !== row.id)
+    .slice(MAX_GERAETE - 1);
+  if (zuViele.length > 0) await revokeIds(db, zuViele, now);
+  const grenze = new Date(now.getTime() - AUFBEWAHREN_TAGE * TAG_MS);
   await db
     .delete(geraete)
     .where(
       and(
         eq(geraete.ownerId, input.ownerId),
-        or(lte(geraete.expiresAt, now), notInArray(geraete.id, bleiben)),
+        or(
+          and(isNotNull(geraete.revokedAt), lt(geraete.revokedAt, grenze)),
+          lt(geraete.expiresAt, grenze),
+        ),
       ),
     );
   return eintrag(row);
 }
 
-/** Das gültige Gerät zu diesem Hash, sonst `undefined`. */
-export async function find(
+/** Das gültige Gerät zum Hash eines Cookies, sonst `undefined`. */
+export async function findByToken(
   db: Database,
-  idHash: string,
+  tokenHash: string,
   options: { now?: Date } = {},
 ): Promise<GeraetEintrag | undefined> {
-  if (!sessionIdSchema.safeParse(idHash).success) return undefined;
+  if (!sessionIdSchema.safeParse(tokenHash).success) return undefined;
   const now = options.now ?? new Date();
   const [row] = await db
     .select()
     .from(geraete)
-    .where(and(eq(geraete.id, idHash), gt(geraete.expiresAt, now)));
+    .where(and(eq(geraete.tokenHash, tokenHash), aktiv(now)));
   return row === undefined ? undefined : eintrag(row);
 }
 
-/** Entfernt ein Gerät (Abmelden in diesem Browser). */
-export async function remove(db: Database, idHash: string): Promise<boolean> {
-  if (!sessionIdSchema.safeParse(idHash).success) return false;
-  const geloescht = await db
-    .delete(geraete)
-    .where(eq(geraete.id, idHash))
-    .returning({ id: geraete.id });
-  return geloescht.length > 0;
+/** Ein Gerät des Besitzers, auch widerrufen; sonst `undefined`. */
+export async function get(
+  db: Database,
+  ownerId: OwnerId,
+  id: string,
+): Promise<GeraetEintrag | undefined> {
+  const [row] = await db
+    .select()
+    .from(geraete)
+    .where(and(eq(geraete.id, id as DeviceId), eq(geraete.ownerId, ownerId)));
+  return row === undefined ? undefined : eintrag(row);
 }
 
-/** Entfernt alle Geräte des Besitzers („Alle Sitzungen beenden“, neues Passwort). */
-export async function removeAll(db: Database, ownerId: OwnerId): Promise<number> {
-  const geloescht = await db
-    .delete(geraete)
-    .where(eq(geraete.ownerId, ownerId))
+/** Die gültigen Geräte des Besitzers, zuletzt gesehene zuerst. */
+export async function list(
+  db: Database,
+  ownerId: OwnerId,
+  options: { now?: Date } = {},
+): Promise<GeraetEintrag[]> {
+  const now = options.now ?? new Date();
+  const rows = await db
+    .select()
+    .from(geraete)
+    .where(and(eq(geraete.ownerId, ownerId), aktiv(now)))
+    .orderBy(desc(geraete.lastSeenAt), asc(geraete.id));
+  return rows.map(eintrag);
+}
+
+/** Merkt die Benutzung und verlängert die Gültigkeit (bei jeder Anmeldung mit dem Gerät). */
+export async function renew(
+  db: Database,
+  id: DeviceId,
+  input: { now: Date; expiresAt: Date },
+): Promise<boolean> {
+  const rows = await db
+    .update(geraete)
+    .set({ lastSeenAt: input.now, expiresAt: input.expiresAt })
+    .where(and(eq(geraete.id, id), aktiv(input.now)))
     .returning({ id: geraete.id });
-  return geloescht.length;
+  return rows.length > 0;
+}
+
+/** Widerruft ein Gerät des Besitzers und beendet seine Sitzungen. `true`, wenn es galt. */
+export async function revoke(
+  db: Database,
+  ownerId: OwnerId,
+  id: string,
+  options: { now?: Date } = {},
+): Promise<boolean> {
+  const geraet = await get(db, ownerId, id);
+  if (geraet === undefined) return false;
+  return (await revokeIds(db, [geraet.id], options.now ?? new Date())) > 0;
+}
+
+/** Widerruft alle Geräte des Besitzers und beendet ihre Sitzungen. Gibt die Anzahl zurück. */
+export async function revokeAll(
+  db: Database,
+  ownerId: OwnerId,
+  options: { now?: Date } = {},
+): Promise<number> {
+  const offen = await db
+    .select({ id: geraete.id })
+    .from(geraete)
+    .where(and(eq(geraete.ownerId, ownerId), isNull(geraete.revokedAt)));
+  if (offen.length === 0) return 0;
+  return revokeIds(
+    db,
+    offen.map((g) => g.id),
+    options.now ?? new Date(),
+  );
 }

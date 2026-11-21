@@ -80,6 +80,12 @@ export interface RoutenDefinition {
 
 export { GROESSTER_KOERPER_BYTES, STANDARD_KOERPER_BYTES };
 
+/**
+ * Aktionen ohne eigene Route: Sie laufen nur als Folge einer anderen Route über das Tor
+ * („Gerät hinzugefügt“ nach Anmelden, Einrichtung und Passwort ändern).
+ */
+export const FOLGE_AKTIONEN = ["geraet.hinzufuegen"] as const;
+
 /** Alle API-Routen der Basis. */
 export const API_ROUTEN = {
   health: {
@@ -163,6 +169,21 @@ export const API_ROUTEN = {
     zugang: "besitzer",
     antwort: "json",
     veraendernd: false,
+  },
+  geraete: {
+    methode: "GET",
+    pfad: "/api/zugang/geraete",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  geraetEntfernen: {
+    methode: "POST",
+    pfad: "/api/zugang/geraete/:id/entfernen",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "geraet.entfernen",
   },
   passwortAendern: {
     methode: "POST",

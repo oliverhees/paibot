@@ -1,9 +1,8 @@
 /**
- * PaiBot – Bekannte Geräte: Ein Browser, in dem du dich angemeldet hast, bekommt ein signiertes
- * Cookie, dessen Kennung auch auf dem Server steht (nur als SHA-256). Damit wartet er beim Anmelden
- * nicht hinter der gemeinsamen Bremse und nicht hinter dem Limit seiner Adresse; dafür hat jedes
- * Gerät ein eigenes, kleines Limit. Abmelden, „Alle Sitzungen beenden“ und ein neues Passwort
- * entfernen die Geräte auf dem Server, danach gilt das Cookie nicht mehr.
+ * PaiBot – Bekannte Geräte: Ein Browser, in dem du dich anmeldest, bekommt ein signiertes Cookie,
+ * dessen Kennung auf dem Server im Geräte-Verzeichnis steht (nur als SHA-256). Ein Cookie ohne
+ * gültigen Eintrag gilt nicht. Ein bekanntes Gerät wartet beim Anmelden nicht hinter der
+ * gemeinsamen Bremse und nicht hinter dem Limit seiner Adresse, hat dafür aber ein eigenes Limit.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -14,10 +13,9 @@
 
 import { type DerivedKey, hashToken, hmac, newToken, safeEqual, toBase64Url } from "@paibot/crypto";
 import { type Database, repo } from "@paibot/db";
-import type { OwnerId } from "@paibot/shared/ids";
 import { type CookieRahmen, cookieLesen, cookieLoeschen } from "./sitzung";
 
-/** Gültigkeit eines Geräts in Sekunden (90 Tage, wie die längste Sitzung; jede Anmeldung erneuert es). */
+/** Gültigkeit eines Geräts in Sekunden (90 Tage ab der letzten Anmeldung damit). */
 export const GERAET_MAX_AGE_SEKUNDEN = 90 * 24 * 60 * 60;
 
 const KENNUNG = /^[A-Za-z0-9_-]{32}$/;
@@ -32,27 +30,16 @@ function zeichen(schluessel: DerivedKey<"session-v1">, kennung: string): string 
   return toBase64Url(hmac(schluessel, `geraet-v2:${kennung}`));
 }
 
-/** Kennung aus einem Cookie-Wert mit gültigem Prüfzeichen dieser Installation, sonst `undefined`. */
-function kennungAus(
-  schluessel: DerivedKey<"session-v1">,
-  wert: string | undefined,
-): string | undefined {
-  if (wert === undefined || wert.length > 100) return undefined;
-  const [kennung = "", pruef = "", rest] = wert.split(".");
-  if (rest !== undefined || !KENNUNG.test(kennung) || !ZEICHEN.test(pruef)) return undefined;
-  return safeEqual(pruef, zeichen(schluessel, kennung)) ? kennung : undefined;
-}
-
-/** Ein neues Gerät: Cookie-Wert (nur für die Antwort) und der Hash, der auf dem Server steht. */
-export interface NeuesGeraet {
+/** Ein neuer Cookie-Wert (nur für die Antwort) und der Hash, der auf dem Server steht. */
+export interface GeraetWert {
   wert: string;
-  idHash: string;
+  tokenHash: string;
 }
 
 /** Neuer Wert: zufällige Kennung und ihr Prüfzeichen, getrennt durch einen Punkt. */
-export function neuerGeraetWert(schluessel: DerivedKey<"session-v1">): NeuesGeraet {
+export function neuerGeraetWert(schluessel: DerivedKey<"session-v1">): GeraetWert {
   const kennung = newToken(24);
-  return { wert: `${kennung}.${zeichen(schluessel, kennung)}`, idHash: hashToken(kennung) };
+  return { wert: `${kennung}.${zeichen(schluessel, kennung)}`, tokenHash: hashToken(kennung) };
 }
 
 /** Hash der Kennung, wenn das Prüfzeichen stimmt (ohne Blick in die Datenbank). */
@@ -60,45 +47,30 @@ export function geraetHash(
   schluessel: DerivedKey<"session-v1">,
   wert: string | undefined,
 ): string | undefined {
-  const kennung = kennungAus(schluessel, wert);
-  return kennung === undefined ? undefined : hashToken(kennung);
+  if (wert === undefined || wert.length > 100) return undefined;
+  const [kennung = "", pruef = "", rest] = wert.split(".");
+  if (rest !== undefined || !KENNUNG.test(kennung) || !ZEICHEN.test(pruef)) return undefined;
+  return safeEqual(pruef, zeichen(schluessel, kennung)) ? hashToken(kennung) : undefined;
 }
 
 /**
- * Ist der Wert ein bekanntes Gerät: gültiges Prüfzeichen und ein gültiger Eintrag auf dem Server?
- * Liefert den Hash der Kennung oder `undefined`. Gefälschte Werte kosten keine Abfrage.
+ * Das bekannte Gerät zu einem Cookie-Wert: gültiges Prüfzeichen und ein gültiger Eintrag im
+ * Verzeichnis (nicht widerrufen, nicht abgelaufen). Gefälschte Werte kosten keine Abfrage.
  */
 export async function bekanntesGeraet(
   db: Database,
   schluessel: DerivedKey<"session-v1">,
   wert: string | undefined,
   now: Date,
-): Promise<string | undefined> {
-  const idHash = geraetHash(schluessel, wert);
-  if (idHash === undefined) return undefined;
-  return (await repo.geraete.find(db, idHash, { now })) === undefined ? undefined : idHash;
+): Promise<repo.geraete.GeraetEintrag | undefined> {
+  const tokenHash = geraetHash(schluessel, wert);
+  if (tokenHash === undefined) return undefined;
+  return repo.geraete.findByToken(db, tokenHash, { now });
 }
 
-/**
- * Legt ein neues Gerät für den Besitzer an (nach Anmeldung oder Einrichtung). Ein Gerät, das der
- * Browser schon mitbringt (`bisher`), wird dabei ersetzt.
- */
-export async function geraetAnlegen(
-  db: Database,
-  schluessel: DerivedKey<"session-v1">,
-  ownerId: OwnerId,
-  optionen: { now: Date; bisher?: string | undefined },
-): Promise<NeuesGeraet> {
-  const alt = geraetHash(schluessel, optionen.bisher);
-  if (alt !== undefined) await repo.geraete.remove(db, alt);
-  const neu = neuerGeraetWert(schluessel);
-  await repo.geraete.create(db, {
-    idHash: neu.idHash,
-    ownerId,
-    now: optionen.now,
-    expiresAt: new Date(optionen.now.getTime() + GERAET_MAX_AGE_SEKUNDEN * 1000),
-  });
-  return neu;
+/** Ablauf eines Geräts, das jetzt angelegt oder benutzt wird. */
+export function geraetAblauf(now: Date): Date {
+  return new Date(now.getTime() + GERAET_MAX_AGE_SEKUNDEN * 1000);
 }
 
 /** Wert des Geräte-Cookies aus der Kopfzeile `Cookie`. */

@@ -12,7 +12,11 @@ import { createHash } from "node:crypto";
 import { newId, type OwnerId, SESSION } from "@paibot/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "../client";
-import { owner as ownerTabelle } from "../schema";
+import {
+  geraete as geraeteTabelle,
+  owner as ownerTabelle,
+  sessions as sessionsTabelle,
+} from "../schema";
 import { createTestDb } from "../testing";
 
 import { geraete, owner, rateLimit, sessions } from "./index";
@@ -267,28 +271,94 @@ describe("geraete", () => {
     id = (await owner.create(db, { passwordHash: "h" })).id as OwnerId;
   });
   const ablauf = nach(T0, 90 * TAG);
+  const neu = (token: string, now = T0) =>
+    geraete.create(db, {
+      tokenHash: hash(token),
+      ownerId: id,
+      kind: "browser",
+      expiresAt: ablauf,
+      now,
+    });
 
-  it("anlegen, finden (nur gültig), entfernen", async () => {
-    await geraete.create(db, { idHash: hash("a"), ownerId: id, expiresAt: ablauf, now: T0 });
-    expect((await geraete.find(db, hash("a"), { now: T0 }))?.ownerId).toBe(id);
-    expect(await geraete.find(db, hash("a"), { now: nach(ablauf, 1) })).toBeUndefined();
-    expect(await geraete.find(db, "kein-hash", { now: T0 })).toBeUndefined();
-    expect(await geraete.remove(db, hash("a"))).toBe(true);
-    expect(await geraete.find(db, hash("a"), { now: T0 })).toBeUndefined();
+  it("anlegen mit Art, Rechten und leerem Schlüssel; finden nur, solange es gilt", async () => {
+    const g = await neu("a");
+    expect(g).toMatchObject({ kind: "browser", rights: "voll", ownerId: id });
+    expect(g.id).toMatch(/^ger_/);
+    const [roh] = await db.select().from(geraeteTabelle);
+    expect(roh?.publicKey).toBeNull();
+    expect((await geraete.findByToken(db, hash("a"), { now: T0 }))?.id).toBe(g.id);
+    expect(await geraete.findByToken(db, hash("a"), { now: nach(ablauf, 1) })).toBeUndefined();
+    expect(await geraete.findByToken(db, "kein-hash", { now: T0 })).toBeUndefined();
   });
 
-  it("höchstens MAX_GERAETE je Besitzer, das neue bleibt; removeAll entfernt alle", async () => {
-    for (let i = 0; i < geraete.MAX_GERAETE + 3; i++) {
-      await geraete.create(db, { idHash: hash(`g${i}`), ownerId: id, expiresAt: ablauf, now: T0 });
-    }
-    const letztes = hash(`g${geraete.MAX_GERAETE + 2}`);
-    expect(await geraete.find(db, letztes, { now: T0 })).toBeDefined();
-    expect(await geraete.removeAll(db, id)).toBe(geraete.MAX_GERAETE);
+  it("Widerruf: Gerät gilt nicht mehr, seine Sitzungen enden, andere bleiben", async () => {
+    const g = await neu("a");
+    await sessions.create(db, {
+      tokenHash: hash("s1"),
+      ownerId: id,
+      authLevel: "password",
+      method: "password",
+      now: T0,
+      deviceId: g.id,
+    });
+    await sessions.create(db, {
+      tokenHash: hash("s2"),
+      ownerId: id,
+      authLevel: "password",
+      method: "password",
+      now: T0,
+    });
+    expect(await geraete.revoke(db, id, g.id, { now: T0 })).toBe(true);
+    expect(await geraete.findByToken(db, hash("a"), { now: T0 })).toBeUndefined();
+    expect(await sessions.findByTokenHash(db, hash("s1"), { now: T0 })).toBeUndefined();
+    expect(await sessions.findByTokenHash(db, hash("s2"), { now: T0 })).toBeDefined();
+    const zeilen = await db.select({ id: sessionsTabelle.id }).from(sessionsTabelle);
+    expect(zeilen.map((z) => z.id)).toEqual([hash("s2")]);
+    expect(await geraete.revoke(db, id, g.id, { now: T0 })).toBe(false);
+    expect((await geraete.get(db, id, g.id))?.revokedAt).toBe(T0.toISOString());
   });
 
-  it("weist eine ID im falschen Format ab", async () => {
+  it("eine Sitzung eines widerrufenen Geräts gilt nicht, auch wenn sie noch in der Tabelle stünde", async () => {
+    const g = await neu("a");
+    await sessions.create(db, {
+      tokenHash: hash("s1"),
+      ownerId: id,
+      authLevel: "password",
+      method: "password",
+      now: T0,
+      deviceId: g.id,
+    });
+    await db.update(geraeteTabelle).set({ revokedAt: T0 });
+    expect(await sessions.findByTokenHash(db, hash("s1"), { now: T0 })).toBeUndefined();
+    expect(await sessions.extend(db, hash("s1"), { now: T0 })).toBeUndefined();
+  });
+
+  it("höchstens MAX_GERAETE gültig, das neue bleibt; revokeAll widerruft alle", async () => {
+    for (let i = 0; i < geraete.MAX_GERAETE + 3; i++) await neu(`g${i}`);
+    expect(
+      await geraete.findByToken(db, hash(`g${geraete.MAX_GERAETE + 2}`), { now: T0 }),
+    ).toBeDefined();
+    expect((await geraete.list(db, id, { now: T0 })).length).toBe(geraete.MAX_GERAETE);
+    expect(await geraete.revokeAll(db, id, { now: T0 })).toBe(geraete.MAX_GERAETE);
+    expect(await geraete.list(db, id, { now: T0 })).toEqual([]);
+  });
+
+  it("alte widerrufene Einträge fallen nach AUFBEWAHREN_TAGE weg", async () => {
+    const g = await neu("a");
+    await geraete.revoke(db, id, g.id, { now: T0 });
+    await neu("b", nach(T0, (geraete.AUFBEWAHREN_TAGE + 1) * TAG));
+    expect(await geraete.get(db, id, g.id)).toBeUndefined();
+  });
+
+  it("weist einen Hash im falschen Format ab", async () => {
     await expect(
-      geraete.create(db, { idHash: "x", ownerId: id, expiresAt: ablauf, now: T0 }),
+      geraete.create(db, {
+        tokenHash: "x",
+        ownerId: id,
+        kind: "browser",
+        expiresAt: ablauf,
+        now: T0,
+      }),
     ).rejects.toEqual(mitCode("eingabe_ungueltig"));
   });
 });

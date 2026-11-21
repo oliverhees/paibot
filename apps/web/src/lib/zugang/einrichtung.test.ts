@@ -259,6 +259,8 @@ describe("Abschluss der Einrichtung", () => {
     ).toEqual([
       "einrichtung.abschliessen",
       "einrichtung.abschliessen",
+      "geraet.hinzufuegen",
+      "geraet.hinzufuegen",
       "bot.aendern",
       "bot.aendern",
       "anbieter.speichern",

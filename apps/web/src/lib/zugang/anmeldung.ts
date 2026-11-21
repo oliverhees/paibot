@@ -12,19 +12,21 @@ import { needsRehash } from "@paibot/crypto";
 import { repo } from "@paibot/db";
 import type { LoginInput, PasswordChangeInput } from "@paibot/shared/eingaben";
 import { PaiBotError } from "@paibot/shared/fehler";
-import type { OwnerId } from "@paibot/shared/ids";
-import type { RoutenKontext } from "../api/route";
+import { newId, type OwnerId } from "@paibot/shared/ids";
+import type { RoutenKontext, TorOptionen } from "../api/route";
 import {
-  geraetAnlegen,
+  bekanntesGeraet,
+  geraetAblauf,
   geraetAusAnfrage,
   geraetCookie,
   geraetCookieLoeschen,
-  geraetHash,
+  neuerGeraetWert,
 } from "./geraet";
-import { _nachweisPasswort } from "./nachweis";
+import { _nachweisPasswort, nachweisAusSitzung } from "./nachweis";
 import { neuerPasswortHash, pruefePasswort } from "./passwort";
 import {
   cookieLoeschen,
+  type NeueSitzung,
   sitzungAnlegen,
   sitzungsCookie,
   sitzungsCookieName,
@@ -37,10 +39,49 @@ function passwortFalsch(): PaiBotError {
 }
 
 /**
+ * Macht den Browser der Anfrage zum bekannten Gerät: Aktion „Gerät hinzugefügt“ über das Tor (mit
+ * der neuen Sitzung als Nachweis), legt den Eintrag im Verzeichnis an und hängt die Sitzung daran.
+ * Gibt den Wert für das Geräte-Cookie zurück. Mit `optionen.db` (Transaktion) läuft alles dort.
+ */
+export async function geraetHinzufuegen(
+  kontext: RoutenKontext<"anmelden" | "passwortAendern" | "einrichtungAbschliessen">,
+  neu: NeueSitzung,
+  optionen: TorOptionen = {},
+): Promise<string> {
+  const db = optionen.db ?? kontext.db;
+  const d = kontext.dienste;
+  const deviceId = newId("device");
+  const wert = neuerGeraetWert(d.schluessel().sitzung);
+  const userAgent = kontext.request.headers.get("user-agent");
+  await kontext.tor(
+    nachweisAusSitzung(neu.sitzung),
+    { type: "geraet.hinzufuegen", target: { deviceId } },
+    { kind: "browser" },
+    async () => {
+      await repo.geraete.create(db, {
+        id: deviceId,
+        tokenHash: wert.tokenHash,
+        ownerId: neu.sitzung.ownerId,
+        kind: "browser",
+        ...(userAgent ? { name: userAgent } : {}),
+        now: d.uhr.now(),
+        expiresAt: geraetAblauf(d.uhr.now()),
+      });
+      await repo.sessions.attachDevice(db, neu.sitzung.id, deviceId);
+      return { value: undefined, result: { status: "ok" } };
+    },
+    optionen,
+  );
+  return wert.wert;
+}
+
+/**
  * `POST /api/zugang/anmelden`. Die Limits hat der Rahmen schon gezählt (vor dem teuren Hash). Das
  * Passwort wird über den Begrenzer geprüft (höchstens zwei gleichzeitig); ohne Besitzer gegen einen
  * Ersatz-Hash, damit Antwort und Dauer gleich bleiben. Bei Erfolg: veraltetes Hash-Verfahren
- * erneuern, über das Tor eine neue Sitzung mit frischem Token anlegen, Vorab-Cookie löschen.
+ * erneuern, über das Tor eine neue Sitzung mit frischem Token anlegen, Vorab-Cookie löschen. Ist
+ * der Browser schon ein bekanntes Gerät, hängt die Sitzung daran und das Gerät gilt wieder 90 Tage;
+ * sonst wird er eins (Aktion „Gerät hinzugefügt“).
  */
 export async function anmelden(kontext: RoutenKontext<"anmelden">): Promise<{ angemeldet: true }> {
   const eingabe: LoginInput = kontext.eingabe;
@@ -54,48 +95,62 @@ export async function anmelden(kontext: RoutenKontext<"anmelden">): Promise<{ an
     await repo.owner.updatePassword(db, ownerId, await neuerPasswortHash(eingabe.password));
   }
   const userAgent = kontext.request.headers.get("user-agent");
+  const rahmen = { appUrl: d.appOrigin() };
+  const bisher = await bekanntesGeraet(
+    db,
+    d.schluessel().sitzung,
+    geraetAusAnfrage(kontext.request, rahmen),
+    d.uhr.now(),
+  );
+  const bekannt = bisher?.ownerId === ownerId ? bisher : undefined;
   const ergebnis = await kontext.tor(
     _nachweisPasswort(ownerId),
     { type: "zugang.anmelden", target: { ownerId } },
     { remember: eingabe.remember },
     async () => {
-      const neu = await sitzungAnlegen(db, ownerId, { now: d.uhr.now(), userAgent });
-      const geraet = await geraetAnlegen(db, d.schluessel().sitzung, ownerId, {
+      const neu = await sitzungAnlegen(db, ownerId, {
         now: d.uhr.now(),
-        bisher: geraetAusAnfrage(kontext.request, { appUrl: d.appOrigin() }),
+        userAgent,
+        ...(bekannt === undefined ? {} : { deviceId: bekannt.id }),
       });
-      return { value: { ...neu, geraet }, result: { status: "ok" } };
+      if (bekannt !== undefined) {
+        await repo.geraete.renew(db, bekannt.id, {
+          now: d.uhr.now(),
+          expiresAt: geraetAblauf(d.uhr.now()),
+        });
+      }
+      return { value: neu, result: { status: "ok" } };
     },
   );
   await kontext.limitZuruecksetzen("anmeldenIp");
   await kontext.limitZuruecksetzen("anmeldenIpTag");
   await kontext.limitZuruecksetzen("anmeldenGeraet");
   await kontext.limitZuruecksetzen("anmeldenGeraetTag");
-  const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.value.token, eingabe.remember));
-  kontext.cookie(geraetCookie(rahmen, ergebnis.value.geraet.wert));
+  if (bekannt === undefined) {
+    kontext.cookie(geraetCookie(rahmen, await geraetHinzufuegen(kontext, ergebnis.value)));
+  }
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));
   return { angemeldet: true };
 }
 
 /**
- * `POST /api/zugang/abmelden`: beendet die Sitzung dieser Anfrage, entfernt das Gerät dieses
- * Browsers auf dem Server und löscht beide Cookies.
+ * `POST /api/zugang/abmelden`: beendet die Sitzung dieser Anfrage, widerruft das Gerät, zu dem sie
+ * gehört (ein fremder Rechner bleibt so kein bekanntes Gerät), und löscht beide Cookies.
  */
 export async function abmelden(kontext: RoutenKontext<"abmelden">): Promise<{ abgemeldet: true }> {
   const { sitzung, db } = kontext;
   const rahmen = { appUrl: kontext.dienste.appOrigin() };
-  const geraet = geraetHash(
-    kontext.dienste.schluessel().sitzung,
-    geraetAusAnfrage(kontext.request, rahmen),
-  );
+  const geraet = await repo.sessions.deviceOf(db, sitzung.id);
   await kontext.tor(
     kontext.nachweis,
     { type: "zugang.abmelden", target: { ownerId: sitzung.ownerId } },
     {},
     async () => {
+      if (geraet !== undefined) {
+        await repo.geraete.revoke(db, sitzung.ownerId, geraet, { now: kontext.dienste.uhr.now() });
+      }
       await repo.sessions.end(db, sitzung.id);
-      if (geraet !== undefined) await repo.geraete.remove(db, geraet);
       return { value: undefined, result: { status: "ok" } };
     },
   );
@@ -119,7 +174,7 @@ export async function alleAbmelden(
     { sessions: offen.length },
     async () => {
       const beendet = await repo.sessions.endAll(db, sitzung.ownerId);
-      await repo.geraete.removeAll(db, sitzung.ownerId);
+      await repo.geraete.revokeAll(db, sitzung.ownerId, { now: d.uhr.now() });
       return { value: beendet, result: { status: "ok" } };
     },
   );
@@ -182,22 +237,80 @@ export async function passwortAendern(
       if (neuerHash === undefined) throw new PaiBotError("passwort_falsch");
       const neu = await db.transaction(async (tx) => {
         await repo.owner.updatePassword(tx, sitzung.ownerId, neuerHash, d.uhr.now());
+        await repo.geraete.revokeAll(tx, sitzung.ownerId, { now: d.uhr.now() });
         await repo.sessions.endAll(tx, sitzung.ownerId);
-        await repo.geraete.removeAll(tx, sitzung.ownerId);
-        const neueSitzung = await sitzungAnlegen(tx, sitzung.ownerId, {
-          now: d.uhr.now(),
-          userAgent,
-        });
-        const geraet = await geraetAnlegen(tx, d.schluessel().sitzung, sitzung.ownerId, {
-          now: d.uhr.now(),
-        });
-        return { ...neueSitzung, geraet };
+        return sitzungAnlegen(tx, sitzung.ownerId, { now: d.uhr.now(), userAgent });
       });
       return { value: neu, result: { status: "ok" } };
     },
   );
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.value.token, false));
-  kontext.cookie(geraetCookie(rahmen, ergebnis.value.geraet.wert));
+  kontext.cookie(geraetCookie(rahmen, await geraetHinzufuegen(kontext, ergebnis.value)));
   return { geaendert: true };
+}
+
+/** Ein bekanntes Gerät, wie die Oberfläche es sieht. */
+export interface GeraetAnzeige {
+  id: string;
+  art: "browser";
+  /** Browser-Kennung, aus der die Oberfläche eine grobe Angabe macht. */
+  name?: string;
+  angelegt: string;
+  zuletzt: string;
+  endet: string;
+  /** Das Gerät, von dem diese Anfrage kommt. */
+  aktuell: boolean;
+}
+
+/** `GET /api/zugang/geraete`: die gültigen bekannten Geräte, das aktuelle markiert. */
+export async function geraeteListe(
+  kontext: RoutenKontext<"geraete">,
+): Promise<{ geraete: GeraetAnzeige[] }> {
+  const aktuell = await repo.sessions.deviceOf(kontext.db, kontext.sitzung.id);
+  const liste = await repo.geraete.list(kontext.db, kontext.sitzung.ownerId, {
+    now: kontext.dienste.uhr.now(),
+  });
+  return {
+    geraete: liste.map((g) => ({
+      id: g.id,
+      art: g.kind,
+      ...(g.name === undefined ? {} : { name: g.name }),
+      angelegt: g.createdAt,
+      zuletzt: g.lastSeenAt,
+      endet: g.expiresAt,
+      aktuell: g.id === aktuell,
+    })),
+  };
+}
+
+/**
+ * `POST /api/zugang/geraete/:id/entfernen`: widerruft ein bekanntes Gerät über das Tor (Aktion
+ * „Gerät entfernt“); seine Sitzungen enden mit. Ist es dieses Gerät, sind danach auch diese
+ * Sitzung und beide Cookies weg. Ein unbekanntes Gerät: `nicht_gefunden`.
+ */
+export async function geraetEntfernen(
+  kontext: RoutenKontext<"geraetEntfernen">,
+): Promise<{ entfernt: true; abgemeldet: boolean }> {
+  const { db, sitzung, dienste: d } = kontext;
+  const geraet = await repo.geraete.get(db, sitzung.ownerId, kontext.params.id ?? "");
+  if (geraet === undefined) throw new PaiBotError("nicht_gefunden");
+  const dieses = (await repo.sessions.deviceOf(db, sitzung.id)) === geraet.id;
+  const aktiv =
+    geraet.revokedAt === undefined && Date.parse(geraet.expiresAt) > d.uhr.now().getTime();
+  await kontext.tor(
+    kontext.nachweis,
+    { type: "geraet.entfernen", target: { deviceId: geraet.id } },
+    { deviceActive: aktiv, thisDevice: dieses },
+    async () => {
+      await repo.geraete.revoke(db, sitzung.ownerId, geraet.id, { now: d.uhr.now() });
+      return { value: undefined, result: { status: "ok" } };
+    },
+  );
+  if (dieses) {
+    const rahmen = { appUrl: d.appOrigin() };
+    kontext.cookie(cookieLoeschen(sitzungsCookieName(rahmen), rahmen, "Lax"));
+    kontext.cookie(geraetCookieLoeschen(rahmen));
+  }
+  return { entfernt: true, abgemeldet: dieses };
 }

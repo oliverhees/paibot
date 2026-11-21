@@ -22,9 +22,10 @@ import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
 import { schleuseEingerichtet } from "../schleuse/schleuse";
+import { geraetHinzufuegen } from "./anmeldung";
 import type { ZugangsDienste } from "./dienste";
 import { codeSicherstellen } from "./einrichtungs-code";
-import { geraetAnlegen, geraetCookie, type NeuesGeraet } from "./geraet";
+import { geraetCookie } from "./geraet";
 import { _nachweisCode, type Nachweis, nachweisAusSitzung } from "./nachweis";
 import { neuerPasswortHash } from "./passwort";
 import {
@@ -233,17 +234,13 @@ export async function einrichtungAbschliessen(
           now: d.uhr.now(),
           userAgent,
         });
-        const geraet: NeuesGeraet = await geraetAnlegen(
-          tx,
-          d.schluessel().sitzung,
-          besitzer.id as OwnerId,
-          { now: d.uhr.now() },
-        );
-        return { value: { ...neu, geraet }, result: { status: "ok" } };
+        return { value: neu, result: { status: "ok" } };
       },
       torOptionen,
     );
     const sitzung = nachweisAusSitzung(abschluss.value.sitzung);
+    // Dieser Browser wird das erste bekannte Gerät (mit der neuen Sitzung als Nachweis).
+    const geraet = await geraetHinzufuegen(kontext, abschluss.value, torOptionen);
 
     // Erster Bot (mit der neuen Sitzung als Nachweis).
     const botId = newId("bot") as BotId;
@@ -332,7 +329,7 @@ export async function einrichtungAbschliessen(
 
     return {
       sitzung: abschluss.value,
-      geraet: abschluss.value.geraet,
+      geraet,
       daten: {
         installationId,
         botId,
@@ -347,7 +344,7 @@ export async function einrichtungAbschliessen(
   // Den Prüfwert des Codes hat `completeSetup` in derselben Transaktion gelöscht.
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.sitzung.token, false));
-  kontext.cookie(geraetCookie(rahmen, ergebnis.geraet.wert));
+  kontext.cookie(geraetCookie(rahmen, ergebnis.geraet));
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));
   return ergebnis.daten;
 }

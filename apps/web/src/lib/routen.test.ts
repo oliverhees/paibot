@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import { LIMIT_DEFINITIONEN } from "./rate-limit";
 import {
   API_ROUTEN,
+  FOLGE_AKTIONEN,
   ROUTEN_OHNE_AKTION,
   type RoutenName,
   routenOrdner,
@@ -57,7 +58,9 @@ describe("API-Routen", () => {
         continue;
       }
       if (nochNichtSpeicherbar.has(aktion)) continue;
-      expect(genutzt.has(aktion), aktion).toBe(true);
+      expect(genutzt.has(aktion), aktion).toBe(
+        !(FOLGE_AKTIONEN as readonly string[]).includes(aktion),
+      );
     }
   });
 

@@ -338,7 +338,7 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
         const bezug: LimitBezug = {
           adresse,
           ...(sitzung === undefined ? {} : { ownerId: sitzung.ownerId, sitzungId: sitzung.id }),
-          ...(geraet === undefined ? {} : { geraet }),
+          ...(geraet === undefined ? {} : { geraet: geraet.id }),
         };
         if (def.limits !== undefined && def.limits.length > 0) {
           try {

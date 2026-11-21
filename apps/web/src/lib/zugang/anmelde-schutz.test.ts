@@ -15,7 +15,15 @@ import { describe, expect, it, vi } from "vitest";
 import { adressGruppe } from "../kopfzeilen";
 import { anmeldeSperrenAufheben, BREMSE, bremsTakt } from "../rate-limit";
 import { schluesselAus } from "../umgebung";
-import { abmelden, alleAbmelden, anmelden, passwortAendern, sitzungenListe } from "./anmeldung";
+import {
+  abmelden,
+  alleAbmelden,
+  anmelden,
+  geraetEntfernen,
+  geraeteListe,
+  passwortAendern,
+  sitzungenListe,
+} from "./anmeldung";
 import { einrichtungAbschliessen } from "./einrichtung";
 import { bekanntesGeraet, geraetCookie, neuerGeraetWert } from "./geraet";
 import {
@@ -58,6 +66,8 @@ async function eingerichtet(hinterProxy = true) {
     sitzungen: u.handler("sitzungen", async (k) => ({ daten: await sitzungenListe(k) })),
     abmelden: u.handler("abmelden", async (k) => ({ daten: await abmelden(k) })),
     alle: u.handler("alleAbmelden", async (k) => ({ daten: await alleAbmelden(k) })),
+    geraete: u.handler("geraete", async (k) => ({ daten: await geraeteListe(k) })),
+    entfernen: u.handler("geraetEntfernen", async (k) => ({ daten: await geraetEntfernen(k) })),
   };
   return { u, h, einrichtungsDose: dose };
 }
@@ -193,8 +203,8 @@ describe("Ausweg für den Besitzer", () => {
     expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, fremd, jetzt)).toBeUndefined();
     expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, unbekannt, jetzt)).toBeUndefined();
     const echt = e.einrichtungsDose.werte.get("pb_geraet");
-    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, echt, jetzt)).toMatch(
-      /^[0-9a-f]{64}$/,
+    expect((await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, echt, jetzt))?.id).toMatch(
+      /^ger_/,
     );
   });
 
@@ -210,10 +220,91 @@ describe("Ausweg für den Besitzer", () => {
         await versuch(e, `raten-geraet-${i}`, `2001:db8:77:${i.toString(16)}::1`, dose),
       );
     }
-    // Fünf über das eigene Limit des Geräts, danach gilt die Bremse (höchstens ein Platz je Stufe
-    // ihres Takts; 50 weitere Versuche erreichen bis zu zwei Stufen).
-    expect(geprueft(antworten)).toBeLessThanOrEqual(7);
-    expect(antworten.filter((a) => a.status === 429).length).toBeGreaterThanOrEqual(43);
+    // Drei am eigenen Limit des Geräts vorbei, der vierte und fünfte nur über die Bremse, danach
+    // sperrt das Limit des Geräts.
+    expect(geprueft(antworten)).toBeLessThanOrEqual(5);
+    expect(antworten.filter((a) => a.status === 429).length).toBeGreaterThanOrEqual(45);
+  });
+
+  it("auch ohne Flut bringt ein gestohlenes Geräte-Cookie höchstens 5 Prüfungen je 15 Minuten", async () => {
+    const e = await eingerichtet();
+    const gestohlen = e.einrichtungsDose.werte.get("pb_geraet") ?? "";
+    const antworten = [];
+    for (let i = 0; i < 15; i += 1) {
+      const dose = vorabDose();
+      dose.werte.set("pb_geraet", gestohlen);
+      antworten.push(await versuch(e, `raten-${i}`, `2001:db8:55:${i.toString(16)}::1`, dose));
+    }
+    expect(geprueft(antworten)).toBe(5);
+  });
+
+  it("nach drei Fehlversuchen mit einem Gerät geht es nicht mehr an der Bremse vorbei", async () => {
+    const e = await eingerichtet();
+    const bekannt = e.einrichtungsDose.werte.get("pb_geraet") ?? "";
+    await flut(e);
+    const mitGeraet = () => {
+      const dose = vorabDose();
+      dose.werte.set("pb_geraet", bekannt);
+      return dose;
+    };
+    for (let i = 0; i < 3; i += 1) {
+      expect(
+        (await versuch(e, `falsch-${i}-xxxx`, `2001:db8:99:${i}::1`, mitGeraet())).status,
+      ).toBe(401);
+    }
+    expect((await versuch(e, TEST_PASSWORT, "2001:db8:99:9::1", mitGeraet())).status).toBe(429);
+  });
+
+  it("ein entferntes Gerät hilft nicht mehr, seine Sitzung endet, beides mit Beleg", async () => {
+    const e = await eingerichtet();
+    const zweit = vorabDose();
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.5", zweit)).status).toBe(200);
+    zweit.werte.delete("pb_vorab");
+    const wert = zweit.werte.get("pb_geraet") ?? "";
+    const g = await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, wert, e.u.zeit());
+    expect(g).toBeDefined();
+    // Von einem anderen angemeldeten Browser aus entfernen.
+    const erst = vorabDose();
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.6", erst)).status).toBe(200);
+    erst.werte.delete("pb_vorab");
+    const liste = await anfrage(e.u, e.h.geraete, "GET", "/api/zugang/geraete", { dose: erst });
+    const eintraege = (liste.body.daten as { geraete: { id: string; aktuell: boolean }[] }).geraete;
+    expect(eintraege.some((x) => x.id === g?.id && !x.aktuell)).toBe(true);
+    expect(eintraege.filter((x) => x.aktuell)).toHaveLength(1);
+    const weg = await anfrage(
+      e.u,
+      e.h.entfernen,
+      "POST",
+      `/api/zugang/geraete/${g?.id}/entfernen`,
+      {
+        dose: erst,
+        params: { id: g?.id ?? "" },
+      },
+    );
+    expect(weg.status).toBe(200);
+    expect(weg.body.daten).toEqual({ entfernt: true, abgemeldet: false });
+    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, wert, e.u.zeit())).toBeUndefined();
+    const sitzungen = await anfrage(e.u, e.h.sitzungen, "GET", "/api/zugang/sitzungen", {
+      dose: zweit,
+    });
+    expect(sitzungen.status).toBe(401);
+    const belege = (await repo.belege.listFrom(e.u.db)).map((b) => b.body);
+    for (const art of ["geraet.hinzufuegen", "geraet.entfernen"]) {
+      expect(
+        belege.some((b) => b.type === "result" && b.action.type === art),
+        art,
+      ).toBe(true);
+    }
+    await flut(e);
+    const danach = vorabDose();
+    danach.werte.set("pb_geraet", wert);
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.81", danach)).status).toBe(429);
+    // Ein fremdes oder unbekanntes Gerät: nicht gefunden.
+    const fremd = await anfrage(e.u, e.h.entfernen, "POST", "/api/zugang/geraete/ger_x/entfernen", {
+      dose: erst,
+      params: { id: "ger_x" },
+    });
+    expect(fremd.status).toBe(404);
   });
 
   it("die Adresse des Besitzers sperren hält ein bekanntes Gerät nicht auf", async () => {
@@ -281,13 +372,34 @@ describe("Ausweg für den Besitzer", () => {
     ).toBeUndefined();
   });
 
-  it("je Besitzer bleiben höchstens zehn Geräte", async () => {
+  it("je Besitzer gelten höchstens zehn Geräte; eine erneute Anmeldung im selben Browser legt keins an", async () => {
     const e = await eingerichtet();
     for (let i = 0; i < 12; i += 1) {
       expect((await versuch(e, TEST_PASSWORT, `192.0.2.${100 + i}`)).status).toBe(200);
     }
-    const zeilen = await e.u.db.select().from(geraete);
-    expect(zeilen.length).toBe(repo.geraete.MAX_GERAETE);
+    const ownerId = (await repo.owner.get(e.u.db))?.id as never;
+    expect((await repo.geraete.list(e.u.db, ownerId, { now: e.u.zeit() })).length).toBe(
+      repo.geraete.MAX_GERAETE,
+    );
+    const vorher = (await e.u.db.select().from(geraete)).length;
+    const dose = vorabDose();
+    dose.werte.set("pb_geraet", e.einrichtungsDose.werte.get("pb_geraet") ?? "");
+    // Das Gerät der Einrichtung wurde durch die zehn neueren widerrufen: Es gilt nicht mehr.
+    expect(
+      await bekanntesGeraet(
+        e.u.db,
+        e.u.schluessel.sitzung,
+        dose.werte.get("pb_geraet"),
+        e.u.zeit(),
+      ),
+    ).toBeUndefined();
+    const neu = vorabDose();
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.200", neu)).status).toBe(200);
+    neu.werte.delete("pb_vorab");
+    const wieder = vorabDose();
+    wieder.werte.set("pb_geraet", neu.werte.get("pb_geraet") ?? "");
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.200", wieder)).status).toBe(200);
+    expect((await e.u.db.select().from(geraete)).length).toBe(vorher + 1);
   });
 
   it("das Aufheben der Sperren (Migrations-Schritt) gibt die Anmeldung sofort wieder frei", async () => {

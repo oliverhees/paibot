@@ -205,12 +205,6 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
     art: "betrieb",
     nur: ["sessions.create", "sessions.end", "sessions.extend"],
   },
-  // Bekannte Geräte: anlegen/ersetzen rufen nur die Aktionen (Anmelden, Einrichtung, Passwort
-  // ändern) in ihrer Ausführung.
-  "web/src/lib/zugang/geraet.ts": {
-    art: "betrieb",
-    nur: ["geraete.create", "geraete.remove"],
-  },
   // Worker: Lauf als fehlgeschlagen markieren, wenn er abstürzt (Lebenszyklus, keine Aktion).
   "worker/src/lauf.ts": { art: "betrieb", nur: ["events.append", "runs.finish"] },
   // Worker: gemessener Zustand der Datenschleuse (eine Zeile, Betriebszustand, keine Aktion).

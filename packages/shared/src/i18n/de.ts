@@ -1131,4 +1131,6 @@ export const de = {
   // Schutz von Anmeldung und Eingängen, zweite Runde
   "anfrage.zu_viele_gleichzeitig":
     "Gerade kommen zu viele Anfragen gleichzeitig an. Versuch es in ein paar Sekunden noch einmal.",
+  "aktion.geraet.hinzufuegen": "Gerät hinzugefügt",
+  "aktion.geraet.entfernen": "Gerät entfernt",
 } as const satisfies Record<string, string | readonly string[]>;

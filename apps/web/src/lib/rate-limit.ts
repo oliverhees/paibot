@@ -25,9 +25,10 @@ import { adressGruppe, UNBEKANNTE_ADRESSE } from "./kopfzeilen";
  *
  * - `anmeldenIpTag`: zweite Stufe je Adresse. Wer an einem Tag 20 Fehlversuche hat, wartet bis zum
  *   Ende des Tages (die Sperrzeit wächst von 15 Minuten auf bis zu 24 Stunden).
- * - `anmeldenGeraet`, `anmeldenGeraetTag`: eigene Limits eines bekannten Geräts (siehe
- *   `zugang/geraet.ts`). Solange sie nicht erreicht sind, zählen für das Gerät weder die Limits
- *   seiner Adresse noch die gemeinsame Bremse; darüber gilt für es dasselbe wie für jeden anderen.
+ * - `anmeldenGeraet`, `anmeldenGeraetTag`: eigene, sperrende Limits eines bekannten Geräts (siehe
+ *   `zugang/geraet.ts`). Für die ersten `GERAET_FREI_BIS` Versuche im Fenster zählen für das Gerät
+ *   weder die Limits seiner Adresse noch die gemeinsame Bremse; danach gilt für es zusätzlich
+ *   dasselbe wie für jeden anderen Browser.
  * - `passwortAendern`: Versuche beim Ändern des Passworts je Sitzung. Darüber endet die Sitzung der
  *   Anfrage; andere Sitzungen des Besitzers zählen getrennt.
  */
@@ -137,7 +138,10 @@ export const GLEITENDE_LIMITS: readonly LimitName[] = [
   "einrichtungIp",
 ];
 
-/** Limits, an deren Stelle für ein bekanntes Gerät unter seinem Limit dessen eigene treten. */
+/** So viele Versuche im Fenster geht ein bekanntes Gerät an Adresse und Bremse vorbei. */
+export const GERAET_FREI_BIS = 3;
+
+/** Limits, an deren Stelle für ein bekanntes Gerät dessen eigene treten (bis `GERAET_FREI_BIS`). */
 const FUER_GERAET_ERSETZT: readonly LimitName[] = ["anmeldenIp", "anmeldenIpTag", "anmeldenGesamt"];
 
 /** Präfixe der Zähler mit Fenster über einen Tag (Rest: höchstens 15 Minuten). */
@@ -191,15 +195,19 @@ async function zaehle(db: Database, name: LimitName, bezug: LimitBezug, now: Dat
 }
 
 /**
- * Ein bekanntes Gerät zählt beim Anmelden auf seine eigenen Limits. `true`: beide noch nicht
- * erreicht, das Gerät ersetzt Adresse und Bremse. `false`: Es gilt dasselbe wie ohne Gerät.
+ * Ein bekanntes Gerät zählt beim Anmelden auf seine eigenen Limits; über einem davon ist Pause
+ * (`zu_viele_versuche`). `true`: noch höchstens `GERAET_FREI_BIS` Versuche im Fenster, das Gerät
+ * ersetzt Adresse und Bremse. `false`: Es gilt zusätzlich dasselbe wie ohne Gerät.
  */
 async function geraetFrei(db: Database, bezug: LimitBezug, now: Date): Promise<boolean> {
   if (bezug.geraet === undefined) return false;
+  let frei = true;
   for (const name of ["anmeldenGeraet", "anmeldenGeraetTag"] as const) {
-    if (!(await zaehle(db, name, bezug, now)).allowed) return false;
+    const ergebnis = await zaehle(db, name, bezug, now);
+    if (!ergebnis.allowed) throw zuViele(ergebnis.retryAfterSeconds);
+    if (name === "anmeldenGeraet" && ergebnis.count > GERAET_FREI_BIS) frei = false;
   }
-  return true;
+  return frei;
 }
 
 export interface LimitOptionen {

@@ -10,7 +10,7 @@
 
 import { hashToken, newToken } from "@paibot/crypto";
 import { type Database, repo } from "@paibot/db";
-import type { OwnerId } from "@paibot/shared/ids";
+import type { DeviceId, OwnerId } from "@paibot/shared/ids";
 import { cookieName, SESSION } from "@paibot/shared/konstanten";
 import { _gepruefteSitzung, type GepruefteSitzung } from "./nachweis";
 
@@ -88,7 +88,7 @@ export interface NeueSitzung {
 export async function sitzungAnlegen(
   db: Database,
   ownerId: OwnerId,
-  optionen: { now: Date; userAgent?: string | null },
+  optionen: { now: Date; userAgent?: string | null; deviceId?: DeviceId },
 ): Promise<NeueSitzung> {
   const token = newToken(32);
   const zeile = await repo.sessions.create(db, {
@@ -98,6 +98,7 @@ export async function sitzungAnlegen(
     method: "password",
     now: optionen.now,
     ...(optionen.userAgent ? { userAgent: optionen.userAgent } : {}),
+    ...(optionen.deviceId === undefined ? {} : { deviceId: optionen.deviceId }),
   });
   return {
     token,
