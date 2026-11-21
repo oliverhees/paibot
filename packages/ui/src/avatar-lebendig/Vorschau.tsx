@@ -53,7 +53,7 @@ const FORM_FARBE: Record<AvatarShape, BotColor> = {
 };
 
 const ANTWORT =
-  "Gestern ging es um drei Dinge: den Entwurf fürs Angebot, die offene Rechnung und den Termin am Freitag.";
+  "Gestern ging es um drei Dinge: das Angebot für Frau Muster, die offene Rechnung und den Termin am Freitag.";
 
 const warte = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
