@@ -13,8 +13,8 @@
 #                 und Stückliste (SBOM), nur per Digest hochladen.
 #   4. veroeffentlichen – beide Plattformen unter einem Tag zusammenführen; Digest in die Übersicht.
 #
-# Tags: <Version> immer; latest nur bei einem Tag v* ohne Vorabkennung (z. B. nicht v1.2.3-rc.1)
-# und nie bei einem Start per Hand. Images stehen unter ghcr.io/oliverhees/paibot.
+# Tags: <Version> immer; latest nur bei einem Tag v* ohne Vorabkennung (z. B. nicht v1.2.3-rc.1),
+# dessen Commit auf main liegt, und nie bei einem Start per Hand. Images stehen unter ghcr.io/oliverhees/paibot.
 # Rechte: nur contents: read; packages: write allein in den Jobs, die hochladen. Keine weiteren
 # Geheimnisse außer dem GITHUB_TOKEN des Laufs.
 name: Release
@@ -43,6 +43,11 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       latest: ${{ steps.v.outputs.latest }}
     steps:
+      # Volle Geschichte, damit sich prüfen lässt, ob der Commit des Tags auf main liegt.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - id: v
         env:
           EREIGNIS: ${{ github.event_name }}
@@ -64,6 +69,11 @@ jobs:
             esac
           else
             version="sha-$(printf '%s' "$COMMIT" | cut -c1-12)"
+          fi
+          # latest nur für einen Commit, der auf main liegt.
+          if [ "$latest" = "true" ] && ! git merge-base --is-ancestor "$COMMIT" origin/main; then
+            echo "Commit $COMMIT liegt nicht auf main: kein latest." >&2
+            latest=false
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
