@@ -18,6 +18,18 @@ Unter **Einstellungen** regelst du den Zugang zu deinem PaiBot und die Grenzen, 
 
 ## So benutzt du es
 
+**Darstellung: der Startbereich einer leeren Unterhaltung**
+
+1. Öffne **Du → Einstellungen** und wähle oben den Reiter **Darstellung** (Adresse `/einstellungen/darstellung`).
+2. Dort stehen drei Karten mit einer kleinen Vorschau: **Begrüßung**, **Startbrett** und **Stille**. Ab Werk ist „Begrüßung“ gewählt.
+3. Klick auf eine Karte. Darunter steht „Gemerkt für diesen Browser.“ Eine neue, leere Unterhaltung zeigt ab sofort diese Fassung (siehe [Chat](funktion-chat.md), „Der Startbereich“).
+
+   ![Reiter „Darstellung“: drei Karten mit kleiner Vorschau, „Begrüßung“ ist gewählt](assets/screenshots/einstellungen-darstellung.png)
+
+   ![Reiter „Darstellung“ mit gewählter Karte „Stille“ und dem Hinweis „Gemerkt für diesen Browser.“](assets/screenshots/einstellungen-darstellung-gewaehlt.png)
+
+4. Die Wahl gilt nur für den Browser, in dem du sie triffst. Sie liegt in einem Cookie (ein Jahr) und steht nicht auf dem Server. Der Server liest es mit und zeichnet die gewählte Fassung schon im ersten Bild, ohne späteren Wechsel.
+
 **Die Seitenleiste: Werkzeuge und das Menü „Du“**
 
 1. Unten links in der Seitenleiste stehen die **Werkzeuge**: Belege, Regeln, Datenschleuse sowie Modell und Anbieter. Mit **Werkzeuge einklappen** blendest du sie aus; die Liste deiner Unterhaltungen bekommt dann den Platz. **Werkzeuge ausklappen** zeigt sie wieder. Dein Browser merkt sich, wie du es eingestellt hast. Im Menü am Handy stehen die Werkzeuge immer offen.
@@ -105,11 +117,12 @@ Am Handy, Reiter „Zugang“, „Grenzen“ und die Seite „Info“:
 
 ## Einstellungen
 
-| Einstellung    | Wo                      | Bedeutung                                                                                                                                                                      | Standard            |
-| -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
-| Tagesbudget    | Einstellungen › Grenzen | Höchstens so viele Token am Tag (Eingabe und Ausgabe aller Antworten zusammen). Ist es erreicht, fragt dein Bot das Modell bis Mitternacht nicht mehr an. 1 bis 1.000.000.000. | keine Tagesgrenze   |
-| Verlaufsgrenze | Einstellungen › Grenzen | Höchstens so viele Token aus dem bisherigen Verlauf gehen mit jeder Anfrage mit. 1 bis 2.000.000.                                                                              | so viel, wie passt  |
-| Zeitzone       | Einstellungen › Grenzen | Datum für deinen Bot und Beginn des Tages für das Tagesbudget.                                                                                                                 | aus der Einrichtung |
+| Einstellung    | Wo                          | Bedeutung                                                                                                                                                                      | Standard            |
+| -------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| Tagesbudget    | Einstellungen › Grenzen     | Höchstens so viele Token am Tag (Eingabe und Ausgabe aller Antworten zusammen). Ist es erreicht, fragt dein Bot das Modell bis Mitternacht nicht mehr an. 1 bis 1.000.000.000. | keine Tagesgrenze   |
+| Verlaufsgrenze | Einstellungen › Grenzen     | Höchstens so viele Token aus dem bisherigen Verlauf gehen mit jeder Anfrage mit. 1 bis 2.000.000.                                                                              | so viel, wie passt  |
+| Zeitzone       | Einstellungen › Grenzen     | Datum für deinen Bot und Beginn des Tages für das Tagesbudget.                                                                                                                 | aus der Einrichtung |
+| Startbereich   | Einstellungen › Darstellung | Fassung der leeren Unterhaltung: Begrüßung, Startbrett oder Stille. Gilt je Browser (Cookie `paibot_startbereich`).                                                            | Begrüßung           |
 
 ## So funktioniert es
 

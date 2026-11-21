@@ -179,9 +179,10 @@ describe("kurzTagText", () => {
     expect(kurzTagText("2026-11-20T23:30:00Z", "America/Los_Angeles", jetzt)).toBe("gestern");
     expect(kurzTagText("2026-11-21T09:00:00Z", "America/Los_Angeles", jetzt)).toBe("heute");
   });
-  it("gestern stimmt auch an Tagen der Zeitumstellung und am Monatsanfang", () => {
-    const nachUmstellung = new Date("2026-10-26T00:30:00+01:00"); // Tag nach 25-Stunden-Tag
-    expect(kurzTagText("2026-10-25T12:00:00+01:00", "Europe/Berlin", nachUmstellung)).toBe(
+  it("gestern stimmt auch nach einem 23-Stunden-Tag (Zeitumstellung) und am Monatsanfang", () => {
+    // 29.03.2026: Beginn der Sommerzeit, der Tag hat nur 23 Stunden.
+    const nachUmstellung = new Date("2026-03-30T00:30:00+02:00");
+    expect(kurzTagText("2026-03-29T12:00:00+02:00", "Europe/Berlin", nachUmstellung)).toBe(
       "gestern",
     );
     const monat = new Date("2026-12-01T09:00:00Z");

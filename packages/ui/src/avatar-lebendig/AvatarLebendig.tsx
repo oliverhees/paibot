@@ -382,6 +382,7 @@ export function AvatarLebendig({
       data-form={form}
       data-zu={g.zu ? "1" : undefined}
       data-still={still ? "1" : undefined}
+      data-folgt={folgtZeiger ? "1" : undefined}
       style={{ width: groesse, height: groesse }}
     >
       <svg

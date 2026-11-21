@@ -24,17 +24,17 @@ Belegte Entscheidungen im Code:
 
 ## Aufbau
 
-| Datei                                                                                  | Aufgabe                                                               |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `apps/web/src/lib/bot/bot.ts`                                                          | `botLesen`, `botAendern`, `botModell`, `botRechte`, `botSeitenDaten`  |
-| `apps/web/src/lib/bot/ansicht.ts`                                                      | Logik der Seite ohne DOM: Entwurf, „ungespeichert“                    |
-| `apps/web/src/app/(app)/bot/page.tsx`                                                  | Seite „Bot“: lädt Bot, Modell und Regeln auf dem Server               |
-| `apps/web/src/app/(app)/bot/BotSeite.tsx`, `apps/web/src/app/(app)/bot/BotAnsicht.tsx` | Oberfläche                                                            |
-| `apps/web/src/app/api/bot/route.ts`                                                    | `GET` und `PUT /api/bot`                                              |
-| `apps/web/src/app/api/bot/modell/route.ts`                                             | `PUT /api/bot/modell`                                                 |
-| `packages/db/src/repo/bots.ts`                                                         | `create`, `get`, `getDefault`, `update`, `setModel`                   |
-| `packages/ui/src/avatar/Avatar.tsx`                                                    | Avatar; Formen in `packages/ui/src/avatar/formen.ts`                  |
-| `packages/agents/src/prompt.ts`                                                        | `buildSystemPrompt`: setzt Name und Anweisung des Bots in die Vorlage |
+| Datei                                                                                  | Aufgabe                                                                                                                                                               |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/lib/bot/bot.ts`                                                          | `botLesen`, `botAendern`, `botModell`, `botRechte`, `botSeitenDaten`                                                                                                  |
+| `apps/web/src/lib/bot/ansicht.ts`                                                      | Logik der Seite ohne DOM: Entwurf, „ungespeichert“                                                                                                                    |
+| `apps/web/src/app/(app)/bot/page.tsx`                                                  | Seite „Bot“: lädt Bot, Modell und Regeln auf dem Server                                                                                                               |
+| `apps/web/src/app/(app)/bot/BotSeite.tsx`, `apps/web/src/app/(app)/bot/BotAnsicht.tsx` | Oberfläche                                                                                                                                                            |
+| `apps/web/src/app/api/bot/route.ts`                                                    | `GET` und `PUT /api/bot`                                                                                                                                              |
+| `apps/web/src/app/api/bot/modell/route.ts`                                             | `PUT /api/bot/modell`                                                                                                                                                 |
+| `packages/db/src/repo/bots.ts`                                                         | `create`, `get`, `getDefault`, `update`, `setModel`                                                                                                                   |
+| `packages/ui/src/avatar-lebendig/AvatarLebendig.tsx`                                   | Avatar (alle sieben Formen, acht Zustände); Umrisse in `packages/ui/src/avatar/formen.ts`, Gesicht je Form in `packages/ui/src/avatar-lebendig/daten.ts#FORM_GESICHT` |
+| `packages/agents/src/prompt.ts`                                                        | `buildSystemPrompt`: setzt Name und Anweisung des Bots in die Vorlage                                                                                                 |
 
 Datenfluss beim Speichern:
 
@@ -77,11 +77,11 @@ Felder, die `bot.aendern` betreffen kann: `name`, `instructions`, `avatarShape`,
 
 ## Tests
 
-| Test                                                                               | Prüft                                                                            |
-| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `apps/web/src/lib/bot/bot.test.ts`                                                 | Lesen, Ändern über das Tor mit Belegen, Grenzen der Eingabe, „Was dein Bot darf“ |
-| `packages/agents/src/prompt.test.ts`                                               | Anweisung: fester Text, Platzhalter, Datum, leere Anweisung                      |
-| `packages/ui/src/avatar/formen.test.ts`, `packages/ui/src/avatar/bewegung.test.ts` | Avatar-Formen und Bewegung                                                       |
+| Test                                                                                     | Prüft                                                                            |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `apps/web/src/lib/bot/bot.test.ts`                                                       | Lesen, Ändern über das Tor mit Belegen, Grenzen der Eingabe, „Was dein Bot darf“ |
+| `packages/agents/src/prompt.test.ts`                                                     | Anweisung: fester Text, Platzhalter, Datum, leere Anweisung                      |
+| `packages/ui/src/avatar/formen.test.ts`, `packages/ui/src/avatar-lebendig/leben.test.ts` | Avatar-Formen und Takt (Blinzeln, Atmen, Zeiger)                                 |
 
 Ausführen:
 

@@ -315,3 +315,30 @@ describe("Arbeitsfläche „Belege“", () => {
     expect(aus).toContain("Noch keine Belege in dieser Unterhaltung.");
   });
 });
+
+describe("Avatar im Chat", () => {
+  const folgt = (aus: string) => (aus.match(/data-folgt="1"/g) ?? []).length;
+
+  it("nur der große Avatar im Startbereich folgt dem Zeiger, in jeder Fassung genau einer", () => {
+    for (const fassung of ["begruessung", "startbrett", "stille"] as const) {
+      const aus = renderToStaticMarkup(h(ChatSeite, { bereitschaft: BEREIT, fassung }));
+      expect(folgt(aus), fassung).toBe(1);
+    }
+  });
+
+  it("im Verlauf folgt kein Avatar dem Zeiger: weder im Kopf noch neben den Antworten", () => {
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: BEREIT,
+        verlauf: verlauf({
+          nachrichten: [
+            msg({ role: "user", content: "Hallo", status: "complete" }),
+            msg({ role: "assistant", content: "Hallo!", status: "complete" }),
+          ],
+        }),
+      }),
+    );
+    expect(aus).toContain('data-zustand="ruhig"');
+    expect(folgt(aus)).toBe(0);
+  });
+});
