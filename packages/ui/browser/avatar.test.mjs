@@ -389,7 +389,15 @@ describe.skipIf(!bereit && !erzwungen)("Lebendiger Avatar im Browser", { timeout
     const { page, kontext } = await oeffne("", { weniger: true });
     for (const px of ["px128", "px48", "px24"]) {
       const bilder = [];
-      for (const z of ZUSTAENDE) bilder.push(await bild(page, `[data-zelle="${px}-${z}"]`));
+      for (const z of ZUSTAENDE) {
+        // Nachbarn ausblenden: Ring und Eck-Zeichen ragen über den Rand der Zelle.
+        await page.evaluate((ziel) => {
+          for (const n of document.querySelectorAll("[data-zelle]")) {
+            n.style.visibility = n.dataset.zelle === ziel ? "visible" : "hidden";
+          }
+        }, `${px}-${z}`);
+        bilder.push(await bild(page, `[data-zelle="${px}-${z}"]`));
+      }
       for (let i = 0; i < bilder.length; i++) {
         for (let j = i + 1; j < bilder.length; j++) {
           expect(bilder[i].equals(bilder[j]), `${px}: ${ZUSTAENDE[i]} gleich ${ZUSTAENDE[j]}`).toBe(
