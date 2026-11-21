@@ -1,0 +1,126 @@
+/**
+ * PaiBot – Stile des Prüf-Urteils.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.urteil {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--schrift-m);
+}
+
+.urteil[data-zustand="gueltig"] {
+  background: var(--ok-soft);
+}
+
+.urteil[data-zustand="gebrochen"] {
+  background: var(--warn-soft);
+}
+
+.urteil[data-zustand="ungueltig"] {
+  background: var(--danger-soft);
+}
+
+.zeile1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.urteil[data-zustand="gueltig"] .zeile1 {
+  color: var(--ok);
+}
+
+.urteil[data-zustand="gebrochen"] .zeile1 {
+  color: var(--warn);
+}
+
+.urteil[data-zustand="ungueltig"] .zeile1 {
+  color: var(--danger);
+}
+
+.quelle {
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--line-mid);
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+}
+
+.fortschritt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.balken {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+}
+
+.fuellung {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ok);
+  transition: width var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.fortschrittText {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.punkte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.punkte li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.punkte li svg {
+  flex: none;
+  margin-top: 3px;
+  stroke-width: 2.4;
+}
+
+.punkte li[data-art="ok"] svg {
+  color: var(--ok);
+}
+
+.punkte li[data-art="fehler"] svg {
+  color: var(--danger);
+}
+
+.punkte li[data-art="hinweis"] svg {
+  color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fuellung {
+    transition: none;
+  }
+}
