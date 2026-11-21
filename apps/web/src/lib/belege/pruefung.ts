@@ -39,10 +39,16 @@ export type PruefStufe = "gueltig" | "gebrochen" | "nicht_pruefbar" | "ungueltig
 
 /**
  * Wie das Urteil aussieht (`PruefUrteil`): „nicht prüfbar“ wie „gebrochen“ als Warnung, mit
- * eigenem Text.
+ * eigenem Text. Mit `warnung` (Rückschritt der Fassung) zeigt auch eine gültige Kette die
+ * Warn-Ansicht; die Stufe selbst bleibt.
  */
-export function urteilZustand(stufe: PruefStufe): "gueltig" | "gebrochen" | "ungueltig" {
-  return stufe === "nicht_pruefbar" ? "gebrochen" : stufe;
+export function urteilZustand(
+  stufe: PruefStufe,
+  warnung = false,
+): "gueltig" | "gebrochen" | "ungueltig" {
+  if (stufe === "nicht_pruefbar") return "gebrochen";
+  if (stufe === "gueltig" && warnung) return "gebrochen";
+  return stufe;
 }
 
 /** Probleme, die die Kette nicht ungültig machen, sondern nur nicht beglaubigt bzw. nicht prüfbar. */
@@ -64,6 +70,8 @@ export interface KettenErgebnis {
   nichtBeglaubigtAb?: number;
   anker: "geprueft" | "fehlt";
   quelle: PruefQuelle;
+  /** Warnung ohne Einfluss auf die Stufe: nach einem Beleg einer neueren Tor-Fassung folgt einer einer älteren. */
+  warnung?: boolean;
 }
 
 export interface EinzelErgebnis {
@@ -252,10 +260,11 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
       text: problemText(befund.problem, befund.seq),
     });
   }
+  // Rückschritt der Fassung: eine Warnung, die Stufe der Kette bleibt.
   for (const hinweis of verdict.notes ?? []) {
     punkte.push({
-      art: "hinweis",
-      text: `${t(`belege.hinweis.${hinweis.note}`)} ${t("belege.stelle", { kennung: kennung(hinweis.seq) })}`,
+      art: "fehler",
+      text: `${t(`belege.warnung.${hinweis.note}`)} ${t("belege.stelle", { kennung: kennung(hinweis.seq) })}`,
     });
   }
   if (verdict.anchor === "geprueft") {
@@ -289,6 +298,7 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
       : { nichtBeglaubigtAb: bericht.notAttestedFrom }),
     anker: verdict.anchor,
     quelle: zusatz.quelle,
+    ...((verdict.notes ?? []).length > 0 ? { warnung: true } : {}),
   };
 }
 

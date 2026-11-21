@@ -1652,8 +1652,6 @@ export const de = {
     "Diese Kette enthält Belege aus einer neueren PaiBot-Fassung. Diese Fassung kann sie nicht vollständig prüfen. Prüfe mit derselben oder einer neueren Fassung. Hast du PaiBot nie auf eine neuere Fassung aktualisiert, ist das ein Warnzeichen.",
   "belege.problem.fassung_unbekannt": "Beleg aus einer neueren PaiBot-Fassung",
   "belege.problem.fassung_unpassend": "Beleg passt nicht zu seiner Fassung",
-  "belege.hinweis.fassung_rueckschritt":
-    "Nach einem Beleg mit Fassungsangabe folgt einer ohne. Das kann beim Update kurz vorkommen.",
   "belege.grund.entscheidung.fassung_unbekannt": "Beleg aus einer neueren PaiBot-Fassung",
   "belege.grund.entscheidung.fassung_unpassend": "Beleg passt nicht zu seiner Fassung",
   "belege.stand.nicht_pruefbar": "nicht prüfbar",
@@ -1708,4 +1706,7 @@ export const de = {
   "regeln.vorbedingung.V-13": "Die Eingabe passt zum Werkzeug.",
   "regeln.vorbedingung.V-14": "Ein Schritt ruft höchstens so viele Werkzeuge auf wie erlaubt.",
   "regel.D-01": "Nach fremden Inhalten fragen",
+  "belege.warnung.fassung_rueckschritt":
+    "Warnung: Nach einem Beleg einer neueren Tor-Fassung folgt einer einer älteren. Das kann beim Zurückgehen auf eine ältere PaiBot-Fassung oder kurz beim Update passieren. Ist beides nicht geschehen, ist das ein Warnzeichen.",
+  "pruefung.mit_warnung": "in sich stimmig, mit Warnung",
 } as const satisfies Record<string, string | readonly string[]>;

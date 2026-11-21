@@ -10,6 +10,7 @@
  * @since     2026-11-21
  */
 
+import { evaluate, ruleSnapshot } from "@paibot/gate";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
@@ -211,8 +212,66 @@ describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
   });
 });
 
-describe("Hinweis Rückschritt", () => {
-  it("Entscheidung ohne Feld (Fassung 1) nach einer mit gateFormat 2: Hinweis, Urteil unverändert", async () => {
+describe("Warnung Rückschritt", () => {
+  it("Werkzeug-Aufruf als Fassung 1 nach Fassung 2, der nach Fassung 2 gedeckelt wäre: Warnung, Stufe unverändert", async () => {
+    const kette = await TestKette.neu();
+    const a = await kette.decision();
+    await kette.result(a);
+    // Signiert, ohne Fassungsangabe, mit den Fakten von Fassung 1: Fassung 1 kennt keinen Deckel.
+    const werkzeug = {
+      actionId: newId("action"),
+      type: "werkzeug.aufrufen" as const,
+      actor: `bot:${newId("bot")}` as const,
+      target: { conversationId: newId("conversation"), runId: newId("run"), botId: newId("bot") },
+    };
+    werkzeug.target.botId = werkzeug.actor.slice(4) as never;
+    const fakten1 = {
+      botOfConversation: true,
+      runRunning: true,
+      toolName: "notiz_schreiben",
+      toolSource: "eingebaut",
+      toolKind: "schreiben",
+      argsDigest: `hmac-sha256:${"a7".repeat(32)}`,
+      killSwitch: false,
+    };
+    const regel = {
+      ...FASSUNG_RULES[0],
+      id: "R-200",
+      action: "werkzeug.aufrufen",
+      conditions: [],
+    } as (typeof FASSUNG_RULES)[number];
+    const snapshot = await ruleSnapshot([...FASSUNG_RULES, { ...regel, seq: 2 }]);
+    const entscheidung1 = evaluate(werkzeug as never, fakten1 as never, snapshot, { format: 1 });
+    expect(entscheidung1.outcome).toBe("allow");
+    await kette.decision(sendAction(), (body) => {
+      const { matchedRules, ...rest } = entscheidung1 as unknown as Record<string, unknown>;
+      body.action = werkzeug;
+      body.facts = fakten1;
+      body.decision = { ...rest, rules: matchedRules };
+    });
+    await kette.result(sendAction(), { status: "ok" }, (body) => {
+      body.action = werkzeug;
+    });
+    const report = await verifyChain(kette.entries, {
+      rules: snapshot.rules,
+    });
+    expect(report.verdict).toEqual({
+      level: "vertrauenswuerdig",
+      findings: [],
+      anchor: "fehlt",
+      notes: [{ note: "fassung_rueckschritt", seq: 4 }],
+    });
+    const { exit, out } = await cli(await kette.text());
+    expect(exit).toBe(CLI_EXIT.gueltig);
+    expect(out[0]).toBe(
+      t("belege.befehl.kette", { ergebnis: t("pruefung.mit_warnung"), anzahl: 5 }),
+    );
+    expect(out[0]).not.toMatch(/gültig/);
+    expect(out).toContain(`  ⚠ ${t("belege.warnung.fassung_rueckschritt")} (4)`);
+    expect(out.join("\n")).not.toContain("ℹ");
+  });
+
+  it("Entscheidung ohne Feld (Fassung 1) nach einer mit gateFormat 2: Warnung, Urteil unverändert", async () => {
     const kette = await TestKette.neu();
     const a = await kette.decision();
     await kette.result(a);
@@ -227,7 +286,8 @@ describe("Hinweis Rückschritt", () => {
     });
     const { exit, out } = await cli(await kette.text());
     expect(exit).toBe(CLI_EXIT.gueltig);
-    expect(out.join("\n")).toContain(t("belege.hinweis.fassung_rueckschritt"));
+    expect(out.join("\n")).toContain(`⚠ ${t("belege.warnung.fassung_rueckschritt")}`);
+    expect(out[0]).toContain(t("pruefung.mit_warnung"));
   });
 
   it("ohne Feld in jeder Entscheidung: kein Hinweis", async () => {
