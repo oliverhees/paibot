@@ -697,9 +697,6 @@ export const de = {
   "belege.grund.entscheidung.regel_fehlt": "Regel fehlt im festgehaltenen Regelstand",
   "belege.grund.entscheidung.nicht_berechenbar": "Entscheidung lässt sich nicht nachrechnen",
   "belege.stelle": "(Stelle {kennung})",
-  "belege.problem.ok_ohne_erlaubnis":
-    "Eine Aktion ist als ausgeführt belegt, obwohl das Tor sie nicht erlaubt hat.",
-  "belege.problem.doppelte_aktion": "Dieselbe Aktion ist doppelt belegt.",
   "belege.geprueft.inhalt": "Prüfsumme jedes Belegs neu berechnet ({anzahl} Belege)",
   "belege.geprueft.signatur": "Signaturen mit den Schlüsseln aus der Kette geprüft",
   "belege.geprueft.kette": "Verkettung lückenlos geprüft bis {bis}",

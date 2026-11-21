@@ -12,8 +12,8 @@
  */
 
 import type { ChainReport, CheckResult, RuleHistory, RuleVersion } from "@paibot/receipts/pruefen";
-import type { ChainAnchor, PublicKeyInfo, ReceiptEntry } from "@paibot/shared/belege";
-import { isTextKey, t } from "@paibot/shared/texte";
+import type { ChainAnchor, ChainProblem, PublicKeyInfo, ReceiptEntry } from "@paibot/shared/belege";
+import { t } from "@paibot/shared/texte";
 import { kennung } from "./darstellung";
 
 /** Was die Seite vom Prüfer braucht. */
@@ -74,44 +74,16 @@ export function regelQuelle(regeln: RegelDaten, pruefer: Pruefer): RuleHistory {
   };
 }
 
-// ---------------------------------------------------------------------------------------------
-// Ergebnis ohne Entscheidung, doppelte Aktionen
-
-export type PaarProblem = "ergebnis_ohne_entscheidung" | "ok_ohne_erlaubnis" | "doppelte_aktion";
-
 /**
- * Prüft beim Durchlaufen der Kette, dass jedes Ergebnis genau eine vorangehende Entscheidung mit
- * derselben Aktion hat, dass „ausgeführt“ nur nach „erlaubt“ steht und keine Aktion doppelt belegt
- * ist. Ergänzt den Prüfer, der Belege einzeln und in ihrer Verkettung prüft.
+ * Probleme, bei denen Entscheidung und Ergebnis einer Aktion nicht zusammenpassen. Der Prüfer
+ * erkennt sie beim Durchlaufen der Kette (jede Aktion genau eine Entscheidung und höchstens ein
+ * Ergebnis, das Ergebnis nach seiner Entscheidung und passend zu ihr).
  */
-export class PaarPruefung {
-  readonly #entscheidungen = new Map<string, string>();
-  readonly #ergebnisse = new Set<string>();
-  readonly befunde: { problem: PaarProblem; seq: number }[] = [];
-
-  aufnehmen(entry: ReceiptEntry): void {
-    const body = objekt(entry.body);
-    const aktion = objekt(body?.action)?.actionId;
-    if (typeof aktion !== "string") return;
-    if (body?.type === "decision") {
-      if (this.#entscheidungen.has(aktion)) {
-        this.befunde.push({ problem: "doppelte_aktion", seq: entry.seq });
-      } else {
-        this.#entscheidungen.set(aktion, String(objekt(body.decision)?.outcome));
-      }
-    } else if (body?.type === "result") {
-      const outcome = this.#entscheidungen.get(aktion);
-      if (this.#ergebnisse.has(aktion)) {
-        this.befunde.push({ problem: "doppelte_aktion", seq: entry.seq });
-      } else if (outcome === undefined) {
-        this.befunde.push({ problem: "ergebnis_ohne_entscheidung", seq: entry.seq });
-      } else if (objekt(body.result)?.status === "ok" && outcome !== "allow") {
-        this.befunde.push({ problem: "ok_ohne_erlaubnis", seq: entry.seq });
-      }
-      this.#ergebnisse.add(aktion);
-    }
-  }
-}
+export const PAAR_PROBLEME: readonly ChainProblem[] = [
+  "ergebnis_ohne_entscheidung",
+  "ergebnis_passt_nicht_zur_entscheidung",
+  "aktion_doppelt",
+];
 
 // ---------------------------------------------------------------------------------------------
 // Texte
@@ -129,9 +101,9 @@ export function grundText(checks: readonly CheckResult[]): string {
   return t("belege.grund.unbekannt");
 }
 
-function problemText(problem: string, seq?: number): string {
-  const schluessel = `belege.problem.${problem}`;
-  const satz = isTextKey(schluessel) ? t(schluessel as "belege.problem.kopf_abweichend") : problem;
+/** Problem der Kette in Worten; mit Stelle, wenn der Prüfer eine nennt. */
+export function problemText(problem: ChainProblem, seq?: number): string {
+  const satz = t(`belege.problem.${problem}`);
   return seq === undefined ? satz : `${satz} ${t("belege.stelle", { kennung: kennung(seq) })}`;
 }
 
@@ -151,35 +123,35 @@ function ohneRegelstand(entry: ReceiptEntry): boolean {
 // Ganze Kette
 
 export interface KettenZusatz {
-  paare: readonly { problem: PaarProblem; seq: number }[];
+  /** Entscheidungen ohne Regelstand (ältere Ketten; ab Fassung 2 meldet sie der Prüfer). */
   ohneRegelstand: number;
   quelle: PruefQuelle;
 }
 
-/** Übersetzt den Bericht des Prüfers (plus Paar-Prüfung) in ein Ergebnis in Worten. */
+/** Übersetzt den Bericht des Prüfers in ein Ergebnis in Worten. */
 export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): KettenErgebnis {
   const { verdict } = bericht;
   const fehlerCheck = bericht.firstFailure?.checks.find((c) => c.status === "fehler")?.check;
   const ungueltigeBefunde = verdict.findings.filter(
     (f) => f.problem !== "schluesselwechsel_nicht_beglaubigt",
   );
-  const ersterPaar = zusatz.paare[0];
-  let stufe: PruefStufe =
+  const paarBefund = verdict.findings.some((f) => PAAR_PROBLEME.includes(f.problem));
+  const stufe: PruefStufe =
     verdict.level === "vertrauenswuerdig"
       ? "gueltig"
       : verdict.level === "vertrauen_gebrochen"
         ? "gebrochen"
         : "ungueltig";
-  if (ersterPaar !== undefined) stufe = "ungueltig";
 
-  const kandidaten = [
-    bericht.firstFailure?.seq,
-    ...ungueltigeBefunde.map((f) => f.seq),
-    ersterPaar?.seq,
-  ].filter((s): s is number => s !== undefined);
+  const kandidaten = [bericht.firstFailure?.seq, ...ungueltigeBefunde.map((f) => f.seq)].filter(
+    (s): s is number => s !== undefined,
+  );
   const fehlerSeq =
     stufe === "ungueltig" && kandidaten.length > 0 ? Math.min(...kandidaten) : undefined;
 
+  // Ein Befund des Prüfers mit Stelle, wenn er die erste Fehlerstelle ist (z. B. „Aktion doppelt“).
+  const befundAnStelle =
+    fehlerSeq === undefined ? undefined : ungueltigeBefunde.find((f) => f.seq === fehlerSeq);
   let titel: string;
   if (bericht.checked === 0 && stufe === "gueltig") {
     titel = t("belege.urteil.leer");
@@ -192,6 +164,11 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
       kennung: kennung(bericht.firstFailure.seq),
       grund: grundText(bericht.firstFailure.checks),
     });
+  } else if (befundAnStelle !== undefined && fehlerSeq !== undefined) {
+    titel = t("belege.urteil.ungueltig_an", {
+      kennung: kennung(fehlerSeq),
+      grund: problemText(befundAnStelle.problem),
+    });
   } else if (ungueltigeBefunde[0] !== undefined) {
     titel = t("belege.urteil.ungueltig_grund", {
       grund: problemText(ungueltigeBefunde[0].problem),
@@ -200,11 +177,6 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
     titel = t("belege.urteil.ungueltig_an", {
       kennung: kennung(bericht.firstFailure.seq),
       grund: grundText(bericht.firstFailure.checks),
-    });
-  } else if (ersterPaar !== undefined) {
-    titel = t("belege.urteil.ungueltig_an", {
-      kennung: kennung(ersterPaar.seq),
-      grund: t(`belege.problem.${ersterPaar.problem}`),
     });
   } else {
     titel = t("belege.urteil.ungueltig");
@@ -231,17 +203,16 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
       text: t("belege.geprueft.entscheidung"),
     },
   ];
-  if (zusatz.ohneRegelstand > 0) {
+  // Ältere Ketten (vor Fassung 2): Entscheidungen ohne Regelstand sind erlaubt, aber sichtbar. Ab
+  // Fassung 2 meldet der Prüfer sie als Fehler „Regelstand fehlt“.
+  const regelstandFehlt = verdict.findings.some((f) => f.problem === "regelstand_fehlt");
+  if (zusatz.ohneRegelstand > 0 && !regelstandFehlt) {
     punkte.push({
       art: "hinweis",
       text: t("belege.geprueft.ohne_regelstand", { anzahl: zusatz.ohneRegelstand }),
     });
   }
-  punkte.push(
-    ersterPaar === undefined
-      ? { art: "ok", text: t("belege.geprueft.paare") }
-      : { art: "fehler", text: problemText(ersterPaar.problem, ersterPaar.seq) },
-  );
+  punkte.push({ art: paarBefund ? "fehler" : "ok", text: t("belege.geprueft.paare") });
   for (const befund of verdict.findings) {
     punkte.push({
       art: befund.problem === "schluesselwechsel_nicht_beglaubigt" ? "hinweis" : "fehler",
@@ -297,11 +268,9 @@ export async function pruefeKette(
   optionen: KettenOptionen,
   pruefer: Pruefer,
 ): Promise<KettenErgebnis> {
-  const paare = new PaarPruefung();
   let ohneStand = 0;
   async function* mitBuchfuehrung() {
     for await (const entry of eintraege) {
-      paare.aufnehmen(entry);
       if (ohneRegelstand(entry)) ohneStand++;
       yield entry;
     }
@@ -312,7 +281,6 @@ export async function pruefeKette(
     ...(optionen.publicKeys === undefined ? {} : { publicKeys: optionen.publicKeys }),
   });
   return kettenErgebnis(bericht, {
-    paare: paare.befunde,
     ohneRegelstand: ohneStand,
     quelle: optionen.quelle ?? "browser",
   });

@@ -17,7 +17,6 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   type EinzelDaten,
   kettenErgebnis,
-  PaarPruefung,
   pruefeEinzeln,
   pruefeKette,
   type RegelDaten,
@@ -136,29 +135,46 @@ describe("Ganze Kette prüfen", () => {
     expect(e.punkte.find((p) => p.text.includes("Regelstand nachgerechnet"))?.art).toBe("fehler");
   });
 
-  it("Ergebnis ohne Entscheidung, „fertig“ ohne Erlaubnis und doppelte Aktion fallen auf", () => {
-    const p = new PaarPruefung();
-    const beleg = (seq: number, body: object) => ({ seq, body }) as unknown as ReceiptEntry;
-    p.aufnehmen(beleg(2, { type: "result", action: { actionId: "a1" }, result: { status: "ok" } }));
-    p.aufnehmen(
-      beleg(3, { type: "decision", action: { actionId: "a2" }, decision: { outcome: "deny" } }),
-    );
-    p.aufnehmen(beleg(4, { type: "result", action: { actionId: "a2" }, result: { status: "ok" } }));
-    p.aufnehmen(
-      beleg(5, { type: "decision", action: { actionId: "a3" }, decision: { outcome: "allow" } }),
-    );
-    p.aufnehmen(beleg(6, { type: "result", action: { actionId: "a3" }, result: { status: "ok" } }));
-    p.aufnehmen(beleg(7, { type: "result", action: { actionId: "a3" }, result: { status: "ok" } }));
-    expect(p.befunde).toEqual([
-      { problem: "ergebnis_ohne_entscheidung", seq: 2 },
-      { problem: "ok_ohne_erlaubnis", seq: 4 },
-      { problem: "doppelte_aktion", seq: 7 },
-    ]);
+  it.each([
+    ["ergebnis_ohne_entscheidung", "keine Entscheidung derselben Aktion"],
+    ["ergebnis_passt_nicht_zur_entscheidung", "ausgeführt“ ohne Erlaubnis"],
+    ["aktion_doppelt", "mehr als eine Entscheidung oder mehr als ein Ergebnis"],
+    ["regelstand_fehlt", "keinen Regelstand"],
+  ] as const)(
+    "Befund des Prüfers „%s“: ungültig an der Stelle, in Worten",
+    async (problem, wort) => {
+      // Diese Ketten lässt die Datenbank nicht zu; der Prüfer erkennt sie (siehe seine Tests). Hier
+      // geht es um die Anzeige seines Befunds.
+      const echt = await pruefer.verifyChain(kette);
+      const bericht = {
+        ...echt,
+        ok: false,
+        verdict: { ...echt.verdict, level: "ungueltig" as const, findings: [{ problem, seq: 6 }] },
+      };
+      const e = kettenErgebnis(bericht, { ohneRegelstand: 0, quelle: "browser" });
+      expect(e.stufe).toBe("ungueltig");
+      expect(e.fehlerSeq).toBe(6);
+      expect(e.titel).toMatch(/^Ungültig an Stelle B-0006: /);
+      expect(e.titel).toContain(wort);
+      expect(e.punkte).toContainEqual({ art: "fehler", text: expect.stringContaining(wort) });
+      const paare = e.punkte.find((p) => p.text.startsWith("Zu jedem Ergebnis"));
+      expect(paare?.art).toBe(problem === "regelstand_fehlt" ? "ok" : "fehler");
+      expect(zeilenStand(6, e).text).toBe("Fehler hier");
+      expect(zeilenStand(7, e).text).toBe("nicht bestätigt");
+    },
+  );
+
+  it("echte Kette: jede Aktion genau einmal entschieden, passendes Ergebnis", async () => {
+    const e = await pruefeKette(kette, { regeln }, pruefer);
+    expect(e.punkte).toContainEqual({
+      art: "ok",
+      text: "Zu jedem Ergebnis gibt es genau eine passende Entscheidung",
+    });
   });
 
   it("ältere Entscheidungen ohne Regelstand werden sichtbar gemacht", async () => {
     const bericht = await pruefer.verifyChain(kette);
-    const e = kettenErgebnis(bericht, { paare: [], ohneRegelstand: 2, quelle: "browser" });
+    const e = kettenErgebnis(bericht, { ohneRegelstand: 2, quelle: "browser" });
     expect(e.punkte).toContainEqual({
       art: "hinweis",
       text: "2 ältere Entscheidungen nennen keinen Regelstand; sie wurden mit den heutigen Regeln nachgerechnet.",
