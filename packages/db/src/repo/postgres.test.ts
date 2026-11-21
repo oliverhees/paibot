@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "../client";
 import { runMigrations } from "../migrate";
 import { MIGRATIONS_FOLDER } from "../testing";
-import { bots, conversations, events, messages, rateLimit, runs } from "./index";
+import { bots, conversations, events, messages, rateLimit, runs, search } from "./index";
 import { mitCode } from "./testhilfe";
 
 const URL_ENV = process.env.PAIBOT_TEST_DATABASE_URL;
@@ -176,5 +176,22 @@ describe.skipIf(URL_ENV === undefined)("Zugriffsfunktionen gegen echtes Postgres
     });
     expect(await messages.tokensSince(db, new Date(Date.now() - 60_000))).toBe(vorher + 155);
     expect(await messages.tokensSince(db, new Date(Date.now() + 60_000))).toBe(0);
+  });
+  it("Suche: Umlaute ohne Groß- und Kleinschreibung, Sonderzeichen ohne Muster-Wirkung", async () => {
+    const id = (await conversations.create(db, { botId, title: "Größe der ÄPFEL" })).id;
+    await messages.insert(db, {
+      conversationId: id,
+      role: "user",
+      content: "Übermorgen 50% Rabatt",
+    });
+    expect(
+      (await search.titles(db, "größe der äpfel", { limit: 5 })).map((t) => t.conversationId),
+    ).toEqual([id]);
+    const treffer = async (q: string) =>
+      (await search.messageHits(db, q, { limit: 5, offset: 0 })).hits.length;
+    expect(await treffer("ÜBERMORGEN")).toBe(1);
+    expect(await treffer("0%")).toBe(1);
+    expect(await treffer("%%")).toBe(0);
+    expect(await treffer("_bermorgen")).toBe(0);
   });
 });

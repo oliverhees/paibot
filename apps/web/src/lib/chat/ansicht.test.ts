@@ -22,8 +22,11 @@ import {
   ereignisseAnwenden,
   gesendet,
   leereAnsicht,
+  neuErzeugbar,
+  neuErzeugt,
   sendenGesperrt,
 } from "./ansicht";
+import { fassungenVon } from "./fassungen";
 import type { ChatVerlauf } from "./typen";
 
 const conversationId = newId("conversation");
@@ -462,5 +465,201 @@ describe("Neuladen", () => {
         } as ConversationEvent,
       ]),
     ).toBe(a);
+  });
+});
+
+describe("Neu erzeugen", () => {
+  function msg(
+    teil: Partial<Message> & Pick<Message, "id" | "role" | "content" | "status">,
+  ): Message {
+    return { conversationId, createdAt: "2026-11-21T10:00:00.000Z", ...teil } as Message;
+  }
+
+  /** Erste Antwort fertig, dann ein zweiter Lauf zur selben Nachricht (wie die Route ihn anlegt). */
+  function zweiFassungen() {
+    const ev = folge();
+    const g = glueck(ev, "Erste Fassung");
+    const runId = newId("run");
+    const neu = newId("message");
+    const liste = [
+      ev("run.queued", { runId }, runId),
+      ev("run.started", { runId }, runId),
+      ev("message.created", { messageId: neu, role: "assistant", text: "" }, runId),
+      ev("text.delta", { runId, messageId: neu, text: "Zweite " }, runId),
+      ev("text.delta", { runId, messageId: neu, text: "Fassung" }, runId),
+      ev(
+        "message.completed",
+        {
+          messageId: neu,
+          route: "direct",
+          modelLabel: "Beispiel-Modell B",
+          tokens: { input: 1, output: 1 },
+        },
+        runId,
+      ),
+    ];
+    return { ev, g, runId, neu, liste };
+  }
+
+  it("live: die neue Fassung kommt hinter die alte, die alte bleibt unverändert", () => {
+    const { g, runId, liste } = zweiFassungen();
+    let a = ereignisseAnwenden(leereAnsicht(), g.liste, KONTEXT);
+    expect(neuErzeugbar(a)?.id).toBe(g.antwort);
+    a = neuErzeugt(a, { runId });
+    expect(sendenGesperrt(a)).toBe(true);
+    a = ereignisseAnwenden(a, liste, KONTEXT);
+    expect(nachrichten(a)).toEqual([
+      "du:fertig:Hallo Pai",
+      "bot:fertig:Erste Fassung",
+      "bot:fertig:Zweite Fassung",
+    ]);
+    expect(a.lauf).toBeUndefined();
+    // Nur die neueste lässt sich wieder neu erzeugen.
+    expect(neuErzeugbar(a)?.text).toBe("Zweite Fassung");
+    // Die Antwort der Route kam zu spät: der Lauf bleibt beendet.
+    expect(neuErzeugt(a, { runId }).lauf).toBeUndefined();
+  });
+
+  it("Neuladen mitten im neuen Lauf: alte Fassung fertig, neue aus den Ereignissen", () => {
+    const { g, runId, neu, liste } = zweiFassungen();
+    const verlauf: ChatVerlauf = {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [
+        msg({ id: g.user as never, role: "user", content: "Hallo Pai", status: "complete" }),
+        msg({
+          id: g.antwort as never,
+          role: "assistant",
+          content: "Erste Fassung",
+          status: "complete",
+          runId: g.runId as never,
+        }),
+        msg({
+          id: neu as never,
+          role: "assistant",
+          content: "",
+          status: "streaming",
+          runId: runId as never,
+        }),
+      ],
+      laeufe: [{ id: g.runId, status: "succeeded", triggerMessageId: g.user } as Run],
+      aktiverLauf: { id: runId, status: "running", conversationId } as Run,
+      ereignisse: liste.slice(0, 4),
+      letzteSeq: liste[3]?.seq ?? 0,
+      belege: [],
+      modelle: {},
+    };
+    let a = ansichtAus(verlauf, KONTEXT);
+    expect(nachrichten(a)).toEqual([
+      "du:fertig:Hallo Pai",
+      "bot:fertig:Erste Fassung",
+      "bot:streamt:Zweite ",
+    ]);
+    expect(neuErzeugbar(a)).toBeUndefined();
+    a = ereignisseAnwenden(a, liste, KONTEXT);
+    expect(nachrichten(a)).toEqual([
+      "du:fertig:Hallo Pai",
+      "bot:fertig:Erste Fassung",
+      "bot:fertig:Zweite Fassung",
+    ]);
+  });
+
+  it("Neuladen zwischen Speichern und Ende des neuen Laufs: kein Text doppelt", () => {
+    const { g, runId, neu, liste } = zweiFassungen();
+    const verlauf: ChatVerlauf = {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [
+        msg({ id: g.user as never, role: "user", content: "Hallo Pai", status: "complete" }),
+        msg({
+          id: g.antwort as never,
+          role: "assistant",
+          content: "Erste Fassung",
+          status: "complete",
+          runId: g.runId as never,
+        }),
+        msg({
+          id: neu as never,
+          role: "assistant",
+          content: "Zweite Fassung",
+          status: "complete",
+          runId: runId as never,
+        }),
+      ],
+      laeufe: [],
+      aktiverLauf: { id: runId, status: "running", conversationId } as Run,
+      ereignisse: liste,
+      letzteSeq: liste.at(-1)?.seq ?? 0,
+      belege: [],
+      modelle: {},
+    };
+    const a = ansichtAus(verlauf, KONTEXT);
+    expect(nachrichten(a)).toEqual([
+      "du:fertig:Hallo Pai",
+      "bot:fertig:Erste Fassung",
+      "bot:fertig:Zweite Fassung",
+    ]);
+    expect(nachrichten(ereignisseAnwenden(a, [...g.liste, ...liste], KONTEXT))).toEqual(
+      nachrichten(a),
+    );
+  });
+
+  it("neuer Lauf abgelehnt (z. B. Tagesbudget): Hinweis hinter der alten Fassung, die bleibt neu erzeugbar", () => {
+    const { g } = zweiFassungen();
+    const abgelehnt = newId("run");
+    const verlauf: ChatVerlauf = {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [
+        msg({ id: g.user as never, role: "user", content: "Hallo Pai", status: "complete" }),
+        msg({
+          id: g.antwort as never,
+          role: "assistant",
+          content: "Erste Fassung",
+          status: "complete",
+          runId: g.runId as never,
+        }),
+      ],
+      laeufe: [
+        {
+          id: abgelehnt,
+          status: "denied",
+          errorCode: "limit_erreicht",
+          triggerMessageId: g.user,
+          createdAt: "2026-11-21T10:05:00.000Z",
+        } as Run,
+        {
+          id: g.runId,
+          status: "succeeded",
+          triggerMessageId: g.user,
+          createdAt: "2026-11-21T10:00:00.000Z",
+        } as Run,
+      ],
+      ereignisse: [],
+      letzteSeq: 20,
+      belege: [],
+      modelle: {},
+    };
+    const a = ansichtAus(verlauf);
+    expect(nachrichten(a)).toEqual([
+      "du:fertig:Hallo Pai",
+      "bot:fertig:Erste Fassung",
+      "ende:abgelehnt:limit_erreicht",
+    ]);
+    expect(neuErzeugbar(a)?.id).toBe(g.antwort);
+  });
+});
+
+describe("Fassungen", () => {
+  it("Antworten zwischen zwei Nachrichten der Person sind Fassungen; Hinweise trennen nicht", () => {
+    const f = fassungenVon([
+      { id: "u1", rolle: "du" },
+      { id: "a1", rolle: "bot" },
+      { id: "h" },
+      { id: "a2", rolle: "bot" },
+      { id: "u2", rolle: "du" },
+      { id: "b1", rolle: "bot" },
+    ]);
+    expect(f.get("a1")).toEqual({ nr: 1, von: 2, alle: ["a1", "a2"] });
+    expect(f.get("a2")).toMatchObject({ nr: 2, von: 2 });
+    expect(f.get("b1")).toMatchObject({ nr: 1, von: 1 });
+    expect(f.has("u1")).toBe(false);
   });
 });

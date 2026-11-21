@@ -10,7 +10,7 @@ Seit:      2026-11-20
 
 # Chat
 
-**Ergebnis:** Du schreibst deinem Bot eine Nachricht, und er antwortet Stück für Stück, während der Text entsteht. Jede Anfrage an das Modell geht durch das Tor und bekommt zwei Belege; du kannst die Antwort jederzeit stoppen.
+**Ergebnis:** Du schreibst deinem Bot eine Nachricht, und er antwortet Stück für Stück, während der Text entsteht. Jede Anfrage an das Modell geht durch das Tor und bekommt zwei Belege; du kannst die Antwort jederzeit stoppen, neu erzeugen lassen, deine Unterhaltungen durchsuchen und eine Unterhaltung als Datei sichern.
 
 ## Wofür
 
@@ -32,11 +32,13 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 1. Unter deiner Nachricht erscheint die Antwort des Bots Stück für Stück. Oben steht neben dem Namen „wartet in der Schlange“ oder „schreibt“.
 
    ![Die Antwort kommt gerade: der erste Satz steht schon da, darunter „schreibt“ und „Beleg folgt, sobald die Antwort fertig ist.“; in der Eingabe statt des Pfeils der Knopf „Stopp“](assets/screenshots/chat-streamt.png)
+
 2. Abgesetzte Blöcke (etwa ein Mail-Entwurf) haben rechts oben **Kopieren**. Ein Klick legt nur diesen Block in die Zwischenablage.
 3. Links in einer Antwort zeigen in Klammern, wohin sie führen. Bilder lädt PaiBot nie; statt eines Bildes steht ein Link.
 4. Ist die Antwort fertig, steht darunter eine Zeile mit drei Teilen: **Beleg** mit seiner Kennung (z. B. `B-0142`), der **Weg** („direkt · EU“ bzw. „geschützt über die Datenschleuse“) und das **Modell** mit Herkunft. Am Handy ist die Zeile gekürzt; ein Tipp auf den Weg klappt sie aus.
 
    ![Fertige Antwort mit dem abgesetzten Block „Entwurf“ und dem Knopf „Kopieren“; darunter die Zeile mit „Beleg“, „direkt · lokal“ und dem Beispiel-Modell](assets/screenshots/chat-antwort.png)
+
 5. Mit **Schritte** oben rechts blendest du diese Zeilen aus und wieder ein.
 
 **Antwort stoppen**
@@ -45,6 +47,7 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 2. Klick darauf. Binnen etwa einer halben Sekunde hört der Bot auf. Was bis dahin geschrieben war, bleibt stehen, darunter „Abgebrochen. Der Text bis hierhin bleibt stehen.“
 
    ![Abgebrochene Antwort: der Text bis zum Stopp bleibt stehen, darunter „Abgebrochen. Der Text bis hierhin bleibt stehen.“ und der Beleg](assets/screenshots/chat-abgebrochen.png)
+
 3. Solange eine Antwort läuft, kannst du in dieser Unterhaltung nichts Neues senden. Danach geht es wie gewohnt weiter.
 
 **Belege einer Unterhaltung ansehen**
@@ -52,10 +55,12 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 1. Klick in der Zeile unter einer Antwort auf **Beleg**. Rechts öffnet sich die Arbeitsfläche (am Handy als Blatt von unten) mit diesem Beleg: was geschah, wer es tat, die Entscheidung des Tors, die angewandten Regeln, das Ergebnis, Zeit und Kennung.
 
    ![Rechts die Arbeitsfläche „Belege“ mit einem Beleg: Was, Wer, Entscheidung „erlaubt“, angewandte Regel R-002, Begründung, Ergebnis, Zeit und Kennung, unten „Als eigene Seite öffnen“](assets/screenshots/chat-beleg.png)
+
 2. **Als eigene Seite öffnen** führt zur Seite des Belegs unter „Belege“; dort lässt er sich prüfen.
 3. **Alle Belege dieser Unterhaltung** zeigt die Liste, neuester oben. Neue Belege erscheinen dort von selbst, während der Bot arbeitet.
 
    ![Arbeitsfläche mit allen Belegen dieser Unterhaltung, neuester oben, jeweils mit Kennung und Uhrzeit](assets/screenshots/chat-belege-liste.png)
+
 4. Ohne Klick auf einen Beleg öffnest du die Liste über das Symbol rechts oben in der Kopfzeile oder über **⋯ → Belege dieser Unterhaltung**. Mit dem Kreuz schließt du sie.
 
 **Datenschleuse für diese Unterhaltung**
@@ -72,11 +77,57 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 1. Klick oben rechts auf **⋯** (Weitere Aktionen).
 
    ![Geöffnetes Menü „⋯“ mit „Umbenennen“, „Belege dieser Unterhaltung“ und „Unterhaltung löschen“](assets/screenshots/chat-menue.png)
+
 2. **Umbenennen**: neuen Titel eintragen, **Speichern** oder Enter. Die Seitenleiste zeigt den neuen Titel sofort.
 3. **Unterhaltung löschen**: PaiBot fragt nach. **Löschen** entfernt Nachrichten und Antworten; die Belege bleiben, damit die Kette vollständig bleibt. Danach bist du wieder auf der Startseite.
 
    ![Rückfrage „Unterhaltung „Antwort an Max Mustermann“ wirklich löschen?“ mit „Abbrechen“ und „Löschen“](assets/screenshots/chat-loeschen.png)
+
 4. Solange der Bot in der Unterhaltung antwortet, lässt sie sich nicht löschen. Erst stoppen oder die Antwort abwarten.
+
+**Unterhaltungen durchsuchen**
+
+1. Klick links oben in der Seitenleiste in das Feld **Unterhaltungen durchsuchen** (am Handy zuerst auf das Menü oben links). Per Tastatur erreichst du es mit **Tab**.
+2. Tipp ein Suchwort, mindestens zwei Zeichen. Groß- und Kleinschreibung spielen keine Rolle, Umlaute werden gefunden, wie du sie schreibst. Nach einem kurzen Moment erscheinen die Treffer an Stelle der Liste deiner Unterhaltungen: oben **Titel**, deren Name passt, darunter **Nachrichten** mit einem Ausschnitt um die Fundstelle. Das Suchwort ist darin markiert, darunter steht, wer schrieb und wann.
+
+   ![Seitenleiste mit dem Suchwort „Donnerstag“: „2 Treffer“, unter „Nachrichten“ zwei Treffer aus „Antwort an Max Mustermann“, das Suchwort jeweils markiert](assets/screenshots/chat-suche.png)
+
+3. Klick auf einen Treffer. Ein Titel öffnet die Unterhaltung; eine Nachricht öffnet sie und rollt genau zu dieser Nachricht, die kurz umrandet ist. Per Tastatur: **Pfeil nach unten** springt vom Feld zum ersten Treffer, die Pfeile wechseln zwischen den Treffern, **Enter** öffnet, **Esc** führt zurück ins Feld.
+4. Gibt es mehr als 20 Treffer in Nachrichten, holt **Weitere Treffer laden** die nächsten.
+5. Findet die Suche nichts, steht dort „Nichts gefunden für …“ mit einem Tipp. **Esc** im Feld oder das Kreuz rechts darin leert die Suche; dann steht wieder die Liste deiner Unterhaltungen da.
+
+   ![Suche ohne Treffer: „Nichts gefunden für „Urlaubsplanung“.“ und der Tipp, die Schreibweise zu prüfen](assets/screenshots/chat-suche-leer.png)
+
+Am Handy steht das Suchfeld oben im Menü; ein Tipp auf einen Treffer schließt das Menü.
+
+![Auf dem Handy das Menü mit dem Suchwort „Max“: ein Treffer im Titel, zwei in Nachrichten](assets/screenshots/chat-suche-handy.png)
+
+**Unterhaltung als Datei sichern**
+
+1. Öffne die Unterhaltung und klick oben rechts auf **⋯** (Weitere Aktionen), dann auf **Als Datei sichern …**.
+2. Es öffnet sich ein Fenster. Es sagt, was in der Datei steht, und weist darauf hin, dass sie persönliche Inhalte enthält. Bewahre sie sicher auf.
+
+   ![Fenster „Unterhaltung als Datei sichern“ mit dem Hinweis auf persönliche Inhalte und den Knöpfen „Abbrechen“ und „Datei sichern“](assets/screenshots/chat-sichern.png)
+
+3. Klick auf **Datei sichern**. Dein Browser speichert eine Textdatei, etwa `paibot-antwort-an-max-mustermann-2026-11-21.md`. Im Fenster steht danach „Gesichert als …“.
+4. Öffne die Datei mit einem beliebigen Texteditor. Oben stehen Titel, Name des Bots, wann die Unterhaltung angelegt und wann sie gesichert wurde. Darunter folgt jede Nachricht mit **wer** und **wann** als Überschrift und dem Text. Abgebrochene und fehlgeschlagene Antworten sind gekennzeichnet, ebenso frühere Fassungen einer neu erzeugten Antwort. Interne Kennungen und Schlüssel stehen nicht darin.
+5. Auch das Sichern bekommt zwei Belege („Unterhaltung als Datei gesichert“). Du findest sie unter **Belege** und in der Arbeitsfläche dieser Unterhaltung.
+
+**Antwort neu erzeugen**
+
+1. Unter der letzten Antwort des Bots steht **Neu erzeugen**. Klick darauf. Der Bot schreibt eine neue Antwort auf dieselbe Nachricht, mit dem Modell, das er gerade hat.
+2. Die neue Antwort erscheint an derselben Stelle, darunter „Fassung 2 von 2“. Die alte Antwort ist nicht weg.
+
+   ![Neu erzeugte Antwort an Max Mustermann, darunter die Zeile mit Beleg, Weg und Modell und „Fassung 2 von 2“ mit Pfeilen und dem Knopf „Neu erzeugen“](assets/screenshots/chat-neu-erzeugt.png)
+
+3. Mit den Pfeilen **‹** und **›** blätterst du zwischen den Fassungen. Eine ältere ist als „Frühere Fassung 1 von 2“ gekennzeichnet, mit dem Satz „Ersetzt durch eine neuere Fassung.“ Jede Fassung hat ihren eigenen Beleg.
+
+   ![Zurückgeblättert zur ersten Fassung: der alte Text steht unverändert da, darunter „Frühere Fassung 1 von 2“ und „Ersetzt durch eine neuere Fassung.“](assets/screenshots/chat-fassung-frueher.png)
+
+4. Mit einem anderen Modell: Klick auf den kleinen Pfeil neben **Neu erzeugen** und wähle **Mit anderem Modell …**. Wähle das Modell aus der Liste und klick auf **Neu erzeugen mit …**. Das gewählte Modell gilt danach auch für die nächsten Antworten deines Bots; zurückstellen kannst du es auf der Seite „Modell und Anbieter“. Den Pfeil gibt es nur, wenn mehr als ein Modell wählbar ist.
+5. Solange eine Antwort läuft, ist **Neu erzeugen** gesperrt; daneben steht „Neu erzeugen geht wieder, sobald Pai fertig ist.“ Mit **Stopp** kannst du eine laufende neue Fassung abbrechen; ihr Text bis dahin bleibt als Fassung stehen.
+6. Ist der Not-Aus an, ist **Neu erzeugen** gesperrt („Neu erzeugen geht wieder, wenn du den Not-Aus aufhebst.“); am Server lehnt das Tor mit „Alle Bots sind angehalten.“ ab. Suchen und Als Datei sichern gehen auch bei Not-Aus, weil dabei kein Bot arbeitet.
+7. Greift eine andere Grenze (zum Beispiel das Tagesbudget), entsteht keine neue Antwort. Unter der bisherigen Antwort steht dann der Hinweis mit dem Grund, und die bisherige Antwort bleibt die gültige.
 
 **Eine andere Unterhaltung öffnen**
 
@@ -105,6 +156,8 @@ Am Handy ist die Zeile unter der Antwort gekürzt. Ein Tipp auf den Weg klappt s
 ![Auf dem Handy der Beleg als Blatt von unten, mit Was, Wer, Entscheidung, Regel, Ergebnis und Zeit](assets/screenshots/chat-handy-beleg.png)
 
 ## Einstellungen
+
+Suche, Sichern und Neu erzeugen haben keine eigenen Einstellungen. Feste Werte: Ein Suchwort hat 2 bis 100 Zeichen; je Seite zeigt die Suche bis zu 10 Titel und 20 Nachrichten (höchstens 1.000 Treffer weit); bis zu 120 Suchanfragen je Minute. Neu erzeugen zählt auf dasselbe Limit wie das Senden (30 je Minute).
 
 | Einstellung            | Wo                                 | Bedeutung                                                                                 | Standard                                  |
 | ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------- |
@@ -155,6 +208,12 @@ Was die Seite live bekommt (über den Ereignis-Strom der Unterhaltung):
 | `schleuse.blockiert` | Die Datenschleuse war gefordert, aber nicht nutzbar oder hat gestoppt |
 | `beleg.created`      | Ein Beleg ist entstanden (Entscheidung oder Ergebnis)                 |
 
+**Suchen:** Die Seitenleiste fragt `GET /api/suche?q=…` (nur angemeldet, geprüftes Suchwort, eigenes Limit). Die Datenbank deiner Installation vergleicht das Suchwort ohne Groß- und Kleinschreibung mit Titeln und dem Text deiner Nachrichten und der Antworten. Das Suchwort ist reiner Text: Zeichen wie `%` oder `_` haben keine Sonderbedeutung. Die Datenbank schneidet den Ausschnitt um die Fundstelle selbst zu, die Seite setzt ihn als Text ein. Die Suche liest nur, sie schreibt keinen Beleg und geht nicht ins Internet. Einen eigenen Suchindex gibt es nicht; für die Mengen einer Person reicht das Durchsuchen der Tabelle.
+
+**Als Datei sichern:** `POST /api/unterhaltungen/<kennung>/export` liest die Unterhaltung in einem Lesestand. Das Tor entscheidet über die Aktion `unterhaltung.exportieren` (Unterhaltung vorhanden, V-01); erst danach entsteht die Datei (Markdown, `text/markdown`, zum Speichern, nie zum Anzeigen). Die Aktion ändert keine Daten; ihr Ergebnis sind die beiden Belege, deren Kennungen in den Kopfzeilen der Antwort stehen.
+
+**Neu erzeugen:** `POST /api/unterhaltungen/<kennung>/antworten/<antwort>/neu`. Das Tor entscheidet über `antwort.neu_erzeugen` (Unterhaltung vorhanden V-01, kein Lauf aktiv V-02, es ist die letzte Antwort V-11, Not-Aus G-05). Erst mit Erlaubnis entstehen in einer Transaktion ein neuer Lauf zur **selben Nachricht** von dir, das Ereignis `run.queued` und der Auftrag. Danach läuft alles wie bei einer neuen Nachricht, mit eigener Entscheidung `modell.anfragen` und eigenen Belegen; Tagesbudget und alle anderen Grenzen gelten. Die alte Antwort bleibt unverändert gespeichert. Alle Antworten des Bots zwischen zwei Nachrichten von dir sind Fassungen derselben Antwort. Im Verlauf, den das Modell bei späteren Nachrichten bekommt, steht je Nachricht nur die neueste Fassung mit Text; eine neue Fassung ohne Text (abgelehnt oder fehlgeschlagen, bevor etwas kam) ersetzt nichts.
+
 **Abbruch:** „Stopp“ setzt in der Datenbank einen Abbruch-Wunsch (Aktion `lauf.abbrechen`). Der Worker sieht ihn binnen einer halben Sekunde, schließt die Verbindung zum Anbieter und beendet den Lauf. Auch wenn der Worker herunterfährt, endet eine laufende Antwort als „Abgebrochen“.
 
 **Hängende Läufe:** Stürzt der Worker mitten in einer Antwort ab, fehlt der Herzschlag. Beim nächsten Start beendet der Worker solche Läufe als „unterbrochen“, schreibt das fehlende Ergebnis zum Beleg „Entscheidung“ und gibt die Unterhaltung wieder frei. Läufe, die länger als 15 Minuten nie abgeholt wurden, beendet er ebenso.
@@ -177,22 +236,32 @@ Beteiligte Teile: `apps/web/src/app/(app)/chat/` und `apps/web/src/lib/chat/` (S
 - Ob die Datenschleuse gerade bereit ist, zeigt der Chat erst, wenn eine Anfrage gestoppt wurde („Datenschleuse nicht bereit“). Den laufenden Zustand, den der Worker alle 30 Sekunden prüft, zeigt die Seite [Datenschleuse](funktion-datenschleuse.md).
 - Unter einer Antwort steht nicht, wie viele Angaben die Datenschleuse ersetzt hat; diese Zahl wird nicht festgehalten.
 - Die Seitenleiste zeigt die 100 zuletzt benutzten Unterhaltungen.
+- Die Suche findet zusammenhängende Zeichenfolgen, keine Wortformen und keine Tippfehler („Tomate“ findet „Tomaten“, „Tomatn“ nicht). Abweichende Schreibweisen von Zeichen (etwa „ae“ statt „ä“) findet sie nicht. Nachrichten gelöschter Unterhaltungen findet sie nicht.
+- Neu erzeugt wird nur die letzte Antwort einer Unterhaltung. Eine Antwort weiter oben lässt sich nicht neu erzeugen, und eine frühere Fassung lässt sich nicht wieder zur gültigen machen; dafür erzeugst du neu.
+- Beim Neu erzeugen mit anderem Modell wechselt das Modell des Bots, nicht nur das einer Antwort.
+- Die gesicherte Datei enthält eine Antwort, die beim Sichern noch lief, ohne Text (gekennzeichnet).
 - Eine Nachricht hat höchstens 32.000 Zeichen. Kurz vor der Grenze zeigt die Eingabe, wie viele noch gehen; darüber wird nicht gesendet.
 
 ## Fehlerbehebung
 
-| Beobachtung                                           | Ursache                                                                     | Was tun                                                                                         |
-| ----------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| „Für deinen Bot ist kein Modell gewählt.“             | Der Bot hat kein Modell, oder es ist abgeschaltet                           | Modell wählen (siehe [Anbieter und Modelle](funktion-anbieter-und-modelle.md))                  |
-| „Dein Bot antwortet gerade noch.“                     | In dieser Unterhaltung läuft schon eine Antwort                             | Abwarten oder „Stopp“                                                                           |
-| „Das Tor hat die Aktion abgelehnt.“                   | Eine Grenze greift: Not-Aus, Tagesbudget, Anbieter abgeschaltet, Region     | Im Beleg „Entscheidung“ steht, welche Grenze (siehe [Das Tor](funktion-tor.md))                 |
-| `schleuse.blockiert`, keine Antwort                   | Datenschleuse an, aber nicht installiert, nicht erreichbar oder gestoppt    | Datenschleuse prüfen ([Datenschleuse](funktion-datenschleuse.md)) oder ausschalten              |
-| „Der Anbieter hat den Schlüssel nicht angenommen.“    | Schlüssel falsch, abgelaufen, oder die Adresse des Anbieters wurde geändert | Schlüssel neu eintragen                                                                         |
-| „Ein Limit ist erreicht.“                             | Der Anbieter meldet ein Limit, oder die Antwort wurde zu lang               | Kurz warten; Tagesbudget prüfen                                                                 |
-| „Der Anbieter des Modells ist nicht erreichbar.“      | Netz, Anbieter gestört, oder keine Antwort innerhalb der Zeitgrenze         | Später noch einmal senden                                                                       |
-| „Die Antwort wurde unterbrochen.“                     | Abgebrochen oder der Worker wurde beendet                                   | Nachricht noch einmal senden                                                                    |
-| Antwort bleibt lange bei „schreibt …“                 | Worker läuft nicht                                                          | `docker compose logs worker` ansehen; Zeilen wie `Lauf lau_… beendet: succeeded` zeigen Läufe   |
-| „verbindet neu …“ bleibt stehen                       | Die Web-App ist nicht erreichbar                                            | Warten; sonst „Neu verbinden“ oder die Seite neu laden. Die Antwort läuft im Hintergrund weiter |
-| Schalter „Datenschleuse“ lässt sich nicht einschalten | Die Datenschleuse ist auf diesem Server nicht eingerichtet                  | [Datenschleuse](funktion-datenschleuse.md) einrichten                                           |
-| „… nimmt den Schlüssel von PaiBot nicht an“           | Worker und Datenschleuse haben verschiedene `SCHLEUSE_KEY`                  | `SCHLEUSE_KEY` in `deploy/.env` prüfen, Worker und Datenschleuse neu starten                    |
-| „… Zeichen zu viel“ über dem Feld                     | Die Nachricht ist länger als 32.000 Zeichen                                 | Kürzen oder auf mehrere Nachrichten verteilen                                                   |
+| Beobachtung                                           | Ursache                                                                          | Was tun                                                                                         |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| „Für deinen Bot ist kein Modell gewählt.“             | Der Bot hat kein Modell, oder es ist abgeschaltet                                | Modell wählen (siehe [Anbieter und Modelle](funktion-anbieter-und-modelle.md))                  |
+| „Dein Bot antwortet gerade noch.“                     | In dieser Unterhaltung läuft schon eine Antwort                                  | Abwarten oder „Stopp“                                                                           |
+| „Das Tor hat die Aktion abgelehnt.“                   | Eine Grenze greift: Not-Aus, Tagesbudget, Anbieter abgeschaltet, Region          | Im Beleg „Entscheidung“ steht, welche Grenze (siehe [Das Tor](funktion-tor.md))                 |
+| `schleuse.blockiert`, keine Antwort                   | Datenschleuse an, aber nicht installiert, nicht erreichbar oder gestoppt         | Datenschleuse prüfen ([Datenschleuse](funktion-datenschleuse.md)) oder ausschalten              |
+| „Der Anbieter hat den Schlüssel nicht angenommen.“    | Schlüssel falsch, abgelaufen, oder die Adresse des Anbieters wurde geändert      | Schlüssel neu eintragen                                                                         |
+| „Ein Limit ist erreicht.“                             | Der Anbieter meldet ein Limit, oder die Antwort wurde zu lang                    | Kurz warten; Tagesbudget prüfen                                                                 |
+| „Der Anbieter des Modells ist nicht erreichbar.“      | Netz, Anbieter gestört, oder keine Antwort innerhalb der Zeitgrenze              | Später noch einmal senden                                                                       |
+| „Die Antwort wurde unterbrochen.“                     | Abgebrochen oder der Worker wurde beendet                                        | Nachricht noch einmal senden                                                                    |
+| Antwort bleibt lange bei „schreibt …“                 | Worker läuft nicht                                                               | `docker compose logs worker` ansehen; Zeilen wie `Lauf lau_… beendet: succeeded` zeigen Läufe   |
+| „verbindet neu …“ bleibt stehen                       | Die Web-App ist nicht erreichbar                                                 | Warten; sonst „Neu verbinden“ oder die Seite neu laden. Die Antwort läuft im Hintergrund weiter |
+| Schalter „Datenschleuse“ lässt sich nicht einschalten | Die Datenschleuse ist auf diesem Server nicht eingerichtet                       | [Datenschleuse](funktion-datenschleuse.md) einrichten                                           |
+| „… nimmt den Schlüssel von PaiBot nicht an“           | Worker und Datenschleuse haben verschiedene `SCHLEUSE_KEY`                       | `SCHLEUSE_KEY` in `deploy/.env` prüfen, Worker und Datenschleuse neu starten                    |
+| „Gib mindestens zwei Zeichen ein.“ in der Suche       | Das Suchwort ist zu kurz                                                         | Ein zweites Zeichen tippen                                                                      |
+| „Nichts gefunden für …“                               | Kein Titel und keine Nachricht enthält das Suchwort                              | Kürzeres Wort oder andere Schreibweise versuchen                                                |
+| „Die gesuchte Nachricht gibt es … nicht mehr.“        | Die Nachricht zum Treffer wurde inzwischen gelöscht                              | Neu suchen                                                                                      |
+| „Neu erzeugen“ gesperrt                               | Der Bot antwortet gerade, oder es fehlt Modell oder Schlüssel                    | Abwarten oder „Stopp“; sonst Modell wählen                                                      |
+| Neu erzeugen: „Das gibt es nicht (mehr).“             | Inzwischen kam eine neuere Nachricht dazu; die Antwort ist nicht mehr die letzte | Seite neu laden                                                                                 |
+| Sichern: „Das gibt es nicht (mehr).“                  | Die Unterhaltung wurde gelöscht                                                  | Seite neu laden                                                                                 |
+| „… Zeichen zu viel“ über dem Feld                     | Die Nachricht ist länger als 32.000 Zeichen                                      | Kürzen oder auf mehrere Nachrichten verteilen                                                   |

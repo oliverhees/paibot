@@ -15,6 +15,7 @@ import {
   connectionTestInput,
   conversationCreateInput,
   conversationRenameInput,
+  conversationSearchQuery,
   killSwitchInput,
   loginInput,
   modelChoiceInput,
@@ -478,6 +479,36 @@ export const API_ROUTEN = {
     zugang: "besitzer",
     antwort: "json",
     veraendernd: false,
+  },
+
+  /** Sucht in Titeln und Nachrichten aller Unterhaltungen (seitenweise, gezählt je Besitzer). */
+  suche: {
+    methode: "GET",
+    pfad: "/api/suche",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+    eingabe: conversationSearchQuery,
+    limits: ["suche"],
+  },
+  /** Eine Unterhaltung als Markdown-Datei; der Export selbst bekommt Belege. */
+  unterhaltungExport: {
+    methode: "POST",
+    pfad: "/api/unterhaltungen/:id/export",
+    zugang: "besitzer",
+    antwort: "download",
+    veraendernd: true,
+    aktion: "unterhaltung.exportieren",
+  },
+  /** Die letzte Antwort neu erzeugen: neuer Lauf zur selben Nachricht, die alte bleibt erhalten. */
+  antwortNeuErzeugen: {
+    methode: "POST",
+    pfad: "/api/unterhaltungen/:id/antworten/:antwortId/neu",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "antwort.neu_erzeugen",
+    limits: ["nachricht"],
   },
 } as const satisfies Record<string, RoutenDefinition>;
 

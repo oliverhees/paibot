@@ -1,0 +1,75 @@
+/**
+ * PaiBot – Suchfeld.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.suche {
+  position: relative;
+  min-width: 0;
+}
+
+.versteckt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.lupe {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  line-height: 0;
+  pointer-events: none;
+}
+
+.eingabe {
+  padding-left: 32px;
+  padding-right: 32px;
+  min-height: 34px;
+  font-size: var(--schrift-m);
+}
+
+/* Eigener Knopf statt des eingebauten Kreuzes, damit es in jedem Browser gleich aussieht. */
+.eingabe::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.rechts {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  line-height: 0;
+}
+
+.leeren {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.leeren:hover {
+  color: var(--ink);
+  background: var(--surface-sunken);
+}
+
+.leeren:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: 1px;
+}

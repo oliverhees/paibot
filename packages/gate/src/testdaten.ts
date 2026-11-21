@@ -77,6 +77,8 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   "geraet.entfernen": { deviceId: ids.deviceId },
   "geraet.bestaetigen": { deviceId: ids.deviceId },
   "notaus.umschalten": { installationId: ids.installationId },
+  "unterhaltung.exportieren": { conversationId: ids.conversationId },
+  "antwort.neu_erzeugen": { conversationId: ids.conversationId, messageId: ids.messageId },
 };
 
 /**
@@ -172,6 +174,14 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     on: false,
     wasOn: true,
     currentPasswordVerified: true,
+  },
+  "unterhaltung.exportieren": { credential: "sitzung", conversationExists: true, messages: 4 },
+  "antwort.neu_erzeugen": {
+    credential: "sitzung",
+    conversationExists: true,
+    runActive: false,
+    answerIsLatest: true,
+    killSwitch: false,
   },
 };
 

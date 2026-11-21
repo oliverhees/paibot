@@ -200,11 +200,30 @@ describe("checkLimits", () => {
         t !== "modell.anfragen" &&
         t !== "nachricht.senden" &&
         t !== "werkzeug.aufrufen" &&
-        t !== "werkzeug.ausfuehren",
+        t !== "werkzeug.ausfuehren" &&
+        // Neu erzeugen führt zu einem Lauf des Bots: der Not-Aus (G-05) gilt.
+        t !== "antwort.neu_erzeugen",
     ),
   )("%s: keine Grenze betrifft die Verwaltungsaktion", (type) => {
     const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
     expect(checks.every((c) => c.result === "entfaellt")).toBe(true);
+  });
+
+  it("Antwort neu erzeugen: Not-Aus (G-05) greift, sonst keine Grenze", () => {
+    const type = "antwort.neu_erzeugen";
+    const ok = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
+    expect(ok.find((c) => c.name === "not_aus")?.result).toBe("ok");
+    expect(ok.filter((c) => c.name !== "not_aus").every((c) => c.result === "entfaellt")).toBe(
+      true,
+    );
+    const aus = checkLimits(
+      sampleAction(type) as ActionRequest,
+      {
+        ...sampleFacts(type),
+        killSwitch: true,
+      } as Facts,
+    );
+    expect(aus.find((c) => c.name === "not_aus")?.result).toBe("verletzt");
   });
 
   it("jede Grenze liefert ihren eigenen Namen", () => {

@@ -83,6 +83,7 @@ export { type EingabeAktion, eingabeAktion, sendbar } from "./chat/eingabe";
 export { Markdown, type MarkdownProps } from "./chat/Markdown";
 export { sichereUrl } from "./chat/sichereUrl";
 export { Select, type SelectOption, type SelectProps } from "./felder/Select";
+export { SuchFeld, type SuchFeldProps } from "./felder/SuchFeld";
 export { Switch, type SwitchProps } from "./felder/Switch";
 export { TextArea, type TextAreaProps } from "./felder/TextArea";
 export { TextField, type TextFieldProps } from "./felder/TextField";

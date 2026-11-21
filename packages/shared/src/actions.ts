@@ -335,6 +335,35 @@ export const ACTIONS = {
       currentPasswordVerified: z.boolean(),
     },
   ),
+  /** Der Besitzer sichert eine Unterhaltung als lesbare Datei (Markdown). */
+  "unterhaltung.exportieren": action(
+    "besitzer",
+    { conversationId },
+    {
+      ...ownerFacts,
+      /** Die Unterhaltung gibt es (Vorbedingung V-01). */
+      conversationExists: z.boolean(),
+      /** Anzahl der Nachrichten in der Datei. */
+      messages: countSchema,
+    },
+  ),
+  /**
+   * Der Besitzer lässt die letzte Antwort des Bots neu erzeugen. Ziel ist die Antwort, die ersetzt
+   * wird; sie bleibt als frühere Fassung erhalten. Die neue Antwort entsteht in einem eigenen Lauf
+   * zur selben Nachricht.
+   */
+  "antwort.neu_erzeugen": action(
+    "besitzer",
+    { conversationId, messageId },
+    {
+      ...ownerFacts,
+      conversationExists: z.boolean(),
+      runActive: z.boolean(),
+      /** Die Antwort ist die letzte Nachricht der Unterhaltung (Vorbedingung V-11). */
+      answerIsLatest: z.boolean(),
+      killSwitch: z.boolean(),
+    },
+  ),
 } as const;
 
 type Actions = typeof ACTIONS;

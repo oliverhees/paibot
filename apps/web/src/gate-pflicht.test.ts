@@ -248,7 +248,9 @@ async function rufe(
 ) {
   const params = optionen.params ?? {};
   const pfad = routenPfad(name, params as never) + (optionen.abfrage ?? "");
-  if (API_ROUTEN[name].antwort === "download") return dateiAnfrage(s, name, pfad, optionen.dose);
+  if (API_ROUTEN[name].antwort === "download") {
+    return dateiAnfrage(s, name, pfad, optionen.dose, params);
+  }
   const r = await anfrage(s.u, await handlerVon(name), API_ROUTEN[name].methode, pfad, {
     dose: optionen.dose ?? s.dose,
     params,
@@ -261,7 +263,13 @@ async function rufe(
 }
 
 /** Datei-Antwort (kein JSON): Anfrage wie `anfrage`, nur ohne Auspacken der Hülle. */
-async function dateiAnfrage(s: Stand, name: RoutenName, pfad: string, dose = s.dose) {
+async function dateiAnfrage(
+  s: Stand,
+  name: RoutenName,
+  pfad: string,
+  dose = s.dose,
+  params: Record<string, string> = {},
+) {
   const kopf = new Headers({ origin: TEST_ORIGIN, "x-forwarded-for": "203.0.113.7" });
   const zeichen = pruefzeichenFuer(s.u, dose);
   if (zeichen) kopf.set(CSRF.header, zeichen);
@@ -269,7 +277,7 @@ async function dateiAnfrage(s: Stand, name: RoutenName, pfad: string, dose = s.d
   const handler = await handlerVon(name);
   const antwort = await handler(
     new Request(`${TEST_ORIGIN}${pfad}`, { method: API_ROUTEN[name].methode, headers: kopf }),
-    { params: Promise.resolve({}) },
+    { params: Promise.resolve(params) },
   );
   if (antwort.status !== 200) throw new Error(`${name}: ${antwort.status} ${await antwort.text()}`);
   return { status: antwort.status, body: { ok: true }, antwort };
@@ -288,6 +296,26 @@ async function mitUnterhaltung(): Promise<Stand & { unterhaltung: string }> {
   const [u] = await repo.conversations.list(s.u.db);
   if (u === undefined) throw new Error("keine Unterhaltung");
   return { ...s, unterhaltung: u.id };
+}
+
+/** Eingerichtet, mit einer Unterhaltung, deren Lauf mit einer fertigen Antwort endete. */
+async function mitAntwort(): Promise<Stand & { unterhaltung: string }> {
+  const s = await mitUnterhaltung();
+  await rufe(s, "nachrichtSenden", {
+    params: { id: s.unterhaltung },
+    koerper: { text: "Hallo Pai", schleuse: "off" },
+  });
+  const lauf = await repo.runs.getActive(s.u.db, s.unterhaltung as never);
+  if (lauf === undefined) throw new Error("kein Lauf");
+  await repo.runs.markRunning(s.u.db, lauf.id);
+  await repo.messages.insert(s.u.db, {
+    conversationId: s.unterhaltung as never,
+    role: "assistant",
+    content: "Hallo! Wie kann ich helfen?",
+    runId: lauf.id,
+  });
+  await repo.runs.finish(s.u.db, lauf.id, { status: "succeeded" });
+  return s;
 }
 
 async function anbieterId(s: Stand): Promise<string> {
@@ -466,6 +494,20 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
     aufruf: async (s) => ({ params: { id: await anbieterId(s) } }),
   },
   notausUmschalten: { vorher: einrichten, aufruf: async () => ({ koerper: { on: true } }) },
+  unterhaltungExport: {
+    vorher: mitAntwort,
+    aufruf: async (s) => ({ params: { id: s.unterhaltung ?? "" } }),
+    nurBeleg: true,
+  },
+  antwortNeuErzeugen: {
+    vorher: mitAntwort,
+    aufruf: async (s) => {
+      const nachrichten = await repo.messages.listForConversation(s.u.db, s.unterhaltung as never);
+      const antwort = nachrichten.at(-1);
+      if (antwort?.role !== "assistant") throw new Error("keine Antwort");
+      return { params: { id: s.unterhaltung ?? "", antwortId: antwort.id } };
+    },
+  },
 };
 
 /**
@@ -521,6 +563,7 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
   belegeSchluessel: { vorher: einrichten, aufruf: async () => ({}) },
   regeln: { vorher: einrichten, aufruf: async () => ({}) },
   selbsttest: { vorher: einrichten, aufruf: async () => ({}) },
+  suche: { vorher: mitUnterhaltung, aufruf: async () => ({ abfrage: "?q=Beispiel" }) },
 };
 
 /**

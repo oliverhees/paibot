@@ -490,6 +490,47 @@ describe("Reihenfolge und Zustand", () => {
     expect(history[0]).toEqual({ role: "assistant", text: "Nachricht 21" });
   });
 
+  it("Verlauf nach „neu erzeugen“: neuer Lauf zur selben Nachricht, ersetzte Fassung fehlt", async () => {
+    const env = await setup((_input, turn) => [text(`Fassung ${turn + 1}`), finish()]);
+    const erste = await env.queueMessage("Frage");
+    await executeRun(erste.runId, env.deps, never());
+    // Neu erzeugen wie die Web-App: ein weiterer Lauf mit derselben auslösenden Nachricht.
+    const neu = await repo.runs.create(env.db, {
+      conversationId: env.conversationId,
+      triggerMessageId: erste.messageId,
+      botId: env.botId,
+    });
+    await repo.events.append(env.db, {
+      conversationId: env.conversationId,
+      type: "run.queued",
+      data: { runId: neu.id },
+    });
+    expect((await executeRun(neu.id, env.deps, never())).status).toBe("succeeded");
+    // Das Modell sah die alte Fassung nicht (sie steht hinter der auslösenden Nachricht).
+    expect(env.motor.calls[1]?.history).toEqual([{ role: "user", text: "Frage" }]);
+    const antworten = (await repo.messages.listForConversation(env.db, env.conversationId)).filter(
+      (m) => m.role === "assistant",
+    );
+    expect(antworten.map((m) => [m.content, m.status, m.runId])).toEqual([
+      ["Fassung 1", "complete", erste.runId],
+      ["Fassung 2", "complete", neu.id],
+    ]);
+    // Nächste Nachricht: nur die neueste Fassung im Verlauf.
+    const zweite = await env.queueMessage("Noch eine Frage");
+    await executeRun(zweite.runId, env.deps, never());
+    expect(env.motor.calls[2]?.history).toEqual([
+      { role: "user", text: "Frage" },
+      { role: "assistant", text: "Fassung 2" },
+      { role: "user", text: "Noch eine Frage" },
+    ]);
+    // Jede Erzeugung hat eigene Belege.
+    const anfragen = (await env.receipts()).filter(
+      (b) => b.body.type === "decision" && b.body.action.type === "modell.anfragen",
+    );
+    expect(anfragen).toHaveLength(3);
+    expect((await env.verify()).ok).toBe(true);
+  });
+
   it("Verlauf: Token-Grenze der Einstellungen schneidet ältere Nachrichten ab", async () => {
     const env = await setup([text("ok"), finish()]);
     await repo.settings.update(env.db, { historyTokenLimit: 10 });

@@ -93,6 +93,8 @@ describe("Aktionen", () => {
       "geraet.entfernen",
       "geraet.bestaetigen",
       "notaus.umschalten",
+      "unterhaltung.exportieren",
+      "antwort.neu_erzeugen",
     ]);
     const botActions = new Set(["modell.anfragen", "werkzeug.aufrufen", "werkzeug.ausfuehren"]);
     for (const type of ACTION_TYPES) {

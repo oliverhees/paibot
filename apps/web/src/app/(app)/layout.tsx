@@ -30,7 +30,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const db = datenbank();
   // Neue Geräte seit dem Stand dieses Geräts (Hinweis bis „Das war ich“).
   const neue = await neueAnmeldungen(db, sitzung, prozessDienste().uhr.now());
-  const zeitzone = neue.length === 0 ? "UTC" : ((await repo.settings.get(db))?.timezone ?? "UTC");
+  const zeitzone = (await repo.settings.get(db))?.timezone ?? "Europe/Berlin";
   const bot = await repo.bots.getDefault(db);
   const unterhaltungen = await ladeUnterhaltungen(db);
   // Herkunft der Modelle in der Seitenleiste: Region des Anbieters des gewählten Modells.
@@ -41,6 +41,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       unterhaltungen={unterhaltungen}
       notAus={notAus}
       hinweise={<NeueAnmeldung neue={neue} zeitzone={zeitzone} />}
+      zeitzone={zeitzone}
       {...(region === undefined ? {} : { region })}
       bot={{
         name: bot?.name ?? t("einrichtung.bot.vorschlag"),

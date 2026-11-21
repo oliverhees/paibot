@@ -246,3 +246,28 @@ export type ReceiptChainQuery = z.infer<typeof receiptChainQuery>;
 
 /** Kopfzeile `Last-Event-ID` beim Fortsetzen des Ereignis-Stroms: letzte gesehene Nummer. */
 export const lastEventIdSchema = z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+
+/** Suche in Unterhaltungen: so viele Treffer je Seite, höchstens bis zu diesem Versatz. */
+export const SEARCH_PAGE = { size: 20, maxOffset: 1000, minChars: 2, maxChars: 100 } as const;
+
+/**
+ * Abfrage der Suche in Unterhaltungen: `q` ist das Suchwort (ohne Leerraum am Rand, Unicode in
+ * Normalform NFC, 2 bis 100 Zeichen, keine Steuerzeichen), `ab` überspringt so viele Treffer
+ * (seitenweise).
+ */
+export const conversationSearchQuery = z.strictObject({
+  q: z
+    .string()
+    .max(SEARCH_PAGE.maxChars * 4)
+    .transform((value) => value.normalize("NFC").trim())
+    .pipe(
+      z
+        .string()
+        .min(SEARCH_PAGE.minChars)
+        .max(SEARCH_PAGE.maxChars)
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen abweisen
+        .regex(/^[^\u0000-\u001f\u007f]*$/),
+    ),
+  ab: queryCountSchema.pipe(z.number().max(SEARCH_PAGE.maxOffset)).default(0),
+});
+export type ConversationSearchQuery = z.infer<typeof conversationSearchQuery>;

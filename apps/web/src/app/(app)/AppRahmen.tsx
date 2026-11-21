@@ -40,6 +40,7 @@ import {
 import styles from "./app.module.css";
 import { NotAusDialog, type NotAusFrage, NotAusKnopf, NotAusLeiste } from "./NotAus";
 import notausStyles from "./notaus.module.css";
+import { useSuche } from "./Suche";
 
 export interface AppRahmenProps {
   bot: { name: string; farbe: BotColor };
@@ -51,6 +52,8 @@ export interface AppRahmenProps {
   notAus?: boolean;
   /** Weitere Hinweise über der Kopfzeile, unter der Leiste des Not-Aus (z. B. neue Anmeldung). */
   hinweise?: ReactNode;
+  /** Zeitzone der Einstellungen (Zeiten der Suchtreffer). */
+  zeitzone: string;
   children: ReactNode;
 }
 
@@ -120,10 +123,12 @@ export function AppRahmen({
   unterhaltungen: vomServer,
   notAus: notAusVomServer = false,
   hinweise,
+  zeitzone,
   children,
 }: AppRahmenProps) {
   const pfad = usePathname();
   const router = useRouter();
+  const suche = useSuche({ botName: bot.name, zeitzone });
   const [notAus, setNotAus] = useState(notAusVomServer);
   const [notAusFrage, setNotAusFrage] = useState<NotAusFrage | undefined>(undefined);
   useEffect(() => setNotAus(notAusVomServer), [notAusVomServer]);
@@ -196,6 +201,7 @@ export function AppRahmen({
             {hinweise !== undefined && <div className={notausStyles.hinweise}>{hinweise}</div>}
           </>
         }
+        suche={suche}
         kopf={kopf ?? <span className={styles.kopfTitel}>{kopfTitel(pfad)}</span>}
         {...(flaeche === undefined ? {} : { flaeche })}
         flaecheOffen={flaecheOffen}

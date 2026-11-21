@@ -31,12 +31,14 @@ import { adressGruppe, UNBEKANNTE_ADRESSE } from "./kopfzeilen";
  *   dasselbe wie für jeden anderen Browser.
  * - `passwortAendern`: Versuche beim Ändern des Passworts je Sitzung. Darüber endet die Sitzung der
  *   Anfrage; andere Sitzungen des Besitzers zählen getrennt.
+ * - `suche`: Suchanfragen in Unterhaltungen je Besitzer (die Suche liest den Text aller Nachrichten).
  */
 export const ZUSATZ_LIMITS = {
   anmeldenIpTag: { max: 20, windowSeconds: 86_400, effect: "sperren" },
   anmeldenGeraet: { max: 5, windowSeconds: 900, effect: "sperren" },
   anmeldenGeraetTag: { max: 20, windowSeconds: 86_400, effect: "sperren" },
   passwortAendern: { max: 5, windowSeconds: 900, effect: "sperren" },
+  suche: { max: 120, windowSeconds: 60, effect: "sperren" },
 } as const satisfies Record<string, RateLimitDefinition>;
 
 /** Name eines Limits, das eine Route zählen kann. */
@@ -90,6 +92,10 @@ export function limitSchluessel(name: LimitName, bezug: LimitBezug): string {
     case "verbindungstest": {
       if (bezug.ownerId === undefined) throw new PaiBotError("nicht_angemeldet");
       return RATE_LIMIT_KEYS[name](bezug.ownerId);
+    }
+    case "suche": {
+      if (bezug.ownerId === undefined) throw new PaiBotError("nicht_angemeldet");
+      return `suche:${bezug.ownerId}`;
     }
     case "passwortAendern": {
       if (bezug.sitzungId === undefined) throw new PaiBotError("nicht_angemeldet");
