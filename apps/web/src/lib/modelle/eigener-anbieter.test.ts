@@ -203,6 +203,27 @@ describe("Eigener Anbieter: interne Adressen nur ausdrücklich mit „lokal“",
   });
 });
 
+describe("Doppelte Adresse", () => {
+  it("dieselbe Adresse (auch mit / am Ende) gibt es nur einmal: eigener Satz, kein Abruf", async () => {
+    const e = await eingerichtet();
+    const lokal = await lokalAngelegt(e);
+    const [erster] = await repo.providers.list(e.u.db);
+    const aufrufe = e.u.anbieterAufrufe.length;
+    const doppelt = await anlegen(e, eigener("Nochmal", `${lokal.baseUrl}/`, "local"));
+    expect(doppelt.status).toBe(400);
+    expect(doppelt.body.fehler).toMatchObject({
+      text: t("modelle.eigen.adresse_doppelt"),
+      felder: [{ feld: "baseUrl", code: "ungueltig" }],
+    });
+    const aendern = await e.rufe(e.r.anbieterAendern, "PUT", `/api/anbieter/${lokal.id}`, {
+      params: { id: lokal.id },
+      koerper: eigener("Lokaler Anbieter", erster?.baseUrl ?? "", "local"),
+    });
+    expect(aendern.body.fehler).toMatchObject({ text: t("modelle.eigen.adresse_doppelt") });
+    expect(e.u.anbieterAufrufe.length).toBe(aufrufe);
+  });
+});
+
 describe("Eigener Anbieter ändern", () => {
   it("Name und Adresse ändern: ohne Schlüssel bei lokal ohne Schlüssel, mit Test und Beleg", async () => {
     const e = await eingerichtet();

@@ -138,6 +138,19 @@ function gespeicherterSchluessel(
   }
 }
 
+/** Gibt es die Adresse schon bei einem anderen Anbieter? Dann sagt das ein eigener Satz. */
+async function adresseFrei(db: Database, baseUrl: string, ausser?: ProviderId): Promise<void> {
+  const vergeben = (await repo.providers.list(db)).some(
+    (a) => a.id !== ausser && adresseNormal(a.baseUrl) === adresseNormal(baseUrl),
+  );
+  if (vergeben) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("modelle.eigen.adresse_doppelt"),
+      felder: [{ feld: "baseUrl", code: "ungueltig" }],
+    });
+  }
+}
+
 function ohneSchluesselErlaubt(region: Region): boolean {
   return region === "local";
 }
@@ -205,6 +218,7 @@ export async function anbieterAnlegen(k: RoutenKontext<"anbieterAnlegen">) {
   if (eingabe.apiKey === undefined && !ohneSchluesselErlaubt(eingabe.region)) {
     throw schluesselFehlt();
   }
+  await adresseFrei(k.db, baseUrl);
   const endpunkt: AnbieterVorlage = {
     templateKey: eingabe.templateKey,
     name: eingabe.name,
@@ -260,6 +274,7 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
   }
   const baseUrl = pruefeAdresse(eingabe);
   const neueAdresse = adresseGeaendert(alt.baseUrl, baseUrl);
+  if (neueAdresse) await adresseFrei(k.db, baseUrl, id);
   const apiKey = eingabe.apiKey;
   const entferntSchluessel = eingabe.removeApiKey === true && apiKeyEnc !== undefined;
   if (eingabe.removeApiKey === true && !ohneSchluesselErlaubt(eingabe.region)) {

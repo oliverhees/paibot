@@ -1148,6 +1148,8 @@ export const de = {
   "modelle.eigen.adresse.hilfe":
     "Die Adresse, unter der der Dienst seine Modelle anbietet, meist mit /v1 am Ende.",
   "modelle.eigen.adresse.leer": "Gib die Adresse des Dienstes ein.",
+  "modelle.eigen.adresse_doppelt":
+    "Für diese Adresse gibt es schon einen Anbieter. Ändere ihn, statt einen zweiten anzulegen.",
   "modelle.eigen.ort": "Wo läuft der Dienst?",
   "modelle.eigen.ort.eu": "Bei einem Dienst in der EU",
   "modelle.eigen.ort.non_eu": "Bei einem Dienst außerhalb der EU",
