@@ -124,6 +124,11 @@ export interface AppShellProps {
   eingebettet?: boolean;
   /** Zusätzlicher Inhalt unten in der Navigation, über der Fußzeile (z. B. „Abmelden“). */
   unten?: ReactNode;
+  /**
+   * Suche in der Navigation: `feld` steht über der Liste. Gibt es `ergebnisse`, stehen sie an
+   * Stelle des Bots und seiner Unterhaltungen; die Funktion bekommt das Schließen des Menüs (Handy).
+   */
+  suche?: { feld: ReactNode; ergebnisse?: (navSchliessen: () => void) => ReactNode };
   /** Link-Komponente, z. B. die des Frameworks; Standard `a`. */
   link?: ComponentType<{
     href: string;
@@ -174,6 +179,7 @@ export function AppShell({
   onFlaecheOffen,
   eingebettet = false,
   unten,
+  suche,
   link: Link = StandardLink,
 }: AppShellProps) {
   const huelle = useRef<HTMLDivElement>(null);
@@ -268,56 +274,61 @@ export function AppShell({
             </div>
           </div>
 
+          {suche && <div className={styles.suche}>{suche.feld}</div>}
           <ScrollBereich className={styles.mitte}>
-            <div className={styles.block}>
-              <h2 className={styles.etikett}>{texte.deinBot}</h2>
-              <div
-                className={styles.botReihe}
-                data-aktiv={bot.aktiv || bot.unterhaltungen.some((u) => u.aktiv) || undefined}
-              >
-                <Avatar farbe={bot.farbe} groesse={20} zustand={bot.zustand} still />
-                <span className={styles.botText}>
-                  <span className={styles.botName}>
-                    {bot.href ? (
-                      <Link
-                        href={bot.href}
-                        onClick={schliesseNav}
-                        className={styles.botLink}
-                        {...(bot.aktiv ? { "aria-current": "page" as const } : {})}
-                      >
-                        {bot.name}
-                      </Link>
-                    ) : (
-                      bot.name
-                    )}
-                    {bot.zustand && bot.zustand !== "bereit" && bot.zustandText && (
-                      <span className={styles.botZustand} data-zustand={bot.zustand}>
-                        {bot.zustandText}
-                      </span>
-                    )}
-                  </span>
-                  <span className={styles.rolle}>{bot.rolle}</span>
-                </span>
-              </div>
-              {bot.unterhaltungen.length > 0 && (
-                <nav aria-label={texte.unterhaltungen}>
-                  <ul className={styles.unterhaltungen}>
-                    {bot.unterhaltungen.map((u) => (
-                      <li key={u.id}>
+            {suche?.ergebnisse ? (
+              <div className={styles.block}>{suche.ergebnisse(schliesseNav)}</div>
+            ) : (
+              <div className={styles.block}>
+                <h2 className={styles.etikett}>{texte.deinBot}</h2>
+                <div
+                  className={styles.botReihe}
+                  data-aktiv={bot.aktiv || bot.unterhaltungen.some((u) => u.aktiv) || undefined}
+                >
+                  <Avatar farbe={bot.farbe} groesse={20} zustand={bot.zustand} still />
+                  <span className={styles.botText}>
+                    <span className={styles.botName}>
+                      {bot.href ? (
                         <Link
-                          href={u.href}
-                          className={styles.zeile}
+                          href={bot.href}
                           onClick={schliesseNav}
-                          {...(u.aktiv ? { "aria-current": "page" as const } : {})}
+                          className={styles.botLink}
+                          {...(bot.aktiv ? { "aria-current": "page" as const } : {})}
                         >
-                          <span className={styles.zeilenText}>{u.titel}</span>
+                          {bot.name}
                         </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-              )}
-            </div>
+                      ) : (
+                        bot.name
+                      )}
+                      {bot.zustand && bot.zustand !== "bereit" && bot.zustandText && (
+                        <span className={styles.botZustand} data-zustand={bot.zustand}>
+                          {bot.zustandText}
+                        </span>
+                      )}
+                    </span>
+                    <span className={styles.rolle}>{bot.rolle}</span>
+                  </span>
+                </div>
+                {bot.unterhaltungen.length > 0 && (
+                  <nav aria-label={texte.unterhaltungen}>
+                    <ul className={styles.unterhaltungen}>
+                      {bot.unterhaltungen.map((u) => (
+                        <li key={u.id}>
+                          <Link
+                            href={u.href}
+                            className={styles.zeile}
+                            onClick={schliesseNav}
+                            {...(u.aktiv ? { "aria-current": "page" as const } : {})}
+                          >
+                            <span className={styles.zeilenText}>{u.titel}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
+                )}
+              </div>
+            )}
           </ScrollBereich>
 
           <div className={styles.unten}>

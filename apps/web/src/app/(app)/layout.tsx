@@ -25,11 +25,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const db = datenbank();
   const bot = await repo.bots.getDefault(db);
   const unterhaltungen = await ladeUnterhaltungen(db);
+  const zeitzone = (await repo.settings.get(db))?.timezone ?? "Europe/Berlin";
   // Herkunft der Modelle in der Seitenleiste: Region des Anbieters des gewählten Modells.
   const region = bot === undefined ? undefined : (await modellVon(db, bot))?.region;
   return (
     <AppRahmen
       unterhaltungen={unterhaltungen}
+      zeitzone={zeitzone}
       {...(region === undefined ? {} : { region })}
       bot={{
         name: bot?.name ?? t("einrichtung.bot.vorschlag"),

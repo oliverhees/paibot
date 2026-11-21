@@ -23,13 +23,28 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: `${t("seite.chat")} · PaiBot` };
 
-export default async function UnterhaltungSeite({ params }: { params: Promise<{ id: string }> }) {
+export default async function UnterhaltungSeite({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await besitzerSeite();
   const { id } = await params;
+  const roh = (await searchParams).stelle;
+  const stelle = typeof roh === "string" && isId("message", roh) ? roh : undefined;
   if (!isId("conversation", id)) notFound();
   const db = datenbank();
   const verlauf = await ladeVerlauf(db, id);
   if (verlauf === undefined) notFound();
   const bereitschaft = await ladeBereitschaft(db, await schleuseEingerichtet(db, prozessDienste()));
-  return <ChatSeite key={id} bereitschaft={bereitschaft} verlauf={verlauf} />;
+  return (
+    <ChatSeite
+      key={id}
+      bereitschaft={bereitschaft}
+      verlauf={verlauf}
+      {...(stelle === undefined ? {} : { stelle })}
+    />
+  );
 }

@@ -106,6 +106,20 @@ const PFADE = {
   ),
   stift: <path d="M5 19l1-4.5L15.5 5a2 2 0 012.8 0l.7.7a2 2 0 010 2.8L9.5 18 5 19z" />,
   papierkorb: <path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7" />,
+  suche: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M16 16l4 4" />
+    </>
+  ),
+  links: <path d="M15 6l-6 6 6 6" />,
+  rechts: <path d="M9 6l6 6-6 6" />,
+  sichern: (
+    <>
+      <path d="M12 4.5v10M7.5 10.5l4.5 4.5 4.5-4.5" />
+      <path d="M5 19.5h14" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PFADE;

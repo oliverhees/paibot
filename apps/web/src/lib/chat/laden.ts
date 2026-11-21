@@ -20,6 +20,7 @@ import type {
   ChatBereitschaft,
   ChatVerlauf,
   ModellInfo,
+  ModellWahl,
   UnterhaltungInfo,
   UnterhaltungKurz,
 } from "./typen";
@@ -190,7 +191,16 @@ export async function ladeBereitschaft(
       schluessel = anbieter?.keySet === true || anbieter?.region === "local";
     }
   }
+  const anbieter = new Map((await repo.providers.list(db)).map((p) => [p.id, p]));
+  const waehlbar: ModellWahl[] = [];
+  for (const m of await repo.models.list(db, { enabledOnly: true })) {
+    const p = anbieter.get(m.providerId);
+    if (p === undefined || !p.enabled || !(p.keySet || p.region === "local")) continue;
+    waehlbar.push({ id: m.id, name: m.displayName, region: p.region });
+  }
   return {
+    ...(bot?.modelId === undefined ? {} : { modellId: bot.modelId }),
+    waehlbar,
     botName: bot?.name ?? t("einrichtung.bot.vorschlag"),
     botFarbe: bot?.color ?? "limette",
     ...(modell === undefined ? {} : { modell }),

@@ -29,6 +29,7 @@ import {
   Markdown,
   Menue,
   ScrollBereich,
+  Select,
   TextField,
 } from "@paibot/ui";
 import Link from "next/link";
@@ -42,7 +43,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { apiFetch } from "../../../lib/api/client";
+import { apiDatei, apiFetch } from "../../../lib/api/client";
+import { dateiSichern } from "../../../lib/belege/datei";
 import {
   type AnsichtEintrag,
   type AnsichtLaufEnde,
@@ -55,6 +57,8 @@ import {
   ereignisAnwenden,
   gesendet,
   leereAnsicht,
+  neuErzeugbar,
+  neuErzeugt,
   sendenGesperrt,
 } from "../../../lib/chat/ansicht";
 import {
@@ -70,12 +74,14 @@ import {
   zielZuCode,
   zielZuSchleuseFehler,
 } from "../../../lib/chat/anzeige";
+import { type Fassung, fassungenVon } from "../../../lib/chat/fassungen";
 import { CHAT_PFADE, unterhaltungsAdresse } from "../../../lib/chat/pfade";
 import { useFlaeche, useKopf, useRahmen } from "../../../lib/chat/rahmen-kontext";
 import type {
   BelegKurz,
   ChatBereitschaft,
   ChatVerlauf,
+  ModellWahl,
   UnterhaltungInfo,
 } from "../../../lib/chat/typen";
 import { entwurfLesen, entwurfMerken } from "../../../lib/speicher";
@@ -87,6 +93,8 @@ export interface ChatSeiteProps {
   bereitschaft: ChatBereitschaft;
   /** Geladener Verlauf; fehlt bei einer neuen Unterhaltung. */
   verlauf?: ChatVerlauf;
+  /** Nachricht, zu der der Verlauf springen soll (Treffer der Suche). */
+  stelle?: string;
 }
 
 const BLOCK_TEXTE = {
@@ -132,7 +140,7 @@ function Fehlerhinweis({
   );
 }
 
-export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
+export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
   const router = useRouter();
   const rahmen = useRahmen();
   const { unterhaltungMerken, unterhaltungEntfernen, setFlaecheOffen } = rahmen;
@@ -154,11 +162,17 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
   const [fehler, setFehler] = useState<ApiErrorDetail | undefined>();
   const [schritte, setSchritte] = useState(true);
   const [belegOffen, setBelegOffen] = useState<string | undefined>();
-  const [dialog, setDialog] = useState<"umbenennen" | "loeschen" | undefined>();
+  const [dialog, setDialog] = useState<
+    "umbenennen" | "loeschen" | "sichern" | "modell" | undefined
+  >();
+  // Gewählte Fassung je Antwort (Schlüssel: älteste Fassung); ohne Wahl die neueste.
+  const [wahl, setWahl] = useState<Record<string, string>>({});
+  const [neuLaeuft, setNeuLaeuft] = useState(false);
   const [ansage, setAnsage] = useState("");
   const verlaufRef = useRef<HTMLElement>(null);
   const eingabeRef = useRef<HTMLDivElement>(null);
-  const ankleben = useRef(true);
+  const ankleben = useRef(stelle === undefined);
+  const [ziel, setZiel] = useState<string | undefined>(stelle);
   const jetzt = useMemo(() => new Date(), []);
   const { botName, zeitzone } = bereitschaft;
   const bereit = bereitschaft.modell !== undefined && bereitschaft.schluessel;
@@ -222,6 +236,51 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
     if (el && ankleben.current) el.scrollTop = el.scrollHeight;
   });
 
+  // Sprung zu einer Nachricht (Treffer der Suche): hinrollen, Fokus, kurz hervorheben.
+  useEffect(() => {
+    if (stelle !== undefined) setZiel(stelle);
+  }, [stelle]);
+  const fassungen = useMemo(
+    () =>
+      fassungenVon(
+        ansicht.eintraege.map((e) =>
+          e.art === "nachricht" ? { id: e.id, rolle: e.rolle } : { id: `ende-${e.runId}` },
+        ),
+      ),
+    [ansicht.eintraege],
+  );
+  const gezeigt = useCallback(
+    (f: Fassung): string => {
+      const w = wahl[f.alle[0] as string];
+      return w !== undefined && f.alle.includes(w) ? w : (f.alle.at(-1) as string);
+    },
+    [wahl],
+  );
+  useEffect(() => {
+    if (ziel === undefined) return;
+    const f = fassungen.get(ziel);
+    if (f !== undefined && gezeigt(f) !== ziel) {
+      setWahl((w) => ({ ...w, [f.alle[0] as string]: ziel }));
+      return;
+    }
+    const el = document.getElementById(ankerId(ziel));
+    if (id !== undefined) window.history.replaceState(null, "", unterhaltungsAdresse(id));
+    if (el === null) {
+      setZiel(undefined);
+      setFehler({ code: "nicht_gefunden", text: t("chat.stelle.nicht_da") });
+      return;
+    }
+    ankleben.current = false;
+    el.scrollIntoView({ block: "center" });
+    el.focus({ preventScroll: true });
+    el.dataset.ziel = "ja";
+    const zeitgeber = setTimeout(() => {
+      delete el.dataset.ziel;
+      setZiel(undefined);
+    }, 2500);
+    return () => clearTimeout(zeitgeber);
+  }, [ziel, id, fassungen, gezeigt]);
+
   const oeffneBeleg = useCallback(
     (belegId: string | undefined) => {
       setBelegOffen(belegId);
@@ -280,6 +339,28 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
     setAnsicht(abbruchZurueck);
     // Schon zu Ende: dann ist nichts mehr abzubrechen, die Ereignisse zeigen das Ergebnis.
     if (r.status !== 404) setFehler(r.fehler);
+  }
+
+  async function neuErzeugen(antwortId: string): Promise<boolean> {
+    if (id === undefined || ansicht.lauf !== undefined || neuLaeuft) return false;
+    setNeuLaeuft(true);
+    setFehler(undefined);
+    ankleben.current = true;
+    const r = await apiFetch<{ runId: string }>("POST", CHAT_PFADE.neuErzeugen(id, antwortId));
+    setNeuLaeuft(false);
+    if (!r.ok) {
+      setFehler(r.fehler);
+      return false;
+    }
+    const f = fassungen.get(antwortId);
+    if (f !== undefined) {
+      setWahl((w) => {
+        const { [f.alle[0] as string]: _, ...rest } = w;
+        return rest;
+      });
+    }
+    setAnsicht((a) => neuErzeugt(a, r.daten));
+    return true;
   }
 
   async function schleuseSchalten(an: boolean) {
@@ -367,6 +448,12 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
                 text: t("chat.umbenennen"),
                 icon: "stift",
                 onWaehlen: () => setDialog("umbenennen"),
+              },
+              {
+                id: "sichern",
+                text: `${t("chat.sichern")} …`,
+                icon: "sichern",
+                onWaehlen: () => setDialog("sichern"),
               },
               {
                 id: "belege",
@@ -520,6 +607,7 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
               </Link>
             )}
             {antwortZeile(n)}
+            {fassungsZeile(n)}
           </>
         }
       >
@@ -529,6 +617,101 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
           <Markdown text={n.text} blockTexte={BLOCK_TEXTE} />
         )}
       </ChatBubble>
+    );
+  }
+
+  const erzeugbar = neuErzeugbar(ansicht);
+  const letzteNachricht = ansicht.eintraege
+    .filter((e): e is AnsichtNachricht => e.art === "nachricht")
+    .at(-1);
+  const letzteGruppe =
+    letzteNachricht?.rolle === "bot" ? fassungen.get(letzteNachricht.id)?.alle : undefined;
+
+  /** Fassungen blättern und „neu erzeugen“ unter einer Antwort des Bots. */
+  function fassungsZeile(n: AnsichtNachricht): ReactNode {
+    const f = fassungen.get(n.id);
+    if (f === undefined) return null;
+    const letzte = letzteGruppe?.includes(n.id) ?? false;
+    if (f.von < 2 && !letzte) return null;
+    const blaettern = (schritt: number) => {
+      const ziel = f.alle[f.nr - 1 + schritt];
+      if (ziel !== undefined) setWahl((w) => ({ ...w, [f.alle[0] as string]: ziel }));
+    };
+    const andere = (bereitschaft.waehlbar ?? []).filter((m) => m.id !== bereitschaft.modellId);
+    const ziel = letzteNachricht?.id;
+    const gesperrt =
+      lauf !== undefined ||
+      neuLaeuft ||
+      !bereit ||
+      erzeugbar === undefined ||
+      erzeugbar.id !== ziel;
+    return (
+      <div className={styles.fassungen}>
+        {f.von > 1 && (
+          <span className={styles.blaettern}>
+            <button
+              type="button"
+              className={styles.blatt}
+              aria-label={t("chat.fassung.vorige")}
+              title={t("chat.fassung.vorige")}
+              disabled={f.nr === 1}
+              onClick={() => blaettern(-1)}
+            >
+              <Icon name="links" groesse={14} />
+            </button>
+            <span className={styles.fassungText} aria-live="polite">
+              {f.nr < f.von
+                ? t("chat.fassung.frueher", { nr: f.nr, von: f.von })
+                : t("chat.fassung", { nr: f.nr, von: f.von })}
+            </span>
+            <button
+              type="button"
+              className={styles.blatt}
+              aria-label={t("chat.fassung.naechste")}
+              title={t("chat.fassung.naechste")}
+              disabled={f.nr === f.von}
+              onClick={() => blaettern(1)}
+            >
+              <Icon name="rechts" groesse={14} />
+            </button>
+          </span>
+        )}
+        {letzte && ziel !== undefined && (n.id === ziel || lauf !== undefined) && (
+          <span className={styles.neuErzeugen}>
+            <Button
+              art="leise"
+              icon="neuLaden"
+              laedt={neuLaeuft}
+              disabled={gesperrt}
+              aria-describedby={gesperrt && lauf ? "pb-neu-gesperrt" : undefined}
+              onClick={() => void neuErzeugen(ziel)}
+            >
+              {t("chat.neu_erzeugen")}
+            </Button>
+            {andere.length > 0 && (
+              <Menue
+                label={t("chat.neu_erzeugen.label")}
+                icon="runter"
+                eintraege={[
+                  {
+                    id: "anderes",
+                    text: t("chat.neu_erzeugen.anderes"),
+                    icon: "neuLaden",
+                    deaktiviert: gesperrt,
+                    onWaehlen: () => setDialog("modell"),
+                  },
+                ]}
+              />
+            )}
+          </span>
+        )}
+        {letzte && lauf !== undefined && (
+          <span id="pb-neu-gesperrt" className={styles.leise}>
+            {t("chat.neu_erzeugen.gesperrt", { name: botName })}
+          </span>
+        )}
+        {f.nr < f.von && <span className={styles.leise}>{t("chat.fassung.ersetzt")}</span>}
+      </div>
     );
   }
 
@@ -592,12 +775,21 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
   }
 
   function eintrag(e: AnsichtEintrag): ReactNode {
-    return e.art === "nachricht" ? nachricht(e) : laufEnde(e);
+    const schluessel = e.art === "nachricht" ? e.id : `ende-${e.runId}`;
+    return (
+      <div key={schluessel} id={ankerId(schluessel)} className={styles.anker} tabIndex={-1}>
+        {e.art === "nachricht" ? nachricht(e) : laufEnde(e)}
+      </div>
+    );
   }
 
   const mitTagen: ReactNode[] = [];
   let tag = "";
   for (const e of ansicht.eintraege) {
+    if (e.art === "nachricht" && e.rolle === "bot") {
+      const f = fassungen.get(e.id);
+      if (f !== undefined && f.von > 1 && gezeigt(f) !== e.id) continue;
+    }
     const neu = tagSchluessel(e.zeit, zeitzone);
     if (neu !== tag) {
       tag = neu;
@@ -790,6 +982,44 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
         )}
       </Dialog>
       <Dialog
+        offen={dialog === "modell"}
+        onSchliessen={() => setDialog(undefined)}
+        titel={t("chat.neu_erzeugen.wahl.titel")}
+        schliessenLabel={t("chat.schliessen")}
+      >
+        {letzteNachricht && (
+          <AnderesModell
+            modelle={(bereitschaft.waehlbar ?? []).filter((m) => m.id !== bereitschaft.modellId)}
+            botName={botName}
+            onAbbrechen={() => setDialog(undefined)}
+            onNeu={async () => {
+              const ok = await neuErzeugen(letzteNachricht.id);
+              if (ok) {
+                setDialog(undefined);
+                router.refresh();
+              }
+              return ok;
+            }}
+          />
+        )}
+      </Dialog>
+      <Dialog
+        offen={dialog === "sichern"}
+        onSchliessen={() => setDialog(undefined)}
+        titel={t("chat.sichern.titel")}
+        schliessenLabel={t("chat.schliessen")}
+      >
+        {unterhaltung && (
+          <Sichern
+            unterhaltung={unterhaltung}
+            leer={!ansicht.eintraege.some((e) => e.art === "nachricht")}
+            laeuft={lauf !== undefined}
+            botName={botName}
+            onAbbrechen={() => setDialog(undefined)}
+          />
+        )}
+      </Dialog>
+      <Dialog
         offen={dialog === "loeschen"}
         onSchliessen={() => setDialog(undefined)}
         titel={t("chat.loeschen.frage", { titel })}
@@ -811,6 +1041,11 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
       </Dialog>
     </div>
   );
+}
+
+/** Kennung des Elements einer Nachricht im Verlauf (Sprungziel der Suche). */
+function ankerId(nachrichtId: string): string {
+  return `nachricht-${nachrichtId}`;
 }
 
 function Umbenennen({
@@ -866,6 +1101,142 @@ function Umbenennen({
         </Button>
       </div>
     </form>
+  );
+}
+
+function AnderesModell({
+  modelle,
+  botName,
+  onAbbrechen,
+  onNeu,
+}: {
+  modelle: readonly ModellWahl[];
+  botName: string;
+  onAbbrechen: () => void;
+  onNeu: () => Promise<boolean>;
+}) {
+  const [wert, setWert] = useState(modelle[0]?.id ?? "");
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState<ApiErrorDetail | undefined>();
+  const gewaehlt = modelle.find((m) => m.id === wert);
+  async function los() {
+    if (gewaehlt === undefined) return;
+    setLaeuft(true);
+    setFehler(undefined);
+    const r = await apiFetch("PUT", "/api/bot/modell", { modelId: gewaehlt.id });
+    if (!r.ok) {
+      setLaeuft(false);
+      setFehler(r.fehler);
+      return;
+    }
+    await onNeu();
+    setLaeuft(false);
+  }
+  if (modelle.length === 0) {
+    return (
+      <div className={styles.dialogForm}>
+        <p className={styles.absatz}>{t("chat.neu_erzeugen.wahl.leer")}</p>
+        <div className={styles.dialogAktionen}>
+          <Button art="zweit" onClick={onAbbrechen} data-erster-fokus>
+            {t("chat.schliessen")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <form
+      className={styles.dialogForm}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void los();
+      }}
+    >
+      <p className={styles.absatz}>{t("chat.neu_erzeugen.wahl.text", { name: botName })}</p>
+      <Select
+        label={t("chat.neu_erzeugen.wahl.feld")}
+        value={wert}
+        onChange={(e) => setWert(e.target.value)}
+        optionen={modelle.map((m) => ({
+          wert: m.id,
+          text: `${m.name} · ${t(`modelle.region.${m.region}`)}`,
+        }))}
+        data-erster-fokus
+      />
+      {fehler && (
+        <p className={styles.dialogFehler} role="alert">
+          {fehler.text} {fehler.ausweg}
+        </p>
+      )}
+      <div className={styles.dialogAktionen}>
+        <Button art="zweit" onClick={onAbbrechen}>
+          {t("allgemein.abbrechen")}
+        </Button>
+        <Button art="primaer" type="submit" icon="neuLaden" laedt={laeuft}>
+          {t("chat.neu_erzeugen.mit", { modell: gewaehlt?.name ?? "" })}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function Sichern({
+  unterhaltung,
+  leer,
+  laeuft: antwortLaeuft,
+  botName,
+  onAbbrechen,
+}: {
+  unterhaltung: UnterhaltungInfo;
+  leer: boolean;
+  laeuft: boolean;
+  botName: string;
+  onAbbrechen: () => void;
+}) {
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState<ApiErrorDetail | undefined>();
+  const [fertig, setFertig] = useState<string | undefined>();
+  async function sichern() {
+    setLaeuft(true);
+    setFehler(undefined);
+    setFertig(undefined);
+    const r = await apiDatei("POST", CHAT_PFADE.export(unterhaltung.id));
+    setLaeuft(false);
+    if (!r.ok) {
+      setFehler(r.fehler);
+      return;
+    }
+    dateiSichern(r.name, r.inhalt, "text/markdown");
+    setFertig(r.name);
+  }
+  return (
+    <div className={styles.dialogForm}>
+      <p className={styles.absatz}>{t("chat.sichern.text")}</p>
+      <p className={styles.dialogHinweis}>
+        <Icon name="info" />
+        <span>{t("chat.sichern.hinweis")}</span>
+      </p>
+      {leer && <p className={styles.absatz}>{t("chat.sichern.leer")}</p>}
+      {antwortLaeuft && (
+        <p className={styles.absatz}>{t("chat.sichern.lauf", { name: botName })}</p>
+      )}
+      {fehler && (
+        <p className={styles.dialogFehler} role="alert">
+          {fehler.text} {fehler.ausweg}
+        </p>
+      )}
+      <p className={styles.dialogErfolg} role="status">
+        {fertig ? t("chat.sichern.fertig", { datei: fertig }) : ""}
+      </p>
+      <div className={styles.dialogAktionen}>
+        <Button art="zweit" onClick={onAbbrechen} data-erster-fokus>
+          {fertig ? t("chat.schliessen") : t("allgemein.abbrechen")}
+        </Button>
+        <Button art="primaer" icon="sichern" laedt={laeuft} onClick={() => void sichern()}>
+          {laeuft ? t("chat.sichern.laeuft") : t("chat.sichern.knopf")}
+        </Button>
+      </div>
+    </div>
   );
 }
 

@@ -49,6 +49,28 @@ describe("buildHistory", () => {
     ]);
   });
 
+  it("je Nachricht nur die neueste brauchbare Fassung einer neu erzeugten Antwort", () => {
+    const history = buildHistory(
+      [
+        message("user", "Frage 1"),
+        message("assistant", "Fassung 1"),
+        message("assistant", "Fassung 2"),
+        message("user", "Frage 2"),
+        message("assistant", "alt"),
+        message("assistant", "neu, aber fehlgeschlagen", "failed"),
+        message("user", "Frage 3"),
+      ],
+      1000,
+    );
+    expect(history).toEqual([
+      { role: "user", text: "Frage 1" },
+      { role: "assistant", text: "Fassung 2" },
+      { role: "user", text: "Frage 2" },
+      { role: "assistant", text: "alt" },
+      { role: "user", text: "Frage 3" },
+    ]);
+  });
+
   it("schneidet Älteres bei der Zeichen-Grenze ab, die neueste Nachricht bleibt immer", () => {
     const list = [
       message("user", "1".repeat(5)),

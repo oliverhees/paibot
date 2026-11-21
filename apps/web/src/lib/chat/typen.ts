@@ -78,6 +78,11 @@ export interface ChatVerlauf {
   modelle: Record<string, ModellInfo>;
 }
 
+/** Ein Modell, mit dem der Bot antworten kann (für „neu erzeugen mit anderem Modell“). */
+export interface ModellWahl extends ModellInfo {
+  id: string;
+}
+
 /** Ob der Bot antworten kann und was die Eingabe zeigen soll. */
 export interface ChatBereitschaft {
   botName: string;
@@ -90,4 +95,8 @@ export interface ChatBereitschaft {
   /** Standard der Datenschleuse für neue Unterhaltungen. */
   schleuseStandard: SchleuseMode;
   zeitzone: string;
+  /** Kennung des Modells des Bots. */
+  modellId?: string;
+  /** Modelle, die sich wählen lassen (Anbieter an, Schlüssel da oder lokal), nach Namen. */
+  waehlbar?: ModellWahl[];
 }

@@ -246,3 +246,78 @@ export const laufAbbrechen: RoutenAktion<"laufAbbrechen"> = async (k) => {
   );
   return { daten: { runId: lauf.id, angefragt: ergebnis.value } };
 };
+
+/** So viele letzte Nachrichten liest „neu erzeugen“, um die Antwort und ihre Nachricht zu finden. */
+const NEU_FENSTER = 50;
+
+/**
+ * `POST /api/unterhaltungen/:id/antworten/:antwortId/neu`: die letzte Antwort neu erzeugen. Die
+ * alte Antwort bleibt als frühere Fassung stehen; es entsteht ein neuer Lauf zur selben Nachricht
+ * der Person (mit dem Modell, das der Bot jetzt hat). Das Tor entscheidet über
+ * `antwort.neu_erzeugen` (Unterhaltung vorhanden, kein Lauf aktiv, letzte Antwort, Not-Aus); erst
+ * mit Erlaubnis entstehen in EINER Transaktion Lauf, Ereignis `run.queued` und der Auftrag.
+ */
+export function antwortNeuErzeugen(einreihen: Einreihen): RoutenAktion<"antwortNeuErzeugen"> {
+  return async (k) => {
+    const id = unterhaltungsId(k.params);
+    const antwortId = k.params.antwortId;
+    if (!isId("message", antwortId)) throw new PaiBotError("nicht_gefunden");
+    const settings = await repo.settings.get(k.db);
+    const unterhaltung = await repo.conversations.get(k.db, id);
+    const verlauf =
+      unterhaltung === undefined
+        ? []
+        : (await repo.messages.listForConversation(k.db, id, { limit: NEU_FENSTER })).filter(
+            (m) => m.role !== "system",
+          );
+    const stelle = verlauf.findIndex((m) => m.id === antwortId);
+    const antwort = verlauf[stelle];
+    if (unterhaltung !== undefined && (antwort === undefined || antwort.role !== "assistant")) {
+      throw new PaiBotError("nicht_gefunden");
+    }
+    const ausloeser = verlauf
+      .slice(0, Math.max(stelle, 0))
+      .reverse()
+      .find((m) => m.role === "user");
+    if (unterhaltung !== undefined && ausloeser === undefined) {
+      throw new PaiBotError("nicht_gefunden");
+    }
+    const aktiv = unterhaltung === undefined ? undefined : await repo.runs.getActive(k.db, id);
+    await einreihen.bereit();
+    const ergebnis = await k.tor(
+      k.nachweis,
+      { type: "antwort.neu_erzeugen", target: { conversationId: id, messageId: antwortId } },
+      {
+        conversationExists: unterhaltung !== undefined,
+        runActive: aktiv !== undefined,
+        answerIsLatest: verlauf.at(-1)?.id === antwortId,
+        killSwitch: settings?.killSwitch ?? false,
+      },
+      async () => {
+        const botId = unterhaltung?.botId;
+        if (botId === undefined || ausloeser === undefined) throw new PaiBotError("nicht_gefunden");
+        const value = await k.db.transaction(async (tx) => {
+          // Kam seit dem Lesen eine Nachricht dazu, ist die Antwort nicht mehr die letzte.
+          const [letzte] = (await repo.messages.listForConversation(tx, id, { limit: 5 }))
+            .filter((m) => m.role !== "system")
+            .slice(-1);
+          if (letzte?.id !== antwortId) throw new PaiBotError("nicht_gefunden");
+          const lauf = await repo.runs.create(tx, {
+            conversationId: id,
+            triggerMessageId: ausloeser.id,
+            botId,
+          });
+          await repo.events.append(tx, {
+            conversationId: id,
+            type: "run.queued",
+            data: { runId: lauf.id },
+          });
+          await einreihen.lauf({ runId: lauf.id, conversationId: id }, tx);
+          return { runId: lauf.id, ersetzt: antwortId, nachrichtId: ausloeser.id };
+        });
+        return { value, result: { status: "ok" } };
+      },
+    );
+    return { daten: ergebnis.value, status: 202 };
+  };
+}

@@ -588,3 +588,108 @@
     grid-template-columns: 88px minmax(0, 1fr);
   }
 }
+
+/* Hülle je Eintrag im Verlauf: Sprungziel der Suche, kurz hervorgehoben. */
+.anker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: var(--radius-lg);
+  scroll-margin: 24px;
+  transition: box-shadow var(--dauer-mittel, 240ms) var(--kurve-sanft);
+}
+
+.anker:focus {
+  outline: none;
+}
+
+.anker:focus-visible,
+.anker[data-ziel="ja"] {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+/* Dialog „Als Datei sichern“ */
+.dialogHinweis {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--schrift-s);
+  line-height: 1.45;
+}
+
+.dialogHinweis svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ink-soft);
+}
+
+.dialogErfolg {
+  margin: 0;
+  color: var(--ok);
+  font-size: var(--schrift-s);
+  overflow-wrap: anywhere;
+}
+
+.dialogErfolg:empty {
+  margin-top: -14px;
+}
+
+/* Fassungen einer neu erzeugten Antwort und „Neu erzeugen“ */
+.fassungen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 2px;
+  font-size: var(--schrift-s);
+}
+
+.blaettern {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.blatt {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.blatt:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.blatt:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.blatt:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: 1px;
+}
+
+.fassungText {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  padding: 0 2px;
+}
+
+.neuErzeugen {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

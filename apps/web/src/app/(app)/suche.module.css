@@ -1,0 +1,125 @@
+/**
+ * PaiBot – Stile der Suche in der Seitenleiste.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.flaeche {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0 8px;
+}
+
+.anzahl,
+.leise,
+.titelZeile,
+.fehler {
+  margin: 0;
+  padding: 0 8px;
+  font-size: var(--schrift-s);
+}
+
+.anzahl,
+.leise {
+  color: var(--ink-soft);
+}
+
+.leise {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.titelZeile {
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.fehler {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gruppe {
+  padding: 8px 8px 2px;
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.treffer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--schrift-m);
+  transition: background-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.treffer:hover {
+  background: var(--surface);
+}
+
+.treffer:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: calc(-1 * var(--fokus-breite));
+}
+
+.trefferTitel {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.meta {
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+}
+
+.mark {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.nurLesbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

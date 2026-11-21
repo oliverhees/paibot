@@ -38,6 +38,7 @@ import {
   NAVIGATION,
 } from "../../lib/navigation";
 import styles from "./app.module.css";
+import { useSuche } from "./Suche";
 
 export interface AppRahmenProps {
   bot: { name: string; farbe: BotColor };
@@ -45,6 +46,8 @@ export interface AppRahmenProps {
   region?: Region;
   /** Unterhaltungen des Bots, neueste zuerst (vom Server; danach hält der Rahmen sie aktuell). */
   unterhaltungen: readonly UnterhaltungKurz[];
+  /** Zeitzone der Einstellungen (Zeiten der Suchtreffer). */
+  zeitzone: string;
   children: ReactNode;
 }
 
@@ -108,8 +111,15 @@ function neuesteZuerst(liste: readonly UnterhaltungKurz[]): UnterhaltungKurz[] {
   return [...liste].sort((a, b) => (a.zuletzt < b.zuletzt ? 1 : a.zuletzt > b.zuletzt ? -1 : 0));
 }
 
-export function AppRahmen({ bot, region, unterhaltungen: vomServer, children }: AppRahmenProps) {
+export function AppRahmen({
+  bot,
+  region,
+  unterhaltungen: vomServer,
+  zeitzone,
+  children,
+}: AppRahmenProps) {
   const pfad = usePathname();
+  const suche = useSuche({ botName: bot.name, zeitzone });
   const [unterhaltungen, setUnterhaltungen] = useState(() => neuesteZuerst(vomServer));
   const [kopf, setKopf] = useState<ReactNode | undefined>(undefined);
   const [flaeche, setFlaeche] = useState<AppShellFlaeche | undefined>(undefined);
@@ -169,6 +179,7 @@ export function AppRahmen({ bot, region, unterhaltungen: vomServer, children }: 
           })),
         }}
         unten={<Abmelden />}
+        suche={suche}
         kopf={kopf ?? <span className={styles.kopfTitel}>{kopfTitel(pfad)}</span>}
         {...(flaeche === undefined ? {} : { flaeche })}
         flaecheOffen={flaecheOffen}

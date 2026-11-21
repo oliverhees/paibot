@@ -155,9 +155,14 @@ export function ansichtAus(verlauf: ChatVerlauf, kontext: AnsichtKontext = {}): 
       eintraege.push(hinweis);
       continue;
     }
-    // Hinter die Nachricht und alles, was schon zu ihr gehört.
+    // Hinter die Nachricht und alles, was schon zu ihr gehört (Hinweise und Antworten, auch
+    // frühere Fassungen einer neu erzeugten Antwort).
     let ziel = stelle + 1;
-    while (ziel < eintraege.length && eintraege[ziel]?.art === "lauf-ende") ziel += 1;
+    while (ziel < eintraege.length) {
+      const e = eintraege[ziel];
+      if (e?.art === "lauf-ende" || (e?.art === "nachricht" && e.rolle === "bot")) ziel += 1;
+      else break;
+    }
     eintraege.splice(ziel, 0, hinweis);
   }
 
@@ -418,6 +423,27 @@ export function gesendet(
     lauf: { id: g.runId, phase: "wartet", abbruch: false },
     schleuseBlockiert: false,
   };
+}
+
+/**
+ * Antwort der Route „neu erzeugen“: der neue Lauf wartet. Kam der Strom schneller, ändert das
+ * nichts; ein schon beendeter Lauf bleibt beendet.
+ */
+export function neuErzeugt(a: ChatAnsicht, g: { runId: string }): ChatAnsicht {
+  if (a.beendet.includes(g.runId) || a.lauf?.id === g.runId) return a;
+  return { ...a, lauf: { id: g.runId, phase: "wartet", abbruch: false }, schleuseBlockiert: false };
+}
+
+/**
+ * Die Antwort, die sich neu erzeugen lässt: die letzte Nachricht, wenn sie eine abgeschlossene
+ * Antwort des Bots ist (Hinweise zu Läufen ohne Antwort dahinter zählen nicht).
+ */
+export function neuErzeugbar(a: ChatAnsicht): AnsichtNachricht | undefined {
+  const letzte = [...a.eintraege].reverse().find((e) => e.art === "nachricht");
+  if (letzte?.art !== "nachricht" || letzte.rolle !== "bot" || letzte.zustand === "streamt") {
+    return undefined;
+  }
+  return letzte;
 }
 
 /** Stopp wurde angefragt. */

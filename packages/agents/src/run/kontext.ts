@@ -141,19 +141,42 @@ export function startOfDay(now: Date, timezone: string): Date {
   return new Date(Date.UTC(value("year"), value("month") - 1, value("day")) - offset);
 }
 
+function usableAnswer(message: Message): boolean {
+  return (
+    message.role === "assistant" &&
+    (message.status === "complete" || message.status === "cancelled") &&
+    message.content !== ""
+  );
+}
+
 /**
- * Verlauf für das Modell: nur Nachrichten der Person und fertige oder abgebrochene Antworten des
- * Bots mit Text, neueste zuerst gezählt, bis `maxChars` erreicht ist. Älteres wird abgeschnitten,
- * nie zusammengefasst; die auslösende Nachricht bleibt immer drin.
+ * Je Nachricht der Person höchstens eine Antwort: Wurde eine Antwort neu erzeugt, stehen mehrere
+ * Antworten (Fassungen) hintereinander. Es zählt die neueste brauchbare (fertig oder abgebrochen,
+ * mit Text); ersetzte Fassungen sieht das Modell nicht. Eine neue Fassung ohne Text ersetzt nichts.
+ */
+function currentAnswers(messages: readonly Message[]): Message[] {
+  const result: Message[] = [];
+  let answer: Message | undefined;
+  for (const message of messages) {
+    if (message.role === "user") {
+      if (answer !== undefined) result.push(answer);
+      answer = undefined;
+      result.push(message);
+    } else if (usableAnswer(message)) {
+      answer = message;
+    }
+  }
+  if (answer !== undefined) result.push(answer);
+  return result;
+}
+
+/**
+ * Verlauf für das Modell: nur Nachrichten der Person und je Nachricht die geltende Antwort des
+ * Bots (`currentAnswers`), neueste zuerst gezählt, bis `maxChars` erreicht ist. Älteres wird
+ * abgeschnitten, nie zusammengefasst; die auslösende Nachricht bleibt immer drin.
  */
 export function buildHistory(messages: readonly Message[], maxChars: number): TurnMessage[] {
-  const usable = messages.filter(
-    (message) =>
-      message.role === "user" ||
-      (message.role === "assistant" &&
-        (message.status === "complete" || message.status === "cancelled") &&
-        message.content !== ""),
-  );
+  const usable = currentAnswers(messages);
   const kept: TurnMessage[] = [];
   let chars = 0;
   for (let i = usable.length - 1; i >= 0; i--) {
