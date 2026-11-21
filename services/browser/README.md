@@ -10,4 +10,4 @@ Seit:      2026-11-07
 
 # Browser-Dienst
 
-Python-Dienst (FastAPI, Browser-Use, Chromium, noVNC), mit dem PaiBot-Bots selbst im Browser arbeiten. Kommt in **Folge 10**.
+Python-Dienst (FastAPI, Browser-Use, Chromium, noVNC), mit dem PaiBot-Bots selbst im Browser arbeiten. Geplant.
