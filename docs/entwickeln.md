@@ -133,6 +133,42 @@ curl -X POST localhost:8080/_steuerung/drehbuch \
 
 Im Protokoll (`…/anfragen`) steht je Anfrage `scriptStep` (Index des Schritts, der sie beantwortet hat; bei Wiederholung der letzte). Die angebotenen `tools` und die Nachrichten mit `role: "tool"` stehen ungekürzt im `body`.
 
+### Test-MCP-Server
+
+Für Tests der MCP-Anbindung gibt es einen kleinen Server, der das Protokoll über HTTP spricht (`tools/test-mcp-server`). Er lauscht nur auf `127.0.0.1`, baut nie eine Verbindung nach außen auf und gehört in kein ausgeliefertes Image. Er kann beide Fassungen des Protokolls (`modern`: Entdeckung über `server/discover`, `legacy`: `initialize` mit Sitzung, `both`) und protokolliert jede eingegangene Anfrage.
+
+Im Test startest du ihn im selben Prozess und stellst sein Verhalten über das Objekt ein:
+
+```ts
+import { createTestMcpServer } from "@paibot/test-mcp-server";
+
+const server = createTestMcpServer({
+  tools: [{ name: "kaputt", answer: { kind: "text", text: "ging schief", isError: true } }],
+});
+const { url } = await server.start({ port: 0 }); // Port 0 = freier Port
+// ... Client mit `url` verbinden ...
+server.count("tools/call"); // wie viele Aufrufe kamen an?
+await server.stop();
+```
+
+Eine Antwort (`answer`, auch für `listAnswer` und `discoverAnswer`) kann normal sein, ein Text mit `isError`, ein Strom, übergroß, endlos, tröpfelnd, langsam, nie ankommend, abgebrochen, eine Weiterleitung, kaputtes JSON, ein fester Statuscode, ein Ergebnis mit Medien oder eine Rückfrage des Servers (`inputRequired`). Fertige Einstellungen für typische Fälle stehen in `tools/test-mcp-server/src/presets.ts` (eingeschleuste Anweisung, giftiges Schema, wechselnde Liste, viele Werkzeuge, Token in der Adresse u. a.).
+
+Läuft er als eigener Prozess, steuerst du ihn über HTTP. **Ohne Schlüssel gibt es keine Steuerung**: Die Pfade unter `/_steuerung/` antworten dann mit 403, auch von Loopback. Mit `TEST_MCP_CONTROL_KEY` brauchst du die Kopfzeile `x-steuerung-schluessel` (falsch oder fehlend: 401):
+
+```bash
+pnpm --filter @paibot/test-mcp-server build
+TEST_MCP_PORT=8090 TEST_MCP_CONTROL_KEY=test-schluessel \
+  node tools/test-mcp-server/dist/test-mcp-server.mjs
+
+curl -X POST localhost:8090/_steuerung/verhalten \
+  -H 'x-steuerung-schluessel: test-schluessel' \
+  -d '{"tools":[{"name":"neu","description":"Neu."}]}'
+curl -H 'x-steuerung-schluessel: test-schluessel' localhost:8090/_steuerung/anfragen
+curl -X POST -H 'x-steuerung-schluessel: test-schluessel' localhost:8090/_steuerung/zuruecksetzen
+```
+
+Das Protokoll gibt Zugangsdaten nicht heraus (`Authorization` und Werte in der Adresse sind unkenntlich). Wie die MCP-Bibliothek den Server liest, prüft `packages/mcp/src/spike/gegen-testserver.test.ts`.
+
 ### Tests gegen echtes Postgres
 
 Die meisten Datenbank-Tests laufen mit PGlite im Speicher. Einige Dinge kann PGlite nicht zeigen, weil es nur eine Verbindung kennt: gleichzeitiges Anhängen von Belegen über zwei Verbindungen, Migrationen bei gleichzeitigen Starts, die Warteschlange mit mehreren Prozessen. Diese Tests laufen nur, wenn `PAIBOT_TEST_DATABASE_URL` auf einen **Wegwerf-Server** zeigt, sonst werden sie übersprungen. In der CI läuft dafür ein eigener Postgres-Dienst.
