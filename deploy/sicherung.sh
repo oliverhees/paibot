@@ -24,12 +24,13 @@
 #   --ohne-start             zurueckspielen: nur einspielen, nichts starten
 #
 # Eine Sicherung ist ein Ordner mit zwei Dateien, nur für dich lesbar:
-#   datenbank.dump  die Datenbank (pg_dump, eigenes Format), ohne die Warteschlange
+#   datenbank.dump  die Schemas public und drizzle (pg_dump, eigenes Format), ohne die Warteschlange
 #   begleit.json    Version, Zeitpunkt, Stand der Migrationen, Zeilen je Tabelle, Anker der
 #                   Belege-Kette und Prüfsumme (SHA-256) der Datei datenbank.dump
 # PAIBOT_SECRET und deploy/.env sind NICHT enthalten: getrennt und sicher aufbewahren.
 #
-# Exit-Code: 0 in Ordnung, 1 Fehler, 2 falscher Aufruf, 3 Ziel-Datenbank ist nicht frisch.
+# Exit-Code: 0 in Ordnung, 1 Fehler, 2 falscher Aufruf, 3 Ziel-Datenbank ist nicht frisch,
+# 4 die Sicherung enthält Teile, die PaiBot nicht selbst anlegt (nichts eingespielt).
 set -eu
 umask 077
 
