@@ -34,6 +34,8 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * - `rules`: nur lesen. Die Standard-Regeln legen allein die Migrationen an.
  * - `installation_keys`: lesen, anhängen und nur `retired_at` setzen (Ausmustern).
  * - `conversation_events`: lesen, anhängen, alte Ereignisse löschen; nie ändern.
+ * - `geraete`: lesen, anlegen, „zuletzt gesehen“, Ablauf und Widerruf setzen, alte Einträge löschen; Art,
+ *   Rechte, Schlüssel und Prüfsumme des Cookies ändert die App nie.
  * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
  *   der Unterhaltung.
  */
@@ -42,6 +44,7 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   bots: APP_DEFAULT_TABLE_RIGHTS,
   conversation_events: "select, insert, delete",
   conversations: APP_DEFAULT_TABLE_RIGHTS,
+  geraete: "select, insert, update (last_seen_at, expires_at, revoked_at), delete",
   installation_keys: "select, insert, update (retired_at)",
   messages: APP_DEFAULT_TABLE_RIGHTS,
   models: APP_DEFAULT_TABLE_RIGHTS,
@@ -296,14 +299,14 @@ export interface AppRoleSetup {
   role: string;
   /** `true`, wenn die Rolle bei diesem Aufruf neu angelegt wurde. */
   created: boolean;
-  /** Gleichnamige Tabellen außerhalb von `public`, die in `QUARANTINE_SCHEMA_NAME` verschoben wurden (alter und neuer Name). */
+  /** Gleichnamige Objekte außerhalb von `public`: verschobene Tabellen (`alt -> neu`) und gelöschte Sichten (`alt (gelöscht)`). */
   quarantined: string[];
 }
 
 /**
  * Schema für gleichnamige Tabellen, die außerhalb von `public` gefunden werden (siehe
- * `checkAppRole`). Gehört der Migrations-Rolle; die App-Rolle hat darauf keine Rechte. Der Inhalt
- * bleibt zum Nachsehen erhalten und lässt sich danach von Hand löschen.
+ * `checkAppRole`). Gehört der Migrations-Rolle; die App-Rolle hat darauf keine Rechte. Die Tabellen
+ * darin behalten ihren Besitzer; sie sind nur zum Löschen da, nicht zum Öffnen.
  */
 export const QUARANTINE_SCHEMA_NAME = "paibot_quarantaene";
 
@@ -328,9 +331,10 @@ export const QUARANTINE_SCHEMA_NAME = "paibot_quarantaene";
  *    ziehen, temporäre Tabellen, große Objekte anlegen, fremde Verbindungen beenden. Fehlen dafür
  *    die Rechte (die Migrations-Rolle ist kein Superuser), bleibt es beim Rest.
  *
- * 8. Gleichnamige Tabellen der App außerhalb von `public` (etwa im Schema der Warteschlange)
- *    wandern in das Schema `QUARANTINE_SCHEMA_NAME`, das nur der Migrations-Rolle gehört; ihr
- *    Besitzer wird die Migrations-Rolle. So startet PaiBot wieder, und nichts geht verloren.
+ * 8. Gleichnamige Objekte außerhalb von `public` (etwa im Schema der Warteschlange): Sichten und
+ *    Fremdtabellen werden gelöscht, Tabellen ohne Trigger, Regeln und Standardwerte in das Schema
+ *    `QUARANTINE_SCHEMA_NAME` verschoben (siehe `quarantineShadowTables`). So startet PaiBot
+ *    wieder, und Daten gehen nicht verloren.
  *
  * Nutzt `appUrl` dieselbe Rolle wie `sql`, wird nur das Schema der Warteschlange angelegt (falls es
  * fehlt), und das Ergebnis ist `undefined`.
@@ -444,8 +448,16 @@ export async function prepareAppRole(
 }
 
 /**
- * Verschiebt gleichnamige Tabellen (und Sichten) außerhalb von `public` in das Schema der
- * Quarantäne, mit Zeitstempel im Namen. Liefert `alt -> neu` je verschobenem Objekt.
+ * Räumt gleichnamige Objekte außerhalb von `public` weg:
+ *
+ * - Sichten, materialisierte Sichten und Fremdtabellen enthalten keine eigenen Daten, aber Code,
+ *   der beim Lesen läuft. Sie werden gelöscht (`drop … cascade`).
+ * - Tabellen wandern mit Zeitstempel im Namen in das Schema der Quarantäne. Vorher verlieren sie
+ *   alles, was beim Lesen oder Schreiben Code ausführen könnte: Trigger, Regeln, Zeilen-Regeln
+ *   (Policies) und Standardwerte. Der Besitzer bleibt, wer er war; die Migrations-Rolle übernimmt
+ *   nie Objekte, die eine andere Rolle angelegt hat.
+ *
+ * Liefert je Objekt eine Zeile: `alt -> neu` (verschoben) bzw. `alt (gelöscht)`.
  */
 async function quarantineShadowTables(
   tx: postgres.TransactionSql,
@@ -464,34 +476,65 @@ async function quarantineShadowTables(
         where an.nspname = 'public' and a.relkind in ('r', 'p'))
     order by n.nspname, c.relname`;
   if (found.length === 0) return [];
+  const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+  const result: string[] = [];
+  const tables: { schema: string; name: string }[] = [];
+  for (const { schema, name, kind } of found) {
+    if (kind === "r" || kind === "p") {
+      tables.push({ schema, name });
+      continue;
+    }
+    const art = kind === "v" ? "view" : kind === "m" ? "materialized view" : "foreign table";
+    await tx.unsafe(`drop ${art} if exists ${quoteIdent(schema)}.${quoteIdent(name)} cascade`);
+    result.push(`${schema}.${name} (gelöscht)`);
+  }
+  if (tables.length === 0) return result;
   await tx`create schema if not exists ${tx(QUARANTINE_SCHEMA_NAME)}`;
   await tx`revoke all on schema ${tx(QUARANTINE_SCHEMA_NAME)} from public`;
   await tx`revoke all on schema ${tx(QUARANTINE_SCHEMA_NAME)} from ${tx(user)}`;
-  const [self] = await tx<{ name: string }[]>`select current_user as name`;
-  const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-  const moved: string[] = [];
-  for (const { schema, name, kind } of found) {
-    const art =
-      kind === "v"
-        ? "view"
-        : kind === "m"
-          ? "materialized view"
-          : kind === "f"
-            ? "foreign table"
-            : "table";
+  for (const { schema, name } of tables) {
+    const quelle = `${quoteIdent(schema)}.${quoteIdent(name)}`;
+    await neutralize(tx, quelle);
     const target = `${name}_${stamp}`.slice(0, 63);
+    await tx.unsafe(`alter table ${quelle} rename to ${quoteIdent(target)}`);
     await tx.unsafe(
-      `alter ${art} ${quoteIdent(schema)}.${quoteIdent(name)} rename to ${quoteIdent(target)}`,
+      `alter table ${quoteIdent(schema)}.${quoteIdent(target)} set schema ${quoteIdent(QUARANTINE_SCHEMA_NAME)}`,
     );
-    await tx.unsafe(
-      `alter ${art} ${quoteIdent(schema)}.${quoteIdent(target)} set schema ${quoteIdent(QUARANTINE_SCHEMA_NAME)}`,
-    );
-    await tx.unsafe(
-      `alter ${art} ${quoteIdent(QUARANTINE_SCHEMA_NAME)}.${quoteIdent(target)} owner to ${quoteIdent(self?.name ?? "")}`,
-    );
-    moved.push(`${schema}.${name} -> ${QUARANTINE_SCHEMA_NAME}.${target}`);
+    result.push(`${schema}.${name} -> ${QUARANTINE_SCHEMA_NAME}.${target}`);
   }
-  return moved;
+  return result;
+}
+
+/** Entfernt von einer Tabelle Trigger, Regeln, Zeilen-Regeln und Standardwerte. */
+async function neutralize(tx: postgres.TransactionSql, table: string): Promise<void> {
+  const triggers = await tx<{ name: string }[]>`
+    select tgname as name from pg_catalog.pg_trigger
+    where tgrelid = ${table}::pg_catalog.regclass and not tgisinternal`;
+  for (const { name } of triggers) {
+    await tx.unsafe(`drop trigger ${quoteIdent(name)} on ${table}`);
+  }
+  const rules = await tx<{ name: string }[]>`
+    select rulename as name from pg_catalog.pg_rewrite
+    where ev_class = ${table}::pg_catalog.regclass and rulename <> '_RETURN'`;
+  for (const { name } of rules) {
+    await tx.unsafe(`drop rule ${quoteIdent(name)} on ${table}`);
+  }
+  const policies = await tx<{ name: string }[]>`
+    select polname as name from pg_catalog.pg_policy
+    where polrelid = ${table}::pg_catalog.regclass`;
+  for (const { name } of policies) {
+    await tx.unsafe(`drop policy ${quoteIdent(name)} on ${table}`);
+  }
+  await tx.unsafe(`alter table ${table} no force row level security`);
+  await tx.unsafe(`alter table ${table} disable row level security`);
+  const defaults = await tx<{ name: string }[]>`
+    select a.attname as name from pg_catalog.pg_attribute a
+    join pg_catalog.pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+    where a.attrelid = ${table}::pg_catalog.regclass and a.attnum > 0 and not a.attisdropped
+      and a.attgenerated = ''`;
+  for (const { name } of defaults) {
+    await tx.unsafe(`alter table ${table} alter column ${quoteIdent(name)} drop default`);
+  }
 }
 
 async function databaseName(sql: postgres.TransactionSql): Promise<string> {

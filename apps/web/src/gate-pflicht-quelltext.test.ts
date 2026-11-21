@@ -182,7 +182,12 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   // aufheben (Ausweg im Migrations-Schritt).
   "web/src/lib/rate-limit.ts": {
     art: "betrieb",
-    nur: ["rateLimit.hit", "rateLimit.reset", "rateLimit.deleteByPrefix"],
+    nur: [
+      "rateLimit.hit",
+      "rateLimit.reset",
+      "rateLimit.deleteByPrefix",
+      "rateLimit.deleteOlderThan",
+    ],
   },
   // Einrichtungs-Code: entsteht vor der Einrichtung, wenn es noch keinen Signaturschlüssel gibt.
   "web/src/lib/zugang/einrichtungs-code.ts": {

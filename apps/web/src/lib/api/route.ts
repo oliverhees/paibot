@@ -22,6 +22,7 @@ import type {
 import { apiErrorFrom, errorBody, okBody } from "@paibot/shared/api";
 import { invalidInput, isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
+import { t } from "@paibot/shared/texte";
 import type { z } from "zod";
 import {
   istVeraendernd,
@@ -42,7 +43,7 @@ import {
   type RoutenName,
 } from "../routen";
 import { prozessDienste, type ZugangsDienste } from "../zugang/dienste";
-import { geraetCookieName, istBekanntesGeraet } from "../zugang/geraet";
+import { bekanntesGeraet, geraetCookieName } from "../zugang/geraet";
 import {
   type GepruefteSitzung,
   istNachweis,
@@ -183,8 +184,20 @@ function zuGross(): PaiBotError {
   return new PaiBotError("eingabe_ungueltig", { felder: [{ feld: "eingabe", code: "zu_gross" }] });
 }
 
+/** Höchstens so viele Körper liest der Rahmen gleichzeitig; weitere Anfragen warten nicht. */
+export const GLEICHZEITIGE_KOERPER = 32;
+
+const LESEND = Symbol.for("paibot.web.koerper-lesend");
+
+function lesend(): { n: number } {
+  const halter = globalThis as { [LESEND]?: { n: number } };
+  halter[LESEND] ??= { n: 0 };
+  return halter[LESEND];
+}
+
 /**
- * Liest den Körper höchstens bis `grenze` Byte. Eine angegebene Länge über der Grenze lehnt es ab,
+ * Liest den Körper höchstens bis `grenze` Byte. Lesen schon `GLEICHZEITIGE_KOERPER` andere
+ * Anfragen ihren Körper, antwortet es sofort mit `zu_viele_versuche` (kurze Wartezeit). Eine angegebene Länge über der Grenze lehnt es ab,
  * bevor ein Byte gelesen ist; sonst bricht es ab, sobald mehr ankommt. So liegt nie mehr als die
  * Grenze im Speicher, auch wenn die Länge fehlt oder nicht stimmt.
  */
@@ -194,18 +207,30 @@ export async function koerperText(request: Request, grenze: number): Promise<str
     throw zuGross();
   }
   if (request.body === null) return "";
+  const zaehler = lesend();
+  if (zaehler.n >= GLEICHZEITIGE_KOERPER) {
+    throw new PaiBotError("zu_viele_versuche", {
+      text: t("anfrage.zu_viele_gleichzeitig"),
+      retryAfterSeconds: 2,
+    });
+  }
+  zaehler.n += 1;
   const leser = request.body.getReader();
   const teile: Uint8Array[] = [];
   let summe = 0;
-  for (;;) {
-    const { done, value } = await leser.read();
-    if (done) break;
-    summe += value.byteLength;
-    if (summe > grenze) {
-      await leser.cancel().catch(() => undefined);
-      throw zuGross();
+  try {
+    for (;;) {
+      const { done, value } = await leser.read();
+      if (done) break;
+      summe += value.byteLength;
+      if (summe > grenze) {
+        await leser.cancel().catch(() => undefined);
+        throw zuGross();
+      }
+      teile.push(value);
     }
-    teile.push(value);
+  } finally {
+    zaehler.n -= 1;
   }
   const alles = new Uint8Array(summe);
   let stelle = 0;
@@ -301,13 +326,19 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
           weiterleitung: kopf.get("x-forwarded-for"),
           vertrauteProxy: d.hinterProxy(),
         });
+        // Ein bekanntes Gerät zählt nur beim Anmelden (eigene Limits statt Adresse und Bremse).
+        const geraet = def.limits?.includes("anmeldenGesamt")
+          ? await bekanntesGeraet(
+              db,
+              d.schluessel().sitzung,
+              cookieLesen(cookieKopf, geraetCookieName({ appUrl })),
+              now,
+            )
+          : undefined;
         const bezug: LimitBezug = {
           adresse,
-          ...(sitzung === undefined ? {} : { ownerId: sitzung.ownerId }),
-          bekanntesGeraet: istBekanntesGeraet(
-            d.schluessel().sitzung,
-            cookieLesen(cookieKopf, geraetCookieName({ appUrl })),
-          ),
+          ...(sitzung === undefined ? {} : { ownerId: sitzung.ownerId, sitzungId: sitzung.id }),
+          ...(geraet === undefined ? {} : { geraet: geraet.id }),
         };
         if (def.limits !== undefined && def.limits.length > 0) {
           try {

@@ -12,10 +12,14 @@ import { createHash } from "node:crypto";
 import { newId, type OwnerId, SESSION } from "@paibot/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "../client";
-import { owner as ownerTabelle } from "../schema";
+import {
+  geraete as geraeteTabelle,
+  owner as ownerTabelle,
+  sessions as sessionsTabelle,
+} from "../schema";
 import { createTestDb } from "../testing";
 
-import { owner, rateLimit, sessions } from "./index";
+import { geraete, owner, rateLimit, sessions } from "./index";
 import { mitCode } from "./testhilfe";
 
 const TAG = 24 * 60 * 60 * 1000;
@@ -208,9 +212,153 @@ describe("rateLimit", () => {
     expect(await rateLimit.deleteOlderThan(db, nach(T0, 3600_000))).toBe(1);
   });
 
+  it("gleitendes Fenster: das vorige Fenster zählt anteilig mit", async () => {
+    const gl = { ...eingabe, sliding: true };
+    // 3 Versuche am Ende des ersten Fensters (T0 + 50 s).
+    for (let i = 0; i < 3; i++) await rateLimit.hit(db, { ...gl, now: nach(T0, 50_000) });
+    // 15 s ins nächste Fenster: vom vorigen zählen noch 45/60 → 3 × 0,75 + 1 = 3,25 > 3.
+    const frueh = await rateLimit.hit(db, { ...gl, now: nach(T0, 75_000) });
+    expect(frueh.allowed).toBe(false);
+    expect(frueh.count).toBe(4);
+    // Bis 3 × Anteil + 1 ≤ 3, also Anteil ≤ 2/3: noch 5 s.
+    expect(frueh.retryAfterSeconds).toBe(5);
+    // Ohne gleitendes Fenster wäre derselbe Versuch erlaubt.
+    const fest = await rateLimit.hit(db, {
+      ...eingabe,
+      key: "anmelden:ip:x",
+      now: nach(T0, 75_000),
+    });
+    expect(fest.allowed).toBe(true);
+    // 50 s ins nächste Fenster: 3 × 10/60 + 2 = 2,5 ≤ 3.
+    const spaet = await rateLimit.hit(db, { ...gl, now: nach(T0, 110_000) });
+    expect(spaet.allowed).toBe(true);
+    // Zwei Fenster später zählt nichts mehr mit.
+    const leer = await rateLimit.hit(db, { ...gl, now: nach(T0, 185_000) });
+    expect(leer.count).toBe(1);
+  });
+
+  it("gleitendes Fenster über dem Maximum: Wartezeit reicht ins nächste Fenster", async () => {
+    const gl = { ...eingabe, sliding: true };
+    for (let i = 0; i < 6; i++) await rateLimit.hit(db, { ...gl, now: nach(T0, 30_000) });
+    const r = await rateLimit.hit(db, { ...gl, now: nach(T0, 30_000) });
+    // 30 s bis zum Ende, dann muss 7 × (1 − f) ≤ 3 sein: f ≥ 4/7 von 60 s ≈ 34,3 s.
+    expect(r.retryAfterSeconds).toBe(65);
+  });
+
+  it("deleteOlderThan lässt Schlüssel mit ausgenommenem Präfix stehen", async () => {
+    await rateLimit.hit(db, eingabe);
+    await rateLimit.hit(db, { ...eingabe, key: "anmelden:tag:203.0.113.7", windowSeconds: 86_400 });
+    expect(
+      await rateLimit.deleteOlderThan(db, nach(T0, 3600_000), {
+        exceptPrefixes: ["anmelden:tag:"],
+      }),
+    ).toBe(1);
+    expect(await rateLimit.deleteOlderThan(db, nach(T0, 3 * TAG))).toBe(1);
+  });
+
   it("ein Schlüssel im falschen Format ist eine ungültige Eingabe", async () => {
     await expect(rateLimit.hit(db, { ...eingabe, key: "FALSCH" })).rejects.toEqual(
       mitCode("eingabe_ungueltig"),
     );
+  });
+});
+
+describe("geraete", () => {
+  let db: Database;
+  let id: OwnerId;
+  beforeEach(async () => {
+    db = (await createTestDb()).db;
+    id = (await owner.create(db, { passwordHash: "h" })).id as OwnerId;
+  });
+  const ablauf = nach(T0, 90 * TAG);
+  const neu = (token: string, now = T0) =>
+    geraete.create(db, {
+      tokenHash: hash(token),
+      ownerId: id,
+      kind: "browser",
+      expiresAt: ablauf,
+      now,
+    });
+
+  it("anlegen mit Art, Rechten und leerem Schlüssel; finden nur, solange es gilt", async () => {
+    const g = await neu("a");
+    expect(g).toMatchObject({ kind: "browser", rights: "voll", ownerId: id });
+    expect(g.id).toMatch(/^ger_/);
+    const [roh] = await db.select().from(geraeteTabelle);
+    expect(roh?.publicKey).toBeNull();
+    expect((await geraete.findByToken(db, hash("a"), { now: T0 }))?.id).toBe(g.id);
+    expect(await geraete.findByToken(db, hash("a"), { now: nach(ablauf, 1) })).toBeUndefined();
+    expect(await geraete.findByToken(db, "kein-hash", { now: T0 })).toBeUndefined();
+  });
+
+  it("Widerruf: Gerät gilt nicht mehr, seine Sitzungen enden, andere bleiben", async () => {
+    const g = await neu("a");
+    await sessions.create(db, {
+      tokenHash: hash("s1"),
+      ownerId: id,
+      authLevel: "password",
+      method: "password",
+      now: T0,
+      deviceId: g.id,
+    });
+    await sessions.create(db, {
+      tokenHash: hash("s2"),
+      ownerId: id,
+      authLevel: "password",
+      method: "password",
+      now: T0,
+    });
+    expect(await geraete.revoke(db, id, g.id, { now: T0 })).toBe(true);
+    expect(await geraete.findByToken(db, hash("a"), { now: T0 })).toBeUndefined();
+    expect(await sessions.findByTokenHash(db, hash("s1"), { now: T0 })).toBeUndefined();
+    expect(await sessions.findByTokenHash(db, hash("s2"), { now: T0 })).toBeDefined();
+    const zeilen = await db.select({ id: sessionsTabelle.id }).from(sessionsTabelle);
+    expect(zeilen.map((z) => z.id)).toEqual([hash("s2")]);
+    expect(await geraete.revoke(db, id, g.id, { now: T0 })).toBe(false);
+    expect((await geraete.get(db, id, g.id))?.revokedAt).toBe(T0.toISOString());
+  });
+
+  it("eine Sitzung eines widerrufenen Geräts gilt nicht, auch wenn sie noch in der Tabelle stünde", async () => {
+    const g = await neu("a");
+    await sessions.create(db, {
+      tokenHash: hash("s1"),
+      ownerId: id,
+      authLevel: "password",
+      method: "password",
+      now: T0,
+      deviceId: g.id,
+    });
+    await db.update(geraeteTabelle).set({ revokedAt: T0 });
+    expect(await sessions.findByTokenHash(db, hash("s1"), { now: T0 })).toBeUndefined();
+    expect(await sessions.extend(db, hash("s1"), { now: T0 })).toBeUndefined();
+  });
+
+  it("höchstens MAX_GERAETE gültig, das neue bleibt; revokeAll widerruft alle", async () => {
+    for (let i = 0; i < geraete.MAX_GERAETE + 3; i++) await neu(`g${i}`);
+    expect(
+      await geraete.findByToken(db, hash(`g${geraete.MAX_GERAETE + 2}`), { now: T0 }),
+    ).toBeDefined();
+    expect((await geraete.list(db, id, { now: T0 })).length).toBe(geraete.MAX_GERAETE);
+    expect(await geraete.revokeAll(db, id, { now: T0 })).toBe(geraete.MAX_GERAETE);
+    expect(await geraete.list(db, id, { now: T0 })).toEqual([]);
+  });
+
+  it("alte widerrufene Einträge fallen nach AUFBEWAHREN_TAGE weg", async () => {
+    const g = await neu("a");
+    await geraete.revoke(db, id, g.id, { now: T0 });
+    await neu("b", nach(T0, (geraete.AUFBEWAHREN_TAGE + 1) * TAG));
+    expect(await geraete.get(db, id, g.id)).toBeUndefined();
+  });
+
+  it("weist einen Hash im falschen Format ab", async () => {
+    await expect(
+      geraete.create(db, {
+        tokenHash: "x",
+        ownerId: id,
+        kind: "browser",
+        expiresAt: ablauf,
+        now: T0,
+      }),
+    ).rejects.toEqual(mitCode("eingabe_ungueltig"));
   });
 });

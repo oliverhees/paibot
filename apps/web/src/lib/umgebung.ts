@@ -138,21 +138,83 @@ export interface AppUrlPruefung {
   warnungen: string[];
 }
 
-function istLoopback(host: string): boolean {
-  return (
-    host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127\./.test(host)
-  );
+type Bereich = "rechner" | "netz" | "oeffentlich";
+
+/** IPv4 in Schreibweise a.b.c.d (so normalisiert `URL` jede IPv4), sonst `undefined`. */
+function ipv4(host: string): number[] | undefined {
+  const teile = host.split(".");
+  if (teile.length !== 4 || !teile.every((t) => /^\d{1,3}$/.test(t))) return undefined;
+  const zahlen = teile.map(Number);
+  return zahlen.every((z) => z <= 255) ? zahlen : undefined;
 }
 
-function istEigenesNetz(host: string): boolean {
-  return (
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-    /^f[cd][0-9a-f]{0,2}:/.test(host) ||
-    !host.includes(".") ||
-    /\.(local|lan|home\.arpa|internal)$/.test(host)
-  );
+function bereichIpv4([a = 0, b = 0]: number[]): Bereich {
+  if (a === 127) return "rechner";
+  if (
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254) ||
+    (a === 100 && b >= 64 && b <= 127)
+  ) {
+    return "netz";
+  }
+  return "oeffentlich";
+}
+
+/** IPv6 (ohne Klammern) in acht Gruppen zu 16 Bit, sonst `undefined`. */
+function ipv6(host: string): number[] | undefined {
+  if (!host.includes(":") || !/^[0-9a-f:.]+$/.test(host)) return undefined;
+  let text = host;
+  const v4 = /(\d+\.\d+\.\d+\.\d+)$/.exec(text);
+  if (v4?.[1] !== undefined) {
+    const z = ipv4(v4[1]);
+    if (z === undefined) return undefined;
+    const [a = 0, b = 0, c = 0, d = 0] = z;
+    text = `${text.slice(0, -v4[1].length)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const doppelt = text.split("::");
+  if (doppelt.length > 2) return undefined;
+  const links = doppelt[0] === "" ? [] : (doppelt[0] ?? "").split(":");
+  const rechts = doppelt.length === 2 && doppelt[1] !== "" ? (doppelt[1] ?? "").split(":") : [];
+  const fehlt = 8 - links.length - rechts.length;
+  if (doppelt.length === 1 ? fehlt !== 0 : fehlt < 1) return undefined;
+  const gruppen = [...links, ...Array(doppelt.length === 2 ? fehlt : 0).fill("0"), ...rechts];
+  if (!gruppen.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return undefined;
+  return gruppen.map((g) => Number.parseInt(g, 16));
+}
+
+function bereichIpv6(g: number[]): Bereich {
+  const [g0 = 0, g1 = 0, g2 = 0, g3 = 0, g4 = 0, g5 = 0, g6 = 0, g7 = 0] = g;
+  if (g.slice(0, 7).every((x) => x === 0) && g7 === 1) return "rechner";
+  // IPv4 in IPv6 (::ffff:a.b.c.d): wie die IPv4-Adresse.
+  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff) {
+    return bereichIpv4([g6 >> 8, g6 & 0xff, g7 >> 8, g7 & 0xff]);
+  }
+  if ((g0 & 0xfe00) === 0xfc00 || (g0 & 0xffc0) === 0xfe80) return "netz";
+  return "oeffentlich";
+}
+
+/**
+ * Wohin zeigt der Host einer Adresse? Zuerst als IP-Adresse (IPv4, IPv6, IPv4 in IPv6), dann als
+ * Name: `localhost` und `*.localhost` sind der eigene Rechner; Namen ohne Punkt und mit den Endungen
+ * `.local`, `.lan`, `.home.arpa`, `.internal` das eigene Netz; alle anderen Namen öffentlich, auch
+ * wenn sie mit Ziffern beginnen wie eine Adresse.
+ */
+export function hostBereich(roh: string): Bereich {
+  const host = roh
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
+    .replace(/\.$/, "");
+  const v4 = ipv4(host);
+  if (v4 !== undefined) return bereichIpv4(v4);
+  if (host.includes(":")) {
+    const v6 = ipv6(host);
+    return v6 === undefined ? "oeffentlich" : bereichIpv6(v6);
+  }
+  if (host === "localhost" || host.endsWith(".localhost")) return "rechner";
+  if (!host.includes(".") || /\.(local|lan|home\.arpa|internal)$/.test(host)) return "netz";
+  return "oeffentlich";
 }
 
 /**
@@ -190,9 +252,9 @@ export function pruefeAppUrl(env: Env): AppUrlPruefung {
     );
   }
   if (url.protocol === "http:") {
-    const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
-    if (istLoopback(host)) return { warnungen };
-    if (istEigenesNetz(host)) {
+    const bereich = hostBereich(url.hostname);
+    if (bereich === "rechner") return { warnungen };
+    if (bereich === "netz") {
       warnungen.push(
         "APP_URL nutzt http:// im eigenen Netz: Passwort und Sitzung gehen dort unverschlüsselt über die Leitung, und Cookies laufen ohne Secure. Für den Zugang von außen https über den Proxy einrichten.",
       );

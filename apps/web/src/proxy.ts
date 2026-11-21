@@ -132,6 +132,13 @@ export async function proxy(request: NextRequest) {
   return kopfzeilenSetzen(antwort, kopfzeilen, zustand.angemeldet);
 }
 
+/**
+ * Jeder Pfad außer den Routen mit größerer Körper-Grenze als dem Standard (`koerperBytes` im
+ * Vertrag): Senden einer Nachricht und Ändern des Bots. Vor dem Proxy hält Next jeden Körper bis
+ * zur Grenze in `next.config.ts` im Speicher; für diese beiden Routen liest ihn nur der Rahmen,
+ * und erst nach Sitzung und Prüfzeichen. Beide Routen prüfen Sitzung, Herkunft und Prüfzeichen
+ * selbst. Ein Test hält die Liste mit dem Vertrag gleich.
+ */
 export const config = {
-  matcher: ["/:path*"],
+  matcher: ["/((?!api/bot/?$|api/unterhaltungen/[^/]+/nachrichten/?$).*)"],
 };

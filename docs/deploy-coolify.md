@@ -68,14 +68,15 @@ Musst du sofort wieder online sein, ohne umzustellen: `PAIBOT_ALLOW_PRIVILEGED_D
 
 **Hinter Coolify gilt `TRUST_PROXY=1`.** Coolify stellt einen Proxy (Traefik) vor PaiBot. Im Compose steht `TRUST_PROXY` für `web` schon auf `1`, damit PaiBot die Adresse der Besucher aus dem Eintrag kennt, den der Proxy anhängt. Setzt du es auf `0`, sperrt PaiBot Anmelde-Versuche nicht mehr je Adresse (die gemeinsame Bremse gilt weiter) und meldet das beim Start im Log und auf der Seite „Einrichtung“. Mehr dazu in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
 
-**Größe von Anfragen im Proxy begrenzen.** PaiBot weist zu große Anfragen selbst ab (16 KiB, Nachrichten 256 KiB). Damit große Anfragen gar nicht erst bis zur App kommen, begrenze sie auch in Traefik: Trag beim Dienst `web` unter „Container Labels“ eine Middleware ein und häng sie an den Router, den Coolify für `web` anlegt (dessen Name steht schon in den Labels):
+**Größe und Zahl von Anfragen im Proxy begrenzen.** PaiBot weist zu große Anfragen selbst ab (16 KiB, Nachrichten 256 KiB, Bot ändern 64 KiB) und hält vor jeder Prüfung höchstens 16 KiB je Anfrage im Speicher. Wie viele Anfragen gleichzeitig offen sind, kann die App nicht begrenzen; jede kostet Speicher. Begrenze deshalb in Traefik die Größe auf **300 KB** und die gleichzeitigen Anfragen auf **20 je Besucher-Adresse** (Traefik zählt offene Anfragen je Adresse und lehnt darüber mit 429 ab; dieselben Werte wie in der [Installation](installation.md)): Trag beim Dienst `web` unter „Container Labels“ zwei Middlewares ein und häng sie an den Router, den Coolify für `web` anlegt (dessen Name steht schon in den Labels):
 
 ```text
-traefik.http.middlewares.paibot-groesse.buffering.maxRequestBodyBytes=1048576
-traefik.http.routers.<router-von-web>.middlewares=paibot-groesse
+traefik.http.middlewares.paibot-groesse.buffering.maxRequestBodyBytes=300000
+traefik.http.middlewares.paibot-gleichzeitig.inflightreq.amount=20
+traefik.http.routers.<router-von-web>.middlewares=paibot-groesse,paibot-gleichzeitig
 ```
 
-Steht beim Router schon eine Zeile `…middlewares=…`, häng `,paibot-groesse` an. Danach prüfen: `curl -s -o /dev/null -w '%{http_code}\n' -X POST --data-binary @<datei-über-1-MiB> https://paibot.deine-domain.de/x` antwortet `413`.
+Steht beim Router schon eine Zeile `…middlewares=…`, häng `,paibot-groesse,paibot-gleichzeitig` an. Danach prüfen: `curl -s -o /dev/null -w '%{http_code}\n' -X POST --data-binary @<datei-über-300-KB> https://paibot.deine-domain.de/x` antwortet `413`. Eine früher hier genannte Grenze von 1 MiB ist zu groß; stell sie auf 300000 um.
 
 ## Datenschleuse zuschalten
 

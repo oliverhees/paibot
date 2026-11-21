@@ -9,7 +9,7 @@
  */
 
 import { PaiBotError } from "@paibot/shared";
-import { and, eq, like, lt, sql } from "drizzle-orm";
+import { and, eq, like, lt, notLike, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { rateLimits } from "../schema";
 import { standardFehler, uebersetzen } from "./fehler";
@@ -20,6 +20,11 @@ export interface RateLimitInput {
   max: number;
   windowSeconds: number;
   now?: Date;
+  /**
+   * Gleitendes Fenster: Der Zähler des vorigen Fensters zählt anteilig mit (so viel, wie von ihm
+   * noch in die letzten `windowSeconds` fällt). So beginnt ein neues Fenster nicht wieder bei null.
+   */
+  sliding?: boolean;
 }
 
 export interface RateLimitResult {
@@ -68,7 +73,48 @@ export async function hit(db: Database, input: RateLimitInput): Promise<RateLimi
     standardFehler,
   );
   if (row === undefined) throw new PaiBotError("intern");
-  return ergebnis(row.count, { max: input.max, now }, ende);
+  if (input.sliding !== true) return ergebnis(row.count, { max: input.max, now }, ende);
+  const laenge = input.windowSeconds * 1000;
+  const [vorher] = await db
+    .select({ count: rateLimits.count })
+    .from(rateLimits)
+    .where(
+      and(
+        eq(rateLimits.key, input.key),
+        eq(rateLimits.windowStart, new Date(start.getTime() - laenge)),
+      ),
+    );
+  return gleitend(row.count, vorher?.count ?? 0, { max: input.max, now, laenge, ende });
+}
+
+/**
+ * Ergebnis im gleitenden Fenster: `aktuell + vorher × Anteil`, wobei der Anteil der Teil des vorigen
+ * Fensters ist, der noch in die letzten `laenge` Millisekunden fällt. `retryAfterSeconds` ist die
+ * Zeit, bis der Wert wieder höchstens `max` ist.
+ */
+function gleitend(
+  aktuell: number,
+  vorher: number,
+  input: { max: number; now: Date; laenge: number; ende: number },
+): RateLimitResult {
+  const rest = input.ende - input.now.getTime();
+  const anteil = rest / input.laenge;
+  const wert = aktuell + vorher * anteil;
+  let wartenMs = 0;
+  if (wert > input.max) {
+    wartenMs =
+      aktuell <= input.max
+        ? ((wert - input.max) / vorher) * input.laenge
+        : rest + (1 - input.max / aktuell) * input.laenge;
+  }
+  const count = Math.ceil(wert - 1e-9);
+  return {
+    allowed: wert <= input.max,
+    count,
+    max: input.max,
+    remaining: Math.max(0, input.max - count),
+    retryAfterSeconds: Math.max(1, Math.ceil(wartenMs / 1000)),
+  };
 }
 
 /** Liest den Zähler des aktuellen Fensters, ohne zu zählen. */
@@ -87,21 +133,32 @@ export async function reset(db: Database, key: string): Promise<void> {
   await db.delete(rateLimits).where(eq(rateLimits.key, key));
 }
 
-/** Löscht Zähler, deren Fenster vor `olderThan` begann. Gibt die Anzahl zurück. */
-export async function deleteOlderThan(db: Database, olderThan: Date): Promise<number> {
+function muster(prefix: string): string {
+  return `${prefix.replace(/[\\%_]/g, (zeichen) => `\\${zeichen}`)}%`;
+}
+
+/**
+ * Löscht Zähler, deren Fenster vor `olderThan` begann, außer denen mit einem Schlüssel aus
+ * `exceptPrefixes`. Gibt die Anzahl zurück.
+ */
+export async function deleteOlderThan(
+  db: Database,
+  olderThan: Date,
+  options: { exceptPrefixes?: readonly string[] } = {},
+): Promise<number> {
+  const ausser = (options.exceptPrefixes ?? []).map((p) => notLike(rateLimits.key, muster(p)));
   const geloescht = await db
     .delete(rateLimits)
-    .where(lt(rateLimits.windowStart, olderThan))
+    .where(and(lt(rateLimits.windowStart, olderThan), ...ausser))
     .returning({ key: rateLimits.key });
   return geloescht.length;
 }
 
 /** Löscht alle Zähler, deren Schlüssel mit `prefix` beginnt (z. B. `anmelden:`). Gibt die Anzahl zurück. */
 export async function deleteByPrefix(db: Database, prefix: string): Promise<number> {
-  const muster = `${prefix.replace(/[\\%_]/g, (zeichen) => `\\${zeichen}`)}%`;
   const geloescht = await db
     .delete(rateLimits)
-    .where(like(rateLimits.key, muster))
+    .where(like(rateLimits.key, muster(prefix)))
     .returning({ key: rateLimits.key });
   return geloescht.length;
 }

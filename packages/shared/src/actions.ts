@@ -71,6 +71,16 @@ const modelId = idSchema("model");
 const ownerId = idSchema("owner");
 const installationId = idSchema("installation");
 const actionId = idSchema("action");
+const deviceId = idSchema("device");
+
+/** Arten bekannter Geräte. Heute gibt es nur Browser. */
+export const DEVICE_KINDS = ["browser"] as const;
+export type DeviceKind = (typeof DEVICE_KINDS)[number];
+export const deviceKindSchema = z.enum(DEVICE_KINDS);
+
+/** Rechte eines bekannten Geräts. Heute hat jedes Gerät alle Rechte des Besitzers. */
+export const DEVICE_RIGHTS = ["voll"] as const;
+export type DeviceRight = (typeof DEVICE_RIGHTS)[number];
 
 const ownerFacts = { credential: credentialSchema };
 
@@ -273,6 +283,20 @@ export const ACTIONS = {
       approvalExpired: z.boolean(),
       /** Abdruck der Argumente, für den die Freigabe erteilt wurde. */
       approvalArgsDigest: hmacDigestSchema,
+    },
+  ),
+  /** Ein Browser wird nach der Anmeldung zum bekannten Gerät (mit der neuen Sitzung). */
+  "geraet.hinzufuegen": action("besitzer", { deviceId }, { ...ownerFacts, kind: deviceKindSchema }),
+  /** Ein bekanntes Gerät wird widerrufen; seine Sitzungen enden mit. */
+  "geraet.entfernen": action(
+    "besitzer",
+    { deviceId },
+    {
+      ...ownerFacts,
+      /** Das Gerät ist bekannt und nicht schon widerrufen. */
+      deviceActive: z.boolean(),
+      /** Es ist das Gerät, von dem die Anfrage kommt. */
+      thisDevice: z.boolean(),
     },
   ),
 } as const;

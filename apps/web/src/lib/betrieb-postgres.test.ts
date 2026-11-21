@@ -24,6 +24,7 @@ import { createQueue, type RunJob } from "@paibot/jobs";
 import { newId } from "@paibot/shared/ids";
 import { afterAll, describe, expect, it } from "vitest";
 import { prepareStart } from "./betrieb";
+import { alteZaehlerLoeschen } from "./rate-limit";
 
 const BASE_URL = process.env[TEST_DATABASE_URL_ENV];
 const silent = { info: () => undefined, warn: () => undefined, error: () => undefined };
@@ -124,6 +125,38 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
       await prepareStart(migrate, { log: silent, exit });
       const rest = await sql<{ key: string }[]>`select key from public.rate_limits order by key`;
       expect(rest.map((r) => r.key)).toEqual(["nachricht:x"]);
+    } finally {
+      await sql.end({ timeout: 2 });
+    }
+  }, 60_000);
+
+  it("alte Zähler der Limits werden mit der App-Rolle gelöscht, laufende und vorige Fenster bleiben", async () => {
+    const db = await createPostgresTestDatabase(BASE_URL ?? "", { migrate: false });
+    opened.push(db);
+    const appUrl = newRole(db);
+    await runMigrations(db.url, MIGRATIONS_FOLDER, { appUrl });
+    const { db: app, sql } = createDb(appUrl);
+    try {
+      const jetzt = new Date("2026-11-21T12:00:00.000Z");
+      const vor = (minuten: number) => new Date(jetzt.getTime() - minuten * 60_000);
+      const zaehle = (key: string, windowSeconds: number, now: Date) =>
+        repo.rateLimit.hit(app, { key, max: 5, windowSeconds, now });
+      await zaehle("anmelden:ip:alt", 900, vor(60));
+      await zaehle("anmelden:takt:2", 2, vor(45));
+      await zaehle("nachricht:x", 60, vor(40));
+      await zaehle("anmelden:ip:vorig", 900, vor(20));
+      await zaehle("anmelden:ip:jetzt", 900, jetzt);
+      await zaehle("anmelden:tag:gestern", 86_400, vor(24 * 60));
+      await zaehle("anmelden:geraet_tag:gestern", 86_400, vor(24 * 60));
+      await zaehle("anmelden:tag:vorgestern", 86_400, vor(3 * 24 * 60));
+      expect(await alteZaehlerLoeschen(app, jetzt)).toBe(4);
+      const rest = await sql<{ key: string }[]>`select key from public.rate_limits order by key`;
+      expect(rest.map((r) => r.key)).toEqual([
+        "anmelden:geraet_tag:gestern",
+        "anmelden:ip:jetzt",
+        "anmelden:ip:vorig",
+        "anmelden:tag:gestern",
+      ]);
     } finally {
       await sql.end({ timeout: 2 });
     }

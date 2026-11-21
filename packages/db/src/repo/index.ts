@@ -15,6 +15,7 @@ export * as bots from "./bots";
 export * as settings from "./einstellungen";
 export * as events from "./ereignisse";
 export { type PgFehler, pgFehler, StatuswechselError } from "./fehler";
+export * as geraete from "./geraete";
 export * as runs from "./laeufe";
 export * as models from "./modelle";
 export * as messages from "./nachrichten";

@@ -42,6 +42,6 @@ export async function zugangBeimStart(d: ZugangsDienste = prozessDienste()): Pro
     return;
   }
   if (stand.art === "vorhanden") {
-    d.log.info(t("einrichtung.code.vorhanden", { zeit: stand.seit.toISOString() }));
+    d.log.info(t("einrichtung.code.vorhanden_frueher", { zeit: stand.seit.toISOString() }));
   }
 }

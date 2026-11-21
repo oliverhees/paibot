@@ -8,11 +8,12 @@
  * @since     2026-11-21
  */
 
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import nextConfig from "../../../next.config";
-import { proxy } from "../../proxy";
-import { koerperGrenzeFuerPfad } from "../routen";
+import { proxy, config as proxyConfig } from "../../proxy";
+import { API_ROUTEN, koerperGrenze, koerperGrenzeFuerPfad, type RoutenDefinition } from "../routen";
 import { anmelden } from "../zugang/anmeldung";
 import { _ersetzeProzessDienste } from "../zugang/dienste";
 import {
@@ -23,7 +24,7 @@ import {
   vorabDose,
 } from "../zugang/testing";
 import { GROESSTER_KOERPER_BYTES, STANDARD_KOERPER_BYTES } from "./koerper";
-import { koerperText } from "./route";
+import { GLEICHZEITIGE_KOERPER, koerperText } from "./route";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -83,6 +84,31 @@ describe("Körper lesen im Rahmen", () => {
     const { strom } = zaehlStrom(128 * 1024);
     const text = await koerperText(anfrageMitStrom(strom), GROESSTER_KOERPER_BYTES);
     expect(text.length).toBe(128 * 1024);
+  });
+
+  it("liest höchstens GLEICHZEITIGE_KOERPER Körper gleichzeitig, weitere sofort mit 429", async () => {
+    // Ströme, die nie enden: Sie halten ihren Platz, bis sie abgebrochen werden.
+    const haengend = Array.from({ length: GLEICHZEITIGE_KOERPER }, () => {
+      let steuerung: ReadableStreamDefaultController<Uint8Array> | undefined;
+      const strom = new ReadableStream<Uint8Array>({
+        start(s) {
+          steuerung = s;
+        },
+      });
+      return { lesen: koerperText(anfrageMitStrom(strom), STANDARD_KOERPER_BYTES), steuerung };
+    });
+    await new Promise((fertig) => setTimeout(fertig, 20));
+    const { strom } = zaehlStrom(1024);
+    await expect(
+      koerperText(anfrageMitStrom(strom), GROESSTER_KOERPER_BYTES),
+    ).rejects.toMatchObject({ code: "zu_viele_versuche", retryAfterSeconds: 2 });
+    for (const h of haengend) h.steuerung?.close();
+    await Promise.all(haengend.map((h) => h.lesen));
+    // Danach ist wieder Platz.
+    const { strom: wieder } = zaehlStrom(1024);
+    expect((await koerperText(anfrageMitStrom(wieder), GROESSTER_KOERPER_BYTES)).length).toBe(
+      64 * 1024,
+    );
   });
 
   it("die Anmeldung nimmt höchstens die kleine Standard-Grenze an", async () => {
@@ -161,8 +187,39 @@ describe("Proxy", () => {
 });
 
 describe("Next-Einstellungen", () => {
-  it("Next hält vor dem Proxy höchstens die größte Grenze im Speicher", () => {
-    expect(nextConfig.experimental?.proxyClientMaxBodySize).toBe(GROESSTER_KOERPER_BYTES + 1);
+  it("Next hält vor dem Proxy höchstens die Standard-Grenze im Speicher", () => {
+    expect(nextConfig.experimental?.proxyClientMaxBodySize).toBe(STANDARD_KOERPER_BYTES + 1);
+  });
+
+  it("der Proxy läuft auf jedem Pfad außer den Routen mit größerer Grenze", () => {
+    const passt = (url: string) =>
+      unstable_doesMiddlewareMatch({ config: proxyConfig, url, nextConfig });
+    const gross = Object.values(API_ROUTEN as Record<string, RoutenDefinition>).filter(
+      (def) => koerperGrenze(def) > STANDARD_KOERPER_BYTES,
+    );
+    expect(gross.map((def) => def.pfad).sort()).toEqual([
+      "/api/bot",
+      "/api/unterhaltungen/:id/nachrichten",
+    ]);
+    for (const def of Object.values(API_ROUTEN as Record<string, RoutenDefinition>)) {
+      const pfad = def.pfad.replace(/:[A-Za-z]+/g, "con_abc");
+      const ausgenommen = Object.values(API_ROUTEN as Record<string, RoutenDefinition>).some(
+        (d) => d.pfad === def.pfad && koerperGrenze(d) > STANDARD_KOERPER_BYTES,
+      );
+      expect(passt(pfad), pfad).toBe(!ausgenommen);
+    }
+    for (const pfad of [
+      "/",
+      "/gibtsnicht",
+      "/anmelden",
+      "/api/bot/modell",
+      "/api/botx",
+      "/api/unterhaltungen/con_abc/nachrichtenx",
+      "/api/unterhaltungen/con_abc/nachrichten/mehr",
+      "/x/api/bot",
+    ]) {
+      expect(passt(pfad), pfad).toBe(true);
+    }
   });
 
   it("der Bild-Optimierer ist aus", () => {

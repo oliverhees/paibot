@@ -134,8 +134,8 @@ describe("Anmelden", () => {
     expect(gesperrt.status).toBe(429);
     expect(gesperrt.body.fehler?.code).toBe("zu_viele_versuche");
     expect(Number(gesperrt.antwort.headers.get("retry-after"))).toBeGreaterThan(0);
-    // Nach Ablauf des Fensters geht es wieder.
-    u.spaeter(15 * 60 * 1000);
+    // Das Fenster gleitet: Erst wenn auch das vorige Fenster vorbei ist, geht es wieder.
+    u.spaeter(30 * 60 * 1000);
     expect((await einloggen(u, h)).status).toBe(200);
   });
 
@@ -260,7 +260,8 @@ describe("Sitzung", () => {
     const vorher = (await u.db.select().from(sessions)).length;
     const r = await anfrage(u, h.abmelden, "POST", "/api/zugang/abmelden", { dose });
     expect(r.status).toBe(200);
-    expect(dose.zeilen.at(-1)).toBe("pb_sitzung=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    expect(dose.zeilen).toContain("pb_sitzung=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    expect(dose.zeilen).toContain("pb_geraet=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
     expect((await u.db.select().from(sessions)).length).toBe(vorher - 1);
     expect(dose.werte.has("pb_sitzung")).toBe(false);
   });

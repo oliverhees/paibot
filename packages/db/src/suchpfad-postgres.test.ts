@@ -18,7 +18,7 @@ import { createDb } from "./client";
 import { runMigrations } from "./migrate";
 import { rules as ruleRepo, settings as settingsRepo } from "./repo";
 import { checkAppRole } from "./rollen";
-import { checkDatabase } from "./rollen-start";
+import { checkDatabase, quarantineMessage } from "./rollen-start";
 import { belege, installationKeys } from "./schema";
 import { MIGRATION_LOCK_KEY } from "./sperren";
 import { belegRow, keyRow } from "./testdaten";
@@ -181,6 +181,94 @@ describe.skipIf(BASE_URL === undefined)(
       const name = (lauf.appRole?.quarantined[1] ?? "").split(" -> ")[1] ?? "";
       expect(await codeOf(nachher.unsafe(`select count(*) from ${name}`))).toBe("42501");
       expect(await codeOf(nachher.unsafe(`drop table ${name}`))).toBe("42501");
+    });
+
+    it("Sichten mit eigenem Code werden gelöscht, Tabellen ohne Code verschoben, nichts geht an die Migrations-Rolle", async () => {
+      // Code der App-Rolle, der eine Spur hinterlässt, sobald er läuft (mit den Rechten des Aufrufers).
+      await raw.unsafe("create table pgboss.spur (wer text)");
+      await raw.unsafe("grant insert on pgboss.spur to public");
+      await raw.unsafe("grant usage on schema pgboss to public");
+      await raw.unsafe(
+        "create function pgboss.zeig() returns text language plpgsql as $$ begin insert into pgboss.spur values (current_user); return 'x'; end $$",
+      );
+      await raw.unsafe("grant execute on function pgboss.zeig() to public");
+      await raw.unsafe("create view pgboss.settings as select pgboss.zeig() as wert");
+      await raw.unsafe("create materialized view pgboss.bots as select 1 as a");
+      await raw.unsafe(
+        "create table pgboss.messages (a text default pgboss.zeig(), b int generated always as (1) stored)",
+      );
+      await raw.unsafe("insert into pgboss.messages (a) values ('vorher')");
+      await raw.unsafe(
+        "create function pgboss.ausloeser() returns trigger language plpgsql as $$ begin perform pgboss.zeig(); return new; end $$",
+      );
+      await raw.unsafe(
+        "create trigger t before insert or update or delete on pgboss.messages for each row execute function pgboss.ausloeser()",
+      );
+      await raw.unsafe(
+        "create rule r as on update to pgboss.messages do also select pgboss.zeig()",
+      );
+      await raw.unsafe("alter table pgboss.messages enable row level security");
+      await raw.unsafe("alter table pgboss.messages force row level security");
+      await raw.unsafe("create policy p on pgboss.messages using (pgboss.zeig() = 'x')");
+      await raw.unsafe("delete from pgboss.spur");
+
+      const admin = postgres(database.url, { max: 1, onnotice: () => undefined });
+      cleanup.push(() => admin.end({ timeout: 2 }));
+      const [migrationsRolle] = await admin<{ name: string }[]>`select current_user as name`;
+      const lauf = await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
+      const eintraege = lauf.appRole?.quarantined ?? [];
+      expect(eintraege).toContain("pgboss.settings (gelöscht)");
+      expect(eintraege).toContain("pgboss.bots (gelöscht)");
+      const verschoben = eintraege.find((e) => e.startsWith("pgboss.messages -> "));
+      expect(verschoben).toMatch(/^pgboss\.messages -> paibot_quarantaene\.messages_\d{14}$/);
+      const ziel = (verschoben ?? "").split(" -> ")[1] ?? "";
+
+      // Sichten sind weg, die Tabelle trägt keinen Code mehr und gehört weiter der App-Rolle.
+      const [sichten] = await admin<{ n: number }[]>`
+        select count(*)::int as n from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname in ('pgboss', 'paibot_quarantaene') and c.relkind in ('v', 'm')`;
+      expect(sichten?.n).toBe(0);
+      const [code] = await admin<
+        { trigger: number; regeln: number; policies: number; standard: number; rls: boolean }[]
+      >`
+        select
+          (select count(*)::int from pg_trigger where tgrelid = ${ziel}::regclass and not tgisinternal) as trigger,
+          (select count(*)::int from pg_rewrite where ev_class = ${ziel}::regclass) as regeln,
+          (select count(*)::int from pg_policy where polrelid = ${ziel}::regclass) as policies,
+          (select count(*)::int from pg_attrdef d join pg_attribute a on a.attrelid = d.adrelid and a.attnum = d.adnum
+             where d.adrelid = ${ziel}::regclass and a.attgenerated = '') as standard,
+          (select relrowsecurity or relforcerowsecurity from pg_class where oid = ${ziel}::regclass) as rls`;
+      expect(code).toEqual({ trigger: 0, regeln: 0, policies: 0, standard: 0, rls: false });
+      const [besitz] = await admin<{ n: number }[]>`
+        select count(*)::int as n from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname not in ('public', 'drizzle', 'pg_catalog', 'information_schema')
+          and n.nspname not like 'pg\_%'
+          and pg_get_userbyid(c.relowner) = ${migrationsRolle?.name ?? ""}`;
+      expect(besitz?.n).toBe(0);
+
+      // Lesen, Ändern und Löschen durch den Verwalter führen keinen Code der App-Rolle mehr aus.
+      expect(await admin.unsafe(`select a from ${ziel}`)).toEqual([{ a: "vorher" }]);
+      await admin.unsafe(`insert into ${ziel} (a) values ('neu')`);
+      await admin.unsafe(`update ${ziel} set a = 'anders'`);
+      await admin.unsafe(`drop table ${ziel} cascade`);
+      const [spur] = await admin<{ n: number }[]>`select count(*)::int as n from pgboss.spur`;
+      expect(spur?.n).toBe(0);
+
+      const nachher = postgres(appUrl, { max: 1, onnotice: () => undefined });
+      cleanup.push(() => nachher.end({ timeout: 2 }));
+      expect(await checkAppRole(nachher)).toMatchObject({ status: "eingeschraenkt", issues: [] });
+    });
+
+    it("die Meldung zur Quarantäne rät zum Löschen, nicht zum Ansehen", () => {
+      const tabelle = quarantineMessage(
+        "pgboss.belege -> paibot_quarantaene.belege_20261121000000",
+      );
+      expect(tabelle).toContain('drop table "paibot_quarantaene"."belege_20261121000000" cascade;');
+      expect(tabelle).toContain("Öffne und lies sie nicht");
+      expect(tabelle).not.toMatch(/sieh .* an|ansehen/i);
+      expect(quarantineMessage("pgboss.settings (gelöscht)")).toContain(
+        "Sicht außerhalb von public gelöscht: pgboss.settings.",
+      );
     });
 
     it("die App-Rolle schreibt keine Regeln, auch nicht mit eigener Nummer", async () => {

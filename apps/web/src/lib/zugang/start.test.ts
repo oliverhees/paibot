@@ -41,8 +41,13 @@ describe("Zugang beim Start", () => {
     await zugangBeimStart(neustart.dienste);
     expect(neustart.log.some((z) => z.startsWith("Einrichtungs-Code: "))).toBe(false);
     expect(neustart.log).toContain(
-      t("einrichtung.code.vorhanden", { zeit: u.zeit().toISOString() }),
+      t("einrichtung.code.vorhanden_frueher", { zeit: u.zeit().toISOString() }),
     );
+    // Der Hinweis sagt, wo der Code steht (im Log eines früheren Starts) und wie es einen neuen gibt.
+    const hinweis = neustart.log.find((z) => z.startsWith("Einrichtung offen")) ?? "";
+    expect(hinweis).not.toContain("im Log dieses Starts");
+    expect(hinweis).toContain("nicht in diesem");
+    expect(hinweis).toContain("Dienst migrate");
     expect(await neustart.dienste.code.pruefen(u.db, code, u.zeit())).toBe(true);
   });
 

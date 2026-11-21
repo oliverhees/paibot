@@ -31,6 +31,7 @@ const ids = {
   runId: newId("run"),
   toolCallId: newId("action"),
   approvalId: newId("action"),
+  deviceId: newId("device"),
 };
 
 const ARGS_DIGEST = `hmac-sha256:${"a7".repeat(32)}`;
@@ -72,6 +73,8 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
     toolCallId: ids.toolCallId,
     approvalId: ids.approvalId,
   },
+  "geraet.hinzufuegen": { deviceId: ids.deviceId },
+  "geraet.entfernen": { deviceId: ids.deviceId },
 };
 
 /**
@@ -158,6 +161,8 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     approvalExpired: false,
     approvalArgsDigest: ARGS_DIGEST,
   },
+  "geraet.hinzufuegen": { credential: "sitzung", kind: "browser" },
+  "geraet.entfernen": { credential: "sitzung", deviceActive: true, thisDevice: false },
 };
 
 /** Aktionen, die ein Bot auslöst (aus den Verträgen). */

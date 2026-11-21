@@ -1,5 +1,6 @@
 /**
- * PaiBot – Health-Endpunkt: meldet, ob App und Datenbank laufen.
+ * PaiBot – Health-Endpunkt: meldet, ob App und Datenbank laufen. Ohne Anmeldung erreichbar,
+ * deshalb ohne Version (die steht für Angemeldete in `X-Pb-Stand` und auf der Seite „Info“).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -9,7 +10,6 @@
  */
 
 import { APP_NAME } from "@paibot/shared";
-import { readStand, versionOf } from "@paibot/shared/stand";
 import { databaseHealth } from "../../../lib/health";
 
 const ROLLE_GEMELDET = Symbol.for("paibot.web.health-rolle-gemeldet");
@@ -32,7 +32,6 @@ export async function GET() {
       app: APP_NAME,
       db,
       time: new Date().toISOString(),
-      version: versionOf(readStand(process.env)),
     },
     { status: healthy ? 200 : 503, headers },
   );

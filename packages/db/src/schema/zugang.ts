@@ -1,5 +1,5 @@
 /**
- * PaiBot – Datenbankschema: Besitzer, Sitzungen und Zähler für Rate-Limits.
+ * PaiBot – Datenbankschema: Besitzer, Sitzungen, bekannte Geräte und Zähler für Rate-Limits.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -8,7 +8,7 @@
  * @since     2026-11-20
  */
 
-import type { OwnerId } from "@paibot/shared";
+import { DEVICE_KINDS, DEVICE_RIGHTS, type DeviceId, type OwnerId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -55,6 +55,10 @@ export const sessions = pgTable(
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     userAgent: text("user_agent"),
+    /** Gerät, zu dem die Sitzung gehört; endet mit dessen Widerruf. */
+    deviceId: text("device_id")
+      .$type<DeviceId>()
+      .references(() => geraete.id, { onDelete: "cascade" }),
   },
   (t) => [
     check("sessions_id_format", matches(t.id, PATTERNS.sessionId)),
@@ -63,6 +67,42 @@ export const sessions = pgTable(
     check("sessions_user_agent_laenge", sql`char_length(${t.userAgent}) <= 200`),
     check("sessions_ablauf_nach_start", sql`${t.expiresAt} > ${t.createdAt}`),
     index("sessions_expires_at_idx").on(t.expiresAt),
+  ],
+);
+
+/**
+ * Bekannte Geräte: Browser (später auch Apps), in denen sich der Besitzer angemeldet hat. Das
+ * Cookie des Geräts steht nur als SHA-256 da (`token_hash`). Ein widerrufenes oder abgelaufenes
+ * Gerät gilt nicht mehr; seine Sitzungen enden mit dem Widerruf.
+ */
+export const geraete = pgTable(
+  "geraete",
+  {
+    id: text("id").$type<DeviceId>().primaryKey(),
+    ownerId: text("owner_id")
+      .$type<OwnerId>()
+      .notNull()
+      .references(() => owner.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    kind: text("kind").$type<(typeof DEVICE_KINDS)[number]>().notNull().default("browser"),
+    name: text("name"),
+    rights: text("rights").$type<(typeof DEVICE_RIGHTS)[number]>().notNull().default("voll"),
+    /** Öffentlicher Schlüssel des Geräts; heute immer leer. */
+    publicKey: text("public_key"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    idCheck("geraete_id_format", t.id, "device"),
+    check("geraete_token_hash_format", matches(t.tokenHash, PATTERNS.sessionId)),
+    inListCheck("geraete_kind_werte", t.kind, DEVICE_KINDS),
+    inListCheck("geraete_rights_werte", t.rights, DEVICE_RIGHTS),
+    check("geraete_name_laenge", sql`char_length(${t.name}) <= 200`),
+    check("geraete_public_key_laenge", sql`char_length(${t.publicKey}) <= 2000`),
+    check("geraete_ablauf_nach_start", sql`${t.expiresAt} > ${t.createdAt}`),
+    index("geraete_owner_id_idx").on(t.ownerId),
   ],
 );
 
@@ -85,3 +125,4 @@ export const rateLimits = pgTable(
 export type Owner = typeof owner.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type RateLimit = typeof rateLimits.$inferSelect;
+export type Geraet = typeof geraete.$inferSelect;

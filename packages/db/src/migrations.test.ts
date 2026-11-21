@@ -26,6 +26,7 @@ const TABLES = [
   "bots",
   "conversation_events",
   "conversations",
+  "geraete",
   "installation_keys",
   "messages",
   "models",

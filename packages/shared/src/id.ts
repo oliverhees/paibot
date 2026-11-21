@@ -24,6 +24,7 @@ export const ID_PREFIX = {
   key: "sch",
   installation: "ins",
   rule: "reg",
+  device: "ger",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIX;
@@ -44,6 +45,7 @@ export type ActionId = Id<"action">;
 export type KeyId = Id<"key">;
 export type InstallationId = Id<"installation">;
 export type RuleRecordId = Id<"rule">;
+export type DeviceId = Id<"device">;
 
 /** Gesamtlänge einer ID: drei Zeichen Präfix, Unterstrich, 26 Zeichen. */
 export const ID_LENGTH = 30;

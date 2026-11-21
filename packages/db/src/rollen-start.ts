@@ -71,6 +71,20 @@ const consoleLog: StartLog = {
   error: (m) => console.error(`[paibot] ${m}`),
 };
 
+/**
+ * Meldung zu einem Objekt, das der Migrations-Schritt aus dem Weg geräumt hat. Solche Objekte
+ * stammen nicht von PaiBot; wer sie anlegen konnte, hatte vermutlich die Rechte der App.
+ */
+export function quarantineMessage(eintrag: string): string {
+  const [alt = eintrag, neu] = eintrag.split(" -> ");
+  if (neu === undefined) {
+    return `Gleichnamige Sicht außerhalb von public gelöscht: ${alt.replace(/ \(gelöscht\)$/, "")}. PaiBot legt so etwas nie an; jemand mit den Rechten der App könnte es gewesen sein. Prüfe den Server und tausche die Zugangsdaten.`;
+  }
+  const [schema = "", ...rest] = neu.split(".");
+  const name = rest.join(".");
+  return `Gleichnamige Tabelle außerhalb von public verschoben: ${alt} -> ${neu}. PaiBot legt so etwas nie an; jemand mit den Rechten der App könnte es gewesen sein. Öffne und lies sie nicht, lösche sie nur, mit dem Zugang aus DATABASE_MIGRATION_URL: drop table "${schema}"."${name}" cascade; Prüfe danach den Server und tausche die Zugangsdaten.`;
+}
+
 /** Ergebnis des Migrations-Schritts. */
 export type MigrationStepResult =
   | { ok: true; separateRoles: boolean }
@@ -106,9 +120,7 @@ export async function migrateDatabase(
       }
       if (result.appRole) log.info(`Rechte der App-Rolle ${result.appRole.role} gesetzt.`);
       for (const eintrag of result.appRole?.quarantined ?? []) {
-        log.warn(
-          `Gleichnamige Tabelle außerhalb von public verschoben: ${eintrag}. PaiBot nutzt sie nicht; sieh sie dir an und lösche sie dann mit dem Zugang aus DATABASE_MIGRATION_URL.`,
-        );
+        log.warn(quarantineMessage(eintrag));
       }
       return { ok: true, separateRoles };
     } catch (error) {
@@ -210,7 +222,7 @@ async function check(
       const behebbar = role.issues.every((issue) => MIGRATE_FIXES.includes(issue));
       const schatten =
         role.shadowTables !== undefined && role.shadowTables.length > 0
-          ? ` Gefunden: ${role.shadowTables.join(", ")}. Der Migrations-Schritt verschiebt solche Tabellen ins Schema ${QUARANTINE_SCHEMA_NAME}; von Hand geht es mit „drop table <name>;“ über den Zugang aus DATABASE_MIGRATION_URL.`
+          ? ` Gefunden: ${role.shadowTables.join(", ")}. Der Migrations-Schritt löscht gleichnamige Sichten und verschiebt Tabellen ins Schema ${QUARANTINE_SCHEMA_NAME}; von Hand: nicht öffnen, nur löschen mit „drop table <name> cascade;“ über den Zugang aus DATABASE_MIGRATION_URL.`
           : "";
       const text = `Die App verbindet sich als Rolle ${role.role} mit zu vielen Rechten oder falsch eingestellt (${gruende}). So lassen sich Schutz-Trigger der Belege abschalten oder Abfragen umlenken.${schatten} Starte den Migrations-Schritt (Dienst migrate) erneut; er setzt Rechte und Einstellungen der App-Rolle zurück. Ohne eigene App-Rolle: DATABASE_MIGRATION_URL auf die bisherige Adresse, DATABASE_URL auf die App-Rolle. ${HILFE}`;
       const allowed = options.env[ALLOW_PRIVILEGED_DB_ENV] === "1";

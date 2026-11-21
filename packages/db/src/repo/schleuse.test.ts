@@ -24,8 +24,9 @@ import {
   TEST_DATABASE_URL_ENV,
 } from "../testing";
 import { schleuse } from "./index";
+import { ZUKUNFT_TOLERANZ_SEKUNDEN } from "./schleuse";
 
-const zeit = (s: string) => new Date(`2026-11-21T08:00:${s}.000Z`);
+const zeit = (s: string) => new Date(`2026-11-20T08:00:${s}.000Z`);
 
 describe("schleuse (PGlite)", () => {
   let db: Database;
@@ -47,6 +48,26 @@ describe("schleuse (PGlite)", () => {
     await schleuse.report(db, { state: "schluessel_falsch", now: zeit("05") });
     await schleuse.report(db, { state: "bereit", now: zeit("03") });
     expect(await schleuse.get(db)).toEqual({ state: "schluessel_falsch", checkedAt: zeit("05") });
+  });
+
+  it("ein Zeitpunkt in der Zukunft wird auf die Uhr der Datenbank gekürzt", async () => {
+    const vorher = Date.now();
+    await schleuse.report(db, { state: "bereit", now: new Date("9999-01-01T00:00:00.000Z") });
+    const gelesen = await schleuse.get(db);
+    expect(gelesen?.state).toBe("bereit");
+    expect(gelesen?.checkedAt.getTime()).toBeLessThanOrEqual(
+      Date.now() + ZUKUNFT_TOLERANZ_SEKUNDEN * 1000 + 5000,
+    );
+    expect(gelesen?.checkedAt.getTime()).toBeGreaterThanOrEqual(vorher - 5000);
+  });
+
+  it("eine von Hand in die Zukunft gesetzte Meldung gilt nicht und hält keine neue auf", async () => {
+    await db.execute(
+      sql`insert into schleuse_zustand (id, state, checked_at) values ('singleton', 'bereit', '9999-01-01T00:00:00Z')`,
+    );
+    expect(await schleuse.get(db)).toBeUndefined();
+    await schleuse.report(db, { state: "nicht_erreichbar", now: zeit("09") });
+    expect(await schleuse.get(db)).toEqual({ state: "nicht_erreichbar", checkedAt: zeit("09") });
   });
 
   it("unbekannte Zustände werden abgewiesen, im Code und in der Datenbank", async () => {
@@ -100,7 +121,7 @@ describe.skipIf(BASE_URL === undefined)("schleuse gegen echtes Postgres mit der 
       Array.from({ length: 20 }, (_, i) =>
         schleuse.report(app.db, {
           state: i % 2 === 0 ? "bereit" : "nicht_erreichbar",
-          now: new Date(Date.UTC(2026, 10, 21, 9, 0, i)),
+          now: new Date(Date.UTC(2026, 10, 20, 9, 0, i)),
         }),
       ),
     );
@@ -108,7 +129,20 @@ describe.skipIf(BASE_URL === undefined)("schleuse gegen echtes Postgres mit der 
     expect(zeilen).toHaveLength(1);
     expect(await schleuse.get(app.db)).toEqual({
       state: "nicht_erreichbar",
-      checkedAt: new Date(Date.UTC(2026, 10, 21, 9, 0, 19)),
+      checkedAt: new Date(Date.UTC(2026, 10, 20, 9, 0, 19)),
+    });
+  });
+
+  it("eine mit der App-Rolle in die Zukunft datierte Meldung gilt nicht; der Worker überschreibt sie", async () => {
+    await schleuse.report(app.db, { state: "aus", now: zeit("20") });
+    const geaendert =
+      await app.sql`update schleuse_zustand set state = 'bereit', checked_at = '9999-01-01T00:00:00Z'`;
+    expect(geaendert.count).toBe(1);
+    expect(await schleuse.get(app.db)).toBeUndefined();
+    await schleuse.report(app.db, { state: "schluessel_falsch", now: zeit("30") });
+    expect(await schleuse.get(app.db)).toEqual({
+      state: "schluessel_falsch",
+      checkedAt: zeit("30"),
     });
   });
 

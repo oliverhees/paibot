@@ -34,7 +34,7 @@ Unter **Einstellungen** regelst du den Zugang zu deinem PaiBot und die Grenzen, 
 
    ![Reiter „Zugang“: oben „Passwort ändern“, darunter die Sitzungen „Firefox auf Windows“ und „Chrome auf Linux“, eine davon mit der Marke „diese Sitzung“, und der Knopf „Alle Sitzungen beenden“](assets/screenshots/einstellungen-zugang.png)
 2. Willst du überall abgemeldet sein (zum Beispiel, weil du ein Gerät verloren hast), klick auf **Alle Sitzungen beenden**.
-3. Bestätige die Rückfrage mit **Alle Sitzungen beenden**. Alle Geräte sind abgemeldet, auch dieses; du landest auf der Anmeldung.
+3. Bestätige die Rückfrage mit **Alle Sitzungen beenden**. Alle Geräte sind abgemeldet, auch dieses, und kein Browser gilt mehr als bekanntes Gerät; du landest auf der Anmeldung.
 
    ![Rückfrage „Alle Sitzungen beenden?“ mit „Abbrechen“ und „Alle Sitzungen beenden“](assets/screenshots/einstellungen-alle-beenden.png)
 4. Melde dich mit deinem Passwort wieder an.
@@ -85,7 +85,7 @@ Am Handy, Reiter „Zugang“, „Grenzen“ und die Seite „Info“:
 
 ## So funktioniert es
 
-- **Passwort ändern** prüft zuerst dein aktuelles Passwort. Nur wenn es stimmt, lässt das Tor die Aktion zu (Vorbedingung „Aktuelles Passwort bestätigt“). Danach werden in einem Schritt das neue Passwort gespeichert und alle Sitzungen gelöscht; dieses Gerät bekommt eine neue Sitzung. Auch ein falsches aktuelles Passwort steht als abgelehnte Aktion im Protokoll.
+- **Passwort ändern** prüft zuerst dein aktuelles Passwort. Nur wenn es stimmt, lässt das Tor die Aktion zu (Vorbedingung „Aktuelles Passwort bestätigt“). Danach werden in einem Schritt das neue Passwort gespeichert und alle Sitzungen und bekannten Geräte gelöscht; dieses Gerät bekommt eine neue Sitzung und gilt wieder als bekannt. Auch ein falsches aktuelles Passwort steht als abgelehnte Aktion im Protokoll.
 - **Sitzungen** zeigt nur, was gespeichert ist: Zeitpunkte und die Browser-Kennung, aus der PaiBot eine grobe Angabe wie „Chrome auf Android“ macht. Adressen oder Orte speichert PaiBot nicht. Lässt sich nichts sicher erkennen, steht „Gerät ohne Angabe“ da.
 - **Alle Sitzungen beenden** löscht alle Sitzungen. Offene Verbindungen anderer Geräte (zum Beispiel ein laufender Chat) enden spätestens beim nächsten Herzschlag nach etwa 15 Sekunden.
 - **Grenzen speichern** schickt nur die geänderten Felder. Die Aktion „Einstellung geändert“ läuft durch das Tor und bekommt zwei Belege (Entscheidung und Ergebnis); die Belege nennen, welche Felder sich geändert haben. Den Link zum Beleg zeigt die Seite direkt nach dem Speichern.

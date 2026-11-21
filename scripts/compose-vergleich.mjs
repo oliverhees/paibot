@@ -134,6 +134,27 @@ for (const dienst of PAIBOT_DIENSTE) {
     fehler.push(`${bauPfad}: Dienst ${dienst} braucht „pids_limit: 256“.`);
   }
 }
+// Jeder Dienst mit Log-Grenzen (Größe und Anzahl der Dateien), alle über denselben Block.
+const alleDienste = [...new Set(bau.filter((z) => z.dienst !== "").map((z) => z.dienst))];
+for (const dienst of alleDienste) {
+  if (!bau.some((z) => z.dienst === dienst && z.text === "    logging: *logging")) {
+    fehler.push(`${bauPfad}: Dienst ${dienst} braucht „logging: *logging“ (Log-Grenzen).`);
+  }
+}
+const logText = readFileSync(bauPfad, "utf8");
+if (
+  !/^x-logging: &logging\n {2}driver: json-file\n {2}options:\n {4}max-size: "\d+m"\n {4}max-file: "\d+"$/m.test(
+    logText,
+  )
+) {
+  fehler.push(`${bauPfad}: Block „x-logging“ mit driver json-file, max-size und max-file fehlt.`);
+}
+// APP_URL ist Pflicht: ohne sie bricht schon docker compose mit einer Meldung ab.
+if (!bau.some((z) => z.dienst === "web" && /^ {6}APP_URL: \$\{APP_URL:\?[^}]+\}$/.test(z.text))) {
+  fehler.push(
+    `${bauPfad}: Dienst web braucht „APP_URL: \${APP_URL:?…}“ (Pflichtwert mit Meldung).`,
+  );
+}
 const PROXY_ZEILE = ["TRUST_PROXY: $", "{TRUST_PROXY:-1}"].join("");
 if (!bau.some((z) => z.dienst === "web" && z.text.trim() === PROXY_ZEILE)) {
   fehler.push(

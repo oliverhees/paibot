@@ -1,5 +1,5 @@
 /**
- * PaiBot – Test für den Health-Endpunkt: Felder, Reihenfolge und Version.
+ * PaiBot – Test für den Health-Endpunkt: Felder und Reihenfolge, keine Version für Fremde.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -19,28 +19,27 @@ afterEach(() => {
 });
 
 describe("GET /api/health", () => {
-  it("meldet Status, App, Datenbank, Zeit und Version in dieser Reihenfolge", async () => {
+  it("meldet Status, App, Datenbank und Zeit in dieser Reihenfolge, ohne Version", async () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("PAIBOT_BUILD", "");
     const response = await GET();
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(Object.keys(body)).toEqual(["status", "app", "db", "time", "version"]);
-    expect(body).toMatchObject({
-      status: "ok",
-      app: "PaiBot",
-      db: "not_configured",
-      version: PAIBOT_VERSION,
-    });
+    expect(Object.keys(body)).toEqual(["status", "app", "db", "time"]);
+    expect(body).toMatchObject({ status: "ok", app: "PaiBot", db: "not_configured" });
     expect(body.time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
-  it("nennt nur die Version aus PAIBOT_BUILD, ohne den Teil ab +", async () => {
+  it("nennt weder Version noch Stand der Software, auch nicht mit PAIBOT_BUILD", async () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("PAIBOT_BUILD", "0.3.0+20261205.3f9c2ab");
-    const body = await (await GET()).json();
-    expect(body.version).toBe("0.3.0");
+    const response = await GET();
+    const text = await response.text();
+    expect(text).not.toContain("0.3.0");
+    expect(text).not.toContain(PAIBOT_VERSION);
+    expect(text).not.toContain("3f9c2ab");
+    expect([...response.headers.keys()].filter((k) => k.startsWith("x-pb"))).toEqual([]);
   });
 
   it("verbietet das Zwischenspeichern", async () => {
@@ -56,7 +55,7 @@ describe("GET /api/health", () => {
     const body = await response.json();
     expect(response.status).toBe(200);
     expect([...response.headers.keys()].filter((k) => k.startsWith("x-pb"))).toEqual([]);
-    expect(Object.keys(body)).toEqual(["status", "app", "db", "time", "version"]);
+    expect(Object.keys(body)).toEqual(["status", "app", "db", "time"]);
     expect(JSON.stringify(body)).not.toContain("rechte");
     expect(warn.mock.calls.flat().join(" ")).toContain("zu viele Rechte");
   });

@@ -8,11 +8,18 @@
  * @since     2026-11-20
  */
 
+import { repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import { RATE_LIMITS } from "@paibot/shared/konstanten";
 import { describe, expect, it } from "vitest";
 import { UNBEKANNTE_ADRESSE } from "./kopfzeilen";
-import { limitSchluessel, wirkung, zaehleLimits } from "./rate-limit";
+import {
+  _aufraeumenVergessen,
+  AUFRAEUMEN_ALLE_MS,
+  limitSchluessel,
+  wirkung,
+  zaehleLimits,
+} from "./rate-limit";
 
 const now = new Date("2026-11-20T10:00:00.000Z");
 
@@ -62,5 +69,71 @@ describe("Rate-Limits", () => {
     expect(wirkung("anmeldenIp", RATE_LIMITS.anmeldenIp, bezug)).toBe("verzoegern");
     expect(wirkung("anmeldenIp", RATE_LIMITS.anmeldenIp, { adresse: "1.2.3.4" })).toBe("sperren");
     expect(wirkung("nachricht", RATE_LIMITS.nachricht, bezug)).toBe("sperren");
+  });
+
+  it("beim Zählen löscht der Prozess gelegentlich alte Zähler, höchstens alle fünf Minuten", async () => {
+    const { db } = await createTestDb();
+    _aufraeumenVergessen();
+    const warten = async () => undefined;
+    const alt = new Date(now.getTime() - 2 * 60 * 60_000);
+    await repo.rateLimit.hit(db, {
+      key: "anmelden:ip:alt-1",
+      max: 5,
+      windowSeconds: 900,
+      now: alt,
+    });
+    await zaehleLimits(
+      db,
+      ["nachricht"],
+      { adresse: "x", ownerId: "bes_06f8k2m9qz3w7x1c4b5n8p0r2t" as never },
+      { now, warten },
+    );
+    const nachErstem = await repo.rateLimit.peek(db, {
+      key: "anmelden:ip:alt-1",
+      max: 5,
+      windowSeconds: 900,
+      now: alt,
+    });
+    expect(nachErstem.count).toBe(0);
+    await repo.rateLimit.hit(db, {
+      key: "anmelden:ip:alt-2",
+      max: 5,
+      windowSeconds: 900,
+      now: alt,
+    });
+    const bald = new Date(now.getTime() + AUFRAEUMEN_ALLE_MS - 1000);
+    await zaehleLimits(
+      db,
+      ["nachricht"],
+      { adresse: "x", ownerId: "bes_06f8k2m9qz3w7x1c4b5n8p0r2t" as never },
+      { now: bald, warten },
+    );
+    expect(
+      (
+        await repo.rateLimit.peek(db, {
+          key: "anmelden:ip:alt-2",
+          max: 5,
+          windowSeconds: 900,
+          now: alt,
+        })
+      ).count,
+    ).toBe(1);
+    const spaeter = new Date(now.getTime() + AUFRAEUMEN_ALLE_MS + 1000);
+    await zaehleLimits(
+      db,
+      ["nachricht"],
+      { adresse: "x", ownerId: "bes_06f8k2m9qz3w7x1c4b5n8p0r2t" as never },
+      { now: spaeter, warten },
+    );
+    expect(
+      (
+        await repo.rateLimit.peek(db, {
+          key: "anmelden:ip:alt-2",
+          max: 5,
+          windowSeconds: 900,
+          now: alt,
+        })
+      ).count,
+    ).toBe(0);
   });
 });
