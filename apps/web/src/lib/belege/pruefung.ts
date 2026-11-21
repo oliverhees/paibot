@@ -178,6 +178,9 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
   let titel: string;
   if (bericht.checked === 0 && stufe === "gueltig") {
     titel = t("belege.urteil.leer");
+  } else if (stufe === "gueltig" && (verdict.notes ?? []).length > 0) {
+    // Ein Rückschritt der Fassung ändert die Stufe nicht, aber der Titel sagt nicht „vertrauenswürdig“.
+    titel = t("belege.urteil.gueltig_anzahl_warnung", { anzahl: bericht.checked });
   } else if (stufe === "gueltig") {
     titel = t("belege.urteil.gueltig_anzahl", { anzahl: bericht.checked });
   } else if (stufe === "nicht_pruefbar") {

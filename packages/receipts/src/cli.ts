@@ -217,7 +217,11 @@ function printReport(report: ChainReport, io: CliIo): number {
     const line = describe(check);
     if (line !== undefined) io.out(`  ${line}`);
   }
-  io.out(t(`belege.urteil.${verdict.level}`));
+  io.out(
+    warnung && verdict.level === "vertrauenswuerdig"
+      ? t("belege.urteil.vertrauenswuerdig_warnung")
+      : t(`belege.urteil.${verdict.level}`),
+  );
   for (const finding of verdict.findings) {
     const where = finding.seq === undefined ? "" : ` (${finding.seq})`;
     io.out(`  ✗ ${problemText(finding.problem)}${where}`);

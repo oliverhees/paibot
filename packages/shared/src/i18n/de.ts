@@ -1709,4 +1709,8 @@ export const de = {
   "belege.warnung.fassung_rueckschritt":
     "Warnung: Nach einem Beleg einer neueren Tor-Fassung folgt einer einer älteren. Das kann beim Zurückgehen auf eine ältere PaiBot-Fassung oder kurz beim Update passieren. Ist beides nicht geschehen, ist das ein Warnzeichen.",
   "pruefung.mit_warnung": "in sich stimmig, mit Warnung",
+  "belege.urteil.vertrauenswuerdig_warnung":
+    "Kette in sich stimmig, alle Schlüssel aus der Kette, aber mit Warnung.",
+  "belege.urteil.gueltig_anzahl_warnung":
+    "Mit Warnung: {anzahl} Belege geprüft, in sich stimmig, alle Schlüssel aus der Kette. Bitte die Warnung unten lesen.",
 } as const satisfies Record<string, string | readonly string[]>;

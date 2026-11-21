@@ -121,6 +121,8 @@ describe("Belege-Seite und Fassung des Tors", () => {
     expect(ergebnis.warnung).toBe(true);
     expect(urteilZustand(ergebnis.stufe, ergebnis.warnung)).toBe("gebrochen");
     expect(urteilZustand("gueltig")).toBe("gueltig");
+    expect(ergebnis.titel).toBe(t("belege.urteil.gueltig_anzahl_warnung", { anzahl: 5 }));
+    expect(ergebnis.titel).not.toMatch(/(?<!un)gültig|vertrauenswürdig/i);
     const punkt = ergebnis.punkte.find((p) =>
       p.text.startsWith(t("belege.warnung.fassung_rueckschritt")),
     );

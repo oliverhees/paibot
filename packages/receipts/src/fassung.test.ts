@@ -212,6 +212,9 @@ describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
   });
 });
 
+/** „gültig“ oder „vertrauenswürdig“ ohne Einschränkung (nicht „ungültig“). */
+const UNEINGESCHRAENKT = /(?<!un)gültig|vertrauenswürdig/i;
+
 describe("Warnung Rückschritt", () => {
   it("Werkzeug-Aufruf als Fassung 1 nach Fassung 2, der nach Fassung 2 gedeckelt wäre: Warnung, Stufe unverändert", async () => {
     const kette = await TestKette.neu();
@@ -269,6 +272,8 @@ describe("Warnung Rückschritt", () => {
     expect(out[0]).not.toMatch(/gültig/);
     expect(out).toContain(`  ⚠ ${t("belege.warnung.fassung_rueckschritt")} (4)`);
     expect(out.join("\n")).not.toContain("ℹ");
+    expect(out[2]).toBe(t("belege.urteil.vertrauenswuerdig_warnung"));
+    for (const line of out) expect(line).not.toMatch(UNEINGESCHRAENKT);
   });
 
   it("Entscheidung ohne Feld (Fassung 1) nach einer mit gateFormat 2: Warnung, Urteil unverändert", async () => {
@@ -288,6 +293,7 @@ describe("Warnung Rückschritt", () => {
     expect(exit).toBe(CLI_EXIT.gueltig);
     expect(out.join("\n")).toContain(`⚠ ${t("belege.warnung.fassung_rueckschritt")}`);
     expect(out[0]).toContain(t("pruefung.mit_warnung"));
+    for (const line of out) expect(line).not.toMatch(UNEINGESCHRAENKT);
   });
 
   it("ohne Feld in jeder Entscheidung: kein Hinweis", async () => {
