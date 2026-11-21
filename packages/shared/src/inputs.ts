@@ -187,6 +187,14 @@ export const setupConnectionTestInput = z.strictObject({
 export type SetupConnectionTestInput = z.infer<typeof setupConnectionTestInput>;
 
 /**
+ * Einrichtungs-Code prüfen (`POST /api/einrichtung/code-pruefen`), schon im ersten Schritt der
+ * Einrichtung. Nur der Code, nichts wird gespeichert; er zählt auf dasselbe Limit je Adresse wie
+ * der Abschluss.
+ */
+export const setupCodeCheckInput = z.strictObject({ setupCode: setupCodeSchema });
+export type SetupCodeCheckInput = z.infer<typeof setupCodeCheckInput>;
+
+/**
  * Verbindungstest nach der Anmeldung (`POST /api/anbieter/verbindungstest`) mit einem neuen
  * Schlüssel oder dem gespeicherten eines Anbieters.
  */

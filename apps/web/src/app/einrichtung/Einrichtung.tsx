@@ -156,6 +156,7 @@ export function Einrichtung({
   const [schluessel, setSchluessel] = useState("");
   const [modelle, setModelle] = useState<Modell[] | undefined>();
   const [testLaeuft, setTestLaeuft] = useState(false);
+  const [codeLaeuft, setCodeLaeuft] = useState(false);
   const [testOk, setTestOk] = useState<string | undefined>();
   const [modell, setModell] = useState<string | undefined>();
   const [schleuse, setSchleuse] = useState(false);
@@ -372,8 +373,25 @@ export function Einrichtung({
     gehe(ziel);
   }
 
+  /** Schritt 1: Der Server sagt gleich, ob der Code stimmt (nichts wird gespeichert). */
+  async function codePruefen(): Promise<boolean> {
+    if (!pruefeSchritt()) return false;
+    setCodeLaeuft(true);
+    const antwort = await apiFetch<{ gueltig: true }>("POST", "/api/einrichtung/code-pruefen", {
+      setupCode: code,
+    });
+    setCodeLaeuft(false);
+    if (antwort.ok) return true;
+    fehlerSetzen("code", fehlerZuordnen(antwort.fehler).text);
+    return false;
+  }
+
   async function weiter(event: FormEvent) {
     event.preventDefault();
+    if (schritt === "code") {
+      if (!codeLaeuft && (await codePruefen())) naechster();
+      return;
+    }
     // Schlüssel eingegeben, aber noch nicht getestet: erst testen, dann weiter zur Modell-Wahl.
     if (schritt === "schluessel" && !eigenSpaeter && schluessel.trim() !== "" && !geprueft) {
       if (await verbindungTesten()) gehe("modell");
@@ -881,7 +899,7 @@ export function Einrichtung({
                     art="primaer"
                     type="submit"
                     groesse={schritt === "bot" ? "gross" : "normal"}
-                    laedt={sendet}
+                    laedt={sendet || codeLaeuft}
                   >
                     {schritt === "bot"
                       ? sendet

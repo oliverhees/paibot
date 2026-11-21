@@ -566,6 +566,10 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
   health: null,
   ereignisse: null,
   einrichtungStatus: { vorher: frisch, aufruf: async () => ({}) },
+  einrichtungCodePruefen: {
+    vorher: frisch,
+    aufruf: async () => ({ koerper: { setupCode: TEST_CODE } }),
+  },
   einrichtungVerbindungstest: {
     vorher: frisch,
     aufruf: async () => ({ koerper: { setupCode: TEST_CODE, apiKey: TEST_SCHLUESSEL } }),
