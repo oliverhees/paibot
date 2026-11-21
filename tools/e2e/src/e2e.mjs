@@ -56,6 +56,11 @@ async function ladePlaywright() {
 }
 
 const playwright = await ladePlaywright();
+if (playwright === undefined && process.env.PAIBOT_E2E_PFLICHT === "1") {
+  // In der CI darf die Prüfung nicht still übersprungen werden.
+  console.error("[e2e] Playwright fehlt, PAIBOT_E2E_PFLICHT=1 verlangt die Prüfung.");
+  process.exit(1);
+}
 if (playwright === undefined) {
   log(
     "ÜBERSPRUNGEN: Playwright fehlt (nicht im Projekt enthalten). Einmalig außerhalb des Projekts: " +

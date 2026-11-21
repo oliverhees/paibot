@@ -62,6 +62,105 @@ jobs:
       - name: Sicherheitsmeldungen der Abhängigkeiten (Betrieb)
         run: pnpm audit --prod --audit-level high
 
+  # Ende-zu-Ende-Prüfung im Produktions-Build (tools/e2e): Browser-Ablauf mit Netz-Sperre in
+  # Web-App, Worker und Migrations-Schritt, dazu die beiden Gegenproben, die rot werden müssen.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    timeout-minutes: 30
+    services:
+      # Gleicher Dienst-Container wie im Job check. Die Prüfung legt darauf eine eigene
+      # Wegwerf-Datenbank und Rolle an und löscht beides am Ende.
+      postgres:
+        image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
+        env:
+          POSTGRES_PASSWORD: ci-wegwerf
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      PAIBOT_E2E_DATABASE_URL: postgres://postgres:ci-wegwerf@127.0.0.1:5432/postgres
+      # Fehlt Playwright, bricht die Prüfung ab, statt sich als übersprungen zu melden.
+      PAIBOT_E2E_PFLICHT: "1"
+      # Fest gepinnt; muss zur Playwright-Fassung passen, mit der die Prüfung lokal läuft.
+      PLAYWRIGHT_VERSION: 1.63.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Playwright gehört nicht zu den Abhängigkeiten des Projekts: eigener Ordner außerhalb des
+      # Projekts, exakte Fassung, ohne Installations-Skripte; Chromium samt Systempaketen.
+      - name: Playwright und Chromium installieren (gepinnt)
+        run: |
+          set -eu
+          pw="$RUNNER_TEMP/playwright"
+          npm install --prefix "$pw" --no-save --no-audit --no-fund --ignore-scripts "playwright@$PLAYWRIGHT_VERSION"
+          echo "NODE_PATH=$pw/node_modules" >> "$GITHUB_ENV"
+          node "$pw/node_modules/playwright/cli.js" install --with-deps chromium
+          version=$(node -e "console.log(require('$pw/node_modules/playwright/package.json').version)")
+          [ "$version" = "$PLAYWRIGHT_VERSION" ] || { echo "Playwright $version statt $PLAYWRIGHT_VERSION"; exit 1; }
+      - run: pnpm build
+      - name: Ende-zu-Ende-Prüfung
+        run: node tools/e2e/src/e2e.mjs --ausgabe "$RUNNER_TEMP/e2e"
+      # Gegenproben: Ein absichtlicher Aufruf nach außen (in der Web-App bzw. im Browser) muss die
+      # Prüfung rot machen, und zwar aus genau diesem Grund.
+      - name: Gegenprobe – Aufruf nach außen aus der Web-App wird erkannt
+        run: |
+          set +e
+          node tools/e2e/src/e2e.mjs --gegenprobe server --ausgabe "$RUNNER_TEMP/e2e-gegenprobe-server" > "$RUNNER_TEMP/gegenprobe-server.txt" 2>&1
+          code=$?
+          set -e
+          tail -15 "$RUNNER_TEMP/gegenprobe-server.txt"
+          [ "$code" = "1" ] || { echo "Gegenprobe server: Exit $code statt 1"; exit 1; }
+          grep -qF "FEHLER kein Verkehr nach außen (Server)" "$RUNNER_TEMP/gegenprobe-server.txt" || { echo "Gegenprobe server: Verstoß nicht gemeldet"; exit 1; }
+          grep -qE "Netz \(web\): tcp → example\.org:443" "$RUNNER_TEMP/gegenprobe-server.txt" || { echo "Gegenprobe server: Ziel nicht im Log"; exit 1; }
+          echo "Gegenprobe server ok: rot, wie erwartet"
+      - name: Gegenprobe – Aufruf nach außen im Browser wird erkannt
+        run: |
+          set +e
+          node tools/e2e/src/e2e.mjs --gegenprobe browser --ausgabe "$RUNNER_TEMP/e2e-gegenprobe-browser" > "$RUNNER_TEMP/gegenprobe-browser.txt" 2>&1
+          code=$?
+          set -e
+          tail -15 "$RUNNER_TEMP/gegenprobe-browser.txt"
+          [ "$code" = "1" ] || { echo "Gegenprobe browser: Exit $code statt 1"; exit 1; }
+          grep -qF "FEHLER kein Verkehr nach außen (Browser)" "$RUNNER_TEMP/gegenprobe-browser.txt" || { echo "Gegenprobe browser: Verstoß nicht gemeldet"; exit 1; }
+          echo "Gegenprobe browser ok: rot, wie erwartet"
+      # Kein Artefakt (dafür bräuchte es eine weitere Action): im Fehlerfall die wichtigsten Zeilen.
+      - name: Ergebnis und Logs im Fehlerfall
+        if: failure()
+        run: |
+          for ordner in "$RUNNER_TEMP"/e2e "$RUNNER_TEMP"/e2e-gegenprobe-*; do
+            [ -d "$ordner" ] || continue
+            echo "::group::$ordner – ergebnis.json"
+            if [ -f "$ordner/ergebnis.json" ]; then
+              node -e 'const e=require(process.argv[1]); for (const s of e.schritte) console.log((s.ok?"ok     ":"FEHLER ")+s.name+(s.fehler?"\n       "+s.fehler.split("\n").slice(0,8).join("\n       "):"")); console.log(JSON.stringify({pruefungen:e.pruefungen, netz:e.netz, fremdImBrowser:e.fremdImBrowser, konsole:e.konsole}, null, 2))' "$ordner/ergebnis.json"
+            else
+              echo "keine ergebnis.json"
+            fi
+            echo "::endgroup::"
+            for log in migrate web worker worker-2 worker-3 anbieter belege-pruefen; do
+              [ -f "$ordner/$log.log" ] || continue
+              echo "::group::$ordner – $log.log (Ende)"
+              tail -60 "$ordner/$log.log"
+              echo "::endgroup::"
+            done
+            if [ -f "$ordner/netz.jsonl" ]; then
+              echo "::group::$ordner – netz.jsonl (ohne Start-Zeilen)"
+              grep -v '"art":"start"' "$ordner/netz.jsonl" | tail -40 || true
+              echo "::endgroup::"
+            fi
+          done
+
   docker:
     runs-on: ubuntu-latest
     needs: check

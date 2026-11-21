@@ -203,12 +203,29 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
     const netzLog = path.join(ausgabe, "netz.jsonl");
     rmSync(netzLog, { force: true });
 
-    // 1. Postgres: eigener Server, Passwort-Anmeldung, eigener Port
-    const pgPort = await freierPort();
-    log(`Postgres auf 127.0.0.1:${pgPort} …`);
-    const server = starteEigenenServer({ port: pgPort });
-    aufgaben.push(() => server.stop());
-    const db = await legeDatenbankAn(ROOT, server.adresse, randomBytes(8).toString("hex"));
+    // 1. Postgres: eigener Server (Passwort-Anmeldung, eigener Port) oder, mit
+    //    PAIBOT_E2E_DATABASE_URL, eine eigene Wegwerf-Datenbank auf einem vorhandenen Server
+    //    (Benutzer mit Rechten zum Anlegen von Datenbanken und Rollen, z. B. ein Dienst-Container
+    //    in der CI). Datenbank und Rolle werden am Ende wieder gelöscht.
+    const vorhanden = process.env.PAIBOT_E2E_DATABASE_URL;
+    let verwalter;
+    let pg;
+    if (vorhanden) {
+      const adresse = new URL(vorhanden);
+      const host = adresse.hostname === "localhost" ? "127.0.0.1" : adresse.hostname;
+      pg = `${host}:${adresse.port || "5432"}`;
+      log(`Wegwerf-Datenbank auf dem Server aus PAIBOT_E2E_DATABASE_URL (${pg}) …`);
+      verwalter = vorhanden;
+    } else {
+      const pgPort = await freierPort();
+      pg = `127.0.0.1:${pgPort}`;
+      log(`Postgres auf ${pg} …`);
+      const server = starteEigenenServer({ port: pgPort });
+      aufgaben.push(() => server.stop());
+      verwalter = server.adresse;
+    }
+    const db = await legeDatenbankAn(ROOT, verwalter, randomBytes(8).toString("hex"));
+    if (vorhanden) aufgaben.push(() => db.loesche());
 
     // 2. Test-Anbieter
     const anbieterPort = await freierPort();
@@ -253,7 +270,6 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
     cpSync(MIGRATIONEN, migrationen, { recursive: true });
     const webPort = await freierPort();
     const url = `http://127.0.0.1:${webPort}`;
-    const pg = `127.0.0.1:${pgPort}`;
     const sperre = (rolle, erlaubt, zusatz) => ({
       NODE_OPTIONS: [SPERRE, ...(zusatz ? [zusatz] : [])].map((d) => `--require ${d}`).join(" "),
       PAIBOT_E2E_NETZ_LOG: netzLog,
