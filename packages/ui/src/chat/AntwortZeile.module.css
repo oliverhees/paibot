@@ -123,6 +123,19 @@ button.teil:focus-visible {
   font-size: 11px;
   font-weight: 500;
   color: var(--ink-soft);
+  overflow: hidden;
+}
+
+/* Nur der Teil „Modell“ wird schmaler; Beleg und Weg behalten ihre Breite. Eine lange Herkunft
+   endet mit „…“ statt mitten im Zeichen abgeschnitten (ganz steht sie im Titel und aufgeklappt). */
+.teil:not(.modell) {
+  flex-shrink: 0;
+}
+
+.modell > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kurz {

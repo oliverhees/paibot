@@ -111,8 +111,10 @@ export const BEISPIEL_GERAET =
 
 /** Ein Besuch der App wie im Browser: Seite laden (Cookie, Prüfzeichen), dann Schnittstellen. */
 export class Besuch {
-  constructor(url) {
+  /** `kennung`: Browser-Kennung der Besuche (Standard `BEISPIEL_GERAET`). */
+  constructor(url, kennung = BEISPIEL_GERAET) {
     this.url = url.replace(/\/+$/, "");
+    this.kennung = kennung;
     this.dose = new Keksdose();
     this.pruefzeichen = undefined;
   }
@@ -120,7 +122,7 @@ export class Besuch {
   /** Lädt eine Seite und merkt sich Cookie und Prüfzeichen aus `<meta name="pb-pruefzeichen">`. */
   async seite(pfad) {
     const antwort = await fetch(`${this.url}${pfad}`, {
-      headers: { cookie: this.dose.kopf(), "user-agent": BEISPIEL_GERAET },
+      headers: { cookie: this.dose.kopf(), "user-agent": this.kennung },
       redirect: "manual",
     });
     this.dose.nimm(antwort);
@@ -135,7 +137,7 @@ export class Besuch {
     const kopf = {
       cookie: this.dose.kopf(),
       accept: "application/json",
-      "user-agent": BEISPIEL_GERAET,
+      "user-agent": this.kennung,
     };
     if (methode !== "GET") {
       kopf.origin = this.url;
@@ -198,10 +200,11 @@ export async function richteEin(lauf) {
  * Meldet sich mit dem Wegwerf-Passwort an; der Besuch trägt danach die Sitzung. Mit dem
  * Geräte-Cookie aus der Einrichtung (`lauf.beispielGeraet`) ist es dasselbe bekannte Beispiel-Gerät,
  * kein neues; sonst sähen alle anderen Geräte (der Browser der Aufnahmen) den Hinweis auf eine neue
- * Anmeldung.
+ * Anmeldung. Das Geräte-Cookie gilt nur in derselben Art Browser wie beim Anlegen; deshalb nutzt der
+ * Besuch die Browser-Kennung, die mit dem Gerät gemerkt wurde (`lauf.beispielGeraet.kennung`).
  */
 export async function meldeAn(lauf) {
-  const besuch = new Besuch(lauf.url);
+  const besuch = new Besuch(lauf.url, lauf.beispielGeraet?.kennung ?? BEISPIEL_GERAET);
   if (lauf.beispielGeraet?.name && lauf.beispielGeraet?.wert) {
     besuch.dose.setze(lauf.beispielGeraet.name, lauf.beispielGeraet.wert);
   }

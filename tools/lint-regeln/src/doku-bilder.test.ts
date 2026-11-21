@@ -509,6 +509,7 @@ const beispiel = await laden<{
     kopf(): string;
   };
   meldeAn(lauf: Record<string, unknown>): Promise<unknown>;
+  BEISPIEL_GERAET: string;
   geraetAusKeksen(
     kekse: { name: string; value: string }[] | undefined,
   ): { name: string; wert: string } | undefined;
@@ -525,6 +526,7 @@ describe("Beispiel-Gerät der Doku-Umgebung", () => {
   /** Kleine Attrappe der App: Einrichtung setzt ein Geräte-Cookie, Anmelden merkt sich die Cookies. */
   async function attrappe() {
     const anmeldungen: string[] = [];
+    const kennungen: string[] = [];
     const server = httpServer((req, res) => {
       const kopf: Record<string, string | string[]> = { "content-type": "text/html" };
       if (req.url === "/api/einrichtung" && req.method === "POST") {
@@ -535,6 +537,7 @@ describe("Beispiel-Gerät der Doku-Umgebung", () => {
       }
       if (req.url === "/api/zugang/anmelden" && req.method === "POST") {
         anmeldungen.push(String(req.headers.cookie ?? ""));
+        kennungen.push(String(req.headers["user-agent"] ?? ""));
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ ok: true, daten: { angemeldet: true } }));
         return;
@@ -547,6 +550,7 @@ describe("Beispiel-Gerät der Doku-Umgebung", () => {
     return {
       url: `http://127.0.0.1:${adresse.port}`,
       anmeldungen,
+      kennungen,
       stop: () => new Promise((r) => server.close(r)),
     };
   }
@@ -600,6 +604,14 @@ describe("Beispiel-Gerät der Doku-Umgebung", () => {
       // Ohne gemerktes Gerät (ältere Lauf-Datei) bleibt es wie bisher: neues Gerät.
       await daten.meldeAn({ ...nachher, beispielGeraet: undefined });
       expect(app.anmeldungen.at(-1)).not.toContain("pb_geraet");
+      // Das Cookie gilt nur in derselben Art Browser: Mit gemerkter Kennung meldet sich der Besuch
+      // mit genau dieser an, sonst mit der Beispiel-Kennung.
+      expect(app.kennungen.at(-1)).toBe(daten.BEISPIEL_GERAET);
+      const kennung = "Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/150.0.0.0";
+      const gemerkt = nachher.beispielGeraet as Record<string, unknown>;
+      await daten.meldeAn({ ...nachher, beispielGeraet: { ...gemerkt, kennung } });
+      expect(app.anmeldungen.at(-1)).toContain("pb_geraet=kennung.zeichen");
+      expect(app.kennungen.at(-1)).toBe(kennung);
     } finally {
       await app.stop();
       rmSync(ordner, { recursive: true, force: true });

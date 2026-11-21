@@ -342,7 +342,9 @@ async function anmeldung(browser) {
     sitzung = await context.storageState();
     const gemerkt = geraetAusKeksen(sitzung.cookies);
     if (lauf && !lauf.beispielGeraet && gemerkt) {
-      lauf = aendereLauf({ beispielGeraet: gemerkt }, LAUF);
+      // Mit der Browser-Kennung merken: Das Cookie gilt nur in derselben Art Browser.
+      const kennung = await page.evaluate(() => navigator.userAgent);
+      lauf = aendereLauf({ beispielGeraet: { ...gemerkt, kennung } }, LAUF);
     }
     return sitzung;
   } finally {
