@@ -335,8 +335,9 @@
   font-weight: 550;
   color: var(--ink);
   white-space: nowrap;
-  text-decoration: none;
   min-width: 0;
+  overflow: hidden;
+  text-decoration: none;
 }
 
 .modellKnopf:hover {
@@ -346,10 +347,15 @@
 .region {
   font-size: var(--schrift-xs);
   font-weight: 650;
-  color: var(--on-eu-soft);
-  background: var(--eu-soft);
+  color: var(--ink-soft);
+  background: var(--surface-raised);
   border-radius: var(--radius-pill);
   padding: 1px 7px;
+  /* Die Herkunft ist ein ganzer Satz; schmal wird sie gekürzt (vollständig im aria-label). */
+  min-width: 0;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nurLesbar {
@@ -582,6 +588,10 @@
   .modellKnopf {
     padding: 0;
     border: 0;
+  }
+
+  .region {
+    max-width: 14ch;
   }
 
   .belegZeilen {
