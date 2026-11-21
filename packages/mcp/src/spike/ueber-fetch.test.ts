@@ -8,7 +8,6 @@
  * @since     2026-11-21
  */
 
-// biome-ignore lint/style/noRestrictedImports: Prüfung der Bibliothek; nur in dieser Test-Datei
 import { auth, createMCPClient, type OAuthClientProvider } from "@ai-sdk/mcp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {

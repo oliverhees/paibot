@@ -9,7 +9,6 @@
  * @since     2026-11-21
  */
 
-// biome-ignore lint/style/noRestrictedImports: Prüfung der Bibliothek; nur in dieser Test-Datei
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Ausnahme nur für diese Prüfung, siehe `grenzen.test.ts`.
