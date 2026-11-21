@@ -1,0 +1,257 @@
+# PaiBot – Release: prüft den Stand, baut das Image für amd64 und arm64 und veröffentlicht es auf GHCR.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-21
+
+# Ablauf:
+#   1. version  – Version aus dem Tag (v1.2.3 → 1.2.3); per Hand gestartet ohne Tag: sha-<Commit>.
+#   2. check    – dieselben Prüfungen wie in der CI (Lint, Köpfe, Typen, Tests, Build, Lizenzen, Doku).
+#   3. bauen-*  – je Plattform auf einem passenden Runner bauen, mit Herkunftsnachweis (provenance)
+#                 und Stückliste (SBOM), nur per Digest hochladen.
+#   4. veroeffentlichen – beide Plattformen unter einem Tag zusammenführen; Digest in die Übersicht.
+#
+# Tags: <Version> immer; latest nur bei einem Tag v* ohne Vorabkennung (z. B. nicht v1.2.3-rc.1)
+# und nie bei einem Start per Hand. Images stehen unter ghcr.io/oliverhees/paibot.
+# Rechte: nur contents: read; packages: write allein in den Jobs, die hochladen. Keine weiteren
+# Geheimnisse außer dem GITHUB_TOKEN des Laufs.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/oliverhees/paibot
+  # Fest gewählte BuildKit-Version für den Bau mit Herkunftsnachweis.
+  BUILDKIT_IMAGE: moby/buildkit:v0.31.1@sha256:6b59b7df63a8cb9902736f9ddf7fcff8261613d3e7449b8ea8b7537fc399c03a
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      latest: ${{ steps.v.outputs.latest }}
+    steps:
+      - id: v
+        env:
+          EREIGNIS: ${{ github.event_name }}
+          REF_TYP: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -eu
+          latest=false
+          if [ "$REF_TYP" = "tag" ]; then
+            if ! printf '%s' "$REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+              echo "Tag $REF_NAME hat nicht die Form v<Haupt>.<Neben>.<Fix> (z. B. v1.2.3 oder v1.2.3-rc.1)." >&2
+              exit 1
+            fi
+            version=${REF_NAME#v}
+            case "$version" in
+              *-*) ;;
+              *) [ "$EREIGNIS" = "push" ] && latest=true ;;
+            esac
+          else
+            version="sha-$(printf '%s' "$COMMIT" | cut -c1-12)"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "Version: $version (latest: $latest)"
+
+  check:
+    runs-on: ubuntu-latest
+    services:
+      # Wegwerf-Datenbank nur für die Tests, wie in der CI.
+      postgres:
+        image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
+        env:
+          POSTGRES_PASSWORD: ci-wegwerf
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      PAIBOT_TEST_DATABASE_URL: postgres://postgres:ci-wegwerf@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm headers:check
+      - run: pnpm typecheck
+      # Nacheinander, aus demselben Grund wie in der CI (Speicher und Zeitgrenzen auf dem Runner).
+      - run: pnpm test --concurrency=1
+      - run: pnpm build
+      - run: pnpm licenses:check
+      - run: pnpm doku:check
+      - name: Compose mit fertigem Image entspricht der Aufstellung mit Bau
+        run: node scripts/compose-vergleich.mjs
+      - name: Sicherheitsmeldungen der Abhängigkeiten (Betrieb)
+        run: pnpm audit --prod --audit-level high
+
+  bauen-amd64:
+    needs: [version, check]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.bau.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Bei GHCR anmelden
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - id: bau
+        name: Image bauen und per Digest hochladen
+        env:
+          PLATTFORM: linux/amd64
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -eu
+          docker buildx create --name paibot-release --driver docker-container \
+            --driver-opt "image=$BUILDKIT_IMAGE" --use
+          docker buildx build \
+            --platform "$PLATTFORM" \
+            --file apps/web/Dockerfile \
+            --provenance=mode=max \
+            --sbom=true \
+            --label "org.opencontainers.image.title=PaiBot" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.url=https://paibot.de" \
+            --label "org.opencontainers.image.version=$VERSION" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --output "type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true" \
+            --metadata-file /tmp/bau.json \
+            .
+          digest=$(python3 -c 'import json; print(json.load(open("/tmp/bau.json"))["containerimage.digest"])')
+          printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$' || { echo "Kein gültiger Digest: $digest" >&2; exit 1; }
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "$PLATTFORM: $IMAGE@$digest"
+      - name: Abmelden
+        if: always()
+        run: docker logout ghcr.io
+
+  bauen-arm64:
+    needs: [version, check]
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.bau.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Bei GHCR anmelden
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - id: bau
+        name: Image bauen und per Digest hochladen
+        env:
+          PLATTFORM: linux/arm64
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -eu
+          docker buildx create --name paibot-release --driver docker-container \
+            --driver-opt "image=$BUILDKIT_IMAGE" --use
+          docker buildx build \
+            --platform "$PLATTFORM" \
+            --file apps/web/Dockerfile \
+            --provenance=mode=max \
+            --sbom=true \
+            --label "org.opencontainers.image.title=PaiBot" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.url=https://paibot.de" \
+            --label "org.opencontainers.image.version=$VERSION" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --output "type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true" \
+            --metadata-file /tmp/bau.json \
+            .
+          digest=$(python3 -c 'import json; print(json.load(open("/tmp/bau.json"))["containerimage.digest"])')
+          printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$' || { echo "Kein gültiger Digest: $digest" >&2; exit 1; }
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "$PLATTFORM: $IMAGE@$digest"
+      - name: Abmelden
+        if: always()
+        run: docker logout ghcr.io
+
+  veroeffentlichen:
+    needs: [version, bauen-amd64, bauen-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Bei GHCR anmelden
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Plattformen unter dem Versions-Tag zusammenführen
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          LATEST: ${{ needs.version.outputs.latest }}
+          DIGEST_AMD64: ${{ needs.bauen-amd64.outputs.digest }}
+          DIGEST_ARM64: ${{ needs.bauen-arm64.outputs.digest }}
+        run: |
+          set -eu
+          tags="--tag $IMAGE:$VERSION"
+          if [ "$LATEST" = "true" ]; then tags="$tags --tag $IMAGE:latest"; fi
+          # shellcheck disable=SC2086
+          docker buildx imagetools create $tags \
+            --annotation "index:org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --annotation "index:org.opencontainers.image.version=$VERSION" \
+            --annotation "index:org.opencontainers.image.revision=$GITHUB_SHA" \
+            --annotation "index:org.opencontainers.image.description=PaiBot – dein persönliches KI-Team, selbst gehostet." \
+            "$IMAGE@$DIGEST_AMD64" "$IMAGE@$DIGEST_ARM64"
+          docker buildx imagetools inspect "$IMAGE:$VERSION"
+          digest=$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{json .Manifest}}' \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])')
+          printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$' || { echo "Kein gültiger Digest: $digest" >&2; exit 1; }
+          {
+            echo "## PaiBot $VERSION"
+            echo
+            echo "| Angabe | Wert |"
+            echo "| --- | --- |"
+            echo "| Image | \`$IMAGE:$VERSION\` |"
+            echo "| Digest (beide Plattformen) | \`$digest\` |"
+            echo "| linux/amd64 | \`$DIGEST_AMD64\` |"
+            echo "| linux/arm64 | \`$DIGEST_ARM64\` |"
+            echo "| Commit | \`$GITHUB_SHA\` |"
+            echo "| latest | $LATEST |"
+            echo
+            echo "Fest pinnen in deploy/.env:"
+            echo
+            echo '```'
+            echo "PAIBOT_VERSION=$VERSION@$digest"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Veröffentlicht: $IMAGE:$VERSION@$digest"
+      - name: Abmelden
+        if: always()
+        run: docker logout ghcr.io
