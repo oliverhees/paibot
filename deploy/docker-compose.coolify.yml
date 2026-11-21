@@ -33,7 +33,9 @@
 #      „Managed manually in Dockerfile“ wählen (ältere Versionen: „Inject Build Args to Dockerfile“
 #      ausschalten) und bei den Passwörtern, PAIBOT_SECRET und den Schlüsseln der Datenschleuse
 #      „Build time“ auf „Not available during build“ stellen. Das Image braucht keinen dieser Werte;
-#      die Compose-Datei allein kann das nicht steuern.
+#      die Compose-Datei allein kann das nicht steuern. So prüfst du es nach jedem Deploy auf dem
+#      Server: docs/deploy-coolify.md, Abschnitt „Geheimnisse nicht im Image: so prüfst du es“
+#      (docker history der Images darf keines der Geheimnisse zeigen).
 #   3. PAIBOT_SECRET sichern: den Wert von SERVICE_REALBASE64_32_PAIBOT nach dem ersten Deploy in
 #      deinen Passwort-Manager kopieren, getrennt von den Sicherungen der Datenbank. Ohne ihn lassen
 #      sich gespeicherte Anbieter-Schlüssel nicht mehr lesen; ein neuer Wert ersetzt ihn nicht.
