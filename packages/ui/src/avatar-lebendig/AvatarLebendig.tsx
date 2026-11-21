@@ -424,6 +424,7 @@ export function AvatarLebendig({
         <g className={styles.pose} style={{ transform: g.pose }}>
           <g className={styles.regung}>
             <path
+              data-teil="leib"
               className={styles.leib}
               d={umriss.d}
               {...(rand ? { stroke: "var(--koerper)", ...randAttr } : {})}
@@ -444,14 +445,14 @@ export function AvatarLebendig({
               fill={`url(#${id}l)`}
               {...(rand ? { stroke: `url(#${id}l)`, ...randAttr } : {})}
             />
-            <path className={styles.kontur} d={umriss.d} />
+            {form !== "bluete" && <path className={styles.kontur} d={umriss.d} />}
             {wangen && (
               <g className={styles.wangen}>
                 <circle cx={wangen.lx} cy={wangen.y} r={wangen.r} />
                 <circle cx={wangen.rx} cy={wangen.y} r={wangen.r} />
               </g>
             )}
-            <g className={styles.gesicht}>
+            <g className={styles.gesicht} data-teil="gesicht">
               <Braue mx={augen.lx} my={braueY} k={k} o={g.bl.o} y={g.bl.y} r={g.bl.r} />
               <Braue mx={augen.rx} my={braueY} k={k} o={g.br.o} y={g.br.y} r={g.br.r} />
               <g className={styles.augen}>
