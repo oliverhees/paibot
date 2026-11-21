@@ -3,8 +3,9 @@
  * geschützten Anfrage (aus den Belegen) und der Standard für neue Unterhaltungen.
  *
  * Die Web-App hängt nicht im Netz der Datenschleuse und fragt sie deshalb nie selbst ab. Was sie
- * weiß: ob die Datenschleuse in ihrer Umgebung eingerichtet ist, und was der Worker bei der letzten
- * Modell-Anfrage mit eingeschalteter Datenschleuse festgehalten hat.
+ * weiß: den Zustand, den der Worker regelmäßig prüft und in die Datenbank schreibt
+ * (`repo.schleuse`), ob die Datenschleuse in ihrer eigenen Umgebung eingerichtet ist, und was der
+ * Worker bei der letzten Modell-Anfrage mit eingeschalteter Datenschleuse festgehalten hat.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -13,7 +14,7 @@
  * @since     2026-11-21
  */
 
-import { type Database, repo } from "@paibot/db";
+import { type Database, repo, type SchleuseZustandWert } from "@paibot/db";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import type { SchleuseMode } from "@paibot/shared/objekte";
@@ -39,10 +40,61 @@ export interface LetzterLauf {
   code?: ErrorCode;
 }
 
+/** Zustand, den der Worker zuletzt geprüft und gemeldet hat. */
+export interface WorkerMeldung {
+  zustand: SchleuseZustandWert;
+  /** Wann der Worker geprüft hat (ISO). */
+  geprueft: string;
+  /** Länger als `VERALTET_NACH_MS` keine Meldung: Der Worker läuft vermutlich nicht. */
+  veraltet: boolean;
+}
+
 export interface SchleuseZustand {
   eingerichtet: boolean;
   standard: SchleuseMode;
+  /** Fehlt, solange der Worker noch nie gemeldet hat. */
+  worker?: WorkerMeldung;
   letzterLauf?: LetzterLauf;
+}
+
+/**
+ * Der Worker meldet alle 30 Sekunden. Kam seit fünf Minuten nichts, gilt die Meldung als veraltet
+ * (Worker gestoppt oder ohne Verbindung zur Datenbank).
+ */
+export const VERALTET_NACH_MS = 5 * 60_000;
+
+/** Meldung des Workers mit Alter; rein, damit sie sich ohne Datenbank prüfen lässt. */
+export function workerMeldungAus(
+  meldung: { state: SchleuseZustandWert; checkedAt: Date } | undefined,
+  jetzt: Date,
+): WorkerMeldung | undefined {
+  if (meldung === undefined) return undefined;
+  return {
+    zustand: meldung.state,
+    geprueft: meldung.checkedAt.toISOString(),
+    veraltet: jetzt.getTime() - meldung.checkedAt.getTime() > VERALTET_NACH_MS,
+  };
+}
+
+/**
+ * Ist die Datenschleuse eingerichtet? Ja, wenn der Worker sie in seiner Umgebung hat (seine letzte
+ * Meldung ist nicht „aus“) oder wenn sie in der Umgebung der Web-App steht (Entwicklung). Im Betrieb
+ * mit Compose kennt nur der Worker die Datenschleuse; die Web-App hat bewusst keinen Weg dorthin.
+ */
+export function eingerichtetAus(webUmgebung: boolean, worker: WorkerMeldung | undefined): boolean {
+  return webUmgebung || (worker !== undefined && worker.zustand !== "aus");
+}
+
+/** Liest die Meldung des Workers und leitet daraus „eingerichtet“ ab. */
+export async function schleuseEingerichtet(
+  db: Database,
+  d: ZugangsDienste,
+  jetzt = new Date(),
+): Promise<boolean> {
+  return eingerichtetAus(
+    d.schleuseInstalliert(),
+    workerMeldungAus(await repo.schleuse.get(db), jetzt),
+  );
 }
 
 /** Wie viele Belege der Aktion `modell.anfragen` höchstens durchsucht werden. */
@@ -89,12 +141,18 @@ export function letzterLaufAus(items: readonly ReceiptEntry[]): LetzterLauf | un
   return undefined;
 }
 
-export async function schleuseZustand(db: Database, d: ZugangsDienste): Promise<SchleuseZustand> {
+export async function schleuseZustand(
+  db: Database,
+  d: ZugangsDienste,
+  jetzt = new Date(),
+): Promise<SchleuseZustand> {
   const einstellungen = await repo.settings.get(db);
   const letzterLauf = await letzterSchleusenLauf(db);
+  const worker = workerMeldungAus(await repo.schleuse.get(db), jetzt);
   return {
-    eingerichtet: d.schleuseInstalliert(),
+    eingerichtet: eingerichtetAus(d.schleuseInstalliert(), worker),
     standard: einstellungen?.schleuseModeDefault ?? "off",
+    ...(worker === undefined ? {} : { worker }),
     ...(letzterLauf === undefined ? {} : { letzterLauf }),
   };
 }
@@ -120,7 +178,7 @@ export async function datenschleuseStandard(k: RoutenKontext<"datenschleuseStand
       scope: "standard",
       mode,
       previousMode: vorher,
-      schleuseInstalled: k.dienste.schleuseInstalliert(),
+      schleuseInstalled: await schleuseEingerichtet(k.db, k.dienste),
     },
     async () => {
       await repo.settings.update(k.db, { schleuseModeDefault: mode });

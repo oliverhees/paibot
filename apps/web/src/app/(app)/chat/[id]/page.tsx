@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ladeBereitschaft, ladeVerlauf } from "../../../../lib/chat/laden";
 import { datenbank } from "../../../../lib/datenbank";
+import { schleuseEingerichtet } from "../../../../lib/schleuse/schleuse";
 import { prozessDienste } from "../../../../lib/zugang/dienste";
 import { besitzerSeite } from "../../../../lib/zugang/seite";
 import { ChatSeite } from "../ChatSeite";
@@ -29,6 +30,6 @@ export default async function UnterhaltungSeite({ params }: { params: Promise<{ 
   const db = datenbank();
   const verlauf = await ladeVerlauf(db, id);
   if (verlauf === undefined) notFound();
-  const bereitschaft = await ladeBereitschaft(db, prozessDienste().schleuseInstalliert());
+  const bereitschaft = await ladeBereitschaft(db, await schleuseEingerichtet(db, prozessDienste()));
   return <ChatSeite key={id} bereitschaft={bereitschaft} verlauf={verlauf} />;
 }

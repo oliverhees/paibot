@@ -1065,4 +1065,18 @@ export const de = {
   // Nachrunde Oberfläche: Navigation, Zustand der Datenschleuse, Fehler der Datenschleuse
   "seite.regeln": "Regeln",
   "navigation.modelle.keine": "noch keins",
+  "datenschleuse.worker.chip.bereit": "bereit",
+  "datenschleuse.worker.chip.nicht_erreichbar": "nicht erreichbar",
+  "datenschleuse.worker.chip.schluessel_falsch": "Schlüssel passt nicht",
+  "datenschleuse.worker.chip.aus": "nicht eingerichtet",
+  "datenschleuse.worker.chip.veraltet": "Worker meldet sich nicht",
+  "datenschleuse.worker.geprueft": "Zuletzt vom Worker geprüft: {zeit}.",
+  "datenschleuse.worker.veraltet":
+    "Der Worker hat sich seit {zeit} nicht gemeldet. Der Zustand ist deshalb vielleicht nicht mehr aktuell.",
+  "datenschleuse.worker.veraltet.ausweg":
+    "Prüf mit „docker compose ps“, ob der Dienst worker läuft, und sieh in sein Log.",
+  "datenschleuse.worker.keine":
+    "Der Worker hat noch keinen Zustand gemeldet. Er prüft die Datenschleuse gleich nach dem Start und danach alle 30 Sekunden.",
+  "datenschleuse.worker.hinweis":
+    "Die Web-App erreicht die Datenschleuse nicht selbst. Der Worker prüft sie beim Start und danach alle 30 Sekunden und hält das Ergebnis fest.",
 } as const satisfies Record<string, string | readonly string[]>;

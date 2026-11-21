@@ -389,6 +389,18 @@ describe("Nachricht senden", () => {
   });
 });
 
+describe("Schalter Datenschleuse nach der Meldung des Workers", () => {
+  it("die Web-App kennt keine Datenschleuse; meldet der Worker sie, lässt sie sich einschalten", async () => {
+    const e = await eingerichtet();
+    const id = await neueUnterhaltung(e);
+    await repo.schleuse.report(e.u.db, { state: "aus" });
+    expect((await senden(e, id, "Hallo", "on")).status).toBe(409);
+    await repo.schleuse.report(e.u.db, { state: "nicht_erreichbar" });
+    expect((await senden(e, id, "Hallo", "on")).status).toBe(202);
+    expect((await repo.conversations.get(e.u.db, id as never))?.schleuseMode).toBe("on");
+  });
+});
+
 describe("Schalter und Verlauf", () => {
   it("PUT schleuse schaltet je Unterhaltung; GET nachrichten liefert einen Lesestand", async () => {
     const e = await eingerichtet({ schleuseInstalliert: true });
