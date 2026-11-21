@@ -83,7 +83,7 @@ services:
       # Sagt Coolify: Die Domain gehört zum Dienst web, der Proxy leitet auf Port 3000 weiter.
       SERVICE_URL_WEB_3000:
       PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
-      # Die App ist nur über den eigenen Proxy erreichbar (Port nur auf 127.0.0.1, Coolify im
+      # Die App ist nur über den eigenen Proxy erreichbar (kein Port auf dem Server, Coolify im
       # Docker-Netz); dann zählt die Adresse, die der Proxy in X-Forwarded-For anhängt.
       # Nur auf 0 setzen, wenn kein Proxy davor sitzt.
       TRUST_PROXY: ${TRUST_PROXY:-1}
@@ -116,10 +116,11 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
-    ports:
-      # Nur auf dem Server selbst erreichbar. Nach außen geht es über den Proxy
-      # (z. B. Coolify) mit HTTPS, nie direkt über diesen Port.
-      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    # Kein Port auf dem Server selbst: Der Proxy von Coolify erreicht den Dienst über das
+    # Docker-Netz. So laufen auch zwei Installationen auf einem Server, ohne sich um Port 3000
+    # zu streiten.
+    expose:
+      - "3000"
 
   worker:
     # Dasselbe Image wie web, andere Rolle. Der Bau-Eintrag ist derselbe; der zweite Bau kommt

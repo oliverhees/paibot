@@ -42,19 +42,19 @@ cp apps/web/.env.example apps/web/.env.local   # Passwörter aus deploy/.env ein
 pnpm dev
 ```
 
-| Datei                              | Inhalt                                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- |
-| `docker-compose.yml`               | Betrieb: internes Netz für die Datenbank, gehärtete Container, Healthchecks              |
-| `docker-compose.image.yml`         | wie `docker-compose.yml`, aber mit fertigem Image (`PAIBOT_VERSION`)                     |
-| `docker-compose.coolify.yml`       | wie `docker-compose.yml`, aber Coolify erzeugt Passwörter, `PAIBOT_SECRET` und `APP_URL` |
-| `docker-compose.ohne-internet.yml` | Zusatz für die Prüfung in der CI: alle Netze ohne Weg nach draußen                       |
-| `docker-compose.entwicklung.yml`   | nur Entwicklung: Datenbank-Port auf `127.0.0.1`                                          |
-| `env-erzeugen.sh`                  | legt `deploy/.env` mit zufälligen Passwörtern und `PAIBOT_SECRET` an                     |
-| `sicherung.sh`                     | sichern, zurückspielen, prüfen: [Sicherung](../docs/sicherung.md)                        |
-| `sicherung-db.sh`                  | Teil von `sicherung.sh`, läuft im Container `postgres`                                   |
-| `docker-compose.schleuse-test.yml` | nur Tests: Datenschleuse mit Test-Anbieter auf `127.0.0.1`                               |
-| `schleuse/`                        | Konfiguration der Datenschleuse, erzeugt mit `pnpm schleuse:config`                      |
-| `.env.example`                     | Vorlage mit allen Variablen (Werte leer)                                                 |
+| Datei                              | Inhalt                                                                                                                            |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `docker-compose.yml`               | Betrieb: internes Netz für die Datenbank, gehärtete Container, Healthchecks                                                       |
+| `docker-compose.image.yml`         | wie `docker-compose.yml`, aber mit fertigem Image (`PAIBOT_VERSION`)                                                              |
+| `docker-compose.coolify.yml`       | wie `docker-compose.yml`, aber Coolify erzeugt Passwörter, `PAIBOT_SECRET` und `APP_URL`; `web` belegt keinen Port auf dem Server |
+| `docker-compose.ohne-internet.yml` | Zusatz für die Prüfung in der CI: alle Netze ohne Weg nach draußen                                                                |
+| `docker-compose.entwicklung.yml`   | nur Entwicklung: Datenbank-Port auf `127.0.0.1`                                                                                   |
+| `env-erzeugen.sh`                  | legt `deploy/.env` mit zufälligen Passwörtern und `PAIBOT_SECRET` an                                                              |
+| `sicherung.sh`                     | sichern, zurückspielen, prüfen: [Sicherung](../docs/sicherung.md)                                                                 |
+| `sicherung-db.sh`                  | Teil von `sicherung.sh`, läuft im Container `postgres`                                                                            |
+| `docker-compose.schleuse-test.yml` | nur Tests: Datenschleuse mit Test-Anbieter auf `127.0.0.1`                                                                        |
+| `schleuse/`                        | Konfiguration der Datenschleuse, erzeugt mit `pnpm schleuse:config`                                                               |
+| `.env.example`                     | Vorlage mit allen Variablen (Werte leer)                                                                                          |
 
 Variablen und Rollen der Datenbank: [docs/installation.md](../docs/installation.md#einstellungen).
 
@@ -62,4 +62,4 @@ Datenschleuse zuschalten: [docs/funktion-datenschleuse.md](../docs/funktion-date
 
 ## Mit Coolify auf deinem Server
 
-Compose-Datei in Coolify: `deploy/docker-compose.coolify.yml` (Coolify erzeugt die Geheimnisse und die Adresse). Ausführlich: [docs/deploy-coolify.md](../docs/deploy-coolify.md).
+Compose-Datei in Coolify: `deploy/docker-compose.coolify.yml` (Coolify erzeugt die Geheimnisse und die Adresse; `web` belegt dort keinen Port auf dem Server, `WEB_PORT` gilt nur für `docker-compose.yml`). Ausführlich: [docs/deploy-coolify.md](../docs/deploy-coolify.md).

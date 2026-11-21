@@ -25,6 +25,9 @@
 //   - PAIBOT_SECRET:                   ${SERVICE_REALBASE64_32_PAIBOT} statt ${PAIBOT_SECRET…}
 //   - APP_URL:                         ${SERVICE_URL_WEB} statt ${APP_URL…}
 //   - beim Dienst web genau eine Zeile „SERVICE_URL_WEB_3000:“ (Domain gehört zu web, Port 3000)
+//   - beim Dienst web statt des Blocks „ports:“ der Bau-Datei genau der Block „expose:“ mit
+//     „- "3000"“ (der Proxy erreicht web über das Docker-Netz; kein Port auf dem Server)
+// Veröffentlicht die Coolify-Datei bei irgendeinem Dienst einen Port („ports:“), ist das ein Fehler.
 // Erzeugte Werte stehen ohne Standard (kein „${SERVICE_…:-…}“), andere SERVICE_-Variablen gibt es
 // dort nicht.
 //
@@ -217,6 +220,32 @@ const HERKUNFT_COOLIFY = [
 ];
 const WEB_PORT_ZEILE = "      SERVICE_URL_WEB_3000:";
 
+/** Entfernt bei einem Dienst den Block mit diesem Schlüssel (4 Leerzeichen) samt tiefer eingerückten Zeilen. */
+function ohneBlock(liste, dienst, schluessel) {
+  const rest = [];
+  const entfernt = [];
+  let drin = false;
+  for (const z of liste) {
+    if (z.dienst !== dienst) {
+      drin = false;
+      rest.push(z);
+      continue;
+    }
+    if (drin && /^ {6,}/.test(z.text)) {
+      entfernt.push(z.text);
+      continue;
+    }
+    drin = false;
+    if (z.text === `    ${schluessel}:`) {
+      drin = true;
+      entfernt.push(z.text);
+      continue;
+    }
+    rest.push(z);
+  }
+  return { rest, entfernt };
+}
+
 function herkunft(liste, regeln) {
   return liste.map((z) => {
     let text = z.text;
@@ -276,6 +305,13 @@ if (coolifyPfad !== undefined) {
       `${coolifyPfad}: Dienst web braucht genau eine Zeile „SERVICE_URL_WEB_3000:“ (Domain für web, Port 3000).`,
     );
   }
+  for (const z of roh) {
+    if (z.dienst !== "" && /^ {4}ports:/.test(z.text)) {
+      fehler.push(
+        `${coolifyPfad}:${z.nr}: Dienst ${z.dienst} veröffentlicht einen Port („ports:“). In der Coolify-Datei ist das nicht erlaubt: Der Proxy erreicht die Dienste über das Docker-Netz, und ein Port auf dem Server verhindert zwei Installationen nebeneinander. Bei web steht stattdessen „expose: - "3000"“.`,
+      );
+    }
+  }
   const ohnePort = roh.filter((z) => !(z.dienst === "web" && z.text === WEB_PORT_ZEILE));
   const coolify = herkunft(ohnePort, HERKUNFT_COOLIFY);
   for (const z of coolify) {
@@ -289,9 +325,25 @@ if (coolifyPfad !== undefined) {
       );
     }
   }
-  const vorlage = bloecke(herkunft(mitDienst(zeilen(bauPfad)), HERKUNFT_BAU));
-  const neu = bloecke(coolify);
-  coolifyZeilen = coolify.length;
+  let vorlageZeilen = herkunft(mitDienst(zeilen(bauPfad)), HERKUNFT_BAU);
+  let coolifyOhnePort = coolify;
+  // Einziger erlaubter Unterschied beim Port: web hat in der Bau-Datei „ports:“ und in der
+  // Coolify-Datei genau „expose: - "3000"“. Beides wird vor dem Vergleich entfernt.
+  const bauPorts = ohneBlock(vorlageZeilen, "web", "ports");
+  if (bauPorts.entfernt.length > 0) {
+    const coolifyExpose = ohneBlock(coolify, "web", "expose");
+    if (coolifyExpose.entfernt.join("|") !== `    expose:|      - "3000"`) {
+      fehler.push(
+        `${coolifyPfad}: Dienst web braucht statt „ports:“ genau den Block „expose:“ mit „- "3000"“ (kein Port auf dem Server).`,
+      );
+    } else {
+      vorlageZeilen = bauPorts.rest;
+      coolifyOhnePort = coolifyExpose.rest;
+    }
+  }
+  const vorlage = bloecke(vorlageZeilen);
+  const neu = bloecke(coolifyOhnePort);
+  coolifyZeilen = coolifyOhnePort.length;
   if (neu.reihenfolge[0] !== "web") {
     fehler.push(
       `${coolifyPfad}: Der erste Dienst muss web sein (Coolify bietet ihn im Dialog „Add domain“ zuerst an).`,
@@ -387,6 +439,6 @@ console.log(
 );
 if (coolifyPfad !== undefined) {
   console.log(
-    `Compose-Vergleich Coolify ok: ${coolifyZeilen} Zeilen gleich, Unterschied nur bei der Herkunft von Passwörtern, PAIBOT_SECRET und APP_URL.`,
+    `Compose-Vergleich Coolify ok: ${coolifyZeilen} Zeilen gleich, Unterschied nur bei der Herkunft von Passwörtern, PAIBOT_SECRET und APP_URL sowie expose statt ports bei web.`,
   );
 }
