@@ -1133,4 +1133,63 @@ export const de = {
     "Versuch es später noch einmal oder prüf, welche Modelle {anbieter} bereitstellt.",
   "einrichtung.schluessel.text_eigen":
     "Über {anbieter} erreicht PaiBot Sprachmodelle. Den Schlüssel bekommst du dort, wo dein Dienst eingerichtet ist. Du kannst diesen Schritt auch später erledigen.",
+
+  // Eigener Anbieter in der Oberfläche: anlegen, ändern, testen, abgleichen, entfernen
+  "modelle.eigen.titel": "Eigener Anbieter",
+  "modelle.eigen.text":
+    "Verbinde zusätzlich einen eigenen Dienst mit kompatibler Schnittstelle, zum Beispiel einen, der auf deinem Rechner oder in deinem Netz läuft.",
+  "modelle.eigen.hinzufuegen": "Eigenen Anbieter hinzufügen",
+  "modelle.eigen.form.neu": "Neuer eigener Anbieter",
+  "modelle.eigen.form.aendern": "{anbieter} ändern",
+  "modelle.eigen.name": "Name",
+  "modelle.eigen.name.hilfe": "So heißt der Anbieter in PaiBot, zum Beispiel „Lokaler Anbieter“.",
+  "modelle.eigen.name.leer": "Gib dem Anbieter einen Namen.",
+  "modelle.eigen.adresse": "Adresse (Basis-URL)",
+  "modelle.eigen.adresse.hilfe":
+    "Die Adresse, unter der der Dienst seine Modelle anbietet, meist mit /v1 am Ende.",
+  "modelle.eigen.adresse.leer": "Gib die Adresse des Dienstes ein.",
+  "modelle.eigen.ort": "Wo läuft der Dienst?",
+  "modelle.eigen.ort.eu": "Bei einem Dienst in der EU",
+  "modelle.eigen.ort.non_eu": "Bei einem Dienst außerhalb der EU",
+  "modelle.eigen.ort.local": "Auf deinem Rechner oder in deinem Netz (lokal)",
+  "modelle.eigen.ort.hilfe":
+    "Öffentliche Dienste brauchen eine Adresse mit https:// und einen Schlüssel.",
+  "modelle.eigen.ort.hilfe.local":
+    "Nur bei „lokal“ sind Adressen im eigenen Netz und http:// erlaubt. Die Dienste von PaiBot selbst (Datenbank, Datenschleuse, Web-App, Worker) bleiben gesperrt.",
+  "modelle.eigen.warnung.unverschluesselt":
+    "Die Verbindung ist unverschlüsselt (http://). Nutz das nur auf deinem Rechner oder in einem Netz, dem du vertraust.",
+  "modelle.eigen.schluessel": "Schlüssel",
+  "modelle.eigen.schluessel.optional": "Schlüssel (bei „lokal“ freiwillig)",
+  "modelle.eigen.schluessel.hilfe.neu":
+    "Bei einem lokalen Dienst ohne Schlüssel lässt du das Feld leer. PaiBot speichert nur, was der Dienst beim Test annimmt.",
+  "modelle.eigen.schluessel.hilfe.aendern":
+    "Leer lassen, um den gespeicherten Schlüssel zu behalten. Ändert sich die Adresse, gib ihn noch einmal ein.",
+  "modelle.eigen.schluessel.entfernen": "Gespeicherten Schlüssel entfernen",
+  "modelle.eigen.schluessel.entfernen.hilfe":
+    "PaiBot verbindet sich danach ohne Schlüssel. Das geht nur bei einem lokalen Dienst.",
+  "modelle.eigen.ohne_schluessel_nur_lokal":
+    "Ohne Schlüssel geht es nur bei einem lokalen Dienst. Wähl „lokal“ oder trag einen Schlüssel ein.",
+  "modelle.eigen.vorlage_bleibt":
+    "Die Vorlage eines Anbieters lässt sich nicht ändern. Leg dafür einen neuen eigenen Anbieter an.",
+  "modelle.eigen.speichern": "Testen und speichern",
+  "modelle.eigen.speichert": "Teste und speichere …",
+  "modelle.eigen.speichern.hilfe":
+    "PaiBot testet die Verbindung vor dem Speichern. Gespeichert wird nur, was der Dienst annimmt.",
+  "modelle.eigen.gespeichert": "{anbieter} ist gespeichert. Die Verbindung steht.",
+  "modelle.eigen.aendern": "Ändern",
+  "modelle.eigen.auswahl": "Anbieter",
+  "modelle.eigen.auswahl.hilfe":
+    "Die Angaben und die Modell-Liste unten gehören zu diesem Anbieter.",
+  "modelle.eigen.entfernen": "Anbieter entfernen",
+  "modelle.eigen.entfernen.titel": "{anbieter} entfernen?",
+  "modelle.eigen.entfernen.text":
+    "Damit entfernst du {anbieter} samt Schlüssel und Modell-Liste. Frühere Antworten in deinen Unterhaltungen bleiben erhalten.",
+  "modelle.eigen.entfernen.modell":
+    "{name} arbeitet gerade mit {modell} von {anbieter}. Danach hat {name} kein Modell mehr, bis du ein anderes wählst.",
+  "modelle.eigen.entfernt": "{anbieter} ist entfernt.",
+  "modelle.eigen.lauf_aktiv": "{name} schreibt gerade mit einem Modell von {anbieter}.",
+  "modelle.eigen.lauf_aktiv.ausweg":
+    "Warte, bis die Antwort fertig ist, oder brich sie im Chat ab. Danach kannst du den Anbieter entfernen.",
+  "modelle.liste.abgleichen": "Liste abgleichen",
+  "modelle.liste.abgeglichen": "Liste abgeglichen: {anzahl} Modelle.",
 } as const satisfies Record<string, string | readonly string[]>;
