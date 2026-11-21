@@ -8,10 +8,17 @@
  * @since     2026-11-20
  */
 
+import { anzeigeText } from "@paibot/shared/anzeigetext";
 import type { ErrorCode } from "@paibot/shared/fehler";
-import { checkProviderBaseUrl, createEgressFetch, providerEgressTarget } from "./egress";
+import {
+  checkProviderBaseUrl,
+  createEgressFetch,
+  EgressBlockedError,
+  providerEgressTarget,
+} from "./egress";
 import { mapProviderError, providerFailure } from "./errors";
 import type { ResponseLimits } from "./pinned-fetch";
+import { ROUTING_RULE_SLUG_PREFIX } from "./routing-rules";
 import type { ProviderEndpoint } from "./templates";
 
 /** Ein Modell aus der Liste des Anbieters. */
@@ -40,6 +47,8 @@ export const MODEL_LIST_LIMITS: Readonly<ResponseLimits> = Object.freeze({
 });
 const MAX_MODELS = 5_000;
 const MAX_SLUG_CHARS = 200;
+/** Kennung eines Modells: sichtbare ASCII-Zeichen ohne Leerzeichen, höchstens 200. */
+const MODEL_SLUG_PATTERN = /^[\x21-\x7e]{1,200}$/;
 /** Sichtbare ASCII-Zeichen ohne Leerzeichen; alles andere ließe sich nicht als Kopfzeile senden. */
 const API_KEY_PATTERN = /^[\x21-\x7e]{1,4096}$/;
 
@@ -51,8 +60,15 @@ function normalizeEndpoint(entry: unknown): string {
   return typeof entry === "string" ? entry.toLowerCase().replaceAll("/", ".") : "";
 }
 
-/** Filter: Text zu Text, Chat-Endpunkt, Streaming. Fehlende Zusatzfelder zählen als passend. */
+/**
+ * Filter: Text zu Text, Chat-Endpunkt, Streaming. Fehlende Zusatzfelder zählen als passend. Zwei
+ * Formen von Zusatzfeldern: wie bei EUrouter (`architecture.modality`, `supported_api_endpoints`,
+ * `supported_parameters`) und wie bei Mistral (`capabilities.completion_chat`, `archived`).
+ */
 function suitable(item: Record<string, unknown>): boolean {
+  if (item.archived === true) return false;
+  const capabilities = item.capabilities;
+  if (isRecord(capabilities) && capabilities.completion_chat === false) return false;
   const architecture = item.architecture;
   if (isRecord(architecture) && typeof architecture.modality === "string") {
     if (architecture.modality !== "text->text") return false;
@@ -70,7 +86,12 @@ function suitable(item: Record<string, unknown>): boolean {
 
 function contextWindowOf(item: Record<string, unknown>): number | undefined {
   const topProvider = isRecord(item.top_provider) ? item.top_provider : {};
-  for (const candidate of [item.context_length, item.context_window, topProvider.context_length]) {
+  for (const candidate of [
+    item.context_length,
+    item.context_window,
+    item.max_context_length,
+    topProvider.context_length,
+  ]) {
     if (typeof candidate === "number" && Number.isInteger(candidate) && candidate > 0) {
       return candidate;
     }
@@ -85,10 +106,12 @@ function toModels(payload: unknown): ModelInfo[] {
   for (const item of payload.data.slice(0, MAX_MODELS)) {
     if (!isRecord(item)) continue;
     const id = item.id;
-    if (typeof id !== "string" || id.length === 0 || id.length > MAX_SLUG_CHARS) continue;
+    if (typeof id !== "string" || !MODEL_SLUG_PATTERN.test(id)) continue;
+    // Diese Vorsilbe steht für Routing-Regeln; ein Modell gleichen Namens wäre eine Verwechslung.
+    if (id.startsWith(ROUTING_RULE_SLUG_PREFIX)) continue;
     if (!suitable(item) || bySlug.has(id)) continue;
-    const name = typeof item.name === "string" && item.name.trim() !== "" ? item.name.trim() : id;
-    const info: ModelInfo = { slug: id, displayName: name.slice(0, MAX_SLUG_CHARS) };
+    const name = anzeigeText(item.name, MAX_SLUG_CHARS) ?? id;
+    const info: ModelInfo = { slug: id, displayName: name };
     const contextWindow = contextWindowOf(item);
     if (contextWindow !== undefined) info.contextWindow = contextWindow;
     bySlug.set(id, info);
@@ -187,8 +210,29 @@ export async function fetchModels(
   } catch (error) {
     if (options.signal?.aborted) throw providerFailure("unterbrochen");
     if (error instanceof Error && error.name === "PaiBotError") throw error;
+    if (provider.region === "local" && blockedAddress(error)) throw new NotLocalError();
     throw providerFailure(mapProviderError(error));
   }
+}
+
+/**
+ * Ein „lokaler“ Anbieter, dessen Name auf eine Adresse außerhalb des eigenen Rechners und Netzes
+ * zeigt. Es wurde nichts gesendet.
+ */
+export class NotLocalError extends Error {
+  constructor() {
+    super("Die Adresse liegt nicht im eigenen Rechner oder Netz.");
+    this.name = "NotLocalError";
+  }
+}
+
+function blockedAddress(error: unknown): boolean {
+  for (let current = error, depth = 0; depth < 5; depth++) {
+    if (current instanceof EgressBlockedError) return current.reason === "adresse_nicht_erlaubt";
+    if (typeof current !== "object" || current === null) return false;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
 }
 
 /** Ergebnis des Verbindungstests. Wirft nicht, sondern meldet den Fehlercode. */
@@ -200,6 +244,11 @@ export type ConnectionTestResult =
         ErrorCode,
         "anbieter_nicht_erreichbar" | "schluessel_ungueltig" | "limit_erreicht"
       >;
+      /**
+       * `nicht_lokal`: Ort „lokal“, aber die Adresse (oder die Auflösung ihres Namens) liegt nicht
+       * im eigenen Rechner oder Netz; es wurde nichts gesendet.
+       */
+      detail?: "nicht_lokal";
     };
 
 /**
@@ -211,9 +260,16 @@ export async function testConnection(
   apiKey: string | undefined,
   options?: ProviderCallOptions,
 ): Promise<ConnectionTestResult> {
+  const check = checkProviderBaseUrl(provider.baseUrl, provider.region);
+  if (!check.ok && check.problem === "nicht_lokal") {
+    return { ok: false, code: "anbieter_nicht_erreichbar", detail: "nicht_lokal" };
+  }
   try {
     return { ok: true, models: await fetchModels(provider, apiKey, options) };
   } catch (error) {
+    if (error instanceof NotLocalError) {
+      return { ok: false, code: "anbieter_nicht_erreichbar", detail: "nicht_lokal" };
+    }
     const code = mapProviderError(error);
     if (code === "schluessel_ungueltig" || code === "limit_erreicht") return { ok: false, code };
     return { ok: false, code: "anbieter_nicht_erreichbar" };

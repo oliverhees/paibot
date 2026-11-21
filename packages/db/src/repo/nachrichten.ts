@@ -21,6 +21,7 @@ import {
   type ProviderId,
   type Route,
   type RunId,
+  type ServedBy,
 } from "@paibot/shared";
 import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import type { Database } from "../client";
@@ -55,6 +56,8 @@ export interface MessageFinalize {
   tokensIn?: number;
   tokensOut?: number;
   errorCode?: ErrorCode;
+  /** Wer laut Antwort der Schnittstelle geantwortet hat; nur geprüfte Werte (`servedBySchema`). */
+  servedBy?: ServedBy;
 }
 
 /**
@@ -142,6 +145,10 @@ export async function finalize(
       ...(input.tokensIn === undefined ? {} : { tokensIn: input.tokensIn }),
       ...(input.tokensOut === undefined ? {} : { tokensOut: input.tokensOut }),
       ...(input.errorCode === undefined ? {} : { errorCode: input.errorCode }),
+      ...(input.servedBy?.provider === undefined
+        ? {}
+        : { servedProvider: input.servedBy.provider }),
+      ...(input.servedBy?.model === undefined ? {} : { servedModel: input.servedBy.model }),
     })
     .where(and(eq(messages.id, id), eq(messages.status, "streaming")))
     .returning();

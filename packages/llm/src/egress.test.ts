@@ -442,6 +442,7 @@ describe("createEgressFetch", () => {
       port: 11434,
       basePath: "/v1",
       allowPrivate: true,
+      requirePrivate: true,
       denyAddressesOf: INTERNAL_SERVICE_HOSTS,
     });
     expect(providerEgressTarget("https://api.eurouter.ai/v1", "eu")).toEqual({

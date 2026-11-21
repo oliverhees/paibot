@@ -22,7 +22,8 @@
     "./konstanten": "./src/constants.ts",
     "./sprache": "./src/locale.ts",
     "./stand": "./src/stand.ts",
-    "./bindung": "./src/bindung.ts"
+    "./bindung": "./src/bindung.ts",
+    "./anzeigetext": "./src/anzeigetext.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

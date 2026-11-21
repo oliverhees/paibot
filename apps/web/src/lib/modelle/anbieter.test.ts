@@ -379,6 +379,7 @@ describe("Prüfung der Adresse (jede Problem-Art hat einen Satz)", () => {
     private_adresse: ["https://192.168.1.10/v1", "eu"],
     port: ["https://api.example.com:9000/v1", "eu"],
     zugangsdaten_in_url: ["https://a:b@api.example.com/v1", "eu"],
+    nicht_lokal: ["http://8.8.8.8:11434/v1", "local"],
   };
   it.each(BASE_URL_PROBLEMS)("%s", (problem) => {
     const [baseUrl, region] = faelle[problem];

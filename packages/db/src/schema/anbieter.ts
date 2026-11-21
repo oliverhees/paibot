@@ -10,7 +10,7 @@
 
 import type { BotId, ModelId, ProviderId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { boolean, check, integer, jsonb, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { idCheck, inListCheck, matches, PATTERNS, pgTable } from "./helfer";
 import {
   AVATAR_SHAPES,
@@ -36,6 +36,11 @@ export const providers = pgTable(
     name: text("name").notNull(),
     baseUrl: text("base_url").notNull(),
     apiKeyEnc: text("api_key_enc"),
+    /**
+     * Platz für einen zweiten, getrennt verschlüsselten Schlüssel nur zum Lesen von Einstellungen
+     * des Kontos (z. B. Routing-Regeln). Heute ungenutzt; immer `null`.
+     */
+    managementKeyEnc: text("management_key_enc"),
     region: text("region").$type<(typeof REGIONS)[number]>().notNull(),
     country: text("country"),
     enabled: boolean("enabled").notNull().default(true),
@@ -58,6 +63,10 @@ export const providers = pgTable(
       "providers_api_key_format",
       sql`${t.apiKeyEnc} is null or ${matches(t.apiKeyEnc, PATTERNS.encrypted)}`,
     ),
+    check(
+      "providers_management_key_format",
+      sql`${t.managementKeyEnc} is null or ${matches(t.managementKeyEnc, PATTERNS.encrypted)}`,
+    ),
     unique("providers_base_url_eindeutig").on(t.baseUrl),
   ],
 );
@@ -75,10 +84,25 @@ export const models = pgTable(
     displayName: text("display_name").notNull(),
     contextWindow: integer("context_window"),
     enabled: boolean("enabled").notNull().default(true),
+    /**
+     * Vorgaben einer Routing-Regel (z. B. Datenresidenz), wie eine Quelle sie geliefert hat, mit
+     * Herkunft und Zeitpunkt. Heute ungenutzt; immer `null`. Nur gesetzt zusammen mit Quelle und Zeit.
+     */
+    rulePolicy: jsonb("rule_policy"),
+    rulePolicySource: text("rule_policy_source"),
+    rulePolicyCheckedAt: timestamp("rule_policy_checked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     idCheck("models_id_format", t.id, "model"),
+    check(
+      "models_rule_policy_vollstaendig",
+      sql`(${t.rulePolicy} is null and ${t.rulePolicySource} is null and ${t.rulePolicyCheckedAt} is null) or (${t.rulePolicy} is not null and ${t.rulePolicySource} is not null and ${t.rulePolicyCheckedAt} is not null)`,
+    ),
+    check(
+      "models_rule_policy_source_werte",
+      sql`${t.rulePolicySource} is null or ${t.rulePolicySource} in ('verwaltungsschluessel')`,
+    ),
     check("models_slug_laenge", sql`char_length(${t.slug}) between 1 and 200`),
     check("models_display_name_laenge", sql`char_length(${t.displayName}) between 1 and 200`),
     check(

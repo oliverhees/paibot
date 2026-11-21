@@ -10,7 +10,7 @@
  */
 
 import type { ErrorCode } from "./errors";
-import type { Sha256Digest } from "./grundtypen";
+import type { ServedBy, Sha256Digest } from "./grundtypen";
 import type { ModelId, ProviderId } from "./id";
 import type { Route } from "./objects";
 
@@ -139,7 +139,13 @@ export const MOTOR_ERROR_CODES = [
 export type MotorEvent =
   | { type: "text-delta"; text: string }
   | ({ type: "tool-call" } & ToolCall)
-  | { type: "finish"; finishReason: string; usage: { input: number; output: number } }
+  | {
+      type: "finish";
+      finishReason: string;
+      usage: { input: number; output: number };
+      /** Wer laut Antwort der Schnittstelle geantwortet hat; fehlt, wenn sie es nicht meldet. */
+      servedBy?: ServedBy;
+    }
   | { type: "error"; code: MotorErrorCode; retryable: boolean; detail?: string };
 
 /**

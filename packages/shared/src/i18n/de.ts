@@ -1477,4 +1477,8 @@ export const de = {
   "chat.fassung.naechste": "Nächste Fassung",
   "chat.fassung.ersetzt": "Ersetzt durch eine neuere Fassung.",
   "chat.neu_erzeugen.angehalten": "Neu erzeugen geht wieder, wenn du den Not-Aus aufhebst.",
+  // Anbieter-Wahl, Routing-Regeln und Herkunft der Antwort
+  "anbieter.url.nicht_lokal":
+    "Diese Adresse liegt nicht auf deinem Rechner und nicht in deinem Netz. „Lokal“ geht nur für Adressen dort; für einen Dienst im Internet wähl einen anderen Ort und eine Adresse mit https.",
+  "modelle.anbieter.vorlage.mistral": "Vorlage Mistral AI (EU-Endpunkt)",
 } as const satisfies Record<string, string | readonly string[]>;

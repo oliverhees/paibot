@@ -20,14 +20,22 @@ export interface ProviderTemplate {
 }
 
 /**
- * Bekannte Anbieter. In der Basis nur EUrouter. Die Schlüssel sind Werte aus
- * `PROVIDER_TEMPLATE_KEYS`; zusammen mit `eigener` (`CUSTOM_PROVIDER_TEMPLATE`) sind es genau diese.
+ * Bekannte Anbieter: EUrouter (Routing-Regeln des Kontos) und Mistral AI über den EU-Endpunkt. Die
+ * Schlüssel sind Werte aus `PROVIDER_TEMPLATE_KEYS`; zusammen mit `eigener`
+ * (`CUSTOM_PROVIDER_TEMPLATE`) sind es genau diese. `region` ist die technische Einordnung für
+ * Adress-Prüfung und Tor, keine Herkunfts-Angabe für die Oberfläche.
  */
 export const PROVIDER_TEMPLATES = {
   eurouter: {
     kind: "openai_compatible",
     name: "EUrouter",
     baseUrl: "https://api.eurouter.ai/v1",
+    region: "eu",
+  },
+  mistral: {
+    kind: "openai_compatible",
+    name: "Mistral AI",
+    baseUrl: "https://api.eu.mistral.ai/v1",
     region: "eu",
   },
 } as const satisfies Partial<Record<ProviderTemplateKey, ProviderTemplate>>;

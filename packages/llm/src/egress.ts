@@ -27,6 +27,12 @@ export interface EgressTarget {
    */
   allowPrivate?: boolean;
   /**
+   * Das Ziel muss im eigenen Rechner oder Netz liegen: Jede Adresse (bei Namen nach der Auflösung)
+   * muss privat sein (Loopback, private Bereiche). Für lokale Anbieter; eine öffentliche Adresse
+   * ist dann nie erlaubt, auch nicht über https.
+   */
+  requirePrivate?: boolean;
+  /**
    * Namen, deren Adressen dieses Ziel nie haben darf, z. B. die Dienste von PaiBot im eigenen Netz
    * (`INTERNAL_SERVICE_HOSTS`). Aufgelöst wird bei jedem Aufruf; ein Name, der sich nicht
    * auflösen lässt, sperrt nichts.
@@ -125,7 +131,12 @@ export function providerEgressTarget(baseUrl: string, region: Region): EgressTar
     ...(pfad === "" ? {} : { basePath: pfad }),
   };
   if (region !== "local") return target;
-  return { ...target, allowPrivate: true, denyAddressesOf: INTERNAL_SERVICE_HOSTS };
+  return {
+    ...target,
+    allowPrivate: true,
+    requirePrivate: true,
+    denyAddressesOf: INTERNAL_SERVICE_HOSTS,
+  };
 }
 
 /**
@@ -141,9 +152,11 @@ async function checkedAddresses(
 ): Promise<string[] | undefined> {
   const addresses = isIpAddress(host) ? [host] : [...(await resolve(host))];
   if (addresses.length === 0) return undefined;
-  const allowPrivate = target.allowPrivate === true;
+  const allowPrivate = target.allowPrivate === true || target.requirePrivate === true;
+  const requirePrivate = target.requirePrivate === true;
   const allowed = addresses.every((address) => {
     const kind = classifyIpAddress(address);
+    if (requirePrivate) return kind === "privat";
     return kind === "oeffentlich" || (kind === "privat" && allowPrivate);
   });
   if (!allowed) return undefined;
@@ -318,6 +331,7 @@ export const BASE_URL_PROBLEMS = [
   "private_adresse",
   "port",
   "zugangsdaten_in_url",
+  "nicht_lokal",
 ] as const;
 export type BaseUrlProblem = (typeof BASE_URL_PROBLEMS)[number];
 
@@ -351,6 +365,9 @@ export const PUBLIC_PROVIDER_PORTS: readonly number[] = [443, 8443];
  * - keine internen Dienstnamen (`INTERNAL_SERVICE_HOSTS`), keine Link-Local-Adressen
  *   (z. B. `169.254.169.254`, `fe80::/10`) und keine Namen von Metadaten-Diensten
  * - private Adressen und `localhost` nur bei Region `local`
+ * - bei Region `local` keine öffentliche IP-Adresse (`nicht_lokal`); Namen prüft die Ausgangs-Liste
+ *   nach der Auflösung (`requirePrivate`): „lokal“ richtet sich nach dem Adressbereich, nicht nach
+ *   dem Namen
  * - außerhalb von `local` nur die Ports aus `PUBLIC_PROVIDER_PORTS` (443, 8443)
  * - keine Zugangsdaten in der URL (`user:pass@`)
  * - keine Abfrage (`?…`) und kein Anker (`#…`), auch kein leeres `?` oder `#`: Schlüssel und Ziel
@@ -391,6 +408,7 @@ export function checkProviderBaseUrl(baseUrl: string, region: Region): BaseUrlCh
     const kind = classifyIpAddress(host);
     if (kind === "link_local") return { ok: false, problem: "link_local" };
     if (kind === "privat" && !local) return { ok: false, problem: "private_adresse" };
+    if (kind === "oeffentlich" && local) return { ok: false, problem: "nicht_lokal" };
   } else if (!local) {
     const internalName =
       host === "localhost" ||

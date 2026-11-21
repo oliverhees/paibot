@@ -31,6 +31,7 @@ import {
 } from "./egress";
 import { providerFailure } from "./errors";
 import type { ResponseLimits } from "./pinned-fetch";
+import { routingRuleNameOf } from "./routing-rules";
 import {
   SCHLEUSE_SESSION_HEADER,
   type SchleuseConnection,
@@ -157,9 +158,15 @@ export function resolveModel(
   let headers: Record<string, string>;
   let egressTarget: EgressTarget;
   let providerKey = "";
+  // Eine Routing-Regel (EUrouter) statt eines Modells: Die Anfrage nennt `rule_name` und kein
+  // `model` (ein mitgeschicktes `model` würde der Anbieter statt der Regel auswerten).
+  const ruleName = routingRuleNameOf(provider.templateKey, model.slug);
 
   if (facts.route === "schleuse") {
     if (!deps.schleuse) throw providerFailure("schleuse_nicht_installiert");
+    // Ob die Datenschleuse ein zusätzliches Feld im Körper weitergibt, ist nicht geprüft: keine
+    // Regel über diesen Weg, statt still ein anderes Modell zu treffen.
+    if (ruleName !== undefined) throw providerFailure("abgelehnt");
     baseUrl = deps.schleuse.baseUrl;
     secret = deps.schleuse.apiKey;
     slug = schleuseModelName(provider.templateKey, model.slug);
@@ -195,7 +202,17 @@ export function resolveModel(
             init?.headers ?? (input instanceof Request ? input.headers : undefined);
           const outgoing = new Headers(headerSource);
           if (secret !== "") outgoing.set("authorization", `Bearer ${secret}`);
-          return guarded(input, { ...init, headers: outgoing });
+          const body =
+            ruleName === undefined || init?.body === undefined || init.body === null
+              ? init?.body
+              : withRuleName(init.body, ruleName);
+          if (ruleName !== undefined && input instanceof Request)
+            throw providerFailure("abgelehnt");
+          return guarded(input, {
+            ...init,
+            headers: outgoing,
+            ...(body === undefined ? {} : { body }),
+          });
         };
 
   const summary: ResolvedModelSummary = Object.freeze({
@@ -220,6 +237,30 @@ export function resolveModel(
   Object.freeze(resolved);
   issuedModels.add(resolved);
   return resolved as unknown as ResolvedModel;
+}
+
+/**
+ * Körper einer Chat-Anfrage mit `rule_name` statt `model`. Nur ein JSON-Objekt als Text wird
+ * angenommen; alles andere lehnt der Zugang ab, bevor etwas gesendet wird.
+ */
+function withRuleName(body: unknown, ruleName: string): string {
+  if (typeof body !== "string") throw providerFailure("abgelehnt");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    throw providerFailure("abgelehnt");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw providerFailure("abgelehnt");
+  }
+  const {
+    model: _model,
+    models: _models,
+    rule_id: _id,
+    ...rest
+  } = parsed as Record<string, unknown>;
+  return JSON.stringify({ ...rest, rule_name: ruleName });
 }
 
 function digestOf(

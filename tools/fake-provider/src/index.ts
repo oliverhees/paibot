@@ -17,6 +17,8 @@ import type { Socket } from "node:net";
 export const FAKE_PROVIDER_PATHS = {
   models: "/v1/models",
   chatCompletions: "/v1/chat/completions",
+  /** Öffentliche Liste der Anbieter hinter einem Vermittler (wie `GET /api/v1/providers`). */
+  providers: "/api/v1/providers",
 } as const;
 
 /** Steuerung über HTTP (für den Betrieb als eigener Container in Tests). */
@@ -57,8 +59,36 @@ export interface FakeModel {
   supportsChat?: boolean;
 }
 
+/** Eine Routing-Regel: Anfragen mit `rule_name` = `name` antworten als `provider` mit `model`. */
+export interface FakeRoutingRule {
+  name: string;
+  provider: string;
+  model: string;
+}
+
+/** Eintrag der öffentlichen Anbieter-Liste (`/api/v1/providers`). */
+export interface FakeProviderListEntry {
+  slug: string;
+  name: string;
+  headquarters?: string | null;
+}
+
 export interface FakeProviderOptions {
   models: FakeModel[];
+  /**
+   * Form der Modell-Liste: `eurouter` (Standard: `architecture`, `supported_api_endpoints`,
+   * `supported_parameters`) oder `mistral` (`capabilities.completion_chat`, `max_context_length`,
+   * `archived`, kein `name`).
+   */
+  modelFormat?: "eurouter" | "mistral";
+  /**
+   * Routing-Regeln. Eine Anfrage mit `rule_name` braucht kein `model`; ein unbekannter Name gibt
+   * 400 („Routing rule with name '…' not found“). Schickt die Anfrage zusätzlich `model`, gilt das
+   * Modell. Antworten über eine Regel tragen `provider` und `model` der Regel in jedem Stück.
+   */
+  routingRules?: FakeRoutingRule[];
+  /** Inhalt von `/api/v1/providers` (ohne Schlüssel abrufbar). */
+  providers?: FakeProviderListEntry[];
   /** Antworttext oder Funktion aus den Nachrichten der Anfrage. */
   reply: string | ((messages: ReadonlyArray<{ role: string; content: unknown }>) => string);
   /** Zeichen pro Stück im Strom. */
@@ -255,6 +285,27 @@ function splitText(text: string, size: number): string[] {
   return pieces;
 }
 
+function mistralModelEntry(model: FakeModel) {
+  return {
+    id: model.id,
+    object: "model",
+    created: 1760000000,
+    owned_by: "fake",
+    capabilities: {
+      completion_chat:
+        model.supportsChat !== false && (model.modality ?? "text->text") === "text->text",
+      completion_fim: false,
+      function_calling: true,
+      fine_tuning: false,
+      vision: false,
+      classification: false,
+    },
+    max_context_length: model.contextLength ?? 32000,
+    archived: false,
+    aliases: [],
+  };
+}
+
 function modelEntry(model: FakeModel) {
   const endpoints = model.supportsChat === false ? ["images.generations"] : ["chat.completions"];
   const parameters = ["temperature", "max_tokens", "tools", "tool_choice"];
@@ -306,6 +357,32 @@ function checkBehaviour(value: unknown): Partial<FakeProviderOptions> | string {
         change.models = v as FakeModel[];
         break;
       }
+      case "modelFormat":
+        if (v !== "eurouter" && v !== "mistral")
+          return "`modelFormat` muss eurouter oder mistral sein.";
+        change.modelFormat = v;
+        break;
+      case "routingRules":
+        if (
+          !Array.isArray(v) ||
+          !v.every(
+            (r) =>
+              isObject(r) &&
+              typeof r.name === "string" &&
+              typeof r.provider === "string" &&
+              typeof r.model === "string",
+          )
+        ) {
+          return "`routingRules` muss eine Liste mit `name`, `provider` und `model` sein.";
+        }
+        change.routingRules = v as FakeRoutingRule[];
+        break;
+      case "providers":
+        if (!Array.isArray(v) || !v.every((e) => isObject(e) && typeof e.slug === "string")) {
+          return "`providers` muss eine Liste von Objekten mit `slug` sein.";
+        }
+        change.providers = v as FakeProviderListEntry[];
+        break;
       case "reply":
         if (typeof v !== "string") return "`reply` muss Text sein.";
         change.reply = v;
@@ -376,7 +453,14 @@ export function createFakeProvider(
     const next: Record<string, unknown> = { ...current };
     for (const [key, value] of Object.entries(change)) {
       if (value === undefined) {
-        if (key === "apiKey" || key === "toolCall") delete next[key];
+        if (
+          key === "apiKey" ||
+          key === "toolCall" ||
+          key === "routingRules" ||
+          key === "providers" ||
+          key === "modelFormat"
+        )
+          delete next[key];
       } else {
         next[key] = value;
       }
@@ -474,7 +558,9 @@ export function createFakeProvider(
 
     if (path === FAKE_PROVIDER_PATHS.models) {
       if (failure?.kind === "abbruch") return endHard(exchange);
-      sendJson(res, 200, { object: "list", data: current.models.map(modelEntry) });
+      const entry: (m: FakeModel) => unknown =
+        current.modelFormat === "mistral" ? mistralModelEntry : modelEntry;
+      sendJson(res, 200, { object: "list", data: current.models.map(entry) });
       return;
     }
 
@@ -488,7 +574,26 @@ export function createFakeProvider(
     }
     const body = parsed.value;
     const messages = toMessages(body.messages);
-    if (typeof body.model !== "string" || messages === undefined) {
+    let rule: FakeRoutingRule | undefined;
+    if (body.rule_name !== undefined) {
+      rule =
+        typeof body.rule_name === "string"
+          ? current.routingRules?.find((r) => r.name === body.rule_name)
+          : undefined;
+      if (rule === undefined) {
+        const shown = typeof body.rule_name === "string" ? body.rule_name : "";
+        sendJson(res, 400, {
+          error: {
+            code: 400,
+            message: `Routing rule with name '${shown}' not found`,
+            type: "invalid_request_error",
+            param: null,
+          },
+        });
+        return;
+      }
+    }
+    if ((typeof body.model !== "string" && rule === undefined) || messages === undefined) {
       sendJson(
         res,
         400,
@@ -499,7 +604,7 @@ export function createFakeProvider(
       );
       return;
     }
-    await answer(exchange, body, messages, failure?.kind === "abbruch" ? failure : undefined);
+    await answer(exchange, body, messages, failure?.kind === "abbruch" ? failure : undefined, rule);
   }
 
   async function answer(
@@ -507,6 +612,7 @@ export function createFakeProvider(
     body: Record<string, unknown>,
     messages: Message[],
     abort: { kind: "abbruch"; afterChunks: number } | undefined,
+    rule: FakeRoutingRule | undefined,
   ): Promise<void> {
     const { res } = exchange;
     const settings = current;
@@ -520,7 +626,9 @@ export function createFakeProvider(
           ? tool.arguments
           : JSON.stringify(tool.arguments);
     const callId = tool?.id ?? `call_fake_${nextId()}`;
-    const model = body.model as string;
+    const model = typeof body.model === "string" ? body.model : (rule?.model ?? "");
+    // Wie bei einem Vermittler: Wer geantwortet hat, steht in jedem Stück und in der Antwort.
+    const servedBy = rule === undefined ? {} : { provider: rule.provider };
     const id = `chatcmpl-fake-${nextId()}`;
     const created = Math.floor(Date.now() / 1000);
     const finishReason = tool ? "tool_calls" : "stop";
@@ -558,6 +666,7 @@ export function createFakeProvider(
         model,
         choices: [{ index: 0, message, finish_reason: finishReason }],
         usage: usageJson,
+        ...servedBy,
       });
       return;
     }
@@ -570,6 +679,7 @@ export function createFakeProvider(
       created,
       model,
       choices: [{ index: 0, delta, finish_reason: finish }],
+      ...servedBy,
     });
 
     const events: unknown[] = [chunk({ role: "assistant", content: "" })];
@@ -601,6 +711,7 @@ export function createFakeProvider(
         model,
         choices: [],
         usage: usageJson,
+        ...servedBy,
       });
 
     res.writeHead(200, {
@@ -709,6 +820,11 @@ export function createFakeProvider(
   function handle(req: IncomingMessage, res: ServerResponse): void {
     const path = new URL(req.url ?? "/", "http://localhost").pathname;
     const controlPaths: readonly string[] = Object.values(FAKE_CONTROL_PATHS);
+    if (path === FAKE_PROVIDER_PATHS.providers) {
+      req.resume();
+      sendJson(res, 200, { data: current.providers ?? [] });
+      return;
+    }
     const task =
       path === FAKE_PROVIDER_PATHS.models || path === FAKE_PROVIDER_PATHS.chatCompletions
         ? handleApi(req, res, path)

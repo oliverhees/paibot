@@ -16,6 +16,7 @@ import {
   hmacDigestSchema,
   isoTimeSchema,
   positiveIntSchema,
+  servedBySchema,
   timezoneSchema,
 } from "./grundtypen";
 import { idSchema } from "./id";
@@ -43,7 +44,7 @@ export const PROVIDER_KINDS = ["openai_compatible"] as const;
  * oder `eigener` für einen selbst eingetragenen OpenAI-kompatiblen Anbieter. Die Datenschleuse
  * bildet daraus den Modellnamen.
  */
-export const PROVIDER_TEMPLATE_KEYS = ["eurouter", "eigener"] as const;
+export const PROVIDER_TEMPLATE_KEYS = ["eurouter", "mistral", "eigener"] as const;
 export const providerTemplateKeySchema = z.enum(PROVIDER_TEMPLATE_KEYS);
 export type ProviderTemplateKey = z.infer<typeof providerTemplateKeySchema>;
 export const providerKindSchema = z.enum(PROVIDER_KINDS);
@@ -149,6 +150,8 @@ export const messageSchema = z.strictObject({
   tokensIn: countSchema.optional(),
   tokensOut: countSchema.optional(),
   errorCode: errorCodeSchema.optional(),
+  /** Wer laut Antwort der Schnittstelle geantwortet hat (nur Antworten des Bots, wenn gemeldet). */
+  servedBy: servedBySchema.optional(),
   createdAt: isoTimeSchema,
 });
 export type Message = z.infer<typeof messageSchema>;
