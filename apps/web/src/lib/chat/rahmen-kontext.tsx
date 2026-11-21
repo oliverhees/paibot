@@ -25,6 +25,8 @@ export interface RahmenKontext {
   /** Neu oder geändert: steht danach mit neuem Titel bzw. neuer Zeit in der Liste. */
   unterhaltungMerken(u: UnterhaltungKurz): void;
   unterhaltungEntfernen(id: string): void;
+  /** Not-Aus an: Der Bot nimmt keine Nachrichten an. */
+  notAus?: boolean;
 }
 
 const ohneRahmen: RahmenKontext = {

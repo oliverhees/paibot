@@ -504,10 +504,10 @@ describe("Durchstich", () => {
       })
       .catch((e: unknown) => e);
 
-    await repo.runs.finish(ctx.db, runId, { status: "denied", errorCode: "abgelehnt" });
+    await repo.runs.finish(ctx.db, runId, { status: "denied", errorCode: "angehalten" });
     expect(isGateDenied(error)).toBe(true);
     if (!isGateDenied(error)) throw error;
-    expect(error.code).toBe("abgelehnt");
+    expect(error.code).toBe("angehalten");
     expect(error.decision.limits).toContainEqual(
       expect.objectContaining({ name: "not_aus", result: "verletzt" }),
     );
@@ -527,7 +527,7 @@ describe("Durchstich", () => {
     expect(result).toMatchObject({
       type: "result",
       action: { actionId: action.actionId },
-      result: { status: "denied", code: "abgelehnt" },
+      result: { status: "denied", code: "angehalten" },
     });
 
     // Signaturen und Kette bleiben gültig, die Ablehnung lässt sich nachrechnen.

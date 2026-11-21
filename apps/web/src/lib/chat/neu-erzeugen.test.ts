@@ -132,12 +132,15 @@ describe("POST /api/unterhaltungen/:id/antworten/:antwortId/neu", () => {
     expect(d?.preconditions).toContainEqual({ name: "antwort_ist_letzte", result: "verletzt" });
   });
 
-  it("Not-Aus an: abgelehnt mit G-05, kein Lauf", async () => {
+  it("Not-Aus an: abgelehnt mit „angehalten“ und Ausweg (G-05), kein Lauf", async () => {
     const e = await eingerichtet();
     const { id, antwort } = await mitAntwort(e);
     await repo.settings.update(e.u.db, { killSwitch: true });
     const r = await neu(e, id, antwort);
-    expect(r.status).toBeGreaterThanOrEqual(400);
+    expect(r.status).toBe(409);
+    expect(r.body.fehler).toMatchObject({ code: "angehalten", text: "Alle Bots sind angehalten." });
+    expect(JSON.stringify(r.body.fehler)).toContain("Hebe den Not-Aus auf");
+    expect(e.schlange.jobs).toHaveLength(1); // nur der Lauf der ersten Antwort
     expect(await repo.runs.getActive(e.u.db, id)).toBeUndefined();
     const d = await entscheidung(e);
     expect(d?.outcome).toBe("deny");

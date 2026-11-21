@@ -76,6 +76,7 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   "geraet.hinzufuegen": { deviceId: ids.deviceId },
   "geraet.entfernen": { deviceId: ids.deviceId },
   "geraet.bestaetigen": { deviceId: ids.deviceId },
+  "notaus.umschalten": { installationId: ids.installationId },
   "unterhaltung.exportieren": { conversationId: ids.conversationId },
   "antwort.neu_erzeugen": { conversationId: ids.conversationId, messageId: ids.messageId },
 };
@@ -167,6 +168,13 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
   "geraet.hinzufuegen": { credential: "sitzung", kind: "browser" },
   "geraet.entfernen": { credential: "sitzung", deviceActive: true, thisDevice: false },
   "geraet.bestaetigen": { credential: "sitzung", newDevices: 1 },
+  // Aufheben mit bestätigtem Passwort: so ist die Vorbedingung V-10 geprüft und erfüllt.
+  "notaus.umschalten": {
+    credential: "sitzung",
+    on: false,
+    wasOn: true,
+    currentPasswordVerified: true,
+  },
   "unterhaltung.exportieren": { credential: "sitzung", conversationExists: true, messages: 4 },
   "antwort.neu_erzeugen": {
     credential: "sitzung",

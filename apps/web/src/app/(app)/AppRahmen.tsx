@@ -16,7 +16,7 @@ import type { BotColor, Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { AppShell, type AppShellFlaeche, type AppShellTexte, Icon } from "@paibot/ui";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   type ComponentProps,
   type ReactNode,
@@ -38,6 +38,8 @@ import {
   NAVIGATION,
 } from "../../lib/navigation";
 import styles from "./app.module.css";
+import { NotAusDialog, type NotAusFrage, NotAusKnopf, NotAusLeiste } from "./NotAus";
+import notausStyles from "./notaus.module.css";
 import { useSuche } from "./Suche";
 
 export interface AppRahmenProps {
@@ -46,6 +48,10 @@ export interface AppRahmenProps {
   region?: Region;
   /** Unterhaltungen des Bots, neueste zuerst (vom Server; danach hält der Rahmen sie aktuell). */
   unterhaltungen: readonly UnterhaltungKurz[];
+  /** Not-Aus an (vom Server); danach hält der Rahmen den Zustand selbst aktuell. */
+  notAus?: boolean;
+  /** Weitere Hinweise über der Kopfzeile, unter der Leiste des Not-Aus (z. B. neue Anmeldung). */
+  hinweise?: ReactNode;
   /** Zeitzone der Einstellungen (Zeiten der Suchtreffer). */
   zeitzone: string;
   children: ReactNode;
@@ -115,11 +121,17 @@ export function AppRahmen({
   bot,
   region,
   unterhaltungen: vomServer,
+  notAus: notAusVomServer = false,
+  hinweise,
   zeitzone,
   children,
 }: AppRahmenProps) {
   const pfad = usePathname();
+  const router = useRouter();
   const suche = useSuche({ botName: bot.name, zeitzone });
+  const [notAus, setNotAus] = useState(notAusVomServer);
+  const [notAusFrage, setNotAusFrage] = useState<NotAusFrage | undefined>(undefined);
+  useEffect(() => setNotAus(notAusVomServer), [notAusVomServer]);
   const [unterhaltungen, setUnterhaltungen] = useState(() => neuesteZuerst(vomServer));
   const [kopf, setKopf] = useState<ReactNode | undefined>(undefined);
   const [flaeche, setFlaeche] = useState<AppShellFlaeche | undefined>(undefined);
@@ -144,8 +156,9 @@ export function AppRahmen({
       unterhaltungen,
       unterhaltungMerken,
       unterhaltungEntfernen,
+      notAus,
     }),
-    [flaecheOffen, unterhaltungen, unterhaltungMerken, unterhaltungEntfernen],
+    [flaecheOffen, unterhaltungen, unterhaltungMerken, unterhaltungEntfernen, notAus],
   );
 
   const navUnterhaltungen = unterhaltungen.map((u) => {
@@ -179,6 +192,15 @@ export function AppRahmen({
           })),
         }}
         unten={<Abmelden />}
+        obenZusatz={
+          <NotAusKnopf an={notAus} onClick={() => setNotAusFrage(notAus ? "aus" : "an")} />
+        }
+        hinweis={
+          <>
+            {notAus && <NotAusLeiste onFortsetzen={() => setNotAusFrage("aus")} />}
+            {hinweise !== undefined && <div className={notausStyles.hinweise}>{hinweise}</div>}
+          </>
+        }
         suche={suche}
         kopf={kopf ?? <span className={styles.kopfTitel}>{kopfTitel(pfad)}</span>}
         {...(flaeche === undefined ? {} : { flaeche })}
@@ -187,6 +209,15 @@ export function AppRahmen({
       >
         {children}
       </AppShell>
+      <NotAusDialog
+        frage={notAusFrage}
+        onSchliessen={() => setNotAusFrage(undefined)}
+        onGeschaltet={(an) => {
+          setNotAus(an);
+          setNotAusFrage(undefined);
+          router.refresh();
+        }}
+      />
     </Rahmen.Provider>
   );
 }

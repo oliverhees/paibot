@@ -124,6 +124,10 @@ export interface AppShellProps {
   eingebettet?: boolean;
   /** Zusätzlicher Inhalt unten in der Navigation, über der Fußzeile (z. B. „Abmelden“). */
   unten?: ReactNode;
+  /** Zusätzlicher Inhalt oben in der Navigation, unter „Läuft auf“ (z. B. der Not-Aus). */
+  obenZusatz?: ReactNode;
+  /** Leiste über der Kopfzeile der mittleren Spalte, auf jeder Seite (z. B. „angehalten“). */
+  hinweis?: ReactNode;
   /**
    * Suche in der Navigation: `feld` steht über der Liste. Gibt es `ergebnisse`, stehen sie an
    * Stelle des Bots und seiner Unterhaltungen; die Funktion bekommt das Schließen des Menüs (Handy).
@@ -179,6 +183,8 @@ export function AppShell({
   onFlaecheOffen,
   eingebettet = false,
   unten,
+  obenZusatz,
+  hinweis,
   suche,
   link: Link = StandardLink,
 }: AppShellProps) {
@@ -272,6 +278,7 @@ export function AppShell({
                 {texte.modelle} <b>{navigation.modelle}</b>
               </span>
             </div>
+            {obenZusatz}
           </div>
 
           {suche && <div className={styles.suche}>{suche.feld}</div>}
@@ -353,6 +360,7 @@ export function AppShell({
         </aside>
 
         <div className={styles.haupt}>
+          {hinweis}
           <header className={styles.kopf}>
             <IconButton
               icon="menue"

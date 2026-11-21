@@ -202,7 +202,6 @@ export function useSuche({ botName, zeitzone }: { botName: string; zeitzone: str
             ? t("suche.anzahl", { anzahl })
             : t("suche.anzahl_mehr", { anzahl })}
         </p>
-        {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Pfeiltasten zwischen den Links der Liste */}
         <ul ref={listeRef} className={styles.liste} onKeyDown={listenTaste}>
           {ergebnis.titel.length > 0 && (
             <li className={styles.gruppe} aria-hidden="true">

@@ -126,7 +126,8 @@ Am Handy steht das Suchfeld oben im Menü; ein Tipp auf einen Treffer schließt 
 
 4. Mit einem anderen Modell: Klick auf den kleinen Pfeil neben **Neu erzeugen** und wähle **Mit anderem Modell …**. Wähle das Modell aus der Liste und klick auf **Neu erzeugen mit …**. Das gewählte Modell gilt danach auch für die nächsten Antworten deines Bots; zurückstellen kannst du es auf der Seite „Modell und Anbieter“. Den Pfeil gibt es nur, wenn mehr als ein Modell wählbar ist.
 5. Solange eine Antwort läuft, ist **Neu erzeugen** gesperrt; daneben steht „Neu erzeugen geht wieder, sobald Pai fertig ist.“ Mit **Stopp** kannst du eine laufende neue Fassung abbrechen; ihr Text bis dahin bleibt als Fassung stehen.
-6. Greift eine Grenze (zum Beispiel das Tagesbudget oder der Not-Aus), entsteht keine neue Antwort. Unter der bisherigen Antwort steht dann der Hinweis mit dem Grund, und die bisherige Antwort bleibt die gültige.
+6. Ist der Not-Aus an, ist **Neu erzeugen** gesperrt („Neu erzeugen geht wieder, wenn du den Not-Aus aufhebst.“); am Server lehnt das Tor mit „Alle Bots sind angehalten.“ ab. Suchen und Als Datei sichern gehen auch bei Not-Aus, weil dabei kein Bot arbeitet.
+7. Greift eine andere Grenze (zum Beispiel das Tagesbudget), entsteht keine neue Antwort. Unter der bisherigen Antwort steht dann der Hinweis mit dem Grund, und die bisherige Antwort bleibt die gültige.
 
 **Eine andere Unterhaltung öffnen**
 

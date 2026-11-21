@@ -128,6 +128,17 @@ describe("POST /api/unterhaltungen/:id/export", () => {
     expect(await repo.messages.listForConversation(e.u.db, id as never)).toEqual(nachrichtenVorher);
   });
 
+  it("Not-Aus an: Sichern geht weiter (Aktion des Besitzers, kein Bot)", async () => {
+    const e = await eingerichtet();
+    const id = await mitVerlauf(e);
+    await repo.settings.update(e.u.db, { killSwitch: true });
+    const antwort = await exportieren(e, id);
+    expect(antwort.status).toBe(200);
+    expect(await antwort.text()).toContain("Wann säe ich Tomaten?");
+    const [, ergebnis] = await belegeDer(e.u, "unterhaltung.exportieren");
+    expect(ergebnis?.body.type === "result" && ergebnis.body.result.status).toBe("ok");
+  });
+
   it("leere Unterhaltung: Datei mit Titel und Hinweis", async () => {
     const e = await eingerichtet();
     const id = await neueUnterhaltung(e, "Noch leer");

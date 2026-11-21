@@ -113,6 +113,14 @@ describe("GET /api/suche", () => {
     expect((await repo.belege.head(e.u.db))?.seq).toBe(vorher?.seq);
   });
 
+  it("Not-Aus an: Suchen geht weiter", async () => {
+    const e = await mitDaten();
+    await repo.settings.update(e.u.db, { killSwitch: true });
+    const r = await suchen(e, "?q=Tomaten");
+    expect(r.status).toBe(200);
+    expect((r.body.daten as SuchErgebnis).nachrichten).toHaveLength(2);
+  });
+
   it("blättert seitenweise", async () => {
     const e = await mitDaten();
     const [u] = await repo.conversations.list(e.u.db);

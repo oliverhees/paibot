@@ -493,6 +493,7 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
     vorher: einrichten,
     aufruf: async (s) => ({ params: { id: await anbieterId(s) } }),
   },
+  notausUmschalten: { vorher: einrichten, aufruf: async () => ({ koerper: { on: true } }) },
   unterhaltungExport: {
     vorher: mitAntwort,
     aufruf: async (s) => ({ params: { id: s.unterhaltung ?? "" } }),
@@ -561,6 +562,7 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
   belegeKette: { vorher: einrichten, aufruf: async () => ({ abfrage: "?ab=1&anzahl=10" }) },
   belegeSchluessel: { vorher: einrichten, aufruf: async () => ({}) },
   regeln: { vorher: einrichten, aufruf: async () => ({}) },
+  selbsttest: { vorher: einrichten, aufruf: async () => ({}) },
   suche: { vorher: mitUnterhaltung, aufruf: async () => ({ abfrage: "?q=Beispiel" }) },
 };
 

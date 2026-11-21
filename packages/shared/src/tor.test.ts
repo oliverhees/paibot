@@ -92,6 +92,7 @@ describe("Aktionen", () => {
       "geraet.hinzufuegen",
       "geraet.entfernen",
       "geraet.bestaetigen",
+      "notaus.umschalten",
       "unterhaltung.exportieren",
       "antwort.neu_erzeugen",
     ]);
