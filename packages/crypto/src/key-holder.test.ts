@@ -193,4 +193,19 @@ describe("createSigningKeyHolder", () => {
     expect(view.privateKey).toBe(good.privateKey);
     expect(await holder.current()).toBe(view);
   });
+
+  it("gleiche Kennung, anderer öffentlicher Teil: das Fach wird ersetzt, das alte Objekt wirft beim Signieren", async () => {
+    const first = generateSigningKey();
+    const second = generateSigningKey();
+    let next = { keyId: KEY_ID, ...first };
+    const holder = createSigningKeyHolder(async () => next);
+    const old = await holder.load();
+    next = { keyId: KEY_ID, ...second };
+    const replaced = await holder.load();
+    expect(replaced).not.toBe(old);
+    expect(replaced.publicKey).toBe(second.publicKey);
+    const data = new TextEncoder().encode("Beleg");
+    expect(verify(second.publicKey, data, sign(replaced.privateKey, data))).toBe(true);
+    expect(() => sign(old.privateKey, data)).toThrow();
+  });
 });
