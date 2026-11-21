@@ -1731,6 +1731,10 @@ export const de = {
   "vorgabe.ausweichen.modelle": "Kann auf {modelle} ausweichen.",
   "vorgabe.ausweichen.erlaubt":
     "Kann ausweichen: Die Regel erlaubt es. Wer antwortet, steht an jeder Antwort.",
+  "vorgabe.eu.kurz": "EU laut Regel in deinem Konto, geprüft am {datum}",
+  "vorgabe.eu.kurz_alt": "EU laut Regel in deinem Konto, zuletzt geprüft am {datum}",
+  "vorgabe.ausweichen.kurz_modelle": "kann auf {modelle} ausweichen",
+  "vorgabe.ausweichen.kurz_erlaubt": "kann ausweichen (Regel erlaubt es)",
   "vorgabe.zuletzt": "Zuletzt geprüft am {datum}",
   "vorgabe.alt": "länger nicht geprüft",
 

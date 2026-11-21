@@ -53,6 +53,7 @@ import { AnbieterHinzufuegen } from "./AnbieterHinzufuegen";
 import { EigenerAnbieterForm } from "./EigenerAnbieterForm";
 import styles from "./modelle.module.css";
 import { type RegelEintragAnsicht, RegelnKarte } from "./RegelnKarte";
+import { VerwaltungsKarte } from "./VerwaltungsKarte";
 
 export interface ModelleAnsichtProps {
   botName: string;
@@ -70,6 +71,12 @@ type Liste =
   | { zustand: "laedt" }
   | { zustand: "fehler"; fehler: ApiErrorDetail }
   | { zustand: "fertig"; modelle: ModellZeile[] };
+
+/** Vorläufige Kennung eines Modells, das nur beim Anbieter bekannt ist. */
+const NEU = "neu:";
+
+/** Modell aus `modelle/lesen`: `id` fehlt, solange PaiBot es nicht gespeichert hat. */
+type GelesenZeile = Omit<ModellZeile, "id"> & { id?: string };
 
 type Meldung = { art: "ok" | "fehler"; text: string; ausweg?: string } | undefined;
 
@@ -129,23 +136,33 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
 
   const name = anbieter?.name ?? vorlage.name;
 
-  const listeLaden = useCallback(async (a: Provider | undefined): Promise<number | undefined> => {
-    if (!listeHolbar(a) || a === undefined) {
-      setListe({ zustand: "aus" });
+  /**
+   * Zeigt die Modell-Liste des Anbieters. Ohne `abgleichen` wird nur gelesen (beim Öffnen der Seite
+   * wird nichts gespeichert, es entsteht kein Beleg); mit `abgleichen` speichert PaiBot die Liste
+   * (Beleg „Anbieter gespeichert“), und zwar nur auf ausdrücklichen Wunsch.
+   */
+  const listeLaden = useCallback(
+    async (a: Provider | undefined, abgleichen = false): Promise<number | undefined> => {
+      if (!listeHolbar(a) || a === undefined) {
+        setListe({ zustand: "aus" });
+        return undefined;
+      }
+      setListe({ zustand: "laedt" });
+      const antwort = await apiFetch<{ modelle: GelesenZeile[] }>(
+        "POST",
+        `/api/anbieter/${encodeURIComponent(a.id)}/modelle${abgleichen ? "" : "/lesen"}`,
+      );
+      if (antwort.ok) {
+        // Modelle, die PaiBot noch nicht gespeichert hat, tragen vorerst eine Kennung aus ihrem Namen.
+        const modelle = antwort.daten.modelle.map((m) => ({ ...m, id: m.id ?? `${NEU}${m.slug}` }));
+        setListe({ zustand: "fertig", modelle });
+        return modelle.length;
+      }
+      setListe({ zustand: "fehler", fehler: antwort.fehler });
       return undefined;
-    }
-    setListe({ zustand: "laedt" });
-    const antwort = await apiFetch<{ modelle: ModellZeile[] }>(
-      "POST",
-      `/api/anbieter/${encodeURIComponent(a.id)}/modelle`,
-    );
-    if (antwort.ok) {
-      setListe({ zustand: "fertig", modelle: antwort.daten.modelle });
-      return antwort.daten.modelle.length;
-    }
-    setListe({ zustand: "fehler", fehler: antwort.fehler });
-    return undefined;
-  }, []);
+    },
+    [],
+  );
 
   const ersterRef = useRef(erster);
   useEffect(() => {
@@ -324,7 +341,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
 
   async function listeAbgleichen() {
     setModellMeldung(undefined);
-    const anzahl = await listeLaden(anbieter);
+    const anzahl = await listeLaden(anbieter, true);
     if (anzahl !== undefined) {
       setModellMeldung({ art: "ok", text: t("modelle.liste.abgeglichen", { anzahl }) });
     }
@@ -334,8 +351,32 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     if (auswahl === undefined) return;
     setModellMeldung(undefined);
     setUebernimmt(true);
+    let modelId = auswahl;
+    if (modelId.startsWith(NEU)) {
+      // Erst jetzt, auf Wunsch, speichert PaiBot die Liste, damit das Modell eine Kennung hat.
+      const slug = modelId.slice(NEU.length);
+      const abgleich = await apiFetch<{ modelle: ModellZeile[] }>(
+        "POST",
+        `/api/anbieter/${encodeURIComponent(anbieter?.id ?? "")}/modelle`,
+      );
+      const gespeichert = abgleich.ok
+        ? abgleich.daten.modelle.find((m) => m.slug === slug)
+        : undefined;
+      if (!abgleich.ok || gespeichert === undefined) {
+        setUebernimmt(false);
+        setModellMeldung({
+          art: "fehler",
+          text: abgleich.ok ? t("modelle.liste.leer", { anbieter: name }) : abgleich.fehler.text,
+          ...(!abgleich.ok && abgleich.fehler.ausweg ? { ausweg: abgleich.fehler.ausweg } : {}),
+        });
+        return;
+      }
+      setListe({ zustand: "fertig", modelle: abgleich.daten.modelle });
+      modelId = gespeichert.id;
+      setAuswahl(modelId);
+    }
     const antwort = await apiFetch<{ modell?: BotModell }>("PUT", "/api/bot/modell", {
-      modelId: auswahl,
+      modelId,
     });
     setUebernimmt(false);
     if (!antwort.ok) {
@@ -441,6 +482,12 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
             titel={t("modelle.anbieter.keiner.titel")}
             text={t("anbieterwahl.keiner.text", { name: botName })}
           />
+        )}
+        {anbieter?.region === "non_eu" && (
+          <div className={styles.meldung} data-art="warn" role="note">
+            <Icon name="info" />
+            <p>{t("modelle.eigen.non_eu.hinweis")}</p>
+          </div>
         )}
         <p className={styles.leise}>{t("modelle.schluessel.verdeckt")}</p>
 
@@ -550,19 +597,27 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
       </Karte>
 
       {anbieter?.templateKey === "eurouter" ? (
-        <RegelnKarte
-          key={anbieter.id}
-          anbieter={anbieter}
-          botName={botName}
-          regeln={regeln[anbieter.id] ?? []}
-          alte={props.alteEintraege?.[anbieter.id] ?? []}
-          {...(modell === undefined ? {} : { modell })}
-          onRegeln={(neu) => setRegeln((alt) => ({ ...alt, [anbieter.id]: neu }))}
-          onModell={(neu) => {
-            setModell(neu);
-            router.refresh();
-          }}
-        />
+        <>
+          <RegelnKarte
+            key={anbieter.id}
+            anbieter={anbieter}
+            botName={botName}
+            regeln={regeln[anbieter.id] ?? []}
+            alte={props.alteEintraege?.[anbieter.id] ?? []}
+            {...(modell === undefined ? {} : { modell })}
+            onRegeln={(neu) => setRegeln((alt) => ({ ...alt, [anbieter.id]: neu }))}
+            onModell={(neu) => {
+              setModell(neu);
+              router.refresh();
+            }}
+          />
+          <VerwaltungsKarte
+            key={`verwaltung-${anbieter.id}`}
+            anbieter={anbieter}
+            onAnbieter={anbieterUebernehmen}
+            onRegeln={(neu) => setRegeln((alt) => ({ ...alt, [anbieter.id]: neu }))}
+          />
+        </>
       ) : (
         <Karte
           titel={t("modelle.liste.titel", { name: botName })}

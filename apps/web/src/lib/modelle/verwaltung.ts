@@ -25,6 +25,7 @@ import type { Provider } from "@paibot/shared/objekte";
 import type { ListedRule } from "@paibot/shared/regelliste";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
+import type { EinrichtungsAnbieter } from "../umgebung";
 import type { ZugangsDienste } from "../zugang/dienste";
 import { type RegelEintrag, regelnVon } from "./regeln";
 import { istEuBelegt, residenzSatz, vorgabeAus } from "./vorgabe";
@@ -100,7 +101,7 @@ function verwaltungsschluesselLesen(d: ZugangsDienste, anbieter: Provider, enc: 
 /** Liest die Regel-Liste mit dem Schlüssel; bei einem Fehler wirft sie den Satz mit Ausweg. */
 export async function listeLesen(
   d: ZugangsDienste,
-  anbieter: Provider,
+  anbieter: EinrichtungsAnbieter,
   verwaltungsschluessel: string,
 ): Promise<GeleseneListe> {
   const ergebnis = await d.regelnLesen(anbieter, verwaltungsschluessel);

@@ -15,6 +15,7 @@ import type { ErrorCode } from "@paibot/shared/fehler";
 import type { BotColor, Message, Run, SchleuseMode } from "@paibot/shared/objekte";
 import type { Outcome } from "@paibot/shared/tor";
 import type { AnbieterKurz, UnterAnbieterListe } from "../modelle/herkunft";
+import type { RegelVorgabe } from "../modelle/vorgabe";
 
 /** Modell mit Herkunft, z. B. „Beispiel-Modell A · EU“. */
 export interface ModellInfo {
@@ -23,6 +24,11 @@ export interface ModellInfo {
   herkunft?: string;
   /** Anbieter des Modells, für die Herkunft einer einzelnen Antwort (`antwortHerkunft`). */
   anbieter?: AnbieterKurz;
+  /**
+   * Nur bei einer Routing-Regel mit gelesenen Vorgaben (zweiter Schlüssel): die Vorgaben mit
+   * Zeitpunkt der Prüfung. Nur daraus kann die Kennzeichnung „EU“ kommen.
+   */
+  vorgabe?: RegelVorgabe;
 }
 
 /** Eintrag der Seitenleiste. */

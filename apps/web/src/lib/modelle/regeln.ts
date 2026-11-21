@@ -39,6 +39,10 @@ export interface RegelErgebnis {
   servedBy?: ServedBy;
   /** Herkunft in Worten, z. B. „Antwort von Nebul · Sitz Niederlande laut EUrouter“. */
   herkunft?: string;
+  /** Mit zweitem Schlüssel gelesen: Die Regel meldet `data_residency: "EU"`. */
+  eu?: boolean;
+  /** Mit zweitem Schlüssel gelesen: Satz zur Kennzeichnung bzw. zur Residenz, mit Datum. */
+  vorgabeText?: string;
   /** Satz zum Fehler mit Ausweg (nur bei Misserfolg). */
   text?: string;
   ausweg?: string;

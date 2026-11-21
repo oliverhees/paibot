@@ -85,6 +85,7 @@ import type {
   UnterhaltungInfo,
 } from "../../../lib/chat/typen";
 import { antwortHerkunft } from "../../../lib/modelle/herkunft";
+import { antwortKurz, euMarke, euSatz } from "../../../lib/modelle/vorgabe";
 import { entwurfLesen, entwurfMerken } from "../../../lib/speicher";
 import { useConversationEvents } from "../../../lib/sse/use-conversation-events";
 import { BelegeFlaeche } from "./BelegeFlaeche";
@@ -431,12 +432,31 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
             className={styles.modellKnopf}
             aria-label={t("chat.kopf.modell", {
               name: bereitschaft.modell.name,
-              region: bereitschaft.modell.herkunft ?? "",
+              region: [
+                bereitschaft.modell.herkunft,
+                euSatz(
+                  bereitschaft.modell.vorgabe,
+                  bereitschaft.modell.anbieter?.name ?? "EUrouter",
+                ),
+              ]
+                .filter(Boolean)
+                .join(". "),
             })}
           >
             <span className={styles.nurBreit}>{bereitschaft.modell.name}</span>
             {bereitschaft.modell.herkunft && (
               <span className={styles.region}>{bereitschaft.modell.herkunft}</span>
+            )}
+            {euMarke(bereitschaft.modell.vorgabe) !== undefined && (
+              <span
+                className={styles.region}
+                title={euSatz(
+                  bereitschaft.modell.vorgabe,
+                  bereitschaft.modell.anbieter?.name ?? "EUrouter",
+                )}
+              >
+                {euMarke(bereitschaft.modell.vorgabe)}
+              </span>
             )}
           </Link>
         )}
@@ -540,12 +560,17 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
         </div>
       ) : null;
     }
-    const herkunft = antwortHerkunft(modell.anbieter, n.servedBy, bereitschaft.unterAnbieter);
+    const herkunft = [
+      antwortHerkunft(modell.anbieter, n.servedBy, bereitschaft.unterAnbieter),
+      ...antwortKurz(modell.vorgabe),
+    ]
+      .filter((teil): teil is string => teil !== undefined)
+      .join(" · ");
     return (
       <AntwortZeile
         {...(beleg ? { beleg } : {})}
         schleuse={wegAngabe(n.route)}
-        modell={{ name: modell.name, ...(herkunft === undefined ? {} : { herkunft }) }}
+        modell={{ name: modell.name, ...(herkunft === "" ? {} : { herkunft }) }}
       />
     );
   }

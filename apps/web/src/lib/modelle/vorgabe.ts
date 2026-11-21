@@ -119,3 +119,25 @@ export function antwortZusatz(vorgabe: RegelVorgabe | undefined, anbieter: strin
   if (ausweichen !== undefined) teile.push(ausweichen);
   return teile;
 }
+
+/**
+ * Kurze Teile für die Zeile unter einer Antwort und die Kopfzeile: Kennzeichnung mit Datum (nur
+ * mit Beleg) und der Hinweis aufs Ausweichen. Keine Rechtsaussage.
+ */
+export function antwortKurz(vorgabe: RegelVorgabe | undefined): string[] {
+  const teile: string[] = [];
+  if (vorgabe !== undefined && istEuBelegt(vorgabe)) {
+    teile.push(
+      t(vorgabe.veraltet ? "vorgabe.eu.kurz_alt" : "vorgabe.eu.kurz", {
+        datum: vorgabe.geprueftText,
+      }),
+    );
+  }
+  const modelle = vorgabe?.policy.models ?? [];
+  if (modelle.length > 0) {
+    teile.push(t("vorgabe.ausweichen.kurz_modelle", { modelle: modelle.join(", ") }));
+  } else if (vorgabe?.policy.allow_fallbacks === true) {
+    teile.push(t("vorgabe.ausweichen.kurz_erlaubt"));
+  }
+  return teile;
+}
