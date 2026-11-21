@@ -45,6 +45,7 @@ pnpm dev
 | Datei                              | Inhalt                                                                      |
 | ---------------------------------- | --------------------------------------------------------------------------- |
 | `docker-compose.yml`               | Betrieb: internes Netz für die Datenbank, gehärtete Container, Healthchecks |
+| `docker-compose.image.yml`         | wie `docker-compose.yml`, aber mit fertigem Image (`PAIBOT_VERSION`)        |
 | `docker-compose.entwicklung.yml`   | nur Entwicklung: Datenbank-Port auf `127.0.0.1`                             |
 | `env-erzeugen.sh`                  | legt `deploy/.env` mit zufälligen Passwörtern und `PAIBOT_SECRET` an        |
 | `docker-compose.schleuse-test.yml` | nur Tests: Datenschleuse mit Test-Anbieter auf `127.0.0.1`                  |

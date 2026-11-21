@@ -34,6 +34,10 @@ export const ERROR_STATUS = {
   schleuse_nicht_installiert: 409,
   anbieter_nicht_erreichbar: 502,
   schluessel_ungueltig: 502,
+  /** Die Datenschleuse lehnt den Schlüssel von PaiBot ab (nicht der Schlüssel des Anbieters). */
+  schluessel_passt_nicht: 502,
+  /** Die Antwort war größer als erlaubt; PaiBot hat sie abgebrochen. */
+  antwort_zu_gross: 502,
   limit_erreicht: 429,
   unterbrochen: 500,
   intern: 500,

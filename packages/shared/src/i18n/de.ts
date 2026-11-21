@@ -1061,4 +1061,47 @@ export const de = {
   "regeln.vorbedingung.V-07": "Die Einrichtung ist noch offen.",
   "regeln.vorbedingung.V-08": "Der Aufruf wartet auf deine Freigabe.",
   "regeln.vorbedingung.V-09": "Die Freigabe passt genau zum Aufruf.",
+
+  // Nachrunde Oberfläche: Navigation, Zustand der Datenschleuse, Fehler der Datenschleuse
+  "seite.regeln": "Regeln",
+  "navigation.modelle.keine": "noch keins",
+  "datenschleuse.worker.chip.bereit": "bereit",
+  "datenschleuse.worker.chip.nicht_erreichbar": "nicht erreichbar",
+  "datenschleuse.worker.chip.schluessel_falsch": "Schlüssel passt nicht",
+  "datenschleuse.worker.chip.aus": "nicht eingerichtet",
+  "datenschleuse.worker.chip.veraltet": "Worker meldet sich nicht",
+  "datenschleuse.worker.geprueft": "Zuletzt vom Worker geprüft: {zeit}.",
+  "datenschleuse.worker.veraltet":
+    "Der Worker hat sich seit {zeit} nicht gemeldet. Der Zustand ist deshalb vielleicht nicht mehr aktuell.",
+  "datenschleuse.worker.veraltet.ausweg":
+    "Prüf mit „docker compose ps“, ob der Dienst worker läuft, und sieh in sein Log.",
+  "datenschleuse.worker.keine":
+    "Der Worker hat noch keinen Zustand gemeldet. Er prüft die Datenschleuse gleich nach dem Start und danach alle 30 Sekunden.",
+  "datenschleuse.worker.hinweis":
+    "Die Web-App erreicht die Datenschleuse nicht selbst. Der Worker prüft sie beim Start und danach alle 30 Sekunden und hält das Ergebnis fest.",
+  "fehler.schluessel_passt_nicht":
+    "Die Datenschleuse nimmt den Schlüssel von PaiBot nicht an. Die Nachricht wurde nicht an das Modell geschickt.",
+  "fehler.schluessel_passt_nicht.ausweg":
+    "Das betrifft SCHLEUSE_KEY in deploy/.env, nicht den Schlüssel des Anbieters. Prüf den Wert und starte Worker und Datenschleuse neu.",
+  "fehler.antwort_zu_gross": "Die Antwort war größer als erlaubt und wurde abgebrochen.",
+  "fehler.antwort_zu_gross.ausweg":
+    "Bitte um eine kürzere Antwort oder teil die Frage in mehrere Nachrichten auf.",
+  "schleuse.fehler.blockiert":
+    "Die Datenschleuse hat die Anfrage gestoppt. An das Modell ging nichts.",
+  "schleuse.fehler.blockiert.ausweg":
+    "Sieh auf der Seite Datenschleuse nach, ob sie bereit ist, oder schalte sie für diese Unterhaltung aus.",
+  "schleuse.fehler.nicht_erreichbar":
+    "Die Datenschleuse war nicht bereit. Die Nachricht wurde nicht verschickt.",
+  "schleuse.fehler.nicht_erreichbar.ausweg":
+    "Prüf mit „docker compose ps“, ob datenschleuse und schleuse-analyzer laufen. Die Seite Datenschleuse zeigt, was der Worker zuletzt geprüft hat.",
+  "schleuse.fehler.schluessel_passt_nicht":
+    "Die Datenschleuse nimmt den Schlüssel von PaiBot (SCHLEUSE_KEY) nicht an. Die Nachricht wurde nicht verschickt.",
+  "schleuse.fehler.schluessel_passt_nicht.ausweg":
+    "Prüf SCHLEUSE_KEY in deploy/.env und starte Worker und Datenschleuse neu, damit beide denselben Wert haben.",
+  "schleuse.fehler.antwort_zu_gross":
+    "Die Antwort über die Datenschleuse war größer als erlaubt und wurde abgebrochen.",
+  "schleuse.fehler.antwort_zu_gross.ausweg":
+    "Bitte um eine kürzere Antwort oder teil die Frage in mehrere Nachrichten auf.",
+  "modelle.anbieter.name.lokal": "Lokaler Anbieter",
+  "modelle.anbieter.name.eigener": "Eigener Anbieter",
 } as const satisfies Record<string, string | readonly string[]>;

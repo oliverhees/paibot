@@ -14,7 +14,8 @@ import type { ReceiptEntry } from "@paibot/shared/belege";
 import { describe, expect, it, vi } from "vitest";
 import { belegeSeit, eingerichtet, letzteNummer } from "../modelle/testing";
 import { anfrage, Keksdose } from "../zugang/testing";
-import { letzterLaufAus } from "./schleuse";
+import { workerAnzeige } from "./ansicht";
+import { eingerichtetAus, letzterLaufAus, VERALTET_NACH_MS, workerMeldungAus } from "./schleuse";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -173,5 +174,91 @@ describe("letzte Anfrage über die Datenschleuse (aus Belegen)", () => {
       entscheidung("b0", { requestedMode: "on", schleuseReachable: false }),
     ];
     expect(letzterLaufAus(liste)).toMatchObject({ art: "bereit" });
+  });
+});
+
+describe("Zustand vom Worker", () => {
+  const jetzt = new Date("2026-11-21T10:00:00.000Z");
+  const vor = (ms: number) => new Date(jetzt.getTime() - ms);
+
+  it("ohne Meldung kein Zustand; eine alte Meldung gilt als veraltet", () => {
+    expect(workerMeldungAus(undefined, jetzt)).toBeUndefined();
+    expect(workerMeldungAus({ state: "bereit", checkedAt: vor(60_000) }, jetzt)).toEqual({
+      zustand: "bereit",
+      geprueft: vor(60_000).toISOString(),
+      veraltet: false,
+    });
+    expect(
+      workerMeldungAus({ state: "bereit", checkedAt: vor(VERALTET_NACH_MS + 1) }, jetzt)?.veraltet,
+    ).toBe(true);
+  });
+
+  it("eingerichtet, sobald der Worker etwas anderes als „aus“ meldet, oder laut eigener Umgebung", () => {
+    const m = (zustand: "aus" | "bereit" | "nicht_erreichbar" | "schluessel_falsch") => ({
+      zustand,
+      geprueft: jetzt.toISOString(),
+      veraltet: false,
+    });
+    expect(eingerichtetAus(false, undefined)).toBe(false);
+    expect(eingerichtetAus(false, m("aus"))).toBe(false);
+    expect(eingerichtetAus(false, m("bereit"))).toBe(true);
+    expect(eingerichtetAus(false, m("nicht_erreichbar"))).toBe(true);
+    expect(eingerichtetAus(false, m("schluessel_falsch"))).toBe(true);
+    expect(eingerichtetAus(true, undefined)).toBe(true);
+  });
+
+  it("die Anzeige nennt jeden Zustand mit Ausweg, veraltet geht vor", () => {
+    const zeit = "21.11.2026, 11:00";
+    const a = (
+      zustand: "aus" | "bereit" | "nicht_erreichbar" | "schluessel_falsch",
+      veraltet = false,
+    ) => workerAnzeige({ zustand, geprueft: jetzt.toISOString(), veraltet }, zeit);
+    expect(a("bereit")).toMatchObject({ art: "ok", marke: "bereit" });
+    expect(a("bereit").ausweg).toBeUndefined();
+    expect(a("nicht_erreichbar")).toMatchObject({ art: "fehler" });
+    expect(a("nicht_erreichbar").ausweg).toContain("docker compose ps");
+    expect(a("schluessel_falsch").ausweg).toContain("SCHLEUSE_KEY");
+    expect(a("bereit", true)).toMatchObject({ art: "warn", marke: "Worker meldet sich nicht" });
+    expect(a("bereit", true).text).toContain(zeit);
+    for (const z of ["aus", "bereit", "nicht_erreichbar", "schluessel_falsch"] as const) {
+      expect(a(z).geprueft).toContain(zeit);
+    }
+  });
+
+  it("GET zeigt die Meldung des Workers; die Web-App selbst kennt keine Datenschleuse", async () => {
+    const e = await eingerichtet();
+    await repo.schleuse.report(e.u.db, { state: "schluessel_falsch" });
+    const r = await e.rufe(e.r.schleuse, "GET", "/api/datenschleuse");
+    expect(r.status).toBe(200);
+    expect(r.body.daten).toMatchObject({
+      eingerichtet: true,
+      worker: { zustand: "schluessel_falsch", veraltet: false },
+    });
+  });
+
+  it("meldet der Worker „aus“, bleibt es „nicht eingerichtet“, und das Tor lehnt „An“ ab", async () => {
+    const e = await eingerichtet();
+    await repo.schleuse.report(e.u.db, { state: "aus" });
+    const r = await e.rufe(e.r.schleuseStandard, "PUT", "/api/datenschleuse/standard", {
+      koerper: { mode: "on" },
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.fehler).toMatchObject({ code: "schleuse_nicht_installiert" });
+  });
+
+  it("meldet der Worker die Datenschleuse, lässt sich der Standard einschalten (Fakt für das Tor)", async () => {
+    const e = await eingerichtet();
+    await repo.schleuse.report(e.u.db, { state: "bereit" });
+    const vorher = await letzteNummer(e.u);
+    const r = await e.rufe(e.r.schleuseStandard, "PUT", "/api/datenschleuse/standard", {
+      koerper: { mode: "on" },
+    });
+    expect(r.status).toBe(200);
+    expect((await repo.settings.get(e.u.db))?.schleuseModeDefault).toBe("on");
+    const belege = await belegeSeit(e.u, vorher);
+    expect(belege[0]?.body).toMatchObject({
+      decision: { outcome: "allow" },
+      facts: { schleuseInstalled: true, scope: "standard" },
+    });
   });
 });

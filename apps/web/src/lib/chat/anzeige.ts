@@ -1,6 +1,7 @@
 /**
  * PaiBot – kleine Regeln der Chat-Oberfläche ohne Zustand: Titel aus der ersten Nachricht,
- * Zeiten, Kennung eines Belegs, Weg der Anfrage, passende Seite zu einem Fehlercode, Länge.
+ * Zeiten, Kennung eines Belegs, Weg der Anfrage, passende Seite zu einem Fehlercode, Fehler der
+ * Datenschleuse, Länge.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -127,12 +128,63 @@ export function zielZuCode(code: ErrorCode): { href: string; text: string } | un
       return { href: "/modelle", text: t("chat.ziel.modelle") };
     case "schleuse_blockiert":
     case "schleuse_nicht_installiert":
+    case "schluessel_passt_nicht":
       return { href: "/datenschleuse", text: t("chat.ziel.datenschleuse") };
     case "limit_erreicht":
       return { href: "/einstellungen", text: t("chat.ziel.einstellungen") };
     default:
       return undefined;
   }
+}
+
+/** Fehler, die an der Datenschleuse lagen und dort ihren eigenen Text mit Ausweg haben. */
+export type SchleuseFehlerArt =
+  | "blockiert"
+  | "nicht_erreichbar"
+  | "schluessel_passt_nicht"
+  | "antwort_zu_gross";
+
+/** Was über ein Ende bekannt ist, um zu erkennen, ob es an der Datenschleuse lag. */
+export interface EndeHinweise {
+  ergebnis: "abgebrochen" | "fehlgeschlagen" | "abgelehnt";
+  code: ErrorCode;
+  /** Ereignis `schleuse.blockiert` zu diesem Lauf (nur in der laufenden Ansicht bekannt). */
+  schleuseGemeldet?: boolean;
+  /** Die Anfrage ging über die Datenschleuse (Weg der Antwort). */
+  ueberSchleuse?: boolean;
+}
+
+/**
+ * Lag das Ende an der Datenschleuse, und woran genau? Ein abgelehnter Lauf mit dem Code
+ * `schluessel_ungueltig` entsteht nur, wenn die Datenschleuse den Schlüssel von PaiBot abgelehnt hat
+ * (der Schlüssel des Anbieters fällt erst während des Laufs auf, dann ist er „fehlgeschlagen“).
+ * Hat die Datenschleuse einen abgelehnten Lauf gemeldet, ohne ihn selbst zu stoppen, war sie nicht
+ * bereit. Andere Fehler bleiben beim allgemeinen Text.
+ */
+export function schleuseFehlerArt(e: EndeHinweise): SchleuseFehlerArt | undefined {
+  if (e.ergebnis === "abgebrochen") return undefined;
+  if (e.code === "schluessel_passt_nicht") return "schluessel_passt_nicht";
+  if (e.ergebnis === "abgelehnt" && e.code === "schluessel_ungueltig") {
+    return "schluessel_passt_nicht";
+  }
+  if (e.code === "schleuse_blockiert") return "blockiert";
+  if (e.ergebnis === "abgelehnt" && e.schleuseGemeldet) return "nicht_erreichbar";
+  if (e.code === "antwort_zu_gross" && e.ueberSchleuse) return "antwort_zu_gross";
+  return undefined;
+}
+
+/** Satz und Ausweg zu einem Fehler der Datenschleuse. */
+export function schleuseFehler(art: SchleuseFehlerArt): { text: string; ausweg: string } {
+  return { text: t(`schleuse.fehler.${art}`), ausweg: t(`schleuse.fehler.${art}.ausweg`) };
+}
+
+/** Passende Seite zu einem Fehler der Datenschleuse (keine bei einer zu großen Antwort). */
+export function zielZuSchleuseFehler(
+  art: SchleuseFehlerArt,
+): { href: string; text: string } | undefined {
+  return art === "antwort_zu_gross"
+    ? undefined
+    : { href: "/datenschleuse", text: t("chat.ziel.datenschleuse") };
 }
 
 /** Ab diesem Anteil der Höchstlänge zeigt die Eingabe, wie viel noch geht. */

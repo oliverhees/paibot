@@ -22,6 +22,7 @@ function setup(probe: () => Promise<void>) {
     intervalMs: 15,
     probeTimeoutMs: 20,
     probe,
+    secrets: ["geheim-0123456789"],
     log: {
       info: (m) => lines.push(`info ${m}`),
       warn: (m) => lines.push(`warn ${m}`),
@@ -75,7 +76,18 @@ describe("Herzschlag", () => {
     });
     await sleep(60);
     expect(heartbeat.beats()).toBe(0);
-    expect(lines).toEqual(["warn Herzschlag ausgesetzt: Datenbank antwortet nicht."]);
+    expect(lines).toEqual(["warn Herzschlag ausgesetzt: Error: Datenbank antwortet nicht."]);
+    await heartbeat.stop();
+  });
+
+  it("Geheimnisse aus der Fehlermeldung erscheinen nicht im Log", async () => {
+    const { heartbeat, lines } = setup(async () => {
+      throw new Error("Verbindung postgres://app:geheim-0123456789@db/paibot abgelehnt");
+    });
+    await sleep(40);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^warn Herzschlag ausgesetzt: Error: /);
+    expect(lines.join("\n")).not.toContain("geheim-0123456789");
     await heartbeat.stop();
   });
 });

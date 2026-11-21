@@ -16,8 +16,8 @@ import { t, tList } from "@paibot/shared/texte";
 import { Icon, Karte, SeitenSpalte, StatusChip, Switch } from "@paibot/ui";
 import { useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
-import { letzterLaufText } from "../../../lib/schleuse/ansicht";
-import type { LetzterLauf } from "../../../lib/schleuse/schleuse";
+import { letzterLaufText, workerAnzeige } from "../../../lib/schleuse/ansicht";
+import type { LetzterLauf, WorkerMeldung } from "../../../lib/schleuse/schleuse";
 import styles from "./schleuse.module.css";
 
 export interface SchleuseAnsichtProps {
@@ -26,16 +26,25 @@ export interface SchleuseAnsichtProps {
   letzterLauf?: LetzterLauf;
   /** Zeit des letzten Laufs, schon in Worten (Zeitzone der Installation). */
   letzterLaufZeit?: string;
+  /** Letzte Meldung des Workers; fehlt, solange er noch nichts gemeldet hat. */
+  worker?: WorkerMeldung;
+  /** Zeit dieser Meldung, schon in Worten. */
+  workerZeit?: string;
   dokuUrl: string;
 }
 
 export function SchleuseAnsicht(props: SchleuseAnsichtProps) {
-  const { eingerichtet, letzterLauf, letzterLaufZeit, dokuUrl } = props;
+  const { eingerichtet, letzterLauf, letzterLaufZeit, worker, workerZeit, dokuUrl } = props;
   const [standard, setStandard] = useState<SchleuseMode>(props.standard);
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState<{ art: "ok" | "fehler"; text: string; ausweg?: string }>();
   const lauf =
     letzterLauf && letzterLaufZeit ? letzterLaufText(letzterLauf, letzterLaufZeit) : undefined;
+  // Meldet der Worker „aus“, gilt die Anleitung zum Zuschalten; sonst zeigt die Karte seinen Befund.
+  const befund =
+    worker && workerZeit && eingerichtet && (worker.zustand !== "aus" || worker.veraltet)
+      ? workerAnzeige(worker, workerZeit)
+      : undefined;
 
   async function umschalten(an: boolean) {
     const mode: SchleuseMode = an ? "on" : "off";
@@ -72,13 +81,34 @@ export function SchleuseAnsicht(props: SchleuseAnsichtProps) {
       <Karte
         titel={t("datenschleuse.zustand.titel")}
         rechts={
-          <StatusChip art={eingerichtet ? "ok" : "neutral"}>
-            {eingerichtet ? t("datenschleuse.eingerichtet") : t("datenschleuse.nicht_eingerichtet")}
-          </StatusChip>
+          befund ? (
+            <StatusChip art={befund.art}>{befund.marke}</StatusChip>
+          ) : (
+            <StatusChip art={eingerichtet ? "ok" : "neutral"}>
+              {eingerichtet
+                ? t("datenschleuse.eingerichtet")
+                : t("datenschleuse.nicht_eingerichtet")}
+            </StatusChip>
+          )
         }
       >
-        {eingerichtet ? (
-          <p className={styles.text}>{t("datenschleuse.eingerichtet.text")}</p>
+        {befund ? (
+          <>
+            <p className={styles.text}>
+              {befund.text}
+              {befund.ausweg && <span className={styles.leise}> {befund.ausweg}</span>}
+            </p>
+            <p className={styles.leise}>
+              {/* Veraltet nennt der Satz oben die Zeit schon. */}
+              {worker?.veraltet ? "" : `${befund.geprueft} `}
+              {t("datenschleuse.worker.hinweis")}
+            </p>
+          </>
+        ) : eingerichtet ? (
+          <>
+            <p className={styles.text}>{t("datenschleuse.eingerichtet.text")}</p>
+            {!worker && <p className={styles.leise}>{t("datenschleuse.worker.keine")}</p>}
+          </>
         ) : (
           <>
             <p className={styles.text}>

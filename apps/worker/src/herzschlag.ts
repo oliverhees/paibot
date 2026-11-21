@@ -10,7 +10,7 @@
  */
 
 import { rm, writeFile } from "node:fs/promises";
-import type { WorkerLog } from "./protokoll";
+import { describeError, type WorkerLog } from "./protokoll";
 
 export interface HeartbeatOptions {
   file: string;
@@ -20,6 +20,8 @@ export interface HeartbeatOptions {
   /** Prüft, ob der Worker arbeiten kann (Datenbank antwortet, kein Lauf hängt). Wirft sonst. */
   probe(): Promise<void>;
   log: WorkerLog;
+  /** Werte, die nie im Log erscheinen dürfen (Passwörter aus Adressen, Schlüssel). */
+  secrets: readonly string[];
   /** Schreibt die Datei; in Tests ersetzbar. */
   write?: (file: string, content: string) => Promise<void>;
   /** Entfernt die Datei beim Beenden; in Tests ersetzbar. */
@@ -83,7 +85,7 @@ export function startHeartbeat(options: HeartbeatOptions): Heartbeat {
       report(true);
     } catch (error) {
       if (error instanceof ProbeTimeout) report(false, "die Prüfung antwortet nicht");
-      else report(false, error instanceof Error ? error.message : String(error));
+      else report(false, describeError(error, options.secrets));
     } finally {
       running = false;
     }

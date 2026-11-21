@@ -28,7 +28,7 @@ Belege entstehen von selbst, du musst nichts einschalten.
 4. Klick auf eine Zeile. Der Beleg erscheint als Karte: was, wer, wann, die Entscheidung mit der angewandten Regel samt Fassung, Vorbedingungen und Grenzen in Worten (erfüllt, eingehalten, verletzt), beim Ergebnis Status und Token. Verweise führen zum zugehörigen Entscheidungs- bzw. Ergebnis-Beleg, zum vorigen und nächsten Beleg und zur Unterhaltung.
 5. Klick auf der Karte auf **Beleg prüfen**. Geprüft werden Prüfsumme, Signatur mit dem Schlüssel aus der Kette, die Verbindung zum vorigen und zum nächsten Beleg und bei Entscheidungen das Nachrechnen mit dem damaligen Regelstand. Steht alles, heißt es „Beleg stimmt“.
 6. Unter der Karte klappst du **Technische Ansicht** auf: kanonisches JSON, Prüfsumme, Signatur, Schlüssel-Kennung und Prüfsumme des Vorgängers. **Beleg kopieren** legt den Beleg als eine Zeile im Format des Exports in die Zwischenablage.
-7. Über **Regeln ansehen** (rechts auf der Seite „Belege“) kommst du zur Seite **Regeln**. Dort stehen die festen Regeln des Tors mit Kennung, Fassung und Stufe, dazu die Grenzen und Vorbedingungen in Worten.
+7. Über **Regeln ansehen** (rechts auf der Seite „Belege“) oder über **Regeln** in der Navigation kommst du zur Seite **Regeln**. Dort stehen die festen Regeln des Tors mit Kennung, Fassung und Stufe, dazu die Grenzen und Vorbedingungen in Worten.
 
 Geprüft wird in deinem Browser mit demselben Prüfer wie im Befehl `pnpm belege:pruefen`. Der Server liefert nur die Rohdaten und kann so nicht einfach „gültig“ behaupten. Kann dein Browser nicht selbst prüfen (Ed25519 in Web Crypto fehlt), prüft der Server; dann steht beim Ergebnis „vom Server geprüft“.
 
@@ -91,6 +91,7 @@ Der Anker ist eine Zeile Text: welche Installation, wie weit die Kette reicht (N
    ```
 
    Derselbe Anker steht auch in der ersten Zeile des Exports unter `"anchor"`.
+
 3. Speichere diese Zeile als Datei `pb-anker.json` an einem Ort, auf den der Server keinen Zugriff hat: ein USB-Stick, ein Passwort-Manager, eine E-Mail an dich selbst.
 4. Wiederhole das ab und zu, zum Beispiel einmal im Monat. Ein neuerer Anker ersetzt den alten nicht, er reicht nur weiter.
 5. Zum Prüfen in PaiBot: Füge den Anker im Feld **Mit meinem aufbewahrten Anker prüfen** ein oder klick auf **Anker-Datei wählen**, dann auf **Mit Anker prüfen**. Der Anker bleibt in deinem Browser und geht nicht an den Server; der Sinn ist ja, dass er außerhalb liegt.

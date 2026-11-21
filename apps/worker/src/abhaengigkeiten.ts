@@ -27,6 +27,7 @@ import { createReceiptWriter } from "@paibot/receipts";
 import { secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
 import { PaiBotError } from "@paibot/shared/fehler";
 import type { KeyId } from "@paibot/shared/ids";
+import { realSchleuseCheck } from "./schleuse-meldung";
 import type { DatabaseHandle, RunDepsSource, WorkerDeps } from "./worker";
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -119,5 +120,6 @@ export function realWorkerDeps(): Omit<WorkerDeps, "log"> {
     executeRun,
     failStaleRuns,
     buildRunDeps,
+    schleuse: realSchleuseCheck(),
   };
 }
