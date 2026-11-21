@@ -75,27 +75,28 @@ Kurz: Der Einrichtungs-Code gilt nur für die Einrichtung, das Passwort nur für
 
 Vor den Grenzen und Regeln prüft das Tor feste Vorbedingungen. Sie beschreiben den Zustand, in dem eine Aktion überhaupt Sinn ergibt. Ist eine verletzt, wird die Aktion abgelehnt, und die Meldung nennt sie. Fehlt die Angabe, die eine Vorbedingung braucht, gilt sie als verletzt.
 
-| Vorbedingung | Name                         | Was sie prüft                                                              | Betrifft                                            |
-| ------------ | ---------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------- |
-| V-01         | Unterhaltung vorhanden       | Die Unterhaltung gibt es                                                   | Nachricht senden                                    |
-| V-02         | Kein Lauf aktiv              | In der Unterhaltung antwortet der Bot gerade nicht                         | Nachricht senden                                    |
-| V-03         | Lauf aktiv                   | Es gibt eine laufende Antwort, die sich abbrechen lässt                    | Antwort abbrechen                                   |
-| V-04         | Datenschleuse eingerichtet   | Beim Einschalten der Datenschleuse ist ihr Dienst eingerichtet             | Datenschleuse schalten                              |
-| V-05         | Lauf läuft                   | Die Antwort, zu der ein Werkzeug-Aufruf gehört, läuft noch                 | Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
-| V-06         | Aktuelles Passwort bestätigt | Beim Ändern des Passworts wurde das aktuelle Passwort geprüft              | Passwort ändern                                     |
-| V-07         | Einrichtung offen            | Die Einrichtung ist noch nicht abgeschlossen                               | Einrichtung abschließen                             |
-| V-08         | Aufruf wartet auf Freigabe   | Der Werkzeug-Aufruf wartet noch auf deine Antwort und ist nicht abgelaufen | Werkzeug-Aufruf beantworten                         |
-| V-09         | Freigabe passt zum Aufruf    | Deine Antwort gilt genau den Argumenten, die gespeichert sind              | Werkzeug-Aufruf beantworten                         |
+| Vorbedingung | Name                         | Was sie prüft                                                              | Betrifft                                                               |
+| ------------ | ---------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| V-01         | Unterhaltung vorhanden       | Die Unterhaltung gibt es                                                   | Nachricht senden, Unterhaltung als Datei sichern, Antwort neu erzeugen |
+| V-02         | Kein Lauf aktiv              | In der Unterhaltung antwortet der Bot gerade nicht                         | Nachricht senden, Antwort neu erzeugen                                 |
+| V-03         | Lauf aktiv                   | Es gibt eine laufende Antwort, die sich abbrechen lässt                    | Antwort abbrechen                                                      |
+| V-04         | Datenschleuse eingerichtet   | Beim Einschalten der Datenschleuse ist ihr Dienst eingerichtet             | Datenschleuse schalten                                                 |
+| V-05         | Lauf läuft                   | Die Antwort, zu der ein Werkzeug-Aufruf gehört, läuft noch                 | Werkzeug aufrufen, Werkzeug nach Freigabe ausführen                    |
+| V-06         | Aktuelles Passwort bestätigt | Beim Ändern des Passworts wurde das aktuelle Passwort geprüft              | Passwort ändern                                                        |
+| V-07         | Einrichtung offen            | Die Einrichtung ist noch nicht abgeschlossen                               | Einrichtung abschließen                                                |
+| V-08         | Aufruf wartet auf Freigabe   | Der Werkzeug-Aufruf wartet noch auf deine Antwort und ist nicht abgelaufen | Werkzeug-Aufruf beantworten                                            |
+| V-09         | Freigabe passt zum Aufruf    | Deine Antwort gilt genau den Argumenten, die gespeichert sind              | Werkzeug-Aufruf beantworten                                            |
+| V-11         | Letzte Antwort               | Neu erzeugt wird nur die letzte Antwort der Unterhaltung                   | Antwort neu erzeugen                                                   |
 
 Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas erlaubt. Ist eine Grenze verletzt, wird die Aktion abgelehnt, und die Meldung nennt die Grenze.
 
-| Grenze | Name                              | Was sie prüft                                                                                                                                              | Betrifft                                                                               |
-| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| G-01   | Datenschleuse gefordert           | Ist die Datenschleuse für die Unterhaltung an, muss die Anfrage über sie laufen und sie muss erreichbar sein. Es gibt keinen Rückfall auf den direkten Weg | Modell anfragen                                                                        |
-| G-02   | Anbieter aktiv und Region erlaubt | Der Anbieter ist eingeschaltet und steht in der EU oder läuft bei dir (lokal). Anbieter außerhalb der EU lehnt die Basisversion ab                         | Modell anfragen                                                                        |
-| G-03   | Länge                             | Die Eingabe ist höchstens so lang wie erlaubt; eine Anfrage verlangt höchstens so viel Ausgabe, wie für deinen Bot eingestellt ist                         | Nachricht senden, Modell anfragen                                                      |
-| G-04   | Tagesbudget                       | Hast du ein Tagesbudget gesetzt, muss der Verbrauch des Tages darunter liegen. Ohne Budget entfällt die Grenze                                             | Modell anfragen                                                                        |
-| G-05   | Not-Aus                           | Ist der Not-Aus an, wird jede betroffene Aktion abgelehnt                                                                                                  | Nachricht senden, Modell anfragen, Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
+| Grenze | Name                              | Was sie prüft                                                                                                                                              | Betrifft                                                                                                     |
+| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| G-01   | Datenschleuse gefordert           | Ist die Datenschleuse für die Unterhaltung an, muss die Anfrage über sie laufen und sie muss erreichbar sein. Es gibt keinen Rückfall auf den direkten Weg | Modell anfragen                                                                                              |
+| G-02   | Anbieter aktiv und Region erlaubt | Der Anbieter ist eingeschaltet und steht in der EU oder läuft bei dir (lokal). Anbieter außerhalb der EU lehnt die Basisversion ab                         | Modell anfragen                                                                                              |
+| G-03   | Länge                             | Die Eingabe ist höchstens so lang wie erlaubt; eine Anfrage verlangt höchstens so viel Ausgabe, wie für deinen Bot eingestellt ist                         | Nachricht senden, Modell anfragen                                                                            |
+| G-04   | Tagesbudget                       | Hast du ein Tagesbudget gesetzt, muss der Verbrauch des Tages darunter liegen. Ohne Budget entfällt die Grenze                                             | Modell anfragen                                                                                              |
+| G-05   | Not-Aus                           | Ist der Not-Aus an, wird jede betroffene Aktion abgelehnt                                                                                                  | Nachricht senden, Antwort neu erzeugen, Modell anfragen, Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
 
 ## So funktioniert es
 

@@ -75,6 +75,8 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   },
   "geraet.hinzufuegen": { deviceId: ids.deviceId },
   "geraet.entfernen": { deviceId: ids.deviceId },
+  "unterhaltung.exportieren": { conversationId: ids.conversationId },
+  "antwort.neu_erzeugen": { conversationId: ids.conversationId, messageId: ids.messageId },
 };
 
 /**
@@ -163,6 +165,14 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
   },
   "geraet.hinzufuegen": { credential: "sitzung", kind: "browser" },
   "geraet.entfernen": { credential: "sitzung", deviceActive: true, thisDevice: false },
+  "unterhaltung.exportieren": { credential: "sitzung", conversationExists: true, messages: 4 },
+  "antwort.neu_erzeugen": {
+    credential: "sitzung",
+    conversationExists: true,
+    runActive: false,
+    answerIsLatest: true,
+    killSwitch: false,
+  },
 };
 
 /** Aktionen, die ein Bot auslöst (aus den Verträgen). */

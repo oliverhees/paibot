@@ -460,13 +460,13 @@ export interface RuleSnapshot {
 export const PRECONDITIONS = {
   "V-01": {
     name: "unterhaltung_vorhanden",
-    actions: ["nachricht.senden"],
+    actions: ["nachricht.senden", "unterhaltung.exportieren", "antwort.neu_erzeugen"],
     require: [{ fact: "conversationExists", op: "eq", value: true }],
     errorCode: "nicht_gefunden",
   },
   "V-02": {
     name: "kein_lauf_aktiv",
-    actions: ["nachricht.senden"],
+    actions: ["nachricht.senden", "antwort.neu_erzeugen"],
     require: [{ fact: "runActive", op: "eq", value: false }],
     errorCode: "lauf_aktiv",
   },
@@ -515,6 +515,12 @@ export const PRECONDITIONS = {
     actions: ["werkzeug.freigeben"],
     require: [{ fact: "argsDigest", op: "eq", value: { fact: "waitingArgsDigest" } }],
     errorCode: "abgelehnt",
+  },
+  "V-11": {
+    name: "antwort_ist_letzte",
+    actions: ["antwort.neu_erzeugen"],
+    require: [{ fact: "answerIsLatest", op: "eq", value: true }],
+    errorCode: "nicht_gefunden",
   },
 } as const satisfies Record<
   string,

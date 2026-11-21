@@ -142,7 +142,12 @@ describe("Fassungen der Standard-Regeln", () => {
 
 describe("Vorbedingungen", () => {
   it("haben fortlaufende IDs, eindeutige Namen und gültige Fehlercodes", () => {
-    expect(PRECONDITION_IDS).toEqual(PRECONDITION_IDS.map((_, i) => `V-0${i + 1}`));
+    // Zweistellig, aufsteigend und ohne Doppel; eine Nummer wird nie neu vergeben.
+    for (const id of PRECONDITION_IDS) expect(id).toMatch(/^V-\d{2}$/);
+    const nummern = PRECONDITION_IDS.map((id) => Number(id.slice(2)));
+    expect(nummern[0]).toBe(1);
+    expect(nummern).toEqual([...nummern].sort((a, b) => a - b));
+    expect(new Set(nummern).size).toBe(nummern.length);
     const names = PRECONDITION_IDS.map((id) => PRECONDITIONS[id].name);
     expect(new Set(names).size).toBe(names.length);
     for (const id of PRECONDITION_IDS) {

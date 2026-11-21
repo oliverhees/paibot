@@ -64,6 +64,13 @@
       "when": 1795246402069,
       "tag": "0008_bekannte_geraete",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795251698198,
+      "tag": "0011_chat_ergaenzungen",
+      "breakpoints": true
     }
   ]
 }
