@@ -7,6 +7,7 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | Paket | Version | Lizenz |
 | --- | --- | --- |
 | @ai-sdk/gateway | 4.0.151 | Apache-2.0 |
+| @ai-sdk/mcp | 2.0.102 | Apache-2.0 |
 | @ai-sdk/openai-compatible | 3.0.94 | Apache-2.0 |
 | @ai-sdk/provider | 4.0.39 | Apache-2.0 |
 | @ai-sdk/provider-utils | 5.0.83 | Apache-2.0 |
@@ -46,6 +47,7 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | client-only | 0.0.1 | MIT |
 | comma-separated-tokens | 2.0.3 | MIT |
 | cron-parser | 5.10.6 | MIT |
+| cross-spawn | 7.0.6 | MIT |
 | csstype | 3.2.3 | MIT |
 | debug | 4.4.3 | MIT |
 | decode-named-character-reference | 1.3.0 | MIT |
@@ -66,6 +68,7 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | is-decimal | 2.0.1 | MIT |
 | is-hexadecimal | 2.0.1 | MIT |
 | is-plain-obj | 4.1.0 | MIT |
+| isexe | 2.0.0 | ISC |
 | json-schema | 0.4.0 | (AFL-2.1 OR BSD-3-Clause) |
 | longest-streak | 3.1.0 | MIT |
 | luxon | 3.7.2 | MIT |
@@ -119,6 +122,7 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | next | 16.4.6 | MIT |
 | non-error | 0.1.0 | MIT |
 | parse-entities | 4.0.2 | MIT |
+| path-key | 3.1.1 | MIT |
 | pg | 8.23.1 | MIT |
 | pg-boss | 12.38.2 | MIT |
 | pg-cloudflare | 1.4.1 | MIT |
@@ -129,6 +133,7 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | pg-types | 2.2.0 | MIT |
 | pgpass | 1.0.5 | MIT |
 | picocolors | 1.1.1 | ISC |
+| pkce-challenge | 5.0.1 | MIT |
 | postcss | 8.5.23 | MIT |
 | postgres | 4.1.1 | Unlicense |
 | postgres-array | 2.0.0 | MIT |
@@ -148,6 +153,8 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | semver | 7.8.6 | ISC |
 | serialize-error | 13.1.0 | MIT |
 | sharp | 0.35.5 | Apache-2.0 |
+| shebang-command | 2.0.0 | MIT |
+| shebang-regex | 3.0.0 | MIT |
 | source-map-js | 1.2.2 | BSD-3-Clause |
 | space-separated-tokens | 2.0.2 | MIT |
 | split2 | 4.2.0 | ISC |
@@ -169,6 +176,7 @@ Diese Datei wird mit `pnpm licenses:notices` erzeugt.
 | unist-util-visit-parents | 6.1.0 | MIT |
 | vfile | 6.0.3 | MIT |
 | vfile-message | 4.0.4 | MIT |
+| which | 2.0.2 | ISC |
 | xtend | 4.0.2 | MIT |
 | zod | 4.6.7 | MIT |
 | zwitch | 2.0.4 | MIT |
