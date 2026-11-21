@@ -114,6 +114,7 @@
 /* ---------- Not-Aus ---------- */
 
 .halt {
+  align-self: center;
   margin: auto;
   width: 100%;
   max-width: 30em;
@@ -563,7 +564,8 @@
 }
 
 .zeile {
-  width: 100%;
+  width: calc(100% + 16px);
+  margin: 0 -8px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -628,6 +630,13 @@
   color: var(--ink);
   font-weight: 550;
   overflow-wrap: anywhere;
+}
+
+/* Gleicher Seitenrand wie die Eingabe darunter. */
+.sitzAussen {
+  position: relative;
+  z-index: 2;
+  padding: 0 24px;
 }
 
 .sitz {
@@ -790,6 +799,10 @@
 }
 
 @media (max-width: 719px) {
+  .sitzAussen {
+    padding: 0 10px;
+  }
+
   .begruessung {
     padding: 4px 0 0;
   }

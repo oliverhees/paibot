@@ -80,36 +80,42 @@ export function StartStilleSitz({ avatar, notAus, onAnfang, eingabe, leer }: Sta
 
   if (notAus === true) return null;
   return (
-    <div className={styles.sitz} ref={huelle} data-offen={offen ? "" : undefined}>
-      <AvatarFeld groesse="klein" className={styles.sitzAvatar}>
-        {avatar}
-      </AvatarFeld>
-      <div className={styles.sprech}>
-        <p className={styles.tipp} hidden={offen}>
-          {t("startbereich.c.sprechblase")}
-        </p>
-        <section className={styles.vorschlaege} hidden={!offen} aria-labelledby={id}>
-          <h2 id={id} className={styles.vorschlaegeTitel}>
-            {t("startbereich.c.anfaenge")}
-          </h2>
-          <ul className={styles.vorschlaegeListe}>
-            {anfaengeStille().map((anfang) => (
-              <li key={anfang.id}>
-                <button
-                  type="button"
-                  className={styles.frageRund}
-                  onClick={() => {
-                    setZu(true);
-                    onAnfang(anfang.text);
-                  }}
-                >
-                  <b>{anfang.gruppeTitel}</b>
-                  {anfang.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+    <div className={styles.sitzAussen} ref={huelle} data-offen={offen ? "" : undefined}>
+      <div className={styles.sitz}>
+        <AvatarFeld groesse="klein" className={styles.sitzAvatar}>
+          {avatar}
+        </AvatarFeld>
+        <div className={styles.sprech}>
+          <p className={styles.tipp} hidden={offen}>
+            {t("startbereich.c.sprechblase")}
+          </p>
+          <section
+            className={styles.vorschlaege}
+            hidden={!offen}
+            aria-labelledby={id}
+            data-anfaenge=""
+          >
+            <h2 id={id} className={styles.vorschlaegeTitel}>
+              {t("startbereich.c.anfaenge")}
+            </h2>
+            <ul className={styles.vorschlaegeListe}>
+              {anfaengeStille().map((anfang) => (
+                <li key={anfang.id}>
+                  <button
+                    type="button"
+                    className={styles.frageRund}
+                    onClick={() => {
+                      setZu(true);
+                      onAnfang(anfang.text);
+                    }}
+                  >
+                    <b>{anfang.gruppeTitel}</b> {anfang.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
   );
