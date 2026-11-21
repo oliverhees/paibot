@@ -53,19 +53,24 @@ function anbieterParams(name: string) {
 }
 
 /** Fehler eines Verbindungstests in Worten, mit Ausweg; am Feld „Schlüssel“ nur bei falschem Schlüssel. */
-export function verbindungsFehler(code: ErrorCode, anbieterName: string): PaiBotError {
+export function verbindungsFehler(
+  code: ErrorCode,
+  anbieterName: string,
+  eigener = false,
+): PaiBotError {
   const p = anbieterParams(anbieterName);
+  const ausweg = eigener ? "_eigen" : "";
   if (code === "schluessel_ungueltig") {
     return new PaiBotError(code, {
       text: t("modelle.test.schluessel_ungueltig", p),
-      ausweg: t("modelle.test.schluessel_ungueltig.ausweg", p),
+      ausweg: t(`modelle.test.schluessel_ungueltig.ausweg${ausweg}`, p),
       felder: [{ feld: "apiKey", code: "ungueltig" }],
     });
   }
   if (code === "limit_erreicht") {
     return new PaiBotError(code, {
       text: t("modelle.test.limit_erreicht", p),
-      ausweg: t("modelle.test.limit_erreicht.ausweg", p),
+      ausweg: t(`modelle.test.limit_erreicht.ausweg${ausweg}`, p),
     });
   }
   return new PaiBotError("anbieter_nicht_erreichbar", {
@@ -150,7 +155,8 @@ async function verbindungPruefen(
   apiKey: string | undefined,
 ): Promise<ConnectionTestResult & { ok: true }> {
   const ergebnis = await d.verbindungTesten(endpunkt, apiKey ?? "");
-  if (!ergebnis.ok) throw verbindungsFehler(ergebnis.code, endpunkt.name);
+  if (!ergebnis.ok)
+    throw verbindungsFehler(ergebnis.code, endpunkt.name, endpunkt.templateKey === "eigener");
   return ergebnis;
 }
 
@@ -339,7 +345,11 @@ export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
   const id = provider.id as ProviderId;
   const schluessel = gespeicherterSchluessel(k.dienste, provider, apiKeyEnc);
   if (schluessel === undefined && !ohneSchluesselErlaubt(provider.region)) {
-    throw verbindungsFehler("schluessel_ungueltig", provider.name);
+    throw verbindungsFehler(
+      "schluessel_ungueltig",
+      provider.name,
+      provider.templateKey === "eigener",
+    );
   }
   const ergebnis = await verbindungPruefen(k.dienste, endpunktVon(provider), schluessel);
   const abgleich = await k.tor(

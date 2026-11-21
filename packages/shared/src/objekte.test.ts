@@ -146,8 +146,8 @@ describe("Fachobjekte", () => {
         {
           id: newId("model"),
           providerId: newId("provider"),
-          slug: "mistral-small",
-          displayName: "Mistral Small",
+          slug: "beispiel-klein",
+          displayName: "Beispiel-Modell Klein",
           enabled: true,
           createdAt: time,
         },
@@ -276,9 +276,9 @@ describe("Eingaben", () => {
         .success,
     ).toBe(false);
     expect(setupInput.safeParse({ ...base, passwordRepeat: "y".repeat(12) }).success).toBe(false);
-    expect(setupInput.safeParse({ ...base, modelSlug: "mistral-small" }).success).toBe(false);
+    expect(setupInput.safeParse({ ...base, modelSlug: "beispiel-klein" }).success).toBe(false);
     expect(
-      setupInput.safeParse({ ...base, apiKey: "sk-test", modelSlug: "mistral-small" }).success,
+      setupInput.safeParse({ ...base, apiKey: "sk-test", modelSlug: "beispiel-klein" }).success,
     ).toBe(true);
     expect(setupInput.safeParse({ ...base, botName: "   " }).success).toBe(false);
   });

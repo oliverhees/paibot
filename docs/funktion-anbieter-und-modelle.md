@@ -60,6 +60,13 @@ EUrouter hat den Schlüssel nicht angenommen. Prüf, ob du den Schlüssel vollst
 oder erzeuge in deinem Konto bei EUrouter einen neuen.
 ```
 
+Bei einem eigenen Anbieter, bei dem es kein Konto gibt (zum Beispiel auf deinem Rechner), lautet der Satz so:
+
+```text
+Prüf, ob du den Schlüssel vollständig kopiert hast und ob er zu deinem Anbieter gehört.
+Trag bei Bedarf einen neuen ein.
+```
+
 Einen eigenen, OpenAI-kompatiblen Anbieter (zum Beispiel lokal mit Ollama) kann PaiBot technisch schon anbinden; eine Oberfläche zum Eintragen gibt es in dieser Version noch nicht (geplant).
 
 ## So sieht es aus

@@ -57,7 +57,7 @@ const EXAMPLES: ConversationEvent[] = [
     data: {
       messageId,
       route: "schleuse",
-      modelLabel: "Mistral Small",
+      modelLabel: "Beispiel-Modell Klein",
       tokens: { input: 12, output: 34 },
     },
   },

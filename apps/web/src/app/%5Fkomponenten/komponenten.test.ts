@@ -141,12 +141,12 @@ describe("Komponenten", () => {
       h(AntwortZeile, {
         beleg: { kennung: "B-0142", zustand: "gueltig" },
         schleuse: { modus: "direkt" },
-        modell: { name: "Mistral Large", region: "eu" },
+        modell: { name: "Beispiel-Modell Groß", region: "eu" },
       }),
     );
     expect(aus).toContain("B-0142");
     expect(aus).toContain("direkt · EU");
-    expect(aus).toContain("Mistral Large");
+    expect(aus).toContain("Beispiel-Modell Groß");
     expect(aus).toContain('aria-expanded="false"');
   });
 

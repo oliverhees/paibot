@@ -72,7 +72,7 @@ export function Verlauf({ streamt }: { streamt: boolean }) {
                 text: "Datenschleuse: 2 Angaben maskiert",
                 kurz: "2 maskiert",
               }}
-              modell={{ name: "Mistral Large", region: "eu" }}
+              modell={{ name: "Beispiel-Modell Groß", region: "eu" }}
               details={
                 <p className={styles.leise}>
                   Beim Modell kamen statt der Namen nur Platzhalter an, z. B. &lt;PERSON_1&gt;.
@@ -99,7 +99,7 @@ export function Verlauf({ streamt }: { streamt: boolean }) {
               <AntwortZeile
                 beleg={{ kennung: "B-0142", zustand: "offen", onPruefen: () => {} }}
                 schleuse={{ modus: "direkt" }}
-                modell={{ name: "Mistral Large", region: "eu" }}
+                modell={{ name: "Beispiel-Modell Groß", region: "eu" }}
               />
             )
           }
@@ -132,7 +132,7 @@ export function ShellDemo({ eingebettet = false }: { eingebettet?: boolean }) {
           </span>
           <span className={styles.platz} />
           <span className={styles.nurBreit}>
-            <StatusChip art="eu">{`Mistral Large · ${t("modelle.region.eu")}`}</StatusChip>
+            <StatusChip art="eu">{`Beispiel-Modell Groß · ${t("modelle.region.eu")}`}</StatusChip>
           </span>
           <Menue
             label="Weitere Aktionen"

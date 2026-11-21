@@ -654,12 +654,15 @@ export const de = {
   "modelle.test.schluessel_ungueltig": "{anbieter} hat den Schlüssel nicht angenommen.",
   "modelle.test.schluessel_ungueltig.ausweg":
     "Prüf, ob du den Schlüssel vollständig kopiert hast, oder erzeuge in deinem Konto bei {anbieter} einen neuen.",
+  "modelle.test.schluessel_ungueltig.ausweg_eigen":
+    "Prüf, ob du den Schlüssel vollständig kopiert hast und ob er zu {anbieter} gehört. Trag bei Bedarf einen neuen ein.",
   "modelle.test.anbieter_nicht_erreichbar":
     "{anbieter} ist nicht erreichbar oder hat nicht rechtzeitig geantwortet.",
   "modelle.test.anbieter_nicht_erreichbar.ausweg":
     "Prüf die Internet-Verbindung deines Servers und versuch es in einer Minute noch einmal.",
   "modelle.test.limit_erreicht": "{anbieter} meldet ein erreichtes Limit.",
   "modelle.test.limit_erreicht.ausweg": "Prüf Guthaben und Limits in deinem Konto bei {anbieter}.",
+  "modelle.test.limit_erreicht.ausweg_eigen": "Prüf Guthaben und Limits von {anbieter}.",
   "modelle.liste.titel": "Modell für {name}",
   "modelle.liste.text":
     "Die Liste kommt direkt von {anbieter}. Sie zeigt nur Modelle, die Text schreiben und Antworten nach und nach liefern können.",

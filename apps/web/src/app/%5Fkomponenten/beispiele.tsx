@@ -246,7 +246,7 @@ export function Beispiele() {
             <Select
               label="Deaktiviert"
               disabled
-              optionen={[{ wert: "a", text: "Mistral Large" }]}
+              optionen={[{ wert: "a", text: "Beispiel-Modell Groß" }]}
             />
           </Karte>
 
@@ -316,7 +316,7 @@ export function Beispiele() {
                   <AntwortZeile
                     beleg={{ kennung: "B-0141", zustand: "gueltig", onPruefen: () => {} }}
                     schleuse={{ modus: "schleuse", kurz: "geschützt" }}
-                    modell={{ name: "Mistral Large", region: "eu" }}
+                    modell={{ name: "Beispiel-Modell Groß", region: "eu" }}
                     details={<p className={styles.leise}>Beim Modell kam &lt;PERSON_1&gt; an.</p>}
                   />
                 }
@@ -362,7 +362,7 @@ export function Beispiele() {
             <AntwortZeile
               beleg={{ kennung: "B-0142", zustand: "offen", onPruefen: () => {} }}
               schleuse={{ modus: "direkt" }}
-              modell={{ name: "Mistral Large", region: "eu" }}
+              modell={{ name: "Beispiel-Modell Groß", region: "eu" }}
             />
             <AntwortZeile
               beleg={{ kennung: "B-0143", zustand: "ungueltig", zustandText: "ungültig" }}
@@ -371,7 +371,7 @@ export function Beispiele() {
                 text: "Datenschleuse: 2 Angaben maskiert",
                 kurz: "2 maskiert",
               }}
-              modell={{ name: "Llama 3.3 70B", region: "non_eu" }}
+              modell={{ name: "Beispiel-Modell Außerhalb", region: "non_eu" }}
             />
             <div className={styles.schmal}>
               <span className={styles.etikett}>schmal (Handy)</span>
@@ -382,7 +382,7 @@ export function Beispiele() {
                   text: "Datenschleuse: 2 Angaben maskiert",
                   kurz: "2 maskiert",
                 }}
-                modell={{ name: "Mistral Large", region: "eu" }}
+                modell={{ name: "Beispiel-Modell Groß", region: "eu" }}
               />
             </div>
           </Karte>

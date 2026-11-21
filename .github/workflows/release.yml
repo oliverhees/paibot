@@ -113,7 +113,7 @@ jobs:
       - run: pnpm test --concurrency=1
       - run: pnpm build
       - run: pnpm licenses:check
-      - run: pnpm doku:check
+      - run: pnpm doku:check --streng
       - name: Compose mit fertigem Image entspricht der Aufstellung mit Bau
         run: node scripts/compose-vergleich.mjs
       - name: Sicherheitsmeldungen der Abhängigkeiten (Betrieb)

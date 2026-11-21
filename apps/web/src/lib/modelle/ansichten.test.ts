@@ -48,11 +48,11 @@ describe("Seite „Modell und Anbieter“", () => {
     const liste = Array.from({ length: SUCHE_AB + 1 }, (_, i) => ({
       id: `m${i}`,
       slug: `anbieter/modell-${i}`,
-      displayName: i === 3 ? "Mistral Large" : `Modell ${i}`,
+      displayName: i === 3 ? "Beispiel-Modell Groß" : `Modell ${i}`,
     }));
     expect(sucheZeigen(liste)).toBe(true);
     expect(sucheZeigen(liste.slice(0, SUCHE_AB))).toBe(false);
-    expect(modelleFiltern(liste, "MISTRAL").map((m) => m.id)).toEqual(["m3"]);
+    expect(modelleFiltern(liste, "GROß").map((m) => m.id)).toEqual(["m3"]);
     expect(modelleFiltern(liste, "modell-1").map((m) => m.id)).toEqual(["m1"]);
     expect(modelleFiltern(liste, "  ")).toHaveLength(liste.length);
   });

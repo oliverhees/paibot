@@ -20,7 +20,7 @@ import { newId, type ProviderId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { anfrage, Keksdose, TEST_MODELLE, TEST_SCHLUESSEL } from "../zugang/testing";
-import { adresseGeaendert, pruefeAdresse } from "./anbieter";
+import { adresseGeaendert, pruefeAdresse, verbindungsFehler } from "./anbieter";
 import {
   belegeAlsText,
   belegeSeit,
@@ -124,7 +124,12 @@ describe("POST /api/anbieter/verbindungstest", () => {
     expect(r.body.fehler).toMatchObject({
       code: "schluessel_ungueltig",
       text: t("modelle.test.schluessel_ungueltig", { anbieter: a.name }),
-      ausweg: t("modelle.test.schluessel_ungueltig.ausweg", { anbieter: a.name }),
+      ausweg: t(
+        a.templateKey === "eigener"
+          ? "modelle.test.schluessel_ungueltig.ausweg_eigen"
+          : "modelle.test.schluessel_ungueltig.ausweg",
+        { anbieter: a.name },
+      ),
       felder: [{ feld: "apiKey", code: "ungueltig" }],
     });
     expect(await letzteNummer(e.u)).toBe(vorher);
@@ -506,5 +511,22 @@ describe("Modelle und Modellwahl", () => {
     const e = await eingerichtet();
     const r = await e.rufe(e.r.botModell, "PUT", "/api/bot/modell", { koerper: { modelId: "x" } });
     expect(r.status).toBe(400);
+  });
+});
+
+describe("verbindungsFehler: Wege aus dem Fehler", () => {
+  it("bei einem Anbieter mit Konto: Schlüssel im Konto neu erzeugen", () => {
+    const f = verbindungsFehler("schluessel_ungueltig", "Beispiel-Anbieter");
+    expect(f.ausweg).toContain("in deinem Konto bei Beispiel-Anbieter");
+  });
+
+  it("bei einem eigenen Anbieter: kein „Konto bei …“, der Satz bleibt richtig", () => {
+    const f = verbindungsFehler("schluessel_ungueltig", "Lokaler Anbieter", true);
+    expect(f.ausweg).toBe(
+      "Prüf, ob du den Schlüssel vollständig kopiert hast und ob er zu Lokaler Anbieter gehört. Trag bei Bedarf einen neuen ein.",
+    );
+    expect(f.ausweg).not.toContain("Konto");
+    const l = verbindungsFehler("limit_erreicht", "Lokaler Anbieter", true);
+    expect(l.ausweg).toBe("Prüf Guthaben und Limits von Lokaler Anbieter.");
   });
 });
