@@ -28,7 +28,7 @@ Alle Befehle laufen auf dem Server im Ordner von PaiBot. Du brauchst nur Docker,
    sh deploy/sicherung.sh sichern
    ```
 
-   Es entsteht ein Ordner `~/paibot-sicherungen/paibot-sicherung-<Zeit>` mit zwei Dateien, nur für dich lesbar: `datenbank.dump` (die Datenbank) und `begleit.json` (Version, Zeitpunkt, Stand der Migrationen, Zeilen je Tabelle, Anker der Belege-Kette, Prüfsumme). Anderes Ziel: `--ziel <ordner>`.
+   Es entsteht ein Ordner `~/paibot-sicherungen/paibot-sicherung-<Zeit>` mit zwei Dateien, nur für dich lesbar: `datenbank.dump` (die Datenbank) und `begleit.json` (Stand von PaiBot aus der Start-Zeile des Workers, Zeitpunkt, Stand der Migrationen, Zeilen je Tabelle, Anker der Belege-Kette, Prüfsumme). Anderes Ziel: `--ziel <ordner>`.
 
 2. Den Ordner vom Server wegbringen, zum Beispiel auf deinen Rechner (`scp -r server:paibot-sicherungen/paibot-sicherung-<Zeit> .`) oder auf verschlüsselten Speicher.
 3. `deploy/.env` getrennt davon sicher aufbewahren, zum Beispiel im Passwort-Manager. Sie ist **nicht** in der Sicherung. Wichtig ist vor allem `PAIBOT_SECRET`: Ohne genau diesen Wert sind deine gespeicherten Anbieter-Schlüssel nach dem Zurückspielen nicht lesbar (siehe [So funktioniert es](#so-funktioniert-es)).
