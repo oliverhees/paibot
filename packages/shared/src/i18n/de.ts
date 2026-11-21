@@ -1957,8 +1957,15 @@ export const de = {
   "faden.eingabe.gesperrt": "Alle Bots sind angehalten. Setze oben fort, um weiterzuschreiben.",
   "faden.eingabe.leiste": "Bots, die du aufrufen kannst",
   "faden.leer.titel": "Noch kein Team",
+  "faden.leer.kopf": "Neue Unterhaltung",
+  "faden.leer.unter": "Pai · dein Haupt-Assistent",
   "faden.leer.text":
-    "Ein Team sind Bots mit einer Leitung. Du gibst einen Auftrag, die Leitung verteilt, prüft und nimmt ab. Jede Übergabe läuft durchs Tor und bekommt einen Beleg.",
+    "Ein Team ist eine kleine Gruppe von Bots mit einer Leitung. Du schreibst hinein wie in jeden Chat. Wer niemanden mit @ anspricht, erreicht die Leitung; sie verteilt und schaut am Ende drüber.",
+  "faden.leer.vorlage": "Team aus Vorlage anlegen",
+  "faden.leer.selbst": "Selbst zusammenstellen",
+  "faden.leer.vorlage_chip": "Vorlage „{name}“: {text}",
+  "faden.leer.platzhalter": "Schreib Pai eine Nachricht",
+  "faden.leer.hinweis": "Jede Übergabe läuft durchs Tor und bekommt einen Beleg.",
   "faden.leer.team_anlegen": "Team anlegen",
   "faden.leer.seite":
     "Noch kein Team. Ein Team sind Bots mit einer Leitung; Pai kann bei jedem nachfragen.",

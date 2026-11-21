@@ -567,6 +567,7 @@ describe.skipIf(!bereit && !erzwungen)("Fäden im Browser", { timeout: 60_000 },
       await oeffne("szene=angehalten");
       await sichtbar(page.getByText("Alle Bots sind angehalten.").first());
       await anzahl(page.getByRole("combobox"), 0);
+      await anzahl(page.getByRole("button", { name: "Stab nehmen" }), 0);
       await sichtbar(page.getByText("Alle angehalten"));
       await page.getByRole("button", { name: "Fortsetzen" }).first().click();
       expect((await ereignisse()).includes("fortsetzen")).toBe(true);
@@ -705,11 +706,16 @@ describe.skipIf(!bereit && !erzwungen)("Fäden im Browser", { timeout: 60_000 },
   });
 
   describe("Leer", () => {
-    it("ohne Team: Hinweis und Knopf ‚Team anlegen‘, keine Eingabe", async () => {
+    it("ohne Team: Hinweis, zwei Wege zum Anlegen, Eingabe an Pai", async () => {
       await oeffne("szene=leer");
       await sichtbar(page.getByRole("heading", { name: "Noch kein Team" }));
-      await sichtbar(page.getByRole("button", { name: "Team anlegen" }).first());
-      await anzahl(page.getByRole("combobox"), 0);
+      await sichtbar(page.getByText("Vorlage „Studio“: Leitung, Grafik, Video, Text"));
+      expect(await page.getByRole("combobox").getAttribute("placeholder")).toBe(
+        "Schreib Pai eine Nachricht",
+      );
+      await page.getByRole("button", { name: "Team aus Vorlage anlegen" }).click();
+      await page.getByRole("button", { name: "Selbst zusammenstellen" }).click();
+      expect(await ereignisse()).toEqual(["vorlage", "selbst"]);
     });
   });
 });

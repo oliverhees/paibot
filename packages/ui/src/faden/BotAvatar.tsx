@@ -72,7 +72,7 @@ export function AvatarStapel({
           <BotAvatar
             farbe={b.farbe}
             {...(b.form ? { form: b.form } : {})}
-            zustand="ruhig"
+            zustand={b.zustand === "angehalten" ? "angehalten" : "ruhig"}
             groesse={groesse}
             still
           />

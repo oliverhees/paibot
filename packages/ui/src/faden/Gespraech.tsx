@@ -325,6 +325,7 @@ export interface FadenGespraechProps {
   bots: Bots;
   onZuschlag?: () => void;
   onGrenzenWahl?: (id: string) => void;
+  onFortsetzen?: () => void;
 }
 
 function Eintrag({
@@ -332,6 +333,7 @@ function Eintrag({
   bots,
   onZuschlag,
   onGrenzenWahl,
+  onFortsetzen,
 }: { e: GespraechsEintrag } & Omit<FadenGespraechProps, "eintraege">) {
   switch (e.art) {
     case "beitrag":
@@ -348,6 +350,7 @@ function Eintrag({
               bots={bots}
               {...(onZuschlag ? { onZuschlag } : {})}
               {...(onGrenzenWahl ? { onGrenzenWahl } : {})}
+              {...(onFortsetzen ? { onFortsetzen } : {})}
             />
           ))}
         </GespraechsGruppe>
@@ -365,10 +368,15 @@ function Eintrag({
       return (
         <div className={styles.band} role="status" data-baustein="band">
           <Sym name="pause" groesse={20} />
-          <div>
+          <div className={styles.bandText}>
             <h3>{reinerText(e.titel, 120)}</h3>
             <p>{reinerText(e.text, 300)}</p>
           </div>
+          {e.fortsetzen && onFortsetzen && (
+            <button type="button" className={styles.bandKnopf} onClick={() => onFortsetzen()}>
+              {t("faden.stab.fortsetzen")}
+            </button>
+          )}
         </div>
       );
   }
@@ -380,6 +388,7 @@ export function FadenGespraech({
   bots,
   onZuschlag,
   onGrenzenWahl,
+  onFortsetzen,
 }: FadenGespraechProps) {
   return (
     <div className={styles.spalte} data-baustein="gespraech">
@@ -390,6 +399,7 @@ export function FadenGespraech({
           bots={bots}
           {...(onZuschlag ? { onZuschlag } : {})}
           {...(onGrenzenWahl ? { onGrenzenWahl } : {})}
+          {...(onFortsetzen ? { onFortsetzen } : {})}
         />
       ))}
     </div>

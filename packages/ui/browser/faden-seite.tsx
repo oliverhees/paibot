@@ -110,6 +110,8 @@ function Seite() {
         onStabNehmen={() => window.__ereignisse.push("stab")}
         onAnhalten={() => window.__ereignisse.push("anhalten")}
         onFortsetzen={() => window.__ereignisse.push("fortsetzen")}
+        onTeamAusVorlage={() => window.__ereignisse.push("vorlage")}
+        onTeamSelbst={() => window.__ereignisse.push("selbst")}
         onZuschlag={() => window.__ereignisse.push("zuschlag")}
         onGrenzenWahl={(id) => window.__ereignisse.push(`wahl:${id}`)}
         onVorschlag={(w) => window.__ereignisse.push(`vorschlag:${w.text}`)}

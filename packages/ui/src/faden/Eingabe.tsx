@@ -63,6 +63,10 @@ export interface FadenEingabeProps {
   onSchleuse?: (an: boolean) => void;
   /** Zeile über dem Feld, z. B. die Leiste „Aufrufen“. */
   davor?: ReactNode;
+  /** Eigener Platzhalter (zum Beispiel im Chat mit Pai); ohne Angabe „Ohne @ antwortet …“. */
+  platzhalter?: string;
+  /** Eigener Hinweis unter dem Feld. */
+  hinweis?: string;
   ref?: Ref<EingabeSteuerung>;
 }
 
@@ -127,6 +131,8 @@ export function FadenEingabe({
   schleuseAn = false,
   onSchleuse,
   davor,
+  platzhalter,
+  hinweis,
   ref,
 }: FadenEingabeProps) {
   const [eigen, setEigen] = useState("");
@@ -314,7 +320,9 @@ export function FadenEingabe({
             className={styles.text}
             rows={1}
             value={text}
-            placeholder={t("faden.eingabe.platzhalter", { name: sauberName(leitung) })}
+            placeholder={
+              platzhalter ?? t("faden.eingabe.platzhalter", { name: sauberName(leitung) })
+            }
             role="combobox"
             aria-expanded={hatListe}
             aria-controls={hatListe ? listeId : undefined}
@@ -385,7 +393,7 @@ export function FadenEingabe({
           </div>
         </form>
         <p className={styles.hinweis} id={`${id}-hinweis`}>
-          {t("faden.eingabe.hinweis")}
+          {hinweis ?? t("faden.eingabe.hinweis")}
         </p>
       </div>
     </div>

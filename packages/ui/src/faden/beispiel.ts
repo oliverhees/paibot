@@ -557,7 +557,6 @@ function szeneFertig(): FadenSzene {
 function szeneAngehalten(): FadenSzene {
   const bots = basisBots();
   for (const id of Object.keys(bots)) setze(bots, id, "angehalten", "angehalten");
-  setze(bots, "pai", "ruhig", "ruhig");
   return {
     id: "faden-toepfer-halt",
     teamName: "Studio",
@@ -567,18 +566,18 @@ function szeneAngehalten(): FadenSzene {
     halt: true,
     seitenleiste: seiteStudio(
       "f1",
-      { faden: "angehalten", botFaden: "angehalten", botFadenArt: undefined },
-      { notAus: true },
+      { faden: "angehalten", botFaden: "heute", botFadenArt: undefined },
+      { notAus: true, fragenAnzahl: 1 },
     ),
     kopf: kopfKlein({
       stand: "angehalten",
       standText: "angehalten",
-      etappen: KRITERIEN_KLEIN(["erledigt", "laeuft", "laeuft", "offen"]),
+      etappen: KRITERIEN_KLEIN(["erledigt", "offen", "offen", "offen"]),
       stab: stab(
         bots,
         {
           mila: { wort: "angehalten" },
-          juri: { wort: "geliefert" },
+          juri: { wort: "angehalten" },
           ben: { wort: "angehalten" },
           ida: { wort: "angehalten" },
           du: { wort: "liest mit" },
@@ -595,6 +594,7 @@ function szeneAngehalten(): FadenSzene {
         titel: "Alle Bots sind angehalten.",
         text: "Nichts läuft weiter, bis du fortsetzt.",
         ton: "halt",
+        fortsetzen: true,
       },
     ],
     eingabeBots: eingabeBots(bots, ["mila", "ben", "ida", "juri", "lou", "kim"], true),
@@ -1002,9 +1002,19 @@ function szeneLeer(): FadenSzene {
     teamName: "",
     leitung: "mila",
     bots,
-    seitenleiste: { notAus: false, fragenAnzahl: 0, paiFaeden, teams: [] },
+    seitenleiste: {
+      notAus: false,
+      fragenAnzahl: 0,
+      paiFaeden: [{ id: "pf3", titel: "Wochenplan sortieren", stand: "" }],
+      teams: [],
+    },
     gespraech: [],
     eingabeBots: [],
+    vorlage: {
+      name: "Studio",
+      text: "Leitung, Grafik, Video, Text",
+      bots: ["mila", "ben", "ida", "juri"],
+    },
   };
 }
 

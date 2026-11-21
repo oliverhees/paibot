@@ -503,10 +503,6 @@ export function FadenKopf({
           />
           {steuerung && (
             <div className={styles.knoepfe}>
-              <button type="button" className={styles.knopf} onClick={() => onStabNehmen?.()}>
-                <Sym name="stab" groesse={14} />
-                {t("faden.stab.nehmen")}
-              </button>
               {daten.stand === "angehalten" ? (
                 <button
                   type="button"
@@ -517,10 +513,16 @@ export function FadenKopf({
                   {t("faden.stab.fortsetzen")}
                 </button>
               ) : (
-                <button type="button" className={styles.knopf} onClick={() => onAnhalten?.()}>
-                  <Sym name="pause" groesse={14} />
-                  {t("faden.stab.anhalten")}
-                </button>
+                <>
+                  <button type="button" className={styles.knopf} onClick={() => onStabNehmen?.()}>
+                    <Sym name="stab" groesse={14} />
+                    {t("faden.stab.nehmen")}
+                  </button>
+                  <button type="button" className={styles.knopf} onClick={() => onAnhalten?.()}>
+                    <Sym name="pause" groesse={14} />
+                    {t("faden.stab.anhalten")}
+                  </button>
+                </>
               )}
             </div>
           )}

@@ -280,6 +280,8 @@ export interface Hinweisband {
   titel: string;
   text: string;
   ton: "halt";
+  /** Mit Knopf „Fortsetzen“, wenn die Ansicht einen Rückruf dafür hat. */
+  fortsetzen?: boolean;
 }
 
 export type GespraechsEintrag = Beitrag | Gruppe | Trenner | GrenzenKarteDaten | Hinweisband;

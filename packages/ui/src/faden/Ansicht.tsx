@@ -13,7 +13,7 @@
 import { t } from "@paibot/shared/texte";
 import { useEffect, useId, useRef, useState } from "react";
 import styles from "./Ansicht.module.css";
-import { BotAvatar } from "./BotAvatar";
+import { AvatarStapel, BotAvatar } from "./BotAvatar";
 import { AufrufLeiste, type EingabeBot, type EingabeSteuerung, FadenEingabe } from "./Eingabe";
 import { erwaehnungAnhaengen } from "./erwaehnung";
 import {
@@ -62,6 +62,8 @@ export interface FadenSzene {
   halt?: boolean;
   /** Beschriftung der Leiste „Aufrufen:“ oder „Beteiligt:“. */
   aufrufText?: string;
+  /** Nur im Zustand „leer“: eine Vorlage, die der Besitzer anlegen kann (Name, Beschreibung, Bots). */
+  vorlage?: { name: string; text: string; bots: string[] };
 }
 
 export interface FadenAnsichtProps {
@@ -75,11 +77,13 @@ export interface FadenAnsichtProps {
   onZuschlag?: () => void;
   onGrenzenWahl?: (id: string) => void;
   onNeuesTeam?: () => void;
+  onTeamAusVorlage?: () => void;
+  onTeamSelbst?: () => void;
   /** Gespeicherter Start: Kopf und Leiste nicht aus dem Browser lesen. */
   ohneMerken?: boolean;
 }
 
-function Baum() {
+function Baum({ pai }: { pai: FadenBot | undefined }) {
   return (
     <div className={styles.baum} aria-hidden="true">
       <svg
@@ -87,24 +91,30 @@ function Baum() {
         viewBox="0 0 300 150"
         fill="none"
         stroke="var(--line-strong)"
-        strokeWidth="1.5"
-        strokeDasharray="4 4"
+        strokeWidth="1.2"
+        strokeDasharray="3 3"
       >
-        <path d="M150 52 L70 98" />
-        <path d="M150 52 L150 98" />
-        <path d="M150 52 L230 98" />
+        <path d="M150 62 V76 M60 76 H240 M60 76 V96 M150 76 V96 M240 76 V96" />
       </svg>
-      <div className={styles.knoten} style={{ left: 120, top: 8 }}>
-        <span
-          className={styles.geist}
-          style={{ borderStyle: "solid", background: "var(--accent-soft)" }}
-        />
-        {t("faden.leer.leitung")}
+      <div className={styles.knoten} style={{ left: 120, top: 0 }}>
+        {pai && (
+          <BotAvatar
+            farbe={pai.farbe}
+            {...(pai.form ? { form: pai.form } : {})}
+            groesse={34}
+            still
+          />
+        )}
+        <span>Pai</span>
       </div>
-      {[40, 120, 200].map((x) => (
-        <div key={x} className={styles.knoten} style={{ left: x, top: 92 }}>
-          <span className={styles.geist} />
-          {t("faden.leer.mitglied")}
+      {[
+        { x: 30, text: t("faden.leer.leitung"), form: "quadrat" },
+        { x: 120, text: t("faden.leer.mitglied"), form: "kreis" },
+        { x: 210, text: t("faden.leer.mitglied"), form: "raute" },
+      ].map((k) => (
+        <div key={k.x} className={styles.knoten} style={{ left: k.x, top: 96 }}>
+          <span className={styles.geist} data-form={k.form} />
+          {k.text}
         </div>
       ))}
     </div>
@@ -126,6 +136,8 @@ export function FadenAnsicht({
   onZuschlag,
   onGrenzenWahl,
   onNeuesTeam,
+  onTeamAusVorlage,
+  onTeamSelbst,
   ohneMerken = false,
 }: FadenAnsichtProps) {
   const { kopf, leiste, bots } = szene;
@@ -223,18 +235,20 @@ export function FadenAnsicht({
           >
             <Sym name="menue" groesse={20} />
           </button>
-          {leitung && (
+          {(hatFaden ? leitung : bots.pai) && (
             <BotAvatar
-              farbe={leitung.farbe}
-              {...(leitung.form ? { form: leitung.form } : {})}
-              groesse={32}
+              farbe={(hatFaden ? leitung : bots.pai)?.farbe ?? "limette"}
+              {...((hatFaden ? leitung : bots.pai)?.form
+                ? { form: (hatFaden ? leitung : bots.pai)?.form }
+                : {})}
+              groesse={hatFaden ? 32 : 28}
               zustand={szene.halt ? "angehalten" : "ruhig"}
               still
             />
           )}
           <div className={styles.titelBlock}>
-            <h1>{hatFaden && kopf ? reinerText(kopf.titel, 120) : t("faden.leer.titel")}</h1>
-            {hatFaden && <div className={styles.unterzeile}>{kopfzeile}</div>}
+            <h1>{hatFaden && kopf ? reinerText(kopf.titel, 120) : t("faden.leer.kopf")}</h1>
+            <div className={styles.unterzeile}>{hatFaden ? kopfzeile : t("faden.leer.unter")}</div>
           </div>
           {hatFaden && szene.sichtbarBeiPai && (
             <span className={styles.chip}>
@@ -290,6 +304,7 @@ export function FadenAnsicht({
                   bots={bots}
                   {...(onZuschlag ? { onZuschlag } : {})}
                   {...(onGrenzenWahl ? { onGrenzenWahl } : {})}
+                  {...(onFortsetzen ? { onFortsetzen } : {})}
                 />
               </div>
             </div>
@@ -320,19 +335,59 @@ export function FadenAnsicht({
             </div>
           </>
         ) : (
-          <div className={styles.verlauf}>
-            <div className={styles.leer} data-baustein="leer">
-              <Baum />
-              <h2>{t("faden.leer.titel")}</h2>
-              <p>{t("faden.leer.text")}</p>
-              <div className={styles.leerKnoepfe}>
-                <button type="button" className={styles.knopf} onClick={() => onNeuesTeam?.()}>
-                  <Sym name="plus" groesse={14} />
-                  {t("faden.leer.team_anlegen")}
-                </button>
+          <>
+            <div className={styles.verlauf}>
+              <div className={styles.leer} data-baustein="leer">
+                <Baum pai={bots.pai} />
+                <h2>{t("faden.leer.titel")}</h2>
+                <p>{t("faden.leer.text")}</p>
+                <div className={styles.leerKnoepfe}>
+                  <button
+                    type="button"
+                    className={styles.knopf}
+                    onClick={() => (onTeamAusVorlage ?? onNeuesTeam)?.()}
+                  >
+                    <Sym name="plus" groesse={14} />
+                    {t("faden.leer.vorlage")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.knopfLeise}
+                    onClick={() => (onTeamSelbst ?? onNeuesTeam)?.()}
+                  >
+                    {t("faden.leer.selbst")}
+                  </button>
+                </div>
+                {szene.vorlage && (
+                  <div className={styles.vorlage}>
+                    <AvatarStapel
+                      bots={szene.vorlage.bots.flatMap((id) =>
+                        bots[id] ? [bots[id] as FadenBot] : [],
+                      )}
+                      groesse={22}
+                      ueberlappung={6}
+                    />
+                    {t("faden.leer.vorlage_chip", {
+                      name: sauberName(szene.vorlage.name),
+                      text: reinerText(szene.vorlage.text, 80),
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+            <div className={styles.eingabeZone}>
+              <FadenEingabe
+                ref={eingabe}
+                bots={[]}
+                leitung="Pai"
+                wert={text}
+                onWert={setText}
+                onSenden={(x) => onSenden?.(x)}
+                platzhalter={t("faden.leer.platzhalter")}
+                hinweis={t("faden.leer.hinweis")}
+              />
+            </div>
+          </>
         )}
       </div>
 

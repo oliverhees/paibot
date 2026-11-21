@@ -406,3 +406,23 @@
 .inhalt[hidden] {
   display: none;
 }
+
+.bandText {
+  flex: 1;
+  min-width: 0;
+}
+
+.bandKnopf {
+  border: 0;
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 600 13px / 18px var(--font-sans);
+  cursor: pointer;
+}
