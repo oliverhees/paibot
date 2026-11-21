@@ -9,6 +9,7 @@
  * @since     2026-11-20
  */
 
+export * from "./abdruck";
 export * from "./contracts";
 export * from "./evaluate";
 export * from "./fassungen/index";

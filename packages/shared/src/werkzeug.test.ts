@@ -19,7 +19,13 @@ import {
 } from "./actions";
 import { ruleDefinitionSchema, STANDARD_RULE_VERSIONS, STANDARD_RULES } from "./gate";
 import { newId } from "./id";
-import { TOOL_CALL_STATUSES, toolCallSchema } from "./objects";
+import { toolKeySchema as objektKennung, TOOL_CALL_STATUSES, toolCallSchema } from "./objects";
+import {
+  type ToolEnvelope,
+  type ToolResultMessage,
+  toolEnvelopeSchema,
+  toolKeySchema,
+} from "./werkzeug";
 
 const time = "2026-11-20T10:00:00.000Z";
 const digest = `hmac-sha256:${"0a".repeat(32)}`;
@@ -247,5 +253,65 @@ describe("Werkzeug-Aufruf im Verlauf", () => {
     expect(toolCallSchema.safeParse({ ...record, status: "fertig" }).success).toBe(false);
     expect(toolCallSchema.safeParse({ ...record, actionId: newId("run") }).success).toBe(false);
     expect(toolCallSchema.safeParse({ ...record, position: -1 }).success).toBe(false);
+  });
+});
+
+describe("Hülle eines Werkzeug-Ergebnisses", () => {
+  const ok: ToolEnvelope = {
+    paibot: "werkzeug-ergebnis",
+    werkzeug: "eingebaut/doku.nachschlagen",
+    art: "daten",
+    status: "ok",
+    inhalt: { treffer: [{ seite: "funktion-tor", anker: "grenzen" }] },
+  };
+  const fehler: ToolEnvelope = {
+    paibot: "werkzeug-ergebnis",
+    werkzeug: "eingebaut/doku.nachschlagen",
+    art: "daten",
+    status: "abgelehnt",
+    code: "freigabe_noetig",
+    text: "Dafür bräuchte ich deine Erlaubnis; das kann ich in dieser Version noch nicht fragen.",
+  };
+
+  it("kennt genau Daten oder Fehler bzw. Ablehnung, streng", () => {
+    expect(toolEnvelopeSchema.parse(ok)).toEqual(ok);
+    expect(toolEnvelopeSchema.parse({ ...ok, gekuerzt: true })).toEqual({ ...ok, gekuerzt: true });
+    expect(toolEnvelopeSchema.parse(fehler)).toEqual(fehler);
+    expect(toolEnvelopeSchema.parse({ ...fehler, status: "fehler" }).status).toBe("fehler");
+    for (const bad of [
+      { ...ok, extra: 1 },
+      { ...fehler, extra: 1 },
+      { ...ok, paibot: "anders" },
+      { ...ok, art: "anweisung" },
+      { ...ok, status: "fehler" },
+      { ...fehler, code: "frei_erfunden" },
+      { ...fehler, text: "" },
+      { ...fehler, text: "x".repeat(501) },
+      { ...ok, werkzeug: "Eingebaut/x" },
+      { ...ok, inhalt: undefined },
+    ]) {
+      expect(toolEnvelopeSchema.safeParse(bad).success, JSON.stringify(bad).slice(0, 60)).toBe(
+        false,
+      );
+    }
+  });
+
+  it("Inhalt hat feste Grenzen: Tiefe 8 geht, Tiefe 9 nicht", () => {
+    const tief = (n: number): unknown => (n === 0 ? "x" : { a: tief(n - 1) });
+    // Tiefe = Zahl der verschachtelten Objekte in `inhalt`.
+    expect(toolEnvelopeSchema.safeParse({ ...ok, inhalt: tief(8) }).success).toBe(true);
+    expect(toolEnvelopeSchema.safeParse({ ...ok, inhalt: tief(9) }).success).toBe(false);
+  });
+
+  it("geht nur als Nachricht mit role tool", () => {
+    const nachricht: ToolResultMessage = { role: "tool", callId: "c1", envelope: ok };
+    expect(nachricht.role).toBe("tool");
+    // @ts-expect-error Eine Hülle steht nie in einer Nachricht des Systems.
+    const system: ToolResultMessage = { role: "system", callId: "c1", envelope: ok };
+    expect(system.role).toBe("system");
+  });
+
+  it("die Kennung eines Werkzeugs kommt aus einer Stelle", () => {
+    expect(toolKeySchema).toBe(objektKennung);
   });
 });

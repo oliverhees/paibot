@@ -23,7 +23,8 @@
     "./sprache": "./src/locale.ts",
     "./stand": "./src/stand.ts",
     "./bindung": "./src/bindung.ts",
-    "./anzeigetext": "./src/anzeigetext.ts"
+    "./anzeigetext": "./src/anzeigetext.ts",
+    "./werkzeug": "./src/werkzeug.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
