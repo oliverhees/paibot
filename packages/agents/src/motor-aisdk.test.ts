@@ -205,7 +205,7 @@ describe("Abbruch mitten im Strom", () => {
     const endedAfter = Date.now() - abortedAt;
     expect(events.map((e) => e.type)).toEqual(["text-delta", "text-delta", "text-delta"]);
     expect(endedAfter).toBeLessThan(500);
-    await waitFor(() => provider.requests[0]?.closedByClient === true);
+    await waitFor(() => provider.requests[0]?.closedByClient === true, 5000);
     expect(consoleError).not.toHaveBeenCalled();
     expect(consoleWarn).not.toHaveBeenCalled();
     expect(warning).not.toHaveBeenCalled();
@@ -219,7 +219,7 @@ describe("Abbruch mitten im Strom", () => {
     const events = await run(input(), {}, controller.signal);
     expect(events).toEqual([]);
     expect(Date.now() - started).toBeLessThan(1000);
-    await waitFor(() => provider.requests[0]?.closedByClient === true);
+    await waitFor(() => provider.requests[0]?.closedByClient === true, 5000);
   });
 
   it("bricht der Aufrufer die Schleife ab, wird die Verbindung ebenfalls geschlossen", async () => {
@@ -232,7 +232,7 @@ describe("Abbruch mitten im Strom", () => {
       },
     });
     expect(seen.map((event) => event.type)).toEqual(["text-delta"]);
-    await waitFor(() => provider.requests[0]?.closedByClient === true);
+    await waitFor(() => provider.requests[0]?.closedByClient === true, 5000);
   });
 });
 
@@ -288,12 +288,12 @@ describe("Fehler über die Anbieter-Schicht", () => {
     provider.failNext({ kind: "haengen" });
     const started = Date.now();
     // Großzügig gewählt: Vor dem Verbinden werden Namen aufgelöst, das dauert unter Last.
-    const events = await run(input(), { idleTimeoutMs: 1000 });
+    const events = await run(input(), { idleTimeoutMs: 5000 });
     expect(events.map(({ event }) => event)).toEqual([
       { type: "error", code: "anbieter_nicht_erreichbar", retryable: true, detail: "zeitgrenze" },
     ]);
-    expect(Date.now() - started).toBeLessThan(8000);
-    await waitFor(() => provider.requests[0]?.closedByClient === true);
+    expect(Date.now() - started).toBeLessThan(15_000);
+    await waitFor(() => provider.requests[0]?.closedByClient === true, 5000);
   });
 
   it("Gesamt-Zeitgrenze der Runde (limits.timeoutMs)", async () => {

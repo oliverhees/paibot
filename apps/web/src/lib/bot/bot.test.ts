@@ -14,7 +14,7 @@ import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import { ACTIVE_STANDARD_RULES } from "@paibot/shared/tor";
 import { describe, expect, it, vi } from "vitest";
-import { belegeSeit, eingerichtet, letzteNummer } from "../modelle/testhilfe";
+import { belegeSeit, eingerichtet, letzteNummer } from "../modelle/testing";
 import { anfrage, Keksdose } from "../zugang/testing";
 import { botRechte, botSeitenDaten, geaenderteFelder } from "./bot";
 

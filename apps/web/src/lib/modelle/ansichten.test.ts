@@ -19,7 +19,7 @@ import { letzterLaufText, zeitText } from "../schleuse/ansicht";
 import { TEST_SCHLUESSEL } from "../zugang/testing";
 import { anbieterStatus, listeMoeglich, modelleFiltern, SUCHE_AB, sucheZeigen } from "./ansicht";
 import { modelleSeitenDaten } from "./seite";
-import { eingerichtet } from "./testhilfe";
+import { eingerichtet } from "./testing";
 
 vi.setConfig({ testTimeout: 60_000 });
 

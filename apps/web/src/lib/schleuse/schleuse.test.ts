@@ -12,7 +12,7 @@
 import { repo } from "@paibot/db";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import { describe, expect, it, vi } from "vitest";
-import { belegeSeit, eingerichtet, letzteNummer } from "../modelle/testhilfe";
+import { belegeSeit, eingerichtet, letzteNummer } from "../modelle/testing";
 import { anfrage, Keksdose } from "../zugang/testing";
 import { letzterLaufAus } from "./schleuse";
 

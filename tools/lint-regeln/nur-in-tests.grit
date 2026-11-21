@@ -12,8 +12,8 @@ language js
 
 `$source` where {
   $source <: or {
-    r"^[\"'`]@paibot/[a-z-]+/testing(/[^\"'`]*)?[\"'`]$",
-    r"^[\"'`](\.\.?/)+([^\"'`]*/)?testing(\.ts|/[^\"'`]*)?[\"'`]$"
+    r"^[\"'`]@paibot/[a-z-]+/testing(?:/[^\"'`]*)?[\"'`]$",
+    r"^[\"'`](?:\.\.?/)+(?:[^\"'`]*/)?testing(?:\.ts|/[^\"'`]*)?[\"'`]$"
   },
   register_diagnostic(span=$source, message="Test-Zugänge (`@paibot/*/testing`) gehören nur in Tests (*.test.ts).")
 }

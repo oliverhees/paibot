@@ -56,6 +56,7 @@ jobs:
       - run: pnpm build
       - run: pnpm licenses:check
       - run: pnpm doku:check
+      - run: pnpm compose:vergleich
       - name: Sicherheitsmeldungen der Abhängigkeiten (Betrieb)
         run: pnpm audit --prod --audit-level high
 
@@ -218,6 +219,9 @@ jobs:
             node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a \
             sh -c 'corepack enable && pnpm install --frozen-lockfile --filter "@paibot/durchstich..." > /dev/null && pnpm --filter @paibot/durchstich exec vitest run src/schleuse-vertrag.test.ts'
           $testcompose down -v
+      - name: Protokolle der Dienste im Fehlerfall
+        if: failure()
+        run: docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile schleuse logs --no-color --tail 150 || true
       - name: Aufräumen
         if: always()
         run: docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v

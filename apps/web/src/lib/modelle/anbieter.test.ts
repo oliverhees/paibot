@@ -27,7 +27,7 @@ import {
   type Eingerichtet,
   eingerichtet,
   letzteNummer,
-} from "./testhilfe";
+} from "./testing";
 
 vi.setConfig({ testTimeout: 60_000 });
 
