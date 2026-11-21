@@ -1131,6 +1131,8 @@ export const de = {
   // Schutz von Anmeldung und Eingängen, zweite Runde
   "anfrage.zu_viele_gleichzeitig":
     "Gerade kommen zu viele Anfragen gleichzeitig an. Versuch es in ein paar Sekunden noch einmal.",
+  "einrichtung.code.vorhanden_frueher":
+    "Einrichtung offen: Der Einrichtungs-Code wurde am {zeit} erzeugt. Er steht im Log des Starts, der ihn erzeugt hat, nicht in diesem, und gilt 24 Stunden, längstens bis zum Ende der Einrichtung. Code nicht mehr zur Hand: Migrations-Schritt erneut starten (Dienst migrate, z. B. docker compose up -d), dann die Seite „Einrichtung“ neu laden; der neue Code steht danach im Log von web.",
   "aktion.geraet.hinzufuegen": "Gerät hinzugefügt",
   "aktion.geraet.entfernen": "Gerät entfernt",
 } as const satisfies Record<string, string | readonly string[]>;

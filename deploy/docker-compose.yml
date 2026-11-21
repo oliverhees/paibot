@@ -110,7 +110,7 @@ services:
       # Nur die App-Rolle. Bewusst ohne DATABASE_MIGRATION_URL: web migriert nie.
       DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
       PAIBOT_SECRET: ${PAIBOT_SECRET:?PAIBOT_SECRET fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}
-      APP_URL: ${APP_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:?APP_URL fehlt – trage in deploy/.env die Adresse ein, unter der du PaiBot im Browser öffnest (lokal http://localhost:3000)}
       PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
       # Die App ist nur über den eigenen Proxy erreichbar (Port nur auf 127.0.0.1, Coolify im
       # Docker-Netz); dann zählt die Adresse, die der Proxy in X-Forwarded-For anhängt.

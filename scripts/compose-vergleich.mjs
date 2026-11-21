@@ -149,6 +149,12 @@ if (
 ) {
   fehler.push(`${bauPfad}: Block „x-logging“ mit driver json-file, max-size und max-file fehlt.`);
 }
+// APP_URL ist Pflicht: ohne sie bricht schon docker compose mit einer Meldung ab.
+if (!bau.some((z) => z.dienst === "web" && /^ {6}APP_URL: \$\{APP_URL:\?[^}]+\}$/.test(z.text))) {
+  fehler.push(
+    `${bauPfad}: Dienst web braucht „APP_URL: \${APP_URL:?…}“ (Pflichtwert mit Meldung).`,
+  );
+}
 const PROXY_ZEILE = ["TRUST_PROXY: $", "{TRUST_PROXY:-1}"].join("");
 if (!bau.some((z) => z.dienst === "web" && z.text.trim() === PROXY_ZEILE)) {
   fehler.push(

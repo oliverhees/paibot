@@ -133,27 +133,27 @@ Die Datenschleuse (Profil `schleuse`) wird auch mit fertigem Image aus einem fes
 
 Alle Werte stehen in `deploy/.env` (Vorlage: `deploy/.env.example`). Diese Datei wird nie committet.
 
-| Variable                     | Bedeutung                                                                                   | Standard                |
-| ---------------------------- | ------------------------------------------------------------------------------------------- | ----------------------- |
-| `POSTGRES_PASSWORD`          | Passwort der Migrations-Rolle, **Pflicht**, mindestens 24 Zeichen                           | keiner                  |
-| `POSTGRES_APP_PASSWORD`      | Passwort der App-Rolle, **Pflicht**, mindestens 24 Zeichen                                  | keiner                  |
-| `PAIBOT_SECRET`              | Wurzel-Geheimnis, **Pflicht**, genau 32 Byte als Base64 (siehe [Sicherheit](sicherheit.md)) | keiner                  |
-| `POSTGRES_USER`              | Migrations-Rolle (Besitzer der Tabellen)                                                    | `paibot`                |
-| `POSTGRES_APP_USER`          | App-Rolle (eingeschränkt)                                                                   | `paibot_app`            |
-| `POSTGRES_DB`                | Name der Datenbank                                                                          | `paibot`                |
-| `APP_URL`                    | Adresse der App, genau wie im Browser; im Betrieb `https://…` (siehe unten)                 | `http://localhost:3000` |
-| `TRUST_PROXY`                | `1`: Adresse der Besucher aus dem Eintrag, den dein Proxy an `X-Forwarded-For` anhängt      | `1`                     |
-| `WEB_PORT`                   | Port der Web-App auf dem Rechner                                                            | `3000`                  |
-| `PAIBOT_ALLOW_PRIVILEGED_DB` | `1` erlaubt den Start mit zu vielen Rechten, **nur für den Übergang**                       | leer                    |
-| `PAIBOT_WORKER_CONCURRENCY`  | wie viele Antworten der Worker gleichzeitig erzeugt (1 bis 32)                              | `2`                     |
-| `PAIBOT_WEB_SPEICHER`        | Speicher-Grenze der Web-App (Docker-Angabe wie `768m`, `1g`)                                | `768m`                  |
-| `PAIBOT_WORKER_SPEICHER`     | Speicher-Grenze des Workers                                                                 | `512m`                  |
-| `PAIBOT_MIGRATE_SPEICHER`    | Speicher-Grenze des Dienstes `migrate`                                                      | `384m`                  |
-| `PAIBOT_VERSION`             | nur mit fertigem Image: Version (z. B. `0.3.0`), auch mit Digest; **Pflicht** dort          | keiner                  |
+| Variable                     | Bedeutung                                                                                                                         | Standard     |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `POSTGRES_PASSWORD`          | Passwort der Migrations-Rolle, **Pflicht**, mindestens 24 Zeichen                                                                 | keiner       |
+| `POSTGRES_APP_PASSWORD`      | Passwort der App-Rolle, **Pflicht**, mindestens 24 Zeichen                                                                        | keiner       |
+| `PAIBOT_SECRET`              | Wurzel-Geheimnis, **Pflicht**, genau 32 Byte als Base64 (siehe [Sicherheit](sicherheit.md))                                       | keiner       |
+| `POSTGRES_USER`              | Migrations-Rolle (Besitzer der Tabellen)                                                                                          | `paibot`     |
+| `POSTGRES_APP_USER`          | App-Rolle (eingeschränkt)                                                                                                         | `paibot_app` |
+| `POSTGRES_DB`                | Name der Datenbank                                                                                                                | `paibot`     |
+| `APP_URL`                    | Adresse der App, genau wie im Browser, **Pflicht**; im Betrieb `https://…` (siehe unten)                                          | keiner       |
+| `TRUST_PROXY`                | `1`: Adresse der Besucher aus dem Eintrag, den dein Proxy an `X-Forwarded-For` anhängt; `0` ohne Proxy davor (leer zählt wie `1`) | `1`          |
+| `WEB_PORT`                   | Port der Web-App auf dem Rechner                                                                                                  | `3000`       |
+| `PAIBOT_ALLOW_PRIVILEGED_DB` | `1` erlaubt den Start mit zu vielen Rechten, **nur für den Übergang**                                                             | leer         |
+| `PAIBOT_WORKER_CONCURRENCY`  | wie viele Antworten der Worker gleichzeitig erzeugt (1 bis 32)                                                                    | `2`          |
+| `PAIBOT_WEB_SPEICHER`        | Speicher-Grenze der Web-App (Docker-Angabe wie `768m`, `1g`)                                                                      | `768m`       |
+| `PAIBOT_WORKER_SPEICHER`     | Speicher-Grenze des Workers                                                                                                       | `512m`       |
+| `PAIBOT_MIGRATE_SPEICHER`    | Speicher-Grenze des Dienstes `migrate`                                                                                            | `384m`       |
+| `PAIBOT_VERSION`             | nur mit fertigem Image: Version (z. B. `0.3.0`), auch mit Digest; **Pflicht** dort                                                | keiner       |
 
 Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), weil sie in einer Datenbank-Adresse stehen. `POSTGRES_PASSWORD` und `POSTGRES_APP_PASSWORD` müssen verschieden sein, sonst startet `migrate` nicht.
 
-**`APP_URL` und `TRUST_PROXY`:** `web` bricht den Start ab, wenn `APP_URL` fehlt, keine Adresse ist oder eine öffentliche Adresse über `http://` nennt (dann gingen Passwort und Sitzung unverschlüsselt durchs Netz). `http://localhost:3000` für den eigenen Rechner geht ohne Warnung, `http://` im eigenen Netz mit Warnung. `TRUST_PROXY` steht im Compose auf `1`: Der Port der App ist nur auf dem Server selbst erreichbar (`127.0.0.1`), jede Anfrage von außen kommt über deinen Proxy. Gib den Port nie direkt frei, solange `TRUST_PROXY=1` gilt. Ohne Proxy davor setze `TRUST_PROXY=0`; dann steht ein Hinweis im Log, und die Limits je Adresse können Besucher nicht unterscheiden (die gemeinsame Bremse beim Anmelden gilt weiter, siehe [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
+**`APP_URL` und `TRUST_PROXY`:** Fehlt `APP_URL` in `deploy/.env`, bricht schon `docker compose` mit „APP_URL fehlt …“ ab (`sh deploy/env-erzeugen.sh` trägt für den eigenen Rechner `http://localhost:3000` ein). `web` bricht den Start ab, wenn `APP_URL` keine Adresse ist oder eine öffentliche Adresse über `http://` nennt (dann gingen Passwort und Sitzung unverschlüsselt durchs Netz). `http://localhost:3000` für den eigenen Rechner geht ohne Warnung, `http://` im eigenen Netz mit Warnung. `TRUST_PROXY` steht im Compose auf `1`: Der Port der App ist nur auf dem Server selbst erreichbar (`127.0.0.1`), jede Anfrage von außen kommt über deinen Proxy. Gib den Port nie direkt frei, solange `TRUST_PROXY=1` gilt. Ohne Proxy davor setze `TRUST_PROXY=0`; dann steht ein Hinweis im Log, und die Limits je Adresse können Besucher nicht unterscheiden (die gemeinsame Bremse beim Anmelden gilt weiter, siehe [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
 
 **Größe und Zahl von Anfragen:** PaiBot nimmt Anfragen nur bis zu einer festen Größe an (16 KiB, Nachrichten 256 KiB, Bot ändern 64 KiB) und weist größere schon an der angegebenen Länge ab. Vor jeder Prüfung hält die App höchstens 16 KiB eines Körpers im Speicher; die beiden Routen mit größerer Grenze lesen ihren Körper erst nach Anmeldung und Prüfzeichen, und höchstens 32 Körper gleichzeitig. Was die App nicht begrenzen kann: wie viele Verbindungen gleichzeitig offen sind. Jede offene Anfrage kostet Speicher, auch eine kleine, und bei einigen Tausend gleichzeitig wird es eng (der Dienst `web` hat 768 MiB). Begrenze deshalb in deinem Proxy beides, die Größe auf etwa 300 KB und die gleichzeitigen Anfragen je Adresse:
 
@@ -163,7 +163,17 @@ Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), w
 | nginx           | `client_max_body_size 300k;`                            | `limit_conn_zone $binary_remote_addr zone=paibot:10m;` (im `http`-Block) und `limit_conn paibot 20;` |
 | Traefik/Coolify | Middleware `buffering` mit `maxRequestBodyBytes=300000` | Middleware `inFlightReq` mit `amount=20` (siehe [Coolify](deploy-coolify.md))                        |
 
-Eine Grenze von 1 MiB, wie sie früher hier stand, ist zu groß: Sie lässt mehr durch, als PaiBot je annimmt.
+Der Wert für die Größe ist überall derselbe: **300 KB** (etwas über der größten Grenze von PaiBot, 256 KiB). Eine Grenze von 1 MiB, wie sie früher hier stand, ist zu groß: Sie lässt mehr durch, als PaiBot je annimmt.
+
+**Gleichzeitige Anfragen begrenzen:** Der Proxy zählt je Besucher-Adresse, wie viele Anfragen gerade offen sind, und lehnt darüber sofort ab (Traefik antwortet dann mit 429). 20 offene Anfragen je Adresse reichen für dich mit mehreren Tabs und Geräten. Mit Traefik (auch in Coolify) sind das zwei Labels am Dienst `web`, zusammen mit der Größe:
+
+```text
+traefik.http.middlewares.paibot-groesse.buffering.maxRequestBodyBytes=300000
+traefik.http.middlewares.paibot-gleichzeitig.inflightreq.amount=20
+traefik.http.routers.<router-von-web>.middlewares=paibot-groesse,paibot-gleichzeitig
+```
+
+Wo die Labels in Coolify hingehören, steht in [Coolify](deploy-coolify.md). Ob die Labels in deiner Traefik-Fassung greifen, prüfst du mit einem Körper über 300 KB (Antwort 413).
 
 Fehlt ein Pflichtwert, bricht schon `docker compose` mit einer Meldung „… fehlt“ ab. Ist ein Wert zu kurz, falsch geformt oder noch ein Platzhalter, startet die App nicht und nennt im Log, welcher Wert es ist (nie den Wert selbst).
 
