@@ -455,4 +455,78 @@ export const de = {
   "fehler.unterbrochen.ausweg": "Schick die Nachricht noch einmal.",
   "fehler.intern": "Da ist etwas schiefgegangen.",
   "fehler.intern.ausweg": "Versuch es noch einmal. Hilft das nicht, schau ins Log von PaiBot.",
+
+  // Seite Einstellungen und Info
+  "einstellungen.reiter.name": "Bereiche der Einstellungen",
+  "einstellungen.reiter.zugang": "Zugang",
+  "einstellungen.reiter.grenzen": "Grenzen",
+  "einstellungen.passwort.wiederholen": "Neues Passwort wiederholen",
+  "einstellungen.passwort.text":
+    "Wähl ein Passwort, das du dir merken kannst. Ein Satz aus vier Wörtern ist gut.",
+  "einstellungen.passwort.hinweis":
+    "Danach sind alle anderen Geräte abgemeldet. Auf diesem Gerät bleibst du angemeldet.",
+  "einstellungen.passwort.laeuft": "Wird geändert …",
+  "einstellungen.passwort.leer": "Gib dein aktuelles Passwort ein.",
+  "einstellungen.passwort.unfertig": "Das neue Passwort erfüllt die Prüfliste noch nicht.",
+  "einstellungen.passwort.erfolg":
+    "Dein Passwort ist geändert. Alle anderen Geräte sind jetzt abgemeldet.",
+  "einstellungen.sitzungen.text":
+    "Jede Anmeldung ist eine Sitzung. Hier siehst du, wo du gerade angemeldet bist.",
+  "einstellungen.sitzungen.leer": "Es gibt gerade keine aktive Sitzung.",
+  "einstellungen.sitzungen.fehler": "Die Sitzungen lassen sich gerade nicht laden.",
+  "einstellungen.sitzungen.alle_hinweis":
+    "Meldet alle Geräte ab, auch dieses. Danach meldest du dich mit deinem Passwort neu an.",
+  "einstellungen.sitzungen.rueckfrage":
+    "Alle Geräte werden abgemeldet, auch dieses. Danach landest du auf der Anmeldung.",
+  "einstellungen.sitzungen.laeuft": "Wird beendet …",
+  "einstellungen.sitzung.angemeldet": "angemeldet am {zeit}",
+  "einstellungen.sitzung.zuletzt": "zuletzt aktiv am {zeit}",
+  "einstellungen.sitzung.geraet": "{browser} auf {system}",
+  "einstellungen.sitzung.geraet_unbekannt": "Gerät ohne Angabe",
+  "einstellungen.abmelden.text": "Meldet nur dieses Gerät ab.",
+  "einstellungen.schliessen": "Schließen",
+  "einstellungen.grenzen.vorspann":
+    "Grenzen prüft das Tor bei jeder Anfrage an das Modell, nach festen Regeln und ohne KI. Jede Änderung hier bekommt einen Beleg.",
+  "einstellungen.tagesbudget.hilfe":
+    "Höchstens so viele Token am Tag (Eingabe und Ausgabe zusammen). Leer lassen heißt: keine Tagesgrenze.",
+  "einstellungen.verlaufsgrenze.hilfe":
+    "So viele Token aus dem bisherigen Verlauf gehen höchstens mit jeder Anfrage mit. Leer lassen heißt: so viel, wie passt.",
+  "einstellungen.zeitzone.hilfe":
+    "Danach richten sich das Datum für deinen Bot und der Beginn des Tages für die Tagesgrenze.",
+  "einstellungen.heute.titel": "Heute verbraucht",
+  "einstellungen.heute.ohne_grenze": "{token} Token seit {uhrzeit} Uhr. Es gibt keine Tagesgrenze.",
+  "einstellungen.heute.mit_grenze": "{token} von {grenze} Token seit {uhrzeit} Uhr.",
+  "einstellungen.heute.erreicht":
+    "Die Tagesgrenze ist erreicht. Bis morgen fragt dein Bot das Modell nicht mehr an.",
+  "einstellungen.grenzen.zahl_ungueltig":
+    "Gib eine ganze Zahl von 1 bis {max} ein oder lass das Feld leer.",
+  "einstellungen.grenzen.unveraendert": "Es gibt nichts zu speichern.",
+  "einstellungen.grenzen.laeuft": "Wird gespeichert …",
+  "einstellungen.grenzen.gespeichert": "Gespeichert.",
+  "einstellungen.grenzen.beleg": "Beleg Nr. {nummer} ansehen",
+  "info.lizenz": "Lizenz",
+  "info.lizenz.name": "PaiBot Fair-Code-Lizenz 1.1, für eine Person",
+  "info.lizenz.person": "PaiBot ist für eine Person gedacht: privat und für deine eigene Arbeit.",
+  "info.lizenz.team":
+    "Für Teams und Unternehmen ist PaiBot Enterprise mit Support in Vorbereitung. Anfrage an hi@paibot.de.",
+  "info.lizenz.link": "Lizenztext lesen",
+  "info.entwickelt": "Entwickelt von",
+  "info.team": "Im Team nutzen",
+  "info.team.anfrage": "Anfrage an",
+  "info.links": "Links",
+  "info.link.quellcode": "Quellcode",
+  "info.link.community": "Community auf aiianer.de",
+  "info.neuer_tab": "(öffnet in einem neuen Tab)",
+  "info.bestandteile.text":
+    "PaiBot nutzt Bestandteile Dritter. Für sie gelten ausschließlich ihre eigenen Lizenzen.",
+  "info.bestandteile.schriften":
+    "Die Schriften Inter und Montserrat stehen unter der SIL Open Font License 1.1 und liegen in PaiBot selbst; nichts wird von fremden Servern geladen.",
+  "info.bestandteile.link": "Liste aller Bestandteile",
+  "info.hilfe": "Hilfe",
+  "info.hilfe.text":
+    "Anleitungen für jede Funktion stehen in der Doku auf paibot.de. Fragen und Austausch gibt es in der Community auf aiianer.de.",
+  "info.sicherheit": "Sicherheitslücke melden",
+  "info.sicherheit.text":
+    "Bitte melde Sicherheitslücken nicht öffentlich. Wie es vertraulich geht, steht in SECURITY.md.",
+  "info.sicherheit.link": "SECURITY.md lesen",
 } as const satisfies Record<string, string | readonly string[]>;
