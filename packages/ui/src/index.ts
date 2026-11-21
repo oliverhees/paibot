@@ -10,6 +10,7 @@
 
 // Die Tokens liegen in `@paibot/ui/tokens.css`, die globalen Bewegungen in `@paibot/ui/avatar.css`.
 
+export * from "./app-bausteine/index";
 export { Avatar, type AvatarProps, type AvatarZustand } from "./avatar/Avatar";
 export {
   blickZumZeiger,
