@@ -198,7 +198,7 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 - Passwort vergessen: Zurücksetzen gibt es in dieser Fassung noch nicht. Bewahre das Passwort gut auf.
 - Nur ein Passwort, keine zweite Stufe (2FA ist geplant).
 - Der Einrichtungs-Code liegt im Speicher des Dienstes `web`. Laufen mehrere `web`-Dienste gleichzeitig, hat jeder seinen eigenen Code.
-- Die Seite für Sitzungen und Passwortwechsel kommt mit den Einstellungen; die Schnittstellen dafür gibt es schon.
+- Sitzungen, bekannte Geräte und Passwort ändern stehen in den [Einstellungen](funktion-einstellungen.md) im Reiter „Zugang“; einzelne Sitzungen lassen sich dort nicht beenden, nur ganze Geräte oder alle Sitzungen auf einmal.
 - Hast du die Einrichtung abgeschlossen, lässt sie sich nicht wiederholen.
 - Der Hinweis auf eine neue Anmeldung erscheint nur in PaiBot selbst, beim nächsten Seitenaufruf; eine Nachricht aufs Handy oder per Mail gibt es nicht. Sitzungen aus der Zeit vor dem Geräte-Verzeichnis gehören zu keinem Gerät und zeigen keinen Hinweis; nach der nächsten Anmeldung schon.
 - Fehlversuche der Anmeldung stehen nicht im Protokoll der Belege, auch nicht zusammengefasst; sie zählen nur für die Limits.
