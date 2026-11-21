@@ -24,6 +24,7 @@ import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { CHROMIUM_OPTIONEN, loescheCacheOrdner, neuerCacheOrdner } from "./hilfen.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HIER, "../../..");
@@ -78,6 +79,7 @@ const HTML = `<!doctype html>
 
 describe.skipIf(!bereit && !erzwungen)("Startbereich im Browser", { timeout: 30_000 }, () => {
   let server;
+  let cacheOrdner;
   let browser;
   let page;
   let basis;
@@ -87,8 +89,10 @@ describe.skipIf(!bereit && !erzwungen)("Startbereich im Browser", { timeout: 30_
     const { createViteServer } = await import("vitest/node");
     const web = createRequire(path.join(WEB, "package.json"));
     const port = await freierPort();
+    cacheOrdner = neuerCacheOrdner();
     server = await createViteServer({
       configFile: false,
+      cacheDir: cacheOrdner,
       root: HIER,
       logLevel: "error",
       server: { host: "127.0.0.1", port, strictPort: true, fs: { allow: [REPO] }, hmr: false },
@@ -125,7 +129,7 @@ describe.skipIf(!bereit && !erzwungen)("Startbereich im Browser", { timeout: 30_
     });
     await server.listen();
     basis = `http://127.0.0.1:${port}`;
-    browser = await chromium.launch();
+    browser = await chromium.launch(CHROMIUM_OPTIONEN);
     // Einmal laden, damit Vite fertig gebündelt hat, bevor die Tests zählen.
     const fehler = await oeffne();
     if (fehler.length > 0) await oeffne();
@@ -134,6 +138,7 @@ describe.skipIf(!bereit && !erzwungen)("Startbereich im Browser", { timeout: 30_
   afterAll(async () => {
     await browser?.close();
     await server?.close();
+    loescheCacheOrdner(cacheOrdner);
   });
 
   /** Neue Seite; `reduziert` schaltet „weniger Bewegung“ ein oder aus. */
