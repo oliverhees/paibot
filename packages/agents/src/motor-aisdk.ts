@@ -9,9 +9,10 @@
  */
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { isResponseTooLarge, isRetryableError, mapProviderError } from "@paibot/llm";
+import { isResponseTooLarge, isRetryableError, mapProviderError, servedByOf } from "@paibot/llm";
 import { isResolvedModel } from "@paibot/llm/modell";
 import { invalidInput, isPaiBotError } from "@paibot/shared/fehler";
+import type { ServedBy } from "@paibot/shared/grundtypen";
 import type {
   JsonValue,
   Motor,
@@ -141,10 +142,14 @@ async function* runTurn(
       // Fehler kommen als Teil `error` im Strom; ohne eigenen Haken schreibt die Bibliothek sie
       // zusätzlich in die Konsole.
       onError: () => undefined,
+      // Rohe Stücke des Stroms: Daraus liest der Motor nur, wer laut Antwort geantwortet hat
+      // (`provider`, `model`); alles andere bleibt bei der Bibliothek.
+      includeRawChunks: true,
     });
 
-    let finish: MotorEvent | undefined;
+    let finish: Extract<MotorEvent, { type: "finish" }> | undefined;
     let failure: MotorEvent | undefined;
+    let servedBy: ServedBy | undefined;
     for await (const part of result.stream) {
       if (signal.aborted) return;
       touch();
@@ -163,6 +168,9 @@ async function* runTurn(
               input: toJsonValue(part.input),
             };
           }
+          break;
+        case "raw":
+          servedBy = mergeServedBy(servedBy, servedByOf(part.rawValue));
           break;
         case "finish":
           finish = {
@@ -191,7 +199,9 @@ async function* runTurn(
     if (failure !== undefined) {
       yield failure;
     } else if (finish !== undefined) {
-      yield finish;
+      // Nur wenn die Schnittstelle einen Anbieter nennt (Vermittler wie EUrouter); das bloße Echo
+      // des angefragten Modells sagt nichts Neues.
+      yield servedBy?.provider === undefined ? finish : { ...finish, servedBy };
     } else {
       yield timedOut
         ? timeoutEvent()
@@ -213,6 +223,24 @@ async function* runTurn(
     // Bricht der Aufrufer die Schleife ab (`return` auf dem Iterator), schließt das die Verbindung.
     if (!completed) controller.abort(new DOMException("Runde beendet", "AbortError"));
   }
+}
+
+/**
+ * Erste gemeldete Angabe je Feld gilt (das erste Stück nennt sie); spätere Stücke ergänzen nur,
+ * was noch fehlt.
+ */
+function mergeServedBy(
+  current: ServedBy | undefined,
+  next: ServedBy | undefined,
+): ServedBy | undefined {
+  if (next === undefined) return current;
+  if (current === undefined) return next;
+  const provider = current.provider ?? next.provider;
+  const model = current.model ?? next.model;
+  return {
+    ...(provider === undefined ? {} : { provider }),
+    ...(model === undefined ? {} : { model }),
+  };
 }
 
 function toolsValid(tools: readonly ToolSpec[] | undefined): boolean {

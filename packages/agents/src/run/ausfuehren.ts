@@ -15,6 +15,7 @@ import { resolveModel } from "@paibot/llm/modell";
 import { type ActionRequest, botActor } from "@paibot/shared/aktionen";
 import type { ReceiptResult } from "@paibot/shared/belege";
 import { type ErrorCode, isPaiBotError } from "@paibot/shared/fehler";
+import type { ServedBy } from "@paibot/shared/grundtypen";
 import { type MessageId, newId, type RunId } from "@paibot/shared/ids";
 import type { MotorErrorCode, MotorEvent, ResolvedModel, TurnInput } from "@paibot/shared/motor";
 import type { Run } from "@paibot/shared/objekte";
@@ -51,7 +52,7 @@ type Ready = RunContext & Required<Pick<RunContext, "model" | "provider">>;
 
 /** Wie der Modell-Schritt endete; das bestimmt Lauf, Nachricht, Ereignisse und Beleg. */
 type StepEnd =
-  | { kind: "succeeded"; tokens: { input: number; output: number } }
+  | { kind: "succeeded"; tokens: { input: number; output: number }; servedBy?: ServedBy }
   /** Abgebrochen; `code` nur, wenn es nicht der Stopp des Besitzers war (z. B. Not-Aus). */
   | { kind: "cancelled"; code?: ErrorCode }
   | { kind: "lost" }
@@ -352,7 +353,11 @@ async function runMotor(
         : toolWish
           ? { kind: "failed", code: TOOL_WISH_CODE }
           : finish !== undefined
-            ? { kind: "succeeded", tokens: { ...finish.usage } }
+            ? {
+                kind: "succeeded",
+                tokens: { ...finish.usage },
+                ...(finish.servedBy === undefined ? {} : { servedBy: { ...finish.servedBy } }),
+              }
             : { kind: "failed", code: "unterbrochen" };
 
   const messageId = await saveAnswer(deps.db, context, stream, end, input.model);
@@ -395,6 +400,7 @@ function receiptResult(end: StepEnd, text: string, deps: RunDeps): ReceiptResult
         status: "ok",
         tokens: end.tokens,
         digest: contextDigest(deps.keys.context, text) as `hmac-sha256:${string}`,
+        ...(end.servedBy === undefined ? {} : { servedBy: end.servedBy }),
       };
     case "cancelled":
     case "lost":
@@ -434,11 +440,18 @@ async function saveAnswer(
           status: "complete",
           tokensIn: end.tokens.input,
           tokensOut: end.tokens.output,
+          ...(end.servedBy === undefined ? {} : { servedBy: end.servedBy }),
         });
         await repo.events.append(tx, {
           conversationId,
           type: "message.completed",
-          data: { messageId, route: model.route, modelLabel: model.label, tokens: end.tokens },
+          data: {
+            messageId,
+            route: model.route,
+            modelLabel: model.label,
+            tokens: end.tokens,
+            ...(end.servedBy === undefined ? {} : { servedBy: end.servedBy }),
+          },
           runId: context.run.id,
         });
       } else if (end.kind === "failed") {

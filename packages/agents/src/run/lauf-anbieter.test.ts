@@ -15,7 +15,7 @@ import { createGzip } from "node:zlib";
 import { repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
-import { SCHLEUSE_SESSION_HEADER, type SchleuseConnection } from "@paibot/llm";
+import { routingRuleSlug, SCHLEUSE_SESSION_HEADER, type SchleuseConnection } from "@paibot/llm";
 import { type FakeSchleuse, startFakeSchleuse } from "@paibot/llm/testing";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -219,6 +219,31 @@ describe("mit dem echten Motor", () => {
     const receiptsJson = JSON.stringify(await env.receipts());
     expect(receiptsJson).not.toContain(MARKER);
     expect(receiptsJson).not.toContain(PROVIDER_KEY);
+    expect((await env.verify()).ok).toBe(true);
+  });
+
+  it("Routing-Regel: rule_name statt model; Anbieter laut Strom in Nachricht, Ereignis und Beleg", async () => {
+    const env = await setup({ templateKey: "eurouter", modelSlug: routingRuleSlug("EU Regel") });
+    provider.configure({
+      routingRules: [{ name: "EU Regel", provider: "beispiel-eu", model: "beispiel/modell-1" }],
+    });
+    const { runId } = await env.queueMessage(QUESTION);
+    const outcome = await executeRun(runId, env.deps, never());
+    expect(outcome.status).toBe("succeeded");
+    const [request] = chatRequests(provider);
+    const body = request?.body as Record<string, unknown>;
+    expect(body.rule_name).toBe("EU Regel");
+    expect("model" in body).toBe(false);
+    const servedBy = { provider: "beispiel-eu", model: "beispiel/modell-1" };
+    const message = await repo.messages.get(env.db, outcome.messageId as never);
+    expect(message?.servedBy).toEqual(servedBy);
+    const completed = (await env.events()).find((e) => e.type === "message.completed");
+    expect(completed?.data).toMatchObject({ servedBy });
+    expect((await env.receipts()).at(-1)?.body).toMatchObject({
+      type: "result",
+      result: { status: "ok", servedBy },
+    });
+    // Die Kette mit dem neuen Feld prüft wie bisher.
     expect((await env.verify()).ok).toBe(true);
   });
 
