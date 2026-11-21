@@ -11,6 +11,7 @@
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
+import { providerFailure } from "@paibot/llm";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import type { MotorEvent } from "@paibot/shared/motor";
 import { simulateReadableStream, streamText } from "ai";
@@ -252,6 +253,21 @@ describe("Fehler über die Anbieter-Schicht", () => {
     ]);
     expect(provider.requests).toHaveLength(1);
   });
+
+  it.each([
+    ["schleuse_blockiert", false],
+    ["schluessel_ungueltig", false],
+    ["anbieter_nicht_erreichbar", true],
+  ] as const)(
+    "schon abgebildeter Fehler des Zugangs (%s) → ohne erfundenes HTTP-Detail",
+    async (code, retryable) => {
+      const failing: typeof fetch = async () => {
+        throw providerFailure(code);
+      };
+      const events = await run(input(), {}, undefined, access({ baseFetch: failing }));
+      expect(events.map(({ event }) => event)).toEqual([{ type: "error", code, retryable }]);
+    },
+  );
 
   it("Verbindung bricht mitten im Strom ab → anbieter_nicht_erreichbar nach dem Teiltext", async () => {
     provider.configure({ chunkChars: 4 });

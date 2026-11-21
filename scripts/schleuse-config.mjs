@@ -22,10 +22,10 @@
 // Werte (Umgebung vor Datei, wie bei Docker Compose):
 //   SCHLEUSE_ANBIETER         <schlüssel>=<basis-url>, mehrere mit Komma getrennt
 //                             Standard: eurouter=https://api.eurouter.ai/v1
-//   SCHLEUSE_SCHLUESSEL_WEG   umgebung (Standard): Die Datenschleuse liest den Schlüssel des
-//                             Anbieters aus SCHLEUSE_ANBIETER_SCHLUESSEL (nur ein Anbieter).
-//                             anfrage: PaiBot schickt den Schlüssel mit jeder Anfrage mit; die
-//                             Datenschleuse speichert keinen.
+//   SCHLEUSE_SCHLUESSEL_WEG   anfrage (Standard): PaiBot schickt den Schlüssel des Anbieters mit
+//                             jeder Anfrage mit; die Datenschleuse speichert keinen.
+//                             umgebung (Rückfall): Die Datenschleuse liest ihn aus
+//                             SCHLEUSE_ANBIETER_SCHLUESSEL (nur ein Anbieter).
 //   SCHLEUSE_SPRACHMODELL     de_core_news_md (Standard) oder de_core_news_lg
 //   SCHLEUSE_QI_STUFE         utility, balanced (Standard) oder paranoid
 //   SCHLEUSE_ERLAUBE_HTTP     1 erlaubt http-Adressen (nur für Tests mit dem Test-Anbieter)
@@ -42,7 +42,7 @@ const STANDARD_AUSGABE = path.join(PROJEKT, "deploy", "schleuse");
 export const STANDARD_ANBIETER = "eurouter=https://api.eurouter.ai/v1";
 export const SPRACHMODELLE = ["de_core_news_md", "de_core_news_lg"];
 export const QI_STUFEN = ["utility", "balanced", "paranoid"];
-export const SCHLUESSEL_WEGE = ["umgebung", "anfrage"];
+export const SCHLUESSEL_WEGE = ["anfrage", "umgebung"];
 
 /** Umgebungsvariablen im Container der Datenschleuse, auf die die Konfiguration verweist. */
 export const UMGEBUNG_IM_DIENST = {
@@ -198,7 +198,7 @@ export function erzeugeSchleuseKonfig(env = {}) {
   const anbieter = leseAnbieter(wert(env, "SCHLEUSE_ANBIETER", STANDARD_ANBIETER), {
     erlaubeHttp,
   });
-  const weg = auswahl(env, "SCHLEUSE_SCHLUESSEL_WEG", SCHLUESSEL_WEGE, "umgebung");
+  const weg = auswahl(env, "SCHLEUSE_SCHLUESSEL_WEG", SCHLUESSEL_WEGE, "anfrage");
   const sprachmodell = auswahl(
     env,
     "SCHLEUSE_SPRACHMODELL",

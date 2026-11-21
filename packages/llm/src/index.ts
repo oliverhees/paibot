@@ -15,5 +15,6 @@ export * from "./errors";
 export * from "./models";
 export * from "./route";
 export * from "./schleuse";
+export * from "./schleuse-zugang";
 export * from "./target";
 export * from "./templates";

@@ -11,7 +11,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { isRetryable, mapProviderError } from "@paibot/llm";
 import { isResolvedModel } from "@paibot/llm/modell";
-import { invalidInput } from "@paibot/shared/fehler";
+import { invalidInput, isPaiBotError } from "@paibot/shared/fehler";
 import type {
   JsonValue,
   Motor,
@@ -317,9 +317,15 @@ function errorEvent(error: unknown): MotorEvent {
   };
 }
 
+/**
+ * Feste Kurzangabe zum Fehler: HTTP-Status der Antwort, Abbruch des Stroms oder gesperrtes Ziel.
+ * Ein schon abgebildeter Fehler der Anbieter-Schicht (`PaiBotError`, z. B. aus dem Zugang über die
+ * Datenschleuse) bekommt keine: Sein `status` ist ein interner Wert, keine HTTP-Antwort.
+ */
 function detailOf(error: unknown): string | undefined {
   for (let current = error, depth = 0; depth < 5; depth++) {
     if (current === null || typeof current !== "object") return undefined;
+    if (isPaiBotError(current)) return undefined;
     const record = current as Record<string, unknown>;
     const status =
       typeof record.statusCode === "number"

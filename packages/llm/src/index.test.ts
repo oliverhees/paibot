@@ -50,7 +50,15 @@ describe("Schnittstelle", () => {
   it("feste Werte stehen fest", () => {
     expect(llm.PROVIDER_TEMPLATES.eurouter.baseUrl).toBe("https://api.eurouter.ai/v1");
     expect(llm.PROVIDER_TEMPLATES.eurouter.region).toBe("eu");
-    expect(llm.SCHLEUSE_ENV).toEqual({ url: "SCHLEUSE_URL", key: "SCHLEUSE_KEY" });
+    expect(llm.SCHLEUSE_ENV).toEqual({
+      url: "SCHLEUSE_URL",
+      key: "SCHLEUSE_KEY",
+      keyPath: "SCHLEUSE_SCHLUESSEL_WEG",
+    });
+    expect(llm.SCHLEUSE_KEY_PATHS).toEqual(["anfrage", "umgebung"]);
+    expect(llm.DEFAULT_SCHLEUSE_KEY_PATH).toBe("anfrage");
+    expect(llm.SCHLEUSE_LIVENESS_PATH).toBe("/health/liveliness");
+    expect(llm.SCHLEUSE_CHAT_PATH).toBe("/chat/completions");
     expect(llm.INTERNAL_SERVICE_HOSTS).toEqual(["postgres", "datenschleuse", "web", "worker"]);
     expect(llm.isSchleuseUnavailable({ unavailable: true, reason: "nicht_erreichbar" })).toBe(true);
     expect(llm.isSchleuseUnavailable("direct")).toBe(false);

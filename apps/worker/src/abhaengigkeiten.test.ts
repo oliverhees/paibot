@@ -21,6 +21,7 @@ import {
 } from "@paibot/crypto";
 import { repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
+import { startFakeSchleuse } from "@paibot/llm/testing";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import { secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
 import { type KeyId, newId } from "@paibot/shared/ids";
@@ -101,5 +102,53 @@ describe("buildRunDeps", () => {
         time: new Date(),
       }),
     ).rejects.toMatchObject({ code: "einrichtung_offen" });
+  });
+
+  it("Datenschleuse aus der Umgebung: Verbindung mit Weg des Schlüssels, Zustand aus der Prüfung in zwei Stufen", async () => {
+    const schleuseKey = `sk-schleuse-${randomBytes(12).toString("hex")}`;
+    const schleuse = await startFakeSchleuse({
+      apiKey: schleuseKey,
+      upstream: "http://127.0.0.1:9/v1",
+    });
+    try {
+      const { db } = await createTestDb();
+      const env = {
+        PAIBOT_SECRET: randomBytes(32).toString("base64"),
+        SCHLEUSE_URL: schleuse.baseUrl,
+        SCHLEUSE_KEY: schleuseKey,
+      };
+      const base = buildRunDeps(db, env).base;
+      expect(base.schleuse).toEqual({
+        baseUrl: schleuse.baseUrl,
+        apiKey: schleuseKey,
+        providerKeyPath: "anfrage",
+      });
+      expect(await base.schleuseStatus()).toEqual({
+        installed: true,
+        reachable: true,
+        state: "bereit",
+      });
+      expect(schleuse.requests.map((r) => r.url)).toEqual(["/health/liveliness", "/v1/models"]);
+
+      const umgebung = buildRunDeps(db, { ...env, SCHLEUSE_SCHLUESSEL_WEG: "umgebung" }).base;
+      expect(umgebung.schleuse?.providerKeyPath).toBe("umgebung");
+
+      const falsch = buildRunDeps(db, { ...env, SCHLEUSE_KEY: "sk-falsch-0000000000" }).base;
+      expect(await falsch.schleuseStatus()).toEqual({
+        installed: true,
+        reachable: false,
+        state: "schluessel_falsch",
+      });
+
+      const ohne = buildRunDeps(db, { PAIBOT_SECRET: env.PAIBOT_SECRET }).base;
+      expect(ohne.schleuse).toBeUndefined();
+      expect(await ohne.schleuseStatus()).toEqual({
+        installed: false,
+        reachable: false,
+        state: "aus",
+      });
+    } finally {
+      await schleuse.close();
+    }
   });
 });
