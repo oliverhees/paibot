@@ -32,6 +32,17 @@ PAIBOT_SECRET=<32 zufällige Byte, Base64>
 
 Nie in Chats, Tickets oder Git ablegen. Die Datei `.env` wird nicht committet.
 
+## Bevor du echte Daten einträgst
+
+Diese Version ist zum Ausprobieren gedacht. Nutze sie mit Beispiel-Daten und einem Anbieter-Schlüssel mit niedrigem Ausgabe-Limit, noch nicht für vertrauliche Unterhaltungen oder wichtige Schlüssel.
+
+- **Anmeldung:** Ein zweiter Faktor, ein Notfall-Zugang ohne Passwort und eine erneute Bestätigung für heikle Einstellungen fehlen noch; sie sind für die nächste Version geplant. Bis dahin schützt dich vor allem ein langes, zufälliges Passwort aus einem Passwort-Manager.
+- **Erreichbarkeit:** Betreibe PaiBot nur hinter einem Proxy mit HTTPS (zum Beispiel Coolify) und gib den Port der App nicht direkt frei. Am wenigsten Angriffsfläche bietet PaiBot, wenn du es nur über dein eigenes Netz oder einen Tunnel erreichst.
+- **Geräte:** Melde dich nur auf deinen eigenen Geräten an. Unter Einstellungen → Zugang siehst du alle Geräte und kannst jedes einzeln entfernen.
+- **Sicherungen:** Spiel nur Sicherungen zurück, die du selbst angelegt hast. Sicherungen sind nicht verschlüsselt und enthalten deine Unterhaltungen lesbar ([Sicherung](sicherung.md)).
+- **Coolify:** Lass die Geheimnisse (`PAIBOT_SECRET`, die Passwörter der Datenbank, die Schlüssel der Datenschleuse) nicht zur Bauzeit zu; wie du das prüfst, steht in [PaiBot mit Coolify betreiben](deploy-coolify.md#geheimnisse-nicht-im-image-so-prüfst-du-es). Sobald es ein fertiges Image von PaiBot gibt, nimm das statt des Baus auf dem Server.
+- **Mehr dazu:** Was PaiBot schützt und was nicht, steht auf dieser Seite und in den Seiten der einzelnen Funktionen. Sicherheitslücken bitte nicht öffentlich melden, sondern wie in [SECURITY.md](../SECURITY.md) beschrieben.
+
 ## So sieht es aus
 
 Ohne Oberfläche. Die Schutzmaßnahmen wirken im Hintergrund. Wo du sie in der App siehst, zeigen die Seiten der Funktionen: die Belege jeder Aktion in [Belege](funktion-belege.md#so-sieht-es-aus), die Regeln des Tors in [Das Tor](funktion-tor.md#so-sieht-es-aus), Sitzungen und Passwort in [Einstellungen und Info](funktion-einstellungen.md#so-sieht-es-aus) und der Zustand der Datenschleuse in [Datenschleuse](funktion-datenschleuse.md#so-sieht-es-aus).

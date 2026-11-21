@@ -77,6 +77,7 @@ Alle Bilder entstehen per Skript aus der App, nicht von Hand (`pnpm doku:app -- 
 - [Funktionen](#funktionen)
 - [So funktioniert es](#so-funktioniert-es)
 - [Stand](#stand)
+- [Bevor du echte Daten einträgst](#bevor-du-echte-daten-einträgst)
 - [Roadmap](#roadmap)
 - [Schnellstart](#schnellstart)
 - [Projektaufbau](#projektaufbau)
@@ -167,6 +168,17 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 
 - 🛠️ **Was gerade gebaut wird:** jede Aufgabe ist ein Issue, sortiert nach [Meilensteinen](https://github.com/oliverhees/paibot/milestones).
 - 📖 **Wie es funktioniert:** die [Doku](docs/README.md) beschreibt jede fertige Funktion Schritt für Schritt mit Bildern.
+
+## Bevor du echte Daten einträgst
+
+Diese Version ist zum Ausprobieren gedacht. Nutze sie mit Beispiel-Daten und einem Anbieter-Schlüssel mit niedrigem Ausgabe-Limit, noch nicht für vertrauliche Unterhaltungen oder wichtige Schlüssel.
+
+- **Anmeldung:** Ein zweiter Faktor, ein Notfall-Zugang ohne Passwort und eine erneute Bestätigung für heikle Einstellungen fehlen noch; sie sind für die nächste Version geplant. Bis dahin schützt dich vor allem ein langes, zufälliges Passwort aus einem Passwort-Manager.
+- **Erreichbarkeit:** Betreibe PaiBot nur hinter einem Proxy mit HTTPS (zum Beispiel Coolify) und gib den Port der App nicht direkt frei. Am wenigsten Angriffsfläche bietet PaiBot, wenn du es nur über dein eigenes Netz oder einen Tunnel erreichst.
+- **Geräte:** Melde dich nur auf deinen eigenen Geräten an. Unter Einstellungen → Zugang siehst du alle Geräte und kannst jedes einzeln entfernen.
+- **Sicherungen:** Spiel nur Sicherungen zurück, die du selbst angelegt hast. Sicherungen sind nicht verschlüsselt und enthalten deine Unterhaltungen lesbar ([Sicherung](docs/sicherung.md)).
+- **Coolify:** Lass die Geheimnisse (`PAIBOT_SECRET`, die Passwörter der Datenbank, die Schlüssel der Datenschleuse) nicht zur Bauzeit zu; wie du das prüfst, steht in [PaiBot mit Coolify betreiben](docs/deploy-coolify.md#geheimnisse-nicht-im-image-so-prüfst-du-es). Sobald es ein fertiges Image von PaiBot gibt, nimm das statt des Baus auf dem Server.
+- **Mehr dazu:** Was PaiBot schützt und was nicht, steht in [Sicherheit](docs/sicherheit.md). Sicherheitslücken bitte nicht öffentlich melden, sondern wie in [SECURITY.md](SECURITY.md) beschrieben.
 
 ## Roadmap
 
