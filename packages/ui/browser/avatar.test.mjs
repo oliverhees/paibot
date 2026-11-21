@@ -387,16 +387,14 @@ describe.skipIf(!bereit && !erzwungen)("Lebendiger Avatar im Browser", { timeout
 
   it("unterscheidet alle acht Zustände als Standbild, auch bei 48 und 24 Pixeln", async () => {
     const { page, kontext } = await oeffne("", { weniger: true });
-    for (const px of ["px128", "px48", "px24"]) {
+    // Die drei lebenden Avatare stehen an festen Stellen; so ist jedes Pixel vergleichbar.
+    for (const px of ["128", "48", "24"]) {
       const bilder = [];
       for (const z of ZUSTAENDE) {
-        // Nachbarn ausblenden: Ring und Eck-Zeichen ragen über den Rand der Zelle.
-        await page.evaluate((ziel) => {
-          for (const n of document.querySelectorAll("[data-zelle]")) {
-            n.style.visibility = n.dataset.zelle === ziel ? "visible" : "hidden";
-          }
-        }, `${px}-${z}`);
-        bilder.push(await bild(page, `[data-zelle="${px}-${z}"]`));
+        await page.click(`[data-zustand-knopf="${z}"]`);
+        await page.mouse.move(5, 5);
+        await page.waitForTimeout(80);
+        bilder.push(await bild(page, `[data-live="${px}"]`));
       }
       for (let i = 0; i < bilder.length; i++) {
         for (let j = i + 1; j < bilder.length; j++) {
@@ -405,6 +403,10 @@ describe.skipIf(!bereit && !erzwungen)("Lebendiger Avatar im Browser", { timeout
           );
         }
       }
+      // Gegenprobe der Messung selbst: dasselbe Standbild zweimal aufgenommen ist gleich.
+      expect(
+        (await bild(page, `[data-live="${px}"]`)).equals(await bild(page, `[data-live="${px}"]`)),
+      ).toBe(true);
     }
     await kontext.close();
   });

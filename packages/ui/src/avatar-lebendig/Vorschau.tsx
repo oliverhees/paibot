@@ -113,26 +113,32 @@ export function AvatarLebendigVorschau() {
         <h3 className={styles.titel}>Live: folgt dem Zeiger, spielt einen Lauf</h3>
         <div className={styles.buehne}>
           <div className={styles.figuren}>
-            <AvatarLebendig
-              ref={steuer}
-              farbe="limette"
-              groesse={128}
-              zustand={zustand}
-              folgtZeiger
-              blickBezug={() => {
-                const el = eingabe.current;
-                if (!el) return null;
-                const r = el.getBoundingClientRect();
-                return {
-                  x: r.left + Math.min(r.width - 14, 10 + text.length * 7),
-                  y: r.top + r.height / 2,
-                };
-              }}
-              titel={`Pai ist ${ZUSTAND_NAME[zustand]}`}
-            />
-            <AvatarLebendig farbe="limette" groesse={48} zustand={zustand} />
+            <span data-live="128">
+              <AvatarLebendig
+                ref={steuer}
+                farbe="limette"
+                groesse={128}
+                zustand={zustand}
+                folgtZeiger
+                blickBezug={() => {
+                  const el = eingabe.current;
+                  if (!el) return null;
+                  const r = el.getBoundingClientRect();
+                  return {
+                    x: r.left + Math.min(r.width - 14, 10 + text.length * 7),
+                    y: r.top + r.height / 2,
+                  };
+                }}
+                titel={`Pai ist ${ZUSTAND_NAME[zustand]}`}
+              />
+            </span>
+            <span data-live="48">
+              <AvatarLebendig farbe="limette" groesse={48} zustand={zustand} />
+            </span>
             <span className={styles.chip}>
-              <AvatarLebendig farbe="limette" groesse={24} zustand={zustand} />
+              <span data-live="24">
+                <AvatarLebendig farbe="limette" groesse={24} zustand={zustand} />
+              </span>
               <span data-wort="">{ZUSTAND_NAME[zustand]}</span>
             </span>
           </div>
