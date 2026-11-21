@@ -158,7 +158,8 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 | Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                          | ✅ fertig und getestet |
 | Doku mit Bildern aus der laufenden App ([Doku](docs/README.md))                                         | ✅ fertig              |
 | Release zum Installieren (fertiges Image)                                                               | 🔨 im Bau              |
-| Eigener Anbieter in der Oberfläche, Not-Aus als Schalter                                                | 🗓️ geplant             |
+| [Eigener Anbieter](docs/funktion-anbieter-und-modelle.md) in der Oberfläche, auch auf deinem Rechner    | ✅ fertig und getestet |
+| Not-Aus als Schalter                                                                                    | 🗓️ geplant             |
 | Apps anbinden per MCP                                                                                   | 🗓️ geplant danach      |
 | Bots im Team                                                                                            | 🗓️ geplant danach      |
 

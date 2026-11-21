@@ -10,7 +10,7 @@ Seit:      2026-11-20
 
 # Anbieter und Modelle
 
-**Ergebnis:** Du trägst einen Modell-Anbieter ein, testest die Verbindung, siehst die passenden Modelle und wählst eines. PaiBot spricht dabei nur mit diesem einen Anbieter, und bei eingeschalteter Datenschleuse nur mit der Datenschleuse.
+**Ergebnis:** Du trägst einen Modell-Anbieter ein, testest die Verbindung, siehst die passenden Modelle und wählst eines. Zusätzlich kannst du eigene Anbieter verbinden, auch einen Dienst auf deinem Rechner oder in deinem Netz. Jede Antwort geht nur an den Anbieter des gewählten Modells, und bei eingeschalteter Datenschleuse nur an die Datenschleuse.
 
 ## Wofür
 
@@ -46,12 +46,42 @@ Den Anbieter verbindest du meist schon in der Einrichtung. Danach änderst du al
 
    ![Nach „Modell übernehmen“: „Kai arbeitet jetzt mit Beispiel-Modell Zweites.“, das Modell trägt die Marke „aktuell“](assets/screenshots/modelle-uebernommen.png)
 
-**Schlüssel entfernen**
+**Eigenen Anbieter hinzufügen (auch auf deinem Rechner)**
 
-9. Klicke „Schlüssel entfernen“ und bestätige die Rückfrage. Damit entfernst du den Anbieter samt Schlüssel; dein Bot hat danach kein Modell mehr.
+9. Unten auf der Seite steht die Karte „Eigener Anbieter“. Klicke „Eigenen Anbieter hinzufügen“.
+10. Gib einen Namen ein (so heißt der Anbieter in PaiBot) und die Adresse des Dienstes, meist mit `/v1` am Ende.
+11. Wähle bei „Wo läuft der Dienst?“ den Ort: „Bei einem Dienst in der EU“, „Bei einem Dienst außerhalb der EU“ oder „Auf deinem Rechner oder in deinem Netz (lokal)“. Nur bei „lokal“ sind Adressen im eigenen Netz und `http://` erlaubt; bei `http://` erscheint ein Hinweis, dass die Verbindung unverschlüsselt ist. Bei „lokal“ ist der Schlüssel freiwillig, sonst Pflicht.
 
-   ![Rückfrage „Schlüssel entfernen?“ mit „Abbrechen“ und „Entfernen“](assets/screenshots/modelle-entfernen.png)
-10. Um wieder zu starten, füge einen Schlüssel ein, klicke „Schlüssel speichern“ und wähle ein Modell (Schritte 3 bis 8).
+    ![Karte „Eigener Anbieter“ mit dem Formular: Name „Dienst auf meinem Rechner“, Adresse „http://localhost:18080/v1“, Ort „Auf deinem Rechner oder in deinem Netz (lokal)“, gelber Hinweis „Die Verbindung ist unverschlüsselt“, leeres Feld „Schlüssel (bei „lokal“ freiwillig)“ und der Knopf „Testen und speichern“](assets/screenshots/modelle-eigen-formular.png)
+12. Klicke „Testen und speichern“. PaiBot testet die Verbindung und speichert nur, was der Dienst annimmt. Passt die Adresse nicht, steht der Grund direkt am Feld. Adressen von PaiBot selbst (Datenbank, Datenschleuse, Web-App, Worker) sind auch bei „lokal“ gesperrt.
+
+    ![Formular mit der Adresse „http://postgres:5432/v1“: rot am Feld „Diese Adresse gehört zu einem Dienst von PaiBot selbst und ist als Anbieter nicht erlaubt.“](assets/screenshots/modelle-eigen-gesperrt.png)
+13. Nach dem Speichern steht unter dem Knopf „… ist gespeichert. Die Verbindung steht.“ Oben zeigt die Karte „Anbieter“ jetzt den neuen Anbieter, darunter seine Modelle.
+
+    ![Oben der neue Anbieter „Dienst auf meinem Rechner“ mit Adresse, Region „lokal“ und „Schlüssel hinterlegt“, darunter seine Modelle; unten die Meldung „Dienst auf meinem Rechner ist gespeichert. Die Verbindung steht.“](assets/screenshots/modelle-eigen-gespeichert.png)
+14. Sobald es mehr als einen Anbieter gibt, wählst du oben bei „Angezeigter Anbieter“, welcher Anbieter und welche Modell-Liste angezeigt werden. Ein Modell dieses Anbieters übernimmst du wie in den Schritten 6 bis 8.
+
+    ![Karte „Anbieter“ mit der Auswahl „Angezeigter Anbieter: Dienst auf meinem Rechner · lokal“; darunter die Modelle dieses Anbieters](assets/screenshots/modelle-eigen-angezeigt.png)
+
+**Eigenen Anbieter ändern**
+
+15. Wähle den Anbieter oben aus und klicke „Ändern“. Name, Adresse und Ort sind vorbelegt; den Schlüssel zeigt PaiBot nie an.
+16. Lass das Schlüssel-Feld leer, um den gespeicherten Schlüssel zu behalten, oder trag einen neuen ein. Änderst du die Adresse, gib den Schlüssel noch einmal ein. Bei „lokal“ kannst du mit „Gespeicherten Schlüssel entfernen“ ohne Schlüssel weiterarbeiten. Klicke „Testen und speichern“.
+
+    ![Formular „Dienst auf meinem Rechner ändern“: Ort „lokal“, leeres Schlüssel-Feld mit dem Hinweis „Leer lassen, um den gespeicherten Schlüssel zu behalten“, Schalter „Gespeicherten Schlüssel entfernen“, Knöpfe „Testen und speichern“ und „Abbrechen“](assets/screenshots/modelle-eigen-aendern.png)
+17. „Verbindung testen“ prüft den Anbieter, ohne etwas zu ändern. „Liste abgleichen“ holt die Modelle neu; Modelle, die der Anbieter nicht mehr meldet, sind danach nicht mehr wählbar.
+
+    ![Nach „Liste abgleichen“: Meldung „Liste abgeglichen: 2 Modelle.“](assets/screenshots/modelle-eigen-abgeglichen.png)
+
+**Anbieter entfernen**
+
+18. Klicke „Anbieter entfernen“ (bei EUrouter heißt der Knopf „Schlüssel entfernen“) und bestätige die Rückfrage. Damit entfernst du den Anbieter samt Schlüssel und Modell-Liste. Frühere Antworten in deinen Unterhaltungen bleiben. Arbeitet dein Bot gerade mit einem Modell dieses Anbieters, sagt die Rückfrage das: Danach hat er kein Modell mehr, bis du ein anderes wählst.
+
+    ![Rückfrage „Dienst auf meinem Rechner entfernen?“ mit „Abbrechen“ und „Entfernen“](assets/screenshots/modelle-eigen-entfernen.png)
+19. Schreibt dein Bot in diesem Moment mit einem Modell dieses Anbieters, lehnt PaiBot das Entfernen ab: „… schreibt gerade mit einem Modell von …“. Warte, bis die Antwort fertig ist, oder brich sie im Chat ab.
+20. Entfernst du den letzten Anbieter, kannst du gleich wieder einen Schlüssel eintragen und ein Modell wählen (Schritte 3 bis 8).
+
+    ![Rückfrage „Lokaler Anbieter entfernen?“: Der Bot arbeitet gerade mit einem Modell dieses Anbieters und hat danach keins mehr](assets/screenshots/modelle-entfernen.png)
 
 Beispiel für das Ergebnis eines Tests mit falschem Schlüssel:
 
@@ -67,15 +97,18 @@ Prüf, ob du den Schlüssel vollständig kopiert hast und ob er zu deinem Anbiet
 Trag bei Bedarf einen neuen ein.
 ```
 
-Einen eigenen, OpenAI-kompatiblen Anbieter (zum Beispiel lokal mit Ollama) kann PaiBot technisch schon anbinden; eine Oberfläche zum Eintragen gibt es in dieser Version noch nicht (geplant).
 
 ## So sieht es aus
 
 Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Sie zeigen den Test-Anbieter der Beispiel-Umgebung („Lokaler Anbieter“ auf dem eigenen Rechner) mit erfundenen Modellen; mit EUrouter steht dort der Name EUrouter und die Region „EU“. In einigen Bildern heißt der Bot „Kai“, weil er auf der Seite „Bot“ vorher umbenannt wurde.
 
-Nach dem Entfernen meldet die Seite „Anbieter und Schlüssel sind entfernt.“, dein Bot hat kein Modell mehr, und du kannst gleich einen neuen Schlüssel eintragen:
+Nach dem Entfernen eines weiteren Anbieters zeigt die Seite wieder den verbleibenden:
 
-![Seite „Modell und Anbieter“ nach „Schlüssel entfernen“: „Kein Schlüssel hinterlegt“, Feld für einen neuen Schlüssel mit „Verbindung testen“ und „Schlüssel speichern“, Meldung „Anbieter und Schlüssel sind entfernt.“; darunter „Kai hat noch kein Modell.“](assets/screenshots/modelle-entfernt.png)
+![Nach dem Entfernen: Meldung „Dienst auf meinem Rechner ist entfernt.“; oben wieder „Lokaler Anbieter“ ohne Auswahl](assets/screenshots/modelle-eigen-entfernt.png)
+
+Nach dem Entfernen des letzten Anbieters hat dein Bot kein Modell mehr, und du kannst gleich einen neuen Schlüssel eintragen:
+
+![Seite „Modell und Anbieter“ nach „Anbieter entfernen“: „Kein Schlüssel hinterlegt“, Feld für einen neuen Schlüssel mit „Verbindung testen“ und „Schlüssel speichern“, Meldung „Lokaler Anbieter ist entfernt.“; darunter „Kai hat noch kein Modell.“](assets/screenshots/modelle-entfernt.png)
 
 Am Handy stehen die Karten untereinander:
 
@@ -85,9 +118,9 @@ Am Handy stehen die Karten untereinander:
 
 | Einstellung    | Wo                | Bedeutung                                                               | Standard                               |
 | -------------- | ----------------- | ----------------------------------------------------------------------- | -------------------------------------- |
-| Basis-URL      | Anbieter          | OpenAI-kompatible Adresse, endet meist auf `/v1`                        | EUrouter: `https://api.eurouter.ai/v1` |
-| Region         | Anbieter          | `eu`, `non_eu` oder `local`; bestimmt, was für die Adresse erlaubt ist  | EUrouter: `eu`                         |
-| Schlüssel      | Anbieter          | wird verschlüsselt gespeichert                                          | leer                                   |
+| Basis-URL      | Anbieter          | Adresse eines kompatiblen Dienstes, endet meist auf `/v1`               | EUrouter: `https://api.eurouter.ai/v1` |
+| Region         | Anbieter          | `eu`, `non_eu` oder `local` („Wo läuft der Dienst?“); bestimmt, was für die Adresse erlaubt ist | EUrouter: `eu`; eigener Anbieter: EU |
+| Schlüssel      | Anbieter          | wird verschlüsselt gespeichert; bei `local` freiwillig                  | leer                                   |
 | `SCHLEUSE_URL` | Umgebungsvariable | Adresse der Datenschleuse, z. B. `http://datenschleuse:4000/v1`         | nicht gesetzt = nicht installiert      |
 | `SCHLEUSE_KEY` | Umgebungsvariable | Schlüssel der Datenschleuse; Pflicht, sobald `SCHLEUSE_URL` gesetzt ist | –                                      |
 
@@ -126,15 +159,18 @@ Ungewöhnliche Schreibweisen von IP-Adressen (dezimal, hexadezimal, oktal, gekü
 ## Grenzen
 
 - Die Adressen eines Namens werden bei jedem Aufruf neu geprüft. Zeigt der Name bei einem späteren Aufruf auf ein gesperrtes Ziel, wird dieser Aufruf abgelehnt; eine bestehende Prüfung kann ein umgestellter DNS-Eintrag nicht mehr unterlaufen.
-- Die Sperre der eigenen Dienste bei Region `local` kennt deren Adressen nur über ihre Namen (`postgres`, `datenschleuse`, `web`, `worker`). Andere Adressen im eigenen Netz, etwa der Rechner selbst, bleiben für einen lokalen Anbieter erreichbar; das ist gewollt (z. B. Ollama auf dem Rechner).
+- Die Sperre der eigenen Dienste bei Region `local` kennt deren Adressen nur über ihre Namen (`postgres`, `datenschleuse`, `web`, `worker`). Andere Adressen im eigenen Netz, etwa der Rechner selbst, bleiben für einen lokalen Anbieter erreichbar; das ist gewollt (zum Beispiel ein Dienst auf dem eigenen Rechner).
 - Ändert sich die Basis-URL (auch nur der Pfad, z. B. ein anderes Konto bei einem Gateway), passt der gespeicherte Schlüssel nicht mehr. Beim Ändern der Adresse gibst du den Schlüssel deshalb noch einmal ein. Einen stillen Rückgriff auf die alte Adresse gibt es nicht.
 - Die Grenzen für die Größe gelten je Antwort. Ein Strom mit sehr vielen gleichen Stücken kann beim Entpacken die Verhältnis-Grenze erreichen, obwohl er harmlos ist; dann bricht PaiBot ihn ebenfalls ab.
-- Ein lokaler Anbieter (Region `local`, z. B. Ollama auf deinem Rechner) darf ohne Schlüssel arbeiten. Für Anbieter in den Regionen `eu` und `non_eu` ist ein Schlüssel Pflicht; fehlt er, meldet PaiBot „Der Anbieter hat den Schlüssel nicht angenommen“, ohne etwas zu senden.
+- Ein lokaler Anbieter (Region `local`, zum Beispiel ein Dienst auf deinem Rechner) darf ohne Schlüssel arbeiten. Für Anbieter in den Regionen `eu` und `non_eu` ist ein Schlüssel Pflicht; fehlt er, meldet PaiBot „Der Anbieter hat den Schlüssel nicht angenommen“, ohne etwas zu senden.
 - Der Verbindungstest ruft nur die Modell-Liste ab. Liefert ein Anbieter die Liste auch ohne Schlüssel (EUrouter tut das), erkennt der Test einen falschen Schlüssel nicht; er zeigt sich erst bei der ersten Antwort.
 - Der Gesundheitsabruf der Datenschleuse prüft nur, dass sie antwortet (`GET /models` mit ihrem Schlüssel). Ob ihre Erkennung läuft, sagt er nicht; ist sie ausgefallen, blockiert die Datenschleuse die Anfrage selbst (`schleuse_blockiert`).
 - Wie die Datenschleuse einen Block als HTTP-Antwort meldet, ist noch nicht gegen den laufenden Dienst geprüft; erkannt wird die Kennung `DatenschleuseBlocked` in den üblichen Feldern.
 - Der Datenschleuse-Dienst selbst ist nicht Teil dieser Funktion; hier gibt es nur die Anbindung.
-- Nur OpenAI-kompatible Anbieter. Bilder, Embeddings und andere Modellarten werden herausgefiltert.
+- Nur Anbieter mit kompatibler Schnittstelle (wie bei der Vorlage EUrouter). Bilder, Embeddings und andere Modellarten werden herausgefiltert.
+- Die Vorlage eines Anbieters bleibt beim Ändern: Aus EUrouter wird kein eigener Anbieter und umgekehrt. Für einen anderen Dienst legst du einen eigenen Anbieter an.
+- Jede Adresse gibt es nur einmal (ein `/` am Ende zählt nicht).
+- Ob der Bot gerade schreibt, prüft PaiBot unmittelbar vor dem Entfernen. Eine Antwort, die genau in diesem Augenblick beginnt, endet mit „Für deinen Bot ist kein Modell gewählt.“; schick die Nachricht dann nach der Wahl eines Modells noch einmal.
 
 ## Fehlerbehebung
 
@@ -148,6 +184,10 @@ Ungewöhnliche Schreibweisen von IP-Adressen (dezimal, hexadezimal, oktal, gekü
 | „Das Tor hat die Aktion abgelehnt“ bei einer Antwort                              | Die Adresse des Anbieters hat sich zwischen Entscheidung und Abruf geändert                                | Adresse prüfen; wenn sie stimmt, die Nachricht noch einmal schicken                              |
 | „Der Anbieter des Modells ist nicht erreichbar“ mit einem Port wie `:5432`        | Außerhalb der Region `lokal` sind nur die Ports 443 und 8443 erlaubt                                       | Adresse ohne Port oder mit 443 eintragen                                                         |
 | „Ein Limit ist erreicht“                                                          | Anbieter meldet 429 oder fehlendes Guthaben (402)                                                          | kurz warten, Guthaben und Tagesbudget prüfen                                                     |
+| „Private Adressen und interne Namen sind nur bei Region „lokal“ erlaubt.“          | Der Dienst läuft im eigenen Netz, als Ort ist aber EU oder außerhalb der EU gewählt                        | Bei „Wo läuft der Dienst?“ „Auf deinem Rechner oder in deinem Netz (lokal)“ wählen               |
+| „Für diese Adresse gibt es schon einen Anbieter.“                                 | Die Adresse ist schon eingetragen                                                                          | Den vorhandenen Anbieter oben auswählen und „Ändern“                                             |
+| „… schreibt gerade mit einem Modell von …“ beim Entfernen                         | Eine Antwort mit einem Modell dieses Anbieters läuft noch                                                  | Warten oder die Antwort im Chat abbrechen, dann noch einmal entfernen                            |
+| „Ohne Schlüssel geht es nur bei einem lokalen Dienst.“                            | Schlüssel entfernt oder leer gelassen bei Ort EU oder außerhalb der EU                                     | „lokal“ wählen oder einen Schlüssel eintragen                                                    |
 | Modell-Liste ist leer                                                             | Der Anbieter bietet kein Text-zu-Text-Modell mit Chat und Streaming an                                     | anderen Anbieter oder anderes Konto prüfen                                                       |
 | „Die Datenschleuse ist nicht installiert“                                         | `SCHLEUSE_URL` fehlt                                                                                       | Datenschleuse installieren oder den Schalter auf „Aus“ lassen                                    |
 | `SCHLEUSE_URL ist keine gültige URL` / `SCHLEUSE_KEY fehlt` beim Start            | Umgebung unvollständig                                                                                     | beide Variablen setzen; die URL ohne Zugangsdaten                                                |
