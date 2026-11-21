@@ -1675,6 +1675,11 @@ export const de = {
     "Die Regel „{name}“ steht nicht in der Liste deines Kontos oder ist dort ausgeschaltet. Sie ist per Name geprüft und gespeichert, ohne Kennzeichnung.",
   "verwaltung.hinweis.nicht_gesehen_unvollstaendig":
     "Die Regel „{name}“ war nicht in der gelesenen Liste, und die Liste ist möglicherweise unvollständig. Sie ist per Name geprüft und gespeichert, ohne Kennzeichnung.",
+  "verwaltung.hinweis.nicht_eindeutig":
+    "Der Name „{name}“ kommt in der Liste deines Kontos mehrfach vor. PaiBot kann nicht sagen, welche Regel gilt, und kennzeichnet sie nicht. Die Regel ist per Name geprüft und gespeichert.",
+  "verwaltung.liste.nicht_eindeutig":
+    "Name nicht eindeutig: kommt in deinem Konto mehrfach vor. Keine Kennzeichnung.",
+  "verwaltung.neu.mehrdeutig": "Name nicht eindeutig: {namen}. Keine Kennzeichnung.",
   "verwaltung.titel": "Zweiter Schlüssel (freiwillig)",
   "verwaltung.text":
     "Mit einem Verwaltungsschlüssel aus deinem Konto bei {anbieter} liest PaiBot, was deine Routing-Regeln vorgeben, zum Beispiel die Datenresidenz. Nur dann kann eine Regel „EU laut Regel“ tragen. PaiBot benutzt den Schlüssel nur dafür, nie für Chat-Anfragen, und zeigt ihn nie wieder an.",

@@ -464,6 +464,46 @@ describe("Namen: Nachahmung der Kennzeichnung und Doppelte", () => {
     expect(daten.regeln.map((x) => x.name)).toEqual(["Beispiel-Regel"]);
     expect(daten.uebersprungen).toBe(1);
   });
+
+  it("doppelter Name in der Liste: keine Kennzeichnung (EU zuerst), Hinweis „Name nicht eindeutig“", async () => {
+    const e = await mitEurouter();
+    const roh = {
+      data: [
+        regelRoh("Beispiel-Regel", { provider: { data_residency: "EU" } }),
+        regelRoh("Beispiel-Regel", { provider: { data_residency: "US" } }),
+      ],
+    };
+    e.u.dienste.kontoRegelnLesen = (a, k) =>
+      readRoutingRules(a, k, { fetch: (async () => Response.json(roh)) as typeof fetch });
+    await e.setzen("beliebiger-schluessel-1");
+    const liste = await e.rufe(e.h.liste, "POST", `/api/anbieter/${e.id}/regeln/liste`, {
+      params: { id: e.id },
+    });
+    const regeln = (
+      liste.body as { daten: { regeln: { name: string; eu: boolean; nichtEindeutig?: boolean }[] } }
+    ).daten.regeln;
+    expect(regeln).toMatchObject([{ name: "Beispiel-Regel", eu: false, nichtEindeutig: true }]);
+    const hinzu = await e.hinzufuegen("Beispiel-Regel");
+    expect(hinzu.status).toBe(201);
+    expect((hinzu.body as { daten: { hinweis?: string } }).daten.hinweis).toContain("mehrfach vor");
+    expect(await euRegeln(e)).toEqual([]);
+    // Auch „Erneut prüfen“ entfernt/erzeugt keine Kennzeichnung für den doppelten Namen.
+    const neu = await e.neuPruefen();
+    expect(
+      (neu.body as { daten: { vorgaben: { mehrdeutig: string[] } } }).daten.vorgaben.mehrdeutig,
+    ).toEqual(["Beispiel-Regel"]);
+    expect(await euRegeln(e)).toEqual([]);
+  });
+
+  it("Gegenprobe: derselbe Name nur einmal ergibt die Kennzeichnung", async () => {
+    const e = await mitEurouter();
+    const roh = { data: [regelRoh("Beispiel-Regel", { provider: { data_residency: "EU" } })] };
+    e.u.dienste.kontoRegelnLesen = (a, k) =>
+      readRoutingRules(a, k, { fetch: (async () => Response.json(roh)) as typeof fetch });
+    await e.setzen("beliebiger-schluessel-1");
+    await e.hinzufuegen("Beispiel-Regel");
+    expect(await euRegeln(e)).toEqual(["Beispiel-Regel"]);
+  });
 });
 
 describe("Chat bekommt die Vorgaben der Regel des Bots", () => {

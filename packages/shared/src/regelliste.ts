@@ -51,6 +51,11 @@ export const routingRulesResponseSchema = z.object({ data: z.array(ruleSchema) }
 export interface ListedRule {
   name: string;
   policy: RulePolicy;
+  /**
+   * Der Name kommt in der Liste mehrfach vor (eingeschaltet): PaiBot kann nicht sagen, welche
+   * Regel gilt, und übernimmt keine Vorgaben; `policy` ist dann leer.
+   */
+  nichtEindeutig?: boolean;
 }
 
 export interface ParsedRules {
@@ -144,8 +149,7 @@ export function deutetAufWeitereSeiten(roh: unknown, geliefert: number): boolean
 export function parseRoutingRules(roh: unknown): ParsedRules | undefined {
   const form = routingRulesResponseSchema.safeParse(roh);
   if (!form.success) return undefined;
-  const regeln: ListedRule[] = [];
-  const gesehen = new Set<string>();
+  const gelesen = new Map<string, { policy: RulePolicy; mehrfach: boolean }>();
   let uebersprungen = 0;
   let gekuerzt = false;
   for (const regel of form.data.data) {
@@ -160,15 +164,24 @@ export function parseRoutingRules(roh: unknown): ParsedRules | undefined {
       uebersprungen += 1;
       continue;
     }
-    if (gesehen.has(sauber)) continue;
-    if (regeln.length >= MAX_RULES_READ) {
+    const vorhanden = gelesen.get(sauber);
+    if (vorhanden !== undefined) {
+      // Zweimal derselbe Name: Es ist nicht zu sagen, welche Regel „rule_name“ trifft.
+      vorhanden.mehrfach = true;
+      continue;
+    }
+    if (gelesen.size >= MAX_RULES_READ) {
       gekuerzt = true;
       continue;
     }
-    gesehen.add(sauber);
-    regeln.push({ name: sauber, policy: policyOf(regel.provider, regel.models) });
+    gelesen.set(sauber, { policy: policyOf(regel.provider, regel.models), mehrfach: false });
   }
-  regeln.sort((a, b) => a.name.localeCompare(b.name, "de"));
+  const regeln: ListedRule[] = [...gelesen]
+    .map(
+      ([name, e]): ListedRule =>
+        e.mehrfach ? { name, policy: {}, nichtEindeutig: true } : { name, policy: e.policy },
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, "de"));
   return {
     regeln,
     unvollstaendig: gekuerzt || deutetAufWeitereSeiten(roh, form.data.data.length),

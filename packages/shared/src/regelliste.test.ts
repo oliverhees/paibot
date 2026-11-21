@@ -151,9 +151,33 @@ describe("Regel-Liste lesen", () => {
     expect(gelesen?.uebersprungen).toBe(4);
   });
 
-  it("gleiche Namen nur einmal; sortiert", () => {
+  it("gleiche Namen: nur einmal in der Liste, sortiert, aber ohne Vorgaben und als nicht eindeutig", () => {
     const gelesen = parseRoutingRules({ data: [regel("B"), regel("A"), regel("B")] });
     expect(gelesen?.regeln.map((r) => r.name)).toEqual(["A", "B"]);
+    expect(gelesen?.regeln[0]).toEqual({
+      name: "A",
+      policy: expect.objectContaining({ data_residency: "EU" }),
+    });
+    expect(gelesen?.regeln[1]).toEqual({ name: "B", policy: {}, nichtEindeutig: true });
+  });
+
+  it("doppelter Name: weder die erste noch die zweite Regel liefert eine Kennzeichnung (EU zuerst und EU zuletzt)", () => {
+    const eu = regel("Doppelt");
+    const nichtEu = regel("Doppelt", { provider: { data_residency: "US" } });
+    for (const daten of [
+      [eu, nichtEu],
+      [nichtEu, eu],
+    ]) {
+      const r = parseRoutingRules({ data: daten })?.regeln[0];
+      expect(r?.nichtEindeutig).toBe(true);
+      expect(r?.policy.data_residency).toBeUndefined();
+    }
+  });
+
+  it("ein ausgeschalteter Namensvetter macht den Namen nicht mehrdeutig", () => {
+    const r = parseRoutingRules({ data: [regel("A"), regel("A", { enabled: false })] })?.regeln[0];
+    expect(r?.nichtEindeutig).toBeUndefined();
+    expect(r?.policy.data_residency).toBe("EU");
   });
 
   it("ein Name, der den Wortlaut der Kennzeichnung nachahmt, wird nicht angeboten", () => {

@@ -154,6 +154,8 @@ export interface VorgabenErgebnis {
   entfernt: string[];
   /** Regeln, die fehlen, aber bei unvollständiger Liste unverändert blieben. */
   unveraendert: string[];
+  /** Namen, die in der Liste mehrfach vorkommen: ohne Vorgaben, keine Kennzeichnung. */
+  mehrdeutig: string[];
 }
 
 /**
@@ -169,12 +171,20 @@ export async function vorgabenAnwenden(
   jetzt: Date,
   ziele?: readonly ModelId[],
 ): Promise<VorgabenErgebnis> {
-  const ergebnis: VorgabenErgebnis = { aktualisiert: [], entfernt: [], unveraendert: [] };
+  const ergebnis: VorgabenErgebnis = {
+    aktualisiert: [],
+    entfernt: [],
+    unveraendert: [],
+    mehrdeutig: [],
+  };
   const nachName = new Map<string, ListedRule>(liste.regeln.map((r) => [r.name, r]));
   for (const regel of await gespeicherteRegeln(db, anbieter)) {
     if (ziele !== undefined && !ziele.includes(regel.id)) continue;
     const gelesen = nachName.get(regel.name);
-    if (gelesen !== undefined) {
+    if (gelesen?.nichtEindeutig === true) {
+      await repo.models.setRulePolicy(db, regel.id, null);
+      ergebnis.mehrdeutig.push(regel.name);
+    } else if (gelesen !== undefined) {
       await repo.models.setRulePolicy(db, regel.id, {
         policy: gelesen.policy,
         source: "verwaltungsschluessel",
@@ -260,6 +270,8 @@ export interface KontoRegel {
   eu: boolean;
   /** Was die Regel zur Datenresidenz sagt, wenn nicht „EU“. */
   residenz?: string;
+  /** Der Name kommt in der Liste mehrfach vor: keine Kennzeichnung. */
+  nichtEindeutig?: boolean;
   /** Schon als Regel gespeichert. */
   gespeichert: boolean;
   models?: string[];
@@ -285,10 +297,12 @@ export async function anbieterRegelListe(k: RoutenKontext<"anbieterRegelListe">)
   const gespeichert = new Set((await gespeicherteRegeln(k.db, provider)).map((r) => r.name));
   const regeln: KontoRegel[] = liste.regeln.map((r) => {
     const vorgabe = vorgabeAus(r.policy, kontext.jetzt, kontext.jetzt, kontext.zeitzone);
-    const residenz = residenzSatz(vorgabe);
+    const mehrdeutig = r.nichtEindeutig === true;
+    const residenz = mehrdeutig ? undefined : residenzSatz(vorgabe);
     return {
       name: r.name,
-      eu: istEuBelegt(vorgabe),
+      eu: !mehrdeutig && istEuBelegt(vorgabe),
+      ...(mehrdeutig ? { nichtEindeutig: true } : {}),
       ...(residenz === undefined ? {} : { residenz }),
       gespeichert: gespeichert.has(r.name),
       ...(r.policy.models === undefined ? {} : { models: r.policy.models }),
@@ -376,6 +390,9 @@ export async function vorgabeFuerNeueRegel(
     const schluessel = verwaltungsschluesselLesen(d, anbieter, managementKeyEnc);
     const liste = await listeLesen(d, anbieter, schluessel);
     const gefunden = liste.regeln.find((r) => r.name === name);
+    if (gefunden?.nichtEindeutig === true) {
+      return { hinweis: t("verwaltung.hinweis.nicht_eindeutig", { name }) };
+    }
     if (gefunden !== undefined) return { policy: gefunden.policy };
     return {
       hinweis: liste.unvollstaendig

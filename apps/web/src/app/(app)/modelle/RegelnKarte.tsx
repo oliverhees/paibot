@@ -124,7 +124,12 @@ export function RegelnKarte(props: RegelnKarteProps) {
     setNeuLaeuft(regel?.id ?? "alle");
     const antwort = await apiFetch<{
       regeln: RegelEintragAnsicht[];
-      vorgaben: { aktualisiert: string[]; entfernt: string[]; unveraendert: string[] };
+      vorgaben: {
+        aktualisiert: string[];
+        entfernt: string[];
+        unveraendert: string[];
+        mehrdeutig: string[];
+      };
       unvollstaendig: boolean;
     }>(
       "POST",
@@ -145,6 +150,9 @@ export function RegelnKarte(props: RegelnKarteProps) {
     const teile = [t("verwaltung.neu.ok", { anzahl: v.aktualisiert.length })];
     if (v.entfernt.length > 0) {
       teile.push(t("verwaltung.neu.entfernt", { namen: v.entfernt.join(", ") }));
+    }
+    if (v.mehrdeutig.length > 0) {
+      teile.push(t("verwaltung.neu.mehrdeutig", { namen: v.mehrdeutig.join(", ") }));
     }
     if (v.unveraendert.length > 0) {
       teile.push(t("verwaltung.neu.unveraendert", { namen: v.unveraendert.join(", ") }));
@@ -420,6 +428,11 @@ export function RegelnKarte(props: RegelnKarteProps) {
                       </span>
                       {r.residenz !== undefined && (
                         <span className={styles.leise}>{r.residenz}</span>
+                      )}
+                      {r.nichtEindeutig === true && (
+                        <span className={styles.leise}>
+                          {t("verwaltung.liste.nicht_eindeutig")}
+                        </span>
                       )}
                     </span>
                     {r.gespeichert ? (
