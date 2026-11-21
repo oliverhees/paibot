@@ -2899,6 +2899,12 @@
           "warteAufText": "Dienst auf meinem Rechner ist gespeichert."
         },
         {
+          "warteAufText": "Beispiel-Modell Kompakt"
+        },
+        {
+          "zeige": "section:has(h2:text-is('Anbieter hinzufügen'))"
+        },
+        {
           "zeige": "section:has(h2:text-is('Anbieter'))"
         }
       ],

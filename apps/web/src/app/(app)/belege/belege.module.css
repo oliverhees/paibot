@@ -407,6 +407,9 @@
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
+  /* Prüfsummen und Signaturen brechen nach Zeichen um, nicht an Zeichen wie „-“ oder „/“:
+     so hängt die Höhe nur von der Länge ab. */
+  word-break: break-all;
   font-family: var(--font-mono);
   font-size: 12px;
 }
