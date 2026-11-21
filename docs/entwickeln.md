@@ -84,6 +84,53 @@ curl localhost:8080/_steuerung/anfragen
 curl -X POST localhost:8080/_steuerung/zuruecksetzen
 ```
 
+### Drehbuch über mehrere Schritte
+
+Eine Werkzeug-Schleife braucht mehrere Modell-Schritte hintereinander: erst ein Aufruf, dann (nach dem Ergebnis) die Antwort. Dafür spielt der Test-Anbieter ein **Drehbuch** ab: Die n-te Chat-Anfrage seit dem Setzen bekommt `steps[n]`, im Strom und ohne Strom.
+
+```ts
+provider.configure({
+  script: {
+    steps: [
+      // Schritt 0: Text und ein Aufruf im selben Schritt
+      {
+        text: "Ich schaue nach.",
+        toolCalls: [{ name: "suche", arguments: { frage: "Tagesbudget" } }],
+      },
+      // Schritt 1: Antwort nach dem Werkzeug-Ergebnis
+      { text: "Das Tagesbudget stellst du in den Einstellungen ein." },
+    ],
+  },
+});
+```
+
+Ein Schritt kennt `text`, `toolCalls` (je `id`, `name`, `arguments` als Objekt oder fertiger Text, `pieces` = Zahl der Stücke im Strom, Standard 3), `reasoning` (`text` und `field`: `reasoning` oder `reasoning_content`), `usage` (`false` = keine Verbrauchsangabe, auch mit `include_usage`; sonst `{ prompt, completion }`) und `finish` (`stop`, `tool_calls`, `length`). Aufrufe werden gesendet, auch wenn die Anfrage keine `tools` anbietet. Die Kennung `index` im Strom folgt der Reihenfolge in `toolCalls`.
+
+**Absichtlich ungültig** darf alles sein, damit PaiBot zeigen kann, dass es so etwas ablehnt:
+
+| Art                      | Beispiel im Drehbuch                                                                |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| erfundener Name          | `name: "gibt_es_nicht"`, `"a.b"`, `""`, 65 Zeichen, Umlaute, `\u202E`               |
+| kaputtes JSON            | `arguments: '{"frage": "Not'` (kommt unverändert an)                                |
+| Schema-Verstoß           | zusätzliches Feld, Zahl oder Text über der Grenze                                   |
+| doppelte Kennung         | zwei Aufrufe mit gleicher `id` (wird zweimal gesendet, nichts wird bereinigt)       |
+| leere oder lange Kennung | `id: ""` oder 201 Zeichen (die Grenze der Datenbank liegt bei 1 bis 200)            |
+| viele Aufrufe            | `toolCallsRepeated(500, (i) => ({ name: "t", arguments: { i } }))` in einem Schritt |
+| endlose Aufrufe          | `after: "letzten-wiederholen"`: der letzte Schritt wiederholt sich immer wieder     |
+| Aufruf ohne `tools`      | Schritt mit `toolCalls`, obwohl die Anfrage keine Werkzeuge anbot                   |
+
+`after` legt fest, was nach dem letzten Schritt kommt: `normal` (Standard: wieder das Verhalten ohne Drehbuch, also `reply` und `toolCall`) oder `letzten-wiederholen`. `provider.scriptPosition()` sagt, wie viele Schritte schon gespielt sind. Anfragen, die nicht beantwortet werden (geplante Fehler, falscher Schlüssel, ungültiger Körper), verbrauchen keinen Schritt.
+
+Von außen setzt du ein Drehbuch mit `POST /_steuerung/drehbuch` (gleicher Schutz wie alle Steuer-Pfade: mit `FAKE_PROVIDER_CONTROL_KEY` die Kopfzeile `x-steuerung-schluessel`, sonst nur von Loopback). Das Setzen beginnt wieder bei Schritt 0; eine falsche Form gibt Fehler 400 mit Grund. `…/zuruecksetzen` löscht das Drehbuch.
+
+```bash
+curl -X POST localhost:8080/_steuerung/drehbuch \
+  -H "x-steuerung-schluessel: $FAKE_PROVIDER_CONTROL_KEY" \
+  -d '{"steps":[{"toolCalls":[{"name":"suche","arguments":"{\"frage\": \"Not"}]},{"text":"Fertig."}],"after":"normal"}'
+```
+
+Im Protokoll (`…/anfragen`) steht je Anfrage `scriptStep` (Index des Schritts, der sie beantwortet hat; bei Wiederholung der letzte). Die angebotenen `tools` und die Nachrichten mit `role: "tool"` stehen ungekürzt im `body`.
+
 ### Tests gegen echtes Postgres
 
 Die meisten Datenbank-Tests laufen mit PGlite im Speicher. Einige Dinge kann PGlite nicht zeigen, weil es nur eine Verbindung kennt: gleichzeitiges Anhängen von Belegen über zwei Verbindungen, Migrationen bei gleichzeitigen Starts, die Warteschlange mit mehreren Prozessen. Diese Tests laufen nur, wenn `PAIBOT_TEST_DATABASE_URL` auf einen **Wegwerf-Server** zeigt, sonst werden sie übersprungen. In der CI läuft dafür ein eigener Postgres-Dienst.
@@ -217,6 +264,7 @@ Test-Anbieter bereit: http://127.0.0.1:8080/v1
 | `holdAfterChunks`       | `configure` / `…/verhalten` | hält den Strom nach so vielen Text-Stücken an, bis der Client schließt | 0 (nie)                            |
 | `models`                | `configure` / `…/verhalten` | Modell-Liste (`id`, `name`, `contextLength`, `modality`, …)            | zwei Text-Modelle, ein Bild-Modell |
 | `toolCall`              | `configure` / `…/verhalten` | meldet einen Werkzeug-Aufruf (`name`, `arguments`); `null` entfernt    | aus                                |
+| `script`                | `configure` / `…/drehbuch`  | Drehbuch über mehrere Schritte (siehe oben); `null` entfernt           | aus                                |
 
 Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 
@@ -231,6 +279,7 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 - **Pfade:** `GET /v1/models` (Liste mit `architecture.modality`, `supported_api_endpoints`, `supported_parameters`) und `POST /v1/chat/completions`. Dazu `GET /health` für Container-Prüfungen.
 - **Strom:** Mit `stream: true` kommen Server-Sent Events im OpenAI-Format, am Ende `data: [DONE]`. Die Token-Zahlen (`usage`) stehen im letzten Stück, aber nur mit `stream_options.include_usage`. Ohne Strom steht `usage` in der Antwort. Die Zahlen sind eine gleichbleibende Schätzung (ein Token je vier Zeichen).
 - **Werkzeug-Aufruf:** Mit `toolCall` kommt der Aufruf im Strom (Name zuerst, Argumente in Stücken, Ende mit `finish_reason: "tool_calls"`). Steht in den Nachrichten als letztes ein Ergebnis mit Rolle `tool`, antwortet er wieder mit Text.
+- **Drehbuch:** Mit `script` beantwortet er die n-te Chat-Anfrage mit `steps[n]` (Code: `tools/fake-provider/src/drehbuch.ts`, Antwort-Aufbau in `tools/fake-provider/src/index.ts`). `toolCall` und `reply` gelten dann nur noch nach dem letzten Schritt mit `after: "normal"`.
 - **Anmeldung:** Ist ein Schlüssel gesetzt, gibt ein falscher oder fehlender Schlüssel Fehler 401 im OpenAI-Fehlerformat.
 - **Protokoll:** Jede Anfrage an `/v1/…` landet nur im Speicher (Methode, Pfad, Kopfzeilen, Körper, Zeitpunkt). Nichts wird auf Platte oder ins Log geschrieben. `closedByClient` zeigt, ob der Aufrufer die Verbindung vor dem Ende der Antwort geschlossen hat, so prüfst du, dass ein Abbruch wirklich beim Anbieter ankommt. Die Steuerung gibt den Schlüssel nicht im Klartext wieder.
 - **Unabhängig:** Parallele Anfragen stören sich nicht. Er baut nie eine Verbindung nach außen auf und nutzt nur `node:http`.
@@ -240,6 +289,7 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 - Er ist ein Test-Werkzeug, kein Modell: Antworten sind festgelegter Text, keine echte Sprachverarbeitung.
 - Die Token-Zahlen sind geschätzt, nicht die eines echten Modells.
 - Die Steuerung unter `/_steuerung/` antwortet ohne Schlüssel nur auf Anfragen von derselben Maschine (Loopback). Mit `FAKE_PROVIDER_CONTROL_KEY` verlangt sie die Kopfzeile `x-steuerung-schluessel` mit diesem Wert. Binde ihn trotzdem nie an ein offenes Netz, ein Container gehört in ein internes Netz.
+- Er bildet das Format nach, das PaiBot heute nutzt (OpenAI-kompatibel), nicht jeden Anbieter. Was echte Anbieter zusätzlich oder anders senden, taucht im Drehbuch nur auf, wenn du es dort nachstellst.
 - Nur Chat und Modell-Liste sind nachgebildet (keine Einbettungen, keine Bilder).
 - Ein Compose-Testprofil mit dem Image, ein Netz ohne Internet in Docker und der nächtliche Lauf mit Datenschleuse sind geplant, aber noch nicht gebaut. Die Ende-zu-Ende-Prüfung läuft heute ohne Docker, mit der Netz-Sperre in den Node-Prozessen (siehe oben).
 
