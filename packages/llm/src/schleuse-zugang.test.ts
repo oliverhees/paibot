@@ -28,6 +28,7 @@ import type { SchleuseConnection, SchleuseKeyPath } from "./schleuse";
 import { createSchleuseFetch, SCHLEUSE_CLIENT_ROUTING_FIELDS } from "./schleuse-zugang";
 import { providerTargetFacts } from "./target";
 import { json, startTestServer, type TestServer } from "./test-server";
+import { schleuseBlockedReply, schleuseWrongKeyReply } from "./testing";
 
 const secretsKey = deriveKey(
   loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") }),
@@ -66,27 +67,13 @@ function antwortet200(req: IncomingMessage, res: ServerResponse) {
 /** Antwort der Datenschleuse bei einem Block (gemessen: HTTP 500, Typ "None"). */
 function blockiert(req: IncomingMessage, res: ServerResponse) {
   req.resume();
-  json(res, 500, {
-    error: {
-      message: `Exception occured - Analyse nicht erreichbar; Request blockiert (fail-closed, kein unmaskiertes PII). Begründung: ${BEGRUENDUNG}`,
-      type: "None",
-      param: "None",
-      code: "500",
-    },
-  });
+  schleuseBlockedReply(res, BEGRUENDUNG);
 }
 
 /** Antwort bei falschem Zugangsschlüssel ohne eigene Datenbank (gemessen: HTTP 400). */
 function keineDatenbank(req: IncomingMessage, res: ServerResponse) {
   req.resume();
-  json(res, 400, {
-    error: {
-      message: `No connected db. ${BEGRUENDUNG}`,
-      type: "no_db_connection",
-      param: "None",
-      code: "400",
-    },
-  });
+  schleuseWrongKeyReply(res, BEGRUENDUNG);
 }
 
 const connection = (providerKeyPath?: SchleuseKeyPath): SchleuseConnection => ({

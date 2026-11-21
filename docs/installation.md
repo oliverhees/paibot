@@ -152,7 +152,7 @@ Kannst du gerade nicht umstellen, startet PaiBot mit `PAIBOT_ALLOW_PRIVILEGED_DB
 
 Die Datenschleuse ersetzt Namen, Nummern und Adressen durch Platzhalter, bevor eine Anfrage an das Modell geht. Sie ist standardmäßig aus und startet nur mit dem Profil `schleuse`.
 
-1. In `deploy/.env` `COMPOSE_PROFILES=schleuse`, `SCHLEUSE_URL=http://datenschleuse:4000/v1` und `SCHLEUSE_ANBIETER_SCHLUESSEL` (Schlüssel deines Anbieters) eintragen. `SCHLEUSE_KEY` und `SCHLEUSE_STATE_KEY` legt `deploy/env-erzeugen.sh` schon an.
+1. In `deploy/.env` `COMPOSE_PROFILES=schleuse` und `SCHLEUSE_URL=http://datenschleuse:4000/v1` eintragen. `SCHLEUSE_KEY` und `SCHLEUSE_STATE_KEY` legt `deploy/env-erzeugen.sh` schon an. Den Schlüssel deines Anbieters trägst du hier nicht ein: PaiBot schickt ihn mit jeder Anfrage an die Datenschleuse mit; `SCHLEUSE_ANBIETER_SCHLUESSEL` bleibt leer.
 2. `pnpm schleuse:config --env-datei deploy/.env` ausführen.
 3. `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build` – danach sind `datenschleuse` und `schleuse-analyzer` `healthy`.
 

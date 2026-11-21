@@ -11,7 +11,7 @@
 import type { DerivedKey } from "@paibot/crypto";
 import type { Database } from "@paibot/db";
 import type { Clock, Gate, ReceiptWriter } from "@paibot/gate";
-import type { SchleuseConnection, SchleuseStatus } from "@paibot/llm";
+import type { SchleuseConnection, SchleuseHealthState, SchleuseStatus } from "@paibot/llm";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import type { MessageId, RunId } from "@paibot/shared/ids";
 import type { Motor } from "@paibot/shared/motor";
@@ -63,6 +63,14 @@ export const RUN_TUNING: RunTuning = {
  */
 export const MAX_MOTOR_STEPS = 1;
 
+/**
+ * Zustand der Datenschleuse für einen Lauf. `state` (aus `probeSchleuse`) sagt, warum sie nicht
+ * bereit ist; fehlt er, zählt nur `reachable`.
+ */
+export interface RunSchleuseStatus extends SchleuseStatus {
+  state?: SchleuseHealthState;
+}
+
 /** Was ein Lauf braucht. Alles von außen, damit Tests es ersetzen können. */
 export interface RunDeps {
   db: Database;
@@ -72,8 +80,8 @@ export interface RunDeps {
   keys: { secrets: DerivedKey<"secrets-v1">; context: DerivedKey<"context-v1"> };
   /** Verbindung zur Datenschleuse, wenn installiert. */
   schleuse?: SchleuseConnection;
-  /** Aktueller Zustand der Datenschleuse (installiert, erreichbar). */
-  schleuseStatus(): Promise<SchleuseStatus>;
+  /** Aktueller Zustand der Datenschleuse (installiert, erreichbar; im Betrieb `readSchleuseStatus`). */
+  schleuseStatus(): Promise<RunSchleuseStatus>;
   /**
    * Beleg-Schreiber des Tors. Nur `failStaleRuns` braucht ihn direkt: Es schreibt für einen
    * hängenden Lauf das fehlende Ergebnis zur schon belegten Entscheidung.

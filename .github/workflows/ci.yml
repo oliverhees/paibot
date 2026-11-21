@@ -131,7 +131,7 @@ jobs:
           anbieter_key=$(od -An -tx1 -N24 /dev/urandom | tr -d ' \n')
           steuer_key=$(od -An -tx1 -N24 /dev/urandom | tr -d ' \n')
           sed -i 's/^SCHLEUSE_ANBIETER_SCHLUESSEL=.*$//' deploy/.env
-          { echo "SCHLEUSE_URL=http://datenschleuse:4000/v1"; echo "SCHLEUSE_ANBIETER_SCHLUESSEL=$anbieter_key"; echo "FAKE_PROVIDER_CONTROL_KEY=$steuer_key"; } >> deploy/.env
+          { echo "SCHLEUSE_URL=http://datenschleuse:4000/v1"; echo "FAKE_PROVIDER_CONTROL_KEY=$steuer_key"; } >> deploy/.env
           SCHLEUSE_ANBIETER=eurouter=http://fake-provider:8080/v1 SCHLEUSE_ERLAUBE_HTTP=1 \
             node scripts/schleuse-config.mjs --env-datei deploy/.env
           $testcompose up -d --build

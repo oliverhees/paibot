@@ -15,13 +15,14 @@ import {
   failStaleRuns,
   RUN_TUNING,
   type RunDeps,
+  readSchleuseStatus,
 } from "@paibot/agents";
 import { createSigningKeyHolder, decryptSecret, deriveKey, loadMasterSecret } from "@paibot/crypto";
 import { createDb, type Database, repo } from "@paibot/db";
 import { checkAppRole, checkMigrationState, pingDatabase } from "@paibot/db/migrate";
 import { createGate, ruleSnapshot } from "@paibot/gate";
 import { createQueue } from "@paibot/jobs";
-import { checkSchleuseHealth, schleuseFromEnv } from "@paibot/llm";
+import { schleuseFromEnv } from "@paibot/llm";
 import { createReceiptWriter } from "@paibot/receipts";
 import { secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
 import { PaiBotError } from "@paibot/shared/fehler";
@@ -91,7 +92,7 @@ export function buildRunDeps(db: Database, env: Env): RunDepsSource {
     clock,
     keys: { secrets: deriveKey(master, "secrets-v1"), context: deriveKey(master, "context-v1") },
     ...(schleuse === undefined ? {} : { schleuse }),
-    schleuseStatus: () => checkSchleuseHealth(schleuse),
+    schleuseStatus: () => readSchleuseStatus(schleuse),
     receipts,
   };
 

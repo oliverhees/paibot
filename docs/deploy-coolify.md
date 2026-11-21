@@ -73,7 +73,7 @@ Die Datenschleuse ist standardmäßig aus. So schaltest du sie in Coolify zu (Hi
    openssl rand -base64 32 | tr '+/' '-_'      # für SCHLEUSE_STATE_KEY
    ```
 
-2. Umgebungsvariablen in Coolify setzen: `COMPOSE_PROFILES=schleuse`, `SCHLEUSE_URL=http://datenschleuse:4000/v1`, `SCHLEUSE_KEY`, `SCHLEUSE_STATE_KEY` und `SCHLEUSE_ANBIETER_SCHLUESSEL` (der Schlüssel deines Anbieters, derselbe wie in PaiBot).
+2. Umgebungsvariablen in Coolify setzen: `COMPOSE_PROFILES=schleuse`, `SCHLEUSE_URL=http://datenschleuse:4000/v1`, `SCHLEUSE_KEY` und `SCHLEUSE_STATE_KEY`. Den Schlüssel deines Anbieters setzt du nicht: PaiBot schickt ihn mit jeder Anfrage an die Datenschleuse mit.
 3. Die Konfiguration erzeugen, auf deinem Rechner im Ordner von PaiBot: `pnpm schleuse:config --zeigen`. Die Ausgabe enthält zwei Dateien, `config.yaml` und `nlp-config.yml`, ohne Geheimnisse.
 4. In Coolify bei den Diensten `datenschleuse` und `schleuse-analyzer` die eingebundenen Dateien `deploy/schleuse/config.yaml` bzw. `deploy/schleuse/nlp-config.yml` mit diesem Inhalt füllen (Bereich für gespeicherte Dateien des Dienstes).
 5. Neu deployen. Die Dienste `datenschleuse` und `schleuse-analyzer` bekommen **keine** Domain. Beim ersten Mal werden zwei Images gebaut; das dauert einige Minuten.

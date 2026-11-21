@@ -31,6 +31,7 @@ import {
   schleuseModelName,
 } from "./schleuse";
 import { json, startTestServer, type TestServer } from "./test-server";
+import { schleuseLivenessReply, schleuseNoKeyReply, schleuseWrongKeyReply } from "./testing";
 
 describe("resolveSchleuseMode", () => {
   it("Nachricht vor Unterhaltung vor Standard", () => {
@@ -172,24 +173,11 @@ describe("probeSchleuse", () => {
 
   /** Antwortet wie die Datenschleuse ohne eigene Datenbank (gemessen). */
   function wieDieDatenschleuse(req: IncomingMessage, res: ServerResponse) {
-    if (req.url === "/health/liveliness") return json(res, 200, "I'm alive!");
+    if (req.url === "/health/liveliness") return schleuseLivenessReply(res);
     if (req.url === "/v1/models") {
       const auth = req.headers.authorization;
-      if (auth === undefined) {
-        return json(res, 500, {
-          error: { message: "x", type: "None", param: "None", code: "500" },
-        });
-      }
-      if (auth !== "Bearer sk-richtig") {
-        return json(res, 400, {
-          error: {
-            message: "No connected db.",
-            type: "no_db_connection",
-            param: "None",
-            code: "400",
-          },
-        });
-      }
+      if (auth === undefined) return schleuseNoKeyReply(res);
+      if (auth !== "Bearer sk-richtig") return schleuseWrongKeyReply(res);
       return json(res, 200, { data: [{ id: "eurouter/*" }] });
     }
     return json(res, 404, {});

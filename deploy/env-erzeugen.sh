@@ -52,7 +52,8 @@ WEB_PORT=3000
 # SCHLEUSE_URL=http://datenschleuse:4000/v1
 SCHLEUSE_KEY=sk-$(zufall_hex)
 SCHLEUSE_STATE_KEY=$(zufall_base64url)
-# Schlüssel deines Modell-Anbieters für die Datenschleuse (derselbe wie in PaiBot):
+# Bleibt leer: PaiBot schickt den Schlüssel deines Anbieters mit jeder Anfrage mit. Nur beim
+# Rückfall SCHLEUSE_SCHLUESSEL_WEG=umgebung liest die Datenschleuse ihn von hier.
 SCHLEUSE_ANBIETER_SCHLUESSEL=
 SCHLEUSE_SPRACHMODELL=de_core_news_md
 VORLAGE

@@ -11,7 +11,13 @@
 
 import { contextDigest, type DerivedKey } from "@paibot/crypto";
 import { type Database, repo } from "@paibot/db";
-import { providerTargetFacts, type SchleuseConnection, type SchleuseStatus } from "@paibot/llm";
+import {
+  probeSchleuse,
+  providerTargetFacts,
+  type SchleuseConnection,
+  type SchleuseHealthOptions,
+  type SchleuseStatus,
+} from "@paibot/llm";
 import type { ModelChoice } from "@paibot/llm/modell";
 import type { Facts } from "@paibot/shared/aktionen";
 import { targetOrigin } from "@paibot/shared/bindung";
@@ -28,6 +34,7 @@ import type {
   SchleuseMode,
   Settings,
 } from "@paibot/shared/objekte";
+import type { RunSchleuseStatus } from "./vertrag";
 
 /** Alles, was ein Lauf aus der Datenbank braucht, gelesen in einem Lesestand. */
 export interface RunContext {
@@ -279,4 +286,17 @@ export function modelFacts(input: {
     killSwitch: context.settings.killSwitch,
     ...target,
   };
+}
+
+/**
+ * Zustand der Datenschleuse für einen Lauf aus der Prüfung in zwei Stufen (`probeSchleuse`):
+ * erreichbar heißt `bereit` – sie läuft und nimmt ihren Schlüssel an. Wirft nie.
+ */
+export async function readSchleuseStatus(
+  connection: SchleuseConnection | undefined,
+  options?: SchleuseHealthOptions,
+): Promise<RunSchleuseStatus> {
+  if (connection === undefined) return { installed: false, reachable: false, state: "aus" };
+  const { state } = await probeSchleuse(connection, options);
+  return { installed: true, reachable: state === "bereit", state };
 }

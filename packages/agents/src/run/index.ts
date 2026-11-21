@@ -11,5 +11,5 @@
 
 export { failStaleRuns, type StaleRunOptions } from "./aufraeumen";
 export { executeRun } from "./ausfuehren";
-export { REQUEST_DIGEST_PREFIX } from "./kontext";
+export { REQUEST_DIGEST_PREFIX, readSchleuseStatus } from "./kontext";
 export * from "./vertrag";

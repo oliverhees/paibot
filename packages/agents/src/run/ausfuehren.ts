@@ -259,14 +259,15 @@ async function askModel(
   } catch (error) {
     if (error instanceof RunDatabaseError) throw error;
     if (isGateDenied(error)) {
-      const recorded = await recordDenial(
+      const code = await recordDenial(
         deps.db,
         context.run,
         error,
         facts.requestedMode === "on",
+        schleuseStatus.state === "schluessel_falsch",
         deps.clock.now(),
       );
-      return { end: recorded ? { kind: "denied", code: error.code } : { kind: "lost" } };
+      return { end: code === undefined ? { kind: "lost" } : { kind: "denied", code } };
     }
     if (isPaiBotError(error)) {
       return { end: { kind: "failed", code: error.code } };
@@ -451,40 +452,52 @@ async function saveAnswer(
   return messageId;
 }
 
-/** Ablehnung durch das Tor: Lauf `denied`, Ereignis `run.denied`, bei Datenschleuse vorher `schleuse.blockiert`. */
+/**
+ * Ablehnung durch das Tor: Lauf `denied`, Ereignis `run.denied`, bei Datenschleuse vorher
+ * `schleuse.blockiert`. Lag es an der Datenschleuse und hat sie ihren Schlüssel abgelehnt, trägt
+ * der Lauf den Code `schluessel_ungueltig` statt des Codes aus dem Tor, damit der Ausweg passt.
+ * Liefert den Code des Laufs oder `undefined`, wenn der Lauf schon beendet war.
+ */
 async function recordDenial(
   db: Database,
   run: Run,
   denied: GateDenied,
   schleuseRequired: boolean,
+  schleuseKeyRejected: boolean,
   now: Date,
-): Promise<boolean> {
+): Promise<ErrorCode | undefined> {
   const schleuseBlocked =
     schleuseRequired &&
     denied.decision.limits.some(
       (limit) => limit.name === "schleuse_gefordert" && limit.result === "verletzt",
     );
-  return closeRun(
+  const code: ErrorCode =
+    schleuseBlocked && schleuseKeyRejected ? "schluessel_ungueltig" : denied.code;
+  const closed = await closeRun(
     db,
     run,
     "denied",
-    denied.code,
+    code,
     async (tx) => {
       if (schleuseBlocked) {
         await repo.events.append(tx, {
           conversationId: run.conversationId,
           type: "schleuse.blockiert",
-          data: { runId: run.id, reason: errorText("schleuse_blockiert") },
+          data: {
+            runId: run.id,
+            reason: errorText(schleuseKeyRejected ? "schluessel_ungueltig" : "schleuse_blockiert"),
+          },
         });
       }
       await repo.events.append(tx, {
         conversationId: run.conversationId,
         type: "run.denied",
-        data: { runId: run.id, code: denied.code, text: denied.decision.reason },
+        data: { runId: run.id, code, text: denied.decision.reason },
       });
     },
     now,
   );
+  return closed ? code : undefined;
 }
 
 /**
