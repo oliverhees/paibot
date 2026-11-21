@@ -99,14 +99,14 @@ PaiBot läuft **bei dir** auf deinem eigenen Server (mit Docker Compose, auch au
 
 Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa, laufen in fremden Clouds oder bekommen weitreichende Rechte auf deinem System. PaiBot geht einen anderen Weg:
 
-|                  | PaiBot                                                                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                                                 |
-| **Welche KI?**   | EU-Modelle über EUrouter; eigene, OpenAI-kompatible Anbieter (auch auf dem eigenen Rechner) legst du in der Oberfläche an                              |
-| **Deine Daten**  | zuschaltbare Datenschleuse: Namen, E-Mails, IBANs werden vor dem Modell maskiert und in der Antwort zurückgetauscht                                     |
-| **Rechte**       | jede Aktion läuft durch ein Tor mit festen Regeln ohne KI und bekommt einen Beleg; Werkzeuge mit eigenen Rechten je Bot sind geplant                    |
-| **Kontrolle**    | Belege zu jeder Aktion, im Browser prüfbar; eine Freigabe vor Aktionen, die etwas nach außen schicken, ist geplant                                      |
-| **Transparenz**  | Code öffentlich einsehbar, jede Folge als nachbaubarer Stand                                                                                            |
+|                  | PaiBot                                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                              |
+| **Welche KI?**   | EU-Modelle über EUrouter; eigene, OpenAI-kompatible Anbieter (auch auf dem eigenen Rechner) legst du in der Oberfläche an            |
+| **Deine Daten**  | zuschaltbare Datenschleuse: Namen, E-Mails, IBANs werden vor dem Modell maskiert und in der Antwort zurückgetauscht                  |
+| **Rechte**       | jede Aktion läuft durch ein Tor mit festen Regeln ohne KI und bekommt einen Beleg; Werkzeuge mit eigenen Rechten je Bot sind geplant |
+| **Kontrolle**    | Belege zu jeder Aktion, im Browser prüfbar; eine Freigabe vor Aktionen, die etwas nach außen schicken, ist geplant                   |
+| **Transparenz**  | Code öffentlich einsehbar, jede Folge als nachbaubarer Stand                                                                         |
 
 ## Funktionen
 
