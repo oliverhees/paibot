@@ -30,7 +30,7 @@ import { fassungenVon } from "./fassungen";
 import type { ChatVerlauf } from "./typen";
 
 const conversationId = newId("conversation");
-const KONTEXT = { modell: { name: "Beispiel-Modell A", region: "eu" as const } };
+const KONTEXT = { modell: { name: "Beispiel-Modell A", herkunft: "über EUrouter" } };
 
 function folge() {
   let seq = 0;
@@ -437,7 +437,9 @@ describe("Neuladen", () => {
       ereignisse: [],
       letzteSeq: 12,
       belege: [],
-      modelle: { mod_x: { name: "Beispiel-Modell B", region: "local" } },
+      modelle: {
+        mod_x: { name: "Beispiel-Modell B", herkunft: "Beispiel · lokal laut deiner Einstellung" },
+      },
     };
     const a = ansichtAus(verlauf);
     expect(nachrichten(a)).toEqual([
@@ -449,7 +451,7 @@ describe("Neuladen", () => {
     const bot = a.eintraege[3];
     expect(bot?.art === "nachricht" && bot.modell).toEqual({
       name: "Beispiel-Modell B",
-      region: "local",
+      herkunft: "Beispiel · lokal laut deiner Einstellung",
     });
     expect(a.lauf).toBeUndefined();
     expect(a.letzteSeq).toBe(12);
@@ -661,5 +663,25 @@ describe("Fassungen", () => {
     expect(f.get("a2")).toMatchObject({ nr: 2, von: 2 });
     expect(f.get("b1")).toMatchObject({ nr: 1, von: 1 });
     expect(f.has("u1")).toBe(false);
+  });
+});
+
+describe("Herkunft der Antwort", () => {
+  it("message.completed übernimmt den Anbieter laut Antwort; ohne Modell kein angenommenes EU", () => {
+    const ev = folge();
+    const g = glueck(ev);
+    const fertig = g.liste.map((e) =>
+      e.type === "message.completed"
+        ? { ...e, data: { ...e.data, servedBy: { provider: "beispiel-eu", model: "b/m" } } }
+        : e,
+    ) as typeof g.liste;
+    const a = ereignisseAnwenden(leereAnsicht(), fertig, {});
+    const antwort = a.eintraege[1];
+    expect(antwort?.art === "nachricht" && antwort.servedBy).toEqual({
+      provider: "beispiel-eu",
+      model: "b/m",
+    });
+    // Ohne bekanntes Modell: nur der Name, keine Region und kein „EU“.
+    expect(antwort?.art === "nachricht" && antwort.modell).toEqual({ name: "Beispiel-Modell A" });
   });
 });

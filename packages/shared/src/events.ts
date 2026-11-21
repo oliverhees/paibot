@@ -12,7 +12,7 @@
 import { z } from "zod";
 import { actionTypeSchema } from "./actions";
 import { errorCodeSchema } from "./errors";
-import { isoTimeSchema, positiveIntSchema, tokenUsageSchema } from "./grundtypen";
+import { isoTimeSchema, positiveIntSchema, servedBySchema, tokenUsageSchema } from "./grundtypen";
 import { idSchema } from "./id";
 import {
   messageRoleSchema,
@@ -37,6 +37,8 @@ export const EVENT_DATA = {
     route: routeSchema,
     modelLabel: z.string().min(1).max(200),
     tokens: tokenUsageSchema,
+    /** Wer laut Antwort der Schnittstelle geantwortet hat; fehlt, wenn sie es nicht meldet. */
+    servedBy: servedBySchema.optional(),
   }),
   /** Der Lauf hält vor einer Aktion der Stufe „fragen“ an und wartet auf eine Freigabe. */
   "run.waiting": z.strictObject({

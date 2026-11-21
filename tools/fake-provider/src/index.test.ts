@@ -10,7 +10,7 @@
 
 import { randomBytes } from "node:crypto";
 import { networkInterfaces } from "node:os";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createFakeProvider,
   FAKE_CONTROL_KEY_HEADER,
@@ -110,6 +110,7 @@ describe("Start und Schnittstelle", () => {
     expect(FAKE_PROVIDER_PATHS).toEqual({
       models: "/v1/models",
       chatCompletions: "/v1/chat/completions",
+      providers: "/api/v1/providers",
     });
     expect(Object.values(FAKE_CONTROL_PATHS).every((p) => p.startsWith("/_steuerung/"))).toBe(true);
   });
@@ -725,5 +726,69 @@ describe("Schutz der Steuerung", () => {
     expect(isLoopback("::ffff:10.0.0.1")).toBe(false);
     expect(isLoopback("1127.0.0.1")).toBe(false);
     expect(isLoopback(undefined)).toBe(false);
+  });
+});
+
+describe("Routing-Regeln, Anbieter-Liste und Mistral-Form", () => {
+  let fake: ReturnType<typeof createFakeProvider>;
+  let url: string;
+  beforeAll(async () => {
+    fake = createFakeProvider({
+      routingRules: [{ name: "EU Regel", provider: "anbieter-a", model: "a/modell" }],
+      providers: [{ slug: "anbieter-a", name: "Anbieter A", headquarters: "NL" }],
+    });
+    ({ baseUrl: url } = await fake.start());
+  });
+  afterAll(() => fake.stop());
+
+  const post = (body: unknown) =>
+    fetch(`${url}/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("rule_name ohne model: Antwort nennt provider und model der Regel, auch im Strom", async () => {
+    const whole = await post({ rule_name: "EU Regel", messages: [{ role: "user", content: "x" }] });
+    expect(whole.status).toBe(200);
+    expect(await whole.json()).toMatchObject({ model: "a/modell", provider: "anbieter-a" });
+    const stream = await post({
+      rule_name: "EU Regel",
+      messages: [{ role: "user", content: "x" }],
+      stream: true,
+    });
+    const text = await stream.text();
+    const chunks = text
+      .split("\n\n")
+      .filter((l) => l.startsWith("data: {"))
+      .map((l) => JSON.parse(l.slice(6)) as Record<string, unknown>);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.every((c) => c.provider === "anbieter-a" && c.model === "a/modell")).toBe(true);
+  });
+
+  it("unbekannte Regel: 400 wie beim Vorbild; ohne Regel bleibt model Pflicht", async () => {
+    const unknown = await post({ rule_name: "nein", messages: [] });
+    expect(unknown.status).toBe(400);
+    expect(await unknown.json()).toMatchObject({
+      error: { code: 400, message: "Routing rule with name 'nein' not found" },
+    });
+    expect((await post({ messages: [] })).status).toBe(400);
+    // Gegenprobe: ohne Regel trägt die Antwort kein provider-Feld.
+    const plain = await post({ model: "m", messages: [{ role: "user", content: "x" }] });
+    expect("provider" in ((await plain.json()) as object)).toBe(false);
+  });
+
+  it("öffentliche Anbieter-Liste und Modell-Liste in der Form von Mistral", async () => {
+    const origin = new URL(url).origin;
+    expect(await (await fetch(`${origin}/api/v1/providers`)).json()).toEqual({
+      data: [{ slug: "anbieter-a", name: "Anbieter A", headquarters: "NL" }],
+    });
+    fake.configure({ modelFormat: "mistral" });
+    const list = (await (await fetch(`${url}/models`)).json()) as { data: object[] };
+    expect(list.data[0]).toMatchObject({
+      capabilities: { completion_chat: true },
+      archived: false,
+    });
+    expect(list.data[0]).not.toHaveProperty("supported_api_endpoints");
   });
 });

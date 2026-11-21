@@ -1,6 +1,7 @@
 /**
- * PaiBot – geführte Einrichtung im Browser: Code, Passwort, Anbieter, Modell, Datenschleuse,
- * Name des Bots, fertig.
+ * PaiBot – geführte Einrichtung im Browser: Code, Passwort, Auswahl des Anbieters, Schlüssel
+ * (bei EUrouter mit Routing-Regeln), Modell bzw. Regel, Datenschleuse, Name des Bots, fertig.
+ * Die Zählung hat immer sieben Schritte; übersprungene Schritte zählen mit.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -21,23 +22,48 @@ import {
   type IconName,
   Logo,
   Switch,
+  TestErgebnis,
   TextField,
   Wortmarke,
 } from "@paibot/ui";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "../../lib/api/client";
 import { einrichtungSchluesselText } from "../../lib/modelle/ansicht";
+import type { AnbieterWahl } from "../../lib/modelle/konto-links";
+import { AnbieterAuswahl, KontoLink } from "../AnbieterAuswahl";
 import styles from "./einrichtung.module.css";
+
+/** Ergebnis der Prüfung einer Routing-Regel, wie der Server es meldet. */
+interface RegelErgebnis {
+  name: string;
+  ok: boolean;
+  herkunft?: string;
+  text?: string;
+  ausweg?: string;
+}
 
 export interface EinrichtungProps {
   anbieter: string;
+  /** Namen der wählbaren Anbieter; `eigener` nur, wenn der Server einen vorsieht. */
+  wahl: { eurouter: string; mistral: string; eigener?: string };
   passwortMin: number;
   botVorschlag: string;
   schleuseInstalliert: boolean;
   ohneProxy: boolean;
 }
 
-type Schritt = "code" | "passwort" | "schluessel" | "modell" | "schleuse" | "bot";
+type Schritt = "code" | "passwort" | "anbieter" | "schluessel" | "modell" | "schleuse" | "bot";
+
+/** Alle Schritte, immer in dieser Reihenfolge und Anzahl (übersprungene zählen mit). */
+const SCHRITTE: readonly Schritt[] = [
+  "code",
+  "passwort",
+  "anbieter",
+  "schluessel",
+  "modell",
+  "schleuse",
+  "bot",
+];
 
 interface Modell {
   slug: string;
@@ -46,6 +72,7 @@ interface Modell {
 
 interface Abschluss {
   anbieter: boolean;
+  anbieterName?: string;
   modell?: string;
   schleuse: "on" | "off";
   botName: string;
@@ -58,6 +85,9 @@ const FELD_ZU_SCHRITT: Record<string, Schritt> = {
   password: "passwort",
   passwordRepeat: "passwort",
   apiKey: "schluessel",
+  templateKey: "anbieter",
+  ruleNames: "schluessel",
+  ruleName: "modell",
   modelSlug: "modell",
   schleuseModeDefault: "schleuse",
   botName: "bot",
@@ -107,13 +137,19 @@ const VERSPRECHEN: { icon: IconName; titel: string; text: string }[] = [
 ];
 
 export function Einrichtung({
-  anbieter,
+  anbieter: standardAnbieter,
+  wahl: wahlNamen,
   passwortMin,
   botVorschlag,
   schleuseInstalliert,
   ohneProxy,
 }: EinrichtungProps) {
   const [schritt, setSchritt] = useState<Schritt>("code");
+  const [wahl, setWahl] = useState<AnbieterWahl | undefined>();
+  const [regeln, setRegeln] = useState<string[]>([""]);
+  const [regelErgebnisse, setRegelErgebnisse] = useState<RegelErgebnis[] | undefined>();
+  const [regel, setRegel] = useState<string | undefined>();
+  const [testFehler, setTestFehler] = useState<string | undefined>();
   const [code, setCode] = useState("");
   const [passwort, setPasswort] = useState("");
   const [passwort2, setPasswort2] = useState("");
@@ -131,15 +167,19 @@ export function Einrichtung({
   const erster = useRef(true);
   const modellGruppe = useId();
 
-  const mitSchluessel = schluessel.trim() !== "" && modelle !== undefined;
-  const schritte: Schritt[] = [
-    "code",
-    "passwort",
-    "schluessel",
-    ...(mitSchluessel ? (["modell"] as const) : []),
-    "schleuse",
-    "bot",
-  ];
+  const mitRegeln = wahl === "eurouter";
+  /** Eigener Anbieter ohne Vorgabe des Servers: Schlüssel und Modell erst nach der Einrichtung. */
+  const eigenSpaeter = wahl === "eigener" && wahlNamen.eigener === undefined;
+  const anbieter =
+    wahl === undefined
+      ? standardAnbieter
+      : wahl === "eigener"
+        ? (wahlNamen.eigener ?? t("anbieterwahl.eigen.titel"))
+        : wahlNamen[wahl];
+  const geprueft = mitRegeln ? regelErgebnisse !== undefined : modelle !== undefined;
+  const okRegeln = (regelErgebnisse ?? []).filter((r) => r.ok).map((r) => r.name);
+  const mitSchluessel = !eigenSpaeter && schluessel.trim() !== "" && geprueft;
+  const schritte = SCHRITTE;
   const nummer = schritte.indexOf(schritt) + 1;
 
   // Nach jedem Schrittwechsel liegt der Fokus auf der Überschrift (nicht beim ersten Laden).
@@ -153,14 +193,16 @@ export function Einrichtung({
   }, [schritt, fertig]);
 
   const gehe = (ziel: Schritt) => setSchritt(ziel);
+  /** Ohne Schlüssel gibt es nichts zu wählen: der Schritt „Modell“ wird übersprungen. */
+  const zaehlt = (s: Schritt) => s !== "modell" || mitSchluessel;
   const naechster = () => {
     const i = schritte.indexOf(schritt);
-    const ziel = schritte[i + 1];
+    const ziel = schritte.slice(i + 1).find(zaehlt);
     if (ziel) gehe(ziel);
   };
   const voriger = () => {
     const i = schritte.indexOf(schritt);
-    const ziel = schritte[i - 1];
+    const ziel = schritte.slice(0, i).reverse().find(zaehlt);
     if (ziel) gehe(ziel);
   };
   const fehlerSetzen = (s: Schritt, text: string | undefined) =>
@@ -192,18 +234,33 @@ export function Einrichtung({
         fehlerSetzen("passwort", undefined);
         return true;
       }
+      case "anbieter": {
+        const ok = wahl !== undefined;
+        fehlerSetzen("anbieter", ok ? undefined : t("anbieterwahl.waehlen"));
+        return ok;
+      }
       case "schluessel": {
+        if (eigenSpaeter) return true;
         if (schluessel.trim() === "") {
           fehlerSetzen("schluessel", t("einrichtung.schluessel.leer"));
           return false;
         }
-        if (modelle === undefined) {
+        if (!geprueft) {
           fehlerSetzen("schluessel", t("einrichtung.schluessel.erst_testen"));
+          return false;
+        }
+        if (mitRegeln && okRegeln.length === 0) {
+          fehlerSetzen("schluessel", t("anbieterwahl.regeln.keine_ok"));
           return false;
         }
         return true;
       }
       case "modell": {
+        if (mitRegeln) {
+          const ok = regel !== undefined && okRegeln.includes(regel);
+          fehlerSetzen("modell", ok ? undefined : t("anbieterwahl.regel.waehlen"));
+          return ok;
+        }
         const ok = modelle?.length === 0 || modell !== undefined;
         fehlerSetzen("modell", ok ? undefined : t("einrichtung.modell.waehlen"));
         return ok;
@@ -218,38 +275,73 @@ export function Einrichtung({
     }
   }
 
+  /** Eingetragene Regel-Namen ohne leere Felder und ohne Doppel. */
+  const regelNamen = () => [...new Set(regeln.map((r) => r.trim()).filter((r) => r !== ""))];
+
+  function testZuruecksetzen() {
+    setModelle(undefined);
+    setModell(undefined);
+    setRegelErgebnisse(undefined);
+    setRegel(undefined);
+    setTestOk(undefined);
+    setTestFehler(undefined);
+  }
+
   async function verbindungTesten(): Promise<boolean> {
     if (schluessel.trim() === "") {
       fehlerSetzen("schluessel", t("einrichtung.schluessel.leer"));
       return false;
     }
+    const namen = regelNamen();
+    if (mitRegeln && namen.length === 0) {
+      fehlerSetzen("schluessel", t("anbieterwahl.regeln.leer", { anbieter }));
+      return false;
+    }
     setTestLaeuft(true);
-    setTestOk(undefined);
+    testZuruecksetzen();
     fehlerSetzen("schluessel", undefined);
-    const antwort = await apiFetch<{ modelle: Modell[] }>(
+    const antwort = await apiFetch<{ modelle: Modell[]; regeln?: RegelErgebnis[] }>(
       "POST",
       "/api/einrichtung/verbindungstest",
-      { setupCode: code, apiKey: schluessel },
+      {
+        setupCode: code,
+        apiKey: schluessel,
+        ...(wahl === undefined ? {} : { templateKey: wahl }),
+        ...(mitRegeln ? { ruleNames: namen } : {}),
+      },
     );
     setTestLaeuft(false);
     if (antwort.ok) {
+      if (mitRegeln) {
+        const ergebnisse = antwort.daten.regeln ?? [];
+        setRegelErgebnisse(ergebnisse);
+        const ok = ergebnisse.filter((r) => r.ok);
+        setRegel(ok.length === 1 ? ok[0]?.name : undefined);
+        if (ok.length > 0) {
+          setTestOk(t("anbieterwahl.regeln.ok", { anzahl: ok.length, von: ergebnisse.length }));
+        } else {
+          setTestFehler(t("anbieterwahl.regeln.keine_ok"));
+        }
+        return ok.length > 0;
+      }
       setModelle(antwort.daten.modelle);
-      setModell(undefined);
       setTestOk(t("einrichtung.schluessel.ok", { anzahl: antwort.daten.modelle.length }));
       return true;
     }
-    setModelle(undefined);
     const { schritt: ziel, text } = fehlerZuordnen(antwort.fehler);
-    fehlerSetzen(ziel === "code" ? "code" : "schluessel", text);
-    if (ziel === "code") gehe("code");
+    if (ziel === "code") {
+      fehlerSetzen("code", text);
+      gehe("code");
+      return false;
+    }
+    setTestFehler(text);
+    if (antwort.fehler.felder?.some((f) => f.feld === "apiKey")) fehlerSetzen("schluessel", text);
     return false;
   }
 
   function spaeterEintragen() {
     setSchluessel("");
-    setModelle(undefined);
-    setModell(undefined);
-    setTestOk(undefined);
+    testZuruecksetzen();
     fehlerSetzen("schluessel", undefined);
     gehe("schleuse");
   }
@@ -261,8 +353,11 @@ export function Einrichtung({
       setupCode: code,
       password: passwort,
       passwordRepeat: passwort2,
+      ...(wahl === undefined || eigenSpaeter ? {} : { templateKey: wahl }),
       ...(mitSchluessel ? { apiKey: schluessel } : {}),
-      ...(mitSchluessel && modell !== undefined ? { modelSlug: modell } : {}),
+      ...(mitSchluessel && !mitRegeln && modell !== undefined ? { modelSlug: modell } : {}),
+      ...(mitSchluessel && mitRegeln ? { ruleNames: okRegeln } : {}),
+      ...(mitSchluessel && mitRegeln && regel !== undefined ? { ruleName: regel } : {}),
       schleuseModeDefault: schleuse ? "on" : "off",
       botName: botName.trim(),
       ...(zeitzone ? { timezone: zeitzone } : {}),
@@ -280,7 +375,7 @@ export function Einrichtung({
   async function weiter(event: FormEvent) {
     event.preventDefault();
     // Schlüssel eingegeben, aber noch nicht getestet: erst testen, dann weiter zur Modell-Wahl.
-    if (schritt === "schluessel" && schluessel.trim() !== "" && modelle === undefined) {
+    if (schritt === "schluessel" && !eigenSpaeter && schluessel.trim() !== "" && !geprueft) {
       if (await verbindungTesten()) gehe("modell");
       return;
     }
@@ -294,6 +389,7 @@ export function Einrichtung({
     : {
         code: t("einrichtung.sprache.code", { name: botName.trim() || botVorschlag }),
         passwort: t("einrichtung.sprache.passwort"),
+        anbieter: t("anbieterwahl.sprache"),
         schluessel: t("einrichtung.sprache.schluessel"),
         modell: t("einrichtung.sprache.modell"),
         schleuse: t("einrichtung.sprache.schleuse"),
@@ -336,7 +432,9 @@ export function Einrichtung({
                 <li>
                   <Icon name={fertig.anbieter ? "check" : "info"} />
                   {fertig.anbieter
-                    ? t("einrichtung.fertig.anbieter", { anbieter })
+                    ? t("einrichtung.fertig.anbieter", {
+                        anbieter: fertig.anbieterName ?? anbieter,
+                      })
                     : t("einrichtung.fertig.ohne_anbieter")}
                 </li>
                 {fertig.modell && (
@@ -461,6 +559,29 @@ export function Einrichtung({
                 </>
               )}
 
+              {schritt === "anbieter" && (
+                <>
+                  <h1
+                    id="einrichtung-titel"
+                    ref={ueberschrift}
+                    tabIndex={-1}
+                    className={styles.titel}
+                  >
+                    {t("anbieterwahl.titel")}
+                  </h1>
+                  <p className={styles.text}>{t("anbieterwahl.text")}</p>
+                  <AnbieterAuswahl
+                    wert={wahl}
+                    onWahl={(w) => {
+                      if (w !== wahl) testZuruecksetzen();
+                      setWahl(w);
+                      fehlerSetzen("anbieter", undefined);
+                    }}
+                    {...(fehler.anbieter ? { fehler: fehler.anbieter } : {})}
+                  />
+                </>
+              )}
+
               {schritt === "schluessel" && (
                 <>
                   <h1
@@ -471,29 +592,141 @@ export function Einrichtung({
                   >
                     {t("einrichtung.schluessel.titel")}
                   </h1>
-                  <p className={styles.text}>{einrichtungSchluesselText(anbieter)}</p>
-                  <div className={styles.feldReihe}>
-                    <TextField
-                      label={t("einrichtung.schluessel.feld", { anbieter })}
-                      type="password"
-                      name="apiKey"
-                      autoComplete="off"
-                      spellCheck={false}
-                      className={styles.mono}
-                      value={schluessel}
-                      onChange={(e) => {
-                        setSchluessel(e.target.value);
-                        setModelle(undefined);
-                        setTestOk(undefined);
-                      }}
-                      laedt={testLaeuft}
-                      fehler={fehler.schluessel}
-                      hilfe={testOk ?? t("einrichtung.schluessel.hilfe")}
-                    />
-                    <Button art="leise" onClick={() => void verbindungTesten()} laedt={testLaeuft}>
-                      {t("einrichtung.schluessel.testen")}
-                    </Button>
-                  </div>
+                  {eigenSpaeter ? (
+                    <p className={styles.text}>{t("anbieterwahl.eigen.spaeter")}</p>
+                  ) : (
+                    <>
+                      <p className={styles.text}>
+                        {mitRegeln
+                          ? t("anbieterwahl.regeln.text", { anbieter })
+                          : einrichtungSchluesselText(anbieter)}
+                      </p>
+                      {wahl !== undefined && <KontoLink wahl={wahl} />}
+                      <TextField
+                        label={t("einrichtung.schluessel.feld", { anbieter })}
+                        type="password"
+                        name="apiKey"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className={styles.mono}
+                        value={schluessel}
+                        onChange={(e) => {
+                          setSchluessel(e.target.value);
+                          testZuruecksetzen();
+                        }}
+                        laedt={testLaeuft && !mitRegeln}
+                        fehler={fehler.schluessel}
+                        hilfe={t("einrichtung.schluessel.hilfe")}
+                      />
+                      {mitRegeln && (
+                        <fieldset className={styles.regeln}>
+                          <legend className={styles.regelLegende}>
+                            {t("anbieterwahl.regeln.legende")}
+                          </legend>
+                          <p className={styles.hinweis}>
+                            {t("anbieterwahl.regeln.wo", { anbieter })}
+                          </p>
+                          {regeln.map((r, i) => (
+                            // Die Felder haben keine eigene Kennung; die Stelle genügt.
+                            // biome-ignore lint/suspicious/noArrayIndexKey: Reihenfolge fest
+                            <div key={i} className={styles.regelZeile}>
+                              <TextField
+                                label={t("anbieterwahl.regel.feld", { nummer: i + 1 })}
+                                name={`ruleName${i}`}
+                                autoComplete="off"
+                                spellCheck={false}
+                                value={r}
+                                maxLength={100}
+                                onChange={(e) => {
+                                  const neu = [...regeln];
+                                  neu[i] = e.target.value;
+                                  setRegeln(neu);
+                                  testZuruecksetzen();
+                                }}
+                              />
+                              {regeln.length > 1 && (
+                                <Button
+                                  art="leise"
+                                  icon="x"
+                                  onClick={() => {
+                                    setRegeln(regeln.filter((_, j) => j !== i));
+                                    testZuruecksetzen();
+                                  }}
+                                >
+                                  {t("anbieterwahl.regel.entfernen")}
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          {regeln.length < 5 && (
+                            <span>
+                              <Button
+                                art="leise"
+                                icon="plus"
+                                onClick={() => setRegeln([...regeln, ""])}
+                              >
+                                {t("anbieterwahl.regel.weitere")}
+                              </Button>
+                            </span>
+                          )}
+                          <p className={styles.hinweis}>
+                            {t("anbieterwahl.regeln.kosten", { anbieter })}
+                          </p>
+                        </fieldset>
+                      )}
+                      <span>
+                        <Button
+                          art="zweit"
+                          onClick={() => void verbindungTesten()}
+                          laedt={testLaeuft}
+                        >
+                          {mitRegeln
+                            ? t("anbieterwahl.regeln.pruefen")
+                            : t("einrichtung.schluessel.testen")}
+                        </Button>
+                      </span>
+                      <div aria-live="polite" className={styles.ergebnisse}>
+                        {testLaeuft && (
+                          <p className={styles.hinweis}>
+                            {mitRegeln
+                              ? t("anbieterwahl.regeln.laeuft")
+                              : t("modelle.verbindung.laeuft")}
+                          </p>
+                        )}
+                        {testOk && (
+                          <TestErgebnis art="ok" titel={t("anbieterwahl.test.ok")}>
+                            {testOk}
+                          </TestErgebnis>
+                        )}
+                        {testFehler && (
+                          <TestErgebnis art="fehler" titel={t("anbieterwahl.test.fehler")}>
+                            {testFehler}
+                          </TestErgebnis>
+                        )}
+                        {regelErgebnisse && regelErgebnisse.length > 0 && (
+                          <ul className={styles.regelErgebnisse}>
+                            {regelErgebnisse.map((r) => (
+                              <li key={r.name}>
+                                <span className={styles.regelSymbol} data-ok={r.ok || undefined}>
+                                  <Icon name={r.ok ? "check" : "warnung"} />
+                                </span>
+                                <span>
+                                  <strong>
+                                    {r.ok
+                                      ? t("anbieterwahl.regel.ok", { name: r.name })
+                                      : t("anbieterwahl.regel.nicht_ok", { name: r.name })}
+                                  </strong>{" "}
+                                  {r.ok
+                                    ? (r.herkunft ?? "")
+                                    : [r.text, r.ausweg].filter(Boolean).join(" ")}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -505,10 +738,39 @@ export function Einrichtung({
                     tabIndex={-1}
                     className={styles.titel}
                   >
-                    {t("einrichtung.modell.label")}
+                    {mitRegeln ? t("anbieterwahl.regel.titel") : t("einrichtung.modell.label")}
                   </h1>
-                  <p className={styles.text}>{t("einrichtung.modell.text")}</p>
-                  {modelle && modelle.length > 0 ? (
+                  <p className={styles.text}>
+                    {mitRegeln ? t("anbieterwahl.regel.text") : t("einrichtung.modell.text")}
+                  </p>
+                  {mitRegeln ? (
+                    <fieldset className={styles.modelle} aria-describedby={`${modellGruppe}f`}>
+                      <legend className={styles.unsichtbar}>
+                        {t("anbieterwahl.regel.liste", { anbieter })}
+                      </legend>
+                      {okRegeln.map((name) => (
+                        <label
+                          key={name}
+                          className={styles.modell}
+                          data-gewaehlt={regel === name || undefined}
+                        >
+                          <input
+                            type="radio"
+                            name="ruleName"
+                            value={name}
+                            checked={regel === name}
+                            onChange={() => setRegel(name)}
+                          />
+                          <span className={styles.modellText}>
+                            <strong>{name}</strong>
+                            <span>
+                              {regelErgebnisse?.find((r) => r.name === name)?.herkunft ?? ""}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : modelle && modelle.length > 0 ? (
                     <fieldset className={styles.modelle} aria-describedby={`${modellGruppe}f`}>
                       <legend className={styles.unsichtbar}>
                         {t("einrichtung.modell.liste", { anbieter })}
@@ -610,7 +872,7 @@ export function Einrichtung({
                   <span />
                 )}
                 <span className={styles.rechts}>
-                  {schritt === "schluessel" && (
+                  {schritt === "schluessel" && !eigenSpaeter && (
                     <Button art="leise" onClick={spaeterEintragen}>
                       {t("einrichtung.schluessel.ueberspringen")}
                     </Button>

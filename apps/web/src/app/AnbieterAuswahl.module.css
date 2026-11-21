@@ -1,0 +1,133 @@
+/**
+ * PaiBot – Stile der Anbieter-Auswahl.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.auswahl {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.legende {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.eintrag {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--radius-feld);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  transition: border-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.eintrag:hover {
+  border-color: var(--line-strong);
+}
+
+.eintrag[data-gewaehlt] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.kopf {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.kopf input {
+  accent-color: var(--accent);
+  margin: 3px 0 0;
+  flex: none;
+}
+
+.kopf input:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.titel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mehr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 25px;
+  min-width: 0;
+}
+
+.leise,
+.angabe {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.angabe {
+  margin: 0;
+}
+
+.konto {
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: 4px;
+}
+
+.link:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fehler {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--schrift-s);
+  font-weight: 500;
+}
+
+.unsichtbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

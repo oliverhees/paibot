@@ -120,6 +120,7 @@ export {
 } from "./zustaende/Footer";
 export { PruefErgebnis, type PruefErgebnisProps, type PruefPunkt } from "./zustaende/PruefErgebnis";
 export { type StatusArt, StatusChip, type StatusChipProps } from "./zustaende/StatusChip";
+export { TestErgebnis, type TestErgebnisProps } from "./zustaende/TestErgebnis";
 export {
   EmptyState,
   type EmptyStateProps,

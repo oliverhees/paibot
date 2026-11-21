@@ -1,0 +1,64 @@
+/**
+ * PaiBot – Stile des Test-Ergebnisses: Erfolg grün, Fehler rot, jeweils mit Symbol und Text.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.kasten {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--radius-feld);
+  border: 1px solid transparent;
+  color: var(--ink);
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+}
+
+.kasten[data-art="ok"] {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+}
+
+.kasten[data-art="fehler"] {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.symbol {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.kasten[data-art="ok"] .symbol {
+  color: var(--ok);
+}
+
+.kasten[data-art="fehler"] .symbol {
+  color: var(--danger);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kasten[data-art="ok"] strong {
+  color: var(--ok);
+}
+
+.kasten[data-art="fehler"] strong {
+  color: var(--danger);
+}

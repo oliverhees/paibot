@@ -72,6 +72,8 @@ export interface RunSetupOptions {
   motor: Motor;
   region?: Region;
   modelSlug?: string;
+  /** Vorlage des Anbieters (Standard `eigener`); `eurouter` für Routing-Regeln. */
+  templateKey?: "eurouter" | "mistral" | "eigener";
   schleuse?: SchleuseConnection;
   schleuseStatus?: () => Promise<SchleuseStatus>;
   tuning?: Partial<RunTuning>;
@@ -178,6 +180,7 @@ export async function setupRun<W extends ChainWriter>(
   await repo.providers.create(db, {
     id: providerId,
     name: "Test-Anbieter",
+    ...(options.templateKey === undefined ? {} : { templateKey: options.templateKey }),
     baseUrl: options.providerBaseUrl,
     apiKeyEnc: encryptSecret(options.providerKey, secretsKey, {
       aad: secretAad(providerSecretBinding(providerId, options.providerBaseUrl)),

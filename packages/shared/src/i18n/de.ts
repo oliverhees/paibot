@@ -1505,4 +1505,137 @@ export const de = {
   "nav.du.hilfe": "Hilfe",
   "nav.du.selbsttest": "Selbsttest",
   "nav.du.selbsttest.hinweis": "prüft deine Installation",
+
+  // Anbieter-Wahl, Routing-Regeln und Herkunft der Antwort
+  "anbieter.url.nicht_lokal":
+    "Diese Adresse liegt nicht auf deinem Rechner und nicht in deinem Netz. „Lokal“ geht nur für Adressen dort; für einen Dienst im Internet wähl einen anderen Ort und eine Adresse mit https.",
+  "modelle.anbieter.vorlage.mistral": "Vorlage Mistral AI (EU-Endpunkt)",
+  "herkunft.ueber": "über {anbieter}",
+  "herkunft.eigen": "{anbieter} · {ort} laut deiner Einstellung",
+  "herkunft.antwort": "Antwort von {unter} (laut {anbieter})",
+  "herkunft.antwort_sitz": "Antwort von {unter} · Sitz {land} laut {anbieter}",
+  "routingregel.nur_eurouter": "Routing-Regeln gibt es nur bei EUrouter.",
+  "routingregel.schluessel_fehlt.ausweg":
+    "Trag zuerst den Schlüssel für EUrouter ein, dann die Regel.",
+  "routingregel.fehler.regel_unbekannt":
+    "{anbieter} kennt keine eingeschaltete Regel mit dem Namen „{name}“.",
+  "routingregel.fehler.regel_unbekannt.ausweg":
+    "Prüf den Namen in deinem Konto bei {anbieter} unter „Routing“: Er muss genau gleich geschrieben sein, auch groß und klein. Ist die Regel ausgeschaltet, schalte sie dort ein.",
+  "routingregel.fehler.abgelehnt": "{anbieter} hat die Anfrage mit der Regel „{name}“ abgelehnt.",
+  "routingregel.fehler.abgelehnt.ausweg":
+    "Prüf die Regel in deinem Konto bei {anbieter}: Lässt sie überhaupt einen Anbieter zu?",
+  "routingregel.fehler.schluessel_ungueltig": "{anbieter} hat den Schlüssel nicht angenommen.",
+  "routingregel.fehler.schluessel_ungueltig.ausweg":
+    "Kopier den Schlüssel noch einmal aus deinem Konto bei {anbieter}.",
+  "routingregel.fehler.limit_erreicht":
+    "Bei {anbieter} ist ein Limit erreicht (Guthaben oder zu viele Anfragen).",
+  "routingregel.fehler.limit_erreicht.ausweg":
+    "Prüf dein Guthaben bei {anbieter} oder versuch es in ein paar Minuten noch einmal.",
+  "routingregel.fehler.anbieter_nicht_erreichbar": "{anbieter} ist gerade nicht erreichbar.",
+  "routingregel.fehler.anbieter_nicht_erreichbar.ausweg":
+    "Versuch es gleich noch einmal. Klappt es dauerhaft nicht, prüf die Internet-Verbindung deines Servers.",
+  "routingregel.liste_nicht":
+    "Bei {anbieter} wählst du keine Modelle aus einer Liste, sondern eine deiner Routing-Regeln.",
+  "routingregel.liste_nicht.ausweg":
+    "Trag unter „Routing-Regeln“ den Namen einer Regel aus deinem Konto ein.",
+  "modelle.nicht_lokal.ausweg":
+    "Wähl als Ort „EU“ oder „außerhalb der EU“ und eine Adresse mit https – oder trag eine Adresse auf deinem Rechner bzw. in deinem Netz ein.",
+  "anbieterwahl.eigen.spaeter":
+    "Einen eigenen oder lokalen Anbieter richtest du nach der Einrichtung unter „Modell und Anbieter“ ein.",
+  "anbieterwahl.regeln.leer":
+    "Trag mindestens eine Routing-Regel aus deinem Konto bei {anbieter} ein.",
+  "anbieterwahl.titel": "Anbieter wählen",
+  "anbieterwahl.text":
+    "Über einen Anbieter erreicht PaiBot ein Sprachmodell. Du kannst später weitere hinzufügen oder wechseln.",
+  "anbieterwahl.sprache": "Über wen soll ich mit einem Sprachmodell sprechen?",
+  "anbieterwahl.legende": "Welchen Anbieter möchtest du verbinden?",
+  "anbieterwahl.waehlen": "Wähl einen Anbieter aus.",
+  "anbieterwahl.eurouter.titel": "EUrouter",
+  "anbieterwahl.eurouter.text":
+    "Vermittelt Anfragen an verschiedene Anbieter. Du wählst eine deiner Routing-Regeln; welcher Anbieter geantwortet hat, zeigt PaiBot an jeder Antwort.",
+  "anbieterwahl.eurouter.zielgruppe":
+    "EUrouter richtet sein Angebot laut eigenen Bedingungen an Kunden, die beruflich oder geschäftlich handeln. Bitte lies die Bedingungen, bevor du ein Konto nutzt (Stand: {stand}).",
+  "anbieterwahl.mistral.titel": "Mistral AI (direkt)",
+  "anbieterwahl.mistral.text":
+    "Modelle von Mistral AI, verbunden über den EU-Endpunkt von Mistral.",
+  "anbieterwahl.mistral.aussage":
+    "Laut Mistral AI dient der EU-Endpunkt dazu, die Verarbeitung innerhalb der Europäischen Union zu unterstützen. Laut Mistral kostet er das 1,1-Fache, und die Verwaltung von Konto, Schlüsseln und Abrechnung ist nicht regional (Stand: {stand}).",
+  "anbieterwahl.mistral.training":
+    "Laut Mistral AI können im kostenlosen Plan Eingaben und Ausgaben zum Training genutzt werden; bei Bezahlung nach Verbrauch kannst du dem jederzeit widersprechen. Für Labs- und Vorschau-Modelle gilt der Widerspruch laut Mistral nicht (Stand: {stand}).",
+  "anbieterwahl.eigener.titel": "Eigener oder lokaler Anbieter",
+  "anbieterwahl.eigener.text":
+    "Ein Dienst mit OpenAI-kompatibler Schnittstelle, zum Beispiel auf deinem Rechner oder in deinem Netz.",
+  "anbieterwahl.eigen.titel": "Eigener Anbieter",
+  "anbieterwahl.konto": "Noch kein Konto? Hier anlegen",
+  "anbieterwahl.konto.neues_fenster": "(öffnet eine neue Seite)",
+  "anbieterwahl.empfehlung":
+    "(Empfehlungs-Link: Der Entwickler bekommt eine Provision, für dich kostet es nicht mehr.)",
+  "anbieterwahl.regeln.text":
+    "Trag deinen Schlüssel für {anbieter} und die Namen deiner Routing-Regeln ein. PaiBot bietet bei {anbieter} nur deine Regeln zur Wahl an, keine Liste einzelner Modelle.",
+  "anbieterwahl.regeln.legende": "Deine Routing-Regeln",
+  "anbieterwahl.regeln.wo":
+    "Die Namen findest du in deinem Konto bei {anbieter} unter „Routing“. Schreib sie genau so, auch groß und klein.",
+  "anbieterwahl.regeln.kosten":
+    "Für jede Regel schickt PaiBot eine sehr kleine echte Anfrage an ein Modell. Das kostet bei {anbieter} wenige Token.",
+  "anbieterwahl.regeln.pruefen": "Schlüssel und Regeln prüfen",
+  "anbieterwahl.regeln.laeuft": "Prüfe die Regeln …",
+  "anbieterwahl.regeln.ok": "{anzahl} von {von} Regeln geprüft.",
+  "anbieterwahl.regeln.keine_ok":
+    "Keine der Regeln ließ sich benutzen. Prüf die Namen in deinem Konto oder trag sie später ein.",
+  "anbieterwahl.regel.feld": "Name der Regel {nummer}",
+  "anbieterwahl.regel.entfernen": "Feld entfernen",
+  "anbieterwahl.regel.weitere": "Weitere Regel",
+  "anbieterwahl.regel.ok": "„{name}“ funktioniert.",
+  "anbieterwahl.regel.nicht_ok": "„{name}“ geht nicht.",
+  "anbieterwahl.regel.titel": "Routing-Regel wählen",
+  "anbieterwahl.regel.text":
+    "Mit dieser Regel arbeitet dein Bot. Wechseln kannst du sie jederzeit unter „Modell und Anbieter“.",
+  "anbieterwahl.regel.liste": "Geprüfte Routing-Regeln bei {anbieter}",
+  "anbieterwahl.regel.waehlen": "Wähl eine der geprüften Regeln.",
+  "anbieterwahl.test.ok": "Verbindung steht",
+  "anbieterwahl.test.fehler": "Verbindung fehlgeschlagen",
+  "anbieterwahl.gespeichert.regeln":
+    "{anbieter} ist gespeichert. Trag jetzt unter „Routing-Regeln“ den Namen einer deiner Regeln ein.",
+  "anbieterwahl.karte.titel": "Anbieter hinzufügen",
+  "anbieterwahl.karte.text":
+    "Verbinde einen weiteren Anbieter: EUrouter, Mistral AI oder einen eigenen bzw. lokalen Dienst.",
+  "anbieterwahl.karte.hinzufuegen": "Anbieter hinzufügen",
+  "anbieterwahl.karte.speichern": "Verbindung testen und speichern",
+  "anbieterwahl.keiner.text":
+    "Damit {name} antworten kann, füge unten unter „Anbieter hinzufügen“ einen Anbieter hinzu.",
+  "modelle.verbindung.ok_regel": "Der Schlüssel funktioniert; geprüft mit der Regel „{name}“.",
+  "modelle.verbindung.ok_ohne_regel":
+    "Der Anbieter ist erreichbar. Ob der Schlüssel stimmt, zeigt erst die Prüfung einer Routing-Regel.",
+  "herkunft.titel": "Herkunft",
+  "herkunft.keiner": "noch kein Anbieter",
+  "herkunft.eigen.text":
+    "Diesen Ort hast du selbst angegeben (laut deiner Einstellung); PaiBot prüft ihn nicht.",
+  "herkunft.eurouter.text":
+    "Welcher Anbieter eine Anfrage beantwortet, legt deine Routing-Regel bei {anbieter} fest. PaiBot zeigt an jeder Antwort, wer laut {anbieter} geantwortet hat, und dessen Sitz laut der Anbieter-Liste von {anbieter}.",
+  "regelkarte.titel": "Routing-Regel für {name}",
+  "regelkarte.text":
+    "Bei {anbieter} wählst du keine Modelle aus einer Liste, sondern eine deiner Routing-Regeln. Jede Regel prüft PaiBot vor dem Speichern.",
+  "regelkarte.leer.titel": "Noch keine Regel",
+  "regelkarte.leer.text":
+    "Trag unten den Namen einer Routing-Regel aus deinem Konto bei {anbieter} ein.",
+  "regelkarte.name.feld": "Name der Routing-Regel",
+  "regelkarte.name.leer": "Gib zuerst den Namen einer Regel ein.",
+  "regelkarte.hinzufuegen": "Regel prüfen und hinzufügen",
+  "regelkarte.ok.titel": "Regel „{name}“ funktioniert und ist gespeichert",
+  "regelkarte.ok.ohne_herkunft": "Die Antwort hat keinen Anbieter genannt.",
+  "regelkarte.fehler.titel": "Regel nicht gespeichert",
+  "regelkarte.entfernen": "Entfernen",
+  "regelkarte.entfernen.label": "Regel „{name}“ entfernen",
+  "regelkarte.entfernen.fehler": "Regel nicht entfernt",
+  "regelkarte.entfernt": "Regel „{name}“ entfernt",
+  "regelkarte.entfernt.bot": "{name} hat jetzt kein Modell. Wähl eine andere Regel.",
+  "regelkarte.wahl.fehler": "Nicht übernommen",
+  "regelkarte.eintrag.regel": "Routing-Regel",
+  "regelkarte.eintrag.alt": "früherer Eintrag",
+  "regelkarte.eintrag.alt.text":
+    "aus der früheren Modell-Liste; ohne Angabe, wohin die Regel routet",
+  "regelkarte.alt.hinweis":
+    "{name} benutzt noch einen früheren Eintrag aus der Modell-Liste von {anbieter}. Er funktioniert weiter. Stell auf eine Routing-Regel um: Trag unten ihren Namen ein und übernimm sie.",
+  "schleuse.hinweis.direkt_neutral": "direkt an den Anbieter",
+  "anbieterwahl.bedingungen": "Bedingungen des Anbieters",
 } as const satisfies Record<string, string | readonly string[]>;

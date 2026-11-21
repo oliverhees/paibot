@@ -30,6 +30,7 @@ import {
   TEST_ORIGIN,
   TEST_PASSWORT,
   TEST_SCHLUESSEL,
+  TEST_VORLAGEN_URL,
   type TestUmgebung,
   testUmgebung,
   vorabDose,
@@ -318,6 +319,27 @@ async function mitAntwort(): Promise<Stand & { unterhaltung: string }> {
   return s;
 }
 
+/** Eingerichtet, dazu EUrouter (Vorlage im Test lokal) mit Schlüssel. */
+async function mitEurouter(): Promise<Stand> {
+  const s = await einrichten();
+  await rufe(s, "anbieterAnlegen", {
+    koerper: {
+      templateKey: "eurouter",
+      name: "EUrouter",
+      baseUrl: TEST_VORLAGEN_URL,
+      region: "local",
+      apiKey: TEST_SCHLUESSEL,
+    },
+  });
+  return s;
+}
+
+async function eurouterId(s: Stand): Promise<string> {
+  const p = (await repo.providers.list(s.u.db)).find((a) => a.templateKey === "eurouter");
+  if (p === undefined) throw new Error("kein EUrouter");
+  return p.id;
+}
+
 async function anbieterId(s: Stand): Promise<string> {
   const [p] = await repo.providers.list(s.u.db);
   if (p === undefined) throw new Error("kein Anbieter");
@@ -492,6 +514,31 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
   anbieterModelle: {
     vorher: einrichten,
     aufruf: async (s) => ({ params: { id: await anbieterId(s) } }),
+  },
+  anbieterRegelHinzufuegen: {
+    vorher: mitEurouter,
+    aufruf: async (s) => ({
+      params: { id: await eurouterId(s) },
+      koerper: { name: "EU Beispiel" },
+    }),
+  },
+  anbieterRegelEntfernen: {
+    vorher: async () => {
+      const s = await mitEurouter();
+      await rufe(s, "anbieterRegelHinzufuegen", {
+        params: { id: await eurouterId(s) },
+        koerper: { name: "EU Beispiel" },
+      });
+      return s;
+    },
+    aufruf: async (s) => {
+      const id = await eurouterId(s);
+      const regel = (await repo.models.list(s.u.db, { providerId: id as never })).find(
+        (m) => m.slug === "rule:EU Beispiel",
+      );
+      if (regel === undefined) throw new Error("keine Regel");
+      return { params: { id, modellId: regel.id } };
+    },
   },
   notausUmschalten: { vorher: einrichten, aufruf: async () => ({ koerper: { on: true } }) },
   unterhaltungExport: {

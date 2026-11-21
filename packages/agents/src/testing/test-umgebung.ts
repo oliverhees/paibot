@@ -128,6 +128,8 @@ export interface ModelAccessOptions {
   apiKey: string;
   /** Name des Modells beim Anbieter. */
   slug?: string;
+  /** Vorlage des Anbieters (Standard `eigener`); `eurouter` für Routing-Regeln. */
+  templateKey?: ModelChoice["provider"]["templateKey"];
   /** Grund-`fetch` unter der Ausgangs-Liste. */
   baseFetch?: typeof fetch;
   receipts?: MemoryReceipts;
@@ -159,7 +161,7 @@ export function modelAccess(options: ModelAccessOptions): ModelAccess {
   const choice: ModelChoice = {
     provider: {
       id: providerId,
-      templateKey: "eigener",
+      templateKey: options.templateKey ?? "eigener",
       baseUrl: options.baseUrl,
       region: "local",
       apiKeyEnc: encryptSecret(options.apiKey, secretsKey, {

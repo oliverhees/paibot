@@ -13,8 +13,9 @@ import { type Database, repo } from "@paibot/db";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { ConversationEvent } from "@paibot/shared/ereignisse";
 import type { ConversationId, ModelId } from "@paibot/shared/ids";
-import type { Conversation, Settings } from "@paibot/shared/objekte";
+import type { Conversation, Provider, Settings } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
+import { anbieterHerkunft, type UnterAnbieterListe } from "../modelle/herkunft";
 import type {
   BelegKurz,
   ChatBereitschaft,
@@ -171,13 +172,21 @@ export async function modellInfo(db: Database, modelId: ModelId): Promise<Modell
   const modell = await repo.models.get(db, modelId);
   if (modell === undefined) return undefined;
   const anbieter = await repo.providers.get(db, modell.providerId);
-  return { name: modell.displayName, region: anbieter?.region ?? "eu" };
+  return modellInfoVon(modell.displayName, anbieter);
+}
+
+/** Name und belegbare Herkunft; ohne Anbieter nur der Name (nie eine angenommene Region). */
+function modellInfoVon(name: string, anbieter: Provider | undefined): ModellInfo {
+  if (anbieter === undefined) return { name };
+  const kurz = { name: anbieter.name, templateKey: anbieter.templateKey, region: anbieter.region };
+  return { name, herkunft: anbieterHerkunft(kurz), anbieter: kurz };
 }
 
 /** Kann der Bot antworten? Modell, Schlüssel, Datenschleuse und Zeitzone für die Oberfläche. */
 export async function ladeBereitschaft(
   db: Database,
   schleuseInstalliert: boolean,
+  unterAnbieter?: (anbieter: Provider) => Promise<UnterAnbieterListe | undefined>,
 ): Promise<ChatBereitschaft> {
   const settings = await repo.settings.get(db);
   const bot = await repo.bots.getDefault(db);
@@ -187,7 +196,7 @@ export async function ladeBereitschaft(
     const m = await repo.models.get(db, bot.modelId);
     if (m !== undefined) {
       const anbieter = await repo.providers.get(db, m.providerId);
-      modell = { name: m.displayName, region: anbieter?.region ?? "eu" };
+      modell = modellInfoVon(m.displayName, anbieter);
       schluessel = anbieter?.keySet === true || anbieter?.region === "local";
     }
   }
@@ -196,14 +205,20 @@ export async function ladeBereitschaft(
   for (const m of await repo.models.list(db, { enabledOnly: true })) {
     const p = anbieter.get(m.providerId);
     if (p === undefined || !p.enabled || !(p.keySet || p.region === "local")) continue;
-    waehlbar.push({ id: m.id, name: m.displayName, region: p.region });
+    waehlbar.push({ id: m.id, ...modellInfoVon(m.displayName, p) });
   }
+  const eurouter = [...anbieter.values()].find((p) => p.templateKey === "eurouter");
+  const liste =
+    eurouter === undefined || unterAnbieter === undefined
+      ? undefined
+      : await unterAnbieter(eurouter);
   return {
     ...(bot?.modelId === undefined ? {} : { modellId: bot.modelId }),
     waehlbar,
     botName: bot?.name ?? t("einrichtung.bot.vorschlag"),
     botFarbe: bot?.color ?? "limette",
     ...(modell === undefined ? {} : { modell }),
+    ...(liste === undefined ? {} : { unterAnbieter: liste }),
     schluessel,
     schleuseInstalliert,
     schleuseStandard: settings?.schleuseModeDefault ?? "off",

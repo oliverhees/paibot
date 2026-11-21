@@ -132,19 +132,18 @@ describe("Navigation", () => {
     expect(botAktiv("/belege", false)).toBe(false);
   });
 
-  it("die Herkunft der Modelle folgt der Region des Anbieters", () => {
-    expect(modelleHerkunft("eu")).toBe("EU");
-    expect(modelleHerkunft("local")).toBe("lokal");
-    expect(modelleHerkunft("non_eu")).toBe("außerhalb der EU");
+  it("die Herkunft der Modelle ist die belegbare Angabe zum Anbieter, nie eine angenommene Region", () => {
+    expect(modelleHerkunft("über EUrouter")).toBe("über EUrouter");
     expect(modelleHerkunft(undefined)).toBe(t("navigation.modelle.keine"));
     expect(modelleHerkunft(undefined)).not.toBe("EU");
   });
 
-  it("der Rahmen nimmt die Herkunft aus der Region, nie fest „EU“", () => {
+  it("der Rahmen nimmt die Herkunft aus anbieterHerkunft, nie aus der Region", () => {
     const rahmen = readFileSync(path.join(APP, "AppRahmen.tsx"), "utf8");
     expect(rahmen).not.toContain('t("modelle.region.eu")');
-    expect(rahmen).toContain("modelleHerkunft(region)");
+    expect(rahmen).toContain("modelleHerkunft(herkunft)");
     const layout = readFileSync(path.join(APP, "layout.tsx"), "utf8");
-    expect(layout).toMatch(/modellVon\(db, bot\)\)\?\.region/);
+    expect(layout).toMatch(/modellVon\(db, bot\)\)\?\.herkunft/);
+    expect(layout).not.toMatch(/\?\.region/);
   });
 });

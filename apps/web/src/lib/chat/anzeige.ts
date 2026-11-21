@@ -11,7 +11,7 @@
  */
 
 import type { ErrorCode } from "@paibot/shared/fehler";
-import type { Region, Route } from "@paibot/shared/objekte";
+import type { Route } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 
 /** Längster Titel, der aus der ersten Nachricht entsteht. */
@@ -99,10 +99,11 @@ export function belegAdresse(id: string): string {
 }
 
 /** Weg der Anfrage für die Zeile unter der Antwort. */
-export function wegAngabe(
-  route: Route,
-  region: Region,
-): { modus: "direkt" | "schleuse"; text: string; kurz: string } {
+export function wegAngabe(route: Route): {
+  modus: "direkt" | "schleuse";
+  text: string;
+  kurz: string;
+} {
   if (route === "schleuse") {
     return {
       modus: "schleuse",
@@ -112,10 +113,8 @@ export function wegAngabe(
   }
   return {
     modus: "direkt",
-    text:
-      region === "eu"
-        ? t("schleuse.hinweis.direkt")
-        : t("chat.weg.direkt", { region: t(`modelle.region.${region}`) }),
+    // Nur der Weg; wer geantwortet hat und woher, steht im Teil „Modell“ der Zeile.
+    text: t("schleuse.hinweis.direkt_neutral"),
     kurz: t("chat.weg.kurz.direkt"),
   };
 }

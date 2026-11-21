@@ -19,7 +19,13 @@ import { PaiBotError } from "@paibot/shared/fehler";
 import { newId, type ProviderId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { anfrage, Keksdose, TEST_MODELLE, TEST_SCHLUESSEL } from "../zugang/testing";
+import {
+  anfrage,
+  Keksdose,
+  TEST_MODELLE,
+  TEST_SCHLUESSEL,
+  TEST_VORLAGEN_URL,
+} from "../zugang/testing";
 import { adresseGeaendert, pruefeAdresse, verbindungsFehler } from "./anbieter";
 import {
   belegeAlsText,
@@ -334,8 +340,8 @@ describe("PUT /api/anbieter/:id", () => {
       koerper: {
         templateKey: "eurouter",
         name: "EUrouter",
-        baseUrl: "https://api.eurouter.ai/v1",
-        region: "eu",
+        baseUrl: TEST_VORLAGEN_URL,
+        region: "local",
         apiKey: TEST_SCHLUESSEL,
       },
     });
@@ -379,6 +385,7 @@ describe("Prüfung der Adresse (jede Problem-Art hat einen Satz)", () => {
     private_adresse: ["https://192.168.1.10/v1", "eu"],
     port: ["https://api.example.com:9000/v1", "eu"],
     zugangsdaten_in_url: ["https://a:b@api.example.com/v1", "eu"],
+    nicht_lokal: ["http://8.8.8.8:11434/v1", "local"],
   };
   it.each(BASE_URL_PROBLEMS)("%s", (problem) => {
     const [baseUrl, region] = faelle[problem];

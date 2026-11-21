@@ -21,7 +21,7 @@ Seit:      2026-11-07
 </p>
 
 <p align="center">
-  <b>Dein persönliches KI-Team – auf deinem Server oder Rechner, mit EU-Modellen und zuschaltbarer Datenschleuse.</b><br>
+  <b>Dein persönliches KI-Team – auf deinem Server oder Rechner, mit dem Anbieter deiner Wahl und zuschaltbarer Datenschleuse.</b><br>
   Der Code ist öffentlich. Und du entscheidest mit, was als Nächstes kommt.
 </p>
 
@@ -89,7 +89,7 @@ Alle Bilder entstehen per Skript aus der App, nicht von Hand (`pnpm doku:app -- 
 
 **PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für eine Person. Heute chattest du mit deinem Bot, und jede seiner Aktionen läuft durch ein Tor mit festen Regeln und bekommt einen Beleg. Das Ziel ist mehr als ein einzelner Chatbot: ein ganzes Team aus Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten (geplant, siehe [Roadmap](#roadmap)).
 
-PaiBot läuft **bei dir** auf deinem eigenen Server (mit Docker Compose, auch auf dem eigenen Rechner), nutzt **Modelle aus der EU** (eigene Anbieter, auch ein lokales Modell auf deinem Rechner, legst du in der Oberfläche an), und eine zuschaltbare **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
+PaiBot läuft **bei dir** auf deinem eigenen Server (mit Docker Compose, auch auf dem eigenen Rechner), verbindet sich mit dem **Anbieter deiner Wahl** (Mistral AI über dessen EU-Endpunkt, EUrouter mit deinen Routing-Regeln oder ein eigener bzw. lokaler Dienst) und zeigt an jeder Antwort, wer laut Anbieter geantwortet hat; dazu eine zuschaltbare **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
 
 <p align="center">
   <img src="docs/assets/idee.jpg" alt="Die Idee: Problem, Lösung, Bauplan" width="90%">
@@ -99,14 +99,14 @@ PaiBot läuft **bei dir** auf deinem eigenen Server (mit Docker Compose, auch au
 
 Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa, laufen in fremden Clouds oder bekommen weitreichende Rechte auf deinem System. PaiBot geht einen anderen Weg:
 
-|                  | PaiBot                                                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                              |
-| **Welche KI?**   | EU-Modelle über EUrouter; eigene, OpenAI-kompatible Anbieter (auch auf dem eigenen Rechner) legst du in der Oberfläche an            |
-| **Deine Daten**  | zuschaltbare Datenschleuse: Namen, E-Mails, IBANs werden vor dem Modell maskiert und in der Antwort zurückgetauscht                  |
-| **Rechte**       | jede Aktion läuft durch ein Tor mit festen Regeln ohne KI und bekommt einen Beleg; Werkzeuge mit eigenen Rechten je Bot sind geplant |
-| **Kontrolle**    | Belege zu jeder Aktion, im Browser prüfbar; eine Freigabe vor Aktionen, die etwas nach außen schicken, ist geplant                   |
-| **Transparenz**  | Code öffentlich einsehbar, jede Folge als nachbaubarer Stand                                                                         |
+|                  | PaiBot                                                                                                                                                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                                                                                                           |
+| **Welche KI?**   | Mistral AI (EU-Endpunkt laut Mistral), EUrouter mit deinen Routing-Regeln oder ein eigener, OpenAI-kompatibler Anbieter (auch auf dem eigenen Rechner); an jeder Antwort steht, wer laut Anbieter geantwortet hat |
+| **Deine Daten**  | zuschaltbare Datenschleuse: Namen, E-Mails, IBANs werden vor dem Modell maskiert und in der Antwort zurückgetauscht                                                                                               |
+| **Rechte**       | jede Aktion läuft durch ein Tor mit festen Regeln ohne KI und bekommt einen Beleg; Werkzeuge mit eigenen Rechten je Bot sind geplant                                                                              |
+| **Kontrolle**    | Belege zu jeder Aktion, im Browser prüfbar; eine Freigabe vor Aktionen, die etwas nach außen schicken, ist geplant                                                                                                |
+| **Transparenz**  | Code öffentlich einsehbar, jede Folge als nachbaubarer Stand                                                                                                                                                      |
 
 ## Funktionen
 
@@ -278,7 +278,7 @@ Ja, wenn du es allein nutzt: als Selbstständiger, als Freiberufler oder für de
 <details>
 <summary><b>Was unterscheidet PaiBot?</b></summary>
 
-PaiBot setzt diese Schwerpunkte: KI-Modelle aus der EU als Standard, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, ein Tor mit festen Regeln und ein Beleg für jede Aktion, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut. Geplant sind lokale Modelle in der Oberfläche und eine eigene Anbindung von Apps per MCP.
+PaiBot setzt diese Schwerpunkte: Anbieter mit Sitz oder Endpunkt in Europa zur Auswahl und eine ehrliche Angabe, wer eine Antwort geliefert hat (nur, was der Anbieter selbst meldet), eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, ein Tor mit festen Regeln und ein Beleg für jede Aktion, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut. Geplant sind lokale Modelle in der Oberfläche und eine eigene Anbindung von Apps per MCP.
 </details>
 
 <details>

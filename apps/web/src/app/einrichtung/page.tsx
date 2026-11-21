@@ -28,6 +28,7 @@ export default async function EinrichtungSeite() {
   return (
     <Einrichtung
       anbieter={status.anbieter}
+      wahl={status.wahl}
       passwortMin={status.passwortMin}
       botVorschlag={status.botVorschlag}
       schleuseInstalliert={status.schleuseInstalliert}

@@ -28,6 +28,7 @@ export {
   ResponseTooLargeError,
 } from "./pinned-fetch";
 export * from "./route";
+export * from "./routing-rules";
 export * from "./schleuse";
 export * from "./schleuse-zugang";
 export * from "./schluessel";

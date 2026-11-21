@@ -81,6 +81,14 @@ export function toMessage(row: MessageRow): Message {
     ...wennGesetzt("tokensIn", row.tokensIn),
     ...wennGesetzt("tokensOut", row.tokensOut),
     ...wennGesetzt("errorCode", alsFehlercode(row.errorCode)),
+    ...(row.servedProvider === null && row.servedModel === null
+      ? {}
+      : {
+          servedBy: {
+            ...wennGesetzt("provider", row.servedProvider),
+            ...wennGesetzt("model", row.servedModel),
+          },
+        }),
     createdAt: toIsoTime(row.createdAt),
   };
 }

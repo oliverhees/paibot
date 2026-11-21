@@ -10,7 +10,7 @@
  */
 
 import { type DerivedKey, deriveKey, loadMasterSecret } from "@paibot/crypto";
-import { PROVIDER_TEMPLATES } from "@paibot/llm";
+import { classifyIpAddress, isIpAddress, PROVIDER_TEMPLATES } from "@paibot/llm";
 import type { ProviderTemplateKey, Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { vertrautProxy } from "./kopfzeilen";
@@ -34,6 +34,49 @@ export interface EinrichtungsAnbieter {
 
 /** Name der Umgebungsvariable für einen anderen Anbieter in der Einrichtung (Tests, eigene Dienste). */
 export const EINRICHTUNG_ANBIETER_ENV = "PAIBOT_EINRICHTUNG_ANBIETER_URL";
+
+/**
+ * Nur für Tests und Doku-Bilder: Adresse im eigenen Rechner oder Netz, unter der die Vorlagen
+ * (EUrouter, Mistral) stattdessen erreicht werden, z. B. der Test-Anbieter. Eine Adresse außerhalb
+ * des eigenen Netzes wird nicht angenommen.
+ */
+export const VORLAGEN_TESTADRESSE_ENV = "PAIBOT_VORLAGEN_TESTADRESSE";
+
+/** Vorlagen, die die Auswahl anbietet. */
+export type VorlagenSchluessel = keyof typeof PROVIDER_TEMPLATES;
+
+/**
+ * Anbieter einer Vorlage: Name, Adresse und Ort aus `PROVIDER_TEMPLATES`. Mit
+ * `PAIBOT_VORLAGEN_TESTADRESSE` (nur lokal) zeigt die Vorlage auf diese Adresse, Ort `local`.
+ */
+export function vorlageAnbieter(schluessel: VorlagenSchluessel, env: Env): EinrichtungsAnbieter {
+  const vorlage = PROVIDER_TEMPLATES[schluessel];
+  const test = env[VORLAGEN_TESTADRESSE_ENV]?.trim();
+  if (test) {
+    try {
+      const url = new URL(test);
+      const host = url.hostname.replace(/^\[|\]$/g, "");
+      const lokal =
+        host === "localhost" || (isIpAddress(host) && classifyIpAddress(host) === "privat");
+      if (lokal) {
+        return {
+          templateKey: schluessel,
+          name: vorlage.name,
+          baseUrl: url.href.replace(/\/+$/, ""),
+          region: "local",
+        };
+      }
+    } catch {
+      // Ungültige Angabe: die echte Vorlage.
+    }
+  }
+  return {
+    templateKey: schluessel,
+    name: vorlage.name,
+    baseUrl: vorlage.baseUrl,
+    region: vorlage.region,
+  };
+}
 
 /**
  * Origin der App aus `APP_URL`, z. B. `https://paibot.example.de`. `undefined`, wenn die Variable
@@ -121,13 +164,7 @@ export function einrichtungsAnbieter(env: Env): EinrichtungsAnbieter {
       // Ungültige Angabe: EUrouter wie ohne Variable.
     }
   }
-  const vorlage = PROVIDER_TEMPLATES.eurouter;
-  return {
-    templateKey: "eurouter",
-    name: vorlage.name,
-    baseUrl: vorlage.baseUrl,
-    region: vorlage.region,
-  };
+  return vorlageAnbieter("eurouter", env);
 }
 
 /** Ergebnis der Prüfung von `APP_URL` beim Start in Produktion. */

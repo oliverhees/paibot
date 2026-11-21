@@ -27,10 +27,14 @@
     ],
     "einrichtung-bis-schluessel": [
       {
-        "ablauf": "einrichtung-bis-passwort"
+        "ablauf": "einrichtung-bis-anbieter"
       },
       {
-        "ablauf": "einrichtung-passwort-eingeben"
+        "klick": {
+          "rolle": "radio",
+          "name": "Eigener oder lokaler Anbieter",
+          "genau": false
+        }
       },
       {
         "klick": {
@@ -142,12 +146,19 @@
     ],
     "eigen-formular-lokal": [
       {
-        "zeige": "section:has(h2:text-is('Eigener Anbieter'))"
+        "zeige": "section:has(h2:text-is('Anbieter hinzufügen'))"
       },
       {
         "klick": {
           "rolle": "button",
-          "name": "Eigenen Anbieter hinzufügen"
+          "name": "Anbieter hinzufügen"
+        }
+      },
+      {
+        "klick": {
+          "rolle": "radio",
+          "name": "Eigener oder lokaler Anbieter",
+          "genau": false
         }
       },
       {
@@ -189,6 +200,89 @@
       },
       {
         "warteAufText": "Die Liste kommt direkt von Dienst auf meinem Rechner"
+      }
+    ],
+    "einrichtung-bis-anbieter": [
+      {
+        "ablauf": "einrichtung-bis-passwort"
+      },
+      {
+        "ablauf": "einrichtung-passwort-eingeben"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Anbieter wählen"
+      }
+    ],
+    "einrichtung-eurouter-regeln": [
+      {
+        "ablauf": "einrichtung-bis-anbieter"
+      },
+      {
+        "klick": {
+          "rolle": "radio",
+          "name": "EUrouter",
+          "genau": false
+        }
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Deine Routing-Regeln"
+      },
+      {
+        "tippe": {
+          "beschriftung": "Schlüssel für EUrouter"
+        },
+        "text": "$anbieter-schluessel"
+      },
+      {
+        "tippe": "Name der Regel 1",
+        "text": "EU Beispiel"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weitere Regel"
+        }
+      },
+      {
+        "tippe": "Name der Regel 2",
+        "text": "Gibt es nicht"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Schlüssel und Regeln prüfen"
+        }
+      },
+      {
+        "warteAufText": "1 von 2 Regeln geprüft."
+      }
+    ],
+    "eurouter-anzeigen": [
+      {
+        "klick": {
+          "css": "select[name=anbieter]"
+        }
+      },
+      {
+        "taste": "ArrowDown"
+      },
+      {
+        "taste": "Enter"
+      },
+      {
+        "warteAufText": "Routing-Regel für"
       }
     ]
   },
@@ -266,6 +360,99 @@
         }
       ],
       "beschreibung": "Einrichtung, Schritt 2 im hellen Design: erst ein Feld ausgefüllt, Prüfliste halb erfüllt"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "name": "einrichtung-anbieter",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-anbieter"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 3: Anbieter wählen (EUrouter, Mistral AI, eigener oder lokaler Anbieter)"
+    },
+    {
+      "breite": 390,
+      "hoehe": 844,
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "name": "einrichtung-anbieter-handy",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-anbieter"
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Mistral AI",
+            "genau": false
+          }
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 3 auf dem Handy: Mistral AI gewählt, mit den Angaben laut Mistral"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "name": "einrichtung-regeln",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-eurouter-regeln"
+        },
+        {
+          "zeige": "button:has-text('Weiter')"
+        }
+      ],
+      "beschreibung": "Einrichtung mit EUrouter: Schlüssel und zwei Regel-Namen geprüft, eine funktioniert, eine nicht"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "name": "einrichtung-regel",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-eurouter-regeln"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Weiter"
+          }
+        },
+        {
+          "warteAufText": "Routing-Regel wählen"
+        }
+      ],
+      "beschreibung": "Einrichtung mit EUrouter: geprüfte Regel wählen, mit dem Anbieter, der geantwortet hat"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "name": "einrichtung-regeln-hell",
+      "thema": "hell",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-eurouter-regeln"
+        },
+        {
+          "zeige": "button:has-text('Weiter')"
+        }
+      ],
+      "beschreibung": "Einrichtung mit EUrouter im hellen Design: Ergebnis der Prüfung"
     },
     {
       "breite": 1440,
@@ -756,7 +943,7 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "direkt · lokal",
+            "name": "direkt an den Anbieter",
             "genau": false
           }
         },
@@ -2712,7 +2899,7 @@
           "warteAufText": "Dienst auf meinem Rechner ist gespeichert."
         },
         {
-          "zeige": "section:has(h2:text-is('Eigener Anbieter'))"
+          "zeige": "section:has(h2:text-is('Anbieter'))"
         }
       ],
       "beschreibung": "Eigener Anbieter gespeichert (Verbindung getestet)"
@@ -2842,6 +3029,173 @@
         }
       ],
       "beschreibung": "Eigener Anbieter entfernt; der erste Anbieter ist wieder allein"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-anbieter-wahl",
+      "vorher": [
+        {
+          "zeige": "section:has(h2:text-is('Anbieter hinzufügen'))"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anbieter hinzufügen"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "EUrouter",
+            "genau": false
+          }
+        },
+        {
+          "zeige": "section:has(h2:text-is('Anbieter hinzufügen'))"
+        }
+      ],
+      "beschreibung": "Anbieter hinzufügen: Auswahl mit EUrouter gewählt, Feld für den Schlüssel"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-regel-hinzugefuegt",
+      "vorher": [
+        {
+          "zeige": "section:has(h2:text-is('Anbieter hinzufügen'))"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anbieter hinzufügen"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "EUrouter",
+            "genau": false
+          }
+        },
+        {
+          "tippe": {
+            "beschriftung": "Neuer Schlüssel für EUrouter",
+            "genau": false
+          },
+          "text": "$anbieter-schluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Verbindung testen und speichern"
+          }
+        },
+        {
+          "warteAufText": "Trag jetzt unter"
+        },
+        {
+          "tippe": "Name der Routing-Regel",
+          "text": "EU Beispiel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Regel prüfen und hinzufügen"
+          }
+        },
+        {
+          "warteAufText": "funktioniert und ist gespeichert"
+        }
+      ],
+      "beschreibung": "EUrouter hinzugefügt, Regel „EU Beispiel“ geprüft und gespeichert, mit dem Anbieter, der geantwortet hat"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-regel-unbekannt",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "tippe": "Name der Routing-Regel",
+          "text": "Gibt es nicht"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Regel prüfen und hinzufügen"
+          }
+        },
+        {
+          "warteAufText": "Regel nicht gespeichert"
+        }
+      ],
+      "beschreibung": "Unbekannte Regel: rote Meldung mit Ausweg, nichts gespeichert"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "name": "modelle-regel-handy",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "zeige": "section:has(h2:has-text('Routing-Regel für'))"
+        }
+      ],
+      "beschreibung": "Routing-Regel auf dem Handy"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-eurouter-entfernt",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schlüssel entfernen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Entfernen"
+          }
+        },
+        {
+          "warteAufText": "EUrouter ist entfernt."
+        }
+      ],
+      "beschreibung": "EUrouter wieder entfernt; der erste Anbieter ist wieder allein"
     },
     {
       "name": "modelle-entfernen",

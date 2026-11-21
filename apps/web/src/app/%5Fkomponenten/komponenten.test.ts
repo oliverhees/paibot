@@ -151,8 +151,10 @@ describe("Komponenten", () => {
       }),
     );
     expect(aus).toContain("B-0142");
-    expect(aus).toContain("direkt · EU");
+    // Ohne eigenen Text nur der Weg; die Region kommt aus der Angabe am Modell (hier Beispiel-Daten).
+    expect(aus).toContain("direkt an den Anbieter");
     expect(aus).toContain("Beispiel-Modell Groß");
+    expect(aus).toContain("EU");
     expect(aus).toContain('aria-expanded="false"');
   });
 

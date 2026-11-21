@@ -27,6 +27,7 @@ import {
   isoTimeSchema,
   positiveIntSchema,
   publicKeySchema,
+  servedBySchema,
   sha256DigestSchema,
   signatureSchema,
   tokenUsageSchema,
@@ -88,6 +89,8 @@ export const receiptResultSchema = z.strictObject({
   /** Prüfsumme der Antwort bzw. des Ergebnisses. */
   digest: hmacDigestSchema.optional(),
   tokens: tokenUsageSchema.optional(),
+  /** Wer laut Antwort der Schnittstelle geantwortet hat (nur `modell.anfragen`, wenn gemeldet). */
+  servedBy: servedBySchema.optional(),
 });
 export type ReceiptResult = z.infer<typeof receiptResultSchema>;
 

@@ -10,7 +10,6 @@
  * @since     2026-11-21
  */
 
-import type { Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import type { IconName } from "@paibot/ui";
 
@@ -145,10 +144,10 @@ export function botAktiv(pfad: string, inUnterhaltung: boolean): boolean {
 }
 
 /**
- * Herkunft der Modelle für die Seitenleiste („Modelle: …“), abgeleitet aus der Region des
- * Anbieters, über den der Bot gerade sein Modell bezieht. Ohne Anbieter steht dort, dass noch
- * keiner verbunden ist – nie eine angenommene Region.
+ * Herkunft der Modelle für die Seitenleiste („Modelle: …“): die belegbare Angabe zum Anbieter des
+ * gewählten Modells (`anbieterHerkunft`, z. B. „über EUrouter“ oder „… laut deiner Einstellung“).
+ * Ohne Anbieter steht dort, dass noch keiner verbunden ist – nie eine angenommene Region.
  */
-export function modelleHerkunft(region: Region | undefined): string {
-  return region === undefined ? t("navigation.modelle.keine") : t(`modelle.region.${region}`);
+export function modelleHerkunft(herkunft: string | undefined): string {
+  return herkunft ?? t("navigation.modelle.keine");
 }

@@ -18,13 +18,15 @@ Wer eine neue Installation im Internet zuerst erreicht, könnte sonst das Passwo
 
 ## So benutzt du es
 
-Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist dort der Test-Anbieter von PaiBot auf dem eigenen Rechner verbunden; deshalb steht als Name des Anbieters die Adresse `127.0.0.1:18080` und die Modelle heißen „Beispiel-Modell …“. Bei dir steht dort EUrouter mit seinen Modellen.
+Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist dort der Test-Anbieter von PaiBot auf dem eigenen Rechner verbunden; die Modelle heißen „Beispiel-Modell …“, die Routing-Regel „EU Beispiel“. Bei dir stehen dort dein Anbieter, deine Modelle bzw. deine Regeln.
 
 ### Einrichten
 
+Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel „Später eintragen“), zählt er trotzdem mit; die Zählung springt nicht.
+
 1. Starte PaiBot (siehe [Installation](installation.md)) und öffne die Adresse im Browser. Du landest automatisch auf der Seite „Einrichtung“.
 
-   ![Einrichtung, Schritt 1 von 5 im dunklen Design: Pai begrüßt dich, rechts drei Versprechen und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf das Log](assets/screenshots/einrichtung-code.png)
+   ![Einrichtung, Schritt 1 von 7 im dunklen Design: Pai begrüßt dich, rechts drei Versprechen und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf das Log](assets/screenshots/einrichtung-code.png)
 
 2. Suche den Einrichtungs-Code im Log:
    - Docker Compose: `docker compose logs web | grep Einrichtungs-Code`
@@ -42,37 +44,58 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
 
 4. Lege dein Passwort fest: mindestens 12 Zeichen, zweimal gleich eingegeben. Die Liste unter den Feldern zeigt mit Haken, ob beides erfüllt ist. Gut zu merken und schwer zu erraten sind mehrere Wörter mit Bindestrichen. Klick auf „Weiter“.
 
-   ![Einrichtung, Schritt 2 von 5: beide Passwortfelder ausgefüllt (als Punkte), darunter zwei grüne Haken bei „mindestens 12 Zeichen“ und „beide Eingaben sind gleich“](assets/screenshots/einrichtung-passwort.png)
+   ![Einrichtung, Schritt 2 von 7: beide Passwortfelder ausgefüllt (als Punkte), darunter zwei grüne Haken bei „mindestens 12 Zeichen“ und „beide Eingaben sind gleich“](assets/screenshots/einrichtung-passwort.png)
 
-5. Trag den Schlüssel deines Anbieters ein und klick auf „Verbindung testen“. Hast du noch keinen Schlüssel, klick auf „Später eintragen“.
+5. Wähle den Anbieter: **EUrouter**, **Mistral AI (direkt)** oder **Eigener oder lokaler Anbieter**. Zu jedem Anbieter steht, was er selbst über sich sagt, mit dem Tag, an dem PaiBot das nachgelesen hat, und ein Link „Noch kein Konto? Hier anlegen“ (öffnet die Seite des Anbieters in einem neuen Fenster). Klick auf „Weiter“.
 
-   ![Einrichtung, Schritt 3 von 5: leeres Feld „Schlüssel für 127.0.0.1:18080“ (Test-Anbieter), daneben „Verbindung testen“, unten „Später eintragen“ und „Weiter“](assets/screenshots/einrichtung-schluessel.png)
+   ![Einrichtung, Schritt 3 von 7: drei Anbieter zur Wahl – EUrouter, Mistral AI (direkt), Eigener oder lokaler Anbieter – je mit Angaben des Anbieters und dem Link „Noch kein Konto? Hier anlegen“](assets/screenshots/einrichtung-anbieter.png)
 
-   Nimmt der Anbieter den Schlüssel nicht an, steht das rot unter dem Feld. Prüfe den Schlüssel und teste noch einmal.
+   Am Handy stehen die Anbieter untereinander; hier ist Mistral AI gewählt:
 
-   ![Einrichtung, Schritt 3 mit rot umrandetem Schlüsselfeld und dem Hinweis „Der Anbieter hat den Schlüssel nicht angenommen. Trag einen gültigen Schlüssel ein.“](assets/screenshots/einrichtung-schluessel-fehler.png)
+   ![Einrichtung auf dem Handy: Mistral AI gewählt, darunter die Angaben laut Mistral zum EU-Endpunkt und zum Training](assets/screenshots/einrichtung-anbieter-handy.png)
 
-   Klappt es, steht unter dem Feld „Verbindung steht“ und wie viele passende Modelle PaiBot gefunden hat. Der Schritt „Modell“ kommt dazu, die Einrichtung hat jetzt sechs Schritte. Klick auf „Weiter“.
+6. Trag den Schlüssel deines Anbieters ein.
+   - **Mistral AI oder eigener Anbieter:** Klick auf „Verbindung testen“. Hast du noch keinen Schlüssel, klick auf „Später eintragen“. Einen eigenen Anbieter, den dein Server nicht vorgibt, richtest du nach der Einrichtung unter „Modell und Anbieter“ ein; dann steht hier nur dieser Hinweis.
 
-   ![Einrichtung, Schritt 3 von 6: Schlüssel eingegeben (als Punkte) und darunter „Verbindung steht. 2 passende Modelle gefunden.“](assets/screenshots/einrichtung-schluessel-ok.png)
+     ![Einrichtung, Schritt 4 von 7: leeres Feld „Schlüssel für Lokaler Anbieter“, darunter „Verbindung testen“, unten „Später eintragen“ und „Weiter“](assets/screenshots/einrichtung-schluessel.png)
 
-6. Wähle ein Modell aus der Liste (nur mit Schlüssel) und klick auf „Weiter“.
+     Nimmt der Anbieter den Schlüssel nicht an, steht das rot mit Warnzeichen unter dem Feld: „Verbindung fehlgeschlagen“ und der Grund. Prüfe den Schlüssel und teste noch einmal.
 
-   ![Einrichtung, Schritt 4 von 6: zwei Modelle des Test-Anbieters, „Beispiel-Modell Allrounder“ ist gewählt und grün umrandet](assets/screenshots/einrichtung-modell.png)
+     ![Einrichtung, Schritt 4: rot umrandetes Schlüsselfeld, darunter ein roter Kasten „Verbindung fehlgeschlagen“ mit dem Grund](assets/screenshots/einrichtung-schluessel-fehler.png)
 
-7. Entscheide, ob die Datenschleuse für neue Unterhaltungen standardmäßig an ist. Der Schalter lässt sich nur bedienen, wenn die Datenschleuse auf deinem Server eingerichtet ist; sonst bleibt sie aus, und PaiBot sagt dir das unter dem Schalter. Klick auf „Weiter“.
+     Klappt es, steht dort ein grüner Kasten mit Haken: „Verbindung steht“ und wie viele passende Modelle PaiBot gefunden hat. Klick auf „Weiter“.
 
-   ![Einrichtung, Schritt 5 von 6: Schalter „Standard für neue Unterhaltungen: Aus“, darunter der Hinweis, dass die Datenschleuse auf diesem Server nicht eingerichtet ist](assets/screenshots/einrichtung-schleuse.png)
+     ![Einrichtung, Schritt 4 von 7: Schlüssel eingegeben (als Punkte), darunter grün „Verbindung steht. 2 passende Modelle gefunden.“](assets/screenshots/einrichtung-schluessel-ok.png)
 
-8. Gib deinem Bot einen Namen (Vorschlag: „Pai“) und klick auf „Einrichtung abschließen“.
+   - **EUrouter:** Trag zusätzlich die Namen deiner Routing-Regeln ein (eine oder mehrere, mit „Weitere Regel“). Die Namen findest du in deinem Konto bei EUrouter unter „Routing“; schreib sie genau so, auch groß und klein. Klick auf „Schlüssel und Regeln prüfen“. Für jede Regel schickt PaiBot eine sehr kleine echte Anfrage an ein Modell; das kostet bei EUrouter wenige Token. Bei jeder Regel steht danach, ob sie funktioniert und wer laut EUrouter geantwortet hat – mit dessen Sitz laut der Anbieter-Liste von EUrouter. Eine Liste einzelner Modelle bietet PaiBot bei EUrouter nicht an.
 
-   ![Einrichtung, Schritt 6 von 6: Feld „Name deines Bots“ mit dem Vorschlag „Pai“ und der Knopf „Einrichtung abschließen“](assets/screenshots/einrichtung-bot.png)
+     ![Einrichtung mit EUrouter: Schlüssel und die Regeln „EU Beispiel“ und „Gibt es nicht“; grün „Verbindung steht. 1 von 2 Regeln geprüft.“, darunter „„EU Beispiel“ funktioniert. Antwort von Beispiel EU-Anbieter · Sitz Niederlande laut EUrouter“ und „„Gibt es nicht“ geht nicht“ mit Ausweg](assets/screenshots/einrichtung-regeln.png)
 
-9. Du siehst „Alles bereit“ mit allem, was eingerichtet ist, und bist angemeldet. Der Code gilt ab jetzt nicht mehr. Mit „Zur App“ geht es weiter.
+     Dasselbe im hellen Design:
 
-   ![„Alles bereit“: Haken bei Passwort, Name des Bots, verbundenem Anbieter und Modell, Hinweis „Datenschleuse als Standard aus“ und der Knopf „Zur App“](assets/screenshots/einrichtung-fertig.png)
+     ![Ergebnis der Prüfung im hellen Design](assets/screenshots/einrichtung-regeln-hell.png)
 
-10. Die App öffnet sich: links dein Bot und die Navigation, in der Mitte eine neue Unterhaltung mit deinem Bot (siehe [Chat](funktion-chat.md)).
+7. Wähle das Modell (Mistral AI, eigener Anbieter) bzw. die Routing-Regel (EUrouter), mit der dein Bot arbeitet, und klick auf „Weiter“. Ohne Schlüssel entfällt dieser Schritt.
+
+   ![Einrichtung, Schritt 5 von 7: zwei Modelle des Test-Anbieters, „Beispiel-Modell Allrounder“ ist gewählt und grün umrandet](assets/screenshots/einrichtung-modell.png)
+
+   Bei EUrouter stehen hier die geprüften Regeln:
+
+   ![Einrichtung mit EUrouter, Schritt 5 von 7: „Routing-Regel wählen“ mit der geprüften Regel „EU Beispiel“ und dem Anbieter, der geantwortet hat](assets/screenshots/einrichtung-regel.png)
+
+8. Entscheide, ob die Datenschleuse für neue Unterhaltungen standardmäßig an ist. Der Schalter lässt sich nur bedienen, wenn die Datenschleuse auf deinem Server eingerichtet ist; sonst bleibt sie aus, und PaiBot sagt dir das unter dem Schalter. Klick auf „Weiter“.
+
+   ![Einrichtung, Schritt 6 von 7: Schalter „Standard für neue Unterhaltungen: Aus“, darunter der Hinweis, dass die Datenschleuse auf diesem Server nicht eingerichtet ist](assets/screenshots/einrichtung-schleuse.png)
+
+9. Gib deinem Bot einen Namen (Vorschlag: „Pai“) und klick auf „Einrichtung abschließen“.
+
+   ![Einrichtung, Schritt 7 von 7: Feld „Name deines Bots“ mit dem Vorschlag „Pai“ und der Knopf „Einrichtung abschließen“](assets/screenshots/einrichtung-bot.png)
+
+10. Du siehst „Alles bereit“ mit allem, was eingerichtet ist, und bist angemeldet. Der Code gilt ab jetzt nicht mehr. Mit „Zur App“ geht es weiter.
+
+![„Alles bereit“: Haken bei Passwort, Name des Bots, verbundenem Anbieter und Modell, Hinweis „Datenschleuse als Standard aus“ und der Knopf „Zur App“](assets/screenshots/einrichtung-fertig.png)
+
+11. Die App öffnet sich: links dein Bot und die Navigation, in der Mitte eine neue Unterhaltung mit deinem Bot (siehe [Chat](funktion-chat.md)).
 
     ![Die App nach der Anmeldung: links PaiBot, der Bot Pai, die Werkzeuge und der Knopf „Du“, in der Mitte „Frag deinen Bot etwas“ mit drei Vorschlägen und unten das Eingabefeld](assets/screenshots/app-start.png)
 
@@ -152,13 +175,14 @@ Eine Adresse, die es in PaiBot nicht gibt, führt zu dieser Seite mit einem Link
 
 ## Einstellungen
 
-| Einstellung                       | Wo                | Bedeutung                                                                                                                                                                                                                                                                | Standard                 |
-| --------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
-| `APP_URL`                         | Umgebungsvariable | Adresse, unter der du PaiBot öffnest. Nur Anfragen genau von dieser Adresse dürfen etwas verändern. Beginnt sie mit `https://`, sind die Cookies `Secure` und heißen `__Host-…`. Im Betrieb Pflicht; `http://` nur für den eigenen Rechner (mit Warnung im eigenen Netz) | `http://localhost:3000`  |
-| `TRUST_PROXY`                     | Umgebungsvariable | `1`, wenn PaiBot hinter einem Proxy läuft (Coolify, Traefik, Caddy, nginx). Dann zählt die Adresse, die dein Proxy als letzte in `X-Forwarded-For` anhängt                                                                                                               | im Compose `1`           |
-| `PAIBOT_SECRET`                   | Umgebungsvariable | Wurzel-Geheimnis; daraus entstehen die Prüfzeichen gegen untergeschobene Anfragen und die Schlüssel für Belege und Anbieter                                                                                                                                              | Pflicht                  |
-| `PAIBOT_EINRICHTUNG_ANBIETER_URL` | Umgebungsvariable | Nur für Tests und eigene Dienste: Die Einrichtung verbindet statt EUrouter diesen OpenAI-kompatiblen Dienst (zum Beispiel den Test-Anbieter). Er heißt in PaiBot „Lokaler Anbieter“ (Adresse im eigenen Netz oder über http, Region lokal) bzw. „Eigener Anbieter“       | nicht gesetzt (EUrouter) |
-| Angemeldet bleiben                | Seite „Anmelden“  | Cookie bleibt 30 Tage im Browser; ohne Haken endet es mit dem Browser                                                                                                                                                                                                    | aus                      |
+| Einstellung                       | Wo                | Bedeutung                                                                                                                                                                                                                                                                                                                         | Standard                |
+| --------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `APP_URL`                         | Umgebungsvariable | Adresse, unter der du PaiBot öffnest. Nur Anfragen genau von dieser Adresse dürfen etwas verändern. Beginnt sie mit `https://`, sind die Cookies `Secure` und heißen `__Host-…`. Im Betrieb Pflicht; `http://` nur für den eigenen Rechner (mit Warnung im eigenen Netz)                                                          | `http://localhost:3000` |
+| `TRUST_PROXY`                     | Umgebungsvariable | `1`, wenn PaiBot hinter einem Proxy läuft (Coolify, Traefik, Caddy, nginx). Dann zählt die Adresse, die dein Proxy als letzte in `X-Forwarded-For` anhängt                                                                                                                                                                        | im Compose `1`          |
+| `PAIBOT_SECRET`                   | Umgebungsvariable | Wurzel-Geheimnis; daraus entstehen die Prüfzeichen gegen untergeschobene Anfragen und die Schlüssel für Belege und Anbieter                                                                                                                                                                                                       | Pflicht                 |
+| `PAIBOT_EINRICHTUNG_ANBIETER_URL` | Umgebungsvariable | Nur für Tests und eigene Dienste: Die Auswahl „Eigener oder lokaler Anbieter“ verbindet in der Einrichtung diesen OpenAI-kompatiblen Dienst. Er heißt in PaiBot „Lokaler Anbieter“ (Adresse im eigenen Netz, Region lokal) bzw. „Eigener Anbieter“. Ohne die Variable richtest du einen eigenen Anbieter nach der Einrichtung ein | nicht gesetzt           |
+| `PAIBOT_VORLAGEN_TESTADRESSE`     | Umgebungsvariable | Nur für Tests und Doku-Bilder: Die Vorlagen EUrouter und Mistral AI zeigen auf diese Adresse (nur eine Adresse auf dem eigenen Rechner oder im eigenen Netz wird angenommen)                                                                                                                                                      | nicht gesetzt           |
+| Angemeldet bleiben                | Seite „Anmelden“  | Cookie bleibt 30 Tage im Browser; ohne Haken endet es mit dem Browser                                                                                                                                                                                                                                                             | aus                     |
 
 **Hinter einem Proxy `TRUST_PROXY=1` setzen.** Im Compose ist das der Standard, denn der Port der App ist dort nur auf dem Server selbst erreichbar. Ohne diese Einstellung kennt PaiBot die Adresse der Besucher nicht, denn den Wert in `X-Forwarded-For` kann jeder frei setzen, und PaiBot liest ihn dann gar nicht. Alle Besucher teilen sich so einen Zähler; die Sperre je Adresse verzögert dann nur (2 Sekunden je Versuch). Die gemeinsame Bremse gilt trotzdem für alle. Beim Start und auf der Seite „Einrichtung“ steht dazu ein Hinweis. Setze `TRUST_PROXY=1` nur, wenn wirklich ein Proxy davor steht, und gib den Port der App nie direkt frei; sonst könnte ein Besucher seine Adresse vortäuschen.
 
@@ -193,8 +217,12 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 - **Hinweis bei neuer Anmeldung:** Jedes Gerät merkt sich auf dem Server, bis wann du neue Anmeldungen auf ihm bestätigt hast (am Anfang: seit es dazukam). Neu ist für ein Gerät jedes andere gültige Gerät, das danach dazukam. Eine erneute Anmeldung mit einem bekannten Gerät ist keine neue Anmeldung. „Das war ich“ ist die Aktion „Neue Anmeldung bestätigt“ durch das Tor mit Beleg und gilt nur für das Gerät, auf dem du sie wählst. Der Hinweis nennt nur die grobe Angabe aus der Browser-Kennung und den Zeitpunkt; Adressen speichert PaiBot nicht.
 - **Belege:** An- und Abmelden, alle Sitzungen beenden, das Passwort ändern, Geräte hinzufügen und entfernen und „Das war ich“ stehen als Belege im Protokoll; jeder Beleg „Entscheidung“ nennt das Gerät, von dem die Aktion kam (bei der ersten Anmeldung in einem neuen Browser gibt es dieses Gerät erst danach; der Beleg „Gerät hinzugefügt“ nennt es). Fehlversuche nicht; sie stehen nur im Zähler.
 
+- **Anbieter-Wahl:** Mistral AI und ein eigener Anbieter werden wie bisher über `GET <Adresse>/models` geprüft. Bei EUrouter prüft PaiBot jede Routing-Regel mit einer sehr kleinen echten Anfrage (`rule_name`, ohne Modell, höchstens 4 Token Ausgabe). Eine Regel, die gerade geprüft wurde, prüft PaiBot beim Abschluss nicht noch einmal (15 Minuten gemerkt, nur ein Prüfwert, nie der Schlüssel). Alle geprüften Regeln stehen danach unter „Modell und Anbieter“ zur Wahl. Mehr dazu unter [Anbieter und Modelle](funktion-anbieter-und-modelle.md).
+
 ## Grenzen
 
+- Bei EUrouter kann PaiBot die Regeln deines Kontos nicht selbst auflisten; mit dem normalen Schlüssel antwortet EUrouter darauf mit „This key cannot access this endpoint“. Du trägst die Namen deshalb selbst ein.
+- Jede Prüfung einer Regel kostet bei EUrouter wenige Token.
 - Passwort vergessen: Zurücksetzen gibt es in dieser Fassung noch nicht. Bewahre das Passwort gut auf.
 - Nur ein Passwort, keine zweite Stufe (2FA ist geplant).
 - Der Einrichtungs-Code liegt im Speicher des Dienstes `web`. Laufen mehrere `web`-Dienste gleichzeitig, hat jeder seinen eigenen Code.
@@ -207,18 +235,20 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 
 ## Fehlerbehebung
 
-| Beobachtung                                                       | Ursache                                                                                                  | Was tun                                                                                   |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| „Der Einrichtungs-Code stimmt nicht.“                             | Tippfehler, oder der Code wurde inzwischen verworfen                                                     | Neuesten Code aus dem Log von `web` nehmen (letzte Zeile mit „Einrichtungs-Code“)         |
-| „Zu viele Versuche. Versuch es in … Sekunden …“                   | 5 Fehlversuche von dieser Adresse in 15 Minuten (20 am Tag), oder viele fremde Versuche                  | Warten, bis die Zeit um ist; ausgesperrt: siehe „Ausgesperrt? So kommst du wieder hinein“ |
-| Nach „Passwort ändern“ abgemeldet                                 | 5 Versuche mit falschem aktuellem Passwort in 15 Minuten                                                 | Neu anmelden; nach 15 Minuten wieder versuchen                                            |
-| Start bricht ab: „APP_URL fehlt“ oder „APP_URL nutzt http://…“    | `APP_URL` fehlt oder ist eine öffentliche Adresse ohne https                                             | `APP_URL=https://…` setzen, https über den Proxy                                          |
-| „Die Anfrage kam nicht von dieser PaiBot-Seite.“                  | `APP_URL` passt nicht zur Adresse im Browser                                                             | `APP_URL` genau auf die Adresse setzen, unter der du PaiBot öffnest; neu starten          |
-| „Die Anfrage konnte nicht bestätigt werden.“                      | Seite war lange offen oder Cookies wurden gelöscht                                                       | Seite neu laden                                                                           |
-| Nach dem Anmelden sofort wieder „Anmelden“                        | Browser speichert keine Cookies, oder `APP_URL` ist https, die Seite aber http                           | Cookies erlauben; PaiBot über die Adresse aus `APP_URL` öffnen                            |
-| Hinweis „TRUST_PROXY ist nicht gesetzt“                           | PaiBot kennt die Adresse der Besucher nicht                                                              | Hinter einem Proxy `TRUST_PROXY=1` setzen (siehe Einstellungen)                           |
-| Leiste „Neue Anmeldung von einem neuen Gerät“, obwohl du es warst | Du hast dich in einem neuen Browser, einem privaten Fenster oder nach dem Löschen der Cookies angemeldet | Auf jedem anderen Gerät „Das war ich“ wählen                                              |
-| „Datenbank nicht erreichbar“ statt der Anmeldung                  | Datenbank läuft nicht oder ist nicht eingerichtet                                                        | Log ansehen, Datenbank starten, Seite neu laden                                           |
+| Beobachtung                                                       | Ursache                                                                                                  | Was tun                                                                                    |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| „Der Einrichtungs-Code stimmt nicht.“                             | Tippfehler, oder der Code wurde inzwischen verworfen                                                     | Neuesten Code aus dem Log von `web` nehmen (letzte Zeile mit „Einrichtungs-Code“)          |
+| „Zu viele Versuche. Versuch es in … Sekunden …“                   | 5 Fehlversuche von dieser Adresse in 15 Minuten (20 am Tag), oder viele fremde Versuche                  | Warten, bis die Zeit um ist; ausgesperrt: siehe „Ausgesperrt? So kommst du wieder hinein“  |
+| Nach „Passwort ändern“ abgemeldet                                 | 5 Versuche mit falschem aktuellem Passwort in 15 Minuten                                                 | Neu anmelden; nach 15 Minuten wieder versuchen                                             |
+| Start bricht ab: „APP_URL fehlt“ oder „APP_URL nutzt http://…“    | `APP_URL` fehlt oder ist eine öffentliche Adresse ohne https                                             | `APP_URL=https://…` setzen, https über den Proxy                                           |
+| „Die Anfrage kam nicht von dieser PaiBot-Seite.“                  | `APP_URL` passt nicht zur Adresse im Browser                                                             | `APP_URL` genau auf die Adresse setzen, unter der du PaiBot öffnest; neu starten           |
+| „Die Anfrage konnte nicht bestätigt werden.“                      | Seite war lange offen oder Cookies wurden gelöscht                                                       | Seite neu laden                                                                            |
+| Nach dem Anmelden sofort wieder „Anmelden“                        | Browser speichert keine Cookies, oder `APP_URL` ist https, die Seite aber http                           | Cookies erlauben; PaiBot über die Adresse aus `APP_URL` öffnen                             |
+| Hinweis „TRUST_PROXY ist nicht gesetzt“                           | PaiBot kennt die Adresse der Besucher nicht                                                              | Hinter einem Proxy `TRUST_PROXY=1` setzen (siehe Einstellungen)                            |
+| Leiste „Neue Anmeldung von einem neuen Gerät“, obwohl du es warst | Du hast dich in einem neuen Browser, einem privaten Fenster oder nach dem Löschen der Cookies angemeldet | Auf jedem anderen Gerät „Das war ich“ wählen                                               |
+| „„…“ geht nicht.“ bei einer Routing-Regel                         | EUrouter kennt keine eingeschaltete Regel mit genau diesem Namen                                         | Namen im Konto unter „Routing“ nachsehen (groß und klein beachten), Regel dort einschalten |
+| „Verbindung fehlgeschlagen“ in Rot                                | Schlüssel falsch, Anbieter nicht erreichbar oder Limit erreicht; der Grund steht im Kasten               | Den genannten Ausweg befolgen und noch einmal testen                                       |
+| „Datenbank nicht erreichbar“ statt der Anmeldung                  | Datenbank läuft nicht oder ist nicht eingerichtet                                                        | Log ansehen, Datenbank starten, Seite neu laden                                            |
 
 ## Bilder neu aufnehmen
 

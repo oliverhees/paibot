@@ -34,8 +34,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const zeitzone = (await repo.settings.get(db))?.timezone ?? "Europe/Berlin";
   const bot = await repo.bots.getDefault(db);
   const unterhaltungen = await ladeUnterhaltungen(db);
-  // Herkunft der Modelle in der Seitenleiste: Region des Anbieters des gewählten Modells.
-  const region = bot === undefined ? undefined : (await modellVon(db, bot))?.region;
+  // Herkunft der Modelle in der Seitenleiste: belegbare Angabe zum Anbieter des gewählten Modells.
+  const herkunft = bot === undefined ? undefined : (await modellVon(db, bot))?.herkunft;
   const notAus = await notAusAn(db);
   return (
     <AppRahmen
@@ -44,7 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       hinweise={<NeueAnmeldung neue={neue} zeitzone={zeitzone} />}
       zeitzone={zeitzone}
       stand={stand()}
-      {...(region === undefined ? {} : { region })}
+      {...(herkunft === undefined ? {} : { herkunft })}
       bot={{
         name: bot?.name ?? t("einrichtung.bot.vorschlag"),
         farbe: bot?.color ?? "limette",

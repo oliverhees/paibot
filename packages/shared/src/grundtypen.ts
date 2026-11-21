@@ -79,6 +79,21 @@ export const tokenUsageSchema = z.strictObject({
 });
 export type TokenUsage = z.infer<typeof tokenUsageSchema>;
 
+/** Kennung eines Anbieters, wie eine Schnittstelle sie in `provider` meldet (z. B. `tensorix`). */
+export const SERVED_PROVIDER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+/** Modell, wie eine Schnittstelle es in `model` meldet: sichtbare ASCII-Zeichen, höchstens 200. */
+export const SERVED_MODEL_PATTERN = /^[\x21-\x7e]{1,200}$/;
+
+/**
+ * Wer laut Antwort der Schnittstelle geantwortet hat (Felder `provider` und `model` der Antwort).
+ * Das ist die Angabe der Schnittstelle, keine Prüfung durch PaiBot.
+ */
+export const servedBySchema = z.strictObject({
+  provider: z.string().regex(SERVED_PROVIDER_PATTERN).optional(),
+  model: z.string().regex(SERVED_MODEL_PATTERN).optional(),
+});
+export type ServedBy = z.infer<typeof servedBySchema>;
+
 /** Zeitzone als IANA-Name, z. B. `Europe/Berlin`. */
 export const timezoneSchema = z
   .string()

@@ -245,7 +245,7 @@ export function BotAnsicht({ daten, onGespeichert }: BotAnsichtProps) {
             {modell
               ? t("modelle.aktuell.text", { name: gespeichert.name, modell: modell.displayName })
               : t("modelle.aktuell.keins", { name: gespeichert.name })}{" "}
-            {modell && <StatusChip art="eu">{t(`modelle.region.${modell.region}`)}</StatusChip>}
+            {modell && <StatusChip art="neutral">{modell.herkunft}</StatusChip>}
           </p>
           <Link href="/modelle" prefetch={false} className={styles.link}>
             {t("bot.modell.aendern")}

@@ -9,6 +9,7 @@
  */
 
 export * from "./actions";
+export * from "./anzeigetext";
 export * from "./api";
 export * from "./bindung";
 export * from "./constants";

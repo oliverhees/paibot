@@ -12,7 +12,7 @@
 import { randomBytes } from "node:crypto";
 import type { Database } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
-import type { ConnectionTestResult } from "@paibot/llm";
+import type { ConnectionTestResult, RoutingRuleCheck } from "@paibot/llm";
 import { CSRF } from "@paibot/shared/konstanten";
 import { erstelleRahmen, type RoutenAktion } from "../api/route";
 import { pruefzeichenVorab, pruefzeichenZuCookie } from "../csrf";
@@ -26,6 +26,13 @@ export const TEST_ORIGIN = "http://paibot.test";
 export const TEST_CODE = "K7QD-9M2F-XW4H";
 export const TEST_PASSWORT = "Fahrrad-Kaffee-Mond-42";
 export const TEST_SCHLUESSEL = "beispiel-schluessel-0001";
+/** Routing-Regeln, die der Ersatz für den Anbieter kennt, mit dem Anbieter, der antwortet. */
+export const TEST_REGELN: Record<string, { provider: string; model: string }> = {
+  "EU Beispiel": { provider: "beispiel-eu", model: "beispiel/modell-1" },
+  "Zweite Regel": { provider: "beispiel-zwei", model: "beispiel/modell-2" },
+};
+/** Adresse der Vorlagen im Test (eigener Rechner, damit die Prüfung der Adresse greift). */
+export const TEST_VORLAGEN_URL = "http://127.0.0.1:10/v1";
 export const TEST_MODELLE = [
   { slug: "beispiel/modell-a", displayName: "Beispiel-Modell A", contextWindow: 32000 },
   { slug: "beispiel/modell-b", displayName: "Beispiel-Modell B" },
@@ -53,6 +60,8 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
   const gewartet: number[] = [];
   const log: string[] = [];
   const anbieterAufrufe: string[] = [];
+  /** Namen der Regeln, die der Ersatz für den Anbieter prüfen sollte. */
+  const regelAufrufe: string[] = [];
   let naechsterCode = TEST_CODE;
   const code = erstelleCodeHalter(() => naechsterCode);
   /** Noch laufendes `neuerCode`; `anfrage` wartet darauf. */
@@ -79,6 +88,27 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
       baseUrl: "http://127.0.0.1:9/v1",
       region: "local",
     }),
+    vorlage: (schluessel) => ({
+      templateKey: schluessel,
+      name: schluessel === "eurouter" ? "EUrouter" : "Mistral AI",
+      baseUrl: schluessel === "eurouter" ? TEST_VORLAGEN_URL : "http://127.0.0.1:11/v1",
+      region: "local",
+    }),
+    regelPruefen: async (_anbieter, apiKey, name): Promise<RoutingRuleCheck> => {
+      regelAufrufe.push(name);
+      if (apiKey !== TEST_SCHLUESSEL) return { ok: false, code: "schluessel_ungueltig" };
+      const regel = TEST_REGELN[name];
+      return regel === undefined
+        ? { ok: false, code: "regel_unbekannt" }
+        : { ok: true, servedBy: { ...regel } };
+    },
+    unterAnbieter: async (anbieter) =>
+      anbieter?.templateKey === "eurouter"
+        ? {
+            abgerufen: "2026-11-20T09:00:00.000Z",
+            eintraege: { "beispiel-eu": { name: "Beispiel EU", sitz: "NL" } },
+          }
+        : undefined,
     schleuseInstalliert: () => zustand.schleuseInstalliert,
     verbindungTesten: async (_anbieter, apiKey): Promise<ConnectionTestResult> => {
       anbieterAufrufe.push(apiKey);
@@ -102,6 +132,7 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
     gewartet,
     log,
     anbieterAufrufe,
+    regelAufrufe,
     rahmen,
     /**
      * Erzeugt einen neuen Code (der alte gilt nicht mehr) und speichert seinen Prüfwert. Die

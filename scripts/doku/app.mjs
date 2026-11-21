@@ -509,6 +509,8 @@ async function main() {
       APP_URL: url,
       TRUST_PROXY: "1",
       PAIBOT_EINRICHTUNG_ANBIETER_URL: `${anbieterUrl}/v1`,
+      // Vorlagen (EUrouter, Mistral AI) zeigen in den Bildern auf den Test-Anbieter.
+      PAIBOT_VORLAGEN_TESTADRESSE: `${anbieterUrl.replace("127.0.0.1", "localhost")}/v1`,
     }),
     logDatei: path.join(ordner, "web.log"),
   });

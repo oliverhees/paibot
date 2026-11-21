@@ -87,10 +87,21 @@ export const messages = pgTable(
     tokensIn: integer("tokens_in"),
     tokensOut: integer("tokens_out"),
     errorCode: text("error_code"),
+    /** Anbieter und Modell, die laut Antwort der Schnittstelle geantwortet haben (wenn gemeldet). */
+    servedProvider: text("served_provider"),
+    servedModel: text("served_model"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     idCheck("messages_id_format", t.id, "message"),
+    check(
+      "messages_served_provider_format",
+      sql`${t.servedProvider} is null or ${matches(t.servedProvider, "^[a-z0-9][a-z0-9._-]{0,63}$")}`,
+    ),
+    check(
+      "messages_served_model_format",
+      sql`${t.servedModel} is null or ${matches(t.servedModel, "^[!-~]{1,200}$")}`,
+    ),
     optionalIdCheck("messages_run_id_format", t.runId, "run"),
     optionalIdCheck("messages_model_id_format", t.modelId, "model"),
     optionalIdCheck("messages_provider_id_format", t.providerId, "provider"),

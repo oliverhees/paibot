@@ -26,6 +26,10 @@ export const LIMITS = {
   apiKeyChars: 1000,
   baseUrlChars: 2048,
   modelSlugChars: 200,
+  /** Längster Name einer Routing-Regel (EUrouter). */
+  routingRuleNameChars: 100,
+  /** Höchstens so viele Regeln je Prüfung bzw. Einrichtung (jede kostet eine kleine Anfrage). */
+  routingRulesPerCheck: 5,
   /** Höchste Ausgabegrenze pro Antwort, die ein Bot einstellen kann. */
   maxOutputTokens: 200000,
   /** Größte Verlaufsgrenze in Token. */

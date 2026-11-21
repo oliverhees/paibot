@@ -28,6 +28,11 @@ const CLIENT = [
   "./client.ts",
   "../../app/(app)/NotAus.tsx",
   "../../app/(app)/einstellungen/selbsttest/Selbsttest.tsx",
+  "../../app/AnbieterAuswahl.tsx",
+  "../../app/(app)/modelle/AnbieterHinzufuegen.tsx",
+  "../../app/(app)/modelle/RegelnKarte.tsx",
+  "../modelle/herkunft.ts",
+  "../modelle/konto-links.ts",
 ].map((datei) => ({ datei, text: readFileSync(new URL(datei, import.meta.url), "utf8") }));
 
 describe("Browser-Module des Zugangs, der Einstellungen und der Belege", () => {

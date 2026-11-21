@@ -16,16 +16,20 @@ import {
   type ConnectionTestResult,
   checkProviderBaseUrl,
   PROVIDER_TEMPLATES,
+  supportsRoutingRules,
 } from "@paibot/llm";
+import { anzeigeText } from "@paibot/shared/anzeigetext";
 import { providerSecretBinding, secretAad } from "@paibot/shared/bindung";
 import type { ProviderInput } from "@paibot/shared/eingaben";
 import { type ErrorCode, PaiBotError } from "@paibot/shared/fehler";
 import { isId, type ModelId, newId, type ProviderId } from "@paibot/shared/ids";
+import { LIMITS } from "@paibot/shared/konstanten";
 import type { Provider, Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
 import type { EinrichtungsAnbieter } from "../umgebung";
 import type { ZugangsDienste } from "../zugang/dienste";
+import { regelnPruefen, regelnVon } from "./regeln";
 
 /** Vorlage für einen neuen Anbieter, wie die Einrichtung ihn verbindet (ohne Geheimnisse). */
 export type AnbieterVorlage = EinrichtungsAnbieter;
@@ -57,9 +61,17 @@ export function verbindungsFehler(
   code: ErrorCode,
   anbieterName: string,
   eigener = false,
+  detail?: "nicht_lokal",
 ): PaiBotError {
   const p = anbieterParams(anbieterName);
   const ausweg = eigener ? "_eigen" : "";
+  if (detail === "nicht_lokal") {
+    return new PaiBotError("anbieter_nicht_erreichbar", {
+      text: t("anbieter.url.nicht_lokal"),
+      ausweg: t("modelle.nicht_lokal.ausweg"),
+      felder: [{ feld: "baseUrl", code: "ungueltig" }],
+    });
+  }
   if (code === "schluessel_ungueltig") {
     return new PaiBotError(code, {
       text: t("modelle.test.schluessel_ungueltig", p),
@@ -79,6 +91,15 @@ export function verbindungsFehler(
   });
 }
 
+/** Name eines Anbieters vor dem Speichern bereinigt; nichts Sichtbares: Fehler am Feld. */
+function sauberName(name: string): string {
+  const sauber = anzeigeText(name, LIMITS.providerNameChars);
+  if (sauber === undefined) {
+    throw new PaiBotError("eingabe_ungueltig", { felder: [{ feld: "name", code: "ungueltig" }] });
+  }
+  return sauber;
+}
+
 function ungueltigeAdresse(text: string): PaiBotError {
   return new PaiBotError("eingabe_ungueltig", {
     text,
@@ -87,13 +108,19 @@ function ungueltigeAdresse(text: string): PaiBotError {
 }
 
 /**
- * Prüft Vorlage, Adresse und Region einer Eingabe und liefert die Adresse in Normalform. Bei der
- * Vorlage EUrouter sind Adresse und Region fest; sonst gilt die Prüfung der Anbieter-Schicht, und
- * jedes Problem kommt als eigener Satz zurück.
+ * Prüft Vorlage, Adresse und Region einer Eingabe und liefert die Adresse in Normalform. Bei einer
+ * Vorlage (EUrouter, Mistral) sind Adresse und Region fest (`vorlagen`, Standard
+ * `PROVIDER_TEMPLATES`); sonst gilt die Prüfung der Anbieter-Schicht, und jedes Problem kommt als
+ * eigener Satz zurück.
  */
-export function pruefeAdresse(eingabe: Pick<ProviderInput, "templateKey" | "baseUrl" | "region">) {
-  if (eingabe.templateKey === "eurouter") {
-    const vorlage = PROVIDER_TEMPLATES.eurouter;
+export function pruefeAdresse(
+  eingabe: Pick<ProviderInput, "templateKey" | "baseUrl" | "region">,
+  vorlagen: (
+    schluessel: keyof typeof PROVIDER_TEMPLATES,
+  ) => Pick<AnbieterVorlage, "baseUrl" | "region"> = (schluessel) => PROVIDER_TEMPLATES[schluessel],
+) {
+  if (eingabe.templateKey !== "eigener") {
+    const vorlage = vorlagen(eingabe.templateKey);
     if (
       adresseNormal(eingabe.baseUrl) !== adresseNormal(vorlage.baseUrl) ||
       eingabe.region !== vorlage.region
@@ -169,7 +196,12 @@ async function verbindungPruefen(
 ): Promise<ConnectionTestResult & { ok: true }> {
   const ergebnis = await d.verbindungTesten(endpunkt, apiKey ?? "");
   if (!ergebnis.ok)
-    throw verbindungsFehler(ergebnis.code, endpunkt.name, endpunkt.templateKey === "eigener");
+    throw verbindungsFehler(
+      ergebnis.code,
+      endpunkt.name,
+      endpunkt.templateKey === "eigener",
+      ergebnis.detail,
+    );
   return ergebnis;
 }
 
@@ -208,13 +240,13 @@ export async function anbieterListe(k: RoutenKontext<"anbieterListe">) {
  * Verbindungstest annimmt; außer bei Region „lokal“ ist ein Schlüssel Pflicht.
  */
 export async function anbieterAnlegen(k: RoutenKontext<"anbieterAnlegen">) {
-  const eingabe = k.eingabe;
+  const eingabe = { ...k.eingabe, name: sauberName(k.eingabe.name) };
   if (eingabe.removeApiKey !== undefined) {
     throw new PaiBotError("eingabe_ungueltig", {
       felder: [{ feld: "removeApiKey", code: "ungueltig" }],
     });
   }
-  const baseUrl = pruefeAdresse(eingabe);
+  const baseUrl = pruefeAdresse(eingabe, k.dienste.vorlage);
   if (eingabe.apiKey === undefined && !ohneSchluesselErlaubt(eingabe.region)) {
     throw schluesselFehlt();
   }
@@ -263,7 +295,7 @@ export async function anbieterAnlegen(k: RoutenKontext<"anbieterAnlegen">) {
  * wie sie ist: Aus einem Vorlagen-Anbieter wird nie ein eigener (und umgekehrt).
  */
 export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
-  const eingabe = k.eingabe;
+  const eingabe = { ...k.eingabe, name: sauberName(k.eingabe.name) };
   const { provider: alt, apiKeyEnc } = await anbieterMitSchluessel(k.db, k.params.id ?? "");
   const id = alt.id as ProviderId;
   if (eingabe.templateKey !== alt.templateKey) {
@@ -272,7 +304,7 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
       felder: [{ feld: "templateKey", code: "ungueltig" }],
     });
   }
-  const baseUrl = pruefeAdresse(eingabe);
+  const baseUrl = pruefeAdresse(eingabe, k.dienste.vorlage);
   const neueAdresse = adresseGeaendert(alt.baseUrl, baseUrl);
   if (neueAdresse) await adresseFrei(k.db, baseUrl, id);
   const apiKey = eingabe.apiKey;
@@ -302,12 +334,15 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
   const testen =
     apiKey !== undefined || entferntSchluessel || neueAdresse || eingabe.region !== alt.region;
   if (testen) {
-    await verbindungPruefen(
-      k.dienste,
-      endpunkt,
+    const zuTesten =
       apiKey ??
-        (behaeltSchluessel ? gespeicherterSchluessel(k.dienste, alt, apiKeyEnc) : undefined),
-    );
+      (behaeltSchluessel ? gespeicherterSchluessel(k.dienste, alt, apiKeyEnc) : undefined);
+    await verbindungPruefen(k.dienste, endpunkt, zuTesten);
+    const regel = await ersteRegel(k.db, id);
+    if (regel !== undefined && zuTesten !== undefined) {
+      // Bei EUrouter prüft erst eine Anfrage mit einer Regel den Schlüssel wirklich.
+      await regelnPruefen(k.dienste, endpunkt, zuTesten, [regel]);
+    }
   }
   const ergebnis = await k.tor(
     k.nachweis,
@@ -405,8 +440,34 @@ export async function anbieterVerbindungstest(k: RoutenKontext<"anbieterVerbindu
   } else {
     endpunkt = k.dienste.einrichtungsAnbieter();
   }
+  const regel = providerId === undefined ? undefined : await ersteRegel(k.db, providerId);
+  if (regel !== undefined && schluessel !== undefined) {
+    // Bei EUrouter prüft erst eine Anfrage mit einer Regel den Schlüssel wirklich.
+    const [ergebnis] = await regelnPruefen(k.dienste, endpunkt, schluessel, [regel]);
+    if (ergebnis !== undefined && !ergebnis.ok) {
+      throw new PaiBotError("eingabe_ungueltig", {
+        text: ergebnis.text ?? "",
+        ...(ergebnis.ausweg ? { ausweg: ergebnis.ausweg } : {}),
+      });
+    }
+    return {
+      daten: {
+        anzahl: 0,
+        regel,
+        ...(ergebnis?.servedBy === undefined ? {} : { servedBy: ergebnis.servedBy }),
+      },
+    };
+  }
   const ergebnis = await verbindungPruefen(k.dienste, endpunkt, schluessel);
   return { daten: { anzahl: ergebnis.models.length } };
+}
+
+/** Name der ersten gespeicherten Regel eines Anbieters mit Regeln (sonst `undefined`). */
+async function ersteRegel(db: Database, providerId: string): Promise<string | undefined> {
+  if (!isId("provider", providerId)) return undefined;
+  const anbieter = await repo.providers.get(db, providerId as ProviderId);
+  if (anbieter === undefined) return undefined;
+  return (await regelnVon(db, anbieter))[0]?.name;
 }
 
 /**
@@ -417,6 +478,13 @@ export async function anbieterVerbindungstest(k: RoutenKontext<"anbieterVerbindu
  */
 export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
   const { provider, apiKeyEnc } = await anbieterMitSchluessel(k.db, k.params.id ?? "");
+  // Bei EUrouter stehen nur die Routing-Regeln des Kontos zur Wahl, nicht die Modell-Liste.
+  if (supportsRoutingRules(provider.templateKey)) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("routingregel.liste_nicht", { anbieter: provider.name }),
+      ausweg: t("routingregel.liste_nicht.ausweg"),
+    });
+  }
   const id = provider.id as ProviderId;
   const schluessel = gespeicherterSchluessel(k.dienste, provider, apiKeyEnc);
   if (schluessel === undefined && !ohneSchluesselErlaubt(provider.region)) {

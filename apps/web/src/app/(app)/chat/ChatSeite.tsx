@@ -84,6 +84,7 @@ import type {
   ModellWahl,
   UnterhaltungInfo,
 } from "../../../lib/chat/typen";
+import { antwortHerkunft } from "../../../lib/modelle/herkunft";
 import { entwurfLesen, entwurfMerken } from "../../../lib/speicher";
 import { useConversationEvents } from "../../../lib/sse/use-conversation-events";
 import { BelegeFlaeche } from "./BelegeFlaeche";
@@ -430,13 +431,13 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
             className={styles.modellKnopf}
             aria-label={t("chat.kopf.modell", {
               name: bereitschaft.modell.name,
-              region: t(`modelle.region.${bereitschaft.modell.region}`),
+              region: bereitschaft.modell.herkunft ?? "",
             })}
           >
             <span className={styles.nurBreit}>{bereitschaft.modell.name}</span>
-            <span className={styles.region}>
-              {t(`modelle.region.${bereitschaft.modell.region}`)}
-            </span>
+            {bereitschaft.modell.herkunft && (
+              <span className={styles.region}>{bereitschaft.modell.herkunft}</span>
+            )}
           </Link>
         )}
         {unterhaltung && (
@@ -539,11 +540,12 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
         </div>
       ) : null;
     }
+    const herkunft = antwortHerkunft(modell.anbieter, n.servedBy, bereitschaft.unterAnbieter);
     return (
       <AntwortZeile
         {...(beleg ? { beleg } : {})}
-        schleuse={wegAngabe(n.route, modell.region)}
-        modell={modell}
+        schleuse={wegAngabe(n.route)}
+        modell={{ name: modell.name, ...(herkunft === undefined ? {} : { herkunft }) }}
       />
     );
   }
@@ -1172,7 +1174,7 @@ function AnderesModell({
         onChange={(e) => setWert(e.target.value)}
         optionen={modelle.map((m) => ({
           wert: m.id,
-          text: `${m.name} · ${t(`modelle.region.${m.region}`)}`,
+          text: m.herkunft === undefined ? m.name : `${m.name} · ${m.herkunft}`,
         }))}
         data-erster-fokus
       />
