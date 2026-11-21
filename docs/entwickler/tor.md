@@ -69,7 +69,7 @@ Reihenfolge in `evaluate`: Eingabe, dann Vorbedingungen, dann Grenzen, dann Rege
 - **Fehlercode je Fassung:** `GateFormatSpec.denialCode` (`packages/gate/src/fassungen/typ.ts#GateFormatSpec`). Fassung 2: verletzte Vorbedingung → deren Code (erste nach Kennung), G-05 → `angehalten`, G-16 bis G-18 → `limit_erreicht`, sonst `abgelehnt` (`deny`) bzw. `regel_fehlt` (`ask`, `prepare`, auch ein gedeckeltes `ask`). G-01 bis G-04 bleiben `abgelehnt`. `evaluate.ts#denialCode` nimmt den Code der aktuellen Fassung.
 - **Regeln für Fassungen:**
   - Eine Fassung wird nie geändert; jede Änderung am Ergebnis von `evaluate` ist eine neue Fassung.
-  - Ein Prüfsummen-Test hält die eingefrorenen Dateien fest (`packages/gate/src/fassungen/unveraendert.test.ts`).
+  - Ein Prüfsummen-Test hält die eingefrorenen Dateien fest: Fassung 1 und 2, ihre festen Fälle, die festen Ketten und die Lese-Schemata der alten Stände (`packages/gate/src/fassungen/unveraendert.test.ts`).
   - Jede neue Fassung bekommt einen Obermengen-Test gegen die Fälle der vorigen (`packages/gate/src/fassungen/obermenge.test.ts`).
   - Updates von Zod nur mit grünem Korpus aller Fassungen und grünen festen Ketten.
   - Texte (`reason`) gehören nicht zur Fassung; die Korpus-Tests vergleichen alles außer dem Grund.
