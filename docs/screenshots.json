@@ -814,6 +814,43 @@
       "beschreibung": "Chat auf dem Handy: Beleg als Blatt von unten"
     },
     {
+      "name": "app-hell",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        }
+      ],
+      "thema": "hell",
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Unterhaltung im hellen Design (für das README)"
+    },
+    {
+      "name": "app-handy-hell",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "ablauf": "chat-max-oeffnen"
+        }
+      ],
+      "thema": "hell",
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Unterhaltung auf dem Handy im hellen Design (für das README)"
+    },
+    {
       "name": "datenschleuse-nicht-eingerichtet",
       "pfad": "/datenschleuse",
       "zustand": "mit-beispieldaten",
@@ -952,7 +989,11 @@
         }
       ],
       "datenschleuse": "schluessel_falsch",
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
       "beschreibung": "Chat: Datenschleuse nimmt den Schlüssel von PaiBot nicht an, Hinweis an der Antwort"
     },
     {
@@ -985,7 +1026,11 @@
       "breite": 1440,
       "hoehe": 900,
       "warteAuf": "main",
-      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
       "beschreibung": "Belege: Liste, Zusammenfassung und Anker-Kasten"
     },
     {
@@ -1007,7 +1052,11 @@
           "warteAufText": "Vertrauenswürdig"
         }
       ],
-      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
       "beschreibung": "Belege: ganze Kette im Browser geprüft"
     },
     {
@@ -1029,7 +1078,11 @@
           "warteAufText": "Vertrauenswürdig"
         }
       ],
-      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
       "beschreibung": "Belege auf dem Handy nach „Ganze Kette prüfen“"
     },
     {
@@ -1147,7 +1200,11 @@
           "warteAufText": "Kopiert."
         }
       ],
-      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
       "beschreibung": "Belege: Anker kopiert"
     },
     {
@@ -1186,7 +1243,11 @@
           "warteAufText": "Mit deinem aufbewahrten Anker verglichen"
         }
       ],
-      "verdecke": ["textarea"],
+      "verdecke": [
+        "textarea",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
       "beschreibung": "Belege: Kette mit dem aufbewahrten Anker geprüft"
     },
     {
@@ -1208,8 +1269,67 @@
           "warteAufText": "Der Export selbst steht in den Belegen"
         }
       ],
-      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
       "beschreibung": "Belege exportiert: Meldung mit den beiden Belegen des Exports"
+    },
+    {
+      "name": "belege-filter",
+      "pfad": "/belege?aktion=nachricht.senden",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
+      "beschreibung": "Belege nach Aktion gefiltert (Nachricht gesendet)"
+    },
+    {
+      "name": "belege-filter-handy",
+      "pfad": "/belege?aktion=nachricht.senden",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
+      "beschreibung": "Belege nach Aktion gefiltert, Handy"
+    },
+    {
+      "name": "belege-schluessel",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "text": "Öffentlichen Schlüssel anzeigen"
+          }
+        },
+        {
+          "zeige": "section[aria-labelledby='belege-schluessel-titel']"
+        }
+      ],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
+      "beschreibung": "Kasten „Schlüssel dieser Installation“ mit aufgeklapptem öffentlichem Schlüssel"
     },
     {
       "name": "regeln",
@@ -1863,6 +1983,51 @@
         }
       ],
       "beschreibung": "Schlüssel entfernen: Rückfrage"
+    },
+    {
+      "name": "modelle-entfernt",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schlüssel entfernen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Entfernen"
+          }
+        },
+        {
+          "warteAufText": "Modell für"
+        }
+      ],
+      "beschreibung": "Schlüssel entfernt: kein Anbieter, kein Modell"
+    },
+    {
+      "name": "chat-kein-modell",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "Modell und Anbieter öffnen"
+        }
+      ],
+      "beschreibung": "Chat ohne Modell: Hinweis mit Weg zu „Modell und Anbieter“"
     }
   ]
 }

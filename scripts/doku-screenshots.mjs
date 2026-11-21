@@ -389,8 +389,10 @@ async function shoot(browser, entry, baseUrl) {
     }
     if (entry.modus === "app" && entry.zustand && !entry.danach) {
       // Weiterleitung statt der Seite heißt: falscher Zustand der App
+      // (eine Abfrage wie ?aktion=… gehört zum Pfad, zählt hier aber nicht mit)
       const ziel = new URL(page.url()).pathname;
-      if (ziel !== entry.pfad) throw new Error(`Weitergeleitet nach ${ziel} statt ${entry.pfad}.`);
+      const erwartet = new URL(entry.pfad, baseUrl).pathname;
+      if (ziel !== erwartet) throw new Error(`Weitergeleitet nach ${ziel} statt ${erwartet}.`);
     }
     await waitUntilSettled(page);
     if (entry.warteAuf) await page.waitForSelector(entry.warteAuf, { timeout: 15_000 });
@@ -415,32 +417,43 @@ async function shoot(browser, entry, baseUrl) {
     // Stellen mit echter Uhrzeit der Datenbank oder Zufall (Kennungen, Prüfsummen, Signaturen)
     // werden im fertigen Bild mit der Farbe ihrer Umgebung gefüllt (scripts/doku/png.mjs), damit
     // ein zweiter Lauf dasselbe Bild liefert. Die Seite selbst bleibt unberührt.
-    const ursprung = entry.ausschnitt
-      ? await page.locator(entry.ausschnitt).boundingBox()
-      : { x: 0, y: 0 };
-    const flaechen = [];
-    for (const css of entry.verdecke) {
-      for (const stelle of await page.locator(css).all()) {
-        if (!(await stelle.isVisible())) continue;
-        const box = await stelle.boundingBox();
-        if (box) {
-          flaechen.push({
-            x: (box.x - ursprung.x) * entry.skalierung,
-            y: (box.y - ursprung.y) * entry.skalierung,
-            breite: box.width * entry.skalierung,
-            hoehe: box.height * entry.skalierung,
-          });
+    const aufnehmen = async () => {
+      const ursprung = entry.ausschnitt
+        ? await page.locator(entry.ausschnitt).boundingBox()
+        : { x: 0, y: 0 };
+      const flaechen = [];
+      for (const css of entry.verdecke) {
+        for (const stelle of await page.locator(css).all()) {
+          if (!(await stelle.isVisible())) continue;
+          const box = await stelle.boundingBox();
+          if (box) {
+            flaechen.push({
+              x: (box.x - ursprung.x) * entry.skalierung,
+              y: (box.y - ursprung.y) * entry.skalierung,
+              breite: box.width * entry.skalierung,
+              hoehe: box.height * entry.skalierung,
+            });
+          }
         }
       }
+      const roh = entry.ausschnitt
+        ? await page.locator(entry.ausschnitt).screenshot(options)
+        : await page.screenshot(options);
+      return flaechen.length > 0 ? schreibePng(verdeckeFlaechen(lesePng(roh), flaechen)) : roh;
+    };
+    // Erst wenn zwei Aufnahmen kurz nacheinander gleich sind, steht die Seite still (späte Daten,
+    // Übergänge). Sonst nach fünf Versuchen mit Fehler abbrechen.
+    let bild = await aufnehmen();
+    for (let versuch = 1; ; versuch += 1) {
+      await page.waitForTimeout(250);
+      const naechstes = await aufnehmen();
+      if (naechstes.equals(bild)) break;
+      if (versuch >= 5)
+        throw new Error("Die Seite kommt nicht zur Ruhe (Bild ändert sich weiter).");
+      bild = naechstes;
     }
-    const bild = entry.ausschnitt
-      ? await page.locator(entry.ausschnitt).screenshot(options)
-      : await page.screenshot(options);
     if (problems.length > 0) throw new Error(problems.join(" | "));
-    writeFileSync(
-      file,
-      flaechen.length > 0 ? schreibePng(verdeckeFlaechen(lesePng(bild), flaechen)) : bild,
-    );
+    writeFileSync(file, bild);
     console.log(`ok   ${path.relative(ROOT, file)}`);
   } catch (error) {
     // Bild des Fehlers zum Nachsehen, außerhalb der Doku
