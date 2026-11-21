@@ -9,6 +9,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { t } from "@paibot/shared/texte";
 import { describe, expect, it } from "vitest";
 
 // Die Seite wird hier als Quelltext geprüft, weil die Test-Einstellungen der App kein JSX übersetzen.
@@ -17,8 +18,10 @@ const seite = readFileSync(new URL("./not-found.tsx", import.meta.url), "utf8");
 
 describe("404-Seite", () => {
   it("sagt auf Deutsch, dass es die Seite nicht gibt, und führt zur Startseite", () => {
-    expect(seite).toContain("Diese Seite gibt es nicht");
-    expect(seite).toContain("Zur Startseite");
+    expect(seite).toContain('t("nicht_gefunden.titel")');
+    expect(seite).toContain('t("nicht_gefunden.link")');
+    expect(t("nicht_gefunden.titel")).toBe("Diese Seite gibt es nicht");
+    expect(t("nicht_gefunden.link")).toBe("Zur Startseite");
     expect(seite).toMatch(/<Link href="\/"/);
   });
 

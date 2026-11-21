@@ -1,0 +1,408 @@
+/**
+ * PaiBot – Stile der Einrichtung und der Anmeldung: Seite außerhalb der App, Begleiter und Karte.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.seite {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 40px 40px;
+}
+
+.kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.marke {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.leise {
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.buehne {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 520px);
+  justify-content: center;
+  align-items: center;
+  gap: 48px;
+  padding: 40px 0;
+}
+
+.begleiter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.sprechblase {
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  padding: 14px 16px;
+  font-size: var(--schrift-b);
+  line-height: 1.45;
+  color: var(--ink);
+  max-width: 260px;
+}
+
+.karte {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 30px;
+  min-width: 0;
+}
+
+.karte form,
+.karte section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.fortschritt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.etikett {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.balken {
+  display: flex;
+  gap: 6px;
+}
+
+.balken i {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--line-mid);
+}
+
+.balken i[data-an] {
+  background: var(--accent);
+}
+
+.titel {
+  margin: 4px 0 0;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.titel:focus {
+  outline: none;
+}
+
+.titel:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+  border-radius: var(--radius-xs);
+}
+
+.text {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-l);
+  line-height: 1.5;
+}
+
+.hinweis {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.fehler {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--schrift-s);
+  font-weight: 500;
+}
+
+.warnung {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--warn-soft);
+  color: var(--ink);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.warnung svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warn);
+}
+
+.versprechen,
+.pruefliste,
+.fertigListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.versprechen li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.versprechen p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--schrift-m);
+}
+
+.versprechen span:not(.rund) {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.rund {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+.felder {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pruefliste {
+  gap: 6px;
+}
+
+.pruefliste li,
+.fertigListe li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.pruefliste li[data-ok],
+.fertigListe li {
+  color: var(--ink);
+}
+
+.fertigListe li svg {
+  color: var(--ok);
+}
+
+.pruefliste li[data-ok] svg {
+  color: var(--ok);
+}
+
+.feldReihe {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.feldReihe > button {
+  margin-top: 26px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--schrift-m);
+}
+
+.modelle {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.unsichtbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.modell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: border-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.modell:hover {
+  border-color: var(--line-strong);
+}
+
+.modell[data-gewaehlt] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.modell input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.modell input:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.modellText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.modellText .mono {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.knoepfe {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.rechts {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.primaerLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: var(--schrift-b);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px var(--accent-kante);
+}
+
+.primaerLink:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+@media (max-width: 860px) {
+  .seite {
+    padding: 16px 16px 32px;
+  }
+
+  .buehne {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 20px;
+    padding: 24px 0 0;
+  }
+
+  .begleiter {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .begleiter > :first-child {
+    width: 56px;
+    height: 56px;
+    flex: none;
+  }
+
+  .sprechblase {
+    max-width: none;
+    font-size: var(--schrift-m);
+  }
+
+  .karte {
+    padding: 22px 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .feldReihe {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .feldReihe > button {
+    margin-top: 0;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modell {
+    transition: none;
+  }
+}

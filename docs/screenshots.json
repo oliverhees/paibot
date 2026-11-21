@@ -41,8 +41,12 @@
       "hoehe": 900,
       "warteAuf": "main",
       "vorher": [
-        { "klick": "button[aria-label='Arbeitsfläche zeigen']" },
-        { "warteAuf": "[data-flaeche-offen] aside[aria-label='Arbeitsfläche']" }
+        {
+          "klick": "button[aria-label='Arbeitsfläche zeigen']"
+        },
+        {
+          "warteAuf": "[data-flaeche-offen] aside[aria-label='Arbeitsfläche']"
+        }
       ],
       "beschreibung": "Vorschau mit geöffneter Arbeitsfläche „Belege“, Rechner, dunkles Design"
     },
@@ -73,10 +77,71 @@
       "hoehe": 844,
       "warteAuf": "main",
       "vorher": [
-        { "klick": "button[aria-label='Arbeitsfläche zeigen']" },
-        { "warteAuf": "[data-flaeche-offen] aside[aria-label='Arbeitsfläche']" }
+        {
+          "klick": "button[aria-label='Arbeitsfläche zeigen']"
+        },
+        {
+          "warteAuf": "[data-flaeche-offen] aside[aria-label='Arbeitsfläche']"
+        }
       ],
       "beschreibung": "Vorschau auf dem Handy mit offenem Blatt „Belege“, dunkles Design"
+    },
+    {
+      "name": "einrichtung-code",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "beschreibung": "Einrichtung, Schritt 1: Einrichtungs-Code eingeben (frische Installation, TRUST_PROXY=1)"
+    },
+    {
+      "name": "einrichtung-code-fehler",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "klick": "button[type='submit']"
+        },
+        {
+          "warteAuf": "input[aria-invalid='true']"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 1: Hinweis, wenn der Code fehlt oder die falsche Form hat"
+    },
+    {
+      "name": "einrichtung-code-handy",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "breite": 390,
+      "hoehe": 844,
+      "beschreibung": "Einrichtung, Schritt 1 auf dem Handy"
+    },
+    {
+      "name": "anmelden",
+      "pfad": "/anmelden",
+      "warteAuf": "h1",
+      "beschreibung": "Anmelden nach der Einrichtung (ohne Sitzung)"
+    },
+    {
+      "name": "anmelden-leer",
+      "pfad": "/anmelden",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "klick": "button[type='submit']"
+        },
+        {
+          "warteAuf": "input[aria-invalid='true']"
+        }
+      ],
+      "beschreibung": "Anmelden: Hinweis, wenn kein Passwort eingegeben ist"
+    },
+    {
+      "name": "anmelden-handy-hell",
+      "pfad": "/anmelden",
+      "warteAuf": "h1",
+      "breite": 390,
+      "hoehe": 844,
+      "thema": "hell",
+      "beschreibung": "Anmelden auf dem Handy, helles Design"
     }
   ]
 }

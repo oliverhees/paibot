@@ -13,6 +13,12 @@ import styles from "./Icon.module.css";
 /** Linien-Symbole auf einem 24er-Raster, gezeichnet mit `currentColor`. */
 const PFADE = {
   check: <path d="M5 12.5l4.2 4.2L19 7" />,
+  abmelden: (
+    <>
+      <path d="M14 4.5H6.5A1.5 1.5 0 005 6v12a1.5 1.5 0 001.5 1.5H14" />
+      <path d="M10.5 12H20M16.5 8.5L20 12l-3.5 3.5" />
+    </>
+  ),
   schleuse: (
     <>
       <path d="M3 12h5M14 12h7" />

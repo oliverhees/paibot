@@ -27,6 +27,40 @@ export const de = {
   "seite.info": "Info",
   "navigation.mehr": "Mehr",
   "navigation.abmelden": "Abmelden",
+  "navigation.abmelden.laeuft": "Abmelden …",
+  "navigation.name": "Navigation",
+  "navigation.laeuft_auf": "Läuft auf:",
+  "navigation.ort": "dein Server",
+  "navigation.modelle": "Modelle:",
+  "navigation.dein_bot": "Dein Bot",
+  "navigation.bot.rolle": "dein persönlicher Assistent",
+  "navigation.unterhaltungen": "Unterhaltungen von {name}",
+  "navigation.menue_oeffnen": "Menü öffnen",
+  "navigation.menue_schliessen": "Menü schließen",
+  "navigation.flaeche": "Arbeitsfläche",
+  "navigation.flaeche_zeigen": "Arbeitsfläche zeigen",
+  "navigation.flaeche_schliessen": "Arbeitsfläche schließen",
+
+  // Seite nicht gefunden
+  "nicht_gefunden.seitentitel": "Seite nicht gefunden",
+  "nicht_gefunden.titel": "Diese Seite gibt es nicht",
+  "nicht_gefunden.text":
+    "Die Adresse stimmt nicht oder die Seite wurde verschoben. Von der Startseite aus findest du alles Weitere.",
+  "nicht_gefunden.link": "Zur Startseite",
+
+  // Start der App
+  "start.titel": "Schreib deinem Bot",
+  "start.text":
+    "Hier entsteht der Chat mit {name}. Er ist noch im Bau; sobald er fertig ist, schreibst du an dieser Stelle.",
+  "start.ohne_modell":
+    "{name} hat noch kein Modell. Ohne Modell kann {name} später nicht antworten; den Schlüssel trägst du unter „Modell und Anbieter“ ein.",
+
+  // Zugang allgemein
+  "zugang.ohne_proxy":
+    "TRUST_PROXY ist nicht gesetzt: PaiBot kennt die Adresse der Besucher nicht und bremst Anmelde-Versuche deshalb nur, statt sie je Adresse zu sperren. Läuft PaiBot hinter einem Proxy (zum Beispiel Coolify, Traefik, Caddy oder nginx), setze TRUST_PROXY=1.",
+  "zugang.datenbank.titel": "Datenbank nicht erreichbar",
+  "zugang.datenbank.text":
+    "PaiBot erreicht gerade seine Datenbank nicht. Sieh im Log nach, ob die Datenbank läuft, und lade die Seite danach neu.",
 
   // Allgemein
   "allgemein.speichern": "Speichern",
@@ -48,6 +82,12 @@ export const de = {
   "anmelden.bleiben": "Angemeldet bleiben",
   "anmelden.knopf": "Anmelden",
   "anmelden.warten": "Zu viele Versuche. Versuch es in {sekunden} Sekunden noch einmal.",
+  "anmelden.willkommen": "Willkommen zurück",
+  "anmelden.platzhalter": "Dein Passwort",
+  "anmelden.leer": "Gib dein Passwort ein.",
+  "anmelden.laeuft": "Anmelden …",
+  "anmelden.vergessen":
+    "Passwort vergessen? Zurücksetzen lässt es sich in dieser Fassung noch nicht. Bewahre es deshalb gut auf, zum Beispiel in einem Passwort-Manager.",
 
   // Einrichtung
   "einrichtung.titel": "PaiBot einrichten",
@@ -69,6 +109,71 @@ export const de = {
   "einrichtung.bot.label": "Name deines Bots",
   "einrichtung.bot.vorschlag": "Pai",
   "einrichtung.abschliessen": "Einrichtung abschließen",
+  "einrichtung.abschliessen.laeuft": "Wird eingerichtet …",
+  "einrichtung.schritt": "Schritt {nummer} von {gesamt}",
+  "einrichtung.sprache.code":
+    "Hallo, ich bin {name}, dein erster Bot. Ich begleite dich durch die Einrichtung.",
+  "einrichtung.sprache.passwort": "Dein Passwort schützt alles, was wir zusammen machen.",
+  "einrichtung.sprache.schluessel": "Über den Anbieter erreiche ich ein Sprachmodell.",
+  "einrichtung.sprache.modell": "Such mir ein Modell aus. Wechseln kannst du später jederzeit.",
+  "einrichtung.sprache.schleuse": "Die Datenschleuse ist ein Schutz, den du selbst einschaltest.",
+  "einrichtung.sprache.bot": "Wie soll ich heißen?",
+  "einrichtung.sprache.fertig": "Alles bereit. Schön, dass du da bist!",
+  "einrichtung.code.titel": "Willkommen bei PaiBot",
+  "einrichtung.code.text":
+    "In ein paar Minuten ist PaiBot bereit. Zuerst zeigst du, dass dieser Server dir gehört: mit dem Einrichtungs-Code aus dem Log.",
+  "einrichtung.code.hinweis_coolify": "In Coolify steht er bei der Anwendung unter „Logs“.",
+  "einrichtung.code.format": "Der Code hat 12 Zeichen, zum Beispiel K7QD-9M2F-XW4H.",
+  "einrichtung.versprechen.server.titel": "Läuft auf deinem Server",
+  "einrichtung.versprechen.server.text":
+    "Deine Unterhaltungen und Belege bleiben in deiner Datenbank.",
+  "einrichtung.versprechen.schleuse.titel": "Datenschleuse, wenn du willst",
+  "einrichtung.versprechen.schleuse.text":
+    "Ist sie eingerichtet, ersetzt sie Namen, Mail-Adressen und Telefonnummern, bevor etwas rausgeht.",
+  "einrichtung.versprechen.beleg.titel": "Handelt nur mit Beleg",
+  "einrichtung.versprechen.beleg.text":
+    "Jede Aktion läuft durch feste Regeln und bekommt einen Beleg, den du prüfen kannst.",
+  "einrichtung.passwort.titel": "Passwort festlegen",
+  "einrichtung.passwort.text":
+    "PaiBot hat genau ein Konto: deins. Mit diesem Passwort meldest du dich an.",
+  "einrichtung.passwort.gleich": "beide Eingaben sind gleich",
+  "einrichtung.passwort.laenge": "mindestens {min} Zeichen",
+  "einrichtung.passwort.tipp":
+    "Gut zu merken und schwer zu erraten: mehrere Wörter mit Bindestrichen, die nur du zusammen bringst.",
+  "einrichtung.passwort.zu_lang": "Das Passwort darf höchstens {max} Zeichen haben.",
+  "einrichtung.schluessel.titel": "Modell-Anbieter verbinden",
+  "einrichtung.schluessel.text":
+    "Über {anbieter} erreicht PaiBot Sprachmodelle. Den Schlüssel findest du in deinem Konto bei {anbieter}. Du kannst diesen Schritt auch später erledigen.",
+  "einrichtung.schluessel.feld": "Schlüssel für {anbieter}",
+  "einrichtung.schluessel.hilfe":
+    "Der Schlüssel bleibt auf deinem Server und wird nirgends angezeigt.",
+  "einrichtung.schluessel.ok": "Verbindung steht. {anzahl} passende Modelle gefunden.",
+  "einrichtung.schluessel.leer": "Gib zuerst einen Schlüssel ein.",
+  "einrichtung.schluessel.erst_testen":
+    "Teste zuerst die Verbindung oder trag den Schlüssel später ein.",
+  "einrichtung.modell.text":
+    "Mit diesem Modell arbeitet dein Bot. Du kannst es jederzeit wechseln.",
+  "einrichtung.modell.liste": "Modelle von {anbieter}",
+  "einrichtung.modell.keins":
+    "Der Anbieter hat keine passenden Modelle gemeldet. Du kannst trotzdem weitermachen und das Modell später wählen.",
+  "einrichtung.modell.waehlen": "Wähle ein Modell aus der Liste.",
+  "einrichtung.schleuse.nicht_installiert":
+    "Die Datenschleuse ist auf diesem Server nicht eingerichtet. Deine Nachrichten gehen deshalb direkt an den Anbieter. Einrichten kannst du sie später; dann lässt sich der Standard umstellen.",
+  "einrichtung.schleuse.aus_hinweis": "Aus: Nachrichten gehen direkt an den Anbieter.",
+  "einrichtung.schleuse.an_hinweis": "An: Persönliche Daten werden vor dem Versand ersetzt.",
+  "einrichtung.bot.titel": "Wie soll dein Bot heißen?",
+  "einrichtung.bot.text":
+    "Den Namen siehst du im Chat und in der Navigation. Ändern kannst du ihn später.",
+  "einrichtung.fertig.titel": "Alles bereit",
+  "einrichtung.fertig.text": "PaiBot ist eingerichtet, und du bist angemeldet.",
+  "einrichtung.fertig.passwort": "Passwort festgelegt",
+  "einrichtung.fertig.anbieter": "{anbieter} verbunden",
+  "einrichtung.fertig.ohne_anbieter": "Schlüssel trägst du später ein",
+  "einrichtung.fertig.modell": "Modell: {modell}",
+  "einrichtung.fertig.schleuse_an": "Datenschleuse als Standard an",
+  "einrichtung.fertig.schleuse_aus": "Datenschleuse als Standard aus",
+  "einrichtung.fertig.bot": "Dein Bot heißt {name}",
+  "einrichtung.fertig.weiter": "Zur App",
 
   // Chat
   "chat.leer.titel": "Frag deinen Bot etwas",
@@ -158,6 +263,7 @@ export const de = {
   "pruefung.laeuft": "Prüfung läuft …",
   "pruefung.gueltig": "gültig",
   "pruefung.ungueltig": "ungültig bei Eintrag {seq}",
+  "pruefung.offen": "noch nicht geprüft",
   "pruefung.server": "vom Server geprüft",
   "pruefung.inhalt.ok": "Inhalt unverändert",
   "pruefung.inhalt.fehler": "Inhalt verändert",
@@ -207,6 +313,11 @@ export const de = {
   "belege.urteil.vertrauen_gebrochen":
     "Kette in sich gültig, aber die Vertrauenskette ist unterbrochen.",
   "belege.urteil.ungueltig": "Kette ungültig.",
+  "belege.problem.regel_geaendert":
+    "Eine Regel dieses Belegs wurde nachträglich verändert; die Entscheidung lässt sich nicht mehr nachrechnen.",
+  "belege.problem.regel_fehlt": "Eine Regel dieses Belegs fehlt im festgehaltenen Regelstand.",
+  "belege.regelstand.nicht_festgehalten":
+    "Der Beleg nennt keinen Regelstand; nachgerechnet wurde mit den heutigen Regeln.",
 
   // Ergebnis einer Aktion
   "ergebnis.ok": "ausgeführt",
