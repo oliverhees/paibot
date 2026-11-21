@@ -21,6 +21,19 @@ export {
   type Zufall,
 } from "./avatar/bewegung";
 export { FORM_ZU_FARBE, FORMEN, formFuer, gesichtFuer } from "./avatar/formen";
+export {
+  AvatarLebendig,
+  type AvatarLebendigProps,
+  type AvatarLebendigSteuerung,
+} from "./avatar-lebendig/AvatarLebendig";
+export {
+  AVATAR_AUSDRUECKE,
+  AVATAR_LEBENDIG_ZUSTAENDE,
+  type AvatarAusdruck,
+  type AvatarLebendigZustand,
+  FORM_GESICHT,
+  type FormGesicht,
+} from "./avatar-lebendig/daten";
 export { Button, type ButtonArt, type ButtonProps } from "./basis/Button";
 export {
   ERSTER_FOKUS,
