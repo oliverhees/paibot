@@ -1,0 +1,71 @@
+# PaiBot – Zusatz nur für die Prüfung „kein Weg nach draußen“ (CI), nie auf einem Server.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-21
+
+# Macht das Netz paibot-aussen intern (ohne Weg ins Internet) und stellt den Test-Anbieter und
+# einen Prüf-Container in dasselbe Netz. web veröffentlicht keinen Port; geprüft wird von innen.
+#
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ohne-internet.yml \
+#     --env-file deploy/.env up -d --build
+#   PAIBOT_PRUEF_CODE=<code> PAIBOT_PRUEF_AUSGABE_HOST=<ordner> docker compose … \
+#     --profile pruefen run --rm pruefer
+#
+# Braucht in deploy/.env zusätzlich FAKE_PROVIDER_API_KEY (Wegwerf-Wert). Der Ordner für die
+# Ausgabe (Standard /tmp/paibot-ohne-internet) muss für den Prüf-Container beschreibbar sein.
+name: paibot
+
+services:
+  web:
+    environment:
+      # Einrichtung mit dem Test-Anbieter statt mit einem Anbieter im Internet.
+      PAIBOT_EINRICHTUNG_ANBIETER_URL: http://fake-provider:8080/v1
+    ports: !reset []
+
+  fake-provider:
+    image: paibot-fake-provider:test
+    build:
+      context: ..
+      dockerfile: tools/fake-provider/Dockerfile
+    environment:
+      FAKE_PROVIDER_API_KEY: ${FAKE_PROVIDER_API_KEY:?FAKE_PROVIDER_API_KEY fehlt}
+    networks:
+      - paibot-aussen
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  # Prüft über HTTP gegen web (tools/e2e/src/ohne-internet.mjs), ohne Abhängigkeiten. Startet nur
+  # mit „docker compose run“ (Profil pruefen).
+  pruefer:
+    profiles: [pruefen]
+    image: node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+    working_dir: /repo
+    command: ["node", "tools/e2e/src/ohne-internet.mjs"]
+    environment:
+      PAIBOT_PRUEF_URL: http://web:3000
+      PAIBOT_PRUEF_HERKUNFT: ${APP_URL:-http://localhost:3000}
+      PAIBOT_PRUEF_CODE: ${PAIBOT_PRUEF_CODE:-}
+      PAIBOT_PRUEF_ANBIETER_SCHLUESSEL: ${FAKE_PROVIDER_API_KEY:?FAKE_PROVIDER_API_KEY fehlt}
+      PAIBOT_PRUEF_AUSGABE: /ausgabe
+      PAIBOT_PRUEF_BELEGE_PRUEFER: /repo/packages/receipts/dist/belege-pruefen.mjs
+    volumes:
+      - ..:/repo:ro
+      - ${PAIBOT_PRUEF_AUSGABE_HOST:-/tmp/paibot-ohne-internet}:/ausgabe
+    networks:
+      - paibot-aussen
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      web:
+        condition: service_healthy
+
+networks:
+  paibot-aussen:
+    internal: true
