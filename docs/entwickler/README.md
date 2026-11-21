@@ -28,6 +28,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | Einstellungen und Info | [einstellungen.md](einstellungen.md)                   | [funktion-einstellungen.md](../funktion-einstellungen.md)                   |
 | Selbsttest             | [selbsttest.md](selbsttest.md)                         | [funktion-selbsttest.md](../funktion-selbsttest.md)                         |
 | Doku-Index im Image    | [doku-index.md](doku-index.md)                         | –                                                                           |
+| Teamchat (Regeln)      | [teamchat.md](teamchat.md)                             | –                                                                           |
 | Vorlage                | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
 
 ## Aufbau des Monorepos
