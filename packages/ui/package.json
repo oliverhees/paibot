@@ -13,7 +13,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:browser": "PAIBOT_BROWSER_TESTS=1 vitest run browser/"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
