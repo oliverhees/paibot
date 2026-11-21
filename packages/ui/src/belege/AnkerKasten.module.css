@@ -61,8 +61,11 @@
 }
 
 .anker:focus-visible {
-  outline: var(--fokus-breite) solid var(--focus);
-  outline-offset: var(--fokus-abstand);
+  /* Fokus: schmale Linie in der Akzentfarbe (mindestens 3:1) und ein leiser Schein. */
+  outline: 1px solid var(--fokus-feld);
+  outline-offset: -1px;
+  border-color: var(--fokus-feld);
+  box-shadow: 0 0 0 3px var(--fokus-feld-schein);
 }
 
 .knoepfe {

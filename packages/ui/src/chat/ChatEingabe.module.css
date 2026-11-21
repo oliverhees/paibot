@@ -28,11 +28,17 @@
   border: 1px solid var(--line-strong);
   border-radius: 18px;
   padding: 10px 8px 6px 14px;
-  transition: border-color var(--dauer-kurz) var(--kurve-sanft);
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--dauer-kurz);
+  transition-timing-function: var(--kurve-sanft);
 }
 
-.eingabe:focus-within {
-  border-color: var(--ink-soft);
+.eingabe:has(.text:focus-visible) {
+  /* Fokus: schmale Linie in der Akzentfarbe (mindestens 3:1) und ein leiser Schein. */
+  outline: 1px solid var(--fokus-feld);
+  outline-offset: -1px;
+  border-color: var(--fokus-feld);
+  box-shadow: 0 0 0 3px var(--fokus-feld-schein);
 }
 
 .eingabe[data-deaktiviert] {
@@ -74,9 +80,8 @@
 }
 
 .text:focus-visible {
-  outline: var(--fokus-breite) solid var(--focus);
-  outline-offset: 4px;
-  border-radius: 4px;
+  /* Den Fokus zeigt der Rahmen der ganzen Eingabe (siehe oben). */
+  outline: none;
 }
 
 .leiste {

@@ -202,7 +202,7 @@ describe.skipIf(!bereit && !erzwungen)("Tastatur-Bedienung im Browser", { timeou
     expect(fehler).toEqual([]);
   });
 
-  it("jedes per Tab erreichte Element zeigt den Fokus-Ring in --focus (mind. 2px)", async () => {
+  it("jedes per Tab erreichte Element zeigt den Fokus-Ring in --focus (mind. 2px), Eingabefelder die Akzent-Linie mit Schein", async () => {
     await oeffne();
     await page.focus("#vorher");
     const ohneRing = [];
@@ -210,8 +210,9 @@ describe.skipIf(!bereit && !erzwungen)("Tastatur-Bedienung im Browser", { timeou
       const info = await page.evaluate(() => {
         const el = document.activeElement;
         const stil = getComputedStyle(el);
+        const feld = /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.type !== "checkbox";
         const probe = document.createElement("span");
-        probe.style.color = "var(--focus)";
+        probe.style.color = feld ? "var(--fokus-feld)" : "var(--focus)";
         document.body.append(probe);
         const soll = getComputedStyle(probe).color;
         probe.remove();
@@ -219,12 +220,20 @@ describe.skipIf(!bereit && !erzwungen)("Tastatur-Bedienung im Browser", { timeou
           sichtbar: el.matches(":focus-visible"),
           stil: stil.outlineStyle,
           breite: Number.parseFloat(stil.outlineWidth),
+          mindest: feld ? 1 : 2,
+          schein: feld ? stil.boxShadow !== "none" : true,
           farbe: stil.outlineColor,
           soll,
         };
       });
       const name = await fokus();
-      if (!info.sichtbar || info.stil === "none" || info.breite < 2 || info.farbe !== info.soll) {
+      if (
+        !info.sichtbar ||
+        info.stil === "none" ||
+        info.breite < info.mindest ||
+        !info.schein ||
+        info.farbe !== info.soll
+      ) {
         ohneRing.push(`${name}: ${JSON.stringify(info)}`);
       }
       await page.keyboard.press("Tab");

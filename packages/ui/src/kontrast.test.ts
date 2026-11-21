@@ -249,22 +249,52 @@ describe("Kontrast der Farben (dunkel und hell)", () => {
     expect(pruefe(paare)).toEqual([]);
   });
 
-  it("Fokus-Ring: jede Umrandung nutzt --focus, mindestens 3:1 auf jeder Grundfläche", () => {
+  it("Fokus-Ring: jede Umrandung nutzt --focus (Eingabefelder --fokus-feld), mindestens 3:1 auf jeder Grundfläche", () => {
     const umrandungen = REGELN.filter((r) => {
       const o = r.werte.get("outline");
       return o !== undefined && !/^(none|0)$/.test(o);
     });
     expect(umrandungen.length).toBeGreaterThan(20);
     const fremd = umrandungen
-      .filter((r) => !(r.werte.get("outline") as string).includes("var(--focus)"))
+      .filter((r) => !/var\(--(focus|fokus-feld)\)/.test(r.werte.get("outline") as string))
       .map((r) => `${r.ort} ${r.selektor}: ${r.werte.get("outline")}`);
     expect(fremd).toEqual([]);
-    const paare = GRUNDFLAECHEN.map((hinten) => ({
-      vorne: "--focus",
-      hinten,
-      mindest: BEDIENUNG,
-      wo: "Fokus-Ring",
-    }));
+    const paare = ["--focus", "--fokus-feld"].flatMap((vorne) =>
+      GRUNDFLAECHEN.map((hinten) => ({ vorne, hinten, mindest: BEDIENUNG, wo: "Fokus-Ring" })),
+    );
+    expect(pruefe(paare)).toEqual([]);
+  });
+
+  it("Fokus in Eingabefeldern: Akzent-Linie, mindestens 3:1 gegen eigene Fläche und jede Grundfläche", () => {
+    // Textfeld, Auswahl, Textbereich, Suchfeld, Chat-Eingabe und die Felder der Belege-Seite.
+    const FOKUS = [
+      ["packages/ui/src/felder/Feld.module.css", ".eingabe:focus-visible", ".eingabe"],
+      ["packages/ui/src/felder/Feld.module.css", '.eingabe[data-zustand="fokus"]', ".eingabe"],
+      [
+        "packages/ui/src/chat/ChatEingabe.module.css",
+        ".eingabe:has(.text:focus-visible)",
+        ".eingabe",
+      ],
+      ["packages/ui/src/belege/AnkerKasten.module.css", ".anker:focus-visible", ".anker"],
+      ["apps/web/src/app/(app)/belege/belege.module.css", ".auswahl:focus-visible", ".auswahl"],
+      ["apps/web/src/app/(app)/belege/belege.module.css", ".json:focus-visible", ".json"],
+    ] as const;
+    const paare: Paar[] = [];
+    for (const [datei, selektor, grund] of FOKUS) {
+      const wo = `${datei} ${selektor}`;
+      const regel = REGELN.find((r) => r.ort === path.normalize(datei) && r.selektor === selektor);
+      expect(regel, wo).toBeDefined();
+      expect(regel?.werte.get("outline"), wo).toContain("var(--fokus-feld)");
+      expect(regel?.werte.get("border-color"), wo).toBe("var(--fokus-feld)");
+      const ruhe = REGELN.find(
+        (r) => r.ort === path.normalize(datei) && r.selektor === grund && r.werte.has("border"),
+      );
+      const flaechen = new Set<string>([...GRUNDFLAECHEN]);
+      const eigene = ruhe ? hintergrund(ruhe) : null;
+      if (eigene) flaechen.add(eigene);
+      for (const hinten of flaechen)
+        paare.push({ vorne: "--fokus-feld", hinten, mindest: BEDIENUNG, wo });
+    }
     expect(pruefe(paare)).toEqual([]);
   });
 
