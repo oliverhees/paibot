@@ -1,5 +1,5 @@
 /**
- * PaiBot – Test, dass `pnpm compose:vergleich` Unterschiede zwischen den Compose-Dateien meldet.
+ * PaiBot – Test, dass `pnpm compose:vergleich` Unterschiede zwischen den Compose-Dateien meldet (auch Coolify).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 /** Ruft den Befehl wirklich auf; mit zwei Texten vergleicht er diese statt der echten Dateien. */
-function vergleich(texte?: { bau: string; image: string }) {
+function vergleich(texte?: { bau: string; image: string; coolify?: string }) {
   const args: string[] = [];
   if (texte) {
     const dir = mkdtempSync(path.join(tmpdir(), "paibot-compose-vergleich-"));
@@ -34,6 +34,11 @@ function vergleich(texte?: { bau: string; image: string }) {
     writeFileSync(bau, texte.bau);
     writeFileSync(image, texte.image);
     args.push(bau, image);
+    if (texte.coolify !== undefined) {
+      const coolify = path.join(dir, "coolify.yml");
+      writeFileSync(coolify, texte.coolify);
+      args.push(coolify);
+    }
   }
   const result = spawnSync(process.execPath, [SCRIPT, ...args], { cwd: ROOT, encoding: "utf8" });
   return { code: result.status, ausgabe: `${result.stdout}${result.stderr}` };
@@ -83,10 +88,148 @@ function aufstellung(art: "bau" | "image", extra: Partial<Record<string, string[
   ].join("\n");
 }
 
+const D = "$";
+const GEHEIM_BAU = {
+  postgres: [
+    "    environment:",
+    `      POSTGRES_PASSWORD: ${D}{POSTGRES_PASSWORD:?fehlt}`,
+    "    cap_drop: [ALL]",
+  ],
+  migrate: [
+    '    restart: "no"',
+    "    environment:",
+    `      DATABASE_URL: postgres://app:${D}{POSTGRES_APP_PASSWORD:?fehlt}@postgres:5432/db`,
+    `      DATABASE_MIGRATION_URL: postgres://owner:${D}{POSTGRES_PASSWORD}@postgres:5432/db`,
+  ],
+  worker: ["    environment:", `      PAIBOT_SECRET: ${D}{PAIBOT_SECRET:?fehlt}`],
+};
+
+/** Coolify-Datei zur kleinen Aufstellung: web zuerst, Geheimnisse und Adresse aus Coolify. */
+function coolify(ersetzen: (text: string) => string = (t) => t, webZuerst = true): string {
+  const bau = aufstellung("bau", GEHEIM_BAU);
+  const start = bau.indexOf("  postgres:");
+  const web = bau.indexOf("  web:");
+  const worker = bau.indexOf("  worker:");
+  const umgestellt = `${bau.slice(0, start)}${bau.slice(web, worker)}${bau.slice(start, web)}${bau.slice(worker)}`;
+  return ersetzen(
+    (webZuerst ? umgestellt : bau)
+      .replace(
+        `      APP_URL: ${D}{APP_URL:?APP_URL fehlt}`,
+        `      APP_URL: ${D}{SERVICE_URL_WEB}\n      SERVICE_URL_WEB_3000:`,
+      )
+      .replace(`${D}{POSTGRES_PASSWORD:?fehlt}`, `${D}{SERVICE_HEX_64_PGOWNER}`)
+      .replace(`${D}{POSTGRES_PASSWORD}`, `${D}{SERVICE_HEX_64_PGOWNER}`)
+      .replace(`${D}{POSTGRES_APP_PASSWORD:?fehlt}`, `${D}{SERVICE_HEX_64_PGAPP}`)
+      .replace(`${D}{PAIBOT_SECRET:?fehlt}`, `${D}{SERVICE_REALBASE64_32_PAIBOT}`),
+  );
+}
+
+function mitCoolify(coolifyText: string) {
+  return vergleich({
+    bau: aufstellung("bau", GEHEIM_BAU),
+    image: aufstellung("image", GEHEIM_BAU),
+    coolify: coolifyText,
+  });
+}
+
 describe("compose:vergleich", () => {
-  it("die echten Compose-Dateien sind gleich aufgestellt (Exit 0)", () => {
+  it("die echten Compose-Dateien sind gleich aufgestellt, auch die für Coolify (Exit 0)", () => {
     const r = vergleich();
     expect(r.ausgabe).toContain("Compose-Vergleich ok");
+    expect(r.ausgabe).toContain("Compose-Vergleich Coolify ok");
+    expect(r.ausgabe).toContain("Schreibweisen ok");
+    expect(r.code).toBe(0);
+  });
+
+  it("Coolify-Datei: nur Herkunft der Geheimnisse und Reihenfolge anders → Exit 0", () => {
+    const r = mitCoolify(coolify());
+    expect(r.ausgabe).toContain("Compose-Vergleich Coolify ok");
+    expect(r.code).toBe(0);
+  });
+
+  it("Coolify-Datei ohne Schutz (read_only, cap_drop, restart) → jeweils Exit 1", () => {
+    for (const [weg, stelle] of [
+      [
+        "    read_only: true\n    logging: *logging\n    mem_limit: 512m\n    pids_limit: 256\n    environment:\n      PAIBOT_SECRET",
+        "Dienst worker",
+      ],
+      ["    cap_drop: [ALL]\n", "Dienst postgres"],
+      ['    restart: "no"\n', "Dienst migrate"],
+    ] as const) {
+      const text = coolify();
+      const ohne = weg.startsWith("    read_only")
+        ? text.replace(weg, weg.replace("    read_only: true\n", ""))
+        : text.replace(weg, "");
+      expect(ohne).not.toBe(text);
+      const r = mitCoolify(ohne);
+      expect(r.code).toBe(1);
+      expect(r.ausgabe).toContain(`Erster Unterschied zur Coolify-Datei (${stelle})`);
+    }
+  });
+
+  it("Coolify-Datei: Standardwert für ein Geheimnis oder eigene Variable → Exit 1", () => {
+    const mitStandard = mitCoolify(
+      coolify((t) =>
+        t.replace(`${D}{SERVICE_REALBASE64_32_PAIBOT}`, `${D}{SERVICE_REALBASE64_32_PAIBOT:-AAAA}`),
+      ),
+    );
+    expect(mitStandard.code).toBe(1);
+    expect(mitStandard.ausgabe).toContain("ohne Standard");
+
+    const vonHand = mitCoolify(
+      coolify((t) => t.replace(`${D}{SERVICE_HEX_64_PGAPP}`, `${D}{POSTGRES_APP_PASSWORD:?fehlt}`)),
+    );
+    expect(vonHand.code).toBe(1);
+    expect(vonHand.ausgabe).toContain("Diesen Wert erzeugt Coolify");
+
+    const fremd = mitCoolify(
+      coolify((t) => t.replace(`${D}{SERVICE_HEX_64_PGAPP}`, `${D}{SERVICE_PASSWORD_PGAPP}`)),
+    );
+    expect(fremd.code).toBe(1);
+    expect(fremd.ausgabe).toContain("ist hier nicht vorgesehen");
+  });
+
+  it("Coolify-Datei: web nicht zuerst oder ohne SERVICE_URL_WEB_3000 → Exit 1", () => {
+    const nichtZuerst = mitCoolify(coolify(undefined, false));
+    expect(nichtZuerst.code).toBe(1);
+    expect(nichtZuerst.ausgabe).toContain("Der erste Dienst muss web sein");
+
+    const ohnePort = mitCoolify(coolify((t) => t.replace("\n      SERVICE_URL_WEB_3000:", "")));
+    expect(ohnePort.code).toBe(1);
+    expect(ohnePort.ausgabe).toContain("SERVICE_URL_WEB_3000");
+  });
+
+  it("Schreibweisen, die YAML 1.1 anders liest (oktal, yes/no/on/off, Basis 60) → Exit 1", () => {
+    for (const [zeile, grund] of [
+      ["    shm_size: 01777", "führender Null"],
+      ["    restart: no", "yes/no/on/off"],
+      ["    cap_add: [on]", "yes/no/on/off"],
+      ["    stop_signal: 0o17", "0o/0x/0b"],
+      ["    ports: [22:22]", "Basis 60"],
+      ["      - 1:30", "Basis 60"],
+    ] as const) {
+      const extra = { postgres: [zeile] };
+      const r = vergleich({ bau: aufstellung("bau", extra), image: aufstellung("image", extra) });
+      expect(r.code, zeile).toBe(1);
+      expect(r.ausgabe).toContain(grund);
+      expect(r.ausgabe).toMatch(/bau\.yml:\d+:/);
+    }
+  });
+
+  it("Gegenprobe Schreibweisen: quotiert, dezimal und in mehrzeiligem Text erlaubt → Exit 0", () => {
+    const extra = {
+      postgres: [
+        '    restart: "no"',
+        "    shm_size: 1023",
+        '    ports: ["3000:3000"]',
+        "    entrypoint: |",
+        "      case x in no) ;; esac",
+        "      mode: 01777",
+        "    user: postgres # no",
+      ],
+    };
+    const r = vergleich({ bau: aufstellung("bau", extra), image: aufstellung("image", extra) });
+    expect(r.ausgabe).toContain("Schreibweisen ok: 2 Compose-Dateien");
     expect(r.code).toBe(0);
   });
 

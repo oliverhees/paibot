@@ -78,6 +78,21 @@ jobs:
       - run: pnpm licenses:check
       - run: pnpm doku:check --streng
       - run: pnpm compose:vergleich
+      # Die Coolify-Datei mit Beispielwerten in der Form, die Coolify erzeugt, durch Docker Compose.
+      - name: Compose-Datei für Coolify gültig
+        run: |
+          set -eu
+          beispiel="$RUNNER_TEMP/coolify-beispiel.env"
+          {
+            echo "SERVICE_HEX_64_PGOWNER=$(openssl rand -hex 32)"
+            echo "SERVICE_HEX_64_PGAPP=$(openssl rand -hex 32)"
+            echo "SERVICE_REALBASE64_32_PAIBOT=$(openssl rand -base64 32)"
+            echo "SERVICE_URL_WEB=https://paibot.example.de"
+            echo "SERVICE_URL_WEB_3000=https://paibot.example.de:3000"
+          } > "$beispiel"
+          docker compose -f deploy/docker-compose.coolify.yml --env-file "$beispiel" config --quiet
+          docker compose -f deploy/docker-compose.coolify.yml --env-file "$beispiel" config \
+            | grep -qF "APP_URL: https://paibot.example.de"
       - name: Sicherheitsmeldungen der Abhängigkeiten (Betrieb)
         run: pnpm audit --prod --audit-level high
 

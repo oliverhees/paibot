@@ -12,7 +12,9 @@ Seit:      2026-11-07
 
 Ziel: PaiBot läuft auf deinem eigenen Server in der EU, unter deiner Domain mit HTTPS, und `/api/health` meldet `"db":"ok"`.
 
-PaiBot ist ein Docker-Compose-Stack (`deploy/docker-compose.yml`). Coolify ist der bequeme Weg, ihn auf einem Server zu betreiben; nötig ist es nicht (siehe [`deploy/README.md`](../deploy/README.md)).
+PaiBot ist ein Docker-Compose-Stack. Für Coolify gibt es eine eigene Compose-Datei, `deploy/docker-compose.coolify.yml`: Coolify erzeugt damit die Passwörter der Datenbank, `PAIBOT_SECRET` und die Adresse selbst. Coolify ist der bequeme Weg, PaiBot auf einem Server zu betreiben; nötig ist es nicht (siehe [`deploy/README.md`](../deploy/README.md)).
+
+**Was auf Coolify ausprobiert ist (Stand 21.11.2026):** Mit `deploy/docker-compose.yml` und von Hand eingetragenen Werten (Weg B) läuft PaiBot auf Coolify: Bau rund 2 Minuten, Domain von Coolify am Dienst `web` mit gültigem Zertifikat, Einrichtung erreichbar, Verbindung zum Anbieter steht. Der Weg A mit `deploy/docker-compose.coolify.yml` und von Coolify erzeugten Werten folgt der Doku und dem Quelltext von Coolify, ist auf einem echten Server aber **noch nicht durchgespielt**.
 
 ## 1. Server und Coolify
 
@@ -24,14 +26,42 @@ Wer Coolify von Hand installiert, folgt https://coolify.io/docs und sichert Serv
 
 ## 2. Domain
 
-Lege eine Domain oder Subdomain an (z. B. `paibot.deine-domain.de`), deren A-Record auf die Server-IP zeigt.
+Zwei Möglichkeiten:
+
+- **Domain von Coolify:** Ist in Coolify beim Server eine Wildcard-Domain eingestellt (z. B. `sslip.io`), erzeugt Coolify für den Dienst `web` selbst eine Adresse mit HTTPS. Für den Anfang reicht das.
+- **Eigene Domain:** Lege eine Domain oder Subdomain an (z. B. `paibot.deine-domain.de`), deren A-Eintrag auf die **öffentliche** IP des Servers zeigt. Der WireGuard-Tunnel aus coolify-shield ist nur für das Dashboard; über ihn erreicht niemand PaiBot.
 
 ## 3. PaiBot als Ressource anlegen
 
+### Weg A: Coolify erzeugt die Werte (empfohlen für eine neue Installation)
+
 1. In Coolify ein Projekt anlegen, z. B. „PaiBot“.
-2. Neue Ressource → aus dem öffentlichen GitHub-Repo `https://github.com/oliverhees/paibot` → Build-Art **Docker Compose**.
-3. Compose-Datei: `deploy/docker-compose.yml`, Branch `main`.
-4. Werte erzeugen, am besten auf deinem eigenen Rechner (die Ausgabe nicht in Chats oder Tickets kopieren):
+2. Neue Ressource → aus dem öffentlichen GitHub-Repo `https://github.com/oliverhees/paibot` → Build Pack **Docker Compose**, Branch `main`.
+3. **Base Directory** `/deploy`, **Docker Compose Location** `/docker-compose.coolify.yml`.
+4. Speichern. Coolify liest die Datei ein und legt unter **Environment Variables** vier Werte an:
+
+   | Variable                       | Wofür                                                          |
+   | ------------------------------ | -------------------------------------------------------------- |
+   | `SERVICE_HEX_64_PGOWNER`       | Passwort des Tabellen-Besitzers (nur `postgres` und `migrate`) |
+   | `SERVICE_HEX_64_PGAPP`         | Passwort der App-Rolle, ein eigener Wert                       |
+   | `SERVICE_REALBASE64_32_PAIBOT` | `PAIBOT_SECRET`: 32 zufällige Byte als Base64                  |
+   | `SERVICE_URL_WEB`              | `APP_URL`: die Domain des Dienstes `web`, mit `https://`       |
+
+   Die Werte bleiben bei jedem Deploy gleich. Du trägst keinen davon selbst ein.
+
+5. **Domain prüfen:** Unter **Domains** steht sie beim Dienst `web`, mit `:3000` am Ende (der Port im Container; im Browser bleibt es `https://` ohne Port). Eigene Domain: dort `https://paibot.deine-domain.de:3000` eintragen. `migrate`, `worker` und `postgres` bekommen **keine** Domain.
+6. **Geheimnisse aus dem Bau heraushalten:** Coolify gibt beim Bau sonst alle Variablen als Build-Argumente mit und schreibt `ARG`-Zeilen ins Dockerfile; so könnten Passwörter und `PAIBOT_SECRET` im Image landen. PaiBot braucht beim Bau keinen dieser Werte. Darum:
+   - unter **Advanced** bei **Build arguments** „Managed manually in Dockerfile“ wählen (in älteren Versionen von Coolify: „Inject Build Args to Dockerfile“ ausschalten),
+   - bei `SERVICE_HEX_64_PGOWNER`, `SERVICE_HEX_64_PGAPP`, `SERVICE_REALBASE64_32_PAIBOT` und, falls gesetzt, `SCHLEUSE_KEY`, `SCHLEUSE_STATE_KEY` und `SCHLEUSE_ANBIETER_SCHLUESSEL` **Build time** auf „Not available during build“ stellen (älter: Häkchen „Build Variable?“ entfernen).
+7. Deploy starten. Coolify zeigt danach vier Dienste: `postgres`, `migrate`, `web` und `worker`. `migrate` wendet die Migrationen an, richtet die App-Rolle ein und beendet sich; erst danach starten `web` und `worker`.
+8. **`PAIBOT_SECRET` sichern:** den Wert von `SERVICE_REALBASE64_32_PAIBOT` in deinen Passwort-Manager kopieren, getrennt von den Sicherungen der Datenbank. Ohne ihn lassen sich gespeicherte Anbieter-Schlüssel nicht mehr lesen; ein neuer Wert ersetzt ihn nicht.
+
+Lief PaiBot schon mit `deploy/docker-compose.yml`, bleib bei Weg B. Willst du trotzdem umsteigen, trägst du vor dem ersten Deploy deine bisherigen Werte in die drei `SERVICE_…`-Variablen ein: `POSTGRES_PASSWORD` in `SERVICE_HEX_64_PGOWNER`, `POSTGRES_APP_PASSWORD` in `SERVICE_HEX_64_PGAPP`, `PAIBOT_SECRET` in `SERVICE_REALBASE64_32_PAIBOT`.
+
+### Weg B: Werte selbst erzeugen
+
+1. Ressource wie in Weg A anlegen, aber mit **Docker Compose Location** `/docker-compose.yml`.
+2. Werte erzeugen, am besten auf deinem eigenen Rechner (die Ausgabe nicht in Chats oder Tickets kopieren):
 
    ```bash
    openssl rand -hex 32      # für POSTGRES_PASSWORD
@@ -39,23 +69,37 @@ Lege eine Domain oder Subdomain an (z. B. `paibot.deine-domain.de`), deren A-Rec
    openssl rand -base64 32   # für PAIBOT_SECRET
    ```
 
-5. Umgebungsvariablen in Coolify setzen:
+3. Umgebungsvariablen in Coolify setzen:
    - `POSTGRES_PASSWORD`: erster Wert (Migrations-Rolle, Besitzer der Tabellen)
    - `POSTGRES_APP_PASSWORD`: zweiter Wert (App-Rolle, mit der PaiBot arbeitet)
    - `PAIBOT_SECRET`: dritter Wert. Zusätzlich im Passwort-Manager sichern; ohne ihn lassen sich gespeicherte Anbieter-Schlüssel nicht mehr lesen.
-   - `APP_URL`: `https://paibot.deine-domain.de`
-6. Beim Dienst `web` die Domain eintragen (Port 3000). Coolify besorgt das HTTPS-Zertifikat. Der Dienst `worker` bekommt **keine** Domain; er hat keinen Port.
-7. Deploy starten. Coolify zeigt danach vier Dienste: `postgres`, `migrate`, `web` und `worker`. `migrate` wendet die Migrationen an, richtet die App-Rolle ein und beendet sich; erst danach starten `web` und `worker`. Der Dienst `migrate` bekommt **keine** Domain.
+   - `APP_URL`: die Adresse, unter der du PaiBot öffnest, z. B. `https://paibot.deine-domain.de` (ohne Port)
+4. Beim Dienst `web` die Domain eintragen (Port 3000). Coolify besorgt das HTTPS-Zertifikat.
+5. Geheimnisse aus dem Bau heraushalten wie in Weg A, Schritt 6 (hier bei `POSTGRES_PASSWORD`, `POSTGRES_APP_PASSWORD` und `PAIBOT_SECRET`).
+6. Deploy starten.
+
+### Für beide Wege
 
 Die Datenbank veröffentlicht keinen Port und hängt nur im internen Netz des Stacks. Die Web-App ist nur auf `127.0.0.1` gebunden. Von außen ist PaiBot nur über deine Domain erreichbar.
 
 Beim ersten Start legt `migrate` die App-Rolle `paibot_app` an und gibt ihr nur die Rechte, die sie braucht. Nur `migrate` bekommt die Zugangsdaten der Migrations-Rolle; `web` und `worker` arbeiten nur mit der App-Rolle. Was die Rollen dürfen: [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank).
 
-**Beim Probelauf prüfen:** Ein Dienst, der sich nach getaner Arbeit mit Exit 0 beendet (`restart: "no"`), ist in Docker Compose üblich. Wie deine Coolify-Version ihn anzeigt (z. B. als „exited“ statt „healthy“) und ob ein neues Deploy ihn jedes Mal wieder startet, ist noch nicht auf Coolify durchgespielt. Erwartet: Bei jedem Deploy läuft `migrate` einmal durch, im Log steht zuletzt „Migrations-Schritt fertig.“, danach starten `web` und `worker`. Zeigt Coolify den gesamten Stack wegen `migrate` als nicht gesund an, ist das nur die Anzeige; maßgeblich sind `web` und `worker`.
+### Stolperfallen
+
+| Was du siehst                                              | Was es heißt                                                                                                                                                |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Im Dialog „Add domain“ steht `migrate` ganz oben           | Die Domain gehört nur zum Dienst `web`. Wähle `web` aus.                                                                                                    |
+| `migrate` steht nach dem Deploy auf „Exited“               | Richtig so: Er läuft bei jedem Deploy einmal durch und beendet sich mit Exit 0. Wegen `restart: "no"` zählt Coolify ihn nicht in den Zustand der Anwendung. |
+| Der Einrichtungs-Code steht nicht unter „Deployments“      | „Deployments“ zeigt nur das Bau-Protokoll. Der Code steht im Reiter **Logs** der Ressource beim Container `web`.                                            |
+| Im Bau-Protokoll steht „Added … ARG declarations“          | Coolify schreibt Variablen ins Dockerfile. Schritt 6 aus Weg A nachholen und neu deployen.                                                                  |
+| PaiBot über die Tunnel-Adresse nicht erreichbar            | Der Tunnel ist nur fürs Dashboard. PaiBot läuft über die öffentliche IP (A-Eintrag) oder die Domain von Coolify.                                            |
+| Coolify bricht beim Einlesen ab („expected type 'uint32'“) | Alte Compose-Datei mit `mode: 01777`. Mit dem aktuellen Stand von `main` neu einlesen (dort steht `mode: 1023`).                                            |
+
+**Beim Probelauf von Weg A prüfen** (noch nicht auf Coolify durchgespielt): Im Bau-Protokoll steht keine Zeile „Added … ARG declarations“ mehr. Auf dem Server findet `docker history --no-trunc <image>` keines der Geheimnisse (Suche nach `PAIBOT_SECRET`, `SERVICE_` und `POSTGRES`). Im Container `web` gibt `printenv APP_URL` die Adresse ohne `:3000` aus. Die Ressource steht auf „Running“, obwohl `migrate` „Exited“ zeigt.
 
 ## Bestehende Installation umstellen
 
-Lief PaiBot bei dir schon mit nur `POSTGRES_PASSWORD`, startet der neue Stand erst, wenn die neuen Werte gesetzt sind. Deine Daten bleiben erhalten.
+Gilt für Weg B. Lief PaiBot bei dir schon mit nur `POSTGRES_PASSWORD`, startet der neue Stand erst, wenn die neuen Werte gesetzt sind. Deine Daten bleiben erhalten.
 
 1. In Coolify eine Sicherung der Datenbank anlegen.
 2. `POSTGRES_APP_PASSWORD` neu setzen (`openssl rand -hex 32`). `PAIBOT_SECRET` nur setzen, wenn es noch fehlt; ein vorhandenes nie ersetzen.
@@ -110,14 +154,14 @@ Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`. In Coolify stehen `web
 | `"db":"ok"`                                      | alles läuft                                                                   | –                                                                                            |
 | `"db":"down"`, HTTP 503                          | App läuft, Datenbank nicht erreichbar                                         | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen                        |
 | Im Log von `web`: „WARNUNG: … zu vielen Rechten“ | App arbeitet mit zu vielen Rechten                                            | „Bestehende Installation umstellen“ und `PAIBOT_ALLOW_PRIVILEGED_DB` wieder entfernen        |
-| Deploy bricht ab, Log: „Start abgebrochen“       | Pflichtwert fehlt, zu kurz oder Platzhalter; oder „Datenbank nicht auf Stand“ | die Zeile davor im Log nennt den Wert; Werte wie in Schritt 4 erzeugen                       |
+| Deploy bricht ab, Log: „Start abgebrochen“       | Pflichtwert fehlt, zu kurz oder Platzhalter; oder „Datenbank nicht auf Stand“ | die Zeile davor im Log nennt den Wert; Werte wie in Schritt 3 prüfen                         |
 | `web` und `worker` starten nicht                 | `migrate` ist mit Fehler beendet                                              | Log von `migrate` in Coolify lesen                                                           |
 | keine Antwort                                    | Domain, DNS oder Proxy falsch                                                 | A-Record und Domain-Eintrag beim Dienst `web` prüfen                                         |
 | Dienst `worker` nicht „healthy“                  | Worker wartet noch auf `migrate` oder die Datenbank, oder sein Start brach ab | Logs von `worker` in Coolify lesen; die letzte Zeile vor „Start abgebrochen“ nennt den Grund |
 
 ## So sieht es aus
 
-Öffnest du deine Domain im Browser, begrüßt dich die Einrichtung. Den Einrichtungs-Code findest du in Coolify bei der Anwendung unter „Logs“ (Suche nach „Einrichtungs-Code“). Wie es weitergeht, steht in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
+Öffnest du deine Domain im Browser, begrüßt dich die Einrichtung. Den Einrichtungs-Code findest du in Coolify bei der Anwendung im Reiter **Logs** beim Container `web` (Suche nach „Einrichtungs-Code“), nicht unter „Deployments“. Wie es weitergeht, steht in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
 
 ![Einrichtung, Schritt 1 im dunklen Design: Begrüßung durch den Bot Pai und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf die Logs in Coolify](assets/screenshots/einrichtung-code.png)
 
