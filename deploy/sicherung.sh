@@ -453,7 +453,13 @@ zurueckspielen() {
       [ -z "$id" ] || docker start "$id" > /dev/null
     done
   else
-    compose up -d > /dev/null
+    # up wartet auf migrate (web und worker hängen an dessen erfolgreichem Ende).
+    if ! compose up -d > "$arbeit/up.log" 2>&1; then
+      tail -n 20 "$arbeit/up.log" >&2
+      mig=$(dienst migrate)
+      [ -z "$mig" ] || docker logs --tail 40 "$mig" >&2 || true
+      abbruch 1 "Start nach dem Einspielen gescheitert (Log oben). Die Daten sind eingespielt; nach der Ursache: docker compose … up -d, dann sh deploy/sicherung.sh pruefen $ordner"
+    fi
     mig=$(dienst migrate)
     i=0
     while [ "$(zustand_von "$mig")" != "exited" ] && [ "$i" -lt "$WARTEZEIT" ]; do

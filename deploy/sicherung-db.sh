@@ -33,8 +33,9 @@ export PGUSER PGDATABASE
 SICHERUNGS_ROLLE=paibot_sicherung
 WARTESCHLANGE=pgboss
 # Tabellen, die eine nie eingerichtete Installation selbst füllt (Standard-Regeln aus den
-# Migrationen, Einrichtungs-Code, Fehlversuche bei der Einrichtung).
-FRISCH_ERLAUBT="'rules', 'settings', 'rate_limits'"
+# Migrationen, Einrichtungs-Code, Fehlversuche bei der Einrichtung, Zustand der Datenschleuse,
+# den der Worker beim Start meldet).
+FRISCH_ERLAUBT="'rules', 'settings', 'rate_limits', 'schleuse_zustand'"
 
 meldung() { printf '%s\n' "$*" >&2; }
 abbruch() {

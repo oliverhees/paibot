@@ -167,7 +167,7 @@ Beteiligt sind zwei Skripte: `deploy/sicherung.sh` läuft auf dem Server und ste
 **Zurückspielen** nutzt den Zugang der Migrations-Rolle (`POSTGRES_USER`) im Container:
 
 1. Prüfsumme der Datei gegen die Begleit-Datei.
-2. Zustand der Ziel-Datenbank: `leer`, `frisch` (migriert, aber nie eingerichtet; dann wird sie vorher geleert) oder benutzt (dann Abbruch).
+2. Zustand der Ziel-Datenbank: `leer`, `frisch` (migriert, aber nie eingerichtet: außer Standard-Regeln, Einrichtungs-Code, Fehlversuchen und dem Zustand der Datenschleuse leer; dann wird sie vorher geleert) oder benutzt (dann Abbruch).
 3. `web` und `worker` anhalten, die Sicherung in einer einzigen Transaktion einspielen (`pg_restore --single-transaction`). Besitzer wird die Migrations-Rolle dieser Installation; die Rechte der App-Rolle stehen nicht in der Sicherung.
 4. Läufe, die beim Sichern gerade liefen oder warteten, werden zum Aufräumen freigegeben. Der Worker beendet sie beim Start als „unterbrochen“ und schreibt zu einer offenen Entscheidung im Tor das Ergebnis als Beleg. So bleibt keine Unterhaltung gesperrt.
 5. Vergleich mit der Begleit-Datei: jede Tabelle mit derselben Zahl an Zeilen, gleicher Stand der Migrationen, gleicher Anfang und Kopf der Belege-Kette. Weicht etwas ab, startet nichts.

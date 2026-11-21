@@ -393,9 +393,15 @@ describe.skipIf(bereit.grund !== undefined)(
       vorher = await zaehlen(quelle.url);
       leer = await createPostgresTestDatabase(basis, { migrate: false });
       frisch = await createPostgresTestDatabase(basis, { migrate: false });
-      await runMigrations(frisch.url, MIGRATIONS_FOLDER, {
-        appUrl: mitDatenbank(rolle.url, new URL(frisch.url).pathname.slice(1)),
-      });
+      const appFrisch = mitDatenbank(rolle.url, new URL(frisch.url).pathname.slice(1));
+      await runMigrations(frisch.url, MIGRATIONS_FOLDER, { appUrl: appFrisch });
+      // Wie nach dem ersten Start: Einrichtungs-Code gesetzt, aber noch nicht eingerichtet.
+      const offen = createDb(appFrisch);
+      try {
+        await repo.settings.setSetupCode(offen.db, { hash: `sha256:${"0".repeat(64)}` });
+      } finally {
+        await offen.sql.end({ timeout: 2 });
+      }
     }, 120_000);
 
     afterAll(async () => {
@@ -476,6 +482,7 @@ describe.skipIf(bereit.grund !== undefined)(
     });
 
     it("frische Installation (migriert, nie eingerichtet) wird geleert und eingespielt", async () => {
+      expect(await zaehlen(frisch.url)).toMatchObject({ "public.settings": 1 });
       expect(skript(frisch.url, "zustand").stdout.toString().trim()).toBe("frisch");
       const lauf = skript(frisch.url, "zurueckspielen", dump);
       expect(lauf.stderr).not.toContain("FEHLER");
