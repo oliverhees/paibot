@@ -1,0 +1,935 @@
+/**
+ * PaiBot – Stile des Startbereichs einer leeren Unterhaltung (drei Fassungen).
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+/* ---------- gemeinsam ---------- */
+
+.symbol {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+/* Avatar im Quadrat: Der Baustein bestimmt die Größe, das hereingereichte Element füllt sie aus. */
+.avatar {
+  --av: 64px;
+  display: inline-flex;
+  flex: none;
+  width: var(--av);
+  height: var(--av);
+  line-height: 0;
+}
+
+.avatar[data-groesse="gross"] {
+  --av: 112px;
+}
+
+.avatar[data-groesse="mittel"] {
+  --av: 96px;
+}
+
+/* Das hereingereichte Avatar-Element setzt seine Größe selbst (Pixelwerte); hier gilt die Größe des Felds. */
+.avatar > *,
+.avatar svg {
+  /* biome-ignore lint/complexity/noImportantStyles: überschreibt die festen Pixelmaße des Avatars */
+  width: 100% !important;
+  /* biome-ignore lint/complexity/noImportantStyles: überschreibt die festen Pixelmaße des Avatars */
+  height: 100% !important;
+}
+
+.herkunft {
+  display: inline-block;
+  flex: none;
+  font: 600 11px / 1 var(--font-sans);
+  background: var(--eu-soft);
+  color: var(--on-eu-soft);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.herkunftFremd {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.eintrag {
+  min-width: 0;
+}
+
+.trenn {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  align-self: center;
+  flex: none;
+}
+
+.punkt {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  flex: none;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Anfänge: echte Knöpfe, Fokus in der Akzentfarbe */
+.frage,
+.frageKarte,
+.frageRund,
+.zeile {
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.frage:focus-visible,
+.frageKarte:focus-visible,
+.frageRund:focus-visible,
+.zeile:focus-visible {
+  outline: var(--fokus-breite) solid var(--fokus-feld);
+  outline-offset: var(--fokus-abstand);
+}
+
+/* ---------- Not-Aus ---------- */
+
+.halt {
+  margin: auto;
+  width: 100%;
+  max-width: 30em;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.haltTitel {
+  margin: 18px 0 0;
+  font: 600 28px / 1.2 var(--font-sans);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.haltText {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.55;
+  text-wrap: balance;
+}
+
+/* ---------- A: Begrüßung ---------- */
+
+.begruessung {
+  margin: auto;
+  width: 100%;
+  max-width: var(--layout-inhalt);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 0 8px;
+}
+
+.buehne {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 200px;
+  height: 150px;
+  max-width: 100%;
+}
+
+.buehne::before {
+  content: "";
+  position: absolute;
+  inset: -10px -40px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 11%, transparent),
+    transparent 75%
+  );
+  pointer-events: none;
+}
+
+.buehne .avatar {
+  position: relative;
+}
+
+.hallo {
+  margin: 10px 0 0;
+  font: 600 40px / 1.12 var(--font-sans);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.unterzeile {
+  margin: 10px 0 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 30em;
+  text-wrap: balance;
+}
+
+.stand {
+  margin: 18px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 100%;
+}
+
+.standTeil {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.stand b {
+  color: var(--ink);
+  font-weight: 550;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wege {
+  margin-top: 40px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  text-align: left;
+}
+
+.weg {
+  min-width: 0;
+}
+
+.wegTitel {
+  margin: 0 0 6px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 11.5px / 1 var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.wegTitel .symbol {
+  color: var(--accent-text);
+}
+
+.wegListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.wegListe .eintrag {
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.wegListe .eintrag + .eintrag {
+  border-top: 1px solid var(--line);
+}
+
+.frage {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  transition-property: background-color;
+  transition-duration: var(--dauer-kurz);
+}
+
+.frage span {
+  flex: 1;
+  min-width: 0;
+}
+
+.frage .symbol {
+  margin-top: 3px;
+  color: var(--line-strong);
+  transition-property: transform, color;
+  transition-duration: var(--dauer-kurz);
+}
+
+.frage:hover,
+.frage:focus-visible {
+  background: var(--surface-raised);
+}
+
+.frage:hover .symbol,
+.frage:focus-visible .symbol {
+  transform: translateX(2px);
+  color: var(--accent-text);
+}
+
+.frage:focus-visible {
+  outline-offset: 0;
+}
+
+/* ---------- B: Startbrett ---------- */
+
+.brett {
+  margin: auto;
+  width: 100%;
+  max-width: var(--layout-inhalt);
+  padding: 4px 0 8px;
+}
+
+.brettKopf {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 20px;
+}
+
+.brettKopf > div {
+  min-width: 0;
+}
+
+.brettTitel {
+  margin: 0;
+  font: 600 26px / 1.2 var(--font-sans);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.brettSatz {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.kurzstand {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: -4px 0 14px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.kurzTeil {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.kurzstand .name {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+.raster {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  grid-template-areas:
+    "schreiben schreiben stand"
+    "planen verstehen zuletzt";
+}
+
+.raster[data-variante="stand"] {
+  grid-template-areas:
+    "schreiben schreiben stand"
+    "planen verstehen stand";
+}
+
+.raster[data-variante="zuletzt"] {
+  grid-template-areas:
+    "schreiben schreiben zuletzt"
+    "planen verstehen zuletzt";
+}
+
+.raster[data-variante="keine"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "schreiben schreiben"
+    "planen verstehen";
+}
+
+.karte {
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.karte[data-karte="schreiben"] {
+  grid-area: schreiben;
+}
+
+.karte[data-karte="planen"] {
+  grid-area: planen;
+}
+
+.karte[data-karte="verstehen"] {
+  grid-area: verstehen;
+}
+
+.karte[data-karte="stand"] {
+  grid-area: stand;
+  background: var(--surface-sunken);
+}
+
+.karte[data-karte="zuletzt"] {
+  grid-area: zuletzt;
+  background: var(--surface-sunken);
+}
+
+.karteTitel {
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 14px / 1.2 var(--font-sans);
+  min-width: 0;
+}
+
+.markeIc {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+.markeIc > .avatar {
+  --av: 18px;
+}
+
+.karte[data-karte="schreiben"] .markeIc {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+
+.kartenListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.karte[data-karte="schreiben"] .kartenListe {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.karte[data-karte="schreiben"] .kartenListe .eintrag:first-child {
+  grid-column: 1 / -1;
+}
+
+.frageKarte {
+  width: 100%;
+  height: 100%;
+  text-align: left;
+  background: var(--surface-raised);
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  transition-property: background-color;
+  transition-duration: var(--dauer-kurz);
+}
+
+.frageKarte span {
+  flex: 1;
+  min-width: 0;
+}
+
+.frageKarte > svg {
+  margin-top: 2px;
+  color: var(--ink-soft);
+}
+
+.frageKarte:hover {
+  background: var(--line-mid);
+}
+
+.frageKarte:hover .symbol,
+.frageKarte:focus-visible .symbol {
+  color: var(--accent-text);
+}
+
+.frageKarte[data-erste] {
+  /* Die erste Karte trägt den ganzen Satz und ist etwas größer. */
+  min-height: 0;
+}
+
+.karte[data-karte="schreiben"] .kartenListe .eintrag:first-child .frageKarte {
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.werte {
+  margin: 0;
+  display: grid;
+  gap: 9px;
+  font-size: 12.5px;
+}
+
+.werte > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.werte dt {
+  color: var(--ink-soft);
+  flex: none;
+}
+
+.werte dd {
+  margin: 0;
+  font-weight: 550;
+  text-align: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.werte .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zeilen {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.zeile {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+}
+
+.zeile:hover {
+  background: var(--surface-raised);
+}
+
+.zeile span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zeile small {
+  color: var(--ink-soft);
+  flex: none;
+  font-size: 12px;
+}
+
+/* ---------- C: Stille ---------- */
+
+.still {
+  width: 100%;
+  max-width: var(--layout-inhalt);
+  margin: auto;
+  padding: 0 0 4vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stillTitel {
+  margin: 0;
+  font: 600 44px / 1.12 var(--font-sans);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.stillModell {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px 6px;
+  max-width: 100%;
+}
+
+.stillModell b {
+  color: var(--ink);
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.sitz {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: var(--layout-inhalt);
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 0 0 0 18px;
+}
+
+.sitzAvatar {
+  position: relative;
+  margin-bottom: -13px;
+}
+
+.sprech {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 12px;
+}
+
+.tipp {
+  margin: 0;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  text-wrap: pretty;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  background: var(--surface-raised);
+  border-radius: 14px 14px 14px 4px;
+  padding: 8px 12px;
+}
+
+.tipp[hidden],
+.vorschlaege[hidden] {
+  display: none;
+}
+
+.vorschlaegeTitel {
+  margin: 0 0 8px 2px;
+  font: 600 11px / 1 var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.vorschlaegeListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.frageRund {
+  background: var(--surface-raised);
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+  max-width: 100%;
+  transition-property: background-color;
+  transition-duration: var(--dauer-kurz);
+}
+
+.frageRund:hover {
+  background: var(--line-mid);
+}
+
+.frageRund b {
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-right: 6px;
+}
+
+.frageRund:hover b,
+.frageRund:focus-visible b {
+  color: var(--accent-text);
+}
+
+/* ---------- Breiten ---------- */
+
+@media (max-width: 1180px) {
+  .wege {
+    gap: 12px;
+  }
+
+  .wegTitel {
+    padding: 0 8px;
+  }
+
+  .frage {
+    padding: 10px 8px;
+    gap: 6px;
+    font-size: 13.5px;
+  }
+
+  .brett {
+    padding: 0;
+  }
+
+  .karte {
+    padding: 14px;
+  }
+
+  .brettKopf {
+    margin-bottom: 14px;
+  }
+
+  .brettTitel {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 959px) {
+  .wege {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    max-width: 440px;
+  }
+
+  .raster,
+  .raster[data-variante="stand"],
+  .raster[data-variante="zuletzt"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "schreiben schreiben"
+      "planen verstehen"
+      "stand zuletzt";
+  }
+
+  .raster[data-variante="stand"] {
+    grid-template-areas:
+      "schreiben schreiben"
+      "planen verstehen"
+      "stand stand";
+  }
+
+  .raster[data-variante="zuletzt"] {
+    grid-template-areas:
+      "schreiben schreiben"
+      "planen verstehen"
+      "zuletzt zuletzt";
+  }
+
+  .raster[data-variante="keine"] {
+    grid-template-areas:
+      "schreiben schreiben"
+      "planen verstehen";
+  }
+}
+
+@media (max-width: 719px) {
+  .begruessung {
+    padding: 4px 0 0;
+  }
+
+  .buehne {
+    width: 140px;
+    height: 108px;
+  }
+
+  .buehne .avatar {
+    --av: 84px;
+  }
+
+  .hallo {
+    font-size: 30px;
+    margin-top: 4px;
+  }
+
+  .unterzeile {
+    font-size: 15.5px;
+  }
+
+  .stand {
+    font-size: 12px;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stand .trenn {
+    display: none;
+  }
+
+  .wege {
+    margin-top: 24px;
+    gap: 14px;
+  }
+
+  .wegListe .eintrag:nth-child(n + 2) {
+    display: none;
+  }
+
+  .wegTitel {
+    padding: 0 12px;
+  }
+
+  .frage {
+    padding: 9px 12px;
+  }
+
+  .brettKopf {
+    gap: 12px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+
+  .brettKopf .avatar {
+    --av: 44px;
+  }
+
+  .brettTitel {
+    font-size: 20px;
+  }
+
+  .brettSatz {
+    font-size: 13.5px;
+  }
+
+  .kurzstand {
+    display: flex;
+  }
+
+  .raster,
+  .raster[data-variante] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "schreiben schreiben"
+      "planen verstehen";
+    gap: 10px;
+  }
+
+  .karte {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .karteTitel {
+    font-size: 13.5px;
+    margin-bottom: 8px;
+  }
+
+  .karte[data-karte="stand"],
+  .karte[data-karte="zuletzt"] {
+    display: none;
+  }
+
+  .karte[data-karte="schreiben"] .kartenListe {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .karte[data-karte="schreiben"] .kartenListe .eintrag:nth-child(3),
+  .karte[data-karte="planen"] .kartenListe .eintrag:nth-child(2),
+  .karte[data-karte="verstehen"] .kartenListe .eintrag:nth-child(2) {
+    display: none;
+  }
+
+  .frageKarte {
+    font-size: 13px;
+  }
+
+  .stillTitel {
+    font-size: 30px;
+  }
+
+  .sitz {
+    padding-left: 10px;
+    gap: 8px;
+  }
+
+  .sitzAvatar {
+    --av: 52px;
+    margin-bottom: -11px;
+  }
+
+  .haltTitel {
+    font-size: 24px;
+  }
+}
+
+/* Weniger Bewegung: alles ruhig, jede Ansicht bleibt vollständig. */
+@media (prefers-reduced-motion: reduce) {
+  .frage,
+  .frage .symbol,
+  .frageKarte,
+  .frageRund {
+    transition: none;
+  }
+
+  .frage:hover .symbol,
+  .frage:focus-visible .symbol {
+    transform: none;
+  }
+}
