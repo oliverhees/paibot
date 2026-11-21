@@ -98,7 +98,7 @@ describe("Regeln sind unveränderlich", () => {
 
     await ctx.client.query(
       `insert into rules (id, version, action, effect, stage, conditions, priority, source, enabled, title, reason)
-       values ('R-002', 2, 'modell.anfragen', 'allow', 'execute', '[]'::jsonb, 100, 'owner', false, 'Aus', 'Ausgeschaltet.')`,
+       values ('R-002', 2, 'modell.anfragen', 'allow', 'execute', '[]'::jsonb, 100, 'standard', false, 'Aus', 'Ausgeschaltet.')`,
     );
     expect(await ctx.db.select().from(rules)).toHaveLength(STANDARD_RULE_VERSIONS.length + 1);
   });
@@ -107,9 +107,33 @@ describe("Regeln sind unveränderlich", () => {
     const f = await fehler(
       ctx.client.query(
         `insert into rules (seq, id, version, action, effect, stage, priority, source, title, reason)
-         values (1, 'R-300', 1, '*', 'deny', 'execute', 1, 'owner', 'x', 'x')`,
+         values (1, 'R-300', 1, '*', 'deny', 'execute', 1, 'standard', 'x', 'x')`,
       ),
     );
     expect(f.code).toBe("428C9");
   });
+
+  it.each([
+    ["unter eins", -5],
+    ["eine schon vergebene", 1],
+    ["eine frei gewählte hohe", 999_999],
+  ])(
+    "eine selbst gesetzte Nummer (%s) wird auch mit OVERRIDING SYSTEM VALUE abgewiesen",
+    async (_name, seq) => {
+      const f = await fehler(
+        ctx.client.query(
+          `insert into rules (seq, id, version, action, effect, stage, priority, source, title, reason)
+         overriding system value
+         values (${seq}, 'R-301', 1, '*', 'deny', 'execute', 1, 'standard', 'x', 'x')`,
+        ),
+      );
+      expect(f.code).toBe("23514");
+      const [row] = (
+        await ctx.client.query<{ n: number }>(
+          "select count(*)::int as n from rules where id = 'R-301'",
+        )
+      ).rows;
+      expect(row?.n).toBe(0);
+    },
+  );
 });

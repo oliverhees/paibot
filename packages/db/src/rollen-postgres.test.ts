@@ -60,7 +60,8 @@ async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
     await promise;
     return undefined;
   } catch (error) {
-    return (error as { code?: string }).code;
+    const e = error as { code?: string; cause?: { code?: string } };
+    return e.code ?? e.cause?.code;
   }
 }
 
@@ -203,28 +204,24 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
     });
   });
 
-  it("die App-Rolle hängt eine Regel-Fassung an, legt Werkzeug-Aufrufe an, schreibt sie fort und wechselt den Schlüssel", async () => {
+  it("die App-Rolle liest Regeln nur, legt Werkzeug-Aufrufe an, schreibt sie fort und wechselt den Schlüssel", async () => {
     const { db, sql } = createDb(appUrl);
     try {
       const rule = {
-        id: "R-100",
+        id: newId("rule"),
         version: 1,
         action: "nachricht.senden",
         effect: "deny",
         stage: "execute",
         conditions: [],
-        priority: 5,
+        priority: 1000,
         source: "owner",
-        enabled: true,
+        enabled: false,
         title: "Probe",
         reason: "Probe der Rechte.",
       } satisfies RuleDefinition;
-      const first = await ruleRepo.appendVersion(db, rule);
-      const second = await ruleRepo.appendVersion(db, { ...rule, version: 2, enabled: false });
-      expect(second.seq).toBeGreaterThan(first.seq);
-      expect(await ruleRepo.listActiveAsOf(db, first.seq)).toContainEqual(
-        expect.objectContaining({ id: "R-100", version: 1 }),
-      );
+      expect(await codeOf(db.insert(rules).values(rule))).toBe("42501");
+      expect((await ruleRepo.loadSnapshot(db)).rules.length).toBeGreaterThan(0);
 
       const bot = await bots.create(db, { name: "Werkzeug", avatarShape: "blatt", color: "blau" });
       const conv = await conversations.create(db, { botId: bot.id, title: "Werkzeug" });

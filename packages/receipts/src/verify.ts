@@ -12,6 +12,7 @@
 import {
   type ChainAnchor,
   type ChainFinding,
+  type ChainProblem,
   type ChainVerdict,
   chainTrustLevel,
   type KeyChangeSigner,
@@ -22,7 +23,8 @@ import {
 } from "@paibot/shared/belege";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import type { KeyId } from "@paibot/shared/ids";
-import type { RuleRef } from "@paibot/shared/tor";
+import type { StoredRuleRef } from "@paibot/shared/tor";
+import { type CanonicalValue, canonicalize } from "./canonical";
 import { digestBytes, hashReceipt } from "./hash";
 import {
   type ReevaluationProblem,
@@ -55,7 +57,7 @@ export interface CheckResult {
   /** Bei `signatur`: Kurzform des Schlüssels (`fingerprint`). */
   fingerprint?: string;
   /** Bei `entscheidung`: die Regel, aus der die Entscheidung folgt bzw. die nicht passt. */
-  rule?: RuleRef;
+  rule?: StoredRuleRef;
   /** Bei `entscheidung`: Regelstand des Nachrechnens (`nicht_festgehalten` bei älteren Belegen). */
   ruleStand?: number | "nicht_festgehalten";
   /** Bei `entscheidung` mit `fehler`: der Grund. */
@@ -183,6 +185,8 @@ export async function verifyChain(
   let index = 0;
   let firstFailure: ChainReport["firstFailure"];
   let notAttestedFrom: number | undefined;
+  const actions = new ActionLedger();
+  let chainFormat = 1;
 
   for await (const entry of entries) {
     const seq = seqOf(entry);
@@ -209,6 +213,10 @@ export async function verifyChain(
       firstFailure = { seq, index, checks };
     }
     advanceKeys(body, state);
+    if (index === 0 && body?.type === "start") chainFormat = body.facts.format ?? 1;
+    for (const problem of actions.record(body, chainFormat)) {
+      findings.push({ problem, ...(Number.isSafeInteger(seq) && seq > 0 ? { seq } : {}) });
+    }
     prev = entry;
     index++;
   }
@@ -291,7 +299,60 @@ export function keyChangeSigner(
 }
 
 // ---------------------------------------------------------------------------------------------
-// Interne Hilfen. Alles hier läuft nur mit Web Crypto (`globalThis.crypto.subtle`).
+// Interne Hilfen.
+
+/**
+ * Hält je Aktion fest, was die Kette über sie sagt: Ein Ergebnis braucht vorher genau eine
+ * Entscheidung derselben Aktion (gleiche Aktion, gleicher Akteur, gleiches Ziel); „ok“, „error“ und
+ * „cancelled“ nur nach „allow“, „denied“ nur nach einer anderen Entscheidung; jede Aktion hat höchstens
+ * eine Entscheidung und ein Ergebnis. Ab Fassung 2 der Kette trägt jede Entscheidung Regelstand und
+ * Prüfsummen.
+ */
+class ActionLedger {
+  readonly #decisions = new Map<string, { outcome: string; action: string }>();
+  readonly #results = new Set<string>();
+
+  record(body: ReceiptBody | undefined, format: number): ChainProblem[] {
+    if (body?.type === "decision") {
+      const problems: ChainProblem[] = [];
+      const id = String(body.action?.actionId);
+      if (this.#decisions.has(id)) problems.push("aktion_doppelt");
+      else this.#decisions.set(id, { outcome: body.decision?.outcome, action: actionKey(body) });
+      const decision = body.decision;
+      if (
+        format >= 2 &&
+        (decision?.ruleStand === undefined ||
+          (decision.rules ?? []).some((rule) => rule.hash === undefined))
+      ) {
+        problems.push("regelstand_fehlt");
+      }
+      return problems;
+    }
+    if (body?.type === "result") {
+      const id = String(body.action?.actionId);
+      if (this.#results.has(id)) return ["aktion_doppelt"];
+      this.#results.add(id);
+      const decision = this.#decisions.get(id);
+      if (decision === undefined) return ["ergebnis_ohne_entscheidung"];
+      const allowed = decision.outcome === "allow";
+      const denied = body.result?.status === "denied";
+      if (decision.action !== actionKey(body) || allowed === denied) {
+        return ["ergebnis_passt_nicht_zur_entscheidung"];
+      }
+    }
+    return [];
+  }
+}
+
+function actionKey(body: Extract<ReceiptBody, { type: "decision" | "result" }>): string {
+  try {
+    return canonicalize(body.action as unknown as CanonicalValue);
+  } catch {
+    return "";
+  }
+}
+
+// Die Hilfen ab hier laufen nur mit Web Crypto (`globalThis.crypto.subtle`).
 
 /** Öffentliche Schlüssel mit importiertem Web-Crypto-Schlüssel und Kurzform, je einmal berechnet. */
 class KeyRing {

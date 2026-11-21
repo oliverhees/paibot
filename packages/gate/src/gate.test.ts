@@ -28,6 +28,7 @@ import {
   isGateDenied,
   type ReceiptRef,
   type ResultRecord,
+  type RuleProvider,
   type RuleSnapshotProvider,
 } from "./gate";
 import { isGatePermit } from "./permit";
@@ -505,6 +506,7 @@ describe("Berechtigungen lassen sich nicht fälschen", () => {
         matchedRules: [],
         limits: [],
         preconditions: [],
+        ruleStand: 1,
         reason: "Nein.",
       },
       { decision: ref, result: ref },
@@ -573,15 +575,103 @@ describe("Regelstand: geprüft, bevor entschieden wird", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it("eigene Regeln (Quelle owner) brauchen keine Fassung im Code", async () => {
-    const own = { ...ACTIVE_STANDARD_RULES[0], id: "R-120", source: "owner" as const, priority: 1 };
+  it("eigene Regeln (reg_…) brauchen keine Fassung im Code, kommen aber nach den Standard-Regeln", async () => {
+    const own = {
+      ...ACTIVE_STANDARD_RULES[0],
+      id: newId("rule"),
+      source: "owner" as const,
+      effect: "deny" as const,
+      priority: 1000,
+    };
     const { ports, log } = memoryPorts({ rules: [...ACTIVE_STANDARD_RULES, own] });
     const result = await createGate(ports).run(
       sampleAction("zugang.abmelden"),
       sampleFacts("zugang.abmelden"),
       okExecute(log),
     );
-    expect(result.decision.matchedRules[0]?.id).toBe("R-120");
+    expect(result.decision.matchedRules[0]?.id).toBe("R-001");
+  });
+
+  const r006 = ACTIVE_STANDARD_RULES.find((rule) => rule.id === "R-006");
+  const own = (fields: Partial<RuleDefinition>): RuleDefinition => ({
+    ...ACTIVE_STANDARD_RULES[0],
+    id: newId("rule"),
+    source: "owner",
+    priority: 1000,
+    conditions: [],
+    ...fields,
+  });
+
+  it.each([
+    [
+      "eine Standard-Regel fehlt (z. B. von einer abgeschalteten höheren Fassung verdeckt)",
+      ACTIVE_STANDARD_RULES.filter((rule) => rule.id !== "R-006"),
+    ],
+    [
+      "eine Standard-Kennung mit anderer Quelle",
+      [
+        ...ACTIVE_STANDARD_RULES.filter((rule) => rule.id !== "R-006"),
+        { ...(r006 as RuleDefinition), version: 2, source: "owner" as const },
+      ],
+    ],
+    [
+      "eine unbekannte Standard-Kennung",
+      [...ACTIVE_STANDARD_RULES, { ...ACTIVE_STANDARD_RULES[0], id: "R-777" }],
+    ],
+    [
+      "eine bekannte, aber nicht aktuelle Fassung",
+      [
+        ...ACTIVE_STANDARD_RULES.filter((rule) => rule.id !== "R-001"),
+        { ...ACTIVE_STANDARD_RULES[0], version: 2 },
+      ],
+    ],
+    ["eine eigene Regel vor den Standard-Regeln", [...ACTIVE_STANDARD_RULES, own({ priority: 1 })]],
+    [
+      "eine eigene Regel hinter der Auffang-Regel",
+      [...ACTIVE_STANDARD_RULES, own({ priority: 1_000_000 })],
+    ],
+    [
+      "eine eigene Regel mit lesbarer Kennung",
+      [...ACTIVE_STANDARD_RULES, own({ id: "R-120" as RuleDefinition["id"] })],
+    ],
+    ["ein eingeschalteter Vorschlag", [...ACTIVE_STANDARD_RULES, own({ source: "proposal" })]],
+    [
+      "eine Standard-Kennung mit anderer Quelle, auch ohne Standard-Regeln",
+      [{ ...ACTIVE_STANDARD_RULES[0], source: "owner" as const }],
+    ],
+    ["zweimal dieselbe Kennung", [...ACTIVE_STANDARD_RULES, ACTIVE_STANDARD_RULES[0]]],
+  ] as const)("%s → intern, nichts belegt", async (_label, rules) => {
+    const { error, entries, execute } = await runWith(
+      await ruleSnapshot(rules as readonly RuleDefinition[], 30),
+    );
+    expect(error.code).toBe("intern");
+    expect(entries).toEqual([]);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("unbekannte Quelle → intern, keine stille Annahme", async () => {
+    const snapshot = await ruleSnapshot(ACTIVE_STANDARD_RULES, 7);
+    const changed = {
+      ...snapshot,
+      rules: [
+        ...snapshot.rules,
+        { ...own({}), source: "fremd", hash: snapshot.rules[0]?.hash, seq: 7 },
+      ],
+    } as unknown as RuleSnapshot;
+    const { error, entries } = await runWith(changed);
+    expect(error.code).toBe("intern");
+    expect(entries).toEqual([]);
+  });
+
+  it("ausgeschaltete Vorschläge zählen nie", async () => {
+    const proposal = own({ source: "proposal", enabled: false, effect: "deny", action: "*" });
+    const { ports, log } = memoryPorts({ rules: [...ACTIVE_STANDARD_RULES, proposal] });
+    const result = await createGate(ports).run(
+      sampleAction("zugang.abmelden"),
+      sampleFacts("zugang.abmelden"),
+      okExecute(log),
+    );
+    expect(result.decision.matchedRules.map((rule) => rule.id)).toEqual(["R-001"]);
   });
 
   it.each([
@@ -622,27 +712,29 @@ describe("Regelstand: geprüft, bevor entschieden wird", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it("frühere Regel-Quelle (Liste): geprüft wie ein Regelstand, Entscheidung ohne Prüfsumme und Stand", async () => {
+  it("eine Regel-Quelle ohne Regelstand (nur eine Liste) wird nicht angenommen", async () => {
     const receipts = memoryPorts().ports.receipts;
     const clock = { now: () => new Date(Date.UTC(2026, 10, 20)) };
-    const run = (rules: readonly RuleDefinition[]) =>
-      createGate({ rules: { listActive: async () => rules }, receipts, clock }).run(
+    const legacy = { listActive: async () => ACTIVE_STANDARD_RULES } as unknown as RuleProvider;
+    const error = await caught(
+      createGate({ rules: legacy, receipts, clock }).run(
         sampleAction("zugang.abmelden"),
         sampleFacts("zugang.abmelden"),
         async () => ({ value: 1, result: { status: "ok" } }),
-      );
-    const stored = ACTIVE_STANDARD_RULES.map((rule, i) => ({
-      ...rule,
-      seq: i + 1,
-      createdAt: "2026-11-20T10:00:00.000Z",
-    }));
-    const ok = await run(stored);
-    expect(ok.decision).not.toHaveProperty("ruleStand");
-    expect(ok.decision.matchedRules).toEqual([{ id: "R-001", version: 1 }]);
-    const tampered = ACTIVE_STANDARD_RULES.map((rule) =>
-      rule.id === "R-006" ? { ...rule, enabled: false } : rule,
+      ),
     );
-    expect(((await caught(run(tampered))) as PaiBotError).code).toBe("intern");
+    expect((error as PaiBotError).code).toBe("intern");
+  });
+
+  it("jede Entscheidung trägt Regelstand und Prüfsumme der Regel", async () => {
+    const { ports, log } = memoryPorts();
+    const result = await createGate(ports).run(
+      sampleAction("zugang.abmelden"),
+      sampleFacts("zugang.abmelden"),
+      okExecute(log),
+    );
+    expect(result.decision.ruleStand).toBeGreaterThan(0);
+    expect(result.decision.matchedRules[0]?.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 });
 
@@ -707,13 +799,14 @@ describe("werkzeug.aufrufen", () => {
   it("erlaubt durch eigene Regel: ausgeführt; der Beleg kennt nur den Abdruck der Argumente", async () => {
     const allow: RuleDefinition = {
       ...ACTIVE_STANDARD_RULES[0],
-      id: "R-130",
+      id: newId("rule"),
       action: "werkzeug.aufrufen",
       source: "owner",
-      priority: 1,
+      priority: 1000,
       conditions: [{ fact: "akteur", op: "eq", value: "bot" }],
     };
-    const { ports, log, entries } = memoryPorts({ rules: [...ACTIVE_STANDARD_RULES, allow] });
+    // Nur in Tests: ein Regelstand ohne Standard-Regeln (die Datenbank liefert ihn nie).
+    const { ports, log, entries } = memoryPorts({ rules: [allow] });
     const facts = sampleFacts("werkzeug.aufrufen");
     const result = await createGate(ports).run(
       sampleAction("werkzeug.aufrufen"),

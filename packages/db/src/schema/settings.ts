@@ -10,9 +10,9 @@
 
 import type { BotId, InstallationId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { bots } from "./anbieter";
-import { inListCheck, optionalIdCheck } from "./helfer";
+import { inListCheck, optionalIdCheck, pgTable } from "./helfer";
 import { SCHLEUSE_MODES } from "./werte";
 
 /**

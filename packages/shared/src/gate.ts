@@ -44,6 +44,28 @@ export const RULE_SOURCES = ["standard", "owner", "proposal"] as const;
 export const ruleSourceSchema = z.enum(RULE_SOURCES);
 export type RuleSource = z.infer<typeof ruleSourceSchema>;
 
+/**
+ * Prioritäten in festen Bändern je Quelle (kleinere Zahl entscheidet zuerst):
+ * - Standard-Regeln: 0 bis `STANDARD_PRIORITY_MAX`, dazu die Auffang-Regel mit `FALLBACK_PRIORITY`;
+ * - eigene Regeln und Vorschläge: `OWN_RULE_PRIORITY.min` bis `OWN_RULE_PRIORITY.max`.
+ * So kommt eine eigene Regel immer nach allen Standard-Regeln außer der Auffang-Regel und kann
+ * keine davon überdecken. Die Datenbank prüft dasselbe (CHECK), das Tor ebenso.
+ */
+export const STANDARD_PRIORITY_MAX = 999;
+export const FALLBACK_PRIORITY = 1_000_000;
+export const OWN_RULE_PRIORITY = { min: 1000, max: 999_999 } as const;
+
+/** Liegt die Priorität im Band dieser Quelle? */
+export function priorityFitsSource(source: RuleSource, priority: number): boolean {
+  if (source === "standard") {
+    return (priority >= 0 && priority <= STANDARD_PRIORITY_MAX) || priority === FALLBACK_PRIORITY;
+  }
+  return priority >= OWN_RULE_PRIORITY.min && priority <= OWN_RULE_PRIORITY.max;
+}
+
+/** Kennung einer Standard-Regel (`R-001`); eigene Regeln und Vorschläge haben `reg_…`. */
+export const STANDARD_RULE_ID_PATTERN = /^R-\d{3}$/;
+
 /** Ergebnis des Tors. In der Basis wird `ask` wie `deny` behandelt. */
 export const OUTCOMES = ["allow", "deny", "ask", "prepare"] as const;
 export const outcomeSchema = z.enum(OUTCOMES);
@@ -99,15 +121,25 @@ export type LimitCheck = z.infer<typeof limitCheckSchema>;
  * Verweis auf eine angewandte Regel: Kennung, Fassung und Prüfsumme ihres Inhalts
  * (`RULE_HASH_PREFIX`, `ruleContent`). Mit der Prüfsumme lässt sich eine Entscheidung später mit
  * genau dem damaligen Regelstand nachrechnen, und eine nachträglich geänderte Regel fällt auf.
- * Das Tor setzt `hash` immer, wenn es mit einem Regelstand (`RuleSnapshot`) entscheidet; ohne
- * steht er nur in Entscheidungen über die frühere Regel-Quelle (`listActive`).
+ * Das Tor entscheidet nur mit einem Regelstand (`RuleSnapshot`) und setzt `hash` deshalb immer.
  */
 export const ruleRefSchema = z.strictObject({
   id: ruleIdSchema,
   version: positiveIntSchema,
-  hash: sha256DigestSchema.optional(),
+  hash: sha256DigestSchema,
 });
 export type RuleRef = z.infer<typeof ruleRefSchema>;
+
+/**
+ * Verweis auf eine Regel, wie er in gespeicherten Belegen stehen kann: Belege aus der Zeit vor den
+ * Prüfsummen tragen nur Kennung und Fassung. Neue Belege tragen immer `hash` (`ruleRefSchema`).
+ */
+export const storedRuleRefSchema = z.strictObject({
+  id: ruleIdSchema,
+  version: positiveIntSchema,
+  hash: sha256DigestSchema.optional(),
+});
+export type StoredRuleRef = z.infer<typeof storedRuleRefSchema>;
 
 /**
  * Name des Fakts, unter dem das Tor die Art des Akteurs (`besitzer` oder `bot`) für Bedingungen
@@ -525,16 +557,23 @@ export const decisionSchema = z.strictObject({
   limits: z.array(limitCheckSchema),
   /** Vorbedingungen der Aktion (`preconditionsFor`), leer bei Aktionen ohne. */
   preconditions: z.array(preconditionCheckSchema),
-  /**
-   * Stand des Regel-Protokolls beim Entscheiden. Das Tor setzt ihn immer, wenn es mit einem
-   * Regelstand (`RuleSnapshot`) entscheidet; ohne steht er nur, wenn `evaluate` eine einfache
-   * Liste von Regeln bekommt (z. B. beim Nachrechnen ohne Stand).
-   */
-  ruleStand: ruleStandSchema.optional(),
+  /** Stand des Regel-Protokolls beim Entscheiden. Das Tor entscheidet immer mit einem Regelstand. */
+  ruleStand: ruleStandSchema,
   /** Deutscher Satz, warum das Tor so entschieden hat. */
   reason: z.string().min(1).max(500),
 });
 export type Decision = z.infer<typeof decisionSchema>;
+
+/**
+ * Entscheidung aus einer einfachen Liste von Regeln ohne Regelstand (`evaluate` mit Liste, z. B.
+ * beim Nachrechnen älterer Belege): `ruleStand` fehlt, `hash` steht nur bei Regeln, die ihn
+ * mitbringen. Das Tor selbst entscheidet nie so.
+ */
+export const listDecisionSchema = decisionSchema.extend({
+  matchedRules: z.array(storedRuleRefSchema),
+  ruleStand: ruleStandSchema.optional(),
+});
+export type ListDecision = z.infer<typeof listDecisionSchema>;
 
 declare const permitBrand: unique symbol;
 

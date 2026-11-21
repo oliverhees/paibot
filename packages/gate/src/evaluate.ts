@@ -26,6 +26,7 @@ import {
   type LimitCheck,
   type LimitId,
   type LimitName,
+  type ListDecision,
   type Outcome,
   PRECONDITIONS,
   type PreconditionCheck,
@@ -34,9 +35,9 @@ import {
   preconditionsFor,
   type RuleCondition,
   type RuleDefinition,
-  type RuleRef,
   type RuleSnapshot,
   type Stage,
+  type StoredRuleRef,
 } from "@paibot/shared/tor";
 import { checkLimits, LIMIT_ORDER } from "./limits/index";
 
@@ -114,7 +115,7 @@ export function preconditionId(name: PreconditionName): PreconditionId {
  * Fehlercode, mit dem eine nicht erlaubte Entscheidung gemeldet wird: bei einer verletzten
  * Vorbedingung deren `errorCode` (die erste nach ID), sonst `OUTCOME_ERROR_CODE`.
  */
-export function denialCode(decision: Decision): ErrorCode {
+export function denialCode(decision: Pick<Decision, "outcome" | "preconditions">): ErrorCode {
   const violated = (decision.preconditions ?? []).find((check) => check.result === "verletzt");
   if (violated !== undefined) return PRECONDITIONS[preconditionId(violated.name)].errorCode;
   return OUTCOME_ERROR_CODE[decision.outcome === "allow" ? "deny" : decision.outcome];
@@ -168,8 +169,8 @@ function isSnapshot(rules: readonly EvaluatedRule[] | RuleSnapshot): rules is Ru
   return !Array.isArray(rules);
 }
 
-function ruleRef(rule: EvaluatedRule): RuleRef {
-  const ref: RuleRef = { id: rule.id, version: rule.version };
+function ruleRef(rule: EvaluatedRule): StoredRuleRef {
+  const ref: StoredRuleRef = { id: rule.id, version: rule.version };
   if (typeof rule.hash === "string") ref.hash = rule.hash;
   return ref;
 }
@@ -206,8 +207,18 @@ function ruleRef(rule: EvaluatedRule): RuleRef {
 export function evaluate<T extends ActionType>(
   action: ActionRequest<T>,
   facts: Facts<T>,
+  rules: RuleSnapshot,
+): Decision;
+export function evaluate<T extends ActionType>(
+  action: ActionRequest<T>,
+  facts: Facts<T>,
+  rules: readonly EvaluatedRule[],
+): ListDecision;
+export function evaluate<T extends ActionType>(
+  action: ActionRequest<T>,
+  facts: Facts<T>,
   rules: readonly EvaluatedRule[] | RuleSnapshot,
-): Decision {
+): Decision | ListDecision {
   const snapshot = isSnapshot(rules) ? rules : undefined;
   const ruleList: readonly EvaluatedRule[] = snapshot ? snapshot.rules : (rules as EvaluatedRule[]);
   const stand = snapshot === undefined ? {} : { ruleStand: snapshot.stand };

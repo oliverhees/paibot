@@ -22,10 +22,10 @@ import { t } from "@paibot/shared/texte";
 import {
   ACTIVE_STANDARD_RULES,
   CREDENTIAL_SCOPE,
-  decisionSchema,
   LIMIT_NAMES,
   LIMITS_BY_ID,
   type LimitName,
+  listDecisionSchema,
   PRECONDITIONS,
   preconditionsFor,
   type RuleCondition,
@@ -91,7 +91,7 @@ function decide(type: ActionType, facts?: Facts, rules: readonly RuleDefinition[
     (facts ?? sampleFacts(type)) as Facts,
     rules,
   );
-  expect(decisionSchema.safeParse(decision).success).toBe(true);
+  expect(listDecisionSchema.safeParse(decision).success).toBe(true);
   return decision;
 }
 
@@ -345,7 +345,7 @@ describe("ungültige Eingaben werden abgelehnt", () => {
       { credential: "sitzung" } as Facts,
       STANDARD,
     );
-    expect(decisionSchema.safeParse(decision).success).toBe(true);
+    expect(listDecisionSchema.safeParse(decision).success).toBe(true);
     expect(decision).toMatchObject({ outcome: "deny", matchedRules: [], preconditions: [] });
     expect(decision.limits.every((l) => l.result === "entfaellt")).toBe(true);
   });

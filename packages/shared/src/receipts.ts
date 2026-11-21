@@ -16,10 +16,10 @@ import {
   limitCheckSchema,
   outcomeSchema,
   preconditionCheckSchema,
-  ruleRefSchema,
   ruleStandSchema,
   scalarSchema,
   stageSchema,
+  storedRuleRefSchema,
 } from "./gate";
 import {
   fingerprintSchema,
@@ -72,7 +72,7 @@ export const receiptDecisionSchema = z.strictObject({
   outcome: outcomeSchema,
   stage: stageSchema,
   /** Angewandte Regeln mit Fassung und Prüfsumme des Inhalts. */
-  rules: z.array(ruleRefSchema),
+  rules: z.array(storedRuleRefSchema),
   limits: z.array(limitCheckSchema),
   /** Vorbedingungen der Aktion; fehlt bei Belegen aus der Zeit vor den Vorbedingungen. */
   preconditions: z.array(preconditionCheckSchema).optional(),
@@ -99,6 +99,13 @@ export type ReceiptUndo = z.infer<typeof receiptUndoSchema>;
 
 export const receiptContextSchema = z.strictObject({ digest: hmacDigestSchema });
 
+/**
+ * Fassung der Regeln, nach denen eine Kette geschrieben wird; steht im Start-Beleg. Ab Fassung 2
+ * trägt jede Entscheidung ihren Regelstand und jede angewandte Regel ihre Prüfsumme; der Prüfer
+ * verlangt das dann. Ketten ohne Angabe (ältere Installationen) bleiben prüfbar wie bisher.
+ */
+export const RECEIPT_CHAIN_FORMAT = 2;
+
 const startBody = z.strictObject({
   ...common,
   type: z.literal("start"),
@@ -106,6 +113,7 @@ const startBody = z.strictObject({
     installationId: idSchema("installation"),
     publicKey: publicKeySchema,
     software: softwareStandSchema,
+    format: z.number().int().min(2).max(1000).optional(),
   }),
 });
 
@@ -272,6 +280,10 @@ export const CHAIN_PROBLEMS = [
   "anderer_anfang_als_anker",
   "schluessel_nicht_aus_kette",
   "schluesselwechsel_nicht_beglaubigt",
+  "ergebnis_ohne_entscheidung",
+  "ergebnis_passt_nicht_zur_entscheidung",
+  "aktion_doppelt",
+  "regelstand_fehlt",
 ] as const;
 export const chainProblemSchema = z.enum(CHAIN_PROBLEMS);
 export type ChainProblem = z.infer<typeof chainProblemSchema>;
@@ -299,6 +311,10 @@ export const CHAIN_PROBLEM_LEVEL = {
   anderer_anfang_als_anker: "ungueltig",
   schluessel_nicht_aus_kette: "ungueltig",
   schluesselwechsel_nicht_beglaubigt: "vertrauen_gebrochen",
+  ergebnis_ohne_entscheidung: "ungueltig",
+  ergebnis_passt_nicht_zur_entscheidung: "ungueltig",
+  aktion_doppelt: "ungueltig",
+  regelstand_fehlt: "ungueltig",
 } as const satisfies Record<ChainProblem, Exclude<ChainTrustLevel, "vertrauenswuerdig">>;
 
 /** Ein Problem an der Kette, mit der Stelle, an der es auftritt. */

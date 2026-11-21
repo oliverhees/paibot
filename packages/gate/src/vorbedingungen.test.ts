@@ -13,7 +13,7 @@ import { ACTIONS, type ActionRequest, type ActionType, type Facts } from "@paibo
 import { t } from "@paibot/shared/texte";
 import {
   ACTIVE_STANDARD_RULES,
-  decisionSchema,
+  listDecisionSchema,
   PRECONDITION_IDS,
   PRECONDITIONS,
   type PreconditionId,
@@ -41,7 +41,7 @@ function decide(type: ActionType, facts: Record<string, unknown>) {
     facts as Facts,
     ACTIVE_STANDARD_RULES,
   );
-  expect(decisionSchema.safeParse(decision).success).toBe(true);
+  expect(listDecisionSchema.safeParse(decision).success).toBe(true);
   return decision;
 }
 

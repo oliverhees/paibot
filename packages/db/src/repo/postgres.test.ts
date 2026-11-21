@@ -134,4 +134,24 @@ describe.skipIf(URL_ENV === undefined)("Zugriffsfunktionen gegen echtes Postgres
       await zuhoerer.unlisten();
     }
   });
+  it("Zeitpunkte als Parameter: veraltete Läufe, Abbruchwunsch und Herzschlag mit postgres-js", async () => {
+    const id = (await conversations.create(db, { botId, title: "Zeit" })).id;
+    const m = await messages.insert(db, { conversationId: id, role: "user", content: "Hi" });
+    const lauf = await runs.create(db, { conversationId: id, triggerMessageId: m.id, botId });
+    const alt = new Date(Date.now() - 3_600_000);
+    await runs.markRunning(db, lauf.id, { now: alt });
+    expect(await runs.heartbeat(db, lauf.id, { now: alt })).toBe(true);
+
+    const stale = await runs.findStale(db, { before: new Date(Date.now() - 60_000) });
+    expect(stale.map((r) => r.id)).toContain(lauf.id);
+    const frueher = await runs.findStale(db, {
+      before: new Date(alt.getTime() - 60_000),
+      statuses: ["queued", "running"],
+    });
+    expect(frueher.map((r) => r.id)).not.toContain(lauf.id);
+
+    const abbruch = await runs.requestCancel(db, lauf.id, { now: new Date() });
+    expect(abbruch?.cancelRequestedAt).toBeDefined();
+    await runs.finish(db, lauf.id, { status: "cancelled", now: new Date() });
+  });
 });

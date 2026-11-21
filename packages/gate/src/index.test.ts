@@ -62,6 +62,7 @@ describe("Schnittstelle", () => {
         outcome: "ask",
         stage: "ask",
         matchedRules: [],
+        ruleStand: 1,
         limits: [],
         preconditions: [],
         reason: "Dafür gibt es noch keine Regel.",

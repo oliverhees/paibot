@@ -261,9 +261,11 @@ export async function findStale(
         or(
           and(
             eq(runs.status, "running"),
+            // Der Zeitpunkt wird als Text gebunden: Ein Vergleich mit einem rohen Ausdruck kennt
+            // keinen Spalten-Typ, und postgres-js nimmt dort kein Date an.
             lt(
               sql`coalesce(${runs.heartbeatAt}, ${runs.startedAt}, ${runs.createdAt})`,
-              options.before,
+              sql`${options.before.toISOString()}::timestamptz`,
             ),
           ),
           and(eq(runs.status, "queued"), lt(runs.createdAt, options.before)),

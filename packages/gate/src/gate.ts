@@ -21,18 +21,20 @@ import { type ErrorCode, invalidInput, isPaiBotError, PaiBotError } from "@paibo
 import { type HmacDigest, sha256DigestSchema, toIsoTime } from "@paibot/shared/grundtypen";
 import type { ActionId, ReceiptId } from "@paibot/shared/ids";
 import {
+  ACTIVE_STANDARD_RULES,
   type Decision,
   type GatePermit,
   type Outcome,
+  priorityFitsSource,
   type RuleSnapshot,
   ruleContent,
   ruleDefinitionSchema,
-  STANDARD_RULE_VERSIONS,
+  STANDARD_RULE_ID_PATTERN,
   UNSTORED_STANDARD_RULE_VERSIONS,
 } from "@paibot/shared/tor";
 import { denialCode, evaluate } from "./evaluate";
 import { issuePermit, revokePermit } from "./permit-registry";
-import { hashRule, type RuleWithSeq, ruleSnapshot } from "./regel-hash";
+import { hashRule } from "./regel-hash";
 
 /**
  * Quelle der Regeln: liefert den Regelstand (in der Datenbank `rules.loadSnapshot`, je Regel mit
@@ -44,18 +46,8 @@ export interface RuleSnapshotProvider {
   load(): Promise<RuleSnapshot>;
 }
 
-/**
- * Frühere Form der Regel-Quelle: nur die Liste der Regeln. Das Tor prüft sie wie einen Regelstand
- * (`verifyRuleSnapshot`), die Entscheidung trägt dann aber weder Prüfsummen noch Stand.
- *
- * @deprecated `RuleSnapshotProvider` (`load`) benutzen.
- */
-export interface LegacyRuleProvider {
-  listActive(): Promise<readonly RuleWithSeq[]>;
-}
-
-/** Quelle der Regeln: `RuleSnapshotProvider` oder (veraltet) `LegacyRuleProvider`. */
-export type RuleProvider = RuleSnapshotProvider | LegacyRuleProvider;
+/** Quelle der Regeln des Tors. */
+export type RuleProvider = RuleSnapshotProvider;
 
 /** Uhr des Tors. Das Tor liest die Zeit nie selbst. */
 export interface Clock {
@@ -133,7 +125,8 @@ export interface Gate {
    *    kein Beleg.
    * 2. Regelstand laden (`RuleProvider`) und prüfen (`verifyRuleSnapshot`): Stimmt eine Regel
    *    nicht (Inhalt ungültig, Prüfsumme passt nicht, Standard-Regel weicht von ihrer Fassung im
-   *    Code ab), endet der Aufruf mit `PaiBotError("intern")` – ohne Beleg, ohne Ausführung.
+   *    Code ab oder fehlt, unbekannte Quelle), endet der Aufruf mit `PaiBotError("intern")` – ohne
+   *    Beleg, ohne Ausführung.
    *    Danach `evaluate` (Eingabe, Vorbedingungen, Grenzen, Regeln).
    * 3. Beleg „Entscheidung“ schreiben. Scheitert das, wird nichts ausgeführt und der Fehler weitergeworfen.
    * 4. Bei `allow`: Berechtigung ausstellen und `execute(permit)` aufrufen.
@@ -338,29 +331,32 @@ function failClosed(): never {
 }
 
 /**
- * Lädt den Regelstand aus der Quelle und prüft ihn. Die frühere Form (`listActive`) wird genauso
- * geprüft, entscheidet aber wie bisher nur mit der Liste: ohne Prüfsummen und ohne Stand.
+ * Lädt den Regelstand aus der Quelle und prüft ihn. Eine Quelle ohne `load` (die frühere Form, die
+ * nur eine Liste lieferte) wird nicht mehr angenommen: Entscheidungen tragen immer Prüfsummen und
+ * Stand.
  */
-async function loadRules(provider: RuleProvider): Promise<RuleSnapshot | readonly RuleWithSeq[]> {
-  if ("load" in provider && typeof provider.load === "function") {
-    return verifyRuleSnapshot(await provider.load());
-  }
-  const rules = await (provider as LegacyRuleProvider).listActive();
-  await verifyRuleSnapshot(await ruleSnapshot(rules));
-  return rules.map((rule) => ruleContent(rule));
+async function loadRules(provider: RuleProvider): Promise<RuleSnapshot> {
+  if (typeof (provider as Partial<RuleSnapshotProvider>).load !== "function") failClosed();
+  return verifyRuleSnapshot(await provider.load());
 }
 
-let standardHashes: Promise<ReadonlySet<string>> | undefined;
+interface StandardHashes {
+  /** Je Kennung einer Standard-Regel die Prüfsumme der Fassung, die im Code gilt. */
+  active: ReadonlyMap<string, string>;
+  /** Prüfsummen der Fassungen, die die Datenbank noch nicht speichert. */
+  unstored: ReadonlyMap<string, string>;
+}
 
-/**
- * Prüfsummen aller Fassungen der Standard-Regeln aus dem Code, auch der, die die Datenbank noch
- * nicht speichert (`UNSTORED_STANDARD_RULE_VERSIONS`).
- */
-function knownStandardHashes(): Promise<ReadonlySet<string>> {
-  const versions = [...STANDARD_RULE_VERSIONS, ...UNSTORED_STANDARD_RULE_VERSIONS];
-  standardHashes ??= Promise.all(versions.map((rule) => hashRule(rule))).then(
-    (hashes) => new Set(hashes),
-  );
+let standardHashes: Promise<StandardHashes> | undefined;
+
+function knownStandardHashes(): Promise<StandardHashes> {
+  standardHashes ??= (async () => {
+    const active = new Map<string, string>();
+    for (const rule of ACTIVE_STANDARD_RULES) active.set(rule.id, await hashRule(rule));
+    const unstored = new Map<string, string>();
+    for (const rule of UNSTORED_STANDARD_RULE_VERSIONS) unstored.set(rule.id, await hashRule(rule));
+    return { active, unstored };
+  })();
   return standardHashes;
 }
 
@@ -368,18 +364,25 @@ function knownStandardHashes(): Promise<ReadonlySet<string>> {
  * Prüft einen Regelstand, bevor das Tor damit entscheidet (fail-closed, sonst
  * `PaiBotError("intern")`):
  * - `stand` ist eine positive Ganzzahl, jede Regel hat eine Nummer zwischen 1 und `stand`;
- * - der Inhalt jeder Regel passt zu `ruleDefinitionSchema`;
+ * - der Inhalt jeder Regel passt zu `ruleDefinitionSchema` (auch: nur bekannte Quellen);
  * - die mitgelieferte Prüfsumme ist die Prüfsumme des Inhalts (`hashRule`);
- * - jede Regel mit Quelle `standard` gleicht inhaltlich genau einer Fassung aus
- *   `STANDARD_RULE_VERSIONS` oder `UNSTORED_STANDARD_RULE_VERSIONS` – eine in der Datenbank
- *   veränderte Standard-Regel zählt nie.
- * Gibt den Regelstand unverändert zurück.
+ * - eine Regel mit Quelle `standard` oder mit der Kennung einer Standard-Regel ist genau die Fassung
+ *   aus `ACTIVE_STANDARD_RULES` (oder aus `UNSTORED_STANDARD_RULE_VERSIONS`), mit Quelle `standard`;
+ *   eine unbekannte Standard-Kennung zählt nie;
+ * - ein eingeschalteter Vorschlag macht den Stand ungültig; ausgeschaltete Vorschläge fallen weg;
+ * - enthält der Stand Standard-Regeln (wie jeder Stand aus der Datenbank), dann alle aus
+ *   `ACTIVE_STANDARD_RULES`, und jede andere Regel liegt im Prioritäten-Band ihrer Quelle
+ *   (`priorityFitsSource`). Ein Stand ganz ohne Standard-Regeln kommt nur aus Tests; die Datenbank
+ *   liefert ihn nie (`rules.loadSnapshot` bricht dann ab).
+ * Gibt den Regelstand ohne Vorschläge zurück.
  */
 export async function verifyRuleSnapshot(snapshot: RuleSnapshot): Promise<RuleSnapshot> {
   const { stand, rules } = snapshot as { stand: unknown; rules: unknown };
   if (typeof stand !== "number" || !Number.isSafeInteger(stand) || stand < 1) failClosed();
   if (!Array.isArray(rules)) failClosed();
   const known = await knownStandardHashes();
+  const seen = new Set<string>();
+  let withStandard = false;
   for (const rule of snapshot.rules) {
     if (!Number.isSafeInteger(rule.seq) || rule.seq < 1 || rule.seq > stand) failClosed();
     if (!sha256DigestSchema.safeParse(rule.hash).success) failClosed();
@@ -387,7 +390,23 @@ export async function verifyRuleSnapshot(snapshot: RuleSnapshot): Promise<RuleSn
     if (!content.success) failClosed();
     const hash = await hashRule(rule);
     if (hash !== rule.hash) failClosed();
-    if (rule.source === "standard" && !known.has(hash)) failClosed();
+    if (seen.has(rule.id)) failClosed();
+    seen.add(rule.id);
+    const standardId = known.active.has(rule.id) || known.unstored.has(rule.id);
+    if (rule.source === "standard" || standardId) {
+      if (rule.source !== "standard") failClosed();
+      if (known.active.get(rule.id) !== hash && known.unstored.get(rule.id) !== hash) failClosed();
+      withStandard = true;
+    }
+    if (rule.source === "proposal" && rule.enabled) failClosed();
   }
-  return snapshot;
+  if (withStandard) {
+    for (const id of known.active.keys()) if (!seen.has(id)) failClosed();
+    for (const rule of snapshot.rules) {
+      if (rule.source !== "standard" && STANDARD_RULE_ID_PATTERN.test(rule.id)) failClosed();
+      if (!priorityFitsSource(rule.source, rule.priority)) failClosed();
+    }
+  }
+  const counted = snapshot.rules.filter((rule) => rule.source !== "proposal");
+  return counted.length === snapshot.rules.length ? snapshot : { stand, rules: counted };
 }

@@ -14,13 +14,12 @@ import {
   check,
   index,
   integer,
-  pgTable,
   primaryKey,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { idCheck, inListCheck, matches, PATTERNS } from "./helfer";
+import { idCheck, inListCheck, matches, PATTERNS, pgTable } from "./helfer";
 import { SESSION_AUTH_LEVELS, SESSION_METHODS } from "./werte";
 
 /** Der Besitzer der Installation. Es gibt höchstens eine Zeile. */

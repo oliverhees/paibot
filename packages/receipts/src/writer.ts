@@ -10,7 +10,12 @@
 
 import { BELEGE_LOCK_KEY, belege, type Database, repo } from "@paibot/db";
 import type { DecisionRecord, ReceiptRef, ReceiptWriter, ResultRecord } from "@paibot/gate";
-import { type ReceiptBody, type ReceiptEntry, ZERO_PREV } from "@paibot/shared/belege";
+import {
+  RECEIPT_CHAIN_FORMAT,
+  type ReceiptBody,
+  type ReceiptEntry,
+  ZERO_PREV,
+} from "@paibot/shared/belege";
 import { isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { toIsoTime } from "@paibot/shared/grundtypen";
 import {
@@ -27,6 +32,12 @@ import { signReceipt } from "./server";
 
 /** Nummer der Transaktions-Sperre, unter der Belege angehängt werden. */
 export const RECEIPT_LOCK_ID = BELEGE_LOCK_KEY;
+
+/**
+ * Wie lange ein Schreiber höchstens auf die Sperre wartet (Millisekunden). Hält sie jemand länger,
+ * scheitert das Anhängen mit `PaiBotError("intern")`, statt jede Aktion unbegrenzt aufzuhalten.
+ */
+export const RECEIPT_LOCK_WAIT_MS = 10_000;
 
 /** Ein Signaturschlüssel mit seinem entschlüsselten privaten Teil (nur im Speicher). */
 export interface SigningKeyRef {
@@ -103,7 +114,8 @@ export interface ReceiptChainWriter extends ReceiptWriter {
 }
 
 /**
- * Baut den Schreiber. Der Signaturschlüssel kommt vor der Transaktion aus `keys.current()`. Jedes
+ * Baut den Schreiber. Der Signaturschlüssel kommt vor der Transaktion aus `keys.current()`. Auf die
+ * Sperre wird höchstens `options.lockWaitMs` gewartet (Standard `RECEIPT_LOCK_WAIT_MS`). Jedes
  * Anhängen läuft dann in einer Transaktion mit `pg_advisory_xact_lock(RECEIPT_LOCK_ID)`: Kopf
  * lesen, Körper bauen (`buildReceipt`), hashen, signieren, einfügen, danach Ereignis
  * `beleg.created` über `repo.events.append`, wenn der Beleg zu einer Unterhaltung gehört.
@@ -117,7 +129,19 @@ export interface ReceiptChainWriter extends ReceiptWriter {
  * unverzweigt. Belege enthalten nie Inhalte von Nachrichten. Ihre Spalten (`seq`, `action_id`,
  * `action`, `actor`, `conversation_id`) stammen aus dem signierten Körper.
  */
-export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptChainWriter {
+export function createReceiptWriter(
+  db: Database,
+  keys: ReceiptKeys,
+  options: { lockWaitMs?: number } = {},
+): ReceiptChainWriter {
+  const lockWaitMs = Math.max(1, Math.floor(options.lockWaitMs ?? RECEIPT_LOCK_WAIT_MS));
+  const append = (
+    database: Database,
+    time: Date,
+    prepare: (tx: Tx, chain: ChainHead) => Promise<Prepared>,
+  ) => appendLocked(database, time, prepare, lockWaitMs);
+  const appendSigned = (database: Database, k: ReceiptKeys, time: Date, draft: ReceiptDraft) =>
+    appendSignedLocked(database, k, time, draft, append);
   return {
     appendStart: (input) =>
       append(db, input.time, async (tx, chain) => {
@@ -132,6 +156,7 @@ export function createReceiptWriter(db: Database, keys: ReceiptKeys): ReceiptCha
               installationId: input.installationId,
               publicKey: input.key.publicKey,
               software: input.software,
+              format: RECEIPT_CHAIN_FORMAT,
             },
           },
           key: { keyId: input.key.keyId, privateKey: input.key.privateKey },
@@ -218,11 +243,16 @@ class StaleKeyError extends Error {}
  * nicht der aktive (z. B. nach einem Schlüsselwechsel in einem anderen Prozess), einmal mit
  * `keys.refresh()` neu laden und noch einmal versuchen.
  */
-async function appendSigned(
+async function appendSignedLocked(
   db: Database,
   keys: ReceiptKeys,
   time: Date,
   draft: ReceiptDraft,
+  append: (
+    db: Database,
+    time: Date,
+    prepare: (tx: Tx, chain: ChainHead) => Promise<Prepared>,
+  ) => Promise<ReceiptRef>,
 ): Promise<ReceiptRef> {
   const attempt = async (key: SigningKeyRef) =>
     append(db, time, async (_tx, chain) => {
@@ -250,13 +280,23 @@ async function appendSigned(
  * `db` als Transaktion übergeben, entsteht ein Sicherungspunkt in ihr. Der Signaturschlüssel ist
  * vorher geladen; unter der Sperre wird nichts außerhalb der Transaktion geholt.
  */
-async function append(
+async function appendLocked(
   db: Database,
   time: Date,
   prepare: (tx: Tx, chain: ChainHead) => Promise<Prepared>,
+  lockWaitMs: number,
 ): Promise<ReceiptRef> {
   return db.transaction(async (tx) => {
-    await tx.execute(`select pg_advisory_xact_lock(${RECEIPT_LOCK_ID})`);
+    await tx.execute(`set local lock_timeout = ${lockWaitMs}`);
+    try {
+      await tx.execute(`select pg_catalog.pg_advisory_xact_lock(${RECEIPT_LOCK_ID})`);
+    } catch (error) {
+      if (sqlState(error) === "55P03") {
+        throw new PaiBotError("intern", { cause: error });
+      }
+      throw error;
+    }
+    await tx.execute("set local lock_timeout = 0");
     const chain = await readChainHead(tx);
     const { draft, key } = await prepare(tx, chain);
 
@@ -297,6 +337,12 @@ async function append(
     }
     return { receiptId: body.id, seq };
   });
+}
+
+function sqlState(error: unknown): string | undefined {
+  const e = error as { code?: unknown; cause?: { code?: unknown } } | null;
+  const code = e?.code ?? e?.cause?.code;
+  return typeof code === "string" ? code : undefined;
 }
 
 async function readChainHead(tx: Tx): Promise<ChainHead> {

@@ -21,7 +21,6 @@ import {
   repo,
 } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
-import { evaluate } from "@paibot/gate";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
@@ -38,6 +37,7 @@ import {
   TEST_INSTALLATION,
   TEST_RULE,
   type TestKey,
+  testDecision,
   testKey,
 } from "./testhilfen";
 import { verifyChain } from "./verify";
@@ -80,7 +80,7 @@ async function allEntries(db: Database): Promise<ReceiptEntry[]> {
 }
 
 function decisionRecord(action = sendAction(), facts = sendFacts()) {
-  return { action, facts, decision: evaluate(action, facts, [TEST_RULE]), time: TIME };
+  return { action, facts, decision: testDecision(action, facts), time: TIME };
 }
 
 async function errorOf(promise: Promise<unknown>): Promise<unknown> {
@@ -436,7 +436,7 @@ describe("Export aus der Datenbank", () => {
     await writer.appendDecision({
       action,
       facts,
-      decision: evaluate(action, facts, rules),
+      decision: testDecision(action, facts, rules, await repo.rules.currentStand(ctx.db)),
       time: TIME,
     });
     const report = await verifyChain(await allEntries(ctx.db), {
@@ -483,10 +483,11 @@ describe("Signaturschlüssel im Speicher", () => {
         return { keyId: key.keyId, privateKey: key.privateKey };
       },
     });
-    const done = Promise.all([
-      loading.appendDecision(decisionRecord()),
-      loading.appendResult({ action: sendAction(), result: { status: "ok" }, time: TIME }),
-    ]);
+    const record = decisionRecord();
+    const done = (async () => [
+      await loading.appendDecision(record),
+      await loading.appendResult({ action: record.action, result: { status: "ok" }, time: TIME }),
+    ])();
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("verklemmt")), 5000).unref(),
     );
@@ -574,7 +575,7 @@ describe("Spalten der Belege sind an den signierten Körper gebunden", () => {
     const action = sendAction();
     const facts = sendFacts();
     const body = buildReceipt(
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testDecision(action, facts), facts },
       {
         id: newId("receipt"),
         seq: (head?.seq ?? 0) + 1,

@@ -9,7 +9,7 @@
  */
 
 import { newId, ZERO_PREV } from "@paibot/shared";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { belege, bots, conversationEvents, conversations, installationKeys } from "./schema";
 import { belegRow, botRow, conversationRow, keyRow } from "./testdaten";
 import { createTestDb } from "./testing";
@@ -107,6 +107,64 @@ describe("Belege sind unveränderlich", () => {
     );
     expect(result.rows).toEqual([{ n: 1 }]);
   });
+});
+
+describe("Ergebnis nach Entscheidung, je Aktion genau einmal", () => {
+  let key: ReturnType<typeof keyRow>;
+  let db: Awaited<ReturnType<typeof createTestDb>>;
+  let kopf: { seq: number; hash: string };
+
+  beforeEach(async () => {
+    db = await createTestDb();
+    key = keyRow();
+    await db.db.insert(installationKeys).values(key);
+    const start = belegRow(key.id, { seq: 1, prevHash: ZERO_PREV });
+    await db.db.insert(belege).values(start);
+    kopf = { seq: 1, hash: start.hash };
+  });
+
+  async function anhaengen(options: Omit<Parameters<typeof belegRow>[1], "seq" | "prevHash">) {
+    const row = belegRow(key.id, { seq: kopf.seq + 1, prevHash: kopf.hash, ...options });
+    await db.db.insert(belege).values(row);
+    kopf = { seq: row.seq, hash: row.hash };
+    return row;
+  }
+
+  it("Entscheidung, dann passendes Ergebnis geht", async () => {
+    const actionId = newId("action");
+    const conversationId = newId("conversation");
+    await anhaengen({ type: "decision", actionId, conversationId });
+    await anhaengen({ type: "result", actionId, conversationId, status: "ok" });
+    const abgelehnt = newId("action");
+    await anhaengen({ type: "decision", actionId: abgelehnt, conversationId, outcome: "deny" });
+    await anhaengen({ type: "result", actionId: abgelehnt, conversationId, status: "denied" });
+  });
+
+  it.each([
+    ["Ergebnis ohne Entscheidung", [], { status: "ok" }],
+    ["„ok“ nach einer Ablehnung", [{ outcome: "deny" }], { status: "ok" }],
+    ["„denied“ nach einer Erlaubnis", [{ outcome: "allow" }], { status: "denied" }],
+    ["anderer Akteur", [{}], { status: "ok", actor: `bot:${newId("bot")}` }],
+  ] as const)("weist ab: %s", async (_name, entscheidungen, ergebnis) => {
+    const actionId = newId("action");
+    const conversationId = newId("conversation");
+    for (const e of entscheidungen)
+      await anhaengen({ type: "decision", actionId, conversationId, ...e });
+    const f = await fehler(anhaengen({ type: "result", actionId, conversationId, ...ergebnis }));
+    expect(f.code).toBe("23514");
+  });
+
+  it.each(["decision", "result"] as const)(
+    "weist eine zweite Zeile %s derselben Aktion ab",
+    async (typ) => {
+      const actionId = newId("action");
+      const conversationId = newId("conversation");
+      await anhaengen({ type: "decision", actionId, conversationId });
+      await anhaengen({ type: "result", actionId, conversationId });
+      const f = await fehler(anhaengen({ type: typ, actionId, conversationId }));
+      expect(f.code).toBe("23505");
+    },
+  );
 });
 
 describe("Ereignis-Strom wird nur angehängt", () => {

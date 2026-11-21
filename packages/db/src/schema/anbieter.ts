@@ -10,8 +10,8 @@
 
 import type { BotId, ModelId, ProviderId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
-import { idCheck, inListCheck, matches, PATTERNS } from "./helfer";
+import { boolean, check, integer, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { idCheck, inListCheck, matches, PATTERNS, pgTable } from "./helfer";
 import {
   AVATAR_SHAPES,
   BOT_COLORS,

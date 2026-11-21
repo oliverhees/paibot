@@ -15,7 +15,6 @@ import {
   type PostgresTestDatabase,
   TEST_DATABASE_URL_ENV,
 } from "@paibot/db/testing";
-import { evaluate } from "@paibot/gate";
 import { newId } from "@paibot/shared/ids";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -25,10 +24,11 @@ import {
   TEST_INSTALLATION,
   TEST_RULE,
   type TestKey,
+  testDecision,
   testKey,
 } from "./testhilfen";
 import { verifyChain } from "./verify";
-import { createReceiptWriter } from "./writer";
+import { createReceiptWriter, RECEIPT_LOCK_ID } from "./writer";
 
 const BASE_URL = process.env[TEST_DATABASE_URL_ENV];
 const PER_CONNECTION = 30;
@@ -77,7 +77,7 @@ describe.skipIf(BASE_URL === undefined)("Beleg-Schreiber gegen echtes Postgres",
         await writer.appendDecision({
           action,
           facts,
-          decision: evaluate(action, facts, [TEST_RULE]),
+          decision: testDecision(action, facts),
           time,
         });
         await writer.appendResult({ action, result: { status: "ok" }, time });
@@ -132,7 +132,7 @@ describe.skipIf(BASE_URL === undefined)("Beleg-Schreiber gegen echtes Postgres",
             await writer.appendDecision({
               action,
               facts,
-              decision: evaluate(action, facts, [TEST_RULE]),
+              decision: testDecision(action, facts),
               time: new Date(),
             });
           }
@@ -163,5 +163,28 @@ describe.skipIf(BASE_URL === undefined)("Beleg-Schreiber gegen echtes Postgres",
     expect(events.filter((e) => e.type === "beleg.created")).toHaveLength(2 * rounds);
     const entries = await repo.belege.listFrom(first.db, { limit: 10_000 });
     expect((await verifyChain(entries, { rules: [TEST_RULE] })).ok).toBe(true);
+  });
+  it("hält jemand die Sperre der Kette, scheitert das Anhängen nach der Frist, statt zu hängen", async () => {
+    const keys = { current: async () => ({ keyId: key.keyId, privateKey: key.privateKey }) };
+    const writer = createReceiptWriter(first.db, keys, { lockWaitMs: 300 });
+    const holder = await second.sql.reserve();
+    await holder`select pg_advisory_lock(${RECEIPT_LOCK_ID})`;
+    try {
+      const action = sendAction();
+      const facts = sendFacts();
+      const started = Date.now();
+      await expect(
+        writer.appendDecision({
+          action,
+          facts,
+          decision: testDecision(action, facts),
+          time: new Date(),
+        }),
+      ).rejects.toMatchObject({ code: "intern" });
+      expect(Date.now() - started).toBeLessThan(10_000);
+    } finally {
+      await holder`select pg_advisory_unlock(${RECEIPT_LOCK_ID})`;
+      holder.release();
+    }
   });
 });
