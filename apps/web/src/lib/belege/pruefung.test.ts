@@ -16,6 +16,7 @@ import type { ReceiptEntry } from "@paibot/shared/belege";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   type EinzelDaten,
+  kettenErgebnis,
   PaarPruefung,
   pruefeEinzeln,
   pruefeKette,
@@ -153,6 +154,15 @@ describe("Ganze Kette prüfen", () => {
       { problem: "ok_ohne_erlaubnis", seq: 4 },
       { problem: "doppelte_aktion", seq: 7 },
     ]);
+  });
+
+  it("ältere Entscheidungen ohne Regelstand werden sichtbar gemacht", async () => {
+    const bericht = await pruefer.verifyChain(kette);
+    const e = kettenErgebnis(bericht, { paare: [], ohneRegelstand: 2, quelle: "browser" });
+    expect(e.punkte).toContainEqual({
+      art: "hinweis",
+      text: "2 ältere Entscheidungen nennen keinen Regelstand; sie wurden mit den heutigen Regeln nachgerechnet.",
+    });
   });
 
   it("vor einer Prüfung: jede Zeile „noch nicht geprüft“", () => {

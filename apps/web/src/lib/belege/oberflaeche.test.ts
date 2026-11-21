@@ -106,6 +106,17 @@ describe("Browser-Module der Belege-Seite", () => {
     expect(text).toContain("jitless = true");
   });
 
+  it("der Anker aus dem Kopf der Kette wird nie als Vertrauensanker benutzt, nur der eingefügte", () => {
+    const laden = readFileSync(path.join(SRC, "lib/belege/laden.ts"), "utf8");
+    const ansicht = readFileSync(path.join(SRC, "app/(app)/belege/BelegeAnsicht.tsx"), "utf8");
+    expect(laden).not.toMatch(/\.anchor\b/);
+    expect(ansicht).not.toMatch(/kopf\.anchor|\.anchor\b/);
+    expect(ansicht).toContain("anker = ankerLesen(ankerText)");
+    expect(ansicht).not.toMatch(
+      /localStorage|sessionStorage|apiFetch<[^>]*>\(\s*"(POST|PUT|PATCH)"[^)]*anker/i,
+    );
+  });
+
   it("jeder Pfad der Seite steht so im Routen-Vertrag", () => {
     for (const [name, pfad] of Object.entries(BELEG_PFADE)) {
       expect(API_ROUTEN[name as keyof typeof API_ROUTEN].pfad).toBe(pfad);
