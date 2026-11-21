@@ -288,6 +288,29 @@ describe("createEgressFetch", () => {
     server.setHandler((_req, res) => json(res, 200, { ok: true }));
   });
 
+  it("entfernt Authorization bei einer Weiterleitung aus dem Pfad der Basis-URL, auch auf demselben Host", async () => {
+    const ziel = [{ ...providerEgressTarget(`${server.origin}/mandant-a/v1`, "local") }];
+    expect(ziel[0]?.basePath).toBe("/mandant-a/v1");
+    const gesehen: (string | undefined)[] = [];
+    server.setHandler((req, res) => {
+      if (req.url === "/mandant-a/v1/start")
+        return res.writeHead(302, { location: "/mandant-b/v1/x" }).end();
+      if (req.url === "/mandant-a/v1/innen")
+        return res.writeHead(302, { location: "/mandant-a/v1/y" }).end();
+      gesehen.push(req.headers.authorization);
+      return json(res, 200, { ok: true });
+    });
+    const guarded = createEgressFetch(ziel);
+    await guarded(`${server.origin}/mandant-a/v1/start`, {
+      headers: { authorization: "Bearer abc" },
+    });
+    await guarded(`${server.origin}/mandant-a/v1/innen`, {
+      headers: { authorization: "Bearer abc" },
+    });
+    expect(gesehen).toEqual([undefined, "Bearer abc"]);
+    server.setHandler((_req, res) => json(res, 200, { ok: true }));
+  });
+
   it("prüft Namen nach der Auflösung", async () => {
     const calls: string[] = [];
     const fake = (async () => new Response("{}")) as unknown as typeof fetch;
@@ -417,12 +440,14 @@ describe("createEgressFetch", () => {
       protocol: "http:",
       host: "192.168.1.5",
       port: 11434,
+      basePath: "/v1",
       allowPrivate: true,
       denyAddressesOf: INTERNAL_SERVICE_HOSTS,
     });
     expect(providerEgressTarget("https://api.eurouter.ai/v1", "eu")).toEqual({
       protocol: "https:",
       host: "api.eurouter.ai",
+      basePath: "/v1",
     });
   });
 });
