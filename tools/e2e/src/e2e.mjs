@@ -423,6 +423,9 @@ async function main() {
       await seite.goto(`${app}/einstellungen/darstellung`);
       await seite.getByRole("radio", { name: /Begrüßung/ }).check();
       await seite.getByText("Gemerkt für diesen Browser.").waitFor();
+      // und zurück zur Unterhaltung, mit der die nächsten Schritte weiterarbeiten
+      await seite.goto(`${app}${unterhaltung}`);
+      await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
     },
   );
 
