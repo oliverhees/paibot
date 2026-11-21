@@ -46,10 +46,15 @@
 //                 { "tippe": "<Beschriftung des Felds>", "text": "…" }  (Ziel auch als Objekt)
 //                 { "taste": "Enter" }   { "warteAuf": "<CSS>" }   { "warteAufText": "…" }
 //                 { "gehe": "/pfad" }    { "ablauf": "<Name aus „ablaeufe“>" }
+//                 { "zeige": "<CSS>" }  (in den sichtbaren Bereich scrollen)
+//                 { "anbieter": { "reply": "…", "chunkDelayMs": 200 } }  (Test-Anbieter, nur diese Aufnahme)
 //               Ziel-Objekt: genau eines von css, beschriftung, rolle (mit name), text; dazu
 //               "genau": false für Teil-Treffer. Sonderwerte für „text“: $einrichtungs-code,
 //               $passwort, $anbieter-schluessel (nie echte Werte in die Liste schreiben).
 //   ausschnitt  CSS-Selector; dann wird nur dieses Element aufgenommen (optional)
+//   datenschleuse  "aus" (Standard bei „zustand“), "bereit", "schluessel_falsch", "nicht_erreichbar":
+//               Zustand der Beispiel-Datenschleuse; `pnpm doku:app` startet den Worker dafür neu
+//   verdecke    Liste von CSS-Selectoren, die im Bild grau verdeckt werden (Uhrzeit, Prüfsummen)
 //   thema       "dunkel" (Standard) oder "hell"
 //   beschreibung  Notiz für Menschen, wird nicht ausgewertet (optional)
 // Oben in der Datei: "ablaeufe": { "<name>": [Schritte] } für wiederkehrende Folgen.
@@ -71,9 +76,16 @@ import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { aendereLauf, laufDatei, leseLauf, prozessLebt, setzeSonderwert } from "./doku/lauf.mjs";
+import {
+  ANBIETER_STANDARD,
+  aendereLauf,
+  laufDatei,
+  leseLauf,
+  prozessLebt,
+  setzeSonderwert,
+} from "./doku/lauf.mjs";
 import { ListenFehler, ordneAufnahmen, pruefeListe } from "./doku/liste.mjs";
-import { istEingerichtet, stelleHer } from "./doku-beispieldaten.mjs";
+import { istEingerichtet, stelleHer, steuereAnbieter } from "./doku-beispieldaten.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB = path.join(ROOT, "apps", "web");
@@ -83,6 +95,9 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 /** Feste Uhrzeit für alle Aufnahmen, damit angezeigte Zeiten sich nicht ändern. */
 const UHRZEIT = "2026-11-20T14:32:00+01:00";
+
+/** Farbe verdeckter Stellen (Feld „verdecke“): ruhiges Grau, im dunklen wie im hellen Design erkennbar. */
+const VERDECK_FARBE = "#5b6170";
 
 function fail(message) {
   console.error(message);
@@ -281,6 +296,10 @@ async function runStep(page, step, baseUrl) {
   else if (step.warteAuf) await page.waitForSelector(step.warteAuf, { timeout });
   else if (step.warteAufText) {
     await page.getByText(step.warteAufText).first().waitFor({ state: "visible", timeout });
+  } else if (step.zeige) {
+    await locate(page, step.zeige).first().scrollIntoViewIfNeeded({ timeout });
+  } else if (step.anbieter) {
+    await steuereAnbieter(lauf, step.anbieter);
   } else if (step.gehe) {
     await page.goto(`${baseUrl}${step.gehe}`, { waitUntil: "load" });
     await waitUntilSettled(page);
@@ -339,6 +358,8 @@ async function shoot(browser, entry, baseUrl) {
     timezoneId: "Europe/Berlin",
     ...(entry.anmeldung ? { storageState: await anmeldung(browser) } : {}),
   });
+  // „Anker kopieren“ und ähnliche Knöpfe schreiben in die Zwischenablage
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseUrl });
   try {
     const page = await context.newPage();
     const problems = watch(context, page, baseUrl);
@@ -383,7 +404,16 @@ async function shoot(browser, entry, baseUrl) {
     if (!checks.inter) problems.push("Die Schrift „Inter“ ist nicht geladen.");
     if (problems.length > 0) throw new Error(problems.join(" | "));
     const file = path.join(OUT_DIR, `${entry.name}.png`);
-    const options = { path: file, animations: "disabled", caret: "hide" };
+    const options = {
+      path: file,
+      animations: "disabled",
+      caret: "hide",
+      // Stellen mit echter Uhrzeit des Servers oder Zufall (Prüfsummen, Signaturen) werden
+      // verdeckt, damit ein zweiter Lauf dasselbe Bild liefert.
+      ...(entry.verdecke.length > 0
+        ? { mask: entry.verdecke.map((css) => page.locator(css)), maskColor: VERDECK_FARBE }
+        : {}),
+    };
     if (entry.ausschnitt) await page.locator(entry.ausschnitt).screenshot(options);
     else await page.screenshot(options);
     if (problems.length > 0) throw new Error(problems.join(" | "));
@@ -393,9 +423,38 @@ async function shoot(browser, entry, baseUrl) {
   }
 }
 
+/**
+ * Beispiel-Umgebung vor jeder Aufnahme mit Zustand: Test-Anbieter im Grund-Verhalten (ein Schritt
+ * „anbieter“ ändert es nur für diese Aufnahme) und Datenschleuse im verlangten Zustand (Feld
+ * „datenschleuse“, Standard „aus“; `pnpm doku:app` startet den Worker dafür neu).
+ */
+async function ensureBeispielUmgebung(entry) {
+  if (!lauf) return;
+  await steuereAnbieter(lauf, ANBIETER_STANDARD);
+  if (lauf.schleuse === entry.datenschleuse) return;
+  if (!lauf.steuerung)
+    throw new Error("Die Lauf-Datei kennt keine Steuerung (pnpm doku:app neu starten).");
+  if (entry.datenschleuse !== "aus" || lauf.schleuse !== undefined) {
+    console.log(`…    Datenschleuse der Beispiel-Umgebung: ${entry.datenschleuse}`);
+  }
+  const antwort = await fetch(`${lauf.steuerung.url}/datenschleuse`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${lauf.steuerung.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ zustand: entry.datenschleuse }),
+  });
+  if (!antwort.ok) {
+    throw new Error(`Steuerung der Beispiel-Umgebung antwortet ${antwort.status}.`);
+  }
+  lauf = aendereLauf({ schleuse: entry.datenschleuse }, LAUF);
+}
+
 /** Bringt die App vor einer Aufnahme in den verlangten Zustand (nur vorwärts möglich). */
 async function ensureState(entry) {
   if (entry.modus !== "app" || entry.zustand === undefined) return;
+  await ensureBeispielUmgebung(entry);
   if (!lauf) {
     throw new Error(
       "Diese Aufnahme braucht einen Zustand der App. Starte die App mit `pnpm doku:app` " +

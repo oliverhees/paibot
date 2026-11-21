@@ -32,19 +32,25 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { cpSync, createWriteStream, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { legeDatenbankAn, loescheDatenbank, starteEigenenServer } from "./datenbank.mjs";
 import {
+  ANBIETER_STANDARD,
+  aendereLauf,
+  BEISPIEL_MODELLE,
   laufDatei,
   leseLauf,
   loescheLauf,
   prozessLebt,
+  SCHLEUSE_ZUSTAENDE,
   schreibeLauf,
   wegwerfWert,
 } from "./lauf.mjs";
+import { starteAttrappe } from "./schleuse-attrappe.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const WEB = path.join(ROOT, "apps", "web");
@@ -52,13 +58,6 @@ const STANDALONE = path.join(WEB, ".next", "standalone");
 const WORKER = path.join(ROOT, "apps", "worker", "dist", "worker.mjs");
 const ANBIETER = path.join(ROOT, "tools", "fake-provider", "dist", "fake-provider.mjs");
 const MIGRATIONEN = path.join(ROOT, "packages", "db", "drizzle");
-
-/** Beispiel-Modelle des Test-Anbieters: erfundene Namen, die so in den Bildern stehen. */
-export const BEISPIEL_MODELLE = [
-  { id: "beispiel/allrounder", name: "Beispiel-Modell Allrounder", contextLength: 128000 },
-  { id: "beispiel/kompakt", name: "Beispiel-Modell Kompakt", contextLength: 32000 },
-];
-export const BEISPIEL_ANTWORT = "Gern. Hier ist mein Vorschlag – mit Beispiel-Daten.";
 
 const args = process.argv.slice(2);
 const trenner = args.indexOf("--");
@@ -181,10 +180,11 @@ function starte(name, programm, argumente, { env, cwd, logDatei }) {
   };
   kind.stdout.on("data", sammle);
   kind.stderr.on("data", sammle);
+  let gewollt = false;
   kind.once("exit", (code, signal) => {
     datei.end();
     for (const l of lauscher) l();
-    if (!beendet) {
+    if (!beendet && !gewollt) {
       console.error(`[doku:app] ${name} hat sich beendet (${signal ?? code}). Letzte Ausgabe:`);
       console.error(ausgabe.slice(-3000));
       void beende(1);
@@ -213,7 +213,13 @@ function starte(name, programm, argumente, { env, cwd, logDatei }) {
       lauscher.push(pruefe);
       pruefe();
     });
-  return { kind, warteAuf };
+  /** Beendet den Prozess gewollt (z. B. für einen Neustart mit anderer Umgebung). */
+  const stoppe = async () => {
+    gewollt = true;
+    await beendeKind(kind);
+    kinder.splice(kinder.indexOf(kind), 1);
+  };
+  return { kind, warteAuf, stoppe };
 }
 
 /**
@@ -286,6 +292,51 @@ async function warteAufAntwort(url, sekunden = 60) {
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
   throw new Error(`${url} war nach ${sekunden} s nicht erreichbar.`);
+}
+
+/**
+ * Kleine Steuerung für `pnpm doku:screenshots`: `POST /datenschleuse` mit `{ "zustand": … }` und
+ * dem Token als Bearer. Antwortet erst, wenn der Worker den Zustand gemeldet hat.
+ */
+function starteSteuerung(token, setzeSchleuse) {
+  let warteschlange = Promise.resolve();
+  const server = createHttpServer((anfrage, antwort) => {
+    const ende = (status, daten) => {
+      antwort.writeHead(status, { "content-type": "application/json" });
+      antwort.end(JSON.stringify(daten));
+    };
+    if (anfrage.headers.authorization !== `Bearer ${token}`) return ende(401, { ok: false });
+    if (anfrage.method !== "POST" || anfrage.url !== "/datenschleuse")
+      return ende(404, { ok: false });
+    let text = "";
+    anfrage.on("data", (teil) => {
+      text += teil;
+    });
+    anfrage.on("end", () => {
+      let zustand;
+      try {
+        zustand = JSON.parse(text).zustand;
+      } catch {
+        zustand = undefined;
+      }
+      if (!SCHLEUSE_ZUSTAENDE.includes(zustand)) return ende(400, { ok: false });
+      warteschlange = warteschlange
+        .then(() => setzeSchleuse(zustand))
+        .then(
+          () => ende(200, { ok: true, zustand }),
+          (error) => ende(500, { ok: false, fehler: error.message }),
+        );
+    });
+  });
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      resolve({
+        url: `http://127.0.0.1:${server.address().port}`,
+        stop: () => new Promise((fertig) => server.close(() => fertig())),
+      });
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -394,7 +445,7 @@ async function main() {
   const steuerung = await fetch(`${anbieterUrl}/_steuerung/verhalten`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ models: BEISPIEL_MODELLE, reply: BEISPIEL_ANTWORT, chunkChars: 400 }),
+    body: JSON.stringify(ANBIETER_STANDARD),
   });
   if (!steuerung.ok) throw new Error(`Test-Anbieter: Steuerung antwortet ${steuerung.status}.`);
 
@@ -456,17 +507,45 @@ async function main() {
   );
   await warteAufAntwort(`${url}/api/health`);
 
-  // 4. Worker
+  // 4. Beispiel-Datenschleuse (Attrappe, scripts/doku/schleuse-attrappe.mjs) und Worker. Der
+  //    Worker startet ohne SCHLEUSE_URL (Datenschleuse „nicht eingerichtet“); eine Aufnahme mit
+  //    „datenschleuse“ lässt ihn über die Steuerung unten mit der Attrappe neu starten.
+  const schleuseSchluessel = wegwerfWert(24);
+  const attrappe = await starteAttrappe({ schluessel: schleuseSchluessel, anbieterUrl });
+  aufgaben.push(() => attrappe.stop());
+  let worker;
+  let schleuseZustand;
+  const starteWorker = async (zustand) => {
+    if (worker) await worker.stoppe();
+    if (zustand !== "aus") attrappe.setzeZustand(zustand);
+    worker = starte("Worker", process.execPath, [WORKER], {
+      cwd: lauf,
+      env: grundUmgebung({
+        ...gemeinsam,
+        PAIBOT_WORKER_HEALTH_FILE: path.join(ordner, "worker.herzschlag"),
+        ...(zustand === "aus"
+          ? {}
+          : { SCHLEUSE_URL: `${attrappe.url}/v1`, SCHLEUSE_KEY: schleuseSchluessel }),
+      }),
+      logDatei: path.join(ordner, `worker-${zustand}.log`),
+    });
+    await worker.warteAuf(/Bereit: nimmt Läufe an/);
+    await worker.warteAuf(new RegExp(`Datenschleuse: ${zustand}\\.`), 30);
+    schleuseZustand = zustand;
+  };
   log("Worker wird gestartet …");
-  const worker = starte("Worker", process.execPath, [WORKER], {
-    cwd: lauf,
-    env: grundUmgebung({
-      ...gemeinsam,
-      PAIBOT_WORKER_HEALTH_FILE: path.join(ordner, "worker.herzschlag"),
-    }),
-    logDatei: path.join(ordner, "worker.log"),
+  await starteWorker("aus");
+
+  // Steuerung für doku:screenshots (nur 127.0.0.1, mit Wegwerf-Token aus der Lauf-Datei)
+  const steuerToken = wegwerfWert(32);
+  const steuerDienst = await starteSteuerung(steuerToken, async (zustand) => {
+    if (zustand !== schleuseZustand) {
+      log(`Datenschleuse der Beispiel-Umgebung: ${zustand} (Worker startet neu) …`);
+      await starteWorker(zustand);
+      aendereLauf({ prozesse: kinder.map((k) => k.pid) }, datei);
+    }
   });
-  await worker.warteAuf(/Bereit: nimmt Läufe an/);
+  aufgaben.push(() => steuerDienst.stop());
 
   // 5. Lauf-Datei
   schreibeLauf(
@@ -474,6 +553,7 @@ async function main() {
       version: 1,
       pid: process.pid,
       prozesse: kinder.map((k) => k.pid),
+      steuerung: { url: steuerDienst.url, token: steuerToken },
       ordner,
       pgOrdner,
       datenbank: { name: db.name, rolle: db.rolle, kennung },

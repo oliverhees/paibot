@@ -279,3 +279,107 @@ describe("Schutz der Wegwerf-Datenbank", () => {
     },
   );
 });
+
+describe("Beispiel-Umgebung: Datenschleuse, Test-Anbieter, verdeckte Stellen", () => {
+  it("„datenschleuse“: Standard „aus“ bei Aufnahmen mit Zustand, nur bekannte Werte", () => {
+    const [a, b, c] = pruefe([
+      { name: "a", pfad: "/", zustand: "eingerichtet" },
+      { name: "b", pfad: "/", zustand: "eingerichtet", datenschleuse: "bereit" },
+      { name: "c", pfad: "/" },
+    ]);
+    expect(a?.datenschleuse).toBe("aus");
+    expect(b?.datenschleuse).toBe("bereit");
+    expect(c?.datenschleuse).toBeUndefined();
+    expect(
+      fehlerText(() =>
+        pruefe([{ name: "x", pfad: "/", zustand: "eingerichtet", datenschleuse: "an" }]),
+      ),
+    ).toContain("„datenschleuse“ ist eines von");
+    expect(fehlerText(() => pruefe([{ name: "x", pfad: "/", datenschleuse: "bereit" }]))).toContain(
+      "nur zusammen mit „zustand“",
+    );
+  });
+
+  it("Schritte „zeige“ und „anbieter“; unbekannte Felder des Anbieters sind ein Fehler", () => {
+    const [a] = pruefe([
+      {
+        name: "a",
+        pfad: "/",
+        vorher: [{ zeige: "h2" }, { anbieter: { reply: "Hallo", chunkDelayMs: 200 } }],
+      },
+    ]);
+    expect(a?.vorher).toEqual([
+      { zeige: { css: "h2", genau: true } },
+      { anbieter: { reply: "Hallo", chunkDelayMs: 200 } },
+    ]);
+    expect(
+      fehlerText(() => pruefe([{ name: "x", pfad: "/", vorher: [{ anbieter: { apiKey: "k" } }] }])),
+    ).toContain("kennt „apiKey“ nicht");
+    expect(
+      fehlerText(() =>
+        pruefe([{ name: "x", pfad: "/", vorher: [{ anbieter: { chunkDelayMs: -1 } }] }]),
+      ),
+    ).toContain("ganze Zahl");
+  });
+
+  it("„verdecke“ ist eine Liste von CSS-Selectoren, Standard leer", () => {
+    const [a, b] = pruefe([
+      { name: "a", pfad: "/" },
+      { name: "b", pfad: "/", verdecke: ["time"] },
+    ]);
+    expect(a?.verdecke).toEqual([]);
+    expect(b?.verdecke).toEqual(["time"]);
+    expect(fehlerText(() => pruefe([{ name: "x", pfad: "/", verdecke: "time" }]))).toContain(
+      "Liste von CSS-Selectoren",
+    );
+  });
+});
+
+type Antwort = {
+  status?: number;
+  daten?: unknown;
+  weiter?: { apiKey: string; koerper: Record<string, unknown> };
+};
+const attrappe = await laden<{
+  antwortDerAttrappe: (a: Record<string, unknown>) => Antwort;
+  starteAttrappe: (a: Record<string, unknown>) => Promise<{
+    url: string;
+    setzeZustand: (z: string) => void;
+    stop: () => Promise<void>;
+  }>;
+}>("scripts/doku/schleuse-attrappe.mjs");
+describe("Beispiel-Datenschleuse (Attrappe)", () => {
+  const frage = (zustand: string, methode: string, pfad: string, kopf = {}, koerper = "") =>
+    attrappe.antwortDerAttrappe({ zustand, schluessel: "s", methode, pfad, kopf, koerper });
+  const mit = { authorization: "Bearer s" };
+
+  it("zeigt dem Worker die drei Zustände so, wie die Prüfung sie unterscheidet", () => {
+    expect(frage("bereit", "GET", "/health/liveliness").status).toBe(200);
+    expect(frage("bereit", "GET", "/v1/models", mit).status).toBe(200);
+    expect(frage("bereit", "GET", "/v1/models").status).toBe(401);
+    expect(frage("schluessel_falsch", "GET", "/health/liveliness").status).toBe(200);
+    expect(frage("schluessel_falsch", "GET", "/v1/models", mit).status).toBe(401);
+    expect(frage("nicht_erreichbar", "GET", "/health/liveliness").status).toBe(503);
+  });
+
+  it("reicht Chat-Anfragen nur mit Schlüssel weiter, ohne api_key im Körper, Modell ohne Vorsatz", () => {
+    const koerper = JSON.stringify({ model: "eigen/beispiel/allrounder", api_key: "k", n: 1 });
+    expect(frage("bereit", "POST", "/v1/chat/completions", {}, koerper).status).toBe(401);
+    const a = frage("bereit", "POST", "/v1/chat/completions", mit, koerper);
+    expect(a.weiter).toEqual({ apiKey: "k", koerper: { model: "beispiel/allrounder", n: 1 } });
+    expect(frage("bereit", "POST", "/v1/chat/completions", mit, "kein json").status).toBe(400);
+  });
+
+  it("läuft nur an 127.0.0.1 und wechselt den Zustand", async () => {
+    const a = await attrappe.starteAttrappe({ schluessel: "s", anbieterUrl: "http://127.0.0.1:9" });
+    try {
+      expect(new URL(a.url).hostname).toBe("127.0.0.1");
+      expect((await fetch(`${a.url}/health/liveliness`)).status).toBe(200);
+      a.setzeZustand("nicht_erreichbar");
+      expect((await fetch(`${a.url}/health/liveliness`)).status).toBe(503);
+      expect(() => a.setzeZustand("kaputt")).toThrow("Unbekannter Zustand");
+    } finally {
+      await a.stop();
+    }
+  });
+});

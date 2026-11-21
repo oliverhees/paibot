@@ -23,7 +23,7 @@
 // Nur gegen eine App auf dem eigenen Rechner (Adresse aus der Lauf-Datei von `pnpm doku:app`).
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { aendereLauf, laufDatei, leseLauf } from "./doku/lauf.mjs";
+import { ANBIETER_STANDARD, aendereLauf, laufDatei, leseLauf } from "./doku/lauf.mjs";
 
 /** Erfundene Unterhaltungen: Titel, Frage und die Antwort, die der Test-Anbieter gibt. */
 export const BEISPIEL_UNTERHALTUNGEN = [
@@ -71,6 +71,10 @@ export class Keksdose {
   }
 }
 
+/** Kennung des Browsers für die Besuche dieses Skripts: ein zweites, erfundenes Gerät in der Liste der Sitzungen. */
+export const BEISPIEL_GERAET =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0";
+
 /** Ein Besuch der App wie im Browser: Seite laden (Cookie, Prüfzeichen), dann Schnittstellen. */
 export class Besuch {
   constructor(url) {
@@ -82,7 +86,7 @@ export class Besuch {
   /** Lädt eine Seite und merkt sich Cookie und Prüfzeichen aus `<meta name="pb-pruefzeichen">`. */
   async seite(pfad) {
     const antwort = await fetch(`${this.url}${pfad}`, {
-      headers: { cookie: this.dose.kopf() },
+      headers: { cookie: this.dose.kopf(), "user-agent": BEISPIEL_GERAET },
       redirect: "manual",
     });
     this.dose.nimm(antwort);
@@ -94,7 +98,11 @@ export class Besuch {
 
   /** Ruft eine Schnittstelle auf; liefert Status und die ausgepackte Hülle. */
   async api(methode, pfad, koerper) {
-    const kopf = { cookie: this.dose.kopf(), accept: "application/json" };
+    const kopf = {
+      cookie: this.dose.kopf(),
+      accept: "application/json",
+      "user-agent": BEISPIEL_GERAET,
+    };
     if (methode !== "GET") {
       kopf.origin = this.url;
       kopf["content-type"] = "application/json";
@@ -168,7 +176,7 @@ export async function meldeAn(lauf) {
   return besuch;
 }
 
-async function steuereAnbieter(lauf, verhalten) {
+export async function steuereAnbieter(lauf, verhalten) {
   const antwort = await fetch(`${lauf.anbieterUrl}/_steuerung/verhalten`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -210,8 +218,8 @@ export async function legeUnterhaltungenAn(lauf, besuch) {
     for (const beispiel of BEISPIEL_UNTERHALTUNGEN) {
       await steuereAnbieter(lauf, { reply: beispiel.antwort });
       const neu = await besuch.api("POST", "/api/unterhaltungen", { title: beispiel.titel });
-      const id = neu.daten?.daten?.id;
-      if (neu.status !== 200 || typeof id !== "string") {
+      const id = neu.daten?.daten?.unterhaltung?.id ?? neu.daten?.daten?.id;
+      if ((neu.status !== 200 && neu.status !== 201) || typeof id !== "string") {
         throw new Error(`Unterhaltung anlegen: ${fehlerText(neu)}`);
       }
       const gesendet = await besuch.api("POST", `/api/unterhaltungen/${id}/nachrichten`, {
@@ -225,7 +233,7 @@ export async function legeUnterhaltungenAn(lauf, besuch) {
       anzahl += 1;
     }
   } finally {
-    await steuereAnbieter(lauf, { reply: "Gern. Hier ist mein Vorschlag – mit Beispiel-Daten." });
+    await steuereAnbieter(lauf, ANBIETER_STANDARD);
   }
   return { anzahl };
 }

@@ -123,14 +123,9 @@ docker buildx imagetools inspect ghcr.io/oliverhees/paibot:0.3.0 --format '{{jso
 
 ### Auf eine neue Version wechseln
 
-1. Sicherung anlegen (Abschnitt [Sicherungen](#sicherungen)).
-2. Den Ordner `deploy/` auf den Stand der neuen Version bringen (`git fetch --depth 1 origin tag v<Version>` und `git checkout v<Version>`), damit Compose-Datei und Version zusammenpassen.
-3. In `deploy/.env` `PAIBOT_VERSION` auf die neue Version setzen.
-4. `docker compose -f deploy/docker-compose.image.yml --env-file deploy/.env up -d` – Docker lädt das neue Image, `migrate` bringt die Datenbank auf Stand, danach starten `web` und `worker` neu.
+Wie du auf eine neue Version wechselst (mit eigenem Bau oder mit fertigem Image, Sicherung vorher, Rückweg), steht in [Aktualisieren](aktualisieren.md).
 
-Zurück auf eine ältere Version geht nur mit der Sicherung von vorher: Eine Datenbank, die schon auf einer neueren Version lief, meldet bei einer älteren „Datenbank nicht auf Stand“.
-
-Die Datenschleuse (Profil `schleuse`) wird auch auf diesem Weg weiterhin aus einem festen Commit gebaut, weil es von ihr noch kein fertiges Image gibt.
+Die Datenschleuse (Profil `schleuse`) wird auch mit fertigem Image aus einem festen Commit gebaut, weil es von ihr noch kein fertiges Image gibt.
 
 ## Einstellungen
 
