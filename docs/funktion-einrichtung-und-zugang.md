@@ -174,6 +174,8 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 - Der Einrichtungs-Code liegt im Speicher des Dienstes `web`. Laufen mehrere `web`-Dienste gleichzeitig, hat jeder seinen eigenen Code.
 - Die Seite für Sitzungen und Passwortwechsel kommt mit den Einstellungen; die Schnittstellen dafür gibt es schon.
 - Hast du die Einrichtung abgeschlossen, lässt sie sich nicht wiederholen.
+- Während einer Flut von Fehlversuchen kommt ein Browser, der noch kein bekanntes Gerät ist (neues Handy, gelöschte Cookies, privates Fenster), nur selten an der gemeinsamen Bremse vorbei. Dann hilft ein bekanntes Gerät oder ein neuer Lauf von `migrate` (siehe „Ausgesperrt?“). Einen eigenen Notfall-Code für die Anmeldung gibt es nicht.
+- Die Limits je Adresse sind nur so gut wie die Adresse, die dein Proxy weitergibt. Steht ein weiterer Dienst vor deinem Proxy (etwa ein CDN), stell den Proxy so ein, dass er die echte Adresse der Besucher weitergibt; sonst teilen sich alle Besucher die Adresse dieses Dienstes. Steht `web` in einem Docker-Netz mit anderen Anwendungen, können diese die Adresse vortäuschen; `web` gehört deshalb nur in die Netze aus dem Compose. Ein bekanntes Gerät kommt in beiden Fällen trotzdem an.
 
 ## Fehlerbehebung
 
