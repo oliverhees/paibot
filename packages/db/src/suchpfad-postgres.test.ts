@@ -169,7 +169,7 @@ describe.skipIf(BASE_URL === undefined)(
       expect(meldung).toContain("drop table");
       expect(meldung).not.toContain("PAIBOT_ALLOW_PRIVILEGED_DB");
 
-      // Der nächste Migrations-Schritt verschiebt sie in die Quarantäne; danach startet PaiBot.
+      // Der nächste Migrations-Schritt legt sie in der Quarantäne ab; danach startet PaiBot.
       const lauf = await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
       expect(lauf.appRole?.quarantined).toHaveLength(2);
       expect(lauf.appRole?.quarantined[0]).toMatch(
@@ -183,7 +183,7 @@ describe.skipIf(BASE_URL === undefined)(
       expect(await codeOf(nachher.unsafe(`drop table ${name}`))).toBe("42501");
     });
 
-    it("Sichten mit eigenem Code werden gelöscht, Tabellen ohne Code verschoben, nichts geht an die Migrations-Rolle", async () => {
+    it("Sichten mit eigenem Code werden gelöscht, Tabellen nur als Text abgelegt, ohne jeden Code", async () => {
       // Code der App-Rolle, der eine Spur hinterlässt, sobald er läuft (mit den Rechten des Aufrufers).
       await raw.unsafe("create table pgboss.spur (wer text)");
       await raw.unsafe("grant insert on pgboss.spur to public");
@@ -192,12 +192,35 @@ describe.skipIf(BASE_URL === undefined)(
         "create function pgboss.zeig() returns text language plpgsql as $$ begin insert into pgboss.spur values (current_user); return 'x'; end $$",
       );
       await raw.unsafe("grant execute on function pgboss.zeig() to public");
+      // Für Index und berechnete Spalte muss die Funktion als unveränderlich gelten; eine solche
+      // Funktion darf nichts schreiben, zählt aber eine Sequenz hoch.
+      await raw.unsafe("create sequence pgboss.spur_zaehler");
+      await raw.unsafe("grant usage on sequence pgboss.spur_zaehler to public");
+      await raw.unsafe(
+        "create function pgboss.zeig_wahr(x int) returns boolean language plpgsql immutable as $$ begin perform pg_catalog.nextval('pgboss.spur_zaehler'); return true; end $$",
+      );
+      await raw.unsafe("grant execute on function pgboss.zeig_wahr(int) to public");
+      await raw.unsafe("create domain pgboss.zahl as int check (pgboss.zeig_wahr(value))");
+      await raw.unsafe("create type pgboss.farbe as enum ('rot', 'gruen')");
+      await raw.unsafe(
+        "create function pgboss.farbe_text(pgboss.farbe) returns text language plpgsql as $$ begin perform pgboss.zeig(); return 'x'; end $$",
+      );
+      await raw.unsafe(
+        "create cast (pgboss.farbe as text) with function pgboss.farbe_text(pgboss.farbe)",
+      );
       await raw.unsafe("create view pgboss.settings as select pgboss.zeig() as wert");
       await raw.unsafe("create materialized view pgboss.bots as select 1 as a");
       await raw.unsafe(
-        "create table pgboss.messages (a text default pgboss.zeig(), b int generated always as (1) stored)",
+        `create table pgboss.messages (
+           a text default pgboss.zeig(),
+           b int generated always as (1) stored,
+           c int check (pgboss.zeig_wahr(c)),
+           d pgboss.zahl,
+           e pgboss.farbe,
+           f int generated always as (case when pgboss.zeig_wahr(c) then 1 end) stored)`,
       );
-      await raw.unsafe("insert into pgboss.messages (a) values ('vorher')");
+      await raw.unsafe("create index on pgboss.messages ((pgboss.zeig_wahr(c)))");
+      await raw.unsafe("insert into pgboss.messages (a, c, d, e) values ('vorher', 1, 2, 'rot')");
       await raw.unsafe(
         "create function pgboss.ausloeser() returns trigger language plpgsql as $$ begin perform pgboss.zeig(); return new; end $$",
       );
@@ -214,45 +237,70 @@ describe.skipIf(BASE_URL === undefined)(
 
       const admin = postgres(database.url, { max: 1, onnotice: () => undefined });
       cleanup.push(() => admin.end({ timeout: 2 }));
-      const [migrationsRolle] = await admin<{ name: string }[]>`select current_user as name`;
+      const spuren = async () => {
+        const [zeile] = await admin<{ n: number }[]>`
+          select (select count(*)::int from pgboss.spur)
+            + (select last_value::int from pgboss.spur_zaehler) as n`;
+        return zeile?.n ?? -1;
+      };
+      const spurVorher = await spuren();
       const lauf = await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
       const eintraege = lauf.appRole?.quarantined ?? [];
       expect(eintraege).toContain("pgboss.settings (gelöscht)");
       expect(eintraege).toContain("pgboss.bots (gelöscht)");
-      const verschoben = eintraege.find((e) => e.startsWith("pgboss.messages -> "));
-      expect(verschoben).toMatch(/^pgboss\.messages -> paibot_quarantaene\.messages_\d{14}$/);
-      const ziel = (verschoben ?? "").split(" -> ")[1] ?? "";
+      const abgelegt = eintraege.find((e) => e.startsWith("pgboss.messages -> "));
+      expect(abgelegt).toMatch(/^pgboss\.messages -> paibot_quarantaene\.messages_\d{14}$/);
+      const ziel = (abgelegt ?? "").split(" -> ")[1] ?? "";
 
-      // Sichten sind weg, die Tabelle trägt keinen Code mehr und gehört weiter der App-Rolle.
-      const [sichten] = await admin<{ n: number }[]>`
+      // Sichten und die alte Tabelle sind weg; die neue Tabelle hat genau eine Text-Spalte.
+      const [reste] = await admin<{ n: number }[]>`
         select count(*)::int as n from pg_class c join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname in ('pgboss', 'paibot_quarantaene') and c.relkind in ('v', 'm')`;
-      expect(sichten?.n).toBe(0);
+        where (n.nspname in ('pgboss', 'paibot_quarantaene') and c.relkind in ('v', 'm'))
+           or (n.nspname = 'pgboss' and c.relname = 'messages')`;
+      expect(reste?.n).toBe(0);
+      const spalten = await admin<{ name: string; typ: string }[]>`
+        select attname as name, pg_catalog.format_type(atttypid, atttypmod) as typ
+        from pg_attribute where attrelid = ${ziel}::regclass and attnum > 0 and not attisdropped`;
+      expect(spalten).toEqual([{ name: "zeile", typ: "text" }]);
       const [code] = await admin<
-        { trigger: number; regeln: number; policies: number; standard: number; rls: boolean }[]
+        {
+          trigger: number;
+          regeln: number;
+          policies: number;
+          ausdruecke: number;
+          regeln_pruef: number;
+          indizes: number;
+          rls: boolean;
+        }[]
       >`
         select
-          (select count(*)::int from pg_trigger where tgrelid = ${ziel}::regclass and not tgisinternal) as trigger,
+          (select count(*)::int from pg_trigger where tgrelid = ${ziel}::regclass) as trigger,
           (select count(*)::int from pg_rewrite where ev_class = ${ziel}::regclass) as regeln,
           (select count(*)::int from pg_policy where polrelid = ${ziel}::regclass) as policies,
-          (select count(*)::int from pg_attrdef d join pg_attribute a on a.attrelid = d.adrelid and a.attnum = d.adnum
-             where d.adrelid = ${ziel}::regclass and a.attgenerated = '') as standard,
+          (select count(*)::int from pg_attrdef where adrelid = ${ziel}::regclass) as ausdruecke,
+          (select count(*)::int from pg_constraint where conrelid = ${ziel}::regclass) as regeln_pruef,
+          (select count(*)::int from pg_index where indrelid = ${ziel}::regclass) as indizes,
           (select relrowsecurity or relforcerowsecurity from pg_class where oid = ${ziel}::regclass) as rls`;
-      expect(code).toEqual({ trigger: 0, regeln: 0, policies: 0, standard: 0, rls: false });
-      const [besitz] = await admin<{ n: number }[]>`
-        select count(*)::int as n from pg_class c join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname not in ('public', 'drizzle', 'pg_catalog', 'information_schema')
-          and n.nspname not like 'pg\_%'
-          and pg_get_userbyid(c.relowner) = ${migrationsRolle?.name ?? ""}`;
-      expect(besitz?.n).toBe(0);
+      expect(code).toEqual({
+        trigger: 0,
+        regeln: 0,
+        policies: 0,
+        ausdruecke: 0,
+        regeln_pruef: 0,
+        indizes: 0,
+        rls: false,
+      });
+      // Kopieren und Löschen haben keinen Code der App-Rolle ausgeführt.
+      expect(await spuren()).toBe(spurVorher);
 
-      // Lesen, Ändern und Löschen durch den Verwalter führen keinen Code der App-Rolle mehr aus.
-      expect(await admin.unsafe(`select a from ${ziel}`)).toEqual([{ a: "vorher" }]);
-      await admin.unsafe(`insert into ${ziel} (a) values ('neu')`);
-      await admin.unsafe(`update ${ziel} set a = 'anders'`);
+      // Die Daten sind als Text da; Lesen, Schreiben und Löschen führen nichts aus.
+      expect(await admin.unsafe(`select zeile from ${ziel}`)).toEqual([
+        { zeile: "(vorher,1,1,2,rot,1)" },
+      ]);
+      await admin.unsafe(`insert into ${ziel} (zeile) values ('neu')`);
+      await admin.unsafe(`update ${ziel} set zeile = 'anders'`);
       await admin.unsafe(`drop table ${ziel} cascade`);
-      const [spur] = await admin<{ n: number }[]>`select count(*)::int as n from pgboss.spur`;
-      expect(spur?.n).toBe(0);
+      expect(await spuren()).toBe(spurVorher);
 
       const nachher = postgres(appUrl, { max: 1, onnotice: () => undefined });
       cleanup.push(() => nachher.end({ timeout: 2 }));

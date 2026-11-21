@@ -20,10 +20,20 @@
 #   sh sicherung-db.sh vergleichen < begleit.json   Zeilen T|…, M|…, B|… zum Vergleich
 #   sh sicherung-db.sh anker < begleit.json         Anker der Belege-Kette aus der Begleit-Datei
 #   sh sicherung-db.sh export > belege.jsonl        Beleg-Export für den Prüfer (belege-pruefen.mjs)
+#   sh sicherung-db.sh inhalt                       nennt, was in public/drizzle nicht von PaiBot ist
 #
 # Sichern liest nur: Rolle paibot_sicherung (ohne Anmeldung, nur Mitglied von pg_read_all_data),
-# per SET ROLE. Zählung und Dump kommen aus demselben Snapshot. Das Schema der Warteschlange
-# (pgboss) gehört nicht zur Sicherung: Offene Aufträge werden nicht zurückgespielt.
+# per SET ROLE. Zählung und Dump kommen aus demselben Snapshot. Gesichert und zurückgespielt werden
+# nur die Schemas der App: public (Tabellen) und drizzle (Stand der Migrationen). Die Warteschlange
+# (pgboss) gehört nicht dazu: Offene Aufträge werden nicht zurückgespielt. Die Quarantäne
+# (paibot_quarantaene) und fremde Schemas gehören auch nicht dazu.
+#
+# Zurückspielen läuft nicht als Superuser: Eine eigene Rolle nur für diesen Lauf (Anmeldung mit
+# Einmal-Passwort, keine Sonderrechte, nur CREATE in dieser Datenbank und im Schema public) spielt
+# die Datei ein. Danach prüft das Skript, bevor irgendetwas anderes mit der Datenbank arbeitet, ob
+# sie nur enthält, was die Migrationen von PaiBot anlegen (siehe inhalt_pruefen). Erst dann gehen
+# die Objekte an den Benutzer dieses Skripts, und die Rolle wird gelöscht. Sonst wird die Datenbank
+# wieder geleert.
 set -eu
 
 : "${PGUSER:=${POSTGRES_USER:-postgres}}"
@@ -32,6 +42,8 @@ export PGUSER PGDATABASE
 
 SICHERUNGS_ROLLE=paibot_sicherung
 WARTESCHLANGE=pgboss
+# Schemas der App, als SQL-Liste und als Schalter für pg_dump/pg_restore.
+APP_SCHEMAS="'public', 'drizzle'"
 # Tabellen, die eine nie eingerichtete Installation selbst füllt (Standard-Regeln aus den
 # Migrationen, Einrichtungs-Code, Fehlversuche bei der Einrichtung, Zustand der Datenschleuse,
 # den der Worker beim Start meldet).
@@ -47,18 +59,22 @@ abbruch() {
 
 psql_q() { PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning" psql -X -q -At -v ON_ERROR_STOP=1 "$@"; }
 
-# Zeilen je Tabelle (alle Schemas außer System und Warteschlange), als SQL-Ausdruck einer Abfrage
-# mit den Spalten tabelle und zeilen. Ohne feste Liste: neue Tabellen zählen von allein mit.
-ZAEHLUNG="
+# Zeilen je Tabelle, als SQL-Ausdruck einer Abfrage mit den Spalten tabelle und zeilen. Ohne feste
+# Liste: neue Tabellen zählen von allein mit. zaehlung <Bedingung an das Schema n>.
+zaehlung() {
+  printf '%s' "
   select n.nspname || '.' || c.relname as tabelle,
     (pg_catalog.xpath('/row/n/text()', pg_catalog.query_to_xml(
       pg_catalog.format('select count(*) as n from %I.%I', n.nspname, c.relname),
       false, true, '')))[1]::text::bigint as zeilen
   from pg_catalog.pg_class c
   join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-  where c.relkind in ('r', 'p') and not c.relispartition
-    and n.nspname <> all (array['information_schema', '$WARTESCHLANGE'])
-    and n.nspname !~ '^pg_'"
+  where c.relkind in ('r', 'p') and not c.relispartition and $1"
+}
+# Für den Stand der Sicherung: nur die Schemas der App.
+ZAEHLUNG=$(zaehlung "n.nspname in ($APP_SCHEMAS)")
+# Für „ist die Ziel-Datenbank leer?“: alle Schemas außer System und Warteschlange.
+ZAEHLUNG_ALLE=$(zaehlung "n.nspname <> all (array['information_schema', '$WARTESCHLANGE']) and n.nspname !~ '^pg_'")
 
 # Stand der Datenbank als eine Zeile JSON: Zeit, Version von Postgres, Migrationen, Zeilen je
 # Tabelle, Belege mit Anker (Format pb-anker, wie ihn der Prüfer liest).
@@ -152,7 +168,7 @@ sichern() {
     abbruch 1 "Die Datenbank liefert keinen Snapshot (Verbindung oder Rechte prüfen)."
   fi
   if ! pg_dump -Fc --no-password --role="$SICHERUNGS_ROLLE" --snapshot="$snapshot" \
-    --exclude-schema="$WARTESCHLANGE" -d "$PGDATABASE"; then
+    --schema=public --schema=drizzle -d "$PGDATABASE"; then
     exec 3>&-
     abbruch 1 "pg_dump ist gescheitert (Meldung oben)."
   fi
@@ -172,10 +188,10 @@ sichern() {
 zustand() {
   rolle_einrichten
   psql_q -f - <<SQL
-select count(*) > 0 as hat_tabellen from ($ZAEHLUNG) t \\gset
+select count(*) > 0 as hat_tabellen from ($ZAEHLUNG_ALLE) t \\gset
 \\if :hat_tabellen
 select coalesce(pg_catalog.string_agg(tabelle || ' (' || zeilen || ')', ', ' order by tabelle), '') as belegt
-  from ($ZAEHLUNG) t
+  from ($ZAEHLUNG_ALLE) t
   where zeilen > 0 and tabelle not like 'drizzle.%'
     and tabelle not in (select 'public.' || x from pg_catalog.unnest(array[$FRISCH_ERLAUBT]) x) \\gset
 select exists (select 1 from information_schema.columns where table_schema = 'public'
@@ -217,6 +233,202 @@ comment on schema public is 'standard public schema';
 SQL
 }
 
+# Funktionen, die die Migrationen von PaiBot anlegen (je Fassung: Name und MD5 des Rumpfs). Ein
+# Test vergleicht die Liste mit den Dateien unter packages/db/drizzle.
+ERLAUBTE_FUNKTIONEN="
+paibot_belege_ergebnis_nach_entscheidung:0e255fd4fa78795ca8606e6cce38f3fb
+paibot_belege_unveraenderlich:9a4a719b8e857d0770105952a0f99ef0
+paibot_einrichtungs_code_ohne_besitzer:ba4e8930a0b42c5eb2c458292c647b6a
+paibot_ereignisse_nur_anhaengen:5492408bdfc3f6124018a33d6d51bf25
+paibot_ereignisse_nur_anhaengen:fd6138186985a287fd21b9bac8855341
+paibot_installation_id_fest:692bc8b62955a5b48823b43e1fbfe37a
+paibot_regeln_nummer:0e9820672d33e80a7578e4a8ca44c290
+paibot_regeln_unveraenderlich:79d5e2e71fb891da2a560d8cd5f65671
+paibot_schluessel_nur_anhaengen:7b14af8ca27cc0bcabbd5d475a024900
+"
+# Eingebaute Funktionen, die in Prüfregeln, Standardwerten, Indizes und Trigger-Bedingungen der
+# Migrationen vorkommen (auch hinter Operatoren). Andere eingebaute Funktionen, die etwa Text als
+# Abfrage ausführen, sind dort nicht erlaubt.
+ERLAUBTE_AUSDRUCK_FUNKTIONEN="
+booleq char_length int4 int4eq int4ge int4gt int4le int84eq int84ge jsonb_eq jsonb_object_field
+jsonb_object_field_text jsonb_typeof nextval now texteq textne textregexeq timestamptz_gt to_jsonb
+"
+# Arten von Knoten in diesen Ausdrücken (wie Postgres sie speichert).
+ERLAUBTE_KNOTEN="ARRAYEXPR BOOLEXPR CONST DISTINCTEXPR FUNCEXPR NULLTEST OPEXPR SCALARARRAYOPEXPR VAR"
+
+# Wörter durch Leerzeichen oder Zeilen getrennt → SQL-Liste 'a', 'b'.
+# shellcheck disable=SC2086
+sql_liste() { printf "'%s'," $1 | sed 's/,$//'; }
+
+# Prüft eine eingespielte Datenbank. Gibt je Fund eine Zeile aus; leer heißt: In den Schemas der
+# App liegt nur, was die Migrationen von PaiBot anlegen, und die Rolle des Einspielens besitzt
+# nichts anderes. Liest nur Kataloge; dabei läuft kein Code aus der Datenbank.
+inhalt_pruefen() {
+  psql_q -v rolle="${1:-}" -f - <<SQL
+with ns as (
+  select oid, nspname from pg_catalog.pg_namespace where nspname in ($APP_SCHEMAS)),
+rolle as (
+  select oid from pg_catalog.pg_roles where rolname = :'rolle'),
+baeume as (
+  select 'Prüfregel ' || k.conname || ' an ' || k.conrelid::pg_catalog.regclass::text as wo,
+         k.conbin::text as t
+    from pg_catalog.pg_constraint k join ns on ns.oid = k.connamespace where k.conbin is not null
+  union all
+  select 'Ausdruck an ' || d.adrelid::pg_catalog.regclass::text || '.' || a.attname, d.adbin::text
+    from pg_catalog.pg_attrdef d
+    join pg_catalog.pg_class c on c.oid = d.adrelid join ns on ns.oid = c.relnamespace
+    join pg_catalog.pg_attribute a on a.attrelid = d.adrelid and a.attnum = d.adnum
+  union all
+  select 'Index ' || i.indexrelid::pg_catalog.regclass::text,
+         coalesce(i.indexprs::text, '') || coalesce(i.indpred::text, '')
+    from pg_catalog.pg_index i
+    join pg_catalog.pg_class c on c.oid = i.indrelid join ns on ns.oid = c.relnamespace
+   where i.indexprs is not null or i.indpred is not null
+  union all
+  select 'Trigger ' || g.tgname || ' an ' || g.tgrelid::pg_catalog.regclass::text, g.tgqual::text
+    from pg_catalog.pg_trigger g
+    join pg_catalog.pg_class c on c.oid = g.tgrelid join ns on ns.oid = c.relnamespace
+   where g.tgqual is not null),
+funde as (
+  select 'Schema ' || n.nspname as fund from pg_catalog.pg_namespace n, rolle
+   where n.nspowner = rolle.oid and n.nspname not in ($APP_SCHEMAS)
+  union all
+  select 'Objekt der Art ' || d.classid::pg_catalog.regclass::text
+    from pg_catalog.pg_shdepend d, rolle
+   where d.refobjid = rolle.oid and d.deptype = 'o'
+     and d.dbid = (select oid from pg_catalog.pg_database where datname = pg_catalog.current_database())
+     and d.classid not in ('pg_catalog.pg_class'::pg_catalog.regclass,
+       'pg_catalog.pg_type'::pg_catalog.regclass, 'pg_catalog.pg_proc'::pg_catalog.regclass,
+       'pg_catalog.pg_namespace'::pg_catalog.regclass)
+  union all
+  select 'Objekt ' || c.oid::pg_catalog.regclass::text || ' (Art ' || c.relkind::text || ')'
+    from pg_catalog.pg_class c join ns on ns.oid = c.relnamespace
+   where c.relkind not in ('r', 'S', 'i')
+  union all
+  select 'Objekt ' || c.oid::pg_catalog.regclass::text || ' außerhalb der Schemas der App'
+    from pg_catalog.pg_class c, rolle
+   where c.relowner = rolle.oid and c.relnamespace not in (select oid from ns)
+     and c.relnamespace <> 'pg_toast'::pg_catalog.regnamespace
+  union all
+  select 'Zeilen-Regeln an ' || c.oid::pg_catalog.regclass::text
+    from pg_catalog.pg_class c join ns on ns.oid = c.relnamespace
+   where c.relrowsecurity or c.relforcerowsecurity
+  union all
+  select 'Policy ' || p.polname || ' an ' || p.polrelid::pg_catalog.regclass::text
+    from pg_catalog.pg_policy p
+    join pg_catalog.pg_class c on c.oid = p.polrelid join ns on ns.oid = c.relnamespace
+  union all
+  select 'Regel ' || r.rulename || ' an ' || r.ev_class::pg_catalog.regclass::text
+    from pg_catalog.pg_rewrite r
+    join pg_catalog.pg_class c on c.oid = r.ev_class join ns on ns.oid = c.relnamespace
+  union all
+  select 'Vererbung ' || i.inhrelid::pg_catalog.regclass::text || ' von '
+         || i.inhparent::pg_catalog.regclass::text
+    from pg_catalog.pg_inherits i
+    join pg_catalog.pg_class c on c.oid in (i.inhrelid, i.inhparent) join ns on ns.oid = c.relnamespace
+  union all
+  select 'Statistik ' || s.stxname from pg_catalog.pg_statistic_ext s join ns on ns.oid = s.stxnamespace
+  union all
+  select 'Rechte an ' || c.oid::pg_catalog.regclass::text
+    from pg_catalog.pg_class c join ns on ns.oid = c.relnamespace where c.relacl is not null
+  union all
+  select 'Rechte an Spalte ' || c.oid::pg_catalog.regclass::text || '.' || a.attname
+    from pg_catalog.pg_attribute a
+    join pg_catalog.pg_class c on c.oid = a.attrelid join ns on ns.oid = c.relnamespace
+   where a.attacl is not null
+  union all
+  select 'Rechte am Schema drizzle' from pg_catalog.pg_namespace
+   where nspname = 'drizzle' and nspacl is not null
+  union all
+  select 'Funktion ' || p.oid::pg_catalog.regprocedure::text
+    from pg_catalog.pg_proc p join ns on ns.oid = p.pronamespace
+   where not (p.proname || ':' || pg_catalog.md5(p.prosrc) = any (array[$(sql_liste "$ERLAUBTE_FUNKTIONEN")])
+              and p.prokind = 'f' and not p.prosecdef
+              and (p.proconfig is null or p.proconfig = array['search_path=pg_catalog, public'])
+              and p.proacl is null and p.proargdefaults is null
+              and p.prolang = (select oid from pg_catalog.pg_language where lanname = 'plpgsql'))
+  union all
+  select 'Funktion ' || p.oid::pg_catalog.regprocedure::text || ' außerhalb der Schemas der App'
+    from pg_catalog.pg_proc p, rolle
+   where p.proowner = rolle.oid and p.pronamespace not in (select oid from ns)
+  union all
+  select 'Typ ' || t.oid::pg_catalog.regtype::text
+    from pg_catalog.pg_type t join ns on ns.oid = t.typnamespace
+   where t.typacl is not null
+      or not ((t.typtype = 'c' and exists (select 1 from pg_catalog.pg_class r
+                where r.oid = t.typrelid and r.relkind in ('r', 'S')))
+           or (t.typcategory = 'A' and exists (select 1 from pg_catalog.pg_type e
+                join pg_catalog.pg_class r on r.oid = e.typrelid
+                where e.oid = t.typelem and e.typtype = 'c' and r.relkind in ('r', 'S'))))
+  union all
+  select 'Typ ' || t.oid::pg_catalog.regtype::text || ' außerhalb der Schemas der App'
+    from pg_catalog.pg_type t, rolle
+   where t.typowner = rolle.oid and t.typnamespace not in (select oid from ns)
+  union all
+  select 'Operator ' || o.oid::pg_catalog.regoperator::text
+    from pg_catalog.pg_operator o join ns on ns.oid = o.oprnamespace
+  union all
+  select 'Operator-Klasse ' || o.opcname from pg_catalog.pg_opclass o join ns on ns.oid = o.opcnamespace
+  union all
+  select 'Operator-Familie ' || o.opfname
+    from pg_catalog.pg_opfamily o join ns on ns.oid = o.opfnamespace
+  union all
+  select 'Sortierfolge ' || o.collname
+    from pg_catalog.pg_collation o join ns on ns.oid = o.collnamespace
+  union all
+  select 'Umwandlung ' || c.castsource::pg_catalog.regtype::text || ' -> '
+         || c.casttarget::pg_catalog.regtype::text
+    from pg_catalog.pg_cast c where c.oid >= 16384
+  union all
+  select 'Index ' || i.indexrelid::pg_catalog.regclass::text || ' mit eigener Operator-Klasse'
+    from pg_catalog.pg_index i
+    join pg_catalog.pg_class c on c.oid = i.indrelid join ns on ns.oid = c.relnamespace
+    cross join lateral pg_catalog.unnest(i.indclass::pg_catalog.oid[]) as k(oid)
+    join pg_catalog.pg_opclass o on o.oid = k.oid
+   where o.opcnamespace <> 'pg_catalog'::pg_catalog.regnamespace
+  union all
+  select 'Ausschluss-Regel ' || k.conname
+    from pg_catalog.pg_constraint k join ns on ns.oid = k.connamespace where k.contype = 'x'
+  union all
+  select 'Trigger ' || g.tgname || ' an ' || g.tgrelid::pg_catalog.regclass::text
+    from pg_catalog.pg_trigger g
+    join pg_catalog.pg_class c on c.oid = g.tgrelid join ns on ns.oid = c.relnamespace
+    join pg_catalog.pg_proc p on p.oid = g.tgfoid
+   where p.pronamespace not in (select oid from ns)
+     and not (g.tgisinternal and p.pronamespace = 'pg_catalog'::pg_catalog.regnamespace)
+  union all
+  select b.wo || ': ' || m[1]
+    from baeume b cross join lateral pg_catalog.regexp_matches(b.t, '\\{([A-Z_]+)', 'g') m
+   where m[1] <> all (array[$(sql_liste "$ERLAUBTE_KNOTEN")])
+  union all
+  select b.wo || ': Funktion ' || p.oid::pg_catalog.regprocedure::text
+    from baeume b
+    cross join lateral pg_catalog.regexp_matches(b.t,
+      ':(?:funcid|opfuncid|hashfuncid|negfuncid|opno) ([0-9]+)', 'g') m
+    join pg_catalog.pg_proc p on p.oid = m[1]::pg_catalog.oid
+      or p.oid = (select o.oprcode from pg_catalog.pg_operator o where o.oid = m[1]::pg_catalog.oid)
+   where not (p.pronamespace = 'pg_catalog'::pg_catalog.regnamespace
+              and p.proname = any (array[$(sql_liste "$ERLAUBTE_AUSDRUCK_FUNKTIONEN")])))
+select distinct fund from funde order by 1;
+SQL
+}
+
+# Rolle nur für diesen Lauf: Anmeldung mit Einmal-Passwort, keine Sonderrechte.
+zufall() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
+
+rolle_entfernen() {
+  [ -n "${EINSPIEL_ROLLE:-}" ] || return 0
+  psql_q -v rolle="$EINSPIEL_ROLLE" -f - <<'SQL' || meldung "Hinweis: Die Rolle $EINSPIEL_ROLLE ließ sich nicht löschen (ohne Anmeldung zurückgelassen)."
+select pg_catalog.format('alter role %I nologin', :'rolle') where exists (
+  select 1 from pg_catalog.pg_roles where rolname = :'rolle') \gexec
+select pg_catalog.format('drop owned by %I', :'rolle') where exists (
+  select 1 from pg_catalog.pg_roles where rolname = :'rolle') \gexec
+select pg_catalog.format('drop role %I', :'rolle') where exists (
+  select 1 from pg_catalog.pg_roles where rolname = :'rolle') \gexec
+SQL
+  EINSPIEL_ROLLE=""
+}
+
 zurueckspielen() {
   ergebnis=$(zustand)
   case "$ergebnis" in
@@ -230,12 +442,40 @@ zurueckspielen() {
       abbruch 3 "Zurückspielen nur in eine frische Installation. Ausweg: erst diese Installation sichern, dann Stack samt Volume löschen (docker compose … down -v), neu starten und die Sicherung einspielen."
       ;;
   esac
-  # Besitzer wird die Migrations-Rolle dieser Installation; die Rechte der App-Rolle setzt der
-  # Migrations-Schritt danach neu. Alles in einer Transaktion: bei einem Fehler bleibt nichts halb.
-  if ! pg_restore --no-owner --no-privileges --single-transaction --exit-on-error \
-    --no-password -d "$PGDATABASE"; then
-    abbruch 1 "pg_restore ist gescheitert (Meldung oben). Die Datenbank ist unverändert bzw. leer."
+  EINSPIEL_ROLLE="paibot_einspielen_$(zufall 6)"
+  passwort=$(zufall 24)
+  trap rolle_entfernen EXIT
+  psql_q -v rolle="$EINSPIEL_ROLLE" -v passwort="$passwort" -f - <<'SQL'
+select pg_catalog.format('create role %I login nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls connection limit 1 password %L', :'rolle', :'passwort') \gexec
+select pg_catalog.format('grant connect, create on database %I to %I', pg_catalog.current_database(), :'rolle') \gexec
+select pg_catalog.format('grant usage, create on schema public to %I', :'rolle') \gexec
+select pg_catalog.format('create schema drizzle authorization %I', :'rolle')
+ where pg_catalog.to_regnamespace('drizzle') is null \gexec
+select pg_catalog.format('grant usage, create on schema drizzle to %I', :'rolle')
+ where pg_catalog.pg_get_userbyid((select nspowner from pg_catalog.pg_namespace where nspname = 'drizzle')) <> :'rolle' \gexec
+SQL
+  # Nur die Schemas der App; alles in einer Transaktion: bei einem Fehler bleibt nichts halb.
+  # Ohne Besitzer und Rechte aus der Datei; die Rechte der App-Rolle setzt der Migrations-Schritt.
+  if ! PGUSER="$EINSPIEL_ROLLE" PGPASSWORD="$passwort" pg_restore --schema=public --schema=drizzle \
+    --no-owner --no-privileges --no-publications --no-subscriptions --no-security-labels \
+    --no-tablespaces --single-transaction --exit-on-error --no-password -d "$PGDATABASE"; then
+    leeren
+    abbruch 1 "pg_restore ist gescheitert (Meldung oben). Die Datenbank ist leer."
   fi
+  if ! funde=$(inhalt_pruefen "$EINSPIEL_ROLLE"); then
+    leeren
+    abbruch 1 "Der Inhalt ließ sich nicht prüfen (Meldung oben). Nichts eingespielt, die Datenbank ist wieder leer."
+  fi
+  if [ -n "$funde" ]; then
+    meldung "Die Sicherung enthält Teile, die PaiBot nicht selbst anlegt:"
+    printf '%s\n' "$funde" | head -n 20 | sed 's/^/  - /' >&2
+    leeren
+    abbruch 4 "Nichts eingespielt, die Datenbank ist wieder leer. Spiel nur Sicherungen zurück, die du selbst mit deploy/sicherung.sh angelegt und sicher aufbewahrt hast."
+  fi
+  psql_q -v rolle="$EINSPIEL_ROLLE" -f - <<'SQL'
+select pg_catalog.format('reassign owned by %I to %I', :'rolle', current_user) \gexec
+SQL
+  rolle_entfernen
   # Aufträge der Warteschlange sind nicht in der Sicherung. Läufe, die beim Sichern aktiv waren,
   # bekommen einen alten Herzschlag; der Worker beendet sie beim Start als „unterbrochen“ (und
   # schreibt zu einer offenen Entscheidung das Ergebnis). Ein wartender Lauf ohne Auftrag würde
@@ -272,7 +512,8 @@ select pg_catalog.to_regclass('drizzle.__drizzle_migrations') is not null as hat
        pg_catalog.to_regclass('public.belege') is not null as hat_belege \\gset
 with erwartet as (
   select key as tabelle, value::text::bigint as zeilen
-  from pg_catalog.json_each(:'begleit'::json->'stand'->'tabellen')),
+  from pg_catalog.json_each(:'begleit'::json->'stand'->'tabellen')
+  where pg_catalog.split_part(key, '.', 1) in ($APP_SCHEMAS)),
 jetzt as ($ZAEHLUNG)
 select 'T|' || coalesce(e.tabelle, j.tabelle) || '|' || coalesce(e.zeilen::text, '')
        || '|' || coalesce(j.zeilen::text, '')
@@ -346,8 +587,9 @@ case "$befehl" in
   vergleichen) vergleichen ;;
   anker) anker ;;
   export) export_jsonl ;;
+  inhalt) inhalt_pruefen ;;
   *)
-    meldung "Aufruf: sh sicherung-db.sh sichern|stand|zustand|liste|zurueckspielen|vergleichen|anker|export"
+    meldung "Aufruf: sh sicherung-db.sh sichern|stand|zustand|liste|zurueckspielen|vergleichen|anker|export|inhalt"
     exit 64
     ;;
 esac

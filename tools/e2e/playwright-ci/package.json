@@ -1,0 +1,9 @@
+{
+  "name": "paibot-e2e-playwright",
+  "private": true,
+  "description": "Nur für die CI: Playwright in fester Fassung, mit Prüfsummen aus package-lock.json (npm ci).",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

@@ -2,6 +2,8 @@
  * PaiBot – Hinweis bei Anmeldung von einem neuen Gerät: Meldet sich jemand mit einem bisher
  * unbekannten Gerät an, sehen alle anderen angemeldeten Geräte beim nächsten Seitenaufruf einen
  * Hinweis, bis der Besitzer ihn dort mit „Das war ich“ bestätigt (Aktion über das Tor mit Beleg).
+ * Ebenso, wenn ein anderes Gerät entfernt, über die Obergrenze verdrängt oder mit „Alle Sitzungen
+ * beenden“ abgemeldet wurde; ein neues Gerät sieht das auch für die Tage vor seiner Anmeldung.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -15,18 +17,22 @@ import { PaiBotError } from "@paibot/shared/fehler";
 import type { RoutenKontext } from "../api/route";
 import type { GepruefteSitzung } from "./nachweis";
 
-/** Ein neues Gerät, wie der Hinweis es nennt (keine Adresse, nur die Browser-Kennung). */
+/** Eine Zeile des Hinweises (keine Adresse, nur die Browser-Kennung). */
 export interface NeueAnmeldung {
   id: string;
+  /** `neu`: angemeldet; `entfernt`, `verdraengt`, `alle`: abgemeldet. */
+  art: repo.geraete.GeraetAenderung["art"];
   /** Browser-Kennung, aus der die Oberfläche eine grobe Angabe macht. */
   name?: string;
-  /** Wann das Gerät dazukam (erste Anmeldung damit). */
+  /** Wann es geschah (Anmeldung bzw. Abmeldung). */
   angelegt: string;
+  /** Bei `alle`: wie viele Geräte. */
+  anzahl?: number;
 }
 
 /**
- * Neue Geräte aus Sicht der Sitzung: gültige andere Geräte, die nach dem Stand ihres Geräts
- * dazukamen, neueste zuerst. Eine Sitzung ohne Gerät sieht keinen Hinweis.
+ * Änderungen aus Sicht der Sitzung (`repo.geraete.aenderungenSeit`), neueste zuerst. Eine Sitzung
+ * ohne Gerät sieht keinen Hinweis.
  */
 export async function neueAnmeldungen(
   db: Database,
@@ -35,11 +41,13 @@ export async function neueAnmeldungen(
 ): Promise<NeueAnmeldung[]> {
   const geraet = await repo.sessions.deviceOf(db, sitzung.id);
   if (geraet === undefined) return [];
-  const liste = await repo.geraete.neueSeit(db, sitzung.ownerId, geraet, { now });
+  const liste = await repo.geraete.aenderungenSeit(db, sitzung.ownerId, geraet, { now });
   return liste.map((g) => ({
     id: g.id,
+    art: g.art,
     ...(g.name === undefined ? {} : { name: g.name }),
-    angelegt: g.createdAt,
+    angelegt: g.zeit,
+    ...(g.anzahl === undefined ? {} : { anzahl: g.anzahl }),
   }));
 }
 
@@ -56,10 +64,10 @@ export async function hinweisBestaetigen(
   const geraet = await repo.sessions.deviceOf(db, sitzung.id);
   if (geraet === undefined) throw new PaiBotError("nicht_gefunden");
   const now = d.uhr.now();
-  const neu = await repo.geraete.neueSeit(db, sitzung.ownerId, geraet, { now });
-  // Stand = das neueste Gerät, das der Hinweis nennt; was danach dazukommt, erscheint wieder.
+  const neu = await repo.geraete.aenderungenSeit(db, sitzung.ownerId, geraet, { now });
+  // Stand = die neueste Zeile, die der Hinweis nennt; was danach geschieht, erscheint wieder.
   const bis = neu.reduce((spaetestes, g) => {
-    const zeit = new Date(g.createdAt);
+    const zeit = new Date(g.zeit);
     return zeit > spaetestes ? zeit : spaetestes;
   }, new Date(0));
   await kontext.tor(

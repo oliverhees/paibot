@@ -101,6 +101,7 @@ export async function anmelden(kontext: RoutenKontext<"anmelden">): Promise<{ an
     d.schluessel().sitzung,
     geraetAusAnfrage(kontext.request, rahmen),
     d.uhr.now(),
+    userAgent,
   );
   const bekannt = bisher?.ownerId === ownerId ? bisher : undefined;
   const ergebnis = await kontext.tor(
@@ -148,7 +149,10 @@ export async function abmelden(kontext: RoutenKontext<"abmelden">): Promise<{ ab
     {},
     async () => {
       if (geraet !== undefined) {
-        await repo.geraete.revoke(db, sitzung.ownerId, geraet, { now: kontext.dienste.uhr.now() });
+        await repo.geraete.revoke(db, sitzung.ownerId, geraet, {
+          now: kontext.dienste.uhr.now(),
+          grund: "abgemeldet",
+        });
       }
       await repo.sessions.end(db, sitzung.id);
       return { value: undefined, result: { status: "ok" } };
@@ -237,7 +241,7 @@ export async function passwortAendern(
       if (neuerHash === undefined) throw new PaiBotError("passwort_falsch");
       const neu = await db.transaction(async (tx) => {
         await repo.owner.updatePassword(tx, sitzung.ownerId, neuerHash, d.uhr.now());
-        await repo.geraete.revokeAll(tx, sitzung.ownerId, { now: d.uhr.now() });
+        await repo.geraete.revokeAll(tx, sitzung.ownerId, { now: d.uhr.now(), grund: "passwort" });
         await repo.sessions.endAll(tx, sitzung.ownerId);
         return sitzungAnlegen(tx, sitzung.ownerId, { now: d.uhr.now(), userAgent });
       });
@@ -295,7 +299,16 @@ export async function geraetEntfernen(
   const { db, sitzung, dienste: d } = kontext;
   const geraet = await repo.geraete.get(db, sitzung.ownerId, kontext.params.id ?? "");
   if (geraet === undefined) throw new PaiBotError("nicht_gefunden");
-  const dieses = (await repo.sessions.deviceOf(db, sitzung.id)) === geraet.id;
+  const eigenes = await repo.sessions.deviceOf(db, sitzung.id);
+  const dieses = eigenes === geraet.id;
+  // Nennt der Hinweis auf diesem Gerät nichts außer dem Gerät, das hier entfernt wird, zeigt er
+  // das Entfernen hier nicht an (es geschah ja hier); alle anderen Geräte sehen es.
+  const ohneHinweis =
+    eigenes !== undefined && !dieses
+      ? (
+          await repo.geraete.aenderungenSeit(db, sitzung.ownerId, eigenes, { now: d.uhr.now() })
+        ).every((zeile) => zeile.id === geraet.id)
+      : false;
   const aktiv =
     geraet.revokedAt === undefined && Date.parse(geraet.expiresAt) > d.uhr.now().getTime();
   await kontext.tor(
@@ -304,6 +317,12 @@ export async function geraetEntfernen(
     { deviceActive: aktiv, thisDevice: dieses },
     async () => {
       await repo.geraete.revoke(db, sitzung.ownerId, geraet.id, { now: d.uhr.now() });
+      if (ohneHinweis && eigenes !== undefined) {
+        await repo.geraete.hinweisBestaetigen(db, sitzung.ownerId, eigenes, {
+          bis: d.uhr.now(),
+          now: d.uhr.now(),
+        });
+      }
       return { value: undefined, result: { status: "ok" } };
     },
   );

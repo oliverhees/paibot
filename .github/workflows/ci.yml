@@ -134,12 +134,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Playwright gehört nicht zu den Abhängigkeiten des Projekts: eigener Ordner außerhalb des
-      # Projekts, exakte Fassung, ohne Installations-Skripte; Chromium samt Systempaketen.
+      # Projekts, exakte Fassung aus tools/e2e/playwright-ci (npm ci prüft jedes Paket gegen die
+      # Prüfsumme in package-lock.json), ohne Installations-Skripte; Chromium samt Systempaketen.
+      # Chromium lädt Playwright selbst über HTTPS; eine eigene Prüfsumme dafür legt dieser Schritt nicht fest.
       - name: Playwright und Chromium installieren (gepinnt)
         run: |
           set -eu
           pw="$RUNNER_TEMP/playwright"
-          npm install --prefix "$pw" --no-save --no-audit --no-fund --ignore-scripts "playwright@$PLAYWRIGHT_VERSION"
+          mkdir -p "$pw"
+          cp tools/e2e/playwright-ci/package.json tools/e2e/playwright-ci/package-lock.json "$pw/"
+          gesperrt=$(node -e "console.log(require('$pw/package-lock.json').packages['node_modules/playwright'].version)")
+          [ "$gesperrt" = "$PLAYWRIGHT_VERSION" ] || { echo "package-lock.json: Playwright $gesperrt statt $PLAYWRIGHT_VERSION"; exit 1; }
+          npm ci --prefix "$pw" --no-audit --no-fund --ignore-scripts
           echo "NODE_PATH=$pw/node_modules" >> "$GITHUB_ENV"
           node "$pw/node_modules/playwright/cli.js" install --with-deps chromium
           version=$(node -e "console.log(require('$pw/node_modules/playwright/package.json').version)")

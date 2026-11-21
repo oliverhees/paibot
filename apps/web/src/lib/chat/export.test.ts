@@ -16,7 +16,12 @@ import type { Message } from "@paibot/shared/objekte";
 import { describe, expect, it, vi } from "vitest";
 import { dateinameAus } from "../api/client";
 import { Keksdose, TEST_PASSWORT, TEST_SCHLUESSEL } from "../zugang/testing";
-import { exportDateiname, unterhaltungAlsMarkdown, unterhaltungExportieren } from "./export";
+import {
+  exportDateiname,
+  sichererInhalt,
+  unterhaltungAlsMarkdown,
+  unterhaltungExportieren,
+} from "./export";
 import {
   belegeDer,
   dateiAnfrage,
@@ -212,6 +217,53 @@ describe("Markdown der Datei", () => {
       ],
     });
     expect(md).toContain("> Kai: Fehlgeschlagen: ");
+  });
+
+  it("HTML, Bilder, Skript-Links und Steuerzeichen aus Antworten: als Text sichtbar, nie wirksam", () => {
+    const boese = [
+      "Vorher <script>alert(1)</script> und <img src=x onerror=alert(2)>",
+      "![Pixel](https://tracker.example/p.png) [Klick](javascript:alert(3)) [D]( data:text/html,x)",
+      "Rechnung\u202Efdp.exe\u2066 mit\u200B unsichtbar\u0007 Glocke\u001b[31m",
+      "<details open><summary>x</summary></details>",
+      "Code: `<b>bleibt</b>` und ``a`<i>`b``",
+      "```html",
+      "<div>im Block bleibt alles</div>",
+      "```",
+      "danach <u>wieder entschärft</u>",
+    ].join("\n");
+    const md = unterhaltungAlsMarkdown({
+      ...basis,
+      titel: "Titel <img src=x>\u202E",
+      nachrichten: [nachricht({ role: "assistant", content: boese })],
+    });
+    // Kein einziges „<“ außerhalb von Code ohne Backslash davor.
+    const ohneCode = md.replace(/```[\s\S]*?```/g, "").replace(/``[^`]*``|`[^`]*`/g, "");
+    expect(ohneCode).not.toMatch(/(^|[^\\])</m);
+    expect(md).toContain("Vorher \\<script>alert(1)\\</script>");
+    expect(md).toContain("!\\[Pixel](https://tracker.example/p.png)");
+    expect(md).toContain("[Klick](\\javascript:alert(3))");
+    expect(md).toContain("[D](\\data:text/html,x)");
+    const versteckt = [...md].filter((z) => {
+      const c = z.codePointAt(0) ?? 0;
+      const steuer = (c < 0x20 && z !== "\n") || c === 0x7f;
+      const richtung = (c >= 0x200b && c <= 0x200f) || (c >= 0x202a && c <= 0x202e);
+      return steuer || richtung || (c >= 0x2060 && c <= 0x2069);
+    });
+    expect(versteckt).toEqual([]);
+    expect(md).toContain("Rechnungfdp.exe mit unsichtbar Glocke[31m");
+    expect(md).toContain("`<b>bleibt</b>`");
+    expect(md).toContain("``a`<i>`b``");
+    expect(md).toContain("<div>im Block bleibt alles</div>");
+    expect(md).toContain("danach \\<u>wieder entschärft\\</u>");
+    expect(md.split("\n")[0]).toBe("# Titel \\<img src=x>");
+  });
+
+  it("gewöhnlicher Text bleibt unverändert", () => {
+    expect(
+      sichererInhalt(
+        "Gartenplan für März:\n- Tomaten **früh**\n- 3 > 2 & [Link](https://paibot.de)",
+      ),
+    ).toBe("Gartenplan für März:\n- Tomaten **früh**\n- 3 > 2 & [Link](https://paibot.de)");
   });
 
   it("Dateiname nur aus sicheren Zeichen", () => {

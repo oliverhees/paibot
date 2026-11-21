@@ -87,6 +87,11 @@ export interface WorkerTiming {
   probeTimeoutMs: number;
   /** Abstand, in dem der Zustand der Datenschleuse geprüft und gemeldet wird. */
   schleuseIntervalMs: number;
+  /**
+   * Abstand, in dem hängende Läufe aufgeräumt werden (wie beim Start). So bleibt nach einem
+   * Ausfall der Datenbank kein Lauf dauerhaft auf „läuft“, und „Stopp“ wirkt wieder.
+   */
+  staleIntervalMs: number;
 }
 
 export const WORKER_TIMING: WorkerTiming = {
@@ -96,6 +101,7 @@ export const WORKER_TIMING: WorkerTiming = {
   heartbeatIntervalMs: 10_000,
   probeTimeoutMs: 5_000,
   schleuseIntervalMs: 30_000,
+  staleIntervalMs: 15_000,
 };
 
 /** Alles, was der Worker von außen braucht; Tests ersetzen es. */
@@ -279,6 +285,20 @@ export async function runWorker(
       { staleAfterMs: RUN_TUNING.staleAfterMs },
     );
     log.info(`Veraltete Läufe aufgeräumt: ${stale.length}.`);
+    const staleCleanup = startStaleCleanup(
+      () =>
+        deps.failStaleRuns(
+          {
+            db: database.db,
+            clock: prepared.clock,
+            ...(prepared.receipts === undefined ? {} : { receipts: prepared.receipts }),
+          },
+          { staleAfterMs: RUN_TUNING.staleAfterMs },
+        ),
+      timing.staleIntervalMs,
+      log,
+      secrets,
+    );
 
     const runs = createRunHandler({
       db: database.db,
@@ -332,6 +352,7 @@ export async function runWorker(
       stop() {
         stopping ??= (async () => {
           log.info("Beende: nehme keine neuen Läufe mehr an.");
+          staleCleanup.stop();
           await heartbeat?.stop();
           schleuse?.stop();
           const aborted = runs.abortAll("Der Worker wird beendet.");
@@ -369,6 +390,41 @@ export async function runWorker(
     await database.close().catch(() => undefined);
     throw error instanceof WorkerStartError ? error : new WorkerStartError("intern");
   }
+}
+
+/**
+ * Räumt im Abstand `intervalMs` hängende Läufe auf. Nie zwei Durchgänge gleichzeitig; ein Fehler
+ * (etwa weil die Datenbank gerade fehlt) steht einmal im Log, bis ein Durchgang wieder gelingt.
+ */
+export function startStaleCleanup(
+  run: () => Promise<readonly unknown[]>,
+  intervalMs: number,
+  log: WorkerLog,
+  secrets: readonly string[],
+): { stop(): void } {
+  let busy = false;
+  let failing = false;
+  const timer = setInterval(() => {
+    if (busy) return;
+    busy = true;
+    run()
+      .then((ended) => {
+        if (failing) log.info("Aufräumen hängender Läufe geht wieder.");
+        failing = false;
+        if (ended.length > 0) log.info(`Hängende Läufe beendet: ${ended.length}.`);
+      })
+      .catch((error: unknown) => {
+        if (!failing) {
+          log.warn(`Aufräumen hängender Läufe gescheitert: ${describeError(error, secrets)}`);
+        }
+        failing = true;
+      })
+      .finally(() => {
+        busy = false;
+      });
+  }, intervalMs);
+  timer.unref?.();
+  return { stop: () => clearInterval(timer) };
 }
 
 /**

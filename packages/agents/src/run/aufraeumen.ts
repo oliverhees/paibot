@@ -26,16 +26,23 @@ export interface StaleRunOptions {
   staleAfterMs?: number;
   /** Ein Lauf, der so lange in `queued` steht, wurde nie abgeholt. */
   queuedStaleAfterMs?: number;
+  /**
+   * Ein Lauf in `running` mit Stopp-Wunsch und ohne Herzschlag seit so vielen Millisekunden
+   * (Standard: drei Herzschläge). Dann arbeitet niemand mehr an ihm, und „Stopp“ soll wirken.
+   */
+  cancelledStaleAfterMs?: number;
 }
 
 /**
- * Sucht Läufe in `running`, deren Herzschlag älter als `staleAfterMs` ist, und Läufe, die länger
+ * Sucht Läufe in `running`, deren Herzschlag älter als `staleAfterMs` ist (mit Stopp-Wunsch schon
+ * nach `cancelledStaleAfterMs`), und Läufe, die länger
  * als `queuedStaleAfterMs` in `queued` stehen (z. B. weil ihr Auftrag verloren ging). Jeder wird
  * auf `failed` mit Code `unterbrochen` gesetzt; eine noch streamende Antwort wird mit dem bis dahin
  * gestreamten Text als `failed` abgeschlossen; Ereignis `run.failed`. Gibt es zu einer schon
  * belegten Entscheidung `modell.anfragen` dieses Laufs noch kein Ergebnis, schreibt der
  * Beleg-Schreiber (`deps.receipts`) das Ergebnis `error`/`unterbrochen`. Für den Start des
- * Workers. Liefert die betroffenen Läufe.
+ * Workers und danach regelmäßig (etwa nach einem Ausfall der Datenbank). Liefert die betroffenen
+ * Läufe.
  */
 export async function failStaleRuns(
   deps: Pick<RunDeps, "db" | "clock"> & Partial<Pick<RunDeps, "receipts">>,
@@ -44,9 +51,17 @@ export async function failStaleRuns(
   const { db, clock } = deps;
   const now = clock.now();
   // Herzschlag (sonst Start bzw. Anlegen) bei `running`, Anlegen bei `queued`.
-  const running = await repo.runs.findStale(db, {
-    before: new Date(now.getTime() - (options.staleAfterMs ?? RUN_TUNING.staleAfterMs)),
-    statuses: ["running"],
+  const staleBefore = now.getTime() - (options.staleAfterMs ?? RUN_TUNING.staleAfterMs);
+  const cancelledBefore =
+    now.getTime() - (options.cancelledStaleAfterMs ?? 3 * RUN_TUNING.heartbeatMs);
+  const running = (
+    await repo.runs.findStale(db, {
+      before: new Date(Math.max(staleBefore, cancelledBefore)),
+      statuses: ["running"],
+    })
+  ).filter((run) => {
+    const lastSign = Date.parse(run.heartbeatAt ?? run.startedAt ?? run.createdAt);
+    return lastSign < staleBefore || run.cancelRequestedAt !== undefined;
   });
   const queued = await repo.runs.findStale(db, {
     before: new Date(now.getTime() - (options.queuedStaleAfterMs ?? RUN_TUNING.queuedStaleAfterMs)),

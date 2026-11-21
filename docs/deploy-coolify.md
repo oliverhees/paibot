@@ -96,7 +96,30 @@ Beim ersten Start legt `migrate` die App-Rolle `paibot_app` an und gibt ihr nur 
 | Coolify bricht beim Einlesen ab („expected type 'uint32'“)                    | Alte Compose-Datei mit `mode: 01777`. Mit dem aktuellen Stand von `main` neu einlesen (dort steht `mode: 1023`).                                                                                                                                                            |
 | `Bind for 127.0.0.1:3000 failed: port is already allocated` beim Dienst `web` | Eine ältere Fassung von `docker-compose.coolify.yml` hat Port 3000 auf dem Server veröffentlicht; ein zweiter Stack oder ein anderer Dienst hatte ihn schon. Die aktuelle Datei belegt keinen Port mehr (`expose` statt `ports`). Neu einlesen bzw. neu bauen und deployen. |
 
-**Beim Probelauf von Weg A prüfen** (noch nicht auf Coolify durchgespielt): Im Bau-Protokoll steht keine Zeile „Added … ARG declarations“ mehr. Auf dem Server findet `docker history --no-trunc <image>` keines der Geheimnisse (Suche nach `PAIBOT_SECRET`, `SERVICE_` und `POSTGRES`). Im Container `web` gibt `printenv APP_URL` die Adresse ohne `:3000` aus. Die Ressource steht auf „Running“, obwohl `migrate` „Exited“ zeigt.
+**Beim Probelauf von Weg A prüfen** (noch nicht auf Coolify durchgespielt): Im Container `web` gibt `printenv APP_URL` die Adresse ohne `:3000` aus. Die Ressource steht auf „Running“, obwohl `migrate` „Exited“ zeigt.
+
+### Geheimnisse nicht im Image: so prüfst du es
+
+Coolify baut PaiBot bei diesem Weg auf deinem Server aus dem Quellcode. Die Einstellungen aus Weg A, Schritt 6, sorgen dafür, dass die Geheimnisse dabei nicht als Build-Argumente mitgegeben werden. Laut Docker stehen Build-Argumente in der Historie eines Images (`docker history`); laut Coolify sind neue Variablen zunächst auch beim Bau verfügbar. Ob es bei dir geklappt hat, prüfst du nach jedem Deploy auf dem Server (zeigt von einem gefundenen Wert nur die ersten vier Zeichen):
+
+```sh
+for i in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep -Ei 'paibot|schleuse|litellm'); do
+  echo "== $i"
+  docker history --no-trunc --format '{{.CreatedBy}}' "$i" \
+    | grep -oE '(PAIBOT_SECRET|POSTGRES_PASSWORD|POSTGRES_APP_PASSWORD|SERVICE_HEX_64_PGOWNER|SERVICE_HEX_64_PGAPP|SERVICE_REALBASE64_32_PAIBOT|SCHLEUSE_KEY|SCHLEUSE_STATE_KEY|SCHLEUSE_ANBIETER_SCHLUESSEL)=.{0,4}' \
+    | sort -u
+done
+```
+
+Erwartet: zu jedem Image nur die Zeile `== …`, sonst nichts. Zusätzlich darf `docker image inspect <image> --format '{{json .Config.Env}}'` keines dieser Geheimnisse enthalten, und im Bau-Protokoll steht keine Zeile „Added … ARG declarations“.
+
+Findet der Befehl etwas:
+
+1. Weg A, Schritt 6, nachholen und neu deployen.
+2. Die alten Images löschen (`docker image rm <image>`) und den Bau-Zwischenspeicher leeren (`docker builder prune -a`). Dann den Befehl oben noch einmal ausführen.
+3. Wurde ein betroffenes Image je hochgeladen (z. B. in eine Registry) oder mit `docker save` weitergegeben: die Passwörter der Datenbank und die Schlüssel der Datenschleuse wechseln. `PAIBOT_SECRET` nicht wechseln, sonst lassen sich gespeicherte Anbieter-Schlüssel und der Signaturschlüssel der Belege nicht mehr lesen; trag stattdessen deine Anbieter-Schlüssel neu ein, wenn du sicher gehen willst.
+
+Sobald es fertige Images von PaiBot mit festem Digest gibt, ist der sicherste Weg, auf Coolify gar nicht mehr zu bauen, sondern das fertige Image zu nehmen. Für die erste Version gibt es das noch nicht.
 
 ## Bestehende Installation umstellen
 

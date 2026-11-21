@@ -34,7 +34,7 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * - `rules`: nur lesen. Die Standard-Regeln legen allein die Migrationen an.
  * - `installation_keys`: lesen, anhängen und nur `retired_at` setzen (Ausmustern).
  * - `conversation_events`: lesen, anhängen, alte Ereignisse löschen; nie ändern.
- * - `geraete`: lesen, anlegen, „zuletzt gesehen“, Ablauf, Widerruf und „Hinweis bestätigt bis“ setzen,
+ * - `geraete`: lesen, anlegen, „zuletzt gesehen“, Ablauf, Widerruf samt Grund und „Hinweis bestätigt bis“ setzen,
  *   alte Einträge löschen; Art, Rechte, Schlüssel und Prüfsumme des Cookies ändert die App nie.
  * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
  *   der Unterhaltung.
@@ -44,7 +44,8 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   bots: APP_DEFAULT_TABLE_RIGHTS,
   conversation_events: "select, insert, delete",
   conversations: APP_DEFAULT_TABLE_RIGHTS,
-  geraete: "select, insert, update (last_seen_at, expires_at, revoked_at, notice_seen_at), delete",
+  geraete:
+    "select, insert, update (last_seen_at, expires_at, revoked_at, revoke_reason, notice_seen_at), delete",
   installation_keys: "select, insert, update (retired_at)",
   messages: APP_DEFAULT_TABLE_RIGHTS,
   models: APP_DEFAULT_TABLE_RIGHTS,
@@ -299,14 +300,14 @@ export interface AppRoleSetup {
   role: string;
   /** `true`, wenn die Rolle bei diesem Aufruf neu angelegt wurde. */
   created: boolean;
-  /** Gleichnamige Objekte außerhalb von `public`: verschobene Tabellen (`alt -> neu`) und gelöschte Sichten (`alt (gelöscht)`). */
+  /** Gleichnamige Objekte außerhalb von `public`: als Text abgelegte Tabellen (`alt -> neu`) und gelöschte Sichten (`alt (gelöscht)`). */
   quarantined: string[];
 }
 
 /**
  * Schema für gleichnamige Tabellen, die außerhalb von `public` gefunden werden (siehe
  * `checkAppRole`). Gehört der Migrations-Rolle; die App-Rolle hat darauf keine Rechte. Die Tabellen
- * darin behalten ihren Besitzer; sie sind nur zum Löschen da, nicht zum Öffnen.
+ * darin enthalten nur Text (eine Spalte `zeile`). Sicherungen nehmen das Schema nicht mit.
  */
 export const QUARANTINE_SCHEMA_NAME = "paibot_quarantaene";
 
@@ -332,8 +333,8 @@ export const QUARANTINE_SCHEMA_NAME = "paibot_quarantaene";
  *    die Rechte (die Migrations-Rolle ist kein Superuser), bleibt es beim Rest.
  *
  * 8. Gleichnamige Objekte außerhalb von `public` (etwa im Schema der Warteschlange): Sichten und
- *    Fremdtabellen werden gelöscht, Tabellen ohne Trigger, Regeln und Standardwerte in das Schema
- *    `QUARANTINE_SCHEMA_NAME` verschoben (siehe `quarantineShadowTables`). So startet PaiBot
+ *    Fremdtabellen werden gelöscht, Tabellen als reiner Text in das Schema
+ *    `QUARANTINE_SCHEMA_NAME` übernommen (siehe `quarantineShadowTables`). So startet PaiBot
  *    wieder, und Daten gehen nicht verloren.
  *
  * Nutzt `appUrl` dieselbe Rolle wie `sql`, wird nur das Schema der Warteschlange angelegt (falls es
@@ -452,12 +453,14 @@ export async function prepareAppRole(
  *
  * - Sichten, materialisierte Sichten und Fremdtabellen enthalten keine eigenen Daten, aber Code,
  *   der beim Lesen läuft. Sie werden gelöscht (`drop … cascade`).
- * - Tabellen wandern mit Zeitstempel im Namen in das Schema der Quarantäne. Vorher verlieren sie
- *   alles, was beim Lesen oder Schreiben Code ausführen könnte: Trigger, Regeln, Zeilen-Regeln
- *   (Policies) und Standardwerte. Der Besitzer bleibt, wer er war; die Migrations-Rolle übernimmt
- *   nie Objekte, die eine andere Rolle angelegt hat.
+ * - Tabellen: Ihre Zeilen werden als reiner Text (eine Spalte `zeile`) in eine neue Tabelle mit
+ *   Zeitstempel im Namen im Schema der Quarantäne kopiert, danach wird die alte Tabelle gelöscht.
+ *   Vorher verliert sie Trigger, Regeln, Zeilen-Regeln (Policies) und Standardwerte, damit auch das
+ *   Lesen keinen Code ausführt. Die neue Tabelle gehört der Migrations-Rolle und enthält nur Text:
+ *   keine Prüfregeln, Indizes, berechneten Spalten oder eigenen Typen. Die Migrations-Rolle
+ *   übernimmt nie Objekte, die eine andere Rolle angelegt hat.
  *
- * Liefert je Objekt eine Zeile: `alt -> neu` (verschoben) bzw. `alt (gelöscht)`.
+ * Liefert je Objekt eine Zeile: `alt -> neu` (als Text abgelegt) bzw. `alt (gelöscht)`.
  */
 async function quarantineShadowTables(
   tx: postgres.TransactionSql,
@@ -496,10 +499,22 @@ async function quarantineShadowTables(
     const quelle = `${quoteIdent(schema)}.${quoteIdent(name)}`;
     await neutralize(tx, quelle);
     const target = `${name}_${stamp}`.slice(0, 63);
-    await tx.unsafe(`alter table ${quelle} rename to ${quoteIdent(target)}`);
+    const ziel = `${quoteIdent(QUARANTINE_SCHEMA_NAME)}.${quoteIdent(target)}`;
+    const [spalten] = await tx<{ liste: string }[]>`
+      select coalesce(pg_catalog.string_agg(pg_catalog.quote_ident(attname), ', ' order by attnum), '') as liste
+      from pg_catalog.pg_attribute
+      where attrelid = ${quelle}::pg_catalog.regclass and attnum > 0 and not attisdropped`;
+    // Nur Text: Jede Zeile wird mit den eingebauten Ausgabe-Funktionen der Spalten-Typen zu einer
+    // Zeile wie „(1,abc,…)“. Keine Prüfregel, kein Index, keine berechnete Spalte, kein eigener
+    // Typ wandert mit; beim Lesen, Schreiben oder Zurückspielen läuft nichts aus der alten Tabelle.
+    await tx.unsafe(`create table ${ziel} (zeile text)`);
     await tx.unsafe(
-      `alter table ${quoteIdent(schema)}.${quoteIdent(target)} set schema ${quoteIdent(QUARANTINE_SCHEMA_NAME)}`,
+      `insert into ${ziel} (zeile) select pg_catalog.textin(pg_catalog.record_out(t)) from ${quelle} t`,
     );
+    await tx.unsafe(
+      `comment on table ${ziel} is ${quoteLiteral(`aus ${schema}.${name}, Spalten: ${spalten?.liste ?? ""}`)}`,
+    );
+    await tx.unsafe(`drop table ${quelle} cascade`);
     result.push(`${schema}.${name} -> ${QUARANTINE_SCHEMA_NAME}.${target}`);
   }
   return result;

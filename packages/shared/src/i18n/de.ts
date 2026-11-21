@@ -1638,4 +1638,12 @@ export const de = {
     "{name} benutzt noch einen früheren Eintrag aus der Modell-Liste von {anbieter}. Er funktioniert weiter. Stell auf eine Routing-Regel um: Trag unten ihren Namen ein und übernimm sie.",
   "schleuse.hinweis.direkt_neutral": "direkt an den Anbieter",
   "anbieterwahl.bedingungen": "Bedingungen des Anbieters",
+
+  // Hinweis: Änderungen an den bekannten Geräten (entfernt, verdrängt, alle abgemeldet)
+  "hinweis.aenderung.titel": "Änderungen an deinen Geräten",
+  "hinweis.aenderung.neu": "Neu angemeldet: {geraet}, am {zeit}",
+  "hinweis.aenderung.entfernt": "Entfernt: {geraet}, am {zeit}",
+  "hinweis.aenderung.verdraengt":
+    "Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): {geraet}, am {zeit}",
+  "hinweis.aenderung.alle": "Alle Geräte abgemeldet ({anzahl}), am {zeit}",
 } as const satisfies Record<string, string | readonly string[]>;

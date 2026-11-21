@@ -334,6 +334,7 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
               d.schluessel().sitzung,
               cookieLesen(cookieKopf, geraetCookieName({ appUrl })),
               now,
+              kopf.get("user-agent"),
             )
           : undefined;
         const bezug: LimitBezug = {

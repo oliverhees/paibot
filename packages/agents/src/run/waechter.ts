@@ -21,7 +21,9 @@ import type { RunTuning } from "./vertrag";
  * - `verloren`: der Lauf ist nicht mehr `running` (z. B. von `failStaleRuns` beendet);
  * - `zeitgrenze`, `leerlauf`: Gesamtdauer bzw. Pause des Motors überschritten;
  * - `zu_gross`: die Antwort ist länger als erlaubt;
- * - `not_aus`: der Besitzer hat alle Bots angehalten (`settings.kill_switch`).
+ * - `not_aus`: der Besitzer hat alle Bots angehalten (`settings.kill_switch`);
+ * - `datenbank`: Lauf und Not-Aus ließen sich mehrmals in Folge nicht lesen (oder das Lesen
+ *   hing). Ohne diese Angaben kann der Lauf weder Stopp noch Not-Aus sehen; er hält deshalb an.
  */
 export type StopReason =
   | "signal"
@@ -30,7 +32,8 @@ export type StopReason =
   | "zeitgrenze"
   | "leerlauf"
   | "zu_gross"
-  | "not_aus";
+  | "not_aus"
+  | "datenbank";
 
 export interface RunGuard {
   /** Endet, sobald der Lauf angehalten werden soll (auch bei Abbruch von außen). */
@@ -46,9 +49,17 @@ export interface RunGuard {
   dispose(): void;
 }
 
+/** So oft in Folge darf das Nachsehen scheitern, bevor der Lauf anhält. */
+export const GUARD_READ_FAILURES = 3;
+/** So lange darf ein einzelnes Nachsehen dauern (mindestens), danach gilt es als gescheitert. */
+export const GUARD_READ_TIMEOUT_MS = 5000;
+
 /**
- * Startet den Wächter. Fehler beim Herzschlag oder beim Nachsehen werden nicht weitergegeben:
- * Ist die Datenbank weg, scheitert der nächste Schreibvorgang des Laufs ohnehin sichtbar.
+ * Startet den Wächter. Ein gescheiterter Herzschlag wird nicht weitergegeben (das Nachsehen
+ * im selben Takt merkt einen Ausfall). Scheitert das Nachsehen von Lauf und Not-Aus
+ * `GUARD_READ_FAILURES`-mal in Folge oder hängt es länger als `GUARD_READ_TIMEOUT_MS`
+ * (bzw. drei Takte, wenn das länger ist), hält der Lauf mit Grund `datenbank` an: Er arbeitet nie
+ * weiter, ohne Stopp und Not-Aus sehen zu können.
  */
 export function startGuard(input: {
   db: Database;
@@ -63,6 +74,9 @@ export function startGuard(input: {
   let idle: ReturnType<typeof setTimeout> | undefined;
   let idleOn = false;
   let polling = false;
+  let pollStartedAt = 0;
+  let failures = 0;
+  const readTimeoutMs = Math.max(GUARD_READ_TIMEOUT_MS, 3 * tuning.cancelPollMs);
 
   const stop = (why: StopReason) => {
     if (reason !== undefined) return;
@@ -83,17 +97,26 @@ export function startGuard(input: {
       .catch(() => undefined);
   }, tuning.heartbeatMs);
   const poll = setInterval(() => {
-    if (polling || reason !== undefined) return;
+    if (reason !== undefined) return;
+    if (polling) {
+      if (Date.now() - pollStartedAt > readTimeoutMs) stop("datenbank");
+      return;
+    }
     polling = true;
+    pollStartedAt = Date.now();
     // Lauf und Not-Aus im selben Takt: Schaltet der Besitzer den Not-Aus ein, endet der Lauf
     // binnen `cancelPollMs`, auch mitten im Strom.
     Promise.all([repo.runs.get(db, runId), repo.settings.get(db)])
       .then(([run, settings]) => {
+        failures = 0;
         if (run === undefined || run.status !== "running") stop("verloren");
         else if (settings?.killSwitch === true) stop("not_aus");
         else if (run.cancelRequestedAt !== undefined) stop("abbruch");
       })
-      .catch(() => undefined)
+      .catch(() => {
+        failures += 1;
+        if (failures >= GUARD_READ_FAILURES) stop("datenbank");
+      })
       .finally(() => {
         polling = false;
       });

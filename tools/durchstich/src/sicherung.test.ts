@@ -9,8 +9,8 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -616,6 +616,255 @@ describe.skipIf(bereit.grund !== undefined)(
       expect(bots).toBe(
         `T|public.bots|${vorher["public.bots"]}|${(vorher["public.bots"] ?? 0) - 1}`,
       );
+    });
+  },
+);
+
+/** Ruft ein Postgres-Werkzeug (pg_dump, pg_restore, psql) als Superuser gegen `url` auf. */
+function werkzeug(url: string, name: string, args: string[], eingabe?: Buffer): Lauf {
+  const adresse = new URL(url);
+  const ordner = bereit.bin;
+  const lauf = spawnSync(ordner === undefined ? name : path.join(ordner, name), args, {
+    input: eingabe,
+    maxBuffer: 256 * 1024 * 1024,
+    env: {
+      PATH: process.env.PATH ?? "",
+      HOME: tmpdir(),
+      PGHOST: adresse.hostname,
+      PGPORT: adresse.port || "5432",
+      PGUSER: decodeURIComponent(adresse.username),
+      PGPASSWORD: decodeURIComponent(adresse.password),
+      PGDATABASE: adresse.pathname.slice(1),
+    },
+  });
+  return { status: lauf.status, stdout: lauf.stdout, stderr: lauf.stderr.toString("utf8") };
+}
+
+describe("Liste der erlaubten Funktionen beim Zurückspielen", () => {
+  it("enthält genau die Funktions-Rümpfe aus allen Migrationen", () => {
+    const ordner = fileURLToPath(new URL("../../../packages/db/drizzle", import.meta.url));
+    const ausDateien = new Set<string>();
+    for (const datei of readdirSync(ordner).filter((n) => n.endsWith(".sql"))) {
+      const text = readFileSync(path.join(ordner, datei), "utf8");
+      for (const treffer of text.matchAll(
+        /CREATE (?:OR REPLACE )?FUNCTION (\w+)\([^)]*\)[^$]*?AS \$\$([\s\S]*?)\$\$/g,
+      )) {
+        const rumpf = treffer[2] ?? "";
+        ausDateien.add(`${treffer[1]}:${createHash("md5").update(rumpf).digest("hex")}`);
+      }
+    }
+    const skriptText = readFileSync(SKRIPT, "utf8");
+    const liste = /ERLAUBTE_FUNKTIONEN="([^"]*)"/.exec(skriptText)?.[1] ?? "";
+    const imSkript = new Set(liste.split(/\s+/).filter((z) => z !== ""));
+    expect(ausDateien.size).toBeGreaterThan(0);
+    expect([...imSkript].sort()).toEqual([...ausDateien].sort());
+  });
+});
+
+describe.skipIf(bereit.grund !== undefined)(
+  "Zurückspielen fremder oder veränderter Sicherungen (echtes Postgres)",
+  () => {
+    const basis = BASIS ?? "";
+    const datenbanken: PostgresTestDatabase[] = [];
+    const rollen: string[] = [];
+
+    /** Name einer Rolle, die nur entsteht, wenn Code aus der Sicherung mit vollen Rechten läuft. */
+    function spurRolle(): string {
+      const name = `paibot_test_spur_${randomBytes(4).toString("hex")}`;
+      rollen.push(name);
+      return name;
+    }
+
+    async function rolleDa(name: string): Promise<boolean> {
+      const sql = verbinden(basis);
+      try {
+        const [zeile] = await sql<{ n: number }[]>`
+          select count(*)::int as n from pg_roles where rolname = ${name}`;
+        return (zeile?.n ?? 0) > 0;
+      } finally {
+        await sql.end({ timeout: 2 });
+      }
+    }
+
+    async function einspielRollen(): Promise<number> {
+      const sql = verbinden(basis);
+      try {
+        const [zeile] = await sql<{ n: number }[]>`
+          select count(*)::int as n from pg_roles where rolname like 'paibot\_einspielen\_%'`;
+        return zeile?.n ?? -1;
+      } finally {
+        await sql.end({ timeout: 2 });
+      }
+    }
+
+    async function neueDatenbank(migriert = false): Promise<PostgresTestDatabase> {
+      const db = await createPostgresTestDatabase(basis, { migrate: migriert });
+      datenbanken.push(db);
+      return db;
+    }
+
+    /** Legt in einer eigenen Datenbank als Superuser an, was `sql` beschreibt, und sichert sie. */
+    async function praeparierteSicherung(anweisungen: string, migriert = false): Promise<Buffer> {
+      const quelle = await neueDatenbank(migriert);
+      const sql = verbinden(quelle.url);
+      try {
+        await sql.unsafe(anweisungen);
+      } finally {
+        await sql.end({ timeout: 2 });
+      }
+      const lauf = werkzeug(quelle.url, "pg_dump", ["-Fc"]);
+      expect(lauf.status, lauf.stderr).toBe(0);
+      return lauf.stdout;
+    }
+
+    afterAll(async () => {
+      for (const db of datenbanken) await db.drop();
+      const sql = verbinden(basis);
+      try {
+        for (const name of rollen) await sql`drop role if exists ${sql(name)}`;
+      } finally {
+        await sql.end({ timeout: 2 });
+      }
+    });
+
+    it("Code aus der Sicherung läuft beim Einspielen ohne Sonderrechte (keine neue Rolle, nichts eingespielt)", async () => {
+      const spur = spurRolle();
+      // Wirkt nur außerhalb der Quell-Datenbank: Dort darf die Zeile ohne Folgen entstehen.
+      const dump = await praeparierteSicherung(`
+        create function public.pruefe(n int) returns boolean language plpgsql as $f$
+        begin
+          if pg_catalog.current_database() <> pg_catalog.current_setting('paibot.quelle', true)
+             or pg_catalog.current_setting('paibot.quelle', true) is null then
+            execute 'create role ${spur} superuser';
+          end if;
+          return true;
+        end $f$;
+        set paibot.quelle = '';
+        select pg_catalog.set_config('paibot.quelle', pg_catalog.current_database(), false);
+        create table public.harmlos (n int check (public.pruefe(n)));
+        insert into public.harmlos values (1);`);
+      expect(await rolleDa(spur)).toBe(false);
+
+      // Vergleich: Als Superuser eingespielt, legt dieselbe Datei die Rolle an.
+      const vergleich = await neueDatenbank();
+      const direkt = werkzeug(
+        vergleich.url,
+        "pg_restore",
+        [
+          "--no-owner",
+          "--no-privileges",
+          "--single-transaction",
+          "-d",
+          new URL(vergleich.url).pathname.slice(1),
+        ],
+        dump,
+      );
+      expect(direkt.status, direkt.stderr).toBe(0);
+      expect(await rolleDa(spur)).toBe(true);
+      const sql = verbinden(basis);
+      try {
+        await sql`drop role ${sql(spur)}`;
+      } finally {
+        await sql.end({ timeout: 2 });
+      }
+
+      const ziel = await neueDatenbank();
+      const lauf = skript(ziel.url, "zurueckspielen", dump);
+      expect(lauf.status).toBe(1);
+      expect(lauf.stderr).toContain("permission denied");
+      expect(await rolleDa(spur)).toBe(false);
+      expect(skript(ziel.url, "zustand").stdout.toString().trim()).toBe("leer");
+      expect(await einspielRollen()).toBe(0);
+    });
+
+    it("Ausdrücke mit Funktionen, die PaiBot nicht nutzt, werden nicht eingespielt", async () => {
+      const dump = await praeparierteSicherung(
+        `create table public.notizen (t text check (
+           pg_catalog.query_to_xml('select 1', false, false, '') is not null));
+         insert into public.notizen values ('a');
+         create function public.extra() returns int language sql as 'select 1';`,
+        true,
+      );
+      const ziel = await neueDatenbank();
+      const lauf = skript(ziel.url, "zurueckspielen", dump);
+      expect(lauf.status).toBe(4);
+      expect(lauf.stderr).toContain("Funktion query_to_xml(");
+      expect(lauf.stderr).toContain("Funktion extra()");
+      expect(lauf.stderr).toContain("Spiel nur Sicherungen zurück, die du selbst");
+      expect(skript(ziel.url, "zustand").stdout.toString().trim()).toBe("leer");
+      expect(await einspielRollen()).toBe(0);
+    });
+
+    it("ein veränderter Rumpf einer Funktion von PaiBot wird nicht eingespielt", async () => {
+      const dump = await praeparierteSicherung(
+        `create or replace function public.paibot_regeln_nummer() returns trigger
+           language plpgsql set search_path = pg_catalog, public as $f$
+         begin return new; end $f$;`,
+        true,
+      );
+      const ziel = await neueDatenbank();
+      const lauf = skript(ziel.url, "zurueckspielen", dump);
+      expect(lauf.status).toBe(4);
+      expect(lauf.stderr).toContain("Funktion paibot_regeln_nummer()");
+      expect(skript(ziel.url, "zustand").stdout.toString().trim()).toBe("leer");
+    });
+
+    it("Quarantäne und fremde Schemas: nicht gesichert und aus älteren Dateien nicht eingespielt", async () => {
+      const spur = spurRolle();
+      const falle = `pg_catalog.query_to_xml(case when pg_catalog.current_setting('is_superuser') = 'on'
+        and pg_catalog.current_database() <> pg_catalog.current_setting('paibot.quelle', true)
+        then 'select 1 from (select pg_catalog.set_config(''x'', ''1'', false)) a' else 'select 1' end,
+        false, false, '') is not null`;
+      const anweisungen = `
+        select pg_catalog.set_config('paibot.quelle', pg_catalog.current_database(), false);
+        create schema paibot_quarantaene;
+        create table paibot_quarantaene.bots_alt (n int check (${falle}));
+        insert into paibot_quarantaene.bots_alt values (1);
+        create function paibot_quarantaene.spur() returns boolean language plpgsql as $f$
+        begin execute 'create role ${spur}'; return true; end $f$;
+        create schema fremd;
+        create table fremd.notiz (n int);
+        insert into fremd.notiz values (1);`;
+      // Neue Sicherung mit dem Skript: nur public und drizzle stehen im Inhaltsverzeichnis.
+      const quelle = await neueDatenbank(true);
+      const sql = verbinden(quelle.url);
+      try {
+        await sql.unsafe(anweisungen);
+      } finally {
+        await sql.end({ timeout: 2 });
+      }
+      const gesichert = skript(quelle.url, "sichern");
+      expect(gesichert.status, gesichert.stderr).toBe(0);
+      const inhalt = werkzeug(
+        quelle.url,
+        "pg_restore",
+        ["--list"],
+        gesichert.stdout,
+      ).stdout.toString();
+      expect(inhalt).toContain("TABLE public settings");
+      expect(inhalt).not.toMatch(/paibot_quarantaene|fremd/);
+
+      // Ältere Datei der ganzen Datenbank (mit beiden Schemas): eingespielt werden nur public und drizzle.
+      const alt = werkzeug(quelle.url, "pg_dump", ["-Fc"]);
+      expect(werkzeug(quelle.url, "pg_restore", ["--list"], alt.stdout).stdout.toString()).toMatch(
+        /paibot_quarantaene/,
+      );
+      const ziel = await neueDatenbank();
+      const lauf = skript(ziel.url, "zurueckspielen", alt.stdout);
+      expect(lauf.stderr).not.toContain("FEHLER");
+      expect(lauf.status).toBe(0);
+      const pruefen = verbinden(ziel.url);
+      try {
+        const schemas = await pruefen<{ name: string }[]>`
+          select nspname as name from pg_namespace
+          where nspname !~ '^pg_' and nspname <> 'information_schema' order by 1`;
+        expect(schemas.map((z) => z.name)).toEqual(["drizzle", "public"]);
+      } finally {
+        await pruefen.end({ timeout: 2 });
+      }
+      expect(await rolleDa(spur)).toBe(false);
+      expect(skript(ziel.url, "inhalt").stdout.toString()).toBe("");
+      expect(await einspielRollen()).toBe(0);
     });
   },
 );

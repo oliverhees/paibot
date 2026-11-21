@@ -54,18 +54,32 @@ export function geraetHash(
 }
 
 /**
- * Das bekannte Gerät zu einem Cookie-Wert: gültiges Prüfzeichen und ein gültiger Eintrag im
- * Verzeichnis (nicht widerrufen, nicht abgelaufen). Gefälschte Werte kosten keine Abfrage.
+ * Browser-Kennung ohne Ziffern: Nach einem Update des Browsers (neue Fassungsnummer) bleibt sie
+ * gleich, ein anderer Browser oder ein anderes System ergibt eine andere.
+ */
+export function browserArt(userAgent: string | null | undefined): string {
+  return (userAgent ?? "").slice(0, 200).toLowerCase().replace(/\d+/g, "#").trim();
+}
+
+/**
+ * Das bekannte Gerät zu einem Cookie-Wert: gültiges Prüfzeichen, ein gültiger Eintrag im
+ * Verzeichnis (nicht widerrufen, nicht abgelaufen) und dieselbe Art Browser wie beim Anlegen
+ * (`browserArt`). Kommt das Cookie aus einem anderen Browser, gilt es nicht: Die Anmeldung wird
+ * dann ein neues Gerät, und die anderen Geräte sehen den Hinweis. Gefälschte Werte kosten keine
+ * Abfrage.
  */
 export async function bekanntesGeraet(
   db: Database,
   schluessel: DerivedKey<"session-v1">,
   wert: string | undefined,
   now: Date,
+  userAgent: string | null | undefined,
 ): Promise<repo.geraete.GeraetEintrag | undefined> {
   const tokenHash = geraetHash(schluessel, wert);
   if (tokenHash === undefined) return undefined;
-  return repo.geraete.findByToken(db, tokenHash, { now });
+  const eintrag = await repo.geraete.findByToken(db, tokenHash, { now });
+  if (eintrag === undefined || browserArt(eintrag.name) !== browserArt(userAgent)) return undefined;
+  return eintrag;
 }
 
 /** Ablauf eines Geräts, das jetzt angelegt oder benutzt wird. */

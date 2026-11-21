@@ -13,7 +13,7 @@ import { repo } from "@paibot/db";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { DeviceId, OwnerId } from "@paibot/shared/ids";
 import { describe, expect, it, vi } from "vitest";
-import { anmelden, geraetEntfernen, passwortAendern } from "./anmeldung";
+import { alleAbmelden, anmelden, geraetEntfernen, passwortAendern } from "./anmeldung";
 import { einrichtungAbschliessen } from "./einrichtung";
 import { hinweisBestaetigen, neueAnmeldungen } from "./hinweis";
 import { _gepruefteSitzung } from "./nachweis";
@@ -42,6 +42,7 @@ function routen(u: TestUmgebung) {
     })),
     entfernen: u.handler("geraetEntfernen", async (k) => ({ daten: await geraetEntfernen(k) })),
     passwort: u.handler("passwortAendern", async (k) => ({ daten: await passwortAendern(k) })),
+    alle: u.handler("alleAbmelden", async (k) => ({ daten: await alleAbmelden(k) })),
   };
 }
 
@@ -179,12 +180,13 @@ describe("Hinweis bei Anmeldung von einem neuen Gerät", () => {
     expect(neu).toHaveLength(1);
     expect(neu[0]).toEqual({
       id: await geraetVon(u, b),
+      art: "neu",
       name: SAFARI,
       angelegt: u.zeit().toISOString(),
     });
     expect(await neueAnmeldungen(u.db, await sitzungVon(u, b), u.zeit())).toEqual([]);
     // Ohne Adresse: der Hinweis kennt nur Kennung, Browser-Kennung und Zeit.
-    expect(Object.keys(neu[0] ?? {}).sort()).toEqual(["angelegt", "id", "name"]);
+    expect(Object.keys(neu[0] ?? {}).sort()).toEqual(["angelegt", "art", "id", "name"]);
   });
 
   it("erneute Anmeldung mit einem bekannten Gerät ist keine neue Anmeldung", async () => {
@@ -279,5 +281,86 @@ describe("Hinweis bei Anmeldung von einem neuen Gerät", () => {
     dose.werte.set("pb_sitzung", neu.token);
     const r = await anfrage(u, routen(u).hinweis, "POST", "/api/zugang/geraete/hinweis", { dose });
     expect(r.status).toBe(404);
+  });
+});
+
+describe("Spuren für die übrigen Geräte", () => {
+  it("ein entferntes Gerät erscheint auf den übrigen Geräten, nicht auf dem, das entfernt hat", async () => {
+    const { u, h, a } = await eingerichtet();
+    u.spaeter(1000);
+    const b = await einloggen(u, h);
+    await anfrage(u, h.hinweis, "POST", "/api/zugang/geraete/hinweis", { dose: a });
+    u.spaeter(1000);
+    const c = await einloggen(u, h, { userAgent: FIREFOX });
+    const idC = await geraetVon(u, c);
+    // A bestätigt C; dann entfernt B das Gerät C … und A sieht das.
+    await anfrage(u, h.hinweis, "POST", "/api/zugang/geraete/hinweis", { dose: a });
+    u.spaeter(1000);
+    const r = await anfrage(u, h.entfernen, "POST", `/api/zugang/geraete/${idC}/entfernen`, {
+      dose: b,
+      params: { id: idC },
+    });
+    expect(r.status).toBe(200);
+    const beiA = await neueAnmeldungen(u.db, await sitzungVon(u, a), u.zeit());
+    expect(beiA).toEqual([
+      { id: idC, art: "entfernt", name: FIREFOX, angelegt: u.zeit().toISOString() },
+    ]);
+    expect(await neueAnmeldungen(u.db, await sitzungVon(u, b), u.zeit())).toEqual([]);
+    // „Das war ich“ auf A schließt auch diese Zeile.
+    const ok = await anfrage(u, h.hinweis, "POST", "/api/zugang/geraete/hinweis", { dose: a });
+    expect(ok.body).toEqual({ ok: true, daten: { bestaetigt: 1 } });
+    expect(await neueAnmeldungen(u.db, await sitzungVon(u, a), u.zeit())).toEqual([]);
+  });
+
+  it("verdrängt jemand alle Geräte über die Obergrenze, sieht das nächste neue Gerät es", async () => {
+    const { u, h, a } = await eingerichtet();
+    const idA = await geraetVon(u, a);
+    for (let i = 0; i < repo.geraete.MAX_GERAETE; i += 1) {
+      u.spaeter(1000);
+      await einloggen(u, h);
+    }
+    await expect(sitzungVon(u, a)).rejects.toThrow("keine Sitzung");
+    u.spaeter(60_000);
+    const neu = await einloggen(u, h, { userAgent: FIREFOX });
+    const zeilen = await neueAnmeldungen(u.db, await sitzungVon(u, neu), u.zeit());
+    // A und (durch diese Anmeldung) das älteste der zehn fremden Geräte.
+    const verdraengt = zeilen.filter((z) => z.art === "verdraengt").map((z) => z.id);
+    expect(verdraengt).toContain(idA);
+    expect(verdraengt).toHaveLength(2);
+  });
+
+  it("„Alle Sitzungen beenden“ steht beim nächsten neuen Gerät als eine Zeile", async () => {
+    const { u, h, a } = await eingerichtet();
+    u.spaeter(1000);
+    await einloggen(u, h);
+    u.spaeter(1000);
+    const r = await anfrage(u, h.alle, "POST", "/api/zugang/alle-abmelden", { dose: a });
+    expect(r.status).toBe(200);
+    const zeit = u.zeit().toISOString();
+    u.spaeter(60_000);
+    const neu = await einloggen(u, h);
+    expect(await neueAnmeldungen(u.db, await sitzungVon(u, neu), u.zeit())).toEqual([
+      { id: expect.stringMatching(/^ger_/), art: "alle", angelegt: zeit, anzahl: 2 },
+    ]);
+  });
+
+  it("ein Geräte-Cookie aus einem anderen Browser gilt nicht: neues Gerät, Hinweis auf den anderen", async () => {
+    const { u, h, a } = await eingerichtet();
+    u.spaeter(1000);
+    // Das Cookie von A (Firefox) in einem anderen Browser (Safari) mit dem Passwort.
+    const fremd = await einloggen(u, h, { dose: a, userAgent: SAFARI });
+    expect(await geraetVon(u, fremd)).not.toBe(await geraetVon(u, a));
+    const beiA = await neueAnmeldungen(u.db, await sitzungVon(u, a), u.zeit());
+    expect(beiA.map((z) => z.art)).toEqual(["neu"]);
+    expect(beiA[0]?.id).toBe(await geraetVon(u, fremd));
+  });
+
+  it("dasselbe Gerät nach einem Update des Browsers bleibt bekannt", async () => {
+    const { u, h, a } = await eingerichtet();
+    u.spaeter(1000);
+    const neuer = FIREFOX.replaceAll("140.0", "141.0");
+    const wieder = await einloggen(u, h, { dose: a, userAgent: neuer });
+    expect(await geraetVon(u, wieder)).toBe(await geraetVon(u, a));
+    expect(await neueAnmeldungen(u.db, await sitzungVon(u, a), u.zeit())).toEqual([]);
   });
 });

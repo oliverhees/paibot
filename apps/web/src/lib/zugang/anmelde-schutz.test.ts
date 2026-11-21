@@ -200,12 +200,16 @@ describe("Ausweg für den Besitzer", () => {
       expect((await versuch(e, TEST_PASSWORT, "192.0.2.78", dose)).status).toBe(429);
     }
     const jetzt = e.u.zeit();
-    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, fremd, jetzt)).toBeUndefined();
-    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, unbekannt, jetzt)).toBeUndefined();
+    expect(
+      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, fremd, jetzt, undefined),
+    ).toBeUndefined();
+    expect(
+      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, unbekannt, jetzt, undefined),
+    ).toBeUndefined();
     const echt = e.einrichtungsDose.werte.get("pb_geraet");
-    expect((await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, echt, jetzt))?.id).toMatch(
-      /^ger_/,
-    );
+    expect(
+      (await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, echt, jetzt, undefined))?.id,
+    ).toMatch(/^ger_/);
   });
 
   it("ein gestohlenes Geräte-Cookie bringt von vielen Adressen höchstens 5 Prüfungen je 15 Minuten", async () => {
@@ -226,16 +230,43 @@ describe("Ausweg für den Besitzer", () => {
     expect(antworten.filter((a) => a.status === 429).length).toBeGreaterThanOrEqual(45);
   });
 
-  it("auch ohne Flut bringt ein gestohlenes Geräte-Cookie höchstens 5 Prüfungen je 15 Minuten", async () => {
+  it("auch ohne Flut bringt ein gestohlenes Geräte-Cookie nicht mehr Prüfungen als ein Browser ohne Gerät", async () => {
+    const reihe = async (mitCookie: boolean) => {
+      const e = await eingerichtet();
+      const gestohlen = e.einrichtungsDose.werte.get("pb_geraet") ?? "";
+      const antworten = [];
+      for (let i = 0; i < 15; i += 1) {
+        const dose = vorabDose();
+        if (mitCookie) dose.werte.set("pb_geraet", gestohlen);
+        antworten.push(await versuch(e, `raten-${i}`, `2001:db8:55:${i.toString(16)}::1`, dose));
+      }
+      return geprueft(antworten);
+    };
+    expect(await reihe(true)).toBeLessThanOrEqual(await reihe(false));
+  });
+
+  it("falsche Passwörter mit einem kopierten Geräte-Cookie sperren das echte Gerät nicht aus", async () => {
     const e = await eingerichtet();
-    const gestohlen = e.einrichtungsDose.werte.get("pb_geraet") ?? "";
-    const antworten = [];
-    for (let i = 0; i < 15; i += 1) {
+    const kopie = e.einrichtungsDose.werte.get("pb_geraet") ?? "";
+    // Der Angreifer probiert mit dem kopierten Cookie von vielen Adressen, bis das Gerät über
+    // seinen beiden Limits liegt (5 je 15 Minuten, 20 am Tag).
+    for (let i = 0; i < 25; i += 1) {
       const dose = vorabDose();
-      dose.werte.set("pb_geraet", gestohlen);
-      antworten.push(await versuch(e, `raten-${i}`, `2001:db8:55:${i.toString(16)}::1`, dose));
+      dose.werte.set("pb_geraet", kopie);
+      await versuch(e, `raten-${i}`, `2001:db8:66:${i.toString(16)}::1`, dose);
     }
-    expect(geprueft(antworten)).toBe(5);
+    // Der Besitzer mit seinem Gerät und dem richtigen Passwort, von seiner eigenen Adresse: Er
+    // wartet höchstens so lange wie jeder Browser hinter der gemeinsamen Bremse (Sekunden), nicht
+    // bis zum Ende der Limits des Geräts (bis zu einem Tag).
+    let status = 0;
+    for (let runde = 0; runde < 5; runde += 1) {
+      const echt = vorabDose();
+      echt.werte.set("pb_geraet", kopie);
+      status = (await versuch(e, TEST_PASSWORT, "192.0.2.1", echt)).status;
+      if (status !== 429) break;
+      e.u.spaeter(61_000);
+    }
+    expect(status).toBe(200);
   });
 
   it("nach drei Fehlversuchen mit einem Gerät geht es nicht mehr an der Bremse vorbei", async () => {
@@ -261,7 +292,7 @@ describe("Ausweg für den Besitzer", () => {
     expect((await versuch(e, TEST_PASSWORT, "192.0.2.5", zweit)).status).toBe(200);
     zweit.werte.delete("pb_vorab");
     const wert = zweit.werte.get("pb_geraet") ?? "";
-    const g = await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, wert, e.u.zeit());
+    const g = await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, wert, e.u.zeit(), undefined);
     expect(g).toBeDefined();
     // Von einem anderen angemeldeten Browser aus entfernen.
     const erst = vorabDose();
@@ -283,7 +314,9 @@ describe("Ausweg für den Besitzer", () => {
     );
     expect(weg.status).toBe(200);
     expect(weg.body.daten).toEqual({ entfernt: true, abgemeldet: false });
-    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, wert, e.u.zeit())).toBeUndefined();
+    expect(
+      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, wert, e.u.zeit(), undefined),
+    ).toBeUndefined();
     const sitzungen = await anfrage(e.u, e.h.sitzungen, "GET", "/api/zugang/sitzungen", {
       dose: zweit,
     });
@@ -324,7 +357,9 @@ describe("Ausweg für den Besitzer", () => {
       expect((await versuch(e, TEST_PASSWORT, "192.0.2.3", dose)).status).toBe(200);
       dose.werte.delete("pb_vorab");
       const alt = dose.werte.get("pb_geraet") ?? "";
-      expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, alt, e.u.zeit())).toBeDefined();
+      expect(
+        await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, alt, e.u.zeit(), undefined),
+      ).toBeDefined();
       const r =
         fall === "passwort"
           ? await anfrage(e.u, e.h.passwort, "POST", "/api/zugang/passwort", {
@@ -340,7 +375,7 @@ describe("Ausweg für den Besitzer", () => {
             );
       expect(r.status).toBe(200);
       expect(
-        await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, alt, e.u.zeit()),
+        await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, alt, e.u.zeit(), undefined),
       ).toBeUndefined();
       if (fall !== "passwort") {
         expect(
@@ -349,7 +384,13 @@ describe("Ausweg für den Besitzer", () => {
       }
       // Auch das Gerät der Einrichtung ist bei „alle“ und neuem Passwort weg.
       const einrichtung = e.einrichtungsDose.werte.get("pb_geraet");
-      const nochDa = await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, einrichtung, e.u.zeit());
+      const nochDa = await bekanntesGeraet(
+        e.u.db,
+        e.u.schluessel.sitzung,
+        einrichtung,
+        e.u.zeit(),
+        undefined,
+      );
       expect(nochDa === undefined).toBe(fall !== "abmelden");
       // Und während einer Flut hilft das alte Cookie nicht mehr.
       await flut(e);
@@ -364,11 +405,11 @@ describe("Ausweg für den Besitzer", () => {
     const bekannt = e.einrichtungsDose.werte.get("pb_geraet");
     e.u.spaeter(89 * 24 * 60 * MINUTE);
     expect(
-      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, bekannt, e.u.zeit()),
+      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, bekannt, e.u.zeit(), undefined),
     ).toBeDefined();
     e.u.spaeter(2 * 24 * 60 * MINUTE);
     expect(
-      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, bekannt, e.u.zeit()),
+      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, bekannt, e.u.zeit(), undefined),
     ).toBeUndefined();
   });
 
@@ -391,6 +432,7 @@ describe("Ausweg für den Besitzer", () => {
         e.u.schluessel.sitzung,
         dose.werte.get("pb_geraet"),
         e.u.zeit(),
+        undefined,
       ),
     ).toBeUndefined();
     const neu = vorabDose();

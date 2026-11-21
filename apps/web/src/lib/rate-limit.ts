@@ -25,10 +25,11 @@ import { adressGruppe, UNBEKANNTE_ADRESSE } from "./kopfzeilen";
  *
  * - `anmeldenIpTag`: zweite Stufe je Adresse. Wer an einem Tag 20 Fehlversuche hat, wartet bis zum
  *   Ende des Tages (die Sperrzeit wächst von 15 Minuten auf bis zu 24 Stunden).
- * - `anmeldenGeraet`, `anmeldenGeraetTag`: eigene, sperrende Limits eines bekannten Geräts (siehe
- *   `zugang/geraet.ts`). Für die ersten `GERAET_FREI_BIS` Versuche im Fenster zählen für das Gerät
- *   weder die Limits seiner Adresse noch die gemeinsame Bremse; danach gilt für es zusätzlich
- *   dasselbe wie für jeden anderen Browser.
+ * - `anmeldenGeraet`, `anmeldenGeraetTag`: eigene Limits eines bekannten Geräts (siehe
+ *   `zugang/geraet.ts`). Für die ersten `GERAET_FREI_BIS` Versuche im Fenster (und unter dem
+ *   Tageslimit) zählen für das Gerät weder die Limits seiner Adresse noch die gemeinsame Bremse;
+ *   danach gilt für es dasselbe wie für jeden anderen Browser. Ausgesperrt wird ein Gerät durch
+ *   seine eigenen Limits nicht.
  * - `passwortAendern`: Versuche beim Ändern des Passworts je Sitzung. Darüber endet die Sitzung der
  *   Anfrage; andere Sitzungen des Besitzers zählen getrennt.
  * - `suche`: Suchanfragen in Unterhaltungen je Besitzer (die Suche liest den Text aller Nachrichten).
@@ -201,16 +202,18 @@ async function zaehle(db: Database, name: LimitName, bezug: LimitBezug, now: Dat
 }
 
 /**
- * Ein bekanntes Gerät zählt beim Anmelden auf seine eigenen Limits; über einem davon ist Pause
- * (`zu_viele_versuche`). `true`: noch höchstens `GERAET_FREI_BIS` Versuche im Fenster, das Gerät
- * ersetzt Adresse und Bremse. `false`: Es gilt zusätzlich dasselbe wie ohne Gerät.
+ * Ein bekanntes Gerät zählt beim Anmelden auf seine eigenen Limits. `true`: noch höchstens
+ * `GERAET_FREI_BIS` Versuche im Fenster und unter dem Tageslimit, das Gerät ersetzt Adresse und
+ * Bremse. `false`: Es gilt dasselbe wie für jeden anderen Browser. Ein Gerät über seinem Limit
+ * wird also nie ganz ausgesperrt; es verliert nur den Vorteil. So sperrt ein kopiertes Cookie, mit
+ * dem jemand falsche Passwörter probiert, das echte Gerät nicht aus.
  */
 async function geraetFrei(db: Database, bezug: LimitBezug, now: Date): Promise<boolean> {
   if (bezug.geraet === undefined) return false;
   let frei = true;
   for (const name of ["anmeldenGeraet", "anmeldenGeraetTag"] as const) {
     const ergebnis = await zaehle(db, name, bezug, now);
-    if (!ergebnis.allowed) throw zuViele(ergebnis.retryAfterSeconds);
+    if (!ergebnis.allowed) frei = false;
     if (name === "anmeldenGeraet" && ergebnis.count > GERAET_FREI_BIS) frei = false;
   }
   return frei;
