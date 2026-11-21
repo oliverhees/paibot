@@ -58,6 +58,7 @@ services:
       PAIBOT_SECRET: ${PAIBOT_SECRET:?PAIBOT_SECRET fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}
       APP_URL: ${APP_URL:-http://localhost:3000}
       PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
+      TRUST_PROXY: ${TRUST_PROXY:-}
     depends_on:
       postgres:
         condition: service_healthy
