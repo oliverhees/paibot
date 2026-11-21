@@ -38,8 +38,8 @@ const KORPUS = korpus as unknown as { format: number; cases: Fall[] };
 function rechne(fall: Fall): unknown {
   const action = fall.action as never;
   const facts = fall.facts as never;
-  if (fall.stand === undefined) return evaluate(action, facts, fall.rules);
-  return evaluate(action, facts, { stand: fall.stand, rules: fall.rules as never });
+  if (fall.stand === undefined) return evaluate(action, facts, fall.rules, { format: 1 });
+  return evaluate(action, facts, { stand: fall.stand, rules: fall.rules as never }, { format: 1 });
 }
 
 describe("Korpus der Fassung 1", () => {
