@@ -250,4 +250,29 @@ describe("Export", () => {
     expect(k.code).toBe(1);
     expect(k.aus).toContain("kürzer als der Anker");
   });
+
+  it("jeder Export ist eine eigene Aktion: eigene Kennung, je genau eine Entscheidung und ein Ergebnis", async () => {
+    const { u, dose } = await eingerichtet(1);
+    const h = belegRouten(u);
+    const erster = await anfrage(u, h.export, "POST", "/api/belege/export", { dose });
+    const zweiter = await anfrage(u, h.export, "POST", "/api/belege/export", { dose });
+    expect([erster.status, zweiter.status]).toEqual([200, 200]);
+    const exporte = (await ketteAus(u)).filter(
+      (e) =>
+        (e.body.type === "decision" || e.body.type === "result") &&
+        e.body.action.type === "belege.exportieren",
+    );
+    expect(exporte.map((e) => e.body.type)).toEqual(["decision", "result", "decision", "result"]);
+    const aktionen = exporte.map((e) =>
+      e.body.type === "decision" || e.body.type === "result" ? e.body.action.actionId : "",
+    );
+    expect(aktionen[0]).toBe(aktionen[1]);
+    expect(aktionen[2]).toBe(aktionen[3]);
+    expect(aktionen[0]).not.toBe(aktionen[2]);
+    // Die Datei des zweiten Exports enthält den ersten vollständig; die Kette bleibt gültig.
+    const datei = parseJsonl((zweiter.body.daten as { inhalt: string }).inhalt);
+    const bericht = await verifyChain(datei.entries, { anchor: datei.header.anchor });
+    expect(bericht.ok).toBe(true);
+    expect(bericht.verdict.findings).toEqual([]);
+  });
 });
