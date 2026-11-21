@@ -139,6 +139,57 @@
           "name": "Menü öffnen"
         }
       }
+    ],
+    "eigen-formular-lokal": [
+      {
+        "zeige": "section:has(h2:text-is('Eigener Anbieter'))"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Eigenen Anbieter hinzufügen"
+        }
+      },
+      {
+        "warteAufText": "Neuer eigener Anbieter"
+      },
+      {
+        "tippe": "Name",
+        "text": "Dienst auf meinem Rechner"
+      },
+      {
+        "klick": {
+          "css": "select[name=region]"
+        }
+      },
+      {
+        "taste": "ArrowDown"
+      },
+      {
+        "taste": "ArrowDown"
+      },
+      {
+        "taste": "Enter"
+      },
+      {
+        "warteAufText": "Nur bei „lokal“ sind Adressen im eigenen Netz"
+      }
+    ],
+    "eigen-anzeigen": [
+      {
+        "klick": {
+          "css": "select[name=anbieter]"
+        }
+      },
+      {
+        "taste": "ArrowDown"
+      },
+      {
+        "taste": "Enter"
+      },
+      {
+        "warteAufText": "Die Liste kommt direkt von Dienst auf meinem Rechner"
+      }
     ]
   },
   "aufnahmen": [
@@ -1892,6 +1943,226 @@
       "beschreibung": "Modell übernommen"
     },
     {
+      "name": "modelle-eigen-formular",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-formular-lokal"
+        },
+        {
+          "tippe": "Adresse (Basis-URL)",
+          "text": "http://localhost:18080/v1"
+        },
+        {
+          "warteAufText": "Die Verbindung ist unverschlüsselt"
+        },
+        {
+          "zeige": "button:has-text('Testen und speichern')"
+        }
+      ],
+      "beschreibung": "Eigener Anbieter: Formular mit Ort „lokal“, Warnung bei http://"
+    },
+    {
+      "name": "modelle-eigen-gesperrt",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-formular-lokal"
+        },
+        {
+          "tippe": "Adresse (Basis-URL)",
+          "text": "http://postgres:5432/v1"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Testen und speichern"
+          }
+        },
+        {
+          "warteAufText": "gehört zu einem Dienst von PaiBot selbst"
+        },
+        {
+          "zeige": "button:has-text('Testen und speichern')"
+        }
+      ],
+      "beschreibung": "Eigener Anbieter: Adresse eines Dienstes von PaiBot ist auch bei „lokal“ gesperrt"
+    },
+    {
+      "name": "modelle-eigen-gespeichert",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-formular-lokal"
+        },
+        {
+          "tippe": "Adresse (Basis-URL)",
+          "text": "http://localhost:18080/v1"
+        },
+        {
+          "tippe": {
+            "beschriftung": "Schlüssel (bei",
+            "genau": false
+          },
+          "text": "$anbieter-schluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Testen und speichern"
+          }
+        },
+        {
+          "warteAufText": "Dienst auf meinem Rechner ist gespeichert."
+        },
+        {
+          "zeige": "section:has(h2:text-is('Eigener Anbieter'))"
+        }
+      ],
+      "beschreibung": "Eigener Anbieter gespeichert (Verbindung getestet)"
+    },
+    {
+      "name": "modelle-eigen-angezeigt",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        }
+      ],
+      "beschreibung": "Zwei Anbieter: Auswahl „Angezeigter Anbieter“ oben, Modell-Liste des eigenen Anbieters"
+    },
+    {
+      "name": "modelle-eigen-aendern",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Ändern"
+          }
+        },
+        {
+          "warteAufText": "Dienst auf meinem Rechner ändern"
+        },
+        {
+          "zeige": "button:has-text('Testen und speichern')"
+        }
+      ],
+      "beschreibung": "Eigenen Anbieter ändern: Werte vorbelegt, Schlüssel leer lassen = behalten, Schlüssel entfernen"
+    },
+    {
+      "name": "modelle-eigen-abgeglichen",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Liste abgleichen"
+          }
+        },
+        {
+          "warteAufText": "Liste abgeglichen"
+        },
+        {
+          "zeige": "button:has-text('Liste abgleichen')"
+        }
+      ],
+      "beschreibung": "Liste abgleichen: Modelle neu vom eigenen Anbieter geholt"
+    },
+    {
+      "name": "modelle-eigen-entfernen",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anbieter entfernen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        }
+      ],
+      "beschreibung": "Eigenen Anbieter entfernen: Rückfrage"
+    },
+    {
+      "name": "modelle-eigen-entfernt",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anbieter entfernen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Entfernen"
+          }
+        },
+        {
+          "warteAufText": "Dienst auf meinem Rechner ist entfernt."
+        }
+      ],
+      "beschreibung": "Eigener Anbieter entfernt; der erste Anbieter ist wieder allein"
+    },
+    {
       "name": "modelle-entfernen",
       "pfad": "/modelle",
       "zustand": "mit-beispieldaten",
@@ -1903,14 +2174,14 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "Schlüssel entfernen"
+            "name": "Anbieter entfernen"
           }
         },
         {
           "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
         }
       ],
-      "beschreibung": "Schlüssel entfernen: Rückfrage"
+      "beschreibung": "Anbieter entfernen: Rückfrage"
     },
     {
       "name": "modelle-entfernt",
@@ -1924,7 +2195,7 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "Schlüssel entfernen"
+            "name": "Anbieter entfernen"
           }
         },
         {
@@ -1940,7 +2211,7 @@
           "warteAufText": "Modell für"
         }
       ],
-      "beschreibung": "Schlüssel entfernt: kein Anbieter, kein Modell"
+      "beschreibung": "Anbieter entfernt: kein Anbieter, kein Modell"
     },
     {
       "name": "chat-kein-modell",

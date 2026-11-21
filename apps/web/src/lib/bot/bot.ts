@@ -13,7 +13,7 @@ import { type Database, repo } from "@paibot/db";
 import { BOT_FIELDS } from "@paibot/shared/aktionen";
 import type { BotInput } from "@paibot/shared/eingaben";
 import { PaiBotError } from "@paibot/shared/fehler";
-import type { BotId, ModelId } from "@paibot/shared/ids";
+import type { BotId, ModelId, ProviderId } from "@paibot/shared/ids";
 import type { Bot, Region } from "@paibot/shared/objekte";
 import { isTextKey, t } from "@paibot/shared/texte";
 import { ACTOR_FACT, type RuleDefinition } from "@paibot/shared/tor";
@@ -38,6 +38,8 @@ export interface BotModell {
   displayName: string;
   slug: string;
   anbieter: string;
+  /** Kennung des Anbieters, zu dem das Modell gehört. */
+  anbieterId: ProviderId;
   region: Region;
 }
 
@@ -52,6 +54,7 @@ export async function modellVon(db: Database, bot: Bot): Promise<BotModell | und
     displayName: modell.displayName,
     slug: modell.slug,
     anbieter: anbieter.name,
+    anbieterId: anbieter.id as ProviderId,
     region: anbieter.region,
   };
 }

@@ -19,6 +19,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Installation           | [installation.md](installation.md)                                       | vorhanden                           |
 | Server mit Coolify     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                           |
 | Aktualisieren          | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                           |
+| Sicherung              | [sicherung.md](sicherung.md)                                             | vorhanden, Befehle ohne Oberfläche  |
 | Einrichtung und Zugang | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern              |
 | Chat                   | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern              |
 | Bot                    | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern              |
@@ -42,6 +43,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ### Neu
 
+- **Sicherung und Wiederherstellung:** Ein Befehl sichert die Installation (Datenbank und Begleit-Datei mit Prüfsumme und Anker der Belege-Kette), ein Befehl spielt sie in eine frische Installation zurück und prüft danach Tabellen, Migrationen und die Belege-Kette ([Sicherung](sicherung.md)).
 - **Bilder für alle Funktionsseiten:** Chat, Bot, Anbieter und Modelle, Datenschleuse, Belege, Regeln sowie Einstellungen und Info zeigen jeden Schritt mit einem Bild aus der laufenden App, aufgenommen per Skript in einer Beispiel-Umgebung ([Screenshots](#screenshots)).
 - **Belege filtern und Schlüssel ansehen:** Filter nach Aktion und Unterhaltung (auch als Lesezeichen), Kasten „Schlüssel dieser Installation“ mit Kurzform ([Belege](funktion-belege.md)).
 - **Aktualisieren:** Wechsel auf eine neue Version mit eigenem Bau oder fertigem Image, mit Sicherung vorher ([Aktualisieren](aktualisieren.md)).

@@ -258,12 +258,13 @@ Sie braucht knapp 1 GB Arbeitsspeicher zusätzlich. Alles Weitere (prüfen, auss
 
 ## Sicherungen
 
-Sichere die Datenbank regelmäßig, zum Beispiel:
+Sichere deine Installation regelmäßig mit einem Befehl:
 
 ```bash
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec -T postgres \
-  pg_dump -U paibot -d paibot -Fc > paibot-$(date +%F).dump
+sh deploy/sicherung.sh sichern
 ```
+
+Wie du eine Sicherung zurückspielst und einmal zur Probe prüfst, steht in [Sicherung und Wiederherstellung](sicherung.md).
 
 Die Sicherung enthält deine Unterhaltungen lesbar. Behandle sie wie ein Passwort und lege `PAIBOT_SECRET` nicht daneben ab (siehe [Sicherheit](sicherheit.md#was-in-der-datenbank-steht)).
 
