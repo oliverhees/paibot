@@ -1,0 +1,165 @@
+/**
+ * PaiBot – Stile des Staffelstabs: Bahn mit allen Plätzen und die verdichtete Zeile.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.bahn {
+  position: relative;
+  display: flex;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bahn::before {
+  content: "";
+  position: absolute;
+  left: 32px;
+  right: 32px;
+  top: 15px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line-mid);
+}
+
+.platz {
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+}
+
+.figur {
+  line-height: 0;
+  border-radius: 12px;
+  box-shadow: 0 0 0 4px var(--surface-sunken);
+}
+
+.platz[data-dran="true"] .figur {
+  box-shadow:
+    0 0 0 2px var(--surface-sunken),
+    0 0 0 4px var(--accent);
+}
+
+.pille {
+  position: absolute;
+  top: -11px;
+  left: 0;
+  width: 64px;
+  display: flex;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ich {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  border: 1.5px solid var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 11px / 1 var(--font-sans);
+  color: var(--ink);
+}
+
+.name {
+  font-size: 11.5px;
+  line-height: 14px;
+  font-weight: 600;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wort {
+  font-size: 10.5px;
+  line-height: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wort[data-art="aktiv"] {
+  color: var(--accent-text);
+}
+
+.wort[data-art="warn"] {
+  color: var(--warn);
+}
+
+.fuehrtZeichen {
+  position: absolute;
+  top: -6px;
+  left: 8px;
+  z-index: 3;
+}
+
+/* Verdichtet: führt · dran · als Nächstes · Stapel */
+.verdichtet {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.gruppe {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+.gruppe b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.beschriftung {
+  font: 600 10px / 1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.gruppe[data-dran="true"] .beschriftung {
+  color: var(--accent-text);
+}
+
+.avatarReihe {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 959px) {
+  .platz,
+  .pille {
+    width: 58px;
+  }
+
+  .bahn::before {
+    left: 29px;
+    right: 29px;
+  }
+
+  .name,
+  .wort {
+    max-width: 58px;
+  }
+}

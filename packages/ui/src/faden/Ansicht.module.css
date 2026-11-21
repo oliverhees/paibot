@@ -1,0 +1,307 @@
+/**
+ * PaiBot – Stile der ganzen Faden-Ansicht: Seitenleiste, Hauptbereich, Faden-Leiste, Zustand „leer“.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--layout-leiste) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  background: var(--bg);
+  color: var(--ink);
+  font: var(--text-body);
+}
+
+.app[data-leiste="true"] {
+  grid-template-columns: var(--layout-leiste) minmax(0, 1fr) var(--layout-flaeche);
+}
+
+.seitenUmschlag {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.seitenUmschlag > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.haupt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.kopfleiste {
+  height: 64px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.titelBlock {
+  min-width: 0;
+  flex: 1;
+}
+
+.titelBlock h1 {
+  margin: 0;
+  font: 600 16px / 21px var(--font-sans);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unterzeile {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menue {
+  display: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  background: none;
+  cursor: pointer;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px 4px 5px;
+  white-space: nowrap;
+}
+
+.chip > span {
+  line-height: 0;
+}
+
+.leistenKnopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-mid);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: none;
+  cursor: pointer;
+}
+
+.leistenKnopf[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--surface-raised);
+  border-color: transparent;
+}
+
+.verlauf {
+  flex: 1;
+  overflow: auto;
+  padding: 0 24px 16px;
+  min-height: 0;
+}
+
+.oben {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--bg);
+  padding: 16px 0 10px;
+}
+
+.oben::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -14px;
+  height: 14px;
+  background: linear-gradient(var(--bg), transparent);
+  pointer-events: none;
+}
+
+.gespraech {
+  margin-top: 16px;
+}
+
+.eingabeZone {
+  flex: none;
+}
+
+.leer {
+  margin: auto;
+  max-width: 560px;
+  text-align: center;
+  padding: 30px 24px;
+}
+
+.leer h2 {
+  margin: 0 0 8px;
+  font: 650 26px / 32px var(--font-sans);
+  letter-spacing: -0.02em;
+}
+
+.leer p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 23px;
+}
+
+.baum {
+  position: relative;
+  height: 150px;
+  margin: 0 auto 22px;
+  width: 300px;
+}
+
+.baum svg {
+  position: absolute;
+  inset: 0;
+}
+
+.knoten {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  width: 60px;
+}
+
+.geist {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  border: 1.5px dashed var(--line-strong);
+}
+
+.leerKnoepfe {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.haupt .knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 600 13px / 18px var(--font-sans);
+  cursor: pointer;
+}
+
+.schleier {
+  display: none;
+}
+
+@media (max-width: 1279px) {
+  .app[data-leiste="true"] {
+    grid-template-columns: var(--layout-leiste) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 959px) {
+  .app,
+  .app[data-leiste="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .seitenUmschlag {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: min(320px, 88vw);
+    z-index: 30;
+    transform: translateX(-102%);
+    transition: transform 0.25s var(--kurve-sprung);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .app[data-menue="true"] .seitenUmschlag {
+    transform: none;
+  }
+
+  .app[data-menue="false"] .seitenUmschlag {
+    visibility: hidden;
+    transition:
+      transform 0.25s var(--kurve-sprung),
+      visibility 0s linear 0.25s;
+  }
+
+  .app[data-menue="true"] .schleier {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 29;
+    background: var(--schleier);
+  }
+
+  .menue {
+    display: flex;
+  }
+
+  .kopfleiste {
+    padding: 0 12px 0 8px;
+    gap: 8px;
+  }
+
+  .chip,
+  .leistenKnopf {
+    display: none;
+  }
+
+  .verlauf {
+    padding: 0 16px 12px;
+  }
+
+  .oben {
+    padding-top: 10px;
+  }
+
+  .eingabeZone[data-leiste="true"] {
+    padding-bottom: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seitenUmschlag {
+    transition: none;
+  }
+}

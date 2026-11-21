@@ -1,0 +1,82 @@
+/**
+ * PaiBot – Stile des Beleg-Zeichens und seines kleinen Fensters.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.zeichen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 4px;
+  border-radius: 6px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-mid);
+  vertical-align: middle;
+  flex: none;
+  background: none;
+  cursor: pointer;
+}
+
+.zeichen:hover,
+.zeichen[aria-expanded="true"] {
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+}
+
+.nr {
+  font: 500 10.5px / 1 var(--font-mono);
+}
+
+.fenster {
+  position: fixed;
+  z-index: 50;
+  width: min(290px, calc(100vw - 16px));
+  background: var(--surface);
+  border: 1px solid var(--line-mid);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  padding: 14px 15px;
+  font-size: var(--schrift-m);
+  line-height: 19px;
+  color: var(--ink);
+}
+
+.fenster h4 {
+  margin: 0 0 8px;
+  font: 600 13.5px / 18px var(--font-sans);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fenster dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+}
+
+.fenster dt {
+  color: var(--ink-soft);
+}
+
+.fenster dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fuss {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
