@@ -203,7 +203,9 @@ describe("Grenzen der Antwort", () => {
     async (path) => {
       const result = await readMeasured(pinnedFetch(request(path), ["127.0.0.1"]));
       expect(result.status).toBe(Number(path.slice(-3)));
-      expect(result.text?.length ?? 0).toBeLessThanOrEqual(PINNED_MAX_ERROR_BODY_BYTES);
+      // Lesbar wie eine normale Fehlerantwort, aber nur der Anfang.
+      expect(result.error).toBeUndefined();
+      expect(result.text?.length).toBe(PINNED_MAX_ERROR_BODY_BYTES);
       expect(result.grown).toBeLessThan(RSS_BOUND);
       await waitClosed(path);
     },
