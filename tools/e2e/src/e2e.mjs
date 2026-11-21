@@ -652,6 +652,65 @@ async function main() {
     await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
   });
 
+  // Not-Aus: anhalten → Nachricht abgelehnt → mit Passwort aufheben → Nachricht geht.
+  await schritt("Not-Aus: anhalten, Nachricht wird abgelehnt", seite, async () => {
+    await seite.setViewportSize(DESKTOP);
+    await seite.goto(`${app}/einstellungen/grenzen`);
+    await seite.getByRole("textbox", { name: "Tagesbudget (Token)" }).fill("");
+    await seite.getByRole("button", { name: "Speichern" }).click();
+    await seite.getByText("Gespeichert.").waitFor();
+    await seite.goto(`${app}${unterhaltung}`);
+    await seite
+      .getByRole("complementary", { name: "Navigation" })
+      .getByRole("button", { name: "Not-Aus: alle Bots anhalten" })
+      .click();
+    const frage = seite.getByRole("alertdialog", { name: "Alle Bots anhalten?" });
+    await frage.getByRole("button", { name: "Alle Bots anhalten" }).click();
+    await frage.waitFor({ state: "detached" });
+    await seite.getByRole("status").filter({ hasText: "Alle Bots sind angehalten." }).waitFor();
+    if (!(await seite.getByRole("textbox", { name: "Nachricht" }).isDisabled())) {
+      throw new Error("Eingabe bleibt bei Not-Aus bedienbar.");
+    }
+    // Auch am Server vorbei an der Oberfläche: Das Tor lehnt die Nachricht ab.
+    const id = unterhaltung.split("/").at(-1);
+    erwarte(`/api/unterhaltungen/${id}/nachrichten`, 409);
+    const antwort = await seite.evaluate(async (pfad) => {
+      const zeichen = document.querySelector('meta[name="pb-pruefzeichen"]')?.content ?? "";
+      const r = await fetch(pfad, {
+        method: "POST",
+        headers: { "content-type": "application/json", "X-Pb-Pruefzeichen": zeichen },
+        body: JSON.stringify({ text: "Bist du da?", schleuse: "off" }),
+      });
+      return { status: r.status, body: await r.json() };
+    }, `/api/unterhaltungen/${id}/nachrichten`);
+    if (antwort.status !== 409 || antwort.body?.fehler?.code !== "angehalten") {
+      throw new Error(`Nachricht bei Not-Aus: ${antwort.status} ${JSON.stringify(antwort.body)}`);
+    }
+    ergebnis.notAus = { abgelehnt: antwort.status, text: antwort.body.fehler.text };
+  });
+  await schritt("Not-Aus: mit Passwort aufheben, Nachricht geht", seite, async () => {
+    const vorher = await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).count();
+    await seite
+      .getByRole("status")
+      .filter({ hasText: "Alle Bots sind angehalten." })
+      .getByRole("button", { name: "Fortsetzen", exact: true })
+      .click();
+    const frage = seite.getByRole("alertdialog", { name: "Not-Aus aufheben?" });
+    await frage.getByLabel("Aktuelles Passwort").fill(NEUES_PASSWORT);
+    await frage.getByRole("button", { name: "Fortsetzen", exact: true }).click();
+    await frage.waitFor({ state: "detached" });
+    await seite
+      .getByRole("complementary", { name: "Navigation" })
+      .getByRole("button", { name: "Not-Aus: alle Bots anhalten" })
+      .waitFor();
+    await seite.getByRole("textbox", { name: "Nachricht" }).fill("Und jetzt?");
+    await seite.getByRole("button", { name: "Senden" }).click();
+    await seite
+      .getByText(BEISPIEL_ANTWORT, { exact: true })
+      .nth(vorher)
+      .waitFor({ timeout: 60_000 });
+  });
+
   // Kurz warten, damit späte Anfragen (z. B. Ereignis-Strom) noch gezählt werden.
   await seite.waitForTimeout(1500);
 }

@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
 import { modellVon } from "../../lib/bot/bot";
 import { ladeUnterhaltungen } from "../../lib/chat/laden";
 import { datenbank } from "../../lib/datenbank";
+import { notAusAn } from "../../lib/notaus/notaus";
 import { besitzerSeite } from "../../lib/zugang/seite";
 import { AppRahmen } from "./AppRahmen";
 
@@ -27,9 +28,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const unterhaltungen = await ladeUnterhaltungen(db);
   // Herkunft der Modelle in der Seitenleiste: Region des Anbieters des gewählten Modells.
   const region = bot === undefined ? undefined : (await modellVon(db, bot))?.region;
+  const notAus = await notAusAn(db);
   return (
     <AppRahmen
       unterhaltungen={unterhaltungen}
+      notAus={notAus}
       {...(region === undefined ? {} : { region })}
       bot={{
         name: bot?.name ?? t("einrichtung.bot.vorschlag"),

@@ -24,6 +24,7 @@ const CLIENT = [
   "../../app/(app)/belege/BelegPruefen.tsx",
   "../../app/(app)/belege/[id]/BelegDetail.tsx",
   "./client.ts",
+  "../../app/(app)/NotAus.tsx",
 ].map((datei) => ({ datei, text: readFileSync(new URL(datei, import.meta.url), "utf8") }));
 
 describe("Browser-Module des Zugangs, der Einstellungen und der Belege", () => {

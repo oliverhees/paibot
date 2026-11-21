@@ -492,7 +492,9 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
         : undefined;
     const hinweis =
       n.zustand === "abgebrochen"
-        ? t("chat.ende.abgebrochen_teil")
+        ? n.fehlerCode === "angehalten"
+          ? t("notaus.chat.angehalten_teil")
+          : t("chat.ende.abgebrochen_teil")
         : schleuseArt
           ? schleuseFehler(schleuseArt).text
           : n.zustand === "fehler"
@@ -543,7 +545,9 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
     const b = belegZurAntwort(ansicht.belege, e.runId);
     const ueberschrift =
       e.ergebnis === "abgebrochen"
-        ? t("chat.ende.abgebrochen", { name: botName })
+        ? e.code === "angehalten"
+          ? t("notaus.chat.angehalten", { name: botName })
+          : t("chat.ende.abgebrochen", { name: botName })
         : e.ergebnis === "abgelehnt"
           ? t("chat.ende.abgelehnt")
           : t("chat.antwort.fehlgeschlagen");
@@ -760,8 +764,12 @@ export function ChatSeite({ bereitschaft, verlauf }: ChatSeiteProps) {
           schleuseAn={schleuseAn}
           onSchleuse={(an) => void schleuseSchalten(an)}
           schleuseDeaktiviert={!bereitschaft.schleuseInstalliert && !schleuseAn}
-          platzhalter={t("chat.eingabe.platzhalter_bot", { name: botName })}
-          deaktiviert={!bereit || sendet !== undefined}
+          platzhalter={
+            rahmen.notAus === true
+              ? t("notaus.chat.eingabe")
+              : t("chat.eingabe.platzhalter_bot", { name: botName })
+          }
+          deaktiviert={!bereit || sendet !== undefined || rahmen.notAus === true}
           notiz={t("chat.notiz", { name: botName })}
         />
       </div>

@@ -16,7 +16,7 @@ import type { BotColor, Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { AppShell, type AppShellFlaeche, type AppShellTexte, Icon } from "@paibot/ui";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   type ComponentProps,
   type ReactNode,
@@ -38,6 +38,7 @@ import {
   NAVIGATION,
 } from "../../lib/navigation";
 import styles from "./app.module.css";
+import { NotAusDialog, type NotAusFrage, NotAusKnopf, NotAusLeiste } from "./NotAus";
 
 export interface AppRahmenProps {
   bot: { name: string; farbe: BotColor };
@@ -45,6 +46,8 @@ export interface AppRahmenProps {
   region?: Region;
   /** Unterhaltungen des Bots, neueste zuerst (vom Server; danach hält der Rahmen sie aktuell). */
   unterhaltungen: readonly UnterhaltungKurz[];
+  /** Not-Aus an (vom Server); danach hält der Rahmen den Zustand selbst aktuell. */
+  notAus?: boolean;
   children: ReactNode;
 }
 
@@ -108,8 +111,18 @@ function neuesteZuerst(liste: readonly UnterhaltungKurz[]): UnterhaltungKurz[] {
   return [...liste].sort((a, b) => (a.zuletzt < b.zuletzt ? 1 : a.zuletzt > b.zuletzt ? -1 : 0));
 }
 
-export function AppRahmen({ bot, region, unterhaltungen: vomServer, children }: AppRahmenProps) {
+export function AppRahmen({
+  bot,
+  region,
+  unterhaltungen: vomServer,
+  notAus: notAusVomServer = false,
+  children,
+}: AppRahmenProps) {
   const pfad = usePathname();
+  const router = useRouter();
+  const [notAus, setNotAus] = useState(notAusVomServer);
+  const [notAusFrage, setNotAusFrage] = useState<NotAusFrage | undefined>(undefined);
+  useEffect(() => setNotAus(notAusVomServer), [notAusVomServer]);
   const [unterhaltungen, setUnterhaltungen] = useState(() => neuesteZuerst(vomServer));
   const [kopf, setKopf] = useState<ReactNode | undefined>(undefined);
   const [flaeche, setFlaeche] = useState<AppShellFlaeche | undefined>(undefined);
@@ -134,8 +147,9 @@ export function AppRahmen({ bot, region, unterhaltungen: vomServer, children }: 
       unterhaltungen,
       unterhaltungMerken,
       unterhaltungEntfernen,
+      notAus,
     }),
-    [flaecheOffen, unterhaltungen, unterhaltungMerken, unterhaltungEntfernen],
+    [flaecheOffen, unterhaltungen, unterhaltungMerken, unterhaltungEntfernen, notAus],
   );
 
   const navUnterhaltungen = unterhaltungen.map((u) => {
@@ -169,6 +183,12 @@ export function AppRahmen({ bot, region, unterhaltungen: vomServer, children }: 
           })),
         }}
         unten={<Abmelden />}
+        obenZusatz={
+          <NotAusKnopf an={notAus} onClick={() => setNotAusFrage(notAus ? "aus" : "an")} />
+        }
+        {...(notAus
+          ? { hinweis: <NotAusLeiste onFortsetzen={() => setNotAusFrage("aus")} /> }
+          : {})}
         kopf={kopf ?? <span className={styles.kopfTitel}>{kopfTitel(pfad)}</span>}
         {...(flaeche === undefined ? {} : { flaeche })}
         flaecheOffen={flaecheOffen}
@@ -176,6 +196,15 @@ export function AppRahmen({ bot, region, unterhaltungen: vomServer, children }: 
       >
         {children}
       </AppShell>
+      <NotAusDialog
+        frage={notAusFrage}
+        onSchliessen={() => setNotAusFrage(undefined)}
+        onGeschaltet={(an) => {
+          setNotAus(an);
+          setNotAusFrage(undefined);
+          router.refresh();
+        }}
+      />
     </Rahmen.Provider>
   );
 }

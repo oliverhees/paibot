@@ -124,6 +124,10 @@ export interface AppShellProps {
   eingebettet?: boolean;
   /** Zusätzlicher Inhalt unten in der Navigation, über der Fußzeile (z. B. „Abmelden“). */
   unten?: ReactNode;
+  /** Zusätzlicher Inhalt oben in der Navigation, unter „Läuft auf“ (z. B. der Not-Aus). */
+  obenZusatz?: ReactNode;
+  /** Leiste über der Kopfzeile der mittleren Spalte, auf jeder Seite (z. B. „angehalten“). */
+  hinweis?: ReactNode;
   /** Link-Komponente, z. B. die des Frameworks; Standard `a`. */
   link?: ComponentType<{
     href: string;
@@ -174,6 +178,8 @@ export function AppShell({
   onFlaecheOffen,
   eingebettet = false,
   unten,
+  obenZusatz,
+  hinweis,
   link: Link = StandardLink,
 }: AppShellProps) {
   const huelle = useRef<HTMLDivElement>(null);
@@ -266,6 +272,7 @@ export function AppShell({
                 {texte.modelle} <b>{navigation.modelle}</b>
               </span>
             </div>
+            {obenZusatz}
           </div>
 
           <ScrollBereich className={styles.mitte}>
@@ -342,6 +349,7 @@ export function AppShell({
         </aside>
 
         <div className={styles.haupt}>
+          {hinweis}
           <header className={styles.kopf}>
             <IconButton
               icon="menue"
