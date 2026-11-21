@@ -129,7 +129,7 @@ describe("Fäden: Pflichten der Oberfläche", () => {
 
   it("der sechste Zuschlag ist gesperrt", () => {
     const g = beispielSzene("grenze").gespraech.find((e) => e.art === "grenze");
-    if (!g || g.art !== "grenze") throw new Error("Beispiel fehlt");
+    if (g?.art !== "grenze") throw new Error("Beispiel fehlt");
     const offen = renderToStaticMarkup(
       h(GrenzenKarte, { daten: { ...g, zuschlaege: { benutzt: 4, max: 5 } } }),
     );

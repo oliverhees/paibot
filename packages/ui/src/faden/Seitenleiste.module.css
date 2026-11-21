@@ -328,6 +328,7 @@
   color: var(--ink-soft);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: der Zustand überschreibt bewusst die Grundregel */
 .leer button {
   margin-top: 10px;
   display: inline-flex;

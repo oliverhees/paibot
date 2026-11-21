@@ -172,7 +172,7 @@ describe.skipIf(!bereit && !erzwungen)("Fäden im Browser", { timeout: 60_000 },
   const weg = (loc) => loc.first().waitFor({ state: "hidden", timeout: 10_000 });
   const anzahl = (loc, n) => expect.poll(() => loc.count(), { timeout: 8000 }).toBe(n);
   const enthaelt = (loc, text) =>
-    expect.poll(() => loc.first().innerText(), { timeout: 8000 }).toContain(text);
+    expect.poll(() => loc.first().textContent(), { timeout: 8000 }).toContain(text);
   const fokussiert = (loc) =>
     expect
       .poll(() => loc.first().evaluate((e) => document.activeElement === e), { timeout: 5000 })
@@ -337,7 +337,7 @@ describe.skipIf(!bereit && !erzwungen)("Fäden im Browser", { timeout: 60_000 },
     it("ein zugeklappter Kopf zeigt Titel, Stand der Ziele, Etappe, wer dran ist und das Budget", async () => {
       await oeffne("szene=gross");
       const eng = page.getByRole("button", { name: /^Kopf ausklappen/ });
-      const text = await eng.innerText();
+      const text = await eng.textContent();
       expect(text).toContain("Frühjahrs-Programm");
       expect(text).toContain("4 von 9");
       expect(text).toContain("Feinschliff");
@@ -584,7 +584,7 @@ describe.skipIf(!bereit && !erzwungen)("Fäden im Browser", { timeout: 60_000 },
         expect(anfragen.filter((u) => u.includes("beispiel.invalid"))).toEqual([]);
         // der Wortlaut steht als Text da
         await sichtbar(page.getByText("<script>alert(1)</script>", { exact: false }).first());
-        const roh = await page.locator("#wurzel").innerText();
+        const roh = await page.locator("#wurzel").textContent();
         expect(roh).not.toContain(String.fromCharCode(0x202e));
         // Kennzeichen sichtbar
         await sichtbar(page.getByText("aus fremden Inhalten").first());
