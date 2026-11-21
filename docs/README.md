@@ -14,25 +14,26 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ## Inhalt
 
-| Bereich               | Datei                                                                | Stand                 |
-| --------------------- | -------------------------------------------------------------------- | --------------------- |
-| Installation          | [installation.md](installation.md)                                   | vorhanden             |
-| Server mit Coolify    | [deploy-coolify.md](deploy-coolify.md)                               | vorhanden             |
-| Architektur           | [architektur.md](architektur.md)                                     | vorhanden, wächst mit |
-| Sicherheit            | [sicherheit.md](sicherheit.md)                                       | vorhanden, wächst mit |
-| Chat                  | [funktion-chat.md](funktion-chat.md)                                 | Baustein vorhanden    |
-| Das Tor               | [funktion-tor.md](funktion-tor.md)                                   | Baustein vorhanden    |
-| Belege                | [funktion-belege.md](funktion-belege.md)                             | Baustein vorhanden    |
-| Anbieter und Modelle  | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md) | Baustein vorhanden    |
-| Entwickeln und Testen | [entwickeln.md](entwickeln.md)                                       | vorhanden             |
-| Lizenzen der Pakete   | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                 | vorhanden             |
-| Beitragsvereinbarung  | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                   | vorhanden             |
-| Vorlage für Funktion  | [VORLAGE-funktion.md](VORLAGE-funktion.md)                           | vorhanden             |
-| Datenschleuse         | [funktion-datenschleuse.md](funktion-datenschleuse.md)               | Dienst vorhanden      |
-| Bots und Team         | folgt mit der Funktion                                               | geplant               |
-| Apps per MCP          | folgt mit der Funktion                                               | geplant               |
-| Browser-Dienst        | folgt mit der Funktion                                               | geplant               |
-| Hintergrund-Jobs      | folgt mit der Funktion                                               | Baustein vorhanden    |
+| Bereich                | Datei                                                                    | Stand                 |
+| ---------------------- | ------------------------------------------------------------------------ | --------------------- |
+| Installation           | [installation.md](installation.md)                                       | vorhanden             |
+| Server mit Coolify     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden             |
+| Architektur            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit |
+| Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit |
+| Chat                   | [funktion-chat.md](funktion-chat.md)                                     | Baustein vorhanden    |
+| Das Tor                | [funktion-tor.md](funktion-tor.md)                                       | Baustein vorhanden    |
+| Belege                 | [funktion-belege.md](funktion-belege.md)                                 | Baustein vorhanden    |
+| Anbieter und Modelle   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | Baustein vorhanden    |
+| Einrichtung und Zugang | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden             |
+| Entwickeln und Testen  | [entwickeln.md](entwickeln.md)                                           | vorhanden             |
+| Lizenzen der Pakete    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden             |
+| Beitragsvereinbarung   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden             |
+| Vorlage für Funktion   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden             |
+| Datenschleuse          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | Dienst vorhanden      |
+| Bots und Team          | folgt mit der Funktion                                                   | geplant               |
+| Apps per MCP           | folgt mit der Funktion                                                   | geplant               |
+| Browser-Dienst         | folgt mit der Funktion                                                   | geplant               |
+| Hintergrund-Jobs       | folgt mit der Funktion                                                   | Baustein vorhanden    |
 
 „Baustein vorhanden“ heißt: Das Paket ist gebaut und getestet, in der Oberfläche aber noch nicht angeschlossen. Die Abschnitte mit Screenshots folgen mit der Oberfläche.
 

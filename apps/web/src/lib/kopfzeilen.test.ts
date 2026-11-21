@@ -135,6 +135,24 @@ describe("sicherheitsKopfzeilen (Entwicklung)", () => {
   });
 });
 
+describe("HSTS", () => {
+  it("nur, wenn die App über https läuft", () => {
+    const hsts = (https: boolean | undefined) =>
+      sicherheitsKopfzeilen({
+        entwicklung: false,
+        nonce: "a".repeat(24),
+        ...(https === undefined ? {} : { https }),
+      }).find((z) => z.key === "Strict-Transport-Security");
+    expect(hsts(false)).toBeUndefined();
+    expect(hsts(true)?.value).toBe("max-age=31536000");
+    expect(
+      kopfzeilenMitNonce(false, false).kopfzeilen.some(
+        (z) => z.key === "Strict-Transport-Security",
+      ),
+    ).toBe(false);
+  });
+});
+
 describe("TRUST_PROXY", () => {
   it("gilt nur bei genau 1", () => {
     expect(vertrautProxy("1")).toBe(true);
@@ -205,9 +223,12 @@ describe("next.config.ts", () => {
     const regeln = (await nextConfig.headers?.()) ?? [];
     expect(regeln).toHaveLength(1);
     expect(regeln[0]?.source).toBe("/:path*");
-    expect(regeln[0]?.headers).toEqual(
-      sicherheitsKopfzeilen({ entwicklung: process.env.NODE_ENV !== "production" }),
-    );
+    const erwartet = sicherheitsKopfzeilen({
+      entwicklung: process.env.NODE_ENV !== "production",
+    }).filter((z) => z.key !== "Content-Security-Policy" && z.key !== "Strict-Transport-Security");
+    expect(regeln[0]?.headers).toEqual(erwartet);
+    // Die Content-Security-Policy kommt nur aus dem Proxy (mit Nonce), nie statisch.
+    expect(regeln[0]?.headers.some((z) => z.key === "Content-Security-Policy")).toBe(false);
     expect(nextConfig.poweredByHeader).toBe(false);
   });
 });
