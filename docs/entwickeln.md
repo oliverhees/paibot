@@ -26,6 +26,8 @@ pnpm dev            # Web-App starten
 pnpm lint && pnpm headers:check && pnpm typecheck && pnpm test && pnpm build
 ```
 
+Mit `pnpm dev` (nicht Produktion) migriert die Web-App die Datenbank aus `DATABASE_URL` beim Start selbst. In Produktion und im Docker-Stack tut sie das nie: Dort richtet zuerst der Einmal-Dienst `migrate` Migrationen und App-Rolle ein, danach starten `web` und `worker` nur mit der App-Rolle. Wer den Produktions-Build lokal startet, führt deshalb vorher denselben Schritt aus (`PAIBOT_ROLE=migrate` mit `DATABASE_URL` der App-Rolle und `DATABASE_MIGRATION_URL`).
+
 Voraussetzungen: Node.js 22 und pnpm 10 (siehe [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 ### Test-Anbieter im Test starten
@@ -104,7 +106,7 @@ Gut zu wissen:
 
 ### Durchstich
 
-`tools/durchstich` prüft alle Bausteine im Zusammenspiel, mit PGlite und dem Test-Anbieter: Einrichtung im Kleinen (Signaturschlüssel erzeugen und verschlüsselt speichern, Beleg „Start“), eine Modell-Anfrage durchs Tor bis zum Test-Anbieter, Ergebnis-Beleg, Prüfen der Kette und des Exports, und die Gegenprobe, bei der eine Regel ablehnt und beim Test-Anbieter nichts ankommt.
+`tools/durchstich` prüft alle Bausteine im Zusammenspiel, mit PGlite und dem Test-Anbieter: Einrichtung im Kleinen (Signaturschlüssel erzeugen und verschlüsselt speichern, Beleg „Start“), eine Modell-Anfrage durchs Tor bis zum Test-Anbieter, Ergebnis-Beleg, Prüfen der Kette und des Exports, und die Gegenprobe, bei der der Not-Aus ablehnt und beim Test-Anbieter nichts ankommt.
 
 ```bash
 pnpm --filter @paibot/durchstich test
