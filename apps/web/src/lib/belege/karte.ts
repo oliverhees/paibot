@@ -195,7 +195,7 @@ export function belegKarte(umfeld: BelegUmfeld, kontext: KartenKontext): BelegKa
         titel: t("belege.karte.grenzen"),
         zeilen: grenzen.map((g) => {
           const id = GRENZE_ID[str(g.name)] ?? str(g.name);
-          const wert = g.value === undefined ? "" : ` (${str(g.value)})`;
+          const wert = typeof g.value === "number" ? ` (${g.value})` : "";
           return [
             { text: id, mono: true, leise: true },
             { text: `${regelName(id)}: ${grenzeErgebnis(g.result)}${wert}` },

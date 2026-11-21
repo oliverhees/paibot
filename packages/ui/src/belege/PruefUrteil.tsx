@@ -45,7 +45,7 @@ export function PruefUrteil({ zustand, titel, punkte, fortschritt, quelle }: Pru
     <div className={styles.urteil} data-zustand={zustand} role="status" aria-live="polite">
       <span className={styles.zeile1}>
         {zustand === "laeuft" ? <Ladekreis /> : <Icon name={ICON[zustand]} groesse={15} />}
-        <span>{titel}</span>
+        <span className={styles.titel}>{titel}</span>
         {quelle && <span className={styles.quelle}>{quelle}</span>}
       </span>
       {fortschritt && (

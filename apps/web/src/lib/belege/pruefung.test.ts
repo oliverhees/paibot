@@ -157,7 +157,7 @@ describe("Ganze Kette prüfen", () => {
 
   it("vor einer Prüfung: jede Zeile „noch nicht geprüft“", () => {
     expect(zeilenStand(1, undefined)).toEqual({
-      text: "noch nicht geprüft",
+      text: "nicht geprüft",
       art: "neutral",
       geprueft: false,
     });

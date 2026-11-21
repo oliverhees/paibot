@@ -88,7 +88,7 @@ export function regelEintraege(regeln: readonly RuleDefinition[]): RegelZeile[] 
   return [...regeln]
     .sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id))
     .map((r) => {
-      const fuer = r.action === "*" ? t("regeln.alle_aktionen") : aktionName(r.action);
+      const fuer = r.action === "*" ? t("regeln.alle_aktionen") : `„${aktionName(r.action)}“`;
       const teile = [
         r.reason,
         t("regeln.gilt", { aktionen: fuer, fassung: r.version }),
@@ -123,7 +123,9 @@ export function vorbedingungenEintraege(): RegelZeile[] {
     titel: regelName(id, id),
     wirkung: t("regeln.wirkung.grenze"),
     erklaerung: `${t(`regeln.vorbedingung.${id}`)} · ${t("regeln.gilt_aktionen", {
-      aktionen: (PRECONDITIONS[id].actions as readonly string[]).map(aktionName).join(", "),
+      aktionen: (PRECONDITIONS[id].actions as readonly string[])
+        .map((a) => `„${aktionName(a)}“`)
+        .join(", "),
     })}`,
   }));
 }

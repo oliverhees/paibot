@@ -51,6 +51,11 @@
   color: var(--danger);
 }
 
+.titel {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .quelle {
   padding: 0 8px;
   border-radius: var(--radius-pill);

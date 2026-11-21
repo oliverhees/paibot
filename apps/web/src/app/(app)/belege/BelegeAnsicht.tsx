@@ -419,13 +419,14 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
                     onChange={(e) => setAnkerText(e.target.value)}
                     {...(ankerFehler ? { fehler: ankerFehler } : {})}
                   />
-                  <label className={styles.dateiWahl}>
-                    {t("belege.anker.eigener.datei")}{" "}
+                  <label className={styles.dateiKnopf}>
                     <input
+                      className={styles.dateiVersteckt}
                       type="file"
                       accept=".json,application/json,text/plain"
                       onChange={(e) => void ankerDatei(e.target.files?.[0])}
                     />
+                    <span>{t("belege.anker.eigener.datei")}</span>
                   </label>
                   <div className={styles.reihe}>
                     <Button

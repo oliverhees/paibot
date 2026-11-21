@@ -512,7 +512,7 @@ export interface ZeilenStand {
 /** Was die Liste für einen Beleg anzeigt, nachdem (oder bevor) die Kette geprüft wurde. */
 export function zeilenStand(seq: number, ergebnis: KettenErgebnis | undefined): ZeilenStand {
   if (ergebnis === undefined || ergebnis.kopfSeq === undefined || seq > ergebnis.kopfSeq) {
-    return { text: t("pruefung.offen"), art: "neutral", geprueft: false };
+    return { text: t("belege.zeile.offen"), art: "neutral", geprueft: false };
   }
   if (ergebnis.fehlerSeq !== undefined) {
     if (seq === ergebnis.fehlerSeq) {

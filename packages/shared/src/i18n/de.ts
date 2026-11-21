@@ -490,6 +490,7 @@ export const de = {
   "belege.spalte.pruefung": "Prüfung",
   "belege.liste.label": "Belege, neueste zuerst",
   "belege.zeile.label": "Beleg {kennung}: {was}, {ergebnis}, {stand}",
+  "belege.zeile.offen": "nicht geprüft",
   "belege.zeile.geprueft": "geprüft",
   "belege.zeile.fehler": "Fehler hier",
   "belege.zeile.unbestaetigt": "nicht bestätigt",
@@ -559,7 +560,7 @@ export const de = {
   "belege.anker.eigener.label": "Mit meinem aufbewahrten Anker prüfen",
   "belege.anker.eigener.hilfe":
     "Füge deinen Anker ein oder wähle die Datei. Er bleibt in diesem Browser und geht nicht an den Server.",
-  "belege.anker.eigener.datei": "Anker-Datei wählen:",
+  "belege.anker.eigener.datei": "Anker-Datei wählen",
   "belege.anker.eigener.pruefen": "Mit Anker prüfen",
   "belege.anker.datei_fehler": "Die Datei ließ sich nicht lesen.",
   "belege.quelle.browser": "Im Browser geprüft; der Server hat nur die Rohdaten geliefert.",

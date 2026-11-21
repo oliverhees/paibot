@@ -262,6 +262,7 @@ describe("Bausteine", () => {
       wirkung: "erlaubt, mit Beleg",
     });
     expect(r001?.erklaerung).toContain("Gilt für: alle Aktionen · Fassung 1");
+    expect(regeln.find((r) => r.nr === "R-004")?.erklaerung).toContain("Gilt für: „Angemeldet“");
     expect(r001?.stufen?.find((s) => s.an === "ja")?.text).toBe("ausführen mit Beleg");
     expect(regeln.find((r) => r.nr === "R-999")?.wirkung).toBe("fragt");
     expect(regeln.find((r) => r.nr === "R-006")?.stufen).toEqual([{ text: "lehnt ab", an: "nie" }]);

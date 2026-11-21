@@ -298,10 +298,38 @@
   text-underline-offset: 2px;
 }
 
-.dateiWahl {
+.dateiKnopf {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--ink);
   font-size: var(--schrift-s);
-  color: var(--ink-soft);
-  max-width: 100%;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dateiKnopf:hover {
+  background: var(--line-mid);
+}
+
+.dateiKnopf:focus-within {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.dateiVersteckt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  opacity: 0;
 }
 
 .ankerFeld {
