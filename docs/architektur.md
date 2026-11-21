@@ -43,42 +43,42 @@ Das Docker-Image prüft denselben Endpunkt in seinem eigenen Healthcheck.
 ### Datenbank und Migrationen
 
 - Postgres wird mit Drizzle angesprochen. Das Schema liegt in `packages/db/src/schema/` (eine Datei pro Bereich), die erzeugten Migrationen in `packages/db/drizzle/`.
-- Alle Tabellen der Basis sind angelegt (siehe [Datenmodell](#datenmodell)). Die App nutzt bisher nur `settings`, mit genau einer Zeile (`id = "singleton"`), denn PaiBot gehört genau einer Person.
+- Alle Tabellen der Basis sind angelegt (siehe [Datenmodell](#datenmodell)). Die Einstellungen stehen in `settings` mit genau einer Zeile (`id = "singleton"`), denn PaiBot gehört genau einer Person.
 - Offene Migrationen wendet im Betrieb der Einmal-Dienst `migrate` an (dasselbe Image mit `PAIBOT_ROLE=migrate`, Einstieg wie die Web-App über `apps/web/src/instrumentation-node.ts`), mit bis zu fünf Versuchen; danach beendet er sich. Web-App und Worker migrieren im Betrieb nie, sie prüfen nur Stand und Rechte. In der Entwicklung (`pnpm dev`) migriert die Web-App selbst. Im Betrieb (`NODE_ENV=production`) bricht der Start mit Exit-Code 1 ab, wenn Pflichtwerte fehlen oder die Migrationen, die Rollen oder der Stand der Datenbank nicht stimmen (`apps/web/src/lib/betrieb.ts`). Nur in der Entwicklung bleibt es bei Meldungen; ohne `DATABASE_URL` startet sie ohne Datenbank, und `/api/health` meldet `not_configured`.
 
 ## Bausteine
 
-Diese Pakete sind gebaut und getestet, auch im Zusammenspiel (siehe [Entwickeln und Testen](entwickeln.md#durchstich)). In der Oberfläche sind sie noch nicht angeschlossen; das kommt mit dem Chat.
+Diese Pakete sind gebaut und getestet, auch im Zusammenspiel (siehe [Entwickeln und Testen](entwickeln.md#durchstich)), und in der Oberfläche angeschlossen: Einrichtung und Anmeldung, Chat, Belege und Regeln, Modell und Anbieter, Datenschleuse, Bot, Einstellungen und Info.
 
-| Teil             | Ort                    | Was es kann                                                                                                                                                                                       | Doku                                                     |
-| ---------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Krypto           | `packages/crypto`      | Wurzel-Geheimnis, Schlüssel ableiten, Schlüssel verschlüsselt speichern, Passwörter, Tokens, Signaturen                                                                                           | [Sicherheit](sicherheit.md)                              |
-| Tor              | `packages/gate`        | prüft jede Aktion mit festen Regeln und Grenzen, ohne KI; führt nur Erlaubtes aus und schreibt zwei Belege                                                                                        | [Das Tor](funktion-tor.md)                               |
-| Belege           | `packages/receipts`    | hängt Belege unter einer Sperre an die Kette, prüft sie mit Schlüsseln nur aus der Kette (auch im Browser und mit `pnpm belege:pruefen`), Anker, Nachrechnen mit dem damaligen Regelstand, Export | [Belege](funktion-belege.md)                             |
-| Anbieter-Schicht | `packages/llm`         | Modell-Liste, Verbindungstest, Ausgangs-Liste, Weg über die Datenschleuse, Modell-Zugang nur mit Berechtigung                                                                                     | [Anbieter und Modelle](funktion-anbieter-und-modelle.md) |
-| Warteschlange    | `packages/jobs`        | Läufe der Reihe nach je Unterhaltung, kein Lauf doppelt, Herzschlag gegen hängende Aufträge                                                                                                       | [Hintergrund-Läufe](#hintergrund-läufe)                  |
-| Datenzugriff     | `packages/db` (`repo`) | Lesen und Schreiben je Bereich, Ereignis-Strom mit lückenlosen Nummern, Läufe mit erlaubten Statuswechseln                                                                                        | –                                                        |
-| Worker           | `apps/worker`          | holt Aufträge aus der Warteschlange ab, prüft beim Start Einstellungen, Rechte und Migrationen, schreibt einen Herzschlag; die Ausführung der Läufe ist noch im Bau (siehe unten)                 | [Worker](#worker)                                        |
-| Motor            | `packages/agents`      | holt mit einem Modell-Schritt eine Antwort vom Modell, streamt sie und lässt sich abbrechen                                                                                                       | [Motor](#motor)                                          |
-| UI-Komponenten   | `packages/ui`          | Design-Tokens, App-Rahmen und Grundkomponenten der Oberfläche                                                                                                                                     | –                                                        |
-| Test-Anbieter    | `tools/fake-provider`  | spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist                                                                                                                      | [Entwickeln und Testen](entwickeln.md)                   |
+| Teil             | Ort                    | Was es kann                                                                                                                                                                                                    | Doku                                                     |
+| ---------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Krypto           | `packages/crypto`      | Wurzel-Geheimnis, Schlüssel ableiten, Schlüssel verschlüsselt speichern, Passwörter, Tokens, Signaturen                                                                                                        | [Sicherheit](sicherheit.md)                              |
+| Tor              | `packages/gate`        | prüft jede Aktion mit festen Regeln und Grenzen, ohne KI; führt nur Erlaubtes aus und schreibt zwei Belege                                                                                                     | [Das Tor](funktion-tor.md)                               |
+| Belege           | `packages/receipts`    | hängt Belege unter einer Sperre an die Kette, prüft sie mit Schlüsseln nur aus der Kette (auch im Browser und mit `pnpm belege:pruefen`), Anker, Nachrechnen mit dem damaligen Regelstand, Export              | [Belege](funktion-belege.md)                             |
+| Anbieter-Schicht | `packages/llm`         | Modell-Liste, Verbindungstest, Ausgangs-Liste, Weg über die Datenschleuse, Modell-Zugang nur mit Berechtigung                                                                                                  | [Anbieter und Modelle](funktion-anbieter-und-modelle.md) |
+| Warteschlange    | `packages/jobs`        | Läufe der Reihe nach je Unterhaltung, kein Lauf doppelt, Herzschlag gegen hängende Aufträge                                                                                                                    | [Hintergrund-Läufe](#hintergrund-läufe)                  |
+| Datenzugriff     | `packages/db` (`repo`) | Lesen und Schreiben je Bereich, Ereignis-Strom mit lückenlosen Nummern, Läufe mit erlaubten Statuswechseln                                                                                                     | –                                                        |
+| Worker           | `apps/worker`          | holt Aufträge aus der Warteschlange ab und lässt sie von der Lauf-Steuerung ausführen, prüft beim Start Einstellungen, Rechte und Migrationen, meldet den Zustand der Datenschleuse, schreibt einen Herzschlag | [Worker](#worker)                                        |
+| Motor            | `packages/agents`      | holt mit einem Modell-Schritt eine Antwort vom Modell, streamt sie und lässt sich abbrechen                                                                                                                    | [Motor](#motor)                                          |
+| UI-Komponenten   | `packages/ui`          | Design-Tokens, App-Rahmen und Grundkomponenten der Oberfläche                                                                                                                                                  | –                                                        |
+| Test-Anbieter    | `tools/fake-provider`  | spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist                                                                                                                                   | [Entwickeln und Testen](entwickeln.md)                   |
 
-## Im Bau und geplant
+## Stand der Teile und geplante Teile
 
-| Teil                   | Ort                | Stand                                                              |
-| ---------------------- | ------------------ | ------------------------------------------------------------------ |
-| Lauf-Steuerung         | `packages/agents`  | im Bau (`executeRun` und `failStaleRuns` sind noch Platzhalter)    |
-| Datenschleuse          | eigener Dienst     | Anbindung gebaut, zuschaltbar mit Profil `schleuse`, Standard: aus |
-| Einrichtung, Anmeldung | `apps/web`         | im Bau                                                             |
-| Apps per MCP           | `packages/mcp`     | geplant                                                            |
-| Browser-Dienst         | `services/browser` | geplant                                                            |
+| Teil                 | Ort                | Stand                                                              |
+| -------------------- | ------------------ | ------------------------------------------------------------------ |
+| Lauf-Steuerung       | `packages/agents`  | gebaut (`executeRun`, `failStaleRuns`)                             |
+| Datenschleuse        | eigener Dienst     | Anbindung gebaut, zuschaltbar mit Profil `schleuse`, Standard: aus |
+| Oberfläche der Basis | `apps/web`         | gebaut (Einrichtung, Anmeldung, Chat und die Seiten)               |
+| Apps per MCP         | `packages/mcp`     | geplant                                                            |
+| Browser-Dienst       | `services/browser` | geplant                                                            |
 
-- **Lauf-Steuerung** (`packages/agents`) macht aus dem Motor den ganzen Ablauf einer Antwort: Nachricht lesen, Modell fragen über das Tor, Ergebnis speichern, Läufe aufräumen. Bis sie fertig ist, setzt der Worker jeden Lauf auf „fehlgeschlagen“.
+- **Lauf-Steuerung** (`packages/agents`) macht aus dem Motor den ganzen Ablauf einer Antwort: Nachricht lesen, Modell fragen über das Tor, Ergebnis speichern, hängende Läufe aufräumen (siehe [Chat](funktion-chat.md#so-funktioniert-es)).
 - Für Mitwirkende gibt es außerdem `packages/stub` (gemeinsamer Fehler für noch nicht gebaute Funktionen), `tools/lint-regeln` (eigene Prüfregeln für Biome) und `tools/durchstich` (Test über alle Bausteine).
 
 ## Gemeinsame Verträge (`packages/shared`)
 
-Alle Pakete sprechen über dieselben Typen und Zod-Schemas. Sie liegen in `packages/shared` und haben als einzige Abhängigkeit `zod`. Die Verträge gibt es schon. Tor, Belege, Motor und Worker nutzen sie als fertige Bausteine; der Chat, der sie in der App zusammenbringt, ist **im Bau**.
+Alle Pakete sprechen über dieselben Typen und Zod-Schemas. Sie liegen in `packages/shared` und haben als einzige Abhängigkeit `zod`. Die Verträge gibt es schon. Tor, Belege, Motor, Worker und die Seiten der App nutzen sie.
 
 | Unterpfad                   | Inhalt                                                                                  |
 | --------------------------- | --------------------------------------------------------------------------------------- |
@@ -97,19 +97,19 @@ Alle Pakete sprechen über dieselben Typen und Zod-Schemas. Sie liegen in `packa
 
 ## Begriffe
 
-Diese Begriffe tauchen in Code und Doku immer wieder auf. **Baustein** heißt: als getestetes Paket vorhanden, in der App noch nicht angeschlossen. **Im Bau** heißt: bisher nur als Vertrag, noch nicht als Funktion.
+Diese Begriffe tauchen in Code und Doku immer wieder auf. **Gebaut** heißt: in der App vorhanden und getestet. **Baustein** heißt: als getestetes Paket vorhanden und von der App genutzt, ohne eigene Seite. **Geplant** heißt: bisher nur als Vertrag, noch nicht als Funktion.
 
 | Begriff       | Bedeutung                                                                                                                                                      | Stand    |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| Besitzer      | die eine Person, der die Installation gehört                                                                                                                   | im Bau   |
-| Bot           | dein Assistent mit Name, Anweisung, Modell und Avatar                                                                                                          | im Bau   |
-| Unterhaltung  | ein Gespräch mit einem Bot; sie enthält Nachrichten                                                                                                            | im Bau   |
-| Nachricht     | ein Beitrag in einer Unterhaltung, von dir oder vom Bot                                                                                                        | im Bau   |
-| Lauf          | die Arbeit an einer Antwort, im Hintergrund; Zustände: wartet, läuft, fertig, fehlgeschlagen, abgebrochen, abgelehnt, wartet auf Freigabe                      | im Bau   |
-| Ereignis      | ein Schritt im Ereignis-Strom einer Unterhaltung (z. B. „Antwort wächst um ein Stück Text“), mit laufender Nummer, damit nach einer Unterbrechung nichts fehlt | im Bau   |
+| Besitzer      | die eine Person, der die Installation gehört                                                                                                                   | gebaut   |
+| Bot           | dein Assistent mit Name, Anweisung, Modell und Avatar                                                                                                          | gebaut   |
+| Unterhaltung  | ein Gespräch mit einem Bot; sie enthält Nachrichten                                                                                                            | gebaut   |
+| Nachricht     | ein Beitrag in einer Unterhaltung, von dir oder vom Bot                                                                                                        | gebaut   |
+| Lauf          | die Arbeit an einer Antwort, im Hintergrund; Zustände: wartet, läuft, fertig, fehlgeschlagen, abgebrochen, abgelehnt, wartet auf Freigabe                      | gebaut   |
+| Ereignis      | ein Schritt im Ereignis-Strom einer Unterhaltung (z. B. „Antwort wächst um ein Stück Text“), mit laufender Nummer, damit nach einer Unterbrechung nichts fehlt | gebaut   |
 | Anbieter      | ein Dienst, der Modelle bereitstellt (zuerst EUrouter); der Schlüssel liegt verschlüsselt in der Datenbank                                                     | Baustein |
-| Modell        | das KI-Modell eines Anbieters, das die Antwort schreibt                                                                                                        | im Bau   |
-| Datenschleuse | eigener Dienst, der persönliche Daten vor dem Modell maskiert; Schalter An/Aus pro Unterhaltung                                                                | im Bau   |
+| Modell        | das KI-Modell eines Anbieters, das die Antwort schreibt                                                                                                        | gebaut   |
+| Datenschleuse | eigener Dienst, der persönliche Daten vor dem Modell maskiert; Schalter An/Aus pro Unterhaltung                                                                | gebaut   |
 | Aktion        | alles, was etwas verändert oder nach außen geht, z. B. `nachricht.senden` oder `modell.anfragen`                                                               | Baustein |
 | Akteur        | wer eine Aktion auslöst: `besitzer` oder `bot:<id>`                                                                                                            | Baustein |
 | Tor           | der einzige Eintrittspunkt für jede Aktion; prüft feste Regeln und Grenzen, ohne KI                                                                            | Baustein |
@@ -121,25 +121,25 @@ Diese Begriffe tauchen in Code und Doku immer wieder auf. **Baustein** heißt: a
 
 ## Datenmodell
 
-Das Schema liegt in `packages/db/src/schema/` (eine Datei pro Bereich), die Migrationen in `packages/db/drizzle/`. Alle Tabellen sind angelegt; was mit **im Bau** markiert ist, nutzt noch keine Funktion der App.
+Das Schema liegt in `packages/db/src/schema/` (eine Datei pro Bereich), die Migrationen in `packages/db/drizzle/`. Alle Tabellen sind angelegt; was mit **ungenutzt** markiert ist, nutzt noch keine Funktion der App.
 
 | Tabelle               | Wofür                                                                                                                                                                                                      | Stand        |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | `settings`            | Einstellungen der Installation, genau eine Zeile (Sprache, Zeitzone, Standard der Datenschleuse, Grenzen, Not-Aus, Installations-ID, Prüfwert des Einrichtungs-Codes bis zum Abschluss der Einrichtung)    | in Benutzung |
-| `owner`               | die eine Person, der die Installation gehört (Passwort-Prüfwert); höchstens eine Zeile                                                                                                                     | im Bau       |
-| `sessions`            | angemeldete Sitzungen; gespeichert wird nur die Prüfsumme des Tokens                                                                                                                                       | im Bau       |
-| `rate_limits`         | Zähler gegen zu viele Versuche (Anmelden, Nachrichten)                                                                                                                                                     | im Bau       |
-| `providers`           | Anbieter von Modellen; der API-Schlüssel liegt nur verschlüsselt                                                                                                                                           | im Bau       |
-| `models`              | Modelle eines Anbieters                                                                                                                                                                                    | im Bau       |
-| `bots`                | Bot mit Name, Anweisung, Modell und Aussehen                                                                                                                                                               | im Bau       |
-| `conversations`       | Unterhaltungen mit dem Bot, mit Schalter der Datenschleuse                                                                                                                                                 | im Bau       |
-| `messages`            | Nachrichten einer Unterhaltung                                                                                                                                                                             | im Bau       |
-| `runs`                | Läufe: die Arbeit an einer Antwort im Hintergrund                                                                                                                                                          | im Bau       |
-| `conversation_events` | Ereignis-Strom je Unterhaltung, nur anhängend, mit laufender Nummer                                                                                                                                        | im Bau       |
-| `rules`               | Regeln des Tors, nur anhängen: jede Änderung (auch Ein- und Ausschalten) ist eine neue Fassung; `seq` nummeriert alle Zeilen, der höchste Wert ist der Regelstand; in der Basisversion nur aus Migrationen | im Bau       |
-| `installation_keys`   | Signaturschlüssel der Installation für die Belege, nur anhängen; ändern darf sich allein `retired_at` (Ausmustern)                                                                                         | im Bau       |
-| `belege`              | Protokoll aller Entscheidungen des Tors, verkettet und unveränderlich                                                                                                                                      | im Bau       |
-| `tool_calls`          | Werkzeug-Aufrufe eines Laufs mit Zustand (angefragt, wartet auf Freigabe, läuft, erledigt …), Entscheidungs- und Ergebnis-Beleg                                                                            | im Bau       |
+| `owner`               | die eine Person, der die Installation gehört (Passwort-Prüfwert); höchstens eine Zeile                                                                                                                     | in Gebrauch  |
+| `sessions`            | angemeldete Sitzungen; gespeichert wird nur die Prüfsumme des Tokens                                                                                                                                       | in Gebrauch  |
+| `rate_limits`         | Zähler gegen zu viele Versuche (Anmelden, Nachrichten)                                                                                                                                                     | in Gebrauch  |
+| `providers`           | Anbieter von Modellen; der API-Schlüssel liegt nur verschlüsselt                                                                                                                                           | in Gebrauch  |
+| `models`              | Modelle eines Anbieters                                                                                                                                                                                    | in Gebrauch  |
+| `bots`                | Bot mit Name, Anweisung, Modell und Aussehen                                                                                                                                                               | in Gebrauch  |
+| `conversations`       | Unterhaltungen mit dem Bot, mit Schalter der Datenschleuse                                                                                                                                                 | in Gebrauch  |
+| `messages`            | Nachrichten einer Unterhaltung                                                                                                                                                                             | in Gebrauch  |
+| `runs`                | Läufe: die Arbeit an einer Antwort im Hintergrund                                                                                                                                                          | in Gebrauch  |
+| `conversation_events` | Ereignis-Strom je Unterhaltung, nur anhängend, mit laufender Nummer                                                                                                                                        | in Gebrauch  |
+| `rules`               | Regeln des Tors, nur anhängen: jede Änderung (auch Ein- und Ausschalten) ist eine neue Fassung; `seq` nummeriert alle Zeilen, der höchste Wert ist der Regelstand; in der Basisversion nur aus Migrationen | in Gebrauch  |
+| `installation_keys`   | Signaturschlüssel der Installation für die Belege, nur anhängen; ändern darf sich allein `retired_at` (Ausmustern)                                                                                         | in Gebrauch  |
+| `belege`              | Protokoll aller Entscheidungen des Tors, verkettet und unveränderlich                                                                                                                                      | in Gebrauch  |
+| `tool_calls`          | Werkzeug-Aufrufe eines Laufs mit Zustand (angefragt, wartet auf Freigabe, läuft, erledigt …), Entscheidungs- und Ergebnis-Beleg                                                                            | ungenutzt    |
 
 Was die Datenbank selbst absichert:
 
@@ -176,25 +176,25 @@ Gut zu wissen:
 
 - **Wecken:** Neue Aufträge wecken den Worker sofort (LISTEN/NOTIFY). Zusätzlich fragt der Worker alle ein bis zwei Sekunden nach, damit ein Auftrag, der hinter einem laufenden derselben Unterhaltung wartet, gleich nach dessen Ende drankommt.
 - **Fehlgeschlagene Aufträge stehen nicht im Weg:** Bei dieser Art Warteschlange hält ein fehlgeschlagener Auftrag alle folgenden derselben Unterhaltung zurück. PaiBot räumt solche Aufträge beim Start des Workers und danach alle 10 Sekunden weg, auch wenn der Auftrag nicht durch einen Fehler, sondern durch Zeitablauf fehlgeschlagen ist.
-- **Absturz des Workers:** Ein Auftrag, der gerade lief, wird nicht neu gestartet. Ein lebender Worker meldet sich regelmäßig (Herzschlag); bleibt das aus, gibt die Warteschlange den Auftrag nach etwa 30 Sekunden auf, und die Unterhaltung kommt wieder dran. Den Zustand des Laufs selbst soll der Worker beim Start aufräumen (`failStaleRuns`); das ist noch nicht gebaut, bis dahin meldet der Worker im Log „Aufräumen veralteter Läufe noch nicht verfügbar“.
+- **Absturz des Workers:** Ein Auftrag, der gerade lief, wird nicht neu gestartet. Ein lebender Worker meldet sich regelmäßig (Herzschlag); bleibt das aus, gibt die Warteschlange den Auftrag nach etwa 30 Sekunden auf, und die Unterhaltung kommt wieder dran. Den Zustand des Laufs selbst räumt der Worker beim Start auf (`failStaleRuns`): Läufe ohne Herzschlag enden als „fehlgeschlagen“.
 - **Schema:** Das Schema `pgboss` legt der Migrations-Schritt beim Start an und übergibt es der App-Rolle. Die Warteschlange richtet darin nur ihre Tabellen ein; ein Recht zum Anlegen von Schemas in der Datenbank braucht die App-Rolle nicht. Läuft alles mit nur einer Rolle (Entwicklung), legt der Start das Schema mit dieser Rolle an.
 
 ## Worker
 
-Der Worker (`apps/worker`) holt die Läufe aus der Warteschlange und soll sie von der Lauf-Steuerung (`executeRun` aus `packages/agents`) ausführen lassen. Die Lauf-Steuerung ist noch im Bau; heute holt der Worker die Aufträge ab, und jeder Lauf endet als „fehlgeschlagen“. Er ist eine einzelne gebündelte Datei (`dist/worker.mjs`, gebaut mit esbuild) und liegt im selben Image wie die Web-App; `PAIBOT_ROLE=worker` startet ihn.
+Der Worker (`apps/worker`) holt die Läufe aus der Warteschlange und lässt sie von der Lauf-Steuerung (`executeRun` aus `packages/agents`) ausführen. Er ist eine einzelne gebündelte Datei (`dist/worker.mjs`, gebaut mit esbuild) und liegt im selben Image wie die Web-App; `PAIBOT_ROLE=worker` startet ihn.
 
 Beim Start arbeitet er diese Schritte der Reihe nach ab. Scheitert einer, steht der Grund im Log, und der Prozess endet mit Exit-Code 1:
 
-| Schritt          | Was passiert                                                                                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1. Einstellungen | `PAIBOT_SECRET` und `DATABASE_URL` prüfen, mit denselben Regeln und Meldungen wie die Web-App (im Betrieb auch Länge und Platzhalter des Passworts)          |
-| 2. Datenbank     | bis zu 60 Sekunden auf die Datenbank warten                                                                                                                  |
-| 3. Migrationen   | bis zu 3 Minuten warten, bis die Web-App alle Migrationen angewendet hat. Der Worker migriert nie selbst und kennt die Migrations-Rolle nicht                |
-| 4. Rechte        | wie die Web-App prüfen, ob die Verbindung zu viele Rechte hat; im Betrieb Abbruch, außer `PAIBOT_ALLOW_PRIVILEGED_DB=1`                                      |
-| 5. Warteschlange | Warteschlange starten, veraltete Läufe aufräumen (`failStaleRuns`, noch ein Platzhalter), danach Aufträge annehmen (`PAIBOT_WORKER_CONCURRENCY`, Standard 2) |
-| 6. Herzschlag    | alle zehn Sekunden die Datei `/tmp/paibot-worker.herzschlag` schreiben, solange die Datenbank antwortet und kein Lauf länger als seine Ablaufzeit hängt      |
+| Schritt          | Was passiert                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Einstellungen | `PAIBOT_SECRET` und `DATABASE_URL` prüfen, mit denselben Regeln und Meldungen wie die Web-App (im Betrieb auch Länge und Platzhalter des Passworts)     |
+| 2. Datenbank     | bis zu 60 Sekunden auf die Datenbank warten                                                                                                             |
+| 3. Migrationen   | bis zu 3 Minuten warten, bis die Web-App alle Migrationen angewendet hat. Der Worker migriert nie selbst und kennt die Migrations-Rolle nicht           |
+| 4. Rechte        | wie die Web-App prüfen, ob die Verbindung zu viele Rechte hat; im Betrieb Abbruch, außer `PAIBOT_ALLOW_PRIVILEGED_DB=1`                                 |
+| 5. Warteschlange | Warteschlange starten, veraltete Läufe aufräumen (`failStaleRuns`), danach Aufträge annehmen (`PAIBOT_WORKER_CONCURRENCY`, Standard 2)                  |
+| 6. Herzschlag    | alle zehn Sekunden die Datei `/tmp/paibot-worker.herzschlag` schreiben, solange die Datenbank antwortet und kein Lauf länger als seine Ablaufzeit hängt |
 
-Für jeden Auftrag ruft der Worker `executeRun` auf. Endet sie mit einem Ausnahmefehler (oder gibt es sie noch nicht), setzt der Worker den Lauf auf „fehlgeschlagen“ (Code `intern`) und schreibt das Ereignis `run.failed`, beides in einer Transaktion. Der Fehler geht nicht an die Warteschlange zurück; die Unterhaltung bleibt frei.
+Für jeden Auftrag ruft der Worker `executeRun` auf. Endet sie mit einem Ausnahmefehler, setzt der Worker den Lauf auf „fehlgeschlagen“ (Code `intern`) und schreibt das Ereignis `run.failed`, beides in einer Transaktion. Der Fehler geht nicht an die Warteschlange zurück; die Unterhaltung bleibt frei.
 
 Beim Beenden (`SIGTERM` oder `SIGINT`) nimmt er keine neuen Aufträge mehr an, gibt laufenden Läufen das Abbruch-Signal, wartet höchstens 20 Sekunden (`PAIBOT_WORKER_SHUTDOWN_TIMEOUT_MS`), schließt Warteschlange und Datenbank und endet mit Exit-Code 0. Ein zweites Signal beendet ihn sofort. Unerwartete Fehler stehen als eine Zeile im Log, danach endet er mit Exit-Code 1.
 
@@ -229,16 +229,16 @@ Gut zu wissen:
 
 Während der Bot antwortet, siehst du die Antwort Stück für Stück. Das läuft über einen Ereignis-Strom je Unterhaltung (Server-Sent Events): `GET /api/unterhaltungen/:id/ereignisse`. Die Bausteine liegen in `apps/web/src/lib/sse/`.
 
-| Frage                                         | Antwort                                                                                                                                                                                                 |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Wer darf den Strom öffnen?                    | Nur du mit gültiger Anmeldung. Die Anmeldung gibt es noch nicht; bis dahin antwortet die Route immer mit 401 und liest nichts aus der Datenbank. Die Anmeldung wird bei jedem Herzschlag erneut geprüft |
-| Woher kommen die Ereignisse?                  | Aus der Tabelle `conversation_events`. Jedes Ereignis hat eine fortlaufende Nummer je Unterhaltung. Eine Meldung (`NOTIFY` auf `paibot_ereignis`) enthält nur die ID der Unterhaltung                   |
-| Wie sieht ein Ereignis aus?                   | `id:` ist die Nummer, `event:` der Typ (z. B. `text.delta`), `data:` das Ereignis als JSON. Am Anfang steht `retry: 2750`, alle 15 Sekunden kommt ein Herzschlag `: puls`                               |
-| Was passiert nach einer Unterbrechung?        | Der Browser verbindet sich neu und schickt die letzte Nummer (`Last-Event-ID`). Der Strom schickt alles danach, ohne Lücke und ohne Doppel. Ohne Kopfzeile geht auch `?nach=<Nummer>`                   |
-| Wie viele Datenbank-Verbindungen braucht das? | Eine einzige `LISTEN`-Verbindung je Prozess, egal wie viele Ströme offen sind. Bricht sie ab, baut sie sich selbst wieder auf, und alle Ströme lesen nach, was in der Zwischenzeit dazukam              |
-| Gibt es Grenzen?                              | Höchstens 10 offene Ströme je Anmeldung und 20 insgesamt (sonst 429). Ein Strom endet nach 15 Minuten und verbindet sich dann von selbst neu                                                            |
-| Was, wenn ein Gerät nicht mitliest?           | Der Strom liest nur nach, solange der Puffer Platz hat. Bleibt er eine Minute voll, wird die Verbindung getrennt; der Server wartet nicht                                                               |
-| Welche Fehler gibt es?                        | 401 ohne Anmeldung, 404 für eine unbekannte Unterhaltung (ohne Details), 400 für eine ungültige oder zu große `Last-Event-ID`, 429 bei zu vielen Strömen                                                |
+| Frage                                         | Antwort                                                                                                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Wer darf den Strom öffnen?                    | Nur du mit gültiger Anmeldung; ohne sie antwortet die Route mit 401 und liest nichts aus der Datenbank. Die Anmeldung wird bei jedem Herzschlag erneut geprüft                             |
+| Woher kommen die Ereignisse?                  | Aus der Tabelle `conversation_events`. Jedes Ereignis hat eine fortlaufende Nummer je Unterhaltung. Eine Meldung (`NOTIFY` auf `paibot_ereignis`) enthält nur die ID der Unterhaltung      |
+| Wie sieht ein Ereignis aus?                   | `id:` ist die Nummer, `event:` der Typ (z. B. `text.delta`), `data:` das Ereignis als JSON. Am Anfang steht `retry: 2750`, alle 15 Sekunden kommt ein Herzschlag `: puls`                  |
+| Was passiert nach einer Unterbrechung?        | Der Browser verbindet sich neu und schickt die letzte Nummer (`Last-Event-ID`). Der Strom schickt alles danach, ohne Lücke und ohne Doppel. Ohne Kopfzeile geht auch `?nach=<Nummer>`      |
+| Wie viele Datenbank-Verbindungen braucht das? | Eine einzige `LISTEN`-Verbindung je Prozess, egal wie viele Ströme offen sind. Bricht sie ab, baut sie sich selbst wieder auf, und alle Ströme lesen nach, was in der Zwischenzeit dazukam |
+| Gibt es Grenzen?                              | Höchstens 10 offene Ströme je Anmeldung und 20 insgesamt (sonst 429). Ein Strom endet nach 15 Minuten und verbindet sich dann von selbst neu                                               |
+| Was, wenn ein Gerät nicht mitliest?           | Der Strom liest nur nach, solange der Puffer Platz hat. Bleibt er eine Minute voll, wird die Verbindung getrennt; der Server wartet nicht                                                  |
+| Welche Fehler gibt es?                        | 401 ohne Anmeldung, 404 für eine unbekannte Unterhaltung (ohne Details), 400 für eine ungültige oder zu große `Last-Event-ID`, 429 bei zu vielen Strömen                                   |
 
 Für die Oberfläche gibt es den Hook `useConversationEvents(conversationId, { onEvent, nachSeq })`. Er meldet jedes Ereignis genau einmal und in Reihenfolge, verbindet nach Abbrüchen selbst neu und nennt den Zustand der Verbindung: `verbunden`, `verbindet_neu` oder `getrennt`. Mit `neuVerbinden()` lässt sich eine getrennte Verbindung wieder aufbauen.
 

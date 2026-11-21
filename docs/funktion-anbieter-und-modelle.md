@@ -12,8 +12,6 @@ Seit:      2026-11-20
 
 **Ergebnis:** Du trägst einen Modell-Anbieter ein, testest die Verbindung, siehst die passenden Modelle und wählst eines. PaiBot spricht dabei nur mit diesem einen Anbieter, und bei eingeschalteter Datenschleuse nur mit der Datenschleuse.
 
-> Stand: Die Anbieter-Schicht (`packages/llm`) ist gebaut und getestet. Die Seite „Modell und Anbieter“ in der Oberfläche folgt; die Abschnitte „So benutzt du es“ und „So sieht es aus“ gelten dann.
-
 ## Wofür
 
 PaiBot braucht ein Sprachmodell, das die Antworten schreibt. Das Modell läuft nicht bei dir, sondern bei einem Anbieter. Hier legst du fest, bei wem, und PaiBot prüft, ob der Zugang funktioniert.
@@ -25,20 +23,34 @@ Den Anbieter verbindest du meist schon in der Einrichtung. Danach änderst du al
 **Schlüssel ersetzen**
 
 1. Öffne „Modell und Anbieter“. Oben siehst du den Anbieter mit Adresse, Region (zum Beispiel „EU“) und „Schlüssel hinterlegt“. Den Schlüssel selbst zeigt PaiBot nie an, auch nicht teilweise. Dieselbe Region steht oben in der Seitenleiste als „Modelle: EU“ (bzw. „lokal“ oder „außerhalb der EU“); sie folgt dem Anbieter des gewählten Modells. Ohne gewähltes Modell steht dort „noch keins“.
+
+   ![Seite „Modell und Anbieter“: Karte „Anbieter“ mit dem Test-Anbieter „Lokaler Anbieter“, Adresse, Region „lokal“ und „Schlüssel hinterlegt“; darunter „Modell für Pai“ mit den Beispiel-Modellen, das aktuelle mit der Marke „aktuell“](assets/screenshots/modelle-start.png)
 2. Klicke „Verbindung testen“, um den gespeicherten Schlüssel zu prüfen. Das Ergebnis steht in einem Satz darunter, zum Beispiel „Verbindung steht. 12 passende Modelle gefunden.“
+
+   ![Nach „Verbindung testen“: grüne Meldung „Verbindung steht. 2 passende Modelle gefunden.“](assets/screenshots/modelle-test-ok.png)
 3. Klicke „Schlüssel ersetzen“ und füge den neuen Schlüssel in das Feld ein.
 4. Klicke „Verbindung testen“. Nimmt der Anbieter den Schlüssel nicht an, steht dort, was du tun kannst; gespeichert ist dann nichts.
+
+   ![Feld „Neuer Schlüssel für Lokaler Anbieter“ mit einem falschen Beispiel-Schlüssel; darunter rot: „Lokaler Anbieter hat den Schlüssel nicht angenommen.“ mit Ausweg](assets/screenshots/modelle-schluessel-falsch.png)
 5. Klicke „Schlüssel speichern“. PaiBot prüft den Schlüssel beim Anbieter noch einmal und speichert ihn nur, wenn er angenommen wird. Danach lädt die Modell-Liste neu.
+
+   ![Nach „Schlüssel speichern“: Meldung „Schlüssel gespeichert. Die Verbindung zu Lokaler Anbieter steht.“, Marke „verbunden“](assets/screenshots/modelle-schluessel-gespeichert.png)
 
 **Modell wählen**
 
 6. Unter „Modell für …“ steht, mit welchem Modell dein Bot gerade arbeitet; dieses Modell trägt in der Liste die Marke „aktuell“.
 7. Die Liste kommt direkt vom Anbieter. Bei mehr als acht Modellen erscheint ein Suchfeld; tippe einen Teil des Namens ein.
+
+   ![Bei zwölf Beispiel-Modellen erscheint „Modell suchen“; nach Eingabe von „zweites“ bleibt „Beispiel-Modell Zweites“ übrig und ist gewählt](assets/screenshots/modelle-suche.png)
 8. Wähle ein Modell und klicke „Modell übernehmen“. Ab der nächsten Antwort nutzt dein Bot dieses Modell.
+
+   ![Nach „Modell übernehmen“: „Kai arbeitet jetzt mit Beispiel-Modell Zweites.“, das Modell trägt die Marke „aktuell“](assets/screenshots/modelle-uebernommen.png)
 
 **Schlüssel entfernen**
 
 9. Klicke „Schlüssel entfernen“ und bestätige die Rückfrage. Damit entfernst du den Anbieter samt Schlüssel; dein Bot hat danach kein Modell mehr.
+
+   ![Rückfrage „Schlüssel entfernen?“ mit „Abbrechen“ und „Entfernen“](assets/screenshots/modelle-entfernen.png)
 10. Um wieder zu starten, füge einen Schlüssel ein, klicke „Schlüssel speichern“ und wähle ein Modell (Schritte 3 bis 8).
 
 Beispiel für das Ergebnis eines Tests mit falschem Schlüssel:
@@ -52,19 +64,15 @@ Einen eigenen, OpenAI-kompatiblen Anbieter (zum Beispiel lokal mit Ollama) kann 
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Die Aufnahmen entstehen per Skript aus der laufenden App mit Beispiel-Daten.
+Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Sie zeigen den Test-Anbieter der Beispiel-Umgebung („Lokaler Anbieter“ auf dem eigenen Rechner) mit erfundenen Modellen; mit EUrouter steht dort der Name EUrouter und die Region „EU“. In einigen Bildern heißt der Bot „Kai“, weil er auf der Seite „Bot“ vorher umbenannt wurde.
 
-<!--
-Gewünschte Aufnahmen (dunkel, Beispiel-Daten, Test-Anbieter mit Schlüssel „beispiel-…“ und 12 Modellen):
-1. modelle-start · /modelle · Rechner 1440 · nach der Einrichtung mit Schlüssel und Modell; Karte „Anbieter“ mit „Schlüssel hinterlegt“, Liste mit Marke „aktuell“
-2. modelle-test-ok · /modelle · Rechner · Klick „Verbindung testen“ → Meldung „Verbindung steht. … passende Modelle gefunden.“
-3. modelle-schluessel-falsch · /modelle · Rechner · Klick „Schlüssel ersetzen“, falschen Schlüssel eintragen, „Verbindung testen“ → Satz mit Ausweg, Feld rot
-4. modelle-schluessel-gespeichert · /modelle · Rechner · richtigen Schlüssel eintragen, „Schlüssel speichern“ → „Schlüssel gespeichert …“
-5. modelle-suche · /modelle · Rechner · in „Modell suchen“ „zweites“ tippen, „Zweites Test-Modell“ wählen
-6. modelle-uebernommen · /modelle · Rechner · „Modell übernehmen“ → „… arbeitet jetzt mit Zweites Test-Modell.“
-7. modelle-entfernen · /modelle · Rechner · „Schlüssel entfernen“ → Rückfrage-Dialog offen
-8. modelle-handy · /modelle · Handy 390 · Startzustand
--->
+Nach dem Entfernen meldet die Seite „Anbieter und Schlüssel sind entfernt.“, dein Bot hat kein Modell mehr, und du kannst gleich einen neuen Schlüssel eintragen:
+
+![Seite „Modell und Anbieter“ nach „Schlüssel entfernen“: „Kein Schlüssel hinterlegt“, Feld für einen neuen Schlüssel mit „Verbindung testen“ und „Schlüssel speichern“, Meldung „Anbieter und Schlüssel sind entfernt.“; darunter „Kai hat noch kein Modell.“](assets/screenshots/modelle-entfernt.png)
+
+Am Handy stehen die Karten untereinander:
+
+![Seite „Modell und Anbieter“ auf dem Handy](assets/screenshots/modelle-handy.png)
 
 ## Einstellungen
 

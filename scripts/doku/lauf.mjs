@@ -74,6 +74,35 @@ export function wegwerfWert(laenge = 24) {
 /** Zustände der App, in der Reihenfolge, in der sie sich herstellen lassen. */
 export const ZUSTAENDE = ["frisch", "eingerichtet", "mit-beispieldaten"];
 
+/** Zustände der Datenschleuse in der Beispiel-Umgebung („aus“ = nicht eingerichtet). */
+export const SCHLEUSE_ZUSTAENDE = ["aus", "bereit", "schluessel_falsch", "nicht_erreichbar"];
+
+/** Beispiel-Modelle des Test-Anbieters: erfundene Namen, die so in den Bildern stehen. */
+export const BEISPIEL_MODELLE = [
+  { id: "beispiel/allrounder", name: "Beispiel-Modell Allrounder", contextLength: 128000 },
+  { id: "beispiel/kompakt", name: "Beispiel-Modell Kompakt", contextLength: 32000 },
+];
+
+/** Grund-Verhalten des Test-Anbieters; vor jeder Aufnahme wird es wieder hergestellt. */
+export const ANBIETER_STANDARD = Object.freeze({
+  models: BEISPIEL_MODELLE,
+  reply: "Gern. Hier ist mein Vorschlag – mit Beispiel-Daten.",
+  chunkChars: 400,
+  firstChunkDelayMs: 0,
+  chunkDelayMs: 0,
+  holdAfterChunks: 0,
+});
+
+/** Felder, die ein Schritt „anbieter“ am Test-Anbieter setzen darf. */
+export const ANBIETER_FELDER = Object.freeze({
+  reply: "text",
+  chunkChars: "zahl",
+  firstChunkDelayMs: "zahl",
+  chunkDelayMs: "zahl",
+  holdAfterChunks: "zahl",
+  models: "modelle",
+});
+
 /** Sonderwerte für `tippe`: Platzhalter statt Geheimnis in docs/screenshots.json. */
 export const SONDERWERTE = Object.freeze({
   "$einrichtungs-code": "einrichtungsCode",

@@ -10,13 +10,23 @@
 
 // Ohne Seiteneffekte, damit Tests es direkt prüfen können. Fehler kommen als ListenFehler mit
 // verständlichem Text.
-import { SONDERWERTE, ZUSTAENDE } from "./lauf.mjs";
+import { ANBIETER_FELDER, SCHLEUSE_ZUSTAENDE, SONDERWERTE, ZUSTAENDE } from "./lauf.mjs";
 
 export class ListenFehler extends Error {}
 
 const MODI = new Set(["app", "entwicklung"]);
 const ZIEL_ARTEN = ["css", "beschriftung", "rolle", "text"];
-const AKTIONEN = ["klick", "warteAuf", "warteAufText", "tippe", "taste", "gehe", "ablauf"];
+const AKTIONEN = [
+  "klick",
+  "warteAuf",
+  "warteAufText",
+  "tippe",
+  "taste",
+  "gehe",
+  "ablauf",
+  "zeige",
+  "anbieter",
+];
 const ERLAUBTE_ZUSATZFELDER = { tippe: ["text"] };
 
 const fehler = (text) => {
@@ -35,7 +45,7 @@ function pruefeZiel(wo, ziel, standard) {
   }
   const arten = Object.keys(ziel).filter((k) => ZIEL_ARTEN.includes(k));
   const unbekannt = Object.keys(ziel).filter(
-    (k) => !ZIEL_ARTEN.includes(k) && k !== "name" && k !== "genau",
+    (k) => !ZIEL_ARTEN.includes(k) && k !== "name" && k !== "genau" && k !== "nr",
   );
   if (arten.length !== 1 || unbekannt.length > 0 || !istText(ziel[arten[0]])) {
     fehler(`${wo}: Ziel braucht genau eines von ${ZIEL_ARTEN.join(", ")} (Text).`);
@@ -45,6 +55,9 @@ function pruefeZiel(wo, ziel, standard) {
   }
   if (ziel.genau !== undefined && typeof ziel.genau !== "boolean") {
     fehler(`${wo}: „genau“ ist true oder false.`);
+  }
+  if (ziel.nr !== undefined && (!Number.isInteger(ziel.nr) || ziel.nr < 0)) {
+    fehler(`${wo}: „nr“ ist die Stelle unter mehreren Treffern, ab 0.`);
   }
   return { ...ziel, genau: ziel.genau ?? true };
 }
@@ -56,6 +69,34 @@ function pruefeSonderwert(wo, text) {
         "(ein wörtliches $ am Anfang als $$).",
     );
   }
+}
+
+/** Verhalten des Test-Anbieters für einen Schritt „anbieter“: nur bekannte Felder mit Text bzw. Zahl. */
+function pruefeAnbieter(wo, wert) {
+  if (!wert || typeof wert !== "object" || Array.isArray(wert) || Object.keys(wert).length === 0) {
+    fehler(`${wo}: „anbieter“ ist ein Objekt, z. B. { "reply": "…", "chunkDelayMs": 200 }.`);
+  }
+  for (const [feld, v] of Object.entries(wert)) {
+    const art = ANBIETER_FELDER[feld];
+    if (art === undefined) {
+      fehler(
+        `${wo}: „anbieter“ kennt „${feld}“ nicht (erlaubt: ${Object.keys(ANBIETER_FELDER).join(", ")}).`,
+      );
+    }
+    if (art === "text" && typeof v !== "string") fehler(`${wo}: „anbieter.${feld}“ ist ein Text.`);
+    if (art === "zahl" && (!Number.isInteger(v) || v < 0 || v > 600_000)) {
+      fehler(`${wo}: „anbieter.${feld}“ ist eine ganze Zahl von 0 bis 600000.`);
+    }
+    if (
+      art === "modelle" &&
+      (!Array.isArray(v) ||
+        v.length === 0 ||
+        !v.every((m) => m && istText(m.id) && istText(m.name)))
+    ) {
+      fehler(`${wo}: „anbieter.${feld}“ ist eine Liste von Modellen mit „id“ und „name“.`);
+    }
+  }
+  return { ...wert };
 }
 
 /** Prüft einen Schritt und bringt ihn in eine einheitliche Form. */
@@ -81,6 +122,10 @@ export function pruefeSchritt(wo, schritt) {
       pruefeSonderwert(wo, schritt.text);
       return { tippe: pruefeZiel(wo, wert, "beschriftung"), text: schritt.text };
     }
+    case "zeige":
+      return { zeige: pruefeZiel(wo, wert, "css") };
+    case "anbieter":
+      return { anbieter: pruefeAnbieter(wo, wert) };
     case "warteAuf":
     case "warteAufText":
     case "taste":
@@ -204,6 +249,27 @@ export function pruefeListe(roh) {
     ) {
       fehler(`${benannt}: „status“ ist ein HTTP-Status (z. B. 404).`);
     }
+    if (eintrag.datenschleuse !== undefined) {
+      if (!SCHLEUSE_ZUSTAENDE.includes(eintrag.datenschleuse)) {
+        fehler(
+          `${benannt}: „datenschleuse“ ist eines von ${SCHLEUSE_ZUSTAENDE.map((z) => `„${z}“`).join(", ")}.`,
+        );
+      }
+      if (eintrag.zustand === undefined || eintrag.modus === "entwicklung") {
+        fehler(
+          `${benannt}: „datenschleuse“ gibt es nur zusammen mit „zustand“ (App aus pnpm doku:app).`,
+        );
+      }
+    }
+    if (eintrag.verdecke !== undefined) {
+      if (
+        !Array.isArray(eintrag.verdecke) ||
+        eintrag.verdecke.length === 0 ||
+        !eintrag.verdecke.every(istText)
+      ) {
+        fehler(`${benannt}: „verdecke“ ist eine Liste von CSS-Selectoren.`);
+      }
+    }
     const vorher = setzeAblaeufeEin(benannt, pruefeSchritte(benannt, eintrag.vorher), ablaeufe);
     return {
       breite: 1280,
@@ -213,6 +279,8 @@ export function pruefeListe(roh) {
       thema: "dunkel",
       anmeldung: false,
       status: 200,
+      ...(eintrag.zustand !== undefined ? { datenschleuse: "aus" } : {}),
+      verdecke: [],
       ...eintrag,
       vorher,
     };

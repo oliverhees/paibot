@@ -14,37 +14,42 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ## Inhalt
 
-| Bereich                | Datei                                                                    | Stand                                   |
-| ---------------------- | ------------------------------------------------------------------------ | --------------------------------------- |
-| Installation           | [installation.md](installation.md)                                       | vorhanden                               |
-| Server mit Coolify     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                               |
-| Architektur            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit                   |
-| Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit                   |
-| Chat                   | [funktion-chat.md](funktion-chat.md)                                     | Oberfläche vorhanden, Bilder folgen     |
-| Das Tor und die Regeln | [funktion-tor.md](funktion-tor.md)                                       | Seite „Regeln“ vorhanden, Bilder folgen |
-| Belege                 | [funktion-belege.md](funktion-belege.md)                                 | Seiten vorhanden, Bilder folgen         |
-| Anbieter und Modelle   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | Baustein vorhanden                      |
-| Einrichtung und Zugang | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden                               |
-| Einstellungen und Info | [funktion-einstellungen.md](funktion-einstellungen.md)                   | Seiten vorhanden, Bilder folgen         |
-| Entwickeln und Testen  | [entwickeln.md](entwickeln.md)                                           | vorhanden                               |
-| Lizenzen der Pakete    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                               |
-| Beitragsvereinbarung   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                               |
-| Vorlage für Funktion   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                               |
-| Datenschleuse          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | Dienst vorhanden                        |
-| Bots und Team          | folgt mit der Funktion                                                   | geplant                                 |
-| Apps per MCP           | folgt mit der Funktion                                                   | geplant                                 |
-| Browser-Dienst         | folgt mit der Funktion                                                   | geplant                                 |
-| Hintergrund-Jobs       | folgt mit der Funktion                                                   | Baustein vorhanden                      |
+| Bereich                | Datei                                                                    | Stand                               |
+| ---------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
+| Installation           | [installation.md](installation.md)                                       | vorhanden                           |
+| Server mit Coolify     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                           |
+| Aktualisieren          | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                           |
+| Einrichtung und Zugang | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern              |
+| Chat                   | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern              |
+| Bot                    | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern              |
+| Anbieter und Modelle   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern              |
+| Datenschleuse          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar |
+| Belege                 | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern              |
+| Das Tor und die Regeln | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern              |
+| Einstellungen und Info | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern              |
+| Architektur            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit               |
+| Hintergrund-Läufe      | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)    |
+| Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit               |
+| Entwickeln und Testen  | [entwickeln.md](entwickeln.md)                                           | vorhanden                           |
+| Lizenzen der Pakete    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                           |
+| Beitragsvereinbarung   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                           |
+| Vorlage für Funktion   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                           |
+| Bots im Team           | folgt mit der Funktion                                                   | geplant                             |
+| Apps per MCP           | folgt mit der Funktion                                                   | geplant                             |
+| Browser-Dienst         | folgt mit der Funktion                                                   | geplant                             |
 
-„Baustein vorhanden“ heißt: Das Paket ist gebaut und getestet, in der Oberfläche aber noch nicht angeschlossen. „Bilder folgen“ heißt: Die Seiten sind in der App, die Abschnitte mit Screenshots kommen noch dazu.
+„Mit Bildern“ heißt: Die Seite hat zu jedem Schritt in der Oberfläche ein Bild aus der laufenden App, aufgenommen per Skript mit Beispiel-Daten.
 
 ### Neu
 
+- **Bilder für alle Funktionsseiten:** Chat, Bot, Anbieter und Modelle, Datenschleuse, Belege, Regeln sowie Einstellungen und Info zeigen jeden Schritt mit einem Bild aus der laufenden App, aufgenommen per Skript in einer Beispiel-Umgebung ([Screenshots](#screenshots)).
+- **Belege filtern und Schlüssel ansehen:** Filter nach Aktion und Unterhaltung (auch als Lesezeichen), Kasten „Schlüssel dieser Installation“ mit Kurzform ([Belege](funktion-belege.md)).
+- **Aktualisieren:** Wechsel auf eine neue Version mit eigenem Bau oder fertigem Image, mit Sicherung vorher ([Aktualisieren](aktualisieren.md)).
 - **Einstellungen und Info:** Passwort ändern, Geräte sehen und abmelden, Tagesgrenze und Verlaufsgrenze, Stand und Lizenz. Jede Änderung läuft durch das Tor und hat einen Beleg, den du von dort aus öffnen kannst ([Einstellungen und Info](funktion-einstellungen.md)).
 - **Belege ansehen und prüfen:** Liste aller Belege, ein Beleg als eigene Seite, „Ganze Kette prüfen“ im Browser, Anker sichern und vergleichen, Export für `pnpm belege:pruefen` ([Belege](funktion-belege.md)).
 - **Regeln:** Die Seite „Regeln“ zeigt die fest eingebauten Regeln, Grenzen und Vorbedingungen des Tors. Regeln kommen nur mit einem Update von PaiBot; die App selbst darf sie nur lesen ([Das Tor](funktion-tor.md)).
 - **Migrations-Schritt im Betrieb:** Der Einmal-Dienst `migrate` richtet Datenbank und App-Rolle ein, danach starten `web` und `worker` nur mit der App-Rolle ([Installation](installation.md)).
-- **Einrichtungs-Code:** Er entsteht einmal beim ersten Start und gilt bis zum Ende der Einrichtung, auch wenn `web` neu startet; erst ein neuer Lauf des Migrations-Schritts verwirft ihn ([Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
+- **Einrichtungs-Code:** Er entsteht beim ersten Start und gilt 24 Stunden, längstens bis zum Ende der Einrichtung, auch wenn `web` neu startet. Ist er abgelaufen, steht beim nächsten Aufruf der Einrichtung ein neuer im Log; ein neuer Lauf des Migrations-Schritts verwirft ihn sofort ([Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
 
 Die Doku ist auch unter https://paibot.de/doku zu lesen.
 
@@ -70,8 +75,10 @@ Wer die App zwischendurch selbst ansehen will, startet sie getrennt: `pnpm doku:
 Was `pnpm doku:app` tut:
 
 - Es startet eine frische Wegwerf-Datenbank: einen eigenen Postgres aus den Programmen des Systems (`initdb`, `pg_ctl`; als root über den Benutzer `postgres`) oder, wenn `PAIBOT_DOKU_DATABASE_URL` auf einen Wegwerf-Server zeigt, eine eigene Datenbank dort. Sie heißt immer `paibot_doku_<zufall>` und trägt einen Vermerk; gelöscht wird am Ende nur, was beides hat. Eine andere Datenbank fasst das Skript nie an.
-- Es startet den [Test-Anbieter](entwickeln.md) nur an `127.0.0.1` auf Port 18080 (anders: `PAIBOT_DOKU_ANBIETER_PORT`; die Adresse erscheint in der Einrichtung als Name des Anbieters), mit erfundenen Modellen und einem Wegwerf-Schlüssel.
+- Es startet den [Test-Anbieter](entwickeln.md) nur an `127.0.0.1` auf Port 18080 (anders: `PAIBOT_DOKU_ANBIETER_PORT`; die Adresse steht auf der Seite „Modell und Anbieter“), mit erfundenen Modellen und einem Wegwerf-Schlüssel. Vor jeder Aufnahme stellt das Aufnahme-Skript sein Grund-Verhalten wieder her.
+- Es startet eine Beispiel-Datenschleuse: eine kleine lokale Attrappe nur an `127.0.0.1`, die dem Worker „bereit“, „Schlüssel passt nicht“ oder „nicht erreichbar“ meldet und Chat-Anfragen unverändert an den Test-Anbieter weiterreicht. Sie maskiert nichts und ist nur für die Bilder da. Der Worker startet ohne sie („nicht eingerichtet“), bis eine Aufnahme mit `datenschleuse` ihn neu starten lässt.
 - Es startet Web-App und Worker im Produktions-Build, so wie Nutzer die App sehen, mit zufällig erzeugten Geheimnissen und ohne Werte aus deiner Umgebung, und liest den Einrichtungs-Code aus dem Log.
+- Web-App und Worker laufen dabei mit einer Beispiel-Uhr (`scripts/doku/beispiel-uhr.mjs`): Sie beginnt am 20.11.2026 um 14:31 und läuft tausendmal langsamer als die echte. So zeigen Belege, Sitzungen und der Zustand der Datenschleuse bei jedem Lauf dieselben Zeiten. Zeiten, die die Datenbank selbst setzt (etwa an Nachrichten im Chat), bleiben echt; solche Stellen blendet `verdecke` aus.
 - Am Ende (auch bei Strg+C oder Fehler) beendet es alle Prozesse, löscht Datenbank, temporäre Ordner und Lauf-Datei.
 
 Gut zu wissen:
@@ -83,19 +90,21 @@ Gut zu wissen:
 
 Felder einer Aufnahme (Pflicht sind nur `name` und `pfad`):
 
-| Feld                     | Wofür                                                                                                                                                                                                                         |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`, `pfad`           | Dateiname ohne Endung und Seite in der App, z. B. `"/anmelden"`.                                                                                                                                                              |
-| `zustand`                | `"frisch"` (nicht eingerichtet), `"eingerichtet"` oder `"mit-beispieldaten"`. Das Skript ordnet die Aufnahmen so, dass jeder Zustand nur einmal hergestellt wird, und stellt ihn über die echten Wege der App her.            |
-| `anmeldung`              | `true`: Die Aufnahme ist angemeldet (eine Sitzung je Lauf, über die Seite „Anmelden“). Braucht `zustand` „eingerichtet“ oder „mit-beispieldaten“.                                                                             |
-| `danach`                 | `"eingerichtet"`: Die Schritte dieser frischen Aufnahme schließen die Einrichtung selbst ab (Bild „Alles bereit“). Höchstens einmal.                                                                                          |
-| `vorher`                 | Schritte vor der Aufnahme, der Reihe nach (siehe unten).                                                                                                                                                                      |
-| `warteAuf`, `ausschnitt` | CSS-Selector, auf den gewartet wird, bzw. das Element, das allein aufgenommen wird.                                                                                                                                           |
-| `status`                 | Erwarteter HTTP-Status der Seite, Standard 200 (z. B. 404 für die Fehlerseite).                                                                                                                                               |
-| `breite`, `hoehe`        | Fenster in Pixeln (Standard 1280 × 800; die Doku nutzt 1440 × 900 am Rechner und 390 × 844 am Handy).                                                                                                                         |
-| `thema`                  | `"dunkel"` (Standard) oder `"hell"`.                                                                                                                                                                                          |
-| `skalierung`             | Pixeldichte von 1 bis 3, Standard 2.                                                                                                                                                                                          |
-| `modus`                  | `"app"` (Standard) oder `"entwicklung"` für Seiten, die es nur mit `next dev` gibt: Das Skript startet den Entwicklungs-Server selbst (ohne Datenbank) und beendet ihn danach. Mit `PAIBOT_DEV_URL` nutzt es einen laufenden. |
+| Feld                     | Wofür                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`, `pfad`           | Dateiname ohne Endung und Seite in der App, z. B. `"/anmelden"`.                                                                                                                                                                                                                                                                                                         |
+| `zustand`                | `"frisch"` (nicht eingerichtet), `"eingerichtet"` oder `"mit-beispieldaten"`. Das Skript ordnet die Aufnahmen so, dass jeder Zustand nur einmal hergestellt wird, und stellt ihn über die echten Wege der App her.                                                                                                                                                       |
+| `anmeldung`              | `true`: Die Aufnahme ist angemeldet (eine Sitzung je Lauf, über die Seite „Anmelden“). Braucht `zustand` „eingerichtet“ oder „mit-beispieldaten“.                                                                                                                                                                                                                        |
+| `danach`                 | `"eingerichtet"`: Die Schritte dieser frischen Aufnahme schließen die Einrichtung selbst ab (Bild „Alles bereit“). Höchstens einmal.                                                                                                                                                                                                                                     |
+| `vorher`                 | Schritte vor der Aufnahme, der Reihe nach (siehe unten).                                                                                                                                                                                                                                                                                                                 |
+| `warteAuf`, `ausschnitt` | CSS-Selector, auf den gewartet wird, bzw. das Element, das allein aufgenommen wird.                                                                                                                                                                                                                                                                                      |
+| `status`                 | Erwarteter HTTP-Status der Seite, Standard 200 (z. B. 404 für die Fehlerseite).                                                                                                                                                                                                                                                                                          |
+| `breite`, `hoehe`        | Fenster in Pixeln (Standard 1280 × 800; die Doku nutzt 1440 × 900 am Rechner und 390 × 844 am Handy).                                                                                                                                                                                                                                                                    |
+| `thema`                  | `"dunkel"` (Standard) oder `"hell"`.                                                                                                                                                                                                                                                                                                                                     |
+| `skalierung`             | Pixeldichte von 1 bis 3, Standard 2.                                                                                                                                                                                                                                                                                                                                     |
+| `modus`                  | `"app"` (Standard) oder `"entwicklung"` für Seiten, die es nur mit `next dev` gibt: Das Skript startet den Entwicklungs-Server selbst (ohne Datenbank) und beendet ihn danach. Mit `PAIBOT_DEV_URL` nutzt es einen laufenden.                                                                                                                                            |
+| `datenschleuse`          | Zustand der Datenschleuse in der Beispiel-Umgebung: `"aus"` (Standard, nicht eingerichtet), `"bereit"`, `"schluessel_falsch"` oder `"nicht_erreichbar"`. Dafür startet `pnpm doku:app` den Worker mit einer kleinen lokalen Attrappe der Datenschleuse neu (`scripts/doku/schleuse-attrappe.mjs`). Nur mit `zustand`.                                                    |
+| `verdecke`               | Liste von CSS-Selectoren für Stellen, die sich bei jedem Lauf ändern (Uhrzeit des Servers, Prüfsummen, Signaturen). Das Skript füllt sie im fertigen Bild mit der Farbe ihrer Umgebung (`scripts/doku/png.mjs`), damit ein zweiter Lauf dasselbe Bild liefert; die Seite selbst bleibt unverändert. Neben CSS gehen Selectoren von Playwright wie `dd:has-text("blg_")`. |
 
 Schritte in `vorher` (je Schritt genau eine Aktion):
 
@@ -107,8 +116,10 @@ Schritte in `vorher` (je Schritt genau eine Aktion):
 | `{ "warteAuf": "<CSS>" }`, `{ "warteAufText": "…" }`                               | wartet auf ein Element bzw. einen sichtbaren Text                  |
 | `{ "gehe": "/pfad" }`                                                              | öffnet eine andere Seite                                           |
 | `{ "ablauf": "<name>" }`                                                           | setzt eine benannte Folge aus `"ablaeufe"` (oben in der Liste) ein |
+| `{ "zeige": "<CSS>" }` (Ziel auch als Objekt)                                      | scrollt das Element in den sichtbaren Bereich                      |
+| `{ "anbieter": { "reply": "…", "chunkChars": 40, "chunkDelayMs": 60000 } }`        | ändert das Verhalten des Test-Anbieters nur für diese Aufnahme     |
 
-Ziele als Objekt: genau eines von `css`, `beschriftung`, `rolle` (mit `name`) oder `text`, dazu `"genau": false` für Teil-Treffer. Für `text` gibt es Sonderwerte, damit nie ein Geheimnis in der Liste steht: `$einrichtungs-code` (Code aus dem Log), `$passwort` (Wegwerf-Passwort des Laufs), `$anbieter-schluessel` (Schlüssel des Test-Anbieters).
+Ziele als Objekt: genau eines von `css`, `beschriftung`, `rolle` (mit `name`) oder `text`, dazu `"genau": false` für Teil-Treffer und `"nr": 0` für den ersten von mehreren Treffern. Für `text` gibt es Sonderwerte, damit nie ein Geheimnis in der Liste steht: `$einrichtungs-code` (Code aus dem Log), `$passwort` (Wegwerf-Passwort des Laufs), `$anbieter-schluessel` (Schlüssel des Test-Anbieters).
 
 Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
 

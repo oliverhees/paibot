@@ -25,25 +25,37 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 3. Drück **Enter**, um zu senden. Für eine neue Zeile drückst du **Umschalt+Enter**.
 4. Die Unterhaltung erscheint links in der Seitenleiste unter deinem Bot. Ihr Titel ist der Anfang deiner ersten Nachricht (höchstens 60 Zeichen); ändern kannst du ihn später.
 
+   ![Neue, leere Unterhaltung: Überschrift „Frag deinen Bot etwas“, drei Beispiel-Fragen, darunter das Feld „Schreib Pai eine Nachricht“ mit dem Schalter „Datenschleuse aus“](assets/screenshots/chat-leer.png)
+
 **Die Antwort lesen**
 
 1. Unter deiner Nachricht erscheint die Antwort des Bots Stück für Stück. Oben steht neben dem Namen „wartet in der Schlange“ oder „schreibt“.
+
+   ![Die Antwort kommt gerade: der erste Satz steht schon da, darunter „schreibt“ und „Beleg folgt, sobald die Antwort fertig ist.“; in der Eingabe statt des Pfeils der Knopf „Stopp“](assets/screenshots/chat-streamt.png)
 2. Abgesetzte Blöcke (etwa ein Mail-Entwurf) haben rechts oben **Kopieren**. Ein Klick legt nur diesen Block in die Zwischenablage.
 3. Links in einer Antwort zeigen in Klammern, wohin sie führen. Bilder lädt PaiBot nie; statt eines Bildes steht ein Link.
 4. Ist die Antwort fertig, steht darunter eine Zeile mit drei Teilen: **Beleg** mit seiner Kennung (z. B. `B-0142`), der **Weg** („direkt · EU“ bzw. „geschützt über die Datenschleuse“) und das **Modell** mit Herkunft. Am Handy ist die Zeile gekürzt; ein Tipp auf den Weg klappt sie aus.
+
+   ![Fertige Antwort mit dem abgesetzten Block „Entwurf“ und dem Knopf „Kopieren“; darunter die Zeile mit „Beleg“, „direkt · lokal“ und dem Beispiel-Modell](assets/screenshots/chat-antwort.png)
 5. Mit **Schritte** oben rechts blendest du diese Zeilen aus und wieder ein.
 
 **Antwort stoppen**
 
 1. Solange der Bot antwortet, steht in der Eingabe statt des Pfeils ein Quadrat: **Stopp**.
 2. Klick darauf. Binnen etwa einer halben Sekunde hört der Bot auf. Was bis dahin geschrieben war, bleibt stehen, darunter „Abgebrochen. Der Text bis hierhin bleibt stehen.“
+
+   ![Abgebrochene Antwort: der Text bis zum Stopp bleibt stehen, darunter „Abgebrochen. Der Text bis hierhin bleibt stehen.“ und der Beleg](assets/screenshots/chat-abgebrochen.png)
 3. Solange eine Antwort läuft, kannst du in dieser Unterhaltung nichts Neues senden. Danach geht es wie gewohnt weiter.
 
 **Belege einer Unterhaltung ansehen**
 
 1. Klick in der Zeile unter einer Antwort auf **Beleg**. Rechts öffnet sich die Arbeitsfläche (am Handy als Blatt von unten) mit diesem Beleg: was geschah, wer es tat, die Entscheidung des Tors, die angewandten Regeln, das Ergebnis, Zeit und Kennung.
+
+   ![Rechts die Arbeitsfläche „Belege“ mit einem Beleg: Was, Wer, Entscheidung „erlaubt“, angewandte Regel R-002, Begründung, Ergebnis, Zeit und Kennung, unten „Als eigene Seite öffnen“](assets/screenshots/chat-beleg.png)
 2. **Als eigene Seite öffnen** führt zur Seite des Belegs unter „Belege“; dort lässt er sich prüfen.
 3. **Alle Belege dieser Unterhaltung** zeigt die Liste, neuester oben. Neue Belege erscheinen dort von selbst, während der Bot arbeitet.
+
+   ![Arbeitsfläche mit allen Belegen dieser Unterhaltung, neuester oben, jeweils mit Kennung und Uhrzeit](assets/screenshots/chat-belege-liste.png)
 4. Ohne Klick auf einen Beleg öffnest du die Liste über das Symbol rechts oben in der Kopfzeile oder über **⋯ → Belege dieser Unterhaltung**. Mit dem Kreuz schließt du sie.
 
 **Datenschleuse für diese Unterhaltung**
@@ -53,11 +65,17 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 3. Hat die Datenschleuse die letzte Anfrage gestoppt, steht über dem Feld „Datenschleuse nicht bereit“. Die Nachricht ging dann nicht an das Modell; es gibt keinen Rückfall auf den direkten Weg.
 4. Lag es an der Datenschleuse, sagt der Hinweis an der Stelle der Antwort genau, woran: Sie hat die Anfrage gestoppt, sie war nicht bereit, sie nimmt den Schlüssel von PaiBot (`SCHLEUSE_KEY`) nicht an, oder die Antwort war zu groß. Darunter steht, was du tun kannst, und der Link **Zur Datenschleuse**.
 
+   ![Oben eine Antwort mit dem Weg „geschützt über die Datenschleuse“; darunter der Hinweis „Vom Tor abgelehnt“: Die Datenschleuse nimmt den Schlüssel von PaiBot (SCHLEUSE_KEY) nicht an, mit Ausweg und dem Link „Zur Datenschleuse“](assets/screenshots/chat-schleuse-schluessel.png)
+
 **Unterhaltung umbenennen oder löschen**
 
 1. Klick oben rechts auf **⋯** (Weitere Aktionen).
+
+   ![Geöffnetes Menü „⋯“ mit „Umbenennen“, „Belege dieser Unterhaltung“ und „Unterhaltung löschen“](assets/screenshots/chat-menue.png)
 2. **Umbenennen**: neuen Titel eintragen, **Speichern** oder Enter. Die Seitenleiste zeigt den neuen Titel sofort.
-3. **Unterhaltung löschen …**: PaiBot fragt nach. **Löschen** entfernt Nachrichten und Antworten; die Belege bleiben, damit die Kette vollständig bleibt. Danach bist du wieder auf der Startseite.
+3. **Unterhaltung löschen**: PaiBot fragt nach. **Löschen** entfernt Nachrichten und Antworten; die Belege bleiben, damit die Kette vollständig bleibt. Danach bist du wieder auf der Startseite.
+
+   ![Rückfrage „Unterhaltung „Antwort an Max Mustermann“ wirklich löschen?“ mit „Abbrechen“ und „Löschen“](assets/screenshots/chat-loeschen.png)
 4. Solange der Bot in der Unterhaltung antwortet, lässt sie sich nicht löschen. Erst stoppen oder die Antwort abwarten.
 
 **Eine andere Unterhaltung öffnen**
@@ -68,35 +86,36 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche.
+Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Alle zeigen Beispiel-Daten: den Bot „Pai“, erfundene Unterhaltungen und den Test-Anbieter mit seinen Beispiel-Modellen. Uhrzeiten, die die Datenbank vergibt, sind in den Bildern ausgeblendet.
 
-<!--
-Gewünschte Aufnahmen (dunkel, Beispiel-Daten, Test-Anbieter mit Verzögerung je Stück):
-1. chat-leer – Rechner 1440×900, Adresse `/` direkt nach der Einrichtung: Überschrift „Frag deinen Bot etwas“, drei Beispiel-Fragen, Eingabe mit Schalter.
-2. chat-antwort – Rechner 1440×900: Beispiel-Frage „Schreib mir eine freundliche Absage für einen Termin.“ anklicken, Enter, warten bis fertig. Antwort mit Entwurfs-Block („Kopieren“) und Zeile „Beleg · direkt · … · Modell“ sichtbar.
-3. chat-streamt – Rechner 1440×900: wie 2, Aufnahme mitten in der Antwort (Text halb da, „schreibt“, Knopf „Stopp“).
-4. chat-abgebrochen – Rechner 1440×900: zweite Frage senden, nach den ersten Wörtern „Stopp“ klicken; „Abgebrochen. Der Text bis hierhin bleibt stehen.“ sichtbar.
-5. chat-beleg – Rechner 1440×900: in der Zeile unter der Antwort auf „Beleg“ klicken; Arbeitsfläche rechts mit dem Beleg (Was, Wer, Entscheidung, Regeln, Ergebnis).
-6. chat-belege-liste – Rechner 1440×900: in der Arbeitsfläche „Alle Belege dieser Unterhaltung“.
-7. chat-menue – Rechner 1440×900: Kopfzeile „⋯“ geöffnet (Umbenennen, Belege dieser Unterhaltung, Unterhaltung löschen …).
-8. chat-loeschen – Rechner 1440×900: „Unterhaltung löschen …“ gewählt, Rückfrage sichtbar.
-9. chat-handy – Handy 390×844: Unterhaltung mit fertiger Antwort, Zeile gekürzt; dazu chat-handy-zeile mit aufgeklappter Zeile (Tipp auf „direkt“).
-10. chat-handy-beleg – Handy 390×844: Beleg als Blatt von unten.
-11. chat-kein-modell – Rechner 1440×900: Bot ohne Modell (in den Beispiel-Daten kein Modell wählen), Adresse `/`: „… hat noch kein Modell“ mit Knopf „Modell und Anbieter öffnen“.
--->
+Eine Antwort über die Datenschleuse trägt in der Zeile darunter den Weg „geschützt über die Datenschleuse“:
+
+![Unterhaltung mit eingeschalteter Datenschleuse: Antwort an Max Mustermann, darunter die Zeile mit „Beleg“ und „geschützt über die Datenschleuse“; unten der Schalter „Datenschleuse an“](assets/screenshots/chat-geschuetzt.png)
+
+Hat dein Bot kein Modell, sagt die Startseite das und führt zur Seite „Modell und Anbieter“:
+
+![Startseite ohne Modell: Hinweis, dass der Bot noch kein Modell hat, mit dem Knopf „Modell und Anbieter öffnen“](assets/screenshots/chat-kein-modell.png)
+
+Am Handy ist die Zeile unter der Antwort gekürzt. Ein Tipp auf den Weg klappt sie aus; ein Tipp auf den Beleg öffnet ihn als Blatt von unten.
+
+![Unterhaltung auf dem Handy mit gekürzter Zeile unter der Antwort](assets/screenshots/chat-handy.png)
+
+![Auf dem Handy ausgeklappte Zeile: Beleg, Weg „direkt · lokal“ und Modell untereinander](assets/screenshots/chat-handy-zeile.png)
+
+![Auf dem Handy der Beleg als Blatt von unten, mit Was, Wer, Entscheidung, Regel, Ergebnis und Zeit](assets/screenshots/chat-handy-beleg.png)
 
 ## Einstellungen
 
-| Einstellung            | Wo                                 | Bedeutung                                                                                 | Standard            |
-| ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | ------------------- |
-| Modell des Bots        | Seite „Modell und Anbieter“        | Ohne gewähltes Modell antwortet der Bot nicht („Für deinen Bot ist kein Modell gewählt.“) | keins               |
-| Anweisung des Bots     | Seite „Bot“ (folgt)                | Steht am Ende der Anweisung an das Modell                                                 | leer                |
-| Ausgabegrenze des Bots | Seite „Bot“ (folgt)                | Höchstens so viele Token je Antwort                                                       | 4096                |
-| Datenschleuse          | Schalter je Unterhaltung, Standard | `An`: jede Anfrage geht über die Datenschleuse oder gar nicht                             | aus                 |
-| Verlaufsgrenze (Token) | Einstellungen                      | Wie viel vom bisherigen Gespräch mitgeschickt wird (etwa 4 Zeichen je Token)              | keine eigene Grenze |
-| Tagesbudget (Token)    | Einstellungen                      | Ist es erreicht, lehnt das Tor weitere Anfragen bis Mitternacht (deine Zeitzone) ab       | keins               |
-| Not-Aus                | Einstellungen (folgt)              | Ist er an, lehnt das Tor jede Anfrage des Bots ab                                         | aus                 |
-| Zeitzone               | Einstellungen                      | Für das Datum in der Anweisung und den Beginn des Tagesbudgets                            | `Europe/Berlin`     |
+| Einstellung            | Wo                                 | Bedeutung                                                                                 | Standard                                  |
+| ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Modell des Bots        | Seite „Modell und Anbieter“        | Ohne gewähltes Modell antwortet der Bot nicht („Für deinen Bot ist kein Modell gewählt.“) | keins                                     |
+| Anweisung des Bots     | Seite „Bot“                        | Steht am Ende der Anweisung an das Modell                                                 | leer                                      |
+| Ausgabegrenze des Bots | in dieser Version fest             | Höchstens so viele Token je Antwort                                                       | 4096                                      |
+| Datenschleuse          | Schalter je Unterhaltung, Standard | `An`: jede Anfrage geht über die Datenschleuse oder gar nicht                             | aus                                       |
+| Verlaufsgrenze (Token) | Einstellungen                      | Wie viel vom bisherigen Gespräch mitgeschickt wird (etwa 4 Zeichen je Token)              | keine eigene Grenze                       |
+| Tagesbudget (Token)    | Einstellungen                      | Ist es erreicht, lehnt das Tor weitere Anfragen bis Mitternacht (deine Zeitzone) ab       | keins                                     |
+| Not-Aus                | in dieser Version ohne Schalter    | Ist er an, lehnt das Tor jede Anfrage des Bots ab                                         | aus                                       |
+| Zeitzone               | Einstellungen                      | Für das Datum in der Anweisung und den Beginn des Tagesbudgets                            | Zeitzone des Browsers bei der Einrichtung |
 
 Feste Werte der Lauf-Steuerung (im Code, `RUN_TUNING`):
 

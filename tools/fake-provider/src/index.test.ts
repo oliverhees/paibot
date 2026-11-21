@@ -396,6 +396,47 @@ describe("Abbruch durch den Client", () => {
   });
 });
 
+describe("Anhalten mitten im Strom", () => {
+  it("hält nach den ersten Stücken an, bis der Client schließt; danach kein [DONE]", async () => {
+    provider.configure({ reply: "abcdefghijkl", chunkChars: 4, holdAfterChunks: 2 });
+    const controller = new AbortController();
+    const response = await chat({ stream: true }, "Hallo", controller.signal);
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let text = "";
+    while (!text.includes('"efgh"')) {
+      const teil = await reader?.read();
+      if (!teil || teil.done) break;
+      text += decoder.decode(teil.value);
+    }
+    expect(text).toContain('"abcd"');
+    expect(text).toContain('"efgh"');
+    // Nichts weiter: das dritte Stück kommt nicht, solange die Verbindung offen ist
+    const weiter = await Promise.race([
+      reader?.read().then(() => "weiter"),
+      new Promise((resolve) => setTimeout(() => resolve("still"), 150)),
+    ]);
+    expect(weiter).toBe("still");
+    controller.abort();
+    await until(() => provider.requests[0]?.closedByClient === true);
+  });
+
+  it("nimmt holdAfterChunks über die Steuerung an und prüft den Wert", async () => {
+    const gut = await fetch(`${origin}/_steuerung/verhalten`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdAfterChunks: 1 }),
+    });
+    expect(gut.status).toBe(200);
+    const schlecht = await fetch(`${origin}/_steuerung/verhalten`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdAfterChunks: -1 }),
+    });
+    expect(schlecht.status).toBe(400);
+  });
+});
+
 describe("Werkzeug-Aufruf", () => {
   const toolCall = { name: "wetter_abfragen", arguments: { stadt: "Berlin", tage: 3 } };
 

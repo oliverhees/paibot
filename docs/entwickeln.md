@@ -172,17 +172,18 @@ Test-Anbieter bereit: http://127.0.0.1:8080/v1
 
 ## Einstellungen
 
-| Einstellung             | Wo                          | Bedeutung                                                           | Standard                           |
-| ----------------------- | --------------------------- | ------------------------------------------------------------------- | ---------------------------------- |
-| `FAKE_PROVIDER_PORT`    | Umgebungsvariable           | Port; `0` wählt einen freien                                        | `0` (im Image `8080`)              |
-| `FAKE_PROVIDER_HOST`    | Umgebungsvariable           | Adresse, an die er sich bindet                                      | `127.0.0.1` (im Image `0.0.0.0`)   |
-| `FAKE_PROVIDER_API_KEY` | Umgebungsvariable           | verlangt `Authorization: Bearer <Schlüssel>`, sonst Fehler 401      | leer (keine Anmeldung)             |
-| `reply`                 | `configure` / `…/verhalten` | Antworttext (im Code auch eine Funktion der Nachrichten)            | ein kurzer Satz                    |
-| `chunkChars`            | `configure` / `…/verhalten` | Zeichen pro Stück im Strom                                          | 8                                  |
-| `firstChunkDelayMs`     | `configure` / `…/verhalten` | Pause vor dem ersten Stück                                          | 0                                  |
-| `chunkDelayMs`          | `configure` / `…/verhalten` | Pause zwischen den Stücken                                          | 0                                  |
-| `models`                | `configure` / `…/verhalten` | Modell-Liste (`id`, `name`, `contextLength`, `modality`, …)         | zwei Text-Modelle, ein Bild-Modell |
-| `toolCall`              | `configure` / `…/verhalten` | meldet einen Werkzeug-Aufruf (`name`, `arguments`); `null` entfernt | aus                                |
+| Einstellung             | Wo                          | Bedeutung                                                              | Standard                           |
+| ----------------------- | --------------------------- | ---------------------------------------------------------------------- | ---------------------------------- |
+| `FAKE_PROVIDER_PORT`    | Umgebungsvariable           | Port; `0` wählt einen freien                                           | `0` (im Image `8080`)              |
+| `FAKE_PROVIDER_HOST`    | Umgebungsvariable           | Adresse, an die er sich bindet                                         | `127.0.0.1` (im Image `0.0.0.0`)   |
+| `FAKE_PROVIDER_API_KEY` | Umgebungsvariable           | verlangt `Authorization: Bearer <Schlüssel>`, sonst Fehler 401         | leer (keine Anmeldung)             |
+| `reply`                 | `configure` / `…/verhalten` | Antworttext (im Code auch eine Funktion der Nachrichten)               | ein kurzer Satz                    |
+| `chunkChars`            | `configure` / `…/verhalten` | Zeichen pro Stück im Strom                                             | 8                                  |
+| `firstChunkDelayMs`     | `configure` / `…/verhalten` | Pause vor dem ersten Stück                                             | 0                                  |
+| `chunkDelayMs`          | `configure` / `…/verhalten` | Pause zwischen den Stücken                                             | 0                                  |
+| `holdAfterChunks`       | `configure` / `…/verhalten` | hält den Strom nach so vielen Text-Stücken an, bis der Client schließt | 0 (nie)                            |
+| `models`                | `configure` / `…/verhalten` | Modell-Liste (`id`, `name`, `contextLength`, `modality`, …)            | zwei Text-Modelle, ein Bild-Modell |
+| `toolCall`              | `configure` / `…/verhalten` | meldet einen Werkzeug-Aufruf (`name`, `arguments`); `null` entfernt    | aus                                |
 
 Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 

@@ -304,3 +304,199 @@ describe("Schutz der Wegwerf-Datenbank", () => {
     },
   );
 });
+
+describe("Beispiel-Umgebung: Datenschleuse, Test-Anbieter, verdeckte Stellen", () => {
+  it("„datenschleuse“: Standard „aus“ bei Aufnahmen mit Zustand, nur bekannte Werte", () => {
+    const [a, b, c] = pruefe([
+      { name: "a", pfad: "/", zustand: "eingerichtet" },
+      { name: "b", pfad: "/", zustand: "eingerichtet", datenschleuse: "bereit" },
+      { name: "c", pfad: "/" },
+    ]);
+    expect(a?.datenschleuse).toBe("aus");
+    expect(b?.datenschleuse).toBe("bereit");
+    expect(c?.datenschleuse).toBeUndefined();
+    expect(
+      fehlerText(() =>
+        pruefe([{ name: "x", pfad: "/", zustand: "eingerichtet", datenschleuse: "an" }]),
+      ),
+    ).toContain("„datenschleuse“ ist eines von");
+    expect(fehlerText(() => pruefe([{ name: "x", pfad: "/", datenschleuse: "bereit" }]))).toContain(
+      "nur zusammen mit „zustand“",
+    );
+  });
+
+  it("Ziel mit „nr“ wählt einen von mehreren Treffern", () => {
+    const [a] = pruefe([
+      {
+        name: "a",
+        pfad: "/",
+        vorher: [{ klick: { rolle: "link", name: "B", genau: false, nr: 0 } }],
+      },
+    ]);
+    expect(a?.vorher[0]).toEqual({ klick: { rolle: "link", name: "B", genau: false, nr: 0 } });
+    expect(
+      fehlerText(() =>
+        pruefe([{ name: "x", pfad: "/", vorher: [{ klick: { css: "a", nr: -1 } }] }]),
+      ),
+    ).toContain("„nr“");
+  });
+
+  it("Schritte „zeige“ und „anbieter“; unbekannte Felder des Anbieters sind ein Fehler", () => {
+    const [a] = pruefe([
+      {
+        name: "a",
+        pfad: "/",
+        vorher: [{ zeige: "h2" }, { anbieter: { reply: "Hallo", chunkDelayMs: 200 } }],
+      },
+    ]);
+    expect(a?.vorher).toEqual([
+      { zeige: { css: "h2", genau: true } },
+      { anbieter: { reply: "Hallo", chunkDelayMs: 200 } },
+    ]);
+    expect(
+      fehlerText(() => pruefe([{ name: "x", pfad: "/", vorher: [{ anbieter: { apiKey: "k" } }] }])),
+    ).toContain("kennt „apiKey“ nicht");
+    expect(
+      fehlerText(() =>
+        pruefe([{ name: "x", pfad: "/", vorher: [{ anbieter: { chunkDelayMs: -1 } }] }]),
+      ),
+    ).toContain("ganze Zahl");
+  });
+
+  it("„verdecke“ ist eine Liste von CSS-Selectoren, Standard leer", () => {
+    const [a, b] = pruefe([
+      { name: "a", pfad: "/" },
+      { name: "b", pfad: "/", verdecke: ["time"] },
+    ]);
+    expect(a?.verdecke).toEqual([]);
+    expect(b?.verdecke).toEqual(["time"]);
+    expect(fehlerText(() => pruefe([{ name: "x", pfad: "/", verdecke: "time" }]))).toContain(
+      "Liste von CSS-Selectoren",
+    );
+  });
+});
+
+type Antwort = {
+  status?: number;
+  daten?: unknown;
+  weiter?: { apiKey: string; koerper: Record<string, unknown> };
+};
+const attrappe = await laden<{
+  antwortDerAttrappe: (a: Record<string, unknown>) => Antwort;
+  starteAttrappe: (a: Record<string, unknown>) => Promise<{
+    url: string;
+    setzeZustand: (z: string) => void;
+    stop: () => Promise<void>;
+  }>;
+}>("scripts/doku/schleuse-attrappe.mjs");
+describe("Beispiel-Datenschleuse (Attrappe)", () => {
+  const frage = (zustand: string, methode: string, pfad: string, kopf = {}, koerper = "") =>
+    attrappe.antwortDerAttrappe({ zustand, schluessel: "s", methode, pfad, kopf, koerper });
+  const mit = { authorization: "Bearer s" };
+
+  it("zeigt dem Worker die drei Zustände so, wie die Prüfung sie unterscheidet", () => {
+    expect(frage("bereit", "GET", "/health/liveliness").status).toBe(200);
+    expect(frage("bereit", "GET", "/v1/models", mit).status).toBe(200);
+    expect(frage("bereit", "GET", "/v1/models").status).toBe(401);
+    expect(frage("schluessel_falsch", "GET", "/health/liveliness").status).toBe(200);
+    expect(frage("schluessel_falsch", "GET", "/v1/models", mit).status).toBe(401);
+    expect(frage("nicht_erreichbar", "GET", "/health/liveliness").status).toBe(503);
+  });
+
+  it("reicht Chat-Anfragen nur mit Schlüssel weiter, ohne api_key im Körper, Modell ohne Vorsatz", () => {
+    const koerper = JSON.stringify({ model: "eigen/beispiel/allrounder", api_key: "k", n: 1 });
+    expect(frage("bereit", "POST", "/v1/chat/completions", {}, koerper).status).toBe(401);
+    const a = frage("bereit", "POST", "/v1/chat/completions", mit, koerper);
+    expect(a.weiter).toEqual({ apiKey: "k", koerper: { model: "beispiel/allrounder", n: 1 } });
+    expect(frage("bereit", "POST", "/v1/chat/completions", mit, "kein json").status).toBe(400);
+  });
+
+  it("läuft nur an 127.0.0.1 und wechselt den Zustand", async () => {
+    const a = await attrappe.starteAttrappe({ schluessel: "s", anbieterUrl: "http://127.0.0.1:9" });
+    try {
+      expect(new URL(a.url).hostname).toBe("127.0.0.1");
+      expect((await fetch(`${a.url}/health/liveliness`)).status).toBe(200);
+      a.setzeZustand("nicht_erreichbar");
+      expect((await fetch(`${a.url}/health/liveliness`)).status).toBe(503);
+      expect(() => a.setzeZustand("kaputt")).toThrow("Unbekannter Zustand");
+    } finally {
+      await a.stop();
+    }
+  });
+});
+
+type Bild = { breite: number; hoehe: number; bpp: number; pixel: Buffer };
+const png = await laden<{
+  lesePng: (b: Buffer) => Bild;
+  schreibePng: (b: Bild) => Buffer;
+  umgebungsFarbe: (b: Bild, f: Record<string, number>) => Buffer;
+  verdecke: (b: Bild, f: Record<string, number>[]) => Bild;
+}>("scripts/doku/png.mjs");
+const { deflateSync } = await import("node:zlib");
+
+describe("Stellen im Bild verdecken (PNG)", () => {
+  const bildMit = (breite: number, hoehe: number, farbe: number[]): Bild => {
+    const pixel = Buffer.alloc(breite * hoehe * 4);
+    for (let i = 0; i < breite * hoehe; i += 1) Buffer.from(farbe).copy(pixel, i * 4);
+    return { breite, hoehe, bpp: 4, pixel };
+  };
+
+  it("schreibt und liest ein Bild verlustfrei, gleiche Pixel geben gleiche Bytes", () => {
+    const bild = bildMit(5, 4, [14, 14, 16, 255]);
+    bild.pixel[0] = 200;
+    const a = png.schreibePng(bild);
+    expect(png.schreibePng(png.lesePng(a)).equals(a)).toBe(true);
+    expect(png.lesePng(a).pixel.equals(bild.pixel)).toBe(true);
+  });
+
+  it("liest auch Zeilen mit Filter (wie Chromium sie schreibt)", () => {
+    // 2×1 RGB mit Filter 1 (Sub): zweites Pixel als Abstand zum ersten
+    const roh = Buffer.from([1, 10, 20, 30, 5, 5, 5]);
+    const kopf = Buffer.alloc(13);
+    kopf.writeUInt32BE(2, 0);
+    kopf.writeUInt32BE(1, 4);
+    kopf[8] = 8;
+    kopf[9] = 2;
+    const roh8 = png.schreibePng({ breite: 2, hoehe: 1, bpp: 3, pixel: Buffer.alloc(6) });
+    // IDAT des selbst geschriebenen Bilds durch eines mit Filter ersetzen
+    const ohneIdat = (b: Buffer) => b.subarray(0, 33);
+    const idat = deflateSync(roh);
+    const laenge = Buffer.alloc(4);
+    laenge.writeUInt32BE(idat.length, 0);
+    const datei = Buffer.concat([
+      ohneIdat(roh8),
+      laenge,
+      Buffer.from("IDAT"),
+      idat,
+      Buffer.alloc(4),
+      Buffer.from([0, 0, 0, 0]),
+      Buffer.from("IEND"),
+      Buffer.alloc(4),
+    ]);
+    expect([...png.lesePng(datei).pixel]).toEqual([10, 20, 30, 15, 25, 35]);
+  });
+
+  it("füllt eine Fläche mit der häufigsten Farbe direkt um sie herum", () => {
+    const bild = bildMit(20, 20, [25, 25, 28, 255]);
+    // „Uhrzeit“ in der Mitte
+    for (let y = 8; y < 12; y += 1) {
+      for (let x = 6; x < 14; x += 1)
+        Buffer.from([250, 250, 250, 255]).copy(bild.pixel, (y * 20 + x) * 4);
+    }
+    expect([...png.umgebungsFarbe(bild, { x: 6, y: 8, breite: 8, hoehe: 4 })]).toEqual([
+      25, 25, 28, 255,
+    ]);
+    png.verdecke(bild, [{ x: 6, y: 8, breite: 8, hoehe: 4 }]);
+    expect(bild.pixel.equals(bildMit(20, 20, [25, 25, 28, 255]).pixel)).toBe(true);
+  });
+
+  it("Flächen am Rand und außerhalb des Bilds sind kein Fehler", () => {
+    const bild = bildMit(4, 4, [1, 2, 3, 255]);
+    expect(() =>
+      png.verdecke(bild, [
+        { x: -5, y: -5, breite: 6, hoehe: 6 },
+        { x: 10, y: 10, breite: 3, hoehe: 3 },
+      ]),
+    ).not.toThrow();
+  });
+});

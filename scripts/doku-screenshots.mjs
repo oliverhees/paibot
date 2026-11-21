@@ -46,10 +46,17 @@
 //                 { "tippe": "<Beschriftung des Felds>", "text": "…" }  (Ziel auch als Objekt)
 //                 { "taste": "Enter" }   { "warteAuf": "<CSS>" }   { "warteAufText": "…" }
 //                 { "gehe": "/pfad" }    { "ablauf": "<Name aus „ablaeufe“>" }
+//                 { "zeige": "<CSS>" }  (in den sichtbaren Bereich scrollen)
+//                 { "anbieter": { "reply": "…", "chunkDelayMs": 200 } }  (Test-Anbieter, nur diese Aufnahme)
 //               Ziel-Objekt: genau eines von css, beschriftung, rolle (mit name), text; dazu
 //               "genau": false für Teil-Treffer. Sonderwerte für „text“: $einrichtungs-code,
 //               $passwort, $anbieter-schluessel (nie echte Werte in die Liste schreiben).
 //   ausschnitt  CSS-Selector; dann wird nur dieses Element aufgenommen (optional)
+//   datenschleuse  "aus" (Standard bei „zustand“), "bereit", "schluessel_falsch", "nicht_erreichbar":
+//               Zustand der Beispiel-Datenschleuse; `pnpm doku:app` startet den Worker dafür neu
+//   verdecke    Liste von Selectoren (CSS oder Playwright, z. B. dd:has-text("blg_")), deren
+//               Stellen im Bild mit der Farbe ihrer Umgebung gefüllt werden (Uhrzeit der Datenbank,
+//               Kennungen, Prüfsummen)
 //   thema       "dunkel" (Standard) oder "hell"
 //   beschreibung  Notiz für Menschen, wird nicht ausgewertet (optional)
 // Oben in der Datei: "ablaeufe": { "<name>": [Schritte] } für wiederkehrende Folgen.
@@ -66,14 +73,23 @@
 // Playwright gehört bewusst nicht zu den Abhängigkeiten des Projekts, damit `pnpm install`
 // für alle schlank bleibt. Es wird erst hier geladen und nur gebraucht, wer Screenshots aufnimmt.
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { aendereLauf, laufDatei, leseLauf, prozessLebt, setzeSonderwert } from "./doku/lauf.mjs";
+import {
+  ANBIETER_STANDARD,
+  aendereLauf,
+  laufDatei,
+  leseLauf,
+  prozessLebt,
+  setzeSonderwert,
+} from "./doku/lauf.mjs";
 import { ListenFehler, ordneAufnahmen, pruefeListe } from "./doku/liste.mjs";
-import { istEingerichtet, stelleHer } from "./doku-beispieldaten.mjs";
+import { lesePng, schreibePng, verdecke as verdeckeFlaechen } from "./doku/png.mjs";
+import { istEingerichtet, stelleHer, steuereAnbieter } from "./doku-beispieldaten.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB = path.join(ROOT, "apps", "web");
@@ -263,6 +279,11 @@ async function waitUntilSettled(page) {
 
 /** Playwright-Locator zu einem geprüften Ziel. */
 function locate(page, ziel) {
+  const treffer = finde(page, ziel);
+  return ziel.nr === undefined ? treffer : treffer.nth(ziel.nr);
+}
+
+function finde(page, ziel) {
   const exact = ziel.genau !== false;
   if (ziel.css) return page.locator(ziel.css);
   if (ziel.beschriftung) return page.getByLabel(ziel.beschriftung, { exact });
@@ -281,6 +302,10 @@ async function runStep(page, step, baseUrl) {
   else if (step.warteAuf) await page.waitForSelector(step.warteAuf, { timeout });
   else if (step.warteAufText) {
     await page.getByText(step.warteAufText).first().waitFor({ state: "visible", timeout });
+  } else if (step.zeige) {
+    await locate(page, step.zeige).first().scrollIntoViewIfNeeded({ timeout });
+  } else if (step.anbieter) {
+    await steuereAnbieter(lauf, step.anbieter);
   } else if (step.gehe) {
     await page.goto(`${baseUrl}${step.gehe}`, { waitUntil: "load" });
     await waitUntilSettled(page);
@@ -339,8 +364,11 @@ async function shoot(browser, entry, baseUrl) {
     timezoneId: "Europe/Berlin",
     ...(entry.anmeldung ? { storageState: await anmeldung(browser) } : {}),
   });
+  // „Anker kopieren“ und ähnliche Knöpfe schreiben in die Zwischenablage
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseUrl });
+  let page;
   try {
-    const page = await context.newPage();
+    page = await context.newPage();
     const problems = watch(context, page, baseUrl);
     // Meldungen der Content-Security-Policy kommen als Ereignis in der Seite; das Skript dafür
     // läuft über das Werkzeug des Browsers, nicht als Teil der Seite.
@@ -361,8 +389,10 @@ async function shoot(browser, entry, baseUrl) {
     }
     if (entry.modus === "app" && entry.zustand && !entry.danach) {
       // Weiterleitung statt der Seite heißt: falscher Zustand der App
+      // (eine Abfrage wie ?aktion=… gehört zum Pfad, zählt hier aber nicht mit)
       const ziel = new URL(page.url()).pathname;
-      if (ziel !== entry.pfad) throw new Error(`Weitergeleitet nach ${ziel} statt ${entry.pfad}.`);
+      const erwartet = new URL(entry.pfad, baseUrl).pathname;
+      if (ziel !== erwartet) throw new Error(`Weitergeleitet nach ${ziel} statt ${erwartet}.`);
     }
     await waitUntilSettled(page);
     if (entry.warteAuf) await page.waitForSelector(entry.warteAuf, { timeout: 15_000 });
@@ -383,19 +413,96 @@ async function shoot(browser, entry, baseUrl) {
     if (!checks.inter) problems.push("Die Schrift „Inter“ ist nicht geladen.");
     if (problems.length > 0) throw new Error(problems.join(" | "));
     const file = path.join(OUT_DIR, `${entry.name}.png`);
-    const options = { path: file, animations: "disabled", caret: "hide" };
-    if (entry.ausschnitt) await page.locator(entry.ausschnitt).screenshot(options);
-    else await page.screenshot(options);
+    const options = { animations: "disabled", caret: "hide" };
+    // Stellen mit echter Uhrzeit der Datenbank oder Zufall (Kennungen, Prüfsummen, Signaturen)
+    // werden im fertigen Bild mit der Farbe ihrer Umgebung gefüllt (scripts/doku/png.mjs), damit
+    // ein zweiter Lauf dasselbe Bild liefert. Die Seite selbst bleibt unberührt.
+    const aufnehmen = async () => {
+      const ursprung = entry.ausschnitt
+        ? await page.locator(entry.ausschnitt).boundingBox()
+        : { x: 0, y: 0 };
+      const flaechen = [];
+      for (const css of entry.verdecke) {
+        for (const stelle of await page.locator(css).all()) {
+          if (!(await stelle.isVisible())) continue;
+          const box = await stelle.boundingBox();
+          if (box) {
+            flaechen.push({
+              x: (box.x - ursprung.x) * entry.skalierung,
+              y: (box.y - ursprung.y) * entry.skalierung,
+              breite: box.width * entry.skalierung,
+              hoehe: box.height * entry.skalierung,
+            });
+          }
+        }
+      }
+      const roh = entry.ausschnitt
+        ? await page.locator(entry.ausschnitt).screenshot(options)
+        : await page.screenshot(options);
+      return flaechen.length > 0 ? schreibePng(verdeckeFlaechen(lesePng(roh), flaechen)) : roh;
+    };
+    // Erst wenn zwei Aufnahmen kurz nacheinander gleich sind, steht die Seite still (späte Daten,
+    // Übergänge). Sonst nach fünf Versuchen mit Fehler abbrechen.
+    let bild = await aufnehmen();
+    for (let versuch = 1; ; versuch += 1) {
+      await page.waitForTimeout(250);
+      const naechstes = await aufnehmen();
+      if (naechstes.equals(bild)) break;
+      if (versuch >= 5)
+        throw new Error("Die Seite kommt nicht zur Ruhe (Bild ändert sich weiter).");
+      bild = naechstes;
+    }
     if (problems.length > 0) throw new Error(problems.join(" | "));
+    writeFileSync(file, bild);
     console.log(`ok   ${path.relative(ROOT, file)}`);
+  } catch (error) {
+    // Bild des Fehlers zum Nachsehen, außerhalb der Doku
+    const datei = path.join(os.tmpdir(), "paibot-doku-fehler", `${entry.name}.png`);
+    try {
+      mkdirSync(path.dirname(datei), { recursive: true });
+      await page?.screenshot({ path: datei });
+      error.message += `\n     Bild des Zustands: ${datei}`;
+    } catch {
+      // kein Bild möglich
+    }
+    throw error;
   } finally {
     await context.close();
   }
 }
 
+/**
+ * Beispiel-Umgebung vor jeder Aufnahme mit Zustand: Test-Anbieter im Grund-Verhalten (ein Schritt
+ * „anbieter“ ändert es nur für diese Aufnahme) und Datenschleuse im verlangten Zustand (Feld
+ * „datenschleuse“, Standard „aus“; `pnpm doku:app` startet den Worker dafür neu).
+ */
+async function ensureBeispielUmgebung(entry) {
+  if (!lauf) return;
+  await steuereAnbieter(lauf, ANBIETER_STANDARD);
+  if (lauf.schleuse === entry.datenschleuse) return;
+  if (!lauf.steuerung)
+    throw new Error("Die Lauf-Datei kennt keine Steuerung (pnpm doku:app neu starten).");
+  if (entry.datenschleuse !== "aus" || lauf.schleuse !== undefined) {
+    console.log(`…    Datenschleuse der Beispiel-Umgebung: ${entry.datenschleuse}`);
+  }
+  const antwort = await fetch(`${lauf.steuerung.url}/datenschleuse`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${lauf.steuerung.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ zustand: entry.datenschleuse }),
+  });
+  if (!antwort.ok) {
+    throw new Error(`Steuerung der Beispiel-Umgebung antwortet ${antwort.status}.`);
+  }
+  lauf = aendereLauf({ schleuse: entry.datenschleuse }, LAUF);
+}
+
 /** Bringt die App vor einer Aufnahme in den verlangten Zustand (nur vorwärts möglich). */
 async function ensureState(entry) {
   if (entry.modus !== "app" || entry.zustand === undefined) return;
+  await ensureBeispielUmgebung(entry);
   if (!lauf) {
     throw new Error(
       "Diese Aufnahme braucht einen Zustand der App. Starte die App mit `pnpm doku:app` " +
