@@ -289,10 +289,11 @@
   min-width: 0;
 }
 
+/* Der Pfeil ist ein Symbol, kein Text: Linie mit mindestens 3:1 (--line-strong). */
 .frage .symbol {
   margin-top: 3px;
-  color: var(--line-strong);
-  transition-property: transform, color;
+  stroke: var(--line-strong);
+  transition-property: transform, stroke;
   transition-duration: var(--dauer-kurz);
 }
 
@@ -304,7 +305,7 @@
 .frage:hover .symbol,
 .frage:focus-visible .symbol {
   transform: translateX(2px);
-  color: var(--accent-text);
+  stroke: var(--accent-text);
 }
 
 .frage:focus-visible {
