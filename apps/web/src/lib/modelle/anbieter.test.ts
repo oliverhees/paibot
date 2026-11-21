@@ -330,7 +330,17 @@ describe("PUT /api/anbieter/:id", () => {
 
   it("Vorlage EUrouter: Adresse und Region sind fest", async () => {
     const e = await eingerichtet();
-    const a = await anbieterVon(e);
+    const angelegt = await e.rufe(e.r.anbieterAnlegen, "POST", "/api/anbieter", {
+      koerper: {
+        templateKey: "eurouter",
+        name: "EUrouter",
+        baseUrl: "https://api.eurouter.ai/v1",
+        region: "eu",
+        apiKey: TEST_SCHLUESSEL,
+      },
+    });
+    expect(angelegt.status).toBe(201);
+    const a = (angelegt.body.daten as { anbieter: { id: string } }).anbieter;
     const r = await e.rufe(e.r.anbieterAendern, "PUT", `/api/anbieter/${a.id}`, {
       params: { id: a.id },
       koerper: {

@@ -139,6 +139,57 @@
           "name": "Menü öffnen"
         }
       }
+    ],
+    "eigen-formular-lokal": [
+      {
+        "zeige": "section:has(h2:text-is('Eigener Anbieter'))"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Eigenen Anbieter hinzufügen"
+        }
+      },
+      {
+        "warteAufText": "Neuer eigener Anbieter"
+      },
+      {
+        "tippe": "Name",
+        "text": "Dienst auf meinem Rechner"
+      },
+      {
+        "klick": {
+          "css": "select[name=region]"
+        }
+      },
+      {
+        "taste": "ArrowDown"
+      },
+      {
+        "taste": "ArrowDown"
+      },
+      {
+        "taste": "Enter"
+      },
+      {
+        "warteAufText": "Nur bei „lokal“ sind Adressen im eigenen Netz"
+      }
+    ],
+    "eigen-anzeigen": [
+      {
+        "klick": {
+          "css": "select[name=anbieter]"
+        }
+      },
+      {
+        "taste": "ArrowDown"
+      },
+      {
+        "taste": "Enter"
+      },
+      {
+        "warteAufText": "Die Liste kommt direkt von Dienst auf meinem Rechner"
+      }
     ]
   },
   "aufnahmen": [
@@ -1892,6 +1943,226 @@
       "beschreibung": "Modell übernommen"
     },
     {
+      "name": "modelle-eigen-formular",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-formular-lokal"
+        },
+        {
+          "tippe": "Adresse (Basis-URL)",
+          "text": "http://localhost:18080/v1"
+        },
+        {
+          "warteAufText": "Die Verbindung ist unverschlüsselt"
+        },
+        {
+          "zeige": "button:has-text('Testen und speichern')"
+        }
+      ],
+      "beschreibung": "Eigener Anbieter: Formular mit Ort „lokal“, Warnung bei http://"
+    },
+    {
+      "name": "modelle-eigen-gesperrt",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-formular-lokal"
+        },
+        {
+          "tippe": "Adresse (Basis-URL)",
+          "text": "http://postgres:5432/v1"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Testen und speichern"
+          }
+        },
+        {
+          "warteAufText": "gehört zu einem Dienst von PaiBot selbst"
+        },
+        {
+          "zeige": "button:has-text('Testen und speichern')"
+        }
+      ],
+      "beschreibung": "Eigener Anbieter: Adresse eines Dienstes von PaiBot ist auch bei „lokal“ gesperrt"
+    },
+    {
+      "name": "modelle-eigen-gespeichert",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-formular-lokal"
+        },
+        {
+          "tippe": "Adresse (Basis-URL)",
+          "text": "http://localhost:18080/v1"
+        },
+        {
+          "tippe": {
+            "beschriftung": "Schlüssel (bei",
+            "genau": false
+          },
+          "text": "$anbieter-schluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Testen und speichern"
+          }
+        },
+        {
+          "warteAufText": "Dienst auf meinem Rechner ist gespeichert."
+        },
+        {
+          "zeige": "section:has(h2:text-is('Eigener Anbieter'))"
+        }
+      ],
+      "beschreibung": "Eigener Anbieter gespeichert (Verbindung getestet)"
+    },
+    {
+      "name": "modelle-eigen-angezeigt",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        }
+      ],
+      "beschreibung": "Zwei Anbieter: Auswahl „Angezeigter Anbieter“ oben, Modell-Liste des eigenen Anbieters"
+    },
+    {
+      "name": "modelle-eigen-aendern",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Ändern"
+          }
+        },
+        {
+          "warteAufText": "Dienst auf meinem Rechner ändern"
+        },
+        {
+          "zeige": "button:has-text('Testen und speichern')"
+        }
+      ],
+      "beschreibung": "Eigenen Anbieter ändern: Werte vorbelegt, Schlüssel leer lassen = behalten, Schlüssel entfernen"
+    },
+    {
+      "name": "modelle-eigen-abgeglichen",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Liste abgleichen"
+          }
+        },
+        {
+          "warteAufText": "Liste abgeglichen"
+        },
+        {
+          "zeige": "button:has-text('Liste abgleichen')"
+        }
+      ],
+      "beschreibung": "Liste abgleichen: Modelle neu vom eigenen Anbieter geholt"
+    },
+    {
+      "name": "modelle-eigen-entfernen",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anbieter entfernen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        }
+      ],
+      "beschreibung": "Eigenen Anbieter entfernen: Rückfrage"
+    },
+    {
+      "name": "modelle-eigen-entfernt",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "eigen-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anbieter entfernen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Entfernen"
+          }
+        },
+        {
+          "warteAufText": "Dienst auf meinem Rechner ist entfernt."
+        }
+      ],
+      "beschreibung": "Eigener Anbieter entfernt; der erste Anbieter ist wieder allein"
+    },
+    {
       "name": "modelle-entfernen",
       "pfad": "/modelle",
       "zustand": "mit-beispieldaten",
@@ -1903,14 +2174,14 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "Schlüssel entfernen"
+            "name": "Anbieter entfernen"
           }
         },
         {
           "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
         }
       ],
-      "beschreibung": "Schlüssel entfernen: Rückfrage"
+      "beschreibung": "Anbieter entfernen: Rückfrage"
     },
     {
       "name": "chat-suche",
@@ -2114,7 +2385,7 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "Schlüssel entfernen"
+            "name": "Anbieter entfernen"
           }
         },
         {
@@ -2130,7 +2401,7 @@
           "warteAufText": "Modell für"
         }
       ],
-      "beschreibung": "Schlüssel entfernt: kein Anbieter, kein Modell"
+      "beschreibung": "Anbieter entfernt: kein Anbieter, kein Modell"
     },
     {
       "name": "chat-kein-modell",
@@ -2146,6 +2417,158 @@
         }
       ],
       "beschreibung": "Chat ohne Modell: Hinweis mit Weg zu „Modell und Anbieter“"
+    },
+    {
+      "name": "geraete-liste",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "zeige": "section[aria-labelledby='geraete-titel'] li:last-child"
+        }
+      ],
+      "beschreibung": "Einstellungen „Zugang“: Abschnitt „Bekannte Geräte“ mit „dieses Gerät“"
+    },
+    {
+      "name": "geraete-liste-handy",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "zeige": "section[aria-labelledby='geraete-titel'] li:first-child"
+        }
+      ],
+      "beschreibung": "„Bekannte Geräte“ auf dem Handy"
+    },
+    {
+      "name": "geraet-entfernen-rueckfrage",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "klick": "section[aria-labelledby='geraete-titel'] li:nth-child(2) button"
+        },
+        {
+          "warteAuf": "[role='alertdialog']"
+        }
+      ],
+      "beschreibung": "Rückfrage vor dem Entfernen eines anderen Geräts (nur die Rückfrage, nichts wird entfernt)"
+    },
+    {
+      "name": "geraete-neues-geraet",
+      "pfad": "/anmelden",
+      "zustand": "mit-beispieldaten",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "tippe": "Passwort",
+          "text": "$passwort"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anmelden"
+          }
+        },
+        {
+          "warteAuf": "nav"
+        },
+        {
+          "gehe": "/einstellungen"
+        },
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "zeige": "section[aria-labelledby='geraete-titel'] li:first-child"
+        }
+      ],
+      "beschreibung": "Anmeldung in einem weiteren Browser: er steht als neues Gerät mit „dieses Gerät“ in der Liste (Grundlage für den Hinweis auf den anderen Geräten)"
+    },
+    {
+      "name": "hinweis-neue-anmeldung",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "beschreibung": "Leiste „Neue Anmeldung von einem neuen Gerät“ auf einem anderen angemeldeten Gerät"
+    },
+    {
+      "name": "hinweis-neue-anmeldung-handy",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "beschreibung": "Leiste „Neue Anmeldung“ auf dem Handy"
+    },
+    {
+      "name": "hinweis-das-war-ich-nicht",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Das war ich nicht"
+          }
+        },
+        {
+          "warteAufText": "So sicherst du deinen Zugang"
+        }
+      ],
+      "beschreibung": "Nach „Das war ich nicht“: Wege zu „Passwort ändern“ und „Alle Sitzungen beenden“"
+    },
+    {
+      "name": "hinweis-bestaetigt",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Das war ich"
+          }
+        },
+        {
+          "warteAufText": "Der Hinweis ist auf diesem Gerät geschlossen."
+        }
+      ],
+      "beschreibung": "Nach „Das war ich“: der Hinweis ist auf diesem Gerät geschlossen"
     }
   ]
 }

@@ -71,6 +71,13 @@
       "when": 1795249737262,
       "tag": "0009_hinweis_neue_geraete",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795255544839,
+      "tag": "0011_chat_ergaenzungen",
+      "breakpoints": true
     }
   ]
 }

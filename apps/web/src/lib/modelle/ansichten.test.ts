@@ -39,7 +39,7 @@ describe("Seite „Modell und Anbieter“", () => {
     const text = JSON.stringify(daten);
     expect(text).not.toContain(TEST_SCHLUESSEL);
     expect(text).not.toMatch(/v2:|apiKeyEnc|apiKey/);
-    expect(daten.anbieter?.keySet).toBe(true);
+    expect(daten.anbieterListe.map((a) => a.keySet)).toEqual([true]);
     expect(daten.modell?.displayName).toBe("Beispiel-Modell A");
     const bot = await botSeitenDaten(e.u.db);
     expect(JSON.stringify(bot)).not.toContain(TEST_SCHLUESSEL);
@@ -103,6 +103,8 @@ const BROWSER_MODULE = [
   "./ansicht.ts",
   "../bot/ansicht.ts",
   "../schleuse/ansicht.ts",
+  "../../app/(app)/modelle/EigenerAnbieterForm.tsx",
+  "./eigen.ts",
 ].map((datei) => ({ datei, text: readFileSync(new URL(datei, import.meta.url), "utf8") }));
 
 describe("Browser-Module dieser Seiten", () => {

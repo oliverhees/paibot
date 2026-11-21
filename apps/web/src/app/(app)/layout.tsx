@@ -1,6 +1,7 @@
 /**
  * PaiBot – Grundgerüst der angemeldeten App: prüft die Sitzung auf dem Server und zeigt die
- * Navigation mit dem Bot und seinen Unterhaltungen aus der Datenbank.
+ * Navigation mit dem Bot und seinen Unterhaltungen aus der Datenbank, dazu den Hinweis auf neue
+ * Anmeldungen von anderen Geräten.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -15,17 +16,22 @@ import type { ReactNode } from "react";
 import { modellVon } from "../../lib/bot/bot";
 import { ladeUnterhaltungen } from "../../lib/chat/laden";
 import { datenbank } from "../../lib/datenbank";
+import { prozessDienste } from "../../lib/zugang/dienste";
+import { neueAnmeldungen } from "../../lib/zugang/hinweis";
 import { besitzerSeite } from "../../lib/zugang/seite";
 import { AppRahmen } from "./AppRahmen";
+import { NeueAnmeldung } from "./NeueAnmeldung";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  await besitzerSeite();
+  const sitzung = await besitzerSeite();
   const db = datenbank();
+  // Neue Geräte seit dem Stand dieses Geräts (Hinweis bis „Das war ich“).
+  const neue = await neueAnmeldungen(db, sitzung, prozessDienste().uhr.now());
+  const zeitzone = (await repo.settings.get(db))?.timezone ?? "Europe/Berlin";
   const bot = await repo.bots.getDefault(db);
   const unterhaltungen = await ladeUnterhaltungen(db);
-  const zeitzone = (await repo.settings.get(db))?.timezone ?? "Europe/Berlin";
   // Herkunft der Modelle in der Seitenleiste: Region des Anbieters des gewählten Modells.
   const region = bot === undefined ? undefined : (await modellVon(db, bot))?.region;
   return (
@@ -38,6 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         farbe: bot?.color ?? "limette",
       }}
     >
+      <NeueAnmeldung neue={neue} zeitzone={zeitzone} />
       {children}
     </AppRahmen>
   );

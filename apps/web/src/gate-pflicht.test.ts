@@ -373,6 +373,18 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
       koerper: { currentPassword: TEST_PASSWORT, newPassword: "Neues-Beispiel-Passwort-2026" },
     }),
   },
+  geraeteHinweisBestaetigen: {
+    // Ein zweites Gerät meldet sich an; die Sitzung der Einrichtung sieht es als neu.
+    vorher: async () => {
+      const s = await einrichten();
+      await rufe(s, "anmelden", {
+        dose: vorabDose(),
+        koerper: { password: TEST_PASSWORT, remember: false },
+      });
+      return s;
+    },
+    aufruf: async () => ({}),
+  },
   unterhaltungAnlegen: { vorher: einrichten, aufruf: async () => ({ koerper: { title: "Neu" } }) },
   unterhaltungUmbenennen: {
     vorher: mitUnterhaltung,

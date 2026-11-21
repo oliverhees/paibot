@@ -447,6 +447,17 @@ export const API_ROUTEN = {
     veraendernd: false,
   },
 
+  // Bekannte Geräte: Hinweis bei Anmeldung von einem neuen Gerät
+  /** „Das war ich“: schließt auf diesem Gerät den Hinweis auf neue Anmeldungen. */
+  geraeteHinweisBestaetigen: {
+    methode: "POST",
+    pfad: "/api/zugang/geraete/hinweis",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "geraet.bestaetigen",
+  },
+
   /** Sucht in Titeln und Nachrichten aller Unterhaltungen (seitenweise, gezählt je Besitzer). */
   suche: {
     methode: "GET",

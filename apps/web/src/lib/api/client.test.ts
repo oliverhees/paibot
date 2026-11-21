@@ -20,6 +20,8 @@ const CLIENT = [
   "../../app/(app)/einstellungen/AbmeldenKnopf.tsx",
   "../../app/(app)/einstellungen/Grenzen.tsx",
   "../../app/(app)/einstellungen/Zugang.tsx",
+  "../../app/(app)/einstellungen/Geraete.tsx",
+  "../../app/(app)/NeueAnmeldung.tsx",
   "../../app/(app)/belege/BelegeAnsicht.tsx",
   "../../app/(app)/belege/BelegPruefen.tsx",
   "../../app/(app)/belege/[id]/BelegDetail.tsx",

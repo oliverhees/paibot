@@ -35,3 +35,15 @@ export interface SitzungZeile {
   endet: string;
   geraet?: string;
 }
+
+/** Ein bekanntes Gerät, wie `GET /api/zugang/geraete` es liefert. */
+export interface GeraetZeile {
+  id: string;
+  art: "browser";
+  /** Browser-Kennung, aus der die Oberfläche eine grobe Angabe macht. */
+  name?: string;
+  angelegt: string;
+  zuletzt: string;
+  endet: string;
+  aktuell: boolean;
+}

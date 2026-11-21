@@ -18,7 +18,7 @@ import {
   PaiBotError,
   sessionIdSchema,
 } from "@paibot/shared";
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { geraete, sessions } from "../schema";
 import { standardFehler, uebersetzen } from "./fehler";
@@ -229,4 +229,79 @@ export async function revokeAll(
     offen.map((g) => g.id),
     options.now ?? new Date(),
   );
+}
+
+/**
+ * Neue Anmeldungen aus Sicht eines Geräts: die gültigen anderen Geräte des Besitzers, die nach dem
+ * Stand dieses Geräts hinzugekommen sind (Stand = „Hinweis bestätigt bis“, sonst sein Anlegen),
+ * neueste zuerst. Gilt das Gerät selbst nicht (mehr), ist die Liste leer.
+ */
+export async function neueSeit(
+  db: Database,
+  ownerId: OwnerId,
+  deviceId: DeviceId,
+  options: { now?: Date } = {},
+): Promise<GeraetEintrag[]> {
+  const now = options.now ?? new Date();
+  const [selbst] = await db
+    .select({ createdAt: geraete.createdAt, noticeSeenAt: geraete.noticeSeenAt })
+    .from(geraete)
+    .where(and(eq(geraete.id, deviceId), eq(geraete.ownerId, ownerId), aktiv(now)));
+  if (selbst === undefined) return [];
+  const stand =
+    selbst.noticeSeenAt !== null && selbst.noticeSeenAt > selbst.createdAt
+      ? selbst.noticeSeenAt
+      : selbst.createdAt;
+  const rows = await db
+    .select()
+    .from(geraete)
+    .where(
+      and(
+        eq(geraete.ownerId, ownerId),
+        ne(geraete.id, deviceId),
+        gt(geraete.createdAt, stand),
+        aktiv(now),
+      ),
+    )
+    .orderBy(desc(geraete.createdAt), desc(geraete.id));
+  return rows.map(eintrag);
+}
+
+/**
+ * Merkt auf einem Gerät, dass der Besitzer neue Anmeldungen bis `bis` bestätigt hat. Der Stand geht
+ * nie zurück. `true`, wenn das Gerät gilt.
+ */
+export async function hinweisBestaetigen(
+  db: Database,
+  ownerId: OwnerId,
+  deviceId: DeviceId,
+  input: { bis: Date; now?: Date },
+): Promise<boolean> {
+  const now = input.now ?? new Date();
+  const rows = await db
+    .update(geraete)
+    .set({
+      noticeSeenAt: sql`greatest(${geraete.noticeSeenAt}, ${input.bis.toISOString()}::timestamptz)`,
+    })
+    .where(and(eq(geraete.id, deviceId), eq(geraete.ownerId, ownerId), aktiv(now)))
+    .returning({ id: geraete.id });
+  return rows.length > 0;
+}
+
+/** Name und Art von Geräten des Besitzers (auch widerrufene), z. B. für die Anzeige von Belegen. */
+export async function namen(
+  db: Database,
+  ownerId: OwnerId,
+  ids: readonly string[],
+): Promise<Map<DeviceId, { kind: DeviceKind; name?: string }>> {
+  const ergebnis = new Map<DeviceId, { kind: DeviceKind; name?: string }>();
+  if (ids.length === 0) return ergebnis;
+  const rows = await db
+    .select({ id: geraete.id, kind: geraete.kind, name: geraete.name })
+    .from(geraete)
+    .where(and(eq(geraete.ownerId, ownerId), inArray(geraete.id, [...ids] as DeviceId[])));
+  for (const row of rows) {
+    ergebnis.set(row.id, { kind: row.kind, ...(row.name === null ? {} : { name: row.name }) });
+  }
+  return ergebnis;
 }

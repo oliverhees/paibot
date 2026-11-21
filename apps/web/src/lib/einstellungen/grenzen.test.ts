@@ -202,6 +202,8 @@ describe("PATCH /api/einstellungen", () => {
     });
     expect(entscheidung.body.facts).toEqual({
       credential: "sitzung",
+      // Gerät der Sitzung, von dem die Änderung kam
+      device: expect.stringMatching(/^ger_/),
       fields: ["timezone", "dailyTokenBudget"],
     });
     expect(entscheidung.body.decision.outcome).toBe("allow");

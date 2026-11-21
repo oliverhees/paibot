@@ -82,7 +82,12 @@ export const deviceKindSchema = z.enum(DEVICE_KINDS);
 export const DEVICE_RIGHTS = ["voll"] as const;
 export type DeviceRight = (typeof DEVICE_RIGHTS)[number];
 
-const ownerFacts = { credential: credentialSchema };
+/**
+ * Fakten jeder Aktion des Besitzers: der Nachweis und, wenn bekannt, das Gerät, von dem die Aktion
+ * kam (Kennung aus dem Geräte-Verzeichnis). Belege ohne `device` stammen aus der Zeit davor, von
+ * einem Weg ohne Gerät (Einrichtung) oder von einer Sitzung, die zu keinem Gerät gehört.
+ */
+const ownerFacts = { credential: credentialSchema, device: deviceId.optional() };
 
 /** Origin einer Basis-URL, z. B. `https://api.eurouter.ai` (ohne Pfad, Anfrage-Teil oder Anker). */
 export const originSchema = z
@@ -297,6 +302,19 @@ export const ACTIONS = {
       deviceActive: z.boolean(),
       /** Es ist das Gerät, von dem die Anfrage kommt. */
       thisDevice: z.boolean(),
+    },
+  ),
+  /**
+   * Der Besitzer bestätigt auf einem Gerät den Hinweis auf neue Anmeldungen („Das war ich“); Ziel
+   * ist das Gerät, auf dem der Hinweis geschlossen wird.
+   */
+  "geraet.bestaetigen": action(
+    "besitzer",
+    { deviceId },
+    {
+      ...ownerFacts,
+      /** Anzahl der neuen Geräte, die der Hinweis nannte. */
+      newDevices: countSchema,
     },
   ),
   /** Der Besitzer sichert eine Unterhaltung als lesbare Datei (Markdown). */

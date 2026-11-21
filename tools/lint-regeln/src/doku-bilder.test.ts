@@ -500,3 +500,77 @@ describe("Stellen im Bild verdecken (PNG)", () => {
     ).not.toThrow();
   });
 });
+
+const beispiel = await laden<{
+  Keksdose: new () => {
+    nimm(a: Response): void;
+    finde(n: string): { name: string; wert: string } | undefined;
+    setze(n: string, w: string): void;
+    kopf(): string;
+  };
+  meldeAn(lauf: Record<string, unknown>): Promise<unknown>;
+  stelleHer(ziel: string, datei: string): Promise<{ lauf: Record<string, unknown> }>;
+}>("scripts/doku-beispieldaten.mjs");
+const { createServer: httpServer } = await import("node:http");
+
+describe("Beispiel-Gerät der Doku-Umgebung", () => {
+  const daten = beispiel;
+
+  /** Kleine Attrappe der App: Einrichtung setzt ein Geräte-Cookie, Anmelden merkt sich die Cookies. */
+  async function attrappe() {
+    const anmeldungen: string[] = [];
+    const server = httpServer((req, res) => {
+      const kopf: Record<string, string | string[]> = { "content-type": "text/html" };
+      if (req.url === "/api/einrichtung" && req.method === "POST") {
+        kopf["set-cookie"] = ["pb_sitzung=s1; Path=/", "pb_geraet=kennung.zeichen; Path=/"];
+        res.writeHead(200, { ...kopf, "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: true, daten: {} }));
+        return;
+      }
+      if (req.url === "/api/zugang/anmelden" && req.method === "POST") {
+        anmeldungen.push(String(req.headers.cookie ?? ""));
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: true, daten: { angemeldet: true } }));
+        return;
+      }
+      res.writeHead(200, kopf);
+      res.end('<meta name="pb-pruefzeichen" content="p">');
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const adresse = server.address() as { port: number };
+    return {
+      url: `http://127.0.0.1:${adresse.port}`,
+      anmeldungen,
+      stop: () => new Promise((r) => server.close(r)),
+    };
+  }
+
+  it("findet das Geräte-Cookie auch mit Präfix __Host-", () => {
+    const dose = new daten.Keksdose();
+    dose.setze("__Host-pb_geraet", "w");
+    expect(dose.finde("pb_geraet")).toEqual({ name: "__Host-pb_geraet", wert: "w" });
+    expect(dose.finde("pb_sitzung")).toBeUndefined();
+  });
+
+  it("die Einrichtung merkt das Geräte-Cookie; die Anmeldung danach ist dasselbe Gerät", async () => {
+    const app = await attrappe();
+    const ordner = mkdtempSync(path.join(tmpdir(), "paibot-doku-geraet-"));
+    try {
+      const datei = path.join(ordner, "lauf.json");
+      lauf.schreibeLauf(
+        { zustand: "frisch", url: app.url, einrichtungsCode: "C", passwort: "P" },
+        datei,
+      );
+      const { lauf: nachher } = await daten.stelleHer("eingerichtet", datei);
+      expect(nachher.beispielGeraet).toEqual({ name: "pb_geraet", wert: "kennung.zeichen" });
+      await daten.meldeAn(nachher);
+      expect(app.anmeldungen.at(-1)).toContain("pb_geraet=kennung.zeichen");
+      // Ohne gemerktes Gerät (ältere Lauf-Datei) bleibt es wie bisher: neues Gerät.
+      await daten.meldeAn({ ...nachher, beispielGeraet: undefined });
+      expect(app.anmeldungen.at(-1)).not.toContain("pb_geraet");
+    } finally {
+      await app.stop();
+      rmSync(ordner, { recursive: true, force: true });
+    }
+  });
+});

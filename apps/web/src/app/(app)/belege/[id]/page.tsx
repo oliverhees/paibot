@@ -14,9 +14,10 @@ import { isPaiBotError } from "@paibot/shared/fehler";
 import { t } from "@paibot/shared/texte";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { belegKarte } from "../../../../lib/belege/karte";
+import { belegKarte, geraetImBeleg } from "../../../../lib/belege/karte";
 import { type BelegUmfeld, belegMitUmfeld } from "../../../../lib/belege/lesen";
 import { datenbank } from "../../../../lib/datenbank";
+import { grobesGeraet } from "../../../../lib/einstellungen/anzeige";
 import { besitzerSeite } from "../../../../lib/zugang/seite";
 import { BelegDetail } from "./BelegDetail";
 
@@ -24,7 +25,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: `${t("belege.detail.seitentitel")} · PaiBot` };
 
 export default async function BelegSeite({ params }: { params: Promise<{ id: string }> }) {
-  await besitzerSeite();
+  const sitzung = await besitzerSeite();
   const { id } = await params;
   const db = datenbank();
   let umfeld: BelegUmfeld;
@@ -34,15 +35,18 @@ export default async function BelegSeite({ params }: { params: Promise<{ id: str
     if (isPaiBotError(fehler) && fehler.code === "nicht_gefunden") notFound();
     throw fehler;
   }
-  const [settings, bots, schluessel] = await Promise.all([
+  const geraet = geraetImBeleg(umfeld.beleg);
+  const [settings, bots, schluessel, geraete] = await Promise.all([
     repo.settings.get(db),
     repo.bots.list(db),
     repo.installationKeys.listPublic(db),
+    repo.geraete.namen(db, sitzung.ownerId, geraet === undefined ? [] : [geraet]),
   ]);
   const karte = belegKarte(umfeld, {
     zeitzone: settings?.timezone ?? "Europe/Berlin",
     botNamen: Object.fromEntries(bots.map((b) => [b.id, b.name])),
     schluessel,
+    geraete: Object.fromEntries([...geraete].map(([g, e]) => [g, grobesGeraet(e.name)])),
   });
   return <BelegDetail karte={karte} />;
 }
