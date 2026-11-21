@@ -72,9 +72,9 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
 
    ![„Alles bereit“: Haken bei Passwort, Name des Bots, verbundenem Anbieter und Modell, Hinweis „Datenschleuse als Standard aus“ und der Knopf „Zur App“](assets/screenshots/einrichtung-fertig.png)
 
-10. Die App öffnet sich: links dein Bot und die Navigation, in der Mitte der Platz für den Chat. Der Chat selbst ist noch im Bau.
+10. Die App öffnet sich: links dein Bot und die Navigation, in der Mitte eine neue Unterhaltung mit deinem Bot (siehe [Chat](funktion-chat.md)).
 
-    ![Die App nach der Anmeldung: links PaiBot, der Bot Pai und die Navigation mit „Abmelden“, in der Mitte „Schreib deinem Bot“ mit dem Hinweis, dass der Chat im Bau ist](assets/screenshots/app-start.png)
+    ![Die App nach der Anmeldung: links PaiBot, der Bot Pai und die Navigation mit „Abmelden“, in der Mitte „Frag deinen Bot etwas“ mit drei Vorschlägen und unten das Eingabefeld](assets/screenshots/app-start.png)
 
 ### Anmelden und Abmelden
 
