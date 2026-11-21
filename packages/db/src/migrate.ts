@@ -16,7 +16,6 @@ import { MIGRATION_LOCK_KEY } from "./sperren";
 
 export * from "./rollen";
 export * from "./rollen-start";
-export * from "./rollen-testing";
 
 /** Optionen für `runMigrations`. */
 export interface MigrationOptions {

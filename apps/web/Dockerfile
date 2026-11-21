@@ -6,8 +6,9 @@
 # Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
 # Seit:      2026-11-07
 
-# Baut das PaiBot-Image mit zwei Rollen: Web-App (Next.js) und Worker (ein gebündeltes Skript).
-# Die Rolle wählt PAIBOT_ROLE: web (Standard) oder worker.
+# Baut das PaiBot-Image mit drei Rollen: Web-App (Next.js), Worker (ein gebündeltes Skript) und
+# migrate (Einmal-Schritt: Migrationen und App-Rolle einrichten, danach Ende mit Exit 0).
+# Die Rolle wählt PAIBOT_ROLE: web (Standard), worker oder migrate.
 # Build-Kontext ist das Repo-Wurzelverzeichnis: docker build -f apps/web/Dockerfile .
 # Basis-Images sind per Digest fest; der Tag steht zur Lesbarkeit davor.
 FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS build
@@ -45,4 +46,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
         [ $(( $(date +%s) - $(stat -c %Y "$PAIBOT_WORKER_HEALTH_FILE" 2>/dev/null) )) -lt 30 ]; \
       else wget -qO- http://127.0.0.1:3000/api/health >/dev/null; fi || exit 1
 # exec ersetzt die Shell, damit SIGTERM direkt bei Node ankommt.
-CMD ["sh", "-c", "case \"$PAIBOT_ROLE\" in web) exec node apps/web/server.js ;; worker) exec node apps/worker/dist/worker.mjs ;; *) echo \"[paibot] PAIBOT_ROLE muss web oder worker sein.\" >&2; exit 64 ;; esac"]
+# migrate nutzt denselben Einstieg wie web; der Start-Schritt beendet den Prozess, bevor der
+# Server Anfragen annimmt.
+CMD ["sh", "-c", "case \"$PAIBOT_ROLE\" in web|migrate) exec node apps/web/server.js ;; worker) exec node apps/worker/dist/worker.mjs ;; *) echo \"[paibot] PAIBOT_ROLE muss web, worker oder migrate sein.\" >&2; exit 64 ;; esac"]

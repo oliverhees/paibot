@@ -82,6 +82,57 @@ jobs:
           echo "Healthcheck fehlgeschlagen"; cat /tmp/health.json || true
           docker compose -f deploy/docker-compose.yml --env-file deploy/.env logs
           exit 1
+      - name: Migrations-Dienst und Zugangsdaten prüfen
+        run: |
+          set -eu
+          compose="docker compose -f deploy/docker-compose.yml --env-file deploy/.env"
+          mig=$($compose ps -a -q migrate)
+          code=$(docker inspect --format '{{.State.ExitCode}} {{.State.Status}}' "$mig")
+          $compose logs migrate | tail -20
+          [ "$code" = "0 exited" ] || { echo "migrate: $code statt 0 exited"; exit 1; }
+          $compose logs migrate | grep -qF "Migrations-Schritt fertig." || { echo "Log-Zeile fehlt"; exit 1; }
+          if [ -n "$(docker port "$mig")" ]; then echo "migrate veröffentlicht einen Port"; exit 1; fi
+          superuser_pw=$(grep '^POSTGRES_PASSWORD=' deploy/.env | cut -d= -f2-)
+          for dienst in web worker; do
+            id=$($compose ps -q "$dienst")
+            # Weder in der Konfiguration des Containers noch in der Umgebung des laufenden Prozesses.
+            if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$id" | grep -q '^DATABASE_MIGRATION_URL='; then
+              echo "$dienst: DATABASE_MIGRATION_URL in der Konfiguration"; exit 1
+            fi
+            umgebung=$(docker exec "$id" sh -c 'tr "\0" "\n" < /proc/1/environ')
+            if printf '%s\n' "$umgebung" | grep -q '^DATABASE_MIGRATION_URL='; then
+              echo "$dienst: DATABASE_MIGRATION_URL im laufenden Prozess"; exit 1
+            fi
+            if printf '%s\n' "$umgebung" | grep -qF "$superuser_pw"; then
+              echo "$dienst: Passwort des Tabellen-Besitzers im laufenden Prozess"; exit 1
+            fi
+            # Test-Hilfen (PGlite, Test-Anbieter) sind nicht im Produktions-Bündel.
+            if docker exec "$id" sh -c 'grep -rlsiE "pglite|fake-provider" /app/apps/web/.next/server /app/apps/worker/dist/worker.mjs; find /app -path "*pglite*" -print -quit' | grep -q .; then
+              echo "$dienst: Test-Hilfen im Bündel"; exit 1
+            fi
+          done
+          echo "Zugangsdaten ok"
+      - name: Zweiter Start macht nichts kaputt
+        run: |
+          set -eu
+          compose="docker compose -f deploy/docker-compose.yml --env-file deploy/.env"
+          regeln() { $compose exec -T postgres psql -U paibot -d paibot -tAc 'select count(*) from public.rules'; }
+          vorher=$(regeln)
+          $compose up -d
+          mig=$($compose ps -a -q migrate)
+          for i in $(seq 1 30); do
+            [ "$(docker inspect --format '{{.State.Status}}' "$mig")" = "exited" ] && break
+            sleep 2
+          done
+          [ "$(docker inspect --format '{{.State.ExitCode}}' "$mig")" = "0" ] || { $compose logs migrate; exit 1; }
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:3000/api/health | grep -q '"db":"ok"' && break
+            sleep 2
+          done
+          curl -fsS -D /tmp/health2.head http://localhost:3000/api/health | grep -q '"db":"ok"'
+          if grep -qi '^x-pb-db-rolle:' /tmp/health2.head; then echo "zu viele Rechte nach dem zweiten Start"; exit 1; fi
+          [ "$(regeln)" = "$vorher" ] || { echo "Regeln verändert"; exit 1; }
+          echo "Zweiter Start ok"
       - name: Worker prüfen (gesund, erwartete Log-Zeilen, kein Port)
         run: |
           compose="docker compose -f deploy/docker-compose.yml --env-file deploy/.env"

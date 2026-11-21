@@ -11,11 +11,16 @@
 # Start lokal:     docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 #
 # Zwei Rollen in der Datenbank:
-#   POSTGRES_USER      Besitzer der Tabellen; nur der Migrations-Schritt beim Start nutzt ihn.
-#   POSTGRES_APP_USER  eingeschränkte Rolle für Web-App und Worker; wird beim ersten Start angelegt.
+#   POSTGRES_USER      Besitzer der Tabellen; nur der Einmal-Dienst migrate nutzt ihn.
+#   POSTGRES_APP_USER  eingeschränkte Rolle für Web-App und Worker; migrate legt sie an und setzt
+#                      bei jedem Lauf ihre Rechte, Einstellungen und ihr Passwort neu.
 #
-# web und worker kommen aus demselben Image; PAIBOT_ROLE wählt die Rolle. Nur web migriert. Der
-# Worker wartet darauf und bekommt die Zugangsdaten des Tabellen-Besitzers nie.
+# migrate, web und worker kommen aus demselben Image; PAIBOT_ROLE wählt die Rolle. Nur migrate
+# kennt die Zugangsdaten des Tabellen-Besitzers; er migriert und beendet sich (Exit 0). web und
+# worker starten erst danach und prüfen nur noch Stand und Rechte.
+#
+# Speicher-Grenzen: PAIBOT_WEB_SPEICHER (Standard 768m) und PAIBOT_WORKER_SPEICHER (Standard
+# 512m). Ein Dienst, der darüber kommt, wird beendet und neu gestartet, statt den Server zu füllen.
 #
 # Datenschleuse: Profil schleuse (Dienste datenschleuse und schleuse-analyzer), Standard aus.
 # Sie hat keine Datenbank und keinen Port; nur der Worker erreicht sie (Netz paibot-schleuse).
@@ -46,6 +51,42 @@ services:
     # Kein veröffentlichter Port: Die Datenbank ist nur im internen Netz erreichbar.
     # Für die Entwicklung: deploy/docker-compose.entwicklung.yml dazunehmen.
 
+  migrate:
+    # Einmal-Dienst: Migrationen anwenden, App-Rolle anlegen bzw. ihre Rechte, Einstellungen und
+    # ihr Passwort neu setzen, Rechte prüfen, danach Ende mit Exit 0. Läuft bei jedem Start des
+    # Stacks wieder (wiederholbar). Nur er kennt den Zugang des Tabellen-Besitzers.
+    image: paibot:lokal
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: "no"
+    environment:
+      PAIBOT_ROLE: migrate
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
+      DATABASE_MIGRATION_URL: postgres://${POSTGRES_USER:-paibot}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paibot}
+      # Bewusst ohne PAIBOT_SECRET: Der Migrations-Schritt braucht es nicht.
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - paibot-intern
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    volumes:
+      - type: tmpfs
+        target: /app/apps/web/.next/cache
+        tmpfs:
+          size: 16777216
+          mode: 01777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${PAIBOT_MIGRATE_SPEICHER:-384m}
+    healthcheck:
+      disable: true
+    # Kein veröffentlichter Port.
+
   web:
     image: paibot:lokal
     build:
@@ -53,14 +94,16 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     environment:
+      # Nur die App-Rolle. Bewusst ohne DATABASE_MIGRATION_URL: web migriert nie.
       DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
-      DATABASE_MIGRATION_URL: postgres://${POSTGRES_USER:-paibot}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paibot}
       PAIBOT_SECRET: ${PAIBOT_SECRET:?PAIBOT_SECRET fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}
       APP_URL: ${APP_URL:-http://localhost:3000}
       PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - paibot-intern
       - paibot-aussen
@@ -76,6 +119,7 @@ services:
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
+    mem_limit: ${PAIBOT_WEB_SPEICHER:-768m}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 30s
@@ -111,9 +155,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      # web migriert beim Start und legt die App-Rolle an; erst danach startet der Worker.
-      web:
-        condition: service_healthy
+      # migrate wendet die Migrationen an und legt die App-Rolle an; erst danach startet der Worker.
+      migrate:
+        condition: service_completed_successfully
     networks:
       # intern: die Datenbank. aussen: die Anfragen an die Modell-Anbieter stellt der Worker.
       # schleuse: nur Worker und Datenschleuse (ohne Profil schleuse ein leeres Netz).
@@ -127,6 +171,8 @@ services:
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
+    # Laufende Antworten werden in der Größe begrenzt; die Grenze fängt den Rest ab.
+    mem_limit: ${PAIBOT_WORKER_SPEICHER:-512m}
     # Zeit zum sauberen Beenden: Abbruch-Signal an laufende Antworten, höchstens 20 s warten.
     stop_grace_period: 30s
     healthcheck:

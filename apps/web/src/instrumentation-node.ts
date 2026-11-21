@@ -11,9 +11,9 @@
 import { prepareStart } from "./lib/betrieb";
 
 /**
- * Bereitet beim Serverstart die Datenbank vor: Migrationen mit der Migrations-Rolle, Rechte der
- * App-Rolle, Prüfung von Stand und Rechten. In Produktion bricht ein Fehler den Start ab.
- * Ohne DATABASE_URL startet die Entwicklung ohne Datenbank (z. B. für die UI-Entwicklung).
+ * Läuft beim Serverstart (`prepareStart`): Mit `PAIBOT_ROLE=migrate` Migrations-Schritt und Ende
+ * des Prozesses; sonst prüft die Web-App in Produktion nur Stand und Rechte (sie migriert dort nie).
+ * In der Entwicklung migriert sie selbst; ohne DATABASE_URL startet sie ohne Datenbank.
  */
 export async function applyMigrations() {
   await prepareStart(process.env);
