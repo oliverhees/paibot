@@ -19,19 +19,47 @@ export function footerTeile(text: string, link: string): [string, string, string
 }
 
 export const HR_CODELABS_URL = "https://hr-codelabs.de";
+export const PAIBOT_URL = "https://paibot.de";
 
-/** „Powered by PaiBot · entwickelt von HR CodeLabs“ mit Link. */
-export function Footer({ className }: { className?: string }) {
-  const [vor, link, nach] = footerTeile(t("footer.text"), t("footer.link"));
+function Verlinkt({ text, link, href }: { text: string; link: string; href: string }) {
+  const [vor, teil, nach] = footerTeile(text, link);
   return (
-    <p className={className ? `${styles.fuss} ${className}` : styles.fuss}>
+    <>
       {vor}
-      {link && (
-        <a href={HR_CODELABS_URL} target="_blank" rel="noopener noreferrer">
-          {link}
+      {teil && (
+        <a href={href} target="_blank" rel="noopener noreferrer">
+          {teil}
+          <span className={styles.nurLesbar}> {t("info.neuer_tab")}</span>
         </a>
       )}
       {nach}
+    </>
+  );
+}
+
+/**
+ * „Powered by PaiBot · entwickelt von HR CodeLabs“: „PaiBot“ verlinkt paibot.de, „HR CodeLabs“
+ * hr-codelabs.de (beide im neuen Tab). `zweizeilig` setzt jeden Teil in eine eigene Zeile.
+ */
+export function Footer({ className, zweizeilig }: { className?: string; zweizeilig?: boolean }) {
+  const [erster = "", ...rest] = t("footer.text").split(" · ");
+  const zweiter = rest.join(" · ");
+  const klasse = [styles.fuss, zweizeilig && styles.zweizeilig, className]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <p className={klasse}>
+      <span className={styles.teil}>
+        <Verlinkt text={erster} link={t("footer.paibot")} href={PAIBOT_URL} />
+      </span>
+      {zweiter && (
+        <>
+          <span className={styles.trenner}> · </span>
+          <span className={styles.teil}>
+            <Verlinkt text={zweiter} link={t("footer.link")} href={HR_CODELABS_URL} />
+          </span>
+        </>
+      )}
     </p>
   );
 }

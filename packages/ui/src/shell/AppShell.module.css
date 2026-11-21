@@ -280,6 +280,57 @@
   gap: 10px;
 }
 
+/* Knopf zum Ein- und Ausklappen der Werkzeuge (Belege bis Info); „Abmelden“ bleibt immer sichtbar. */
+.einklappen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.einklappen:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.einklappen:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: calc(-1 * var(--fokus-breite));
+}
+
+.einklappenText {
+  flex: 1;
+  text-align: left;
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.einklappenHinweis {
+  font-size: var(--schrift-xs);
+}
+
+.einklappenPfeil {
+  transition: transform var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.einklappen[aria-expanded="false"] .einklappenPfeil {
+  transform: rotate(-90deg);
+}
+
+.werkzeuge[hidden] {
+  display: none;
+}
+
 .fuss {
   padding: 0 8px;
 }
@@ -468,7 +519,8 @@
   .leiste,
   .shell[data-nav-offen] .leiste,
   .schleier,
-  .zeile {
+  .zeile,
+  .einklappenPfeil {
     transition: none;
   }
 
