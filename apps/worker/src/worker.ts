@@ -78,7 +78,7 @@ export interface RunDepsSource {
 export interface WorkerTiming {
   /** So lange wird höchstens auf die Datenbank gewartet. */
   databaseWaitMs: number;
-  /** So lange wird höchstens darauf gewartet, dass die Web-App migriert hat. */
+  /** So lange wird höchstens darauf gewartet, dass der Dienst migrate migriert hat. */
   migrationWaitMs: number;
   /** Abstand zwischen zwei Versuchen beim Warten. */
   retryDelayMs: number;
@@ -136,7 +136,7 @@ function stateText(state: MigrationState): string {
  *
  * 1. Pflichtwerte der Umgebung prüfen.
  * 2. Auf die Datenbank warten (`timing.databaseWaitMs`).
- * 3. Warten, bis die Web-App alle Migrationen angewendet hat (`timing.migrationWaitMs`); der
+ * 3. Warten, bis der Dienst migrate alle Migrationen angewendet hat (`timing.migrationWaitMs`); der
  *    Worker migriert nie selbst.
  * 4. Rechte der Verbindung prüfen: zu viele Rechte brechen in Produktion ab (außer
  *    `PAIBOT_ALLOW_PRIVILEGED_DB=1`).
@@ -182,7 +182,7 @@ export async function runWorker(
     if (await deps.pingDatabase(config.databaseUrl)) break;
     if (Date.now() + timing.retryDelayMs > dbDeadline) {
       abort(
-        `Datenbank nach ${Math.round(timing.databaseWaitMs / 1000)} s nicht erreichbar. Prüfe DATABASE_URL (Host, Benutzer, Passwort) und ob der Dienst postgres läuft. Die App-Rolle legt die Web-App beim ersten Start an.`,
+        `Datenbank nach ${Math.round(timing.databaseWaitMs / 1000)} s nicht erreichbar. Prüfe DATABASE_URL (Host, Benutzer, Passwort) und ob der Dienst postgres läuft. Die App-Rolle legt der Dienst migrate an.`,
         "keine_datenbank",
       );
     }
@@ -218,14 +218,14 @@ export async function runWorker(
         waiting = true;
         log.info(
           last === undefined
-            ? "Warte auf die Migrationen der Web-App (Stand noch nicht lesbar) …"
-            : `Warte auf die Migrationen der Web-App (${stateText(last)}) …`,
+            ? "Warte auf die Migrationen des Dienstes migrate (Stand noch nicht lesbar) …"
+            : `Warte auf die Migrationen des Dienstes migrate (${stateText(last)}) …`,
         );
       }
       if (Date.now() + timing.retryDelayMs > migrationDeadline) {
         const detail = last === undefined ? `Stand nicht lesbar: ${lastError}` : stateText(last);
         abort(
-          `Datenbank nicht auf Stand nach ${Math.round(timing.migrationWaitMs / 1000)} s (${detail}). Der Worker migriert nie selbst; das macht die Web-App beim Start. Läuft der Dienst web?`,
+          `Datenbank nicht auf Stand nach ${Math.round(timing.migrationWaitMs / 1000)} s (${detail}). Der Worker migriert nie selbst; das macht der Dienst migrate. Ist er ohne Fehler durchgelaufen?`,
           "nicht_auf_stand",
         );
       }
@@ -352,7 +352,7 @@ export async function runWorker(
 /**
  * Startet den Worker:
  * 1. Pflichtwerte prüfen, auf die Datenbank warten.
- * 2. Warten, bis die Web-App migriert hat (der Worker migriert nie selbst), Rechte prüfen.
+ * 2. Warten, bis der Dienst migrate migriert hat (der Worker migriert nie selbst), Rechte prüfen.
  * 3. Warteschlange starten, hängende Läufe aufräumen (`failStaleRuns`), `executeRun` als Handler anmelden.
  * 4. Herzschlag in die Health-Datei schreiben, solange er läuft.
  */

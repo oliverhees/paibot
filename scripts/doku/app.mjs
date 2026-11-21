@@ -20,8 +20,11 @@
 //   2. Test-Anbieter (tools/fake-provider) nur an 127.0.0.1, Port PAIBOT_DOKU_ANBIETER_PORT
 //      (Standard 18080, fest, weil die Adresse in der Einrichtung als Name des Anbieters erscheint).
 //      Beispiel-Modelle mit erfundenen Namen, Schlüssel ist ein Wegwerf-Wert.
-//   3. Web-App (Next.js standalone, NODE_ENV=production, strenge Content-Security-Policy) und
-//      Worker, mit zufällig erzeugten Wegwerf-Geheimnissen und ohne Werte aus der eigenen Umgebung.
+//   3. Migrations-Schritt wie der Einmal-Dienst `migrate` (PAIBOT_ROLE=migrate, mit dem Zugang des
+//      Tabellen-Besitzers): Migrationen, App-Rolle anlegen, Rechte prüfen, Ende mit Exit 0.
+//      Danach Web-App (Next.js standalone, NODE_ENV=production, strenge Content-Security-Policy)
+//      und Worker nur mit der App-Rolle, mit zufällig erzeugten Wegwerf-Geheimnissen und ohne Werte
+//      aus der eigenen Umgebung.
 //   4. Einrichtungs-Code aus dem Log der Web-App lesen und mit Adresse, Wegwerf-Passwort und
 //      Schlüssel in die Lauf-Datei schreiben (scripts/doku/lauf.mjs), nur für den eigenen Benutzer.
 //   5. Am Ende (Strg+C, Ende des Befehls, Fehler): alle Prozesse beenden, Datenbank löschen,
@@ -213,6 +216,51 @@ function starte(name, programm, argumente, { env, cwd, logDatei }) {
   return { kind, warteAuf };
 }
 
+/**
+ * Führt einen Prozess bis zu seinem Ende aus (eigene Gruppe, Ausgabe in `logDatei`). Exit 0 ist
+ * Erfolg; sonst Fehler mit der letzten Ausgabe.
+ */
+function fuehreAus(name, programm, argumente, { env, cwd, logDatei, sekunden = 180 }) {
+  const kind = spawn(programm, argumente, {
+    cwd,
+    env,
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  kinder.push(kind);
+  const datei = createWriteStream(logDatei);
+  let ausgabe = "";
+  const sammle = (chunk) => {
+    const text = chunk.toString();
+    datei.write(text);
+    ausgabe = (ausgabe + text).slice(-20_000);
+  };
+  kind.stdout.on("data", sammle);
+  kind.stderr.on("data", sammle);
+  return new Promise((resolve, reject) => {
+    const zeit = setTimeout(() => {
+      beendeGruppe(kind, "SIGKILL");
+      reject(
+        new Error(
+          `${name}: nach ${sekunden} s nicht fertig. Letzte Ausgabe:\n${ausgabe.slice(-3000)}`,
+        ),
+      );
+    }, sekunden * 1000);
+    kind.once("exit", (code, signal) => {
+      clearTimeout(zeit);
+      datei.end();
+      kinder.splice(kinder.indexOf(kind), 1);
+      if (code === 0) resolve(ausgabe);
+      else
+        reject(
+          new Error(
+            `${name} endete mit ${signal ?? code}. Letzte Ausgabe:\n${ausgabe.slice(-3000)}`,
+          ),
+        );
+    });
+  });
+}
+
 /** Umgebung nur mit dem Nötigsten, damit nichts aus der eigenen Umgebung (z. B. echte Adressen) mitläuft. */
 function grundUmgebung(extra) {
   return {
@@ -369,12 +417,32 @@ async function main() {
     DATABASE_URL: db.app,
     MIGRATIONS_DIR: path.join(lauf, "packages", "db", "drizzle"),
   };
-  log("Web-App (Produktions-Build) wird gestartet …");
+  // Wie der Einmal-Dienst `migrate`: einziger Prozess mit dem Zugang des Tabellen-Besitzers, ohne
+  // PAIBOT_SECRET. Web-App und Worker bekommen danach nur die App-Rolle.
+  log("Migrations-Schritt (wie der Dienst migrate) …");
+  await fuehreAus(
+    "Migrations-Schritt",
+    process.execPath,
+    [path.join(lauf, "apps", "web", "server.js")],
+    {
+      cwd: lauf,
+      env: grundUmgebung({
+        NODE_ENV: "production",
+        PAIBOT_ROLE: "migrate",
+        DATABASE_URL: db.app,
+        DATABASE_MIGRATION_URL: db.migration,
+        MIGRATIONS_DIR: gemeinsam.MIGRATIONS_DIR,
+        PORT: String(await freierPort()),
+        HOSTNAME: "127.0.0.1",
+      }),
+      logDatei: path.join(ordner, "migrate.log"),
+    },
+  );
+  log("Web-App (Produktions-Build, nur App-Rolle) wird gestartet …");
   const web = starte("Web-App", process.execPath, [path.join(lauf, "apps", "web", "server.js")], {
     cwd: lauf,
     env: grundUmgebung({
       ...gemeinsam,
-      DATABASE_MIGRATION_URL: db.migration,
       PORT: String(webPort),
       HOSTNAME: "127.0.0.1",
       APP_URL: url,

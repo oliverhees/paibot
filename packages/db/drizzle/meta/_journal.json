@@ -43,6 +43,13 @@
       "when": 1795208455597,
       "tag": "0005_haertung",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795219126790,
+      "tag": "0006_regeln_und_belege",
+      "breakpoints": true
     }
   ]
 }

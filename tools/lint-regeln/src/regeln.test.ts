@@ -124,6 +124,23 @@ describe("Test-Zugänge", () => {
     expect(dynamic.filter((d) => d.category === "plugin")).toHaveLength(1);
   });
 
+  it("auch Unterpfade und relative Pfade auf eine Datei oder einen Ordner testing", () => {
+    const plugin = (folder: string, source: string) =>
+      lint(folder, source).filter((d) => d.category === "plugin");
+    for (const source of [
+      'export * from "@paibot/db/testing/rollen";',
+      'export * from "./testing";',
+      'export * from "../testing.ts";',
+      'export * from "../../src/testing";',
+      'export { createFakeMotor } from "./testing/test-umgebung";',
+      'export const m = await import("./testing");',
+    ]) {
+      expect(plugin("packages/db", source), source).toHaveLength(1);
+    }
+    expect(plugin("packages/db", 'export * from "./rollen-testing-hilfe";')).toEqual([]);
+    expect(plugin("packages/db", 'export * from "./testing-werte";')).toEqual([]);
+  });
+
   it("Tests dürfen den Test-Zugang nutzen", () => {
     expect(lint("packages/llm", PERMIT, "versuch.test.ts")).toEqual([]);
     expect(lint("packages/receipts", PERMIT, "versuch.test.ts")).toEqual([]);

@@ -24,13 +24,14 @@ Der offizielle Weg ist **Docker Compose**. Das gilt lokal und auf dem Server. Al
 
 ## Was heute mitläuft
 
-| Dienst     | Aufgabe                                                    | Erreichbar                                     |
-| ---------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `postgres` | Datenbank                                                  | nur im internen Netz des Stacks                |
-| `web`      | PaiBot-App (Next.js), wendet beim Start die Migrationen an | `127.0.0.1:3000`, nach außen über deine Domain |
-| `worker`   | erzeugt die Antworten deines Bots im Hintergrund           | kein Port, nimmt keine Verbindungen an         |
+| Dienst     | Aufgabe                                                                           | Erreichbar                                     |
+| ---------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `postgres` | Datenbank                                                                         | nur im internen Netz des Stacks                |
+| `migrate`  | Einmal-Dienst: wendet die Migrationen an, richtet die App-Rolle ein, endet danach | kein Port, läuft bei jedem Start kurz          |
+| `web`      | PaiBot-App (Next.js)                                                              | `127.0.0.1:3000`, nach außen über deine Domain |
+| `worker`   | erzeugt die Antworten deines Bots im Hintergrund                                  | kein Port, nimmt keine Verbindungen an         |
 
-`web` und `worker` sind dasselbe Image in zwei Rollen (Variable `PAIBOT_ROLE`). Der Worker startet erst, wenn `web` gesund ist: `web` wendet die Migrationen an, der Worker wartet nur darauf und migriert nie selbst.
+`migrate`, `web` und `worker` sind dasselbe Image in drei Rollen (Variable `PAIBOT_ROLE`). Bei jedem Start des Stacks läuft zuerst `migrate` und beendet sich mit Exit 0; erst danach starten `web` und `worker`. Beide migrieren nie selbst, sie prüfen beim Start nur, ob die Datenbank auf Stand ist und ihre Rolle nicht zu viel darf.
 
 Die Datenschleuse lässt sich zuschalten (Abschnitt [Datenschleuse zuschalten](#datenschleuse-zuschalten), Standard: aus). Der Browser-Dienst ist **geplant** und noch nicht Teil des Stacks.
 
@@ -46,7 +47,7 @@ curl http://localhost:3000/api/health
 
 Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`.
 
-Danach zeigt `docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps` die Dienste `web` und `worker` als `healthy`. Im Log des Workers (`… logs worker`) steht zuletzt „Bereit: nimmt Läufe an“.
+Danach zeigt `docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps -a` die Dienste `web` und `worker` als `healthy` und `migrate` als `Exited (0)`; im Log von `migrate` steht zuletzt „Migrations-Schritt fertig.“. Im Log des Workers (`… logs worker`) steht zuletzt „Bereit: nimmt Läufe an“.
 
 `deploy/env-erzeugen.sh` schreibt zwei Datenbank-Passwörter und das Wurzel-Geheimnis `PAIBOT_SECRET` in `deploy/.env` (nur für dich lesbar) und überschreibt nie eine vorhandene Datei. Sichere die Datei getrennt von der Datenbank, zum Beispiel im Passwort-Manager. Wer die Werte lieber selbst erzeugt: `openssl rand -hex 32` für jedes Passwort, `openssl rand -base64 32` für `PAIBOT_SECRET`.
 
@@ -66,9 +67,11 @@ Der Ablauf ist derselbe Stack, nur mit Domain und HTTPS davor. Schritt für Schr
 
 Die Datenbank hat keinen veröffentlichten Port; sie hängt nur im internen Netz `paibot-intern`, das keinen Weg nach draußen hat. Die Web-App ist nur an `127.0.0.1` gebunden. Von außen erreichst du PaiBot nur über den Proxy mit HTTPS.
 
-Die Container laufen gehärtet: ohne Root-Rechte, ohne Linux-Fähigkeiten (`cap_drop: ALL`), mit `no-new-privileges`; Web-App und Worker zusätzlich mit schreibgeschütztem Dateisystem (beschreibbar sind nur `/tmp` und bei der Web-App der Cache von Next.js). Alle Dienste haben einen Healthcheck und starten nach einem Absturz neu.
+Die Container laufen gehärtet: ohne Root-Rechte, ohne Linux-Fähigkeiten (`cap_drop: ALL`), mit `no-new-privileges`; `migrate`, Web-App und Worker zusätzlich mit schreibgeschütztem Dateisystem (beschreibbar sind nur `/tmp` und bei der Web-App der Cache von Next.js). Die dauerhaften Dienste haben einen Healthcheck und starten nach einem Absturz neu; `migrate` läuft nur einmal (`restart: "no"`).
 
-Der Worker hat keinen Port. Er hängt im internen Netz (für die Datenbank) und im Netz nach außen, weil er die Anfragen an die Modell-Anbieter stellt. Er bekommt nur die eingeschränkte App-Rolle (`DATABASE_URL`), nie die Zugangsdaten der Migrations-Rolle. Sein Healthcheck prüft eine Herzschlag-Datei unter `/tmp`, die er alle zehn Sekunden schreibt, solange die Datenbank antwortet und kein Lauf hängt.
+Web-App und Worker haben eine Speicher-Grenze (Standard: `web` 768 MB, `worker` 512 MB, `migrate` 384 MB). Wird sie überschritten, beendet Docker den Dienst und startet ihn neu, statt dass der ganze Server voll läuft. Die Werte reichen für die Basisversion mit einigen gleichzeitigen Antworten; mehr gleichzeitige Antworten (`PAIBOT_WORKER_CONCURRENCY`) brauchen mehr Speicher beim Worker.
+
+Der Worker hat keinen Port. Er hängt im internen Netz (für die Datenbank) und im Netz nach außen, weil er die Anfragen an die Modell-Anbieter stellt. Er bekommt wie die Web-App nur die eingeschränkte App-Rolle (`DATABASE_URL`), nie die Zugangsdaten der Migrations-Rolle; die hat nur `migrate`. Sein Healthcheck prüft eine Herzschlag-Datei unter `/tmp`, die er alle zehn Sekunden schreibt, solange die Datenbank antwortet und kein Lauf hängt.
 
 ## Einstellungen
 
@@ -86,8 +89,11 @@ Alle Werte stehen in `deploy/.env` (Vorlage: `deploy/.env.example`). Diese Datei
 | `WEB_PORT`                   | Port der Web-App auf dem Rechner                                                            | `3000`                  |
 | `PAIBOT_ALLOW_PRIVILEGED_DB` | `1` erlaubt den Start mit zu vielen Rechten, **nur für den Übergang**                       | leer                    |
 | `PAIBOT_WORKER_CONCURRENCY`  | wie viele Antworten der Worker gleichzeitig erzeugt (1 bis 32)                              | `2`                     |
+| `PAIBOT_WEB_SPEICHER`        | Speicher-Grenze der Web-App (Docker-Angabe wie `768m`, `1g`)                                | `768m`                  |
+| `PAIBOT_WORKER_SPEICHER`     | Speicher-Grenze des Workers                                                                 | `512m`                  |
+| `PAIBOT_MIGRATE_SPEICHER`    | Speicher-Grenze des Dienstes `migrate`                                                      | `384m`                  |
 
-Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), weil sie in einer Datenbank-Adresse stehen.
+Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), weil sie in einer Datenbank-Adresse stehen. `POSTGRES_PASSWORD` und `POSTGRES_APP_PASSWORD` müssen verschieden sein, sonst startet `migrate` nicht.
 
 Fehlt ein Pflichtwert, bricht schon `docker compose` mit einer Meldung „… fehlt“ ab. Ist ein Wert zu kurz, falsch geformt oder noch ein Platzhalter, startet die App nicht und nennt im Log, welcher Wert es ist (nie den Wert selbst).
 
@@ -95,34 +101,43 @@ Fehlt ein Pflichtwert, bricht schon `docker compose` mit einer Meldung „… fe
 
 PaiBot nutzt zwei Rollen in Postgres:
 
-| Rolle                       | Wofür                                                                        | Wer nutzt sie                                                    |
-| --------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Migrations-Rolle (`paibot`) | Besitzer der Tabellen; legt Tabellen an und ändert sie                       | nur der Migrations-Schritt beim Start (`DATABASE_MIGRATION_URL`) |
-| App-Rolle (`paibot_app`)    | die normale Arbeit der App: lesen, anlegen, ändern, wo es fachlich nötig ist | Web-App und Worker (`DATABASE_URL`)                              |
+| Rolle                       | Wofür                                                                        | Wer nutzt sie                                       |
+| --------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------- |
+| Migrations-Rolle (`paibot`) | Besitzer der Tabellen; legt Tabellen an und ändert sie                       | nur der Dienst `migrate` (`DATABASE_MIGRATION_URL`) |
+| App-Rolle (`paibot_app`)    | die normale Arbeit der App: lesen, anlegen, ändern, wo es fachlich nötig ist | Web-App und Worker (`DATABASE_URL`)                 |
 
-Beim Start passiert der Reihe nach:
+Der Dienst `migrate` macht bei jedem Start des Stacks der Reihe nach:
 
 1. Die Migrationen laufen mit der Migrations-Rolle.
-2. Fehlt die App-Rolle, wird sie angelegt (ohne Sonderrechte, mit dem Passwort aus `POSTGRES_APP_PASSWORD`). Danach bekommt sie ihre Rechte, bei jedem Start neu, damit auch neue Tabellen stimmen.
-3. Mit der App-Rolle prüft PaiBot, ob die Datenbank auf dem Stand dieser Version ist. Wenn nicht, meldet das Log „Datenbank nicht auf Stand“, und die App startet nicht.
-4. PaiBot prüft, ob die App-Verbindung zu viele Rechte hat (Superuser, Besitzer der Tabellen, Änderungsrechte auf Belegen). Dann bricht der Start ab, außer `PAIBOT_ALLOW_PRIVILEGED_DB=1` ist gesetzt. In dem Fall steht eine Warnung im Log, und `/api/health` sendet die Kopfzeile `X-Pb-Db-Rolle: zu_viele_rechte`.
+2. Fehlt die App-Rolle, wird sie angelegt (ohne Sonderrechte, mit dem Passwort aus `POSTGRES_APP_PASSWORD`). Danach bekommt sie ihre Rechte, bei jedem Lauf neu, damit auch neue Tabellen stimmen. Eigene Einstellungen der App-Rolle werden dabei zurückgesetzt und ihr Passwort wird neu gesetzt.
+3. Mit der App-Rolle prüft er, ob die Datenbank auf Stand ist und die Rolle nicht zu viel darf. Dann endet er mit Exit 0, bei einem Fehler mit Exit 1, und `web` und `worker` starten nicht.
 
-Was die App-Rolle darf:
+Web-App und Worker prüfen beim Start nur mit der App-Rolle:
 
-| Bereich                         | Rechte                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------- |
-| Belege, Regeln                  | nur lesen und anhängen                                                    |
-| Signaturschlüssel               | lesen, anhängen, ausmustern (nur das Datum dafür)                         |
-| Ereignisse der Unterhaltungen   | lesen, anhängen, löschen (kein Ändern)                                    |
-| alle übrigen Tabellen           | lesen, anlegen, ändern, löschen                                           |
-| Warteschlange (Schema `pgboss`) | gehört der App-Rolle                                                      |
-| überall                         | kein Leeren (`TRUNCATE`), keine Trigger, keine neuen Tabellen in `public` |
+1. Ist die Datenbank auf dem Stand dieser Version? Wenn nicht, meldet das Log „Datenbank nicht auf Stand“, und der Dienst startet nicht.
+2. Hat die App-Verbindung zu viele Rechte oder ist sie falsch eingestellt (Superuser, Besitzer von Objekten in `public`, Änderungsrechte auf Belegen oder Regeln, eigene Einstellungen an der Rolle, gleichnamige Tabellen in einem anderen Schema)? Dann bricht der Start ab, außer `PAIBOT_ALLOW_PRIVILEGED_DB=1` ist gesetzt. In dem Fall steht eine Warnung im Log, und `/api/health` sendet die Kopfzeile `X-Pb-Db-Rolle: zu_viele_rechte`.
+3. Ist bei `web` `DATABASE_MIGRATION_URL` gesetzt, startet die Web-App im Betrieb nicht. Die Zugangsdaten der Migrations-Rolle gehören nur zu `migrate`.
+
+Was die App-Rolle darf (alle Tabellen: [Sicherheit, Abschnitt „Rollen der Datenbank“](sicherheit.md#rollen-der-datenbank)):
+
+| Bereich                         | Rechte                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Belege                          | nur lesen und anhängen                                                                               |
+| Regeln                          | nur lesen; Standard-Regeln kommen allein aus den Migrationen                                         |
+| Signaturschlüssel               | lesen, anhängen, ausmustern (nur das Datum dafür)                                                    |
+| Ereignisse der Unterhaltungen   | lesen, anhängen, löschen (kein Ändern)                                                               |
+| Werkzeug-Aufrufe                | lesen, anlegen, nur Zustand und Ergebnis fortschreiben                                               |
+| alle übrigen Tabellen           | lesen, anlegen, ändern, löschen                                                                      |
+| Warteschlange (Schema `pgboss`) | gehört der App-Rolle                                                                                 |
+| überall                         | kein Leeren (`TRUNCATE`), keine Trigger, keine neuen Tabellen in `public`, keine temporären Tabellen |
 
 Dadurch kann die App-Rolle die Schutz-Trigger der Belege weder abschalten noch löschen.
 
 ### So stellst du eine bestehende Installation um
 
-Bisher lief PaiBot mit einer einzigen Rolle für alles. Die Umstellung behält alle Daten.
+**Von einem Stand, in dem `web` selbst migriert hat:** Es reicht, den neuen Stand zu holen und neu zu starten (`git pull`, dann `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build`). Der Dienst `migrate` kommt dabei dazu, die Daten bleiben. Wer `docker-compose.yml` angepasst hat: bei `web` die Zeile `DATABASE_MIGRATION_URL` entfernen, sonst startet die Web-App nicht.
+
+**Von einem Stand mit nur einer Rolle für alles:** Die Umstellung behält alle Daten.
 
 1. Sicherung der Datenbank anlegen (siehe unten).
 2. Neuen Stand holen: `git pull`.
@@ -142,9 +157,9 @@ Bisher lief PaiBot mit einer einzigen Rolle für alles. Die Umstellung behält a
    ```
 
 5. Neu starten: `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build`.
-6. Im Log von `web` stehen „App-Rolle paibot_app angelegt“ und „Rechte der App-Rolle paibot_app gesetzt“. `/api/health` meldet `"db":"ok"` ohne die Kopfzeile `X-Pb-Db-Rolle`.
+6. Im Log von `migrate` stehen „App-Rolle paibot_app angelegt“, „Rechte der App-Rolle paibot_app gesetzt“ und „Migrations-Schritt fertig.“. `/api/health` meldet `"db":"ok"` ohne die Kopfzeile `X-Pb-Db-Rolle`.
 
-Läuft deine Datenbank nicht im Compose-Stack (z. B. eine verwaltete Datenbank), setze `DATABASE_MIGRATION_URL` auf die bisherige Adresse und `DATABASE_URL` auf eine neue Rolle. Die Migrations-Rolle braucht dann das Recht, Rollen anzulegen, und muss die App-Rolle übernehmen dürfen (`GRANT paibot_app TO <migrations-rolle>`, nachdem die Rolle existiert); sonst lege die App-Rolle selbst an (`CREATE ROLE paibot_app LOGIN PASSWORD '…'`).
+Läuft deine Datenbank nicht im Compose-Stack (z. B. eine verwaltete Datenbank), setze beim Dienst `migrate` `DATABASE_MIGRATION_URL` auf die bisherige Adresse und `DATABASE_URL` auf eine neue Rolle; `web` und `worker` bekommen nur `DATABASE_URL`. Die Migrations-Rolle braucht dann das Recht, Rollen anzulegen, und muss die App-Rolle übernehmen dürfen (`GRANT paibot_app TO <migrations-rolle>`, nachdem die Rolle existiert); sonst lege die App-Rolle selbst an (`CREATE ROLE paibot_app LOGIN PASSWORD '…'`).
 
 Kannst du gerade nicht umstellen, startet PaiBot mit `PAIBOT_ALLOW_PRIVILEGED_DB=1` in `deploy/.env` wie bisher, mit Warnung. Das ist nur für den Übergang gedacht.
 
@@ -184,23 +199,26 @@ pnpm install
 pnpm dev
 ```
 
-In der Entwicklung (`pnpm dev`) bleiben zu viele Rechte und kurze Passwörter bei einer Warnung; abgebrochen wird nur im Betrieb (`NODE_ENV=production`).
+In der Entwicklung (`pnpm dev`) migriert die Web-App beim Start selbst, mit `DATABASE_MIGRATION_URL` aus `apps/web/.env.local` (fehlt sie, mit `DATABASE_URL`). Einen eigenen Dienst `migrate` brauchst du dafür nicht. Zu viele Rechte und kurze Passwörter bleiben dort bei einer Warnung; abgebrochen wird nur im Betrieb (`NODE_ENV=production`).
 
 ## Fehlerbehebung
 
-| Beobachtung                                                                                | Ursache                                                           | Was tun                                                                                      |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Compose bricht mit „fehlt“ ab                                                              | ein Pflichtwert ist nicht gesetzt                                 | `sh deploy/env-erzeugen.sh` (neu) oder Wert in `deploy/.env` ergänzen                        |
-| Log: „Start abgebrochen: Einstellungen unvollständig“                                      | Passwort zu kurz, Platzhalter oder `PAIBOT_SECRET` falsch geformt | genannten Wert neu erzeugen (siehe „Einstellungen“)                                          |
-| Log: „… mit zu vielen Rechten“                                                             | App nutzt die Migrations-Rolle oder einen Superuser               | „So stellst du eine bestehende Installation um“                                              |
-| Log: „Datenbank nicht auf Stand“                                                           | Migration fehlgeschlagen oder Datenbank neuer als diese Version   | Meldungen der Migration davor lesen; `POSTGRES_PASSWORD` prüfen; passende Version einspielen |
-| Log: „Migration fehlgeschlagen“                                                            | Migrations-Rolle falsch oder Datenbank nicht erreichbar           | `POSTGRES_USER`/`POSTGRES_PASSWORD` prüfen, Logs von `postgres` lesen                        |
-| `"db":"down"`, HTTP 503                                                                    | App läuft, Datenbank nicht erreichbar                             | Logs von `postgres` und `web` prüfen, Passwort vergleichen                                   |
-| Worker: „Warte auf die Migrationen der Web-App“, dann „Datenbank nicht auf Stand nach … s“ | `web` startet nicht oder migriert nicht                           | Log von `web` lesen; der Worker migriert nie selbst                                          |
-| Worker: „Datenbank nach … s nicht erreichbar“                                              | Datenbank aus oder App-Rolle noch nicht angelegt                  | Log von `postgres` und `web` prüfen; `POSTGRES_APP_PASSWORD` gleich bei `web` und `worker`   |
-| Worker `unhealthy`, Log: „Herzschlag ausgesetzt“                                           | Datenbank antwortet nicht oder ein Lauf hängt                     | Log von `postgres` prüfen; der Container startet danach neu                                  |
-| `"db":"not_configured"`                                                                    | `DATABASE_URL` fehlt (z. B. bei `pnpm dev`)                       | `apps/web/.env.local` aus `apps/web/.env.example` anlegen                                    |
-| keine Antwort                                                                              | Port, Domain oder Proxy falsch                                    | `WEB_PORT`, DNS und Domain-Eintrag beim Dienst `web` prüfen                                  |
+| Beobachtung                                                                                | Ursache                                                                                            | Was tun                                                                                      |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Compose bricht mit „fehlt“ ab                                                              | ein Pflichtwert ist nicht gesetzt                                                                  | `sh deploy/env-erzeugen.sh` (neu) oder Wert in `deploy/.env` ergänzen                        |
+| Log: „Start abgebrochen: Einstellungen unvollständig“                                      | Passwort zu kurz, Platzhalter oder `PAIBOT_SECRET` falsch geformt                                  | genannten Wert neu erzeugen (siehe „Einstellungen“)                                          |
+| Log: „… mit zu vielen Rechten oder falsch eingestellt“                                     | App nutzt die Migrations-Rolle oder einen Superuser, oder die App-Rolle trägt eigene Einstellungen | „So stellst du eine bestehende Installation um“; sonst `migrate` erneut starten (`… up -d`)  |
+| `web` und `worker` starten nicht, `migrate` steht auf `Exited (1)`                         | Migration oder Einrichtung der App-Rolle fehlgeschlagen                                            | `… logs migrate` lesen; `POSTGRES_PASSWORD` prüfen                                           |
+| Log `web`: „DATABASE_MIGRATION_URL ist beim Dienst web gesetzt“                            | eigene Anpassung von `docker-compose.yml` aus einem älteren Stand                                  | Variable bei `web` entfernen                                                                 |
+| Log `migrate`: „Die Sperre der Migration ist seit … s belegt“                              | eine andere Verbindung hält die Sperre                                                             | genannte Verbindung beenden, `migrate` erneut starten                                        |
+| Log: „Datenbank nicht auf Stand“                                                           | Migration fehlgeschlagen oder Datenbank neuer als diese Version                                    | Meldungen der Migration davor lesen; `POSTGRES_PASSWORD` prüfen; passende Version einspielen |
+| Log: „Migration fehlgeschlagen“                                                            | Migrations-Rolle falsch oder Datenbank nicht erreichbar                                            | `POSTGRES_USER`/`POSTGRES_PASSWORD` prüfen, Logs von `postgres` lesen                        |
+| `"db":"down"`, HTTP 503                                                                    | App läuft, Datenbank nicht erreichbar                                                              | Logs von `postgres` und `web` prüfen, Passwort vergleichen                                   |
+| Worker: „Warte auf die Migrationen der Web-App“, dann „Datenbank nicht auf Stand nach … s“ | `migrate` ist nicht durchgelaufen                                                                  | Log von `migrate` lesen; der Worker migriert nie selbst                                      |
+| Worker: „Datenbank nach … s nicht erreichbar“                                              | Datenbank aus oder App-Rolle noch nicht angelegt                                                   | Log von `postgres` und `migrate` prüfen                                                      |
+| Worker `unhealthy`, Log: „Herzschlag ausgesetzt“                                           | Datenbank antwortet nicht oder ein Lauf hängt                                                      | Log von `postgres` prüfen; der Container startet danach neu                                  |
+| `"db":"not_configured"`                                                                    | `DATABASE_URL` fehlt (z. B. bei `pnpm dev`)                                                        | `apps/web/.env.local` aus `apps/web/.env.example` anlegen                                    |
+| keine Antwort                                                                              | Port, Domain oder Proxy falsch                                                                     | `WEB_PORT`, DNS und Domain-Eintrag beim Dienst `web` prüfen                                  |
 
 ## Als Web-App installieren
 

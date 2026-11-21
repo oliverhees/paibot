@@ -15,13 +15,19 @@ import {
   ACTIVE_STANDARD_RULES,
   CREDENTIAL_SCOPE,
   decisionSchema,
+  FALLBACK_PRIORITY,
+  OWN_RULE_PRIORITY,
   PRECONDITION_IDS,
   PRECONDITIONS,
   preconditionCheckSchema,
   preconditionsFor,
+  priorityFitsSource,
   ruleContent,
   ruleRefSchema,
+  STANDARD_PRIORITY_MAX,
   STANDARD_RULE_VERSIONS,
+  storedRuleRefSchema,
+  UNSTORED_STANDARD_RULE_VERSIONS,
 } from "./gate";
 import { t } from "./i18n";
 import { receiptDecisionSchema } from "./receipts";
@@ -112,10 +118,25 @@ describe("Fassungen der Standard-Regeln", () => {
     expect(Object.keys(ruleContent(stored))).not.toContain("createdAt");
   });
 
-  it("Verweise auf Regeln tragen optional die Prüfsumme des Inhalts", () => {
+  it("Verweise auf Regeln tragen die Prüfsumme des Inhalts; in alten Belegen darf sie fehlen", () => {
     expect(ruleRefSchema.parse({ id: "R-001", version: 2, hash: HASH })).toBeTruthy();
-    expect(ruleRefSchema.safeParse({ id: "R-001", version: 2 }).success).toBe(true);
+    expect(ruleRefSchema.safeParse({ id: "R-001", version: 2 }).success).toBe(false);
     expect(ruleRefSchema.safeParse({ id: "R-001", version: 2, hash: "ab" }).success).toBe(false);
+    expect(storedRuleRefSchema.safeParse({ id: "R-001", version: 2 }).success).toBe(true);
+    expect(storedRuleRefSchema.safeParse({ id: "R-001", version: 2, hash: "ab" }).success).toBe(
+      false,
+    );
+  });
+
+  it("Prioritäten in festen Bändern je Quelle", () => {
+    for (const rule of [...STANDARD_RULE_VERSIONS, ...UNSTORED_STANDARD_RULE_VERSIONS]) {
+      expect(priorityFitsSource(rule.source, rule.priority)).toBe(true);
+    }
+    expect(priorityFitsSource("standard", OWN_RULE_PRIORITY.min)).toBe(false);
+    expect(priorityFitsSource("owner", STANDARD_PRIORITY_MAX)).toBe(false);
+    expect(priorityFitsSource("owner", OWN_RULE_PRIORITY.min)).toBe(true);
+    expect(priorityFitsSource("proposal", OWN_RULE_PRIORITY.max)).toBe(true);
+    expect(priorityFitsSource("owner", FALLBACK_PRIORITY)).toBe(false);
   });
 });
 

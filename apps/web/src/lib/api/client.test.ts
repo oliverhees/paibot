@@ -1,5 +1,5 @@
 /**
- * PaiBot – prüft die Oberfläche des Zugangs: Browser-Module laden weder Zod noch den Routen-Vertrag
+ * PaiBot – prüft die Oberfläche (Zugang, Einstellungen, Belege): Browser-Module laden weder Zod noch den Routen-Vertrag
  * (strenge Content-Security-Policy ohne Code-Auswertung), und jeder API-Aufruf steht im Vertrag.
  *
  * @author    Oliver Hees
@@ -17,10 +17,16 @@ const CLIENT = [
   "../../app/einrichtung/Einrichtung.tsx",
   "../../app/anmelden/Anmelden.tsx",
   "../../app/(app)/AppRahmen.tsx",
+  "../../app/(app)/einstellungen/AbmeldenKnopf.tsx",
+  "../../app/(app)/einstellungen/Grenzen.tsx",
+  "../../app/(app)/einstellungen/Zugang.tsx",
+  "../../app/(app)/belege/BelegeAnsicht.tsx",
+  "../../app/(app)/belege/BelegPruefen.tsx",
+  "../../app/(app)/belege/[id]/BelegDetail.tsx",
   "./client.ts",
 ].map((datei) => ({ datei, text: readFileSync(new URL(datei, import.meta.url), "utf8") }));
 
-describe("Browser-Module des Zugangs", () => {
+describe("Browser-Module des Zugangs, der Einstellungen und der Belege", () => {
   it.each(CLIENT)(
     "$datei lädt weder Zod noch Eingabe-Schemas noch den Routen-Vertrag",
     ({ text }) => {
@@ -38,9 +44,11 @@ describe("Browser-Module des Zugangs", () => {
     },
   );
 
-  it("jeder Aufruf von apiFetch nennt Methode und Pfad einer Route des Vertrags", () => {
+  it("jeder Aufruf von apiFetch und apiDatei nennt Methode und Pfad einer Route des Vertrags", () => {
     const aufrufe = CLIENT.flatMap(({ text }) => [
-      ...text.matchAll(/apiFetch(?:<[^>]*>)?\(\s*"(GET|POST|PUT|PATCH|DELETE)",\s*"([^"]+)"/g),
+      ...text.matchAll(
+        /(?:apiFetch|apiDatei)(?:<[^>]*>)?\(\s*"(GET|POST|PUT|PATCH|DELETE)",\s*"([^"]+)"/g,
+      ),
     ]);
     expect(aufrufe.length).toBeGreaterThanOrEqual(4);
     for (const [, methode, pfad] of aufrufe) {

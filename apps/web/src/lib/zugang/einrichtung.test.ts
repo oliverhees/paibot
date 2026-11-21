@@ -279,7 +279,7 @@ describe("Abschluss der Einrichtung", () => {
       dose: vorabDose(),
       koerper: eingabe(),
     });
-    expect(u.dienste.code.aktiv()).toBe(false);
+    expect(await u.dienste.code.aktiv(u.db)).toBe(false);
     const zweiter = await anfrage(u, h.abschluss, "POST", "/api/einrichtung", {
       dose: vorabDose(),
       koerper: eingabe(),
@@ -319,7 +319,7 @@ describe("Abschluss der Einrichtung", () => {
         anbieter: 0,
       });
       expect(await repo.settings.isSetupComplete(u.db)).toBe(false);
-      expect(u.dienste.code.aktiv()).toBe(true);
+      expect(await u.dienste.code.aktiv(u.db)).toBe(true);
       const danach = await anfrage(u, handler(u).abschluss, "POST", "/api/einrichtung", {
         dose: vorabDose(),
         koerper: eingabe(),

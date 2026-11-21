@@ -22,6 +22,7 @@ import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
 import type { ZugangsDienste } from "./dienste";
+import { codeSicherstellen } from "./einrichtungs-code";
 import { _nachweisCode, type Nachweis, nachweisAusSitzung } from "./nachweis";
 import { neuerPasswortHash } from "./passwort";
 import {
@@ -51,7 +52,7 @@ export async function einrichtungsStatus(
   d: ZugangsDienste,
 ): Promise<EinrichtungsStatus> {
   const offen = !(await repo.settings.isSetupComplete(db));
-  if (offen && !d.code.aktiv()) d.log.info(t("einrichtung.code.log", { code: d.code.erzeugen() }));
+  if (offen) await codeSicherstellen(d.code, db, d.uhr.now(), d.log.info);
   return {
     offen,
     schleuseInstalliert: d.schleuseInstalliert(),
@@ -71,7 +72,7 @@ async function codePruefen(
   kontext: RoutenKontext<"einrichtungAbschliessen" | "einrichtungVerbindungstest">,
   code: string,
 ): Promise<Nachweis> {
-  if (!kontext.dienste.code.pruefen(code)) {
+  if (!(await kontext.dienste.code.pruefen(kontext.db, code))) {
     throw new PaiBotError("einrichtungs_code_falsch", {
       felder: [{ feld: "setupCode", code: "ungueltig" }],
     });
@@ -135,8 +136,8 @@ function stoeren(optionen: AbschlussOptionen, schritt: EinrichtungsSchritt): voi
  * `einrichtung.abschliessen` (Besitzer, Einstellungen, erste Sitzung), `bot.aendern` (erster Bot),
  * `anbieter.speichern` (Schlüssel gebunden an Anbieter und Host) und `modell.waehlen` (falls ein
  * Schlüssel angegeben ist) sowie `schleuse.umschalten` (falls „An“ gewählt). Scheitert ein Schritt,
- * bleibt nichts davon in der Datenbank, und der Code bleibt gültig. Erst nach dem Bestätigen wird
- * der Code ungültig.
+ * bleibt nichts davon in der Datenbank, und der Code bleibt gültig. Mit dem Abschluss löscht
+ * `completeSetup` den Prüfwert des Codes in derselben Transaktion; danach gilt er nicht mehr.
  */
 export async function einrichtungAbschliessen(
   kontext: RoutenKontext<"einrichtungAbschliessen">,
@@ -172,13 +173,14 @@ export async function einrichtungAbschliessen(
 
   const ergebnis = await kontext.db.transaction(async (tx) => {
     await repo.settings.ensure(tx);
-    await tx.execute("select 1 from settings where id = 'singleton' for update");
+    await tx.execute(`select 1 from "public"."settings" where id = 'singleton' for update`);
     const einstellungen = await repo.settings.get(tx);
     const vorhanden = await repo.owner.get(tx);
     if (einstellungen?.setupCompletedAt !== undefined || vorhanden !== undefined) {
       throw new PaiBotError("einrichtung_fertig");
     }
-    if (!d.code.aktiv()) {
+    // Unter der Sperre noch einmal: Gilt der geprüfte Code noch (nicht inzwischen ersetzt)?
+    if (!(await d.code.pruefen(tx, eingabe.setupCode))) {
       throw new PaiBotError("einrichtungs_code_falsch", {
         felder: [{ feld: "setupCode", code: "ungueltig" }],
       });
@@ -330,7 +332,7 @@ export async function einrichtungAbschliessen(
     };
   });
 
-  d.code.verbrauchen();
+  // Den Prüfwert des Codes hat `completeSetup` in derselben Transaktion gelöscht.
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.sitzung.token, false));
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));

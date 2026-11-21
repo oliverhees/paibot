@@ -21,7 +21,7 @@ import {
   generateSigningKey,
   loadMasterSecret,
 } from "@paibot/crypto";
-import { type Database, repo, rules } from "@paibot/db";
+import { type Database, repo } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
 import {
@@ -489,23 +489,12 @@ describe("Durchstich", () => {
     expect((await verifyAll()).ok).toBe(true);
   });
 
-  it("Gegenprobe: Regel lehnt ab → kein Abruf beim Test-Anbieter, Beleg „abgelehnt“", async () => {
-    const ruleId = newId("rule");
-    await ctx.db.insert(rules).values({
-      id: ruleId,
-      version: 1,
-      action: "modell.anfragen",
-      effect: "deny",
-      stage: "execute",
-      conditions: [],
-      priority: 1,
-      source: "owner",
-      title: "Keine Modell-Anfragen",
-      reason: "Modell-Anfragen sind gesperrt.",
-    });
+  it("Gegenprobe: Not-Aus lehnt ab → kein Abruf beim Test-Anbieter, Beleg „abgelehnt“", async () => {
     fake.reset();
     fake.configure({ reply: REPLY });
-    const { runId, action, facts } = await modelRequest();
+    const request = await modelRequest();
+    const { runId, action } = request;
+    const facts = { ...request.facts, killSwitch: true };
     let executed = false;
 
     const error = await gate
@@ -519,10 +508,13 @@ describe("Durchstich", () => {
     expect(isGateDenied(error)).toBe(true);
     if (!isGateDenied(error)) throw error;
     expect(error.code).toBe("abgelehnt");
-    const added = (await repo.rules.listActive(ctx.db)).find((rule) => rule.id === ruleId);
-    if (added === undefined) throw new Error("Regel fehlt");
-    const addedHash = await hashRule(added);
-    expect(error.decision.matchedRules).toEqual([{ id: ruleId, version: 1, hash: addedHash }]);
+    expect(error.decision.limits).toContainEqual(
+      expect.objectContaining({ name: "not_aus", result: "verletzt" }),
+    );
+    const r002 = (await repo.rules.listActive(ctx.db)).find((rule) => rule.id === "R-002");
+    if (r002 === undefined) throw new Error("Regel fehlt");
+    const r002Hash = await hashRule(r002);
+    expect(error.decision.matchedRules).toEqual([{ id: "R-002", version: 1, hash: r002Hash }]);
     expect(executed).toBe(false);
     expect(fake.requests).toHaveLength(0);
 
@@ -530,7 +522,7 @@ describe("Durchstich", () => {
     expect(decision).toMatchObject({
       type: "decision",
       action: { actionId: action.actionId },
-      decision: { outcome: "deny", rules: [{ id: ruleId, version: 1, hash: addedHash }] },
+      decision: { outcome: "deny", rules: [{ id: "R-002", version: 1, hash: r002Hash }] },
     });
     expect(result).toMatchObject({
       type: "result",
@@ -538,8 +530,7 @@ describe("Durchstich", () => {
       result: { status: "denied", code: "abgelehnt" },
     });
 
-    // Signaturen und Kette bleiben gültig. Nachgerechnet wird die neue Entscheidung mit den
-    // Regeln, die jetzt gelten (die frühere Erlaubnis galt vor der neuen Regel).
+    // Signaturen und Kette bleiben gültig, die Ablehnung lässt sich nachrechnen.
     const all = await entries();
     const keys = await repo.installationKeys.listPublic(ctx.db);
     expect((await verifyChain(all, keys)).ok).toBe(true);

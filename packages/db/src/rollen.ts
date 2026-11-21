@@ -12,8 +12,15 @@
 import { createHash, createHmac, pbkdf2Sync, randomBytes } from "node:crypto";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import postgres from "postgres";
+import { APP_SEARCH_PATH } from "./client";
 
-/** Schema der Warteschlange (pg-boss). Gehört der App-Rolle. */
+/**
+ * Schema der Warteschlange (pg-boss). Gehört der App-Rolle: Die Bibliothek legt darin zur Laufzeit
+ * Tabellen an (je Warteschlange eine Teil-Tabelle, für die Statistik täglich eine neue) und muss
+ * dafür Besitzer der Eltern-Tabellen sein. Deshalb sprechen alle Abfragen der App ihre Tabellen mit
+ * Schema an, jede Verbindung setzt einen festen Suchpfad, und `checkAppRole` meldet gleichnamige
+ * Tabellen in anderen Schemas.
+ */
 export const QUEUE_SCHEMA_NAME = "pgboss";
 
 /** Rechte der App-Rolle auf Tabellen ohne besonderen Schutz (kein TRUNCATE). */
@@ -23,7 +30,8 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * Rechte der App-Rolle je Tabelle im Schema `public`. Jede Tabelle des Schemas steht hier (ein Test
  * prüft das), damit eine neue Tabelle bewusst ihre Rechte bekommt.
  *
- * - `belege`, `rules`: nur lesen und anhängen.
+ * - `belege`: nur lesen und anhängen.
+ * - `rules`: nur lesen. Die Standard-Regeln legen allein die Migrationen an.
  * - `installation_keys`: lesen, anhängen und nur `retired_at` setzen (Ausmustern).
  * - `conversation_events`: lesen, anhängen, alte Ereignisse löschen; nie ändern.
  * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
@@ -40,10 +48,10 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   owner: APP_DEFAULT_TABLE_RIGHTS,
   providers: APP_DEFAULT_TABLE_RIGHTS,
   rate_limits: APP_DEFAULT_TABLE_RIGHTS,
-  rules: "select, insert",
   runs: APP_DEFAULT_TABLE_RIGHTS,
   sessions: APP_DEFAULT_TABLE_RIGHTS,
   settings: APP_DEFAULT_TABLE_RIGHTS,
+  rules: "select",
   tool_calls:
     "select, insert, update (status, decision_receipt_id, result_receipt_id, result_status, output, error_code, updated_at, finished_at)",
 };
@@ -60,7 +68,10 @@ export type RoleIssue =
   | "besitzer"
   | "schema_create"
   | "belege_aenderbar"
-  | "replikationsmodus";
+  | "replikationsmodus"
+  | "rolleneinstellungen"
+  | "schatten_tabellen"
+  | "suchpfad";
 
 /** Ergebnis der Rechte-Prüfung einer Verbindung. */
 export interface RoleCheck {
@@ -76,10 +87,14 @@ export const ROLE_ISSUE_TEXT: Readonly<Record<RoleIssue, string>> = {
   bypassrls: "darf Zeilen-Regeln umgehen (BYPASSRLS)",
   createrole: "darf Rollen anlegen (CREATEROLE)",
   replication: "hat Replikationsrechte",
-  besitzer: "ist Besitzer von Tabellen (kann Trigger abschalten)",
+  besitzer: "ist Besitzer von Objekten im Schema public (kann z. B. Trigger abschalten)",
   schema_create: "darf im Schema public Objekte anlegen",
   belege_aenderbar: "darf Belege, Regeln oder Schlüssel ändern, löschen oder leeren",
   replikationsmodus: "darf session_replication_role setzen",
+  rolleneinstellungen:
+    "trägt eigene Einstellungen an der Rolle (ALTER ROLE … SET), z. B. einen anderen Suchpfad",
+  schatten_tabellen: "in einem anderen Schema liegen Tabellen mit dem Namen einer Tabelle der App",
+  suchpfad: "die Verbindung sucht Tabellen nicht nur in pg_catalog und public",
 };
 
 /**
@@ -98,6 +113,9 @@ export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
       besitzer: boolean;
       schema_create: boolean;
       belege_aenderbar: boolean;
+      rolleneinstellungen: boolean;
+      schatten_tabellen: boolean;
+      suchpfad: boolean;
     }[]
   >`
     select
@@ -106,25 +124,63 @@ export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
       r.rolbypassrls as bypassrls,
       r.rolcreaterole as createrole,
       r.rolreplication as replication,
-      exists (
-        select 1 from pg_class c
-        join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname = 'public' and c.relkind in ('r', 'p')
-          and pg_has_role(current_user, c.relowner, 'USAGE')
+      (
+        exists (
+          select 1 from pg_catalog.pg_namespace n
+          where n.nspname = 'public' and pg_catalog.pg_has_role(current_user, n.nspowner, 'USAGE')
+        )
+        or exists (
+          select 1 from pg_catalog.pg_class c
+          join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public'
+            and pg_catalog.pg_has_role(current_user, c.relowner, 'USAGE')
+        )
+        or exists (
+          select 1 from pg_catalog.pg_proc p
+          join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public'
+            and pg_catalog.pg_has_role(current_user, p.proowner, 'USAGE')
+        )
+        or exists (
+          select 1 from pg_catalog.pg_type t
+          join pg_catalog.pg_namespace n on n.oid = t.typnamespace
+          where n.nspname = 'public'
+            and pg_catalog.pg_has_role(current_user, t.typowner, 'USAGE')
+        )
       ) as besitzer,
-      has_schema_privilege('public', 'CREATE') as schema_create,
+      pg_catalog.has_schema_privilege('public', 'CREATE') as schema_create,
       coalesce((
         select bool_or(
-          has_table_privilege(c.oid, 'UPDATE')
-          or has_table_privilege(c.oid, 'DELETE')
-          or has_table_privilege(c.oid, 'TRUNCATE')
-          or has_table_privilege(c.oid, 'TRIGGER')
+          pg_catalog.has_table_privilege(c.oid, 'UPDATE')
+          or pg_catalog.has_table_privilege(c.oid, 'DELETE')
+          or pg_catalog.has_table_privilege(c.oid, 'TRUNCATE')
+          or pg_catalog.has_table_privilege(c.oid, 'TRIGGER')
         )
-        from pg_class c
-        join pg_namespace n on n.oid = c.relnamespace
+        from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public' and c.relname in ${sql(APPEND_ONLY_TABLES as unknown as string[])}
-      ), false) as belege_aenderbar
-    from pg_roles r
+      ), false) as belege_aenderbar,
+      exists (
+        select 1 from pg_catalog.pg_db_role_setting s
+        where s.setrole = r.oid
+          and s.setdatabase in (0, (
+            select d.oid from pg_catalog.pg_database d
+            where d.datname = pg_catalog.current_database()))
+      ) as rolleneinstellungen,
+      exists (
+        select 1 from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        where n.nspname not in ('public', 'pg_catalog', 'information_schema')
+          and n.nspname not like 'pg\_toast%'
+          and c.relkind in ('r', 'p', 'v', 'm', 'f')
+          and c.relname in (
+            select a.relname from pg_catalog.pg_class a
+            join pg_catalog.pg_namespace an on an.oid = a.relnamespace
+            where an.nspname = 'public' and a.relkind in ('r', 'p')
+          )
+      ) as schatten_tabellen,
+      pg_catalog.current_schemas(true) <> array['pg_catalog', 'public']::name[] as suchpfad
+    from pg_catalog.pg_roles r
     where r.rolname = current_user`;
   if (row === undefined) throw new Error("Die eigene Rolle ist in pg_roles nicht zu finden.");
 
@@ -137,6 +193,9 @@ export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
     "besitzer",
     "schema_create",
     "belege_aenderbar",
+    "rolleneinstellungen",
+    "schatten_tabellen",
+    "suchpfad",
   ] as const) {
     if (row[key]) issues.push(key);
   }
@@ -151,10 +210,10 @@ export async function checkAppRole(sql: postgres.Sql): Promise<RoleCheck> {
 /** Ab Postgres 15 lässt sich das Setzen einzelner Parameter erlauben; das prüfen wir mit. */
 async function maySetReplicationRole(sql: postgres.Sql): Promise<boolean> {
   const [version] = await sql<{ n: number }[]>`
-    select current_setting('server_version_num')::int as n`;
+    select pg_catalog.current_setting('server_version_num')::int as n`;
   if ((version?.n ?? 0) < 150000) return false;
   const [row] = await sql<{ ok: boolean }[]>`
-    select has_parameter_privilege('session_replication_role', 'SET') as ok`;
+    select pg_catalog.has_parameter_privilege('session_replication_role', 'SET') as ok`;
   return row?.ok === true;
 }
 
@@ -180,7 +239,7 @@ export async function checkMigrationState(
   const expected = files.length;
   const last = files.at(-1)?.folderMillis ?? 0;
   const [exists] = await sql<{ ok: boolean }[]>`
-    select to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+    select pg_catalog.to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
   if (exists?.ok !== true) return { status: "leer", expected, applied: 0 };
   const [row] = await sql<{ applied: number; newest: string | null }[]>`
     select count(*)::int as applied, max(created_at)::text as newest
@@ -234,6 +293,13 @@ export interface AppRoleSetup {
  * 5. Schema der Warteschlange: wird hier angelegt und gehört der App-Rolle; die Warteschlange
  *    richtet darin ihre Tabellen ein, legt aber kein Schema an. Schemas in der Datenbank anlegen
  *    darf die App-Rolle nie.
+ * 6. Einstellungen an der Rolle (`ALTER ROLE … SET`, auch nur für diese Datenbank) werden
+ *    zurückgesetzt, und das Passwort aus `appUrl` wird neu gesetzt. Eine Rolle darf beides bei sich
+ *    selbst ändern; Postgres lässt sich das nicht verbieten. So gilt nach jedem Lauf wieder der
+ *    Stand aus der Konfiguration.
+ * 7. Was die App nicht braucht, wird entzogen, soweit Postgres es zulässt: Nummern der Regeln
+ *    ziehen, temporäre Tabellen, große Objekte anlegen, fremde Verbindungen beenden. Fehlen dafür
+ *    die Rechte (die Migrations-Rolle ist kein Superuser), bleibt es beim Rest.
  *
  * Nutzt `appUrl` dieselbe Rolle wie `sql`, wird nur das Schema der Warteschlange angelegt (falls es
  * fehlt), und das Ergebnis ist `undefined`.
@@ -270,7 +336,17 @@ export async function prepareAppRole(
 
   await sql.begin(async (tx) => {
     const role = tx(user);
-    await tx`grant connect on database ${tx(await databaseName(tx))} to ${role}`;
+    const database = await databaseName(tx);
+    await tx`alter role ${role} reset all`;
+    await tx`alter role ${role} in database ${tx(database)} reset all`;
+    if (!created && password !== "") {
+      const [statement] = await tx<{ text: string }[]>`
+        select pg_catalog.format('alter role %I with password %L',
+          ${user}::text, ${scramVerifier(password)}::text) as text`;
+      if (statement === undefined) throw new Error("Anweisung für die App-Rolle fehlt.");
+      await tx.unsafe(statement.text);
+    }
+    await tx`grant connect on database ${tx(database)} to ${role}`;
     await tx`grant usage on schema public to ${role}`;
     await tx`revoke create on schema public from ${role}`;
     await tx.unsafe(`
@@ -293,6 +369,19 @@ export async function prepareAppRole(
       await tx.unsafe(`grant ${rights} on table public.${quoteIdent(name)} to ${quoteIdent(user)}`);
     }
     await tx`grant usage, select on all sequences in schema public to ${role}`;
+    // Tabellen, in die die App nicht einfügt, brauchen auch keine Nummern von ihr.
+    for (const { name } of tables) {
+      if ((APP_TABLE_RIGHTS[name] ?? APP_DEFAULT_TABLE_RIGHTS).includes("insert")) continue;
+      const sequences = await tx<{ seq: string }[]>`
+        select s.relname as seq from pg_catalog.pg_depend d
+        join pg_catalog.pg_class s on s.oid = d.objid and s.relkind = 'S'
+        join pg_catalog.pg_class t on t.oid = d.refobjid
+        join pg_catalog.pg_namespace n on n.oid = t.relnamespace
+        where n.nspname = 'public' and t.relname = ${name} and d.deptype in ('a', 'i')`;
+      for (const { seq } of sequences) {
+        await tx`revoke all on sequence ${tx("public")}.${tx(seq)} from ${role}`;
+      }
+    }
     await tx.unsafe(
       `alter default privileges in schema public grant ${APP_DEFAULT_TABLE_RIGHTS} on tables to ${quoteIdent(user)}`,
     );
@@ -301,20 +390,21 @@ export async function prepareAppRole(
     );
 
     const [drizzleTable] = await tx<{ ok: boolean }[]>`
-      select to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+      select pg_catalog.to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
     if (drizzleTable?.ok === true) {
       await tx`grant usage on schema drizzle to ${role}`;
       await tx`grant select on drizzle.__drizzle_migrations to ${role}`;
     }
 
     await prepareQueueSchema(tx, user);
+    await withdrawExtras(tx, user, database);
   });
 
   return { role: user, created };
 }
 
 async function databaseName(sql: postgres.TransactionSql): Promise<string> {
-  const [row] = await sql<{ name: string }[]>`select current_database() as name`;
+  const [row] = await sql<{ name: string }[]>`select pg_catalog.current_database() as name`;
   if (row === undefined) throw new Error("Name der Datenbank fehlt.");
   return row.name;
 }
@@ -375,6 +465,44 @@ async function prepareQueueSchema(tx: postgres.TransactionSql, user: string): Pr
   await tx`revoke create on database ${tx(await databaseName(tx))} from ${tx(user)}`;
 }
 
+/**
+ * Entzieht, was die App nicht braucht und was sich in Postgres entziehen lässt. Diese Rechte hat
+ * in Postgres jede Rolle über `PUBLIC`; entzogen werden sie für alle Rollen dieser Datenbank. Ohne
+ * die nötigen Rechte (die Migrations-Rolle ist kein Superuser) bleibt es bei einer Warnung im Log
+ * der Datenbank, der Rest gilt trotzdem.
+ */
+async function withdrawExtras(
+  tx: postgres.TransactionSql,
+  user: string,
+  database: string,
+): Promise<void> {
+  await tx`revoke temporary on database ${tx(database)} from ${tx(user)}`;
+  await tx.unsafe(`
+    do $$
+    declare
+      fn record;
+    begin
+      begin
+        execute pg_catalog.format('revoke temporary on database %I from public', ${quoteLiteral(database)});
+      exception when insufficient_privilege then
+        raise warning 'temporäre Tabellen: Recht nicht entziehbar';
+      end;
+      for fn in
+        select p.oid::pg_catalog.regprocedure::text as signature from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'pg_catalog'
+          and p.proname in ('pg_terminate_backend', 'lo_create', 'lo_creat', 'lo_from_bytea')
+      loop
+        begin
+          execute pg_catalog.format('revoke execute on function %s from public', fn.signature);
+        exception when insufficient_privilege then
+          raise warning 'Funktion %: Recht nicht entziehbar', fn.signature;
+        end;
+      end loop;
+    end
+    $$`);
+}
+
 function quoteIdent(name: string): string {
   return `"${name.replaceAll('"', '""')}"`;
 }
@@ -400,7 +528,11 @@ export function createRoleProbe(url: string, timeoutMs = 3000): RoleProbe {
     connect_timeout: Math.max(1, Math.ceil(timeoutMs / 1000)),
     idle_timeout: 60,
     onnotice: () => undefined,
-    connection: { application_name: "paibot-health", statement_timeout: timeoutMs },
+    connection: {
+      application_name: "paibot-health",
+      search_path: APP_SEARCH_PATH,
+      statement_timeout: timeoutMs,
+    },
   });
   return {
     probe: async () => (await checkAppRole(sql)).status,

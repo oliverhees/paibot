@@ -22,7 +22,7 @@ import {
   type Route,
   type RunId,
 } from "@paibot/shared";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { conversations, messages } from "../schema";
 import { toMessage } from "./abbildung";
@@ -71,7 +71,7 @@ export async function insert(db: Database, input: MessageCreate): Promise<Messag
             id: input.id ?? newId("message"),
             conversationId: input.conversationId,
             role: input.role,
-            createdAt: sql`clock_timestamp()`,
+            createdAt: sql`pg_catalog.clock_timestamp()`,
             ...(input.content === undefined ? {} : { content: input.content }),
             ...(input.status === undefined ? {} : { status: input.status }),
             runId: input.runId ?? null,
@@ -152,4 +152,19 @@ export async function finalize(
     .where(eq(messages.id, id));
   if (vorhanden === undefined) throw new PaiBotError("nicht_gefunden");
   throw new StatuswechselError("nachricht", id, vorhanden.status, input.status);
+}
+
+/**
+ * Verbrauchte Token seit `since`: Eingabe plus Ausgabe aller Antworten des Bots (`assistant`), die
+ * ab diesem Zeitpunkt entstanden sind. Grundlage der Tagesgrenze (Lauf-Steuerung) und der Anzeige
+ * „heute verbraucht“ (Einstellungen).
+ */
+export async function tokensSince(db: Database, since: Date): Promise<number> {
+  const [row] = await db
+    .select({
+      total: sql<string>`coalesce(sum(coalesce(${messages.tokensIn}, 0) + coalesce(${messages.tokensOut}, 0)), 0)::text`,
+    })
+    .from(messages)
+    .where(and(eq(messages.role, "assistant"), gte(messages.createdAt, since)));
+  return Number(row?.total ?? 0);
 }

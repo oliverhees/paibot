@@ -10,7 +10,7 @@ Seit:      2026-11-20
 
 # Belege
 
-**Ergebnis:** Zu jeder Aktion in PaiBot gibt es einen Beleg. Du kannst jederzeit nachprüfen, dass kein Beleg nachträglich verändert, gelöscht oder eingeschoben wurde – in PaiBot selbst oder mit einem Export ganz ohne PaiBot. Mit einem Anker, den du außerhalb aufbewahrst, fällt auch auf, wenn am Ende Belege fehlen.
+**Ergebnis:** Zu jeder Aktion in PaiBot gibt es einen Beleg. Du kannst jederzeit nachprüfen, dass kein Beleg nachträglich verändert, gelöscht oder eingeschoben wurde – in PaiBot selbst oder mit einem Export ganz ohne PaiBot. Mit einem Anker, den du außerhalb aufbewahrst, fällt auch auf, wenn Belege bis zum Stand des Ankers fehlen; was danach kam, schützt erst ein neuerer Anker.
 
 ## Wofür
 
@@ -20,12 +20,26 @@ PaiBot handelt für dich: Er schickt Anfragen an ein Modell, ändert Einstellung
 
 Belege entstehen von selbst, du musst nichts einschalten.
 
-1. **Prüfen in PaiBot:** Auf der Seite „Belege“ gibt es „Beleg prüfen“ für einen einzelnen Eintrag und „Ganze Kette prüfen“ (folgt mit der Oberfläche).
-2. **Exportieren:** „Belege exportieren“ lädt eine Datei `belege.jsonl` herunter. Sie enthält alle Belege, die öffentlichen Schlüssel deiner Installation und in der ersten Zeile den Anker (den Kettenkopf beim Export) (folgt mit der Oberfläche).
-3. **Ohne PaiBot prüfen:** Im Projektordner von PaiBot den Export prüfen:
+### In PaiBot ansehen und prüfen
+
+1. Klick in der Navigation auf **Belege**. Du siehst alle Belege, der neueste steht oben. Jede Zeile nennt Zeit, Kennung (zum Beispiel `B-0042`), wer die Aktion ausgelöst hat („Du“, dein Bot oder PaiBot selbst), was passiert ist, die Art (Start, Entscheidung, Ergebnis, Schlüsselwechsel) und das Ergebnis (erlaubt, abgelehnt, fragt, fertig, fehlgeschlagen, abgebrochen).
+2. Ältere Belege holst du unten mit **Ältere Belege laden**. Mit den Knöpfen **Alle · Bot · Du** und der Auswahl **Jeder Status** grenzt du die geladenen Belege ein.
+3. Klick auf **Ganze Kette prüfen**. Dein Browser lädt alle Belege in Stücken (der Balken zeigt, wie weit er ist) und prüft sie selbst. Danach steht oben das Ergebnis in Worten, zum Beispiel „Vertrauenswürdig: 142 Belege geprüft, alle Schlüssel aus der Kette.“ oder „Ungültig an Stelle B-0042: Inhalt geändert“. In der Liste steht bei jedem Beleg „geprüft“, „Fehler hier“, „nicht bestätigt“ oder „nicht beglaubigt“.
+4. Klick auf eine Zeile. Der Beleg erscheint als Karte: was, wer, wann, die Entscheidung mit der angewandten Regel samt Fassung, Vorbedingungen und Grenzen in Worten (erfüllt, eingehalten, verletzt), beim Ergebnis Status und Token. Verweise führen zum zugehörigen Entscheidungs- bzw. Ergebnis-Beleg, zum vorigen und nächsten Beleg und zur Unterhaltung.
+5. Klick auf der Karte auf **Beleg prüfen**. Geprüft werden Prüfsumme, Signatur mit dem Schlüssel aus der Kette, die Verbindung zum vorigen und zum nächsten Beleg und bei Entscheidungen das Nachrechnen mit dem damaligen Regelstand. Steht alles, heißt es „Beleg stimmt“.
+6. Unter der Karte klappst du **Technische Ansicht** auf: kanonisches JSON, Prüfsumme, Signatur, Schlüssel-Kennung und Prüfsumme des Vorgängers. **Beleg kopieren** legt den Beleg als eine Zeile im Format des Exports in die Zwischenablage.
+7. Über **Regeln ansehen** (rechts auf der Seite „Belege“) kommst du zur Seite **Regeln**. Dort stehen die festen Regeln des Tors mit Kennung, Fassung und Stufe, dazu die Grenzen und Vorbedingungen in Worten.
+
+Geprüft wird in deinem Browser mit demselben Prüfer wie im Befehl `pnpm belege:pruefen`. Der Server liefert nur die Rohdaten und kann so nicht einfach „gültig“ behaupten. Kann dein Browser nicht selbst prüfen (Ed25519 in Web Crypto fehlt), prüft der Server; dann steht beim Ergebnis „vom Server geprüft“.
+
+### Exportieren und ohne PaiBot prüfen
+
+1. Klick auf der Seite „Belege“ rechts auf **Belege exportieren**. Dein Browser speichert die Datei `paibot-belege-<Datum>.jsonl`. Sie enthält alle Belege, die öffentlichen Schlüssel deiner Installation und in der ersten Zeile den Anker (den Kettenkopf beim Export).
+2. Der Export läuft selbst durch das Tor und bekommt zwei Belege. Die Seite nennt sie gleich nach dem Speichern („Der Export selbst steht in den Belegen B-0143 und B-0144“). Die Entscheidung steht schon in der Datei, das Ergebnis folgt erst danach.
+3. Im Projektordner von PaiBot den Export prüfen:
 
 ```text
-pnpm belege:pruefen belege.jsonl
+pnpm belege:pruefen paibot-belege-2026-11-21.jsonl
 ```
 
 Ist alles in Ordnung, siehst du:
@@ -46,10 +60,10 @@ Belege-Kette ungültig bei Eintrag 42: 128 Einträge geprüft.
 
 Darunter steht das Urteil über die ganze Kette, zum Beispiel „Kette gültig, alle Schlüssel aus der Kette.“, und ohne Anker der Hinweis „Ohne Anker geprüft: Ob am Ende Belege fehlen, ist so nicht erkennbar.“
 
-4. **Mit Anker prüfen:** Gib den aufbewahrten Anker mit, als Datei oder als kopierten Text (siehe unten):
+4. Mit Anker prüfen: Gib den aufbewahrten Anker mit, als Datei oder als kopierten Text (siehe unten):
 
 ```text
-pnpm belege:pruefen belege.jsonl --anker pb-anker.json
+pnpm belege:pruefen paibot-belege-2026-11-21.jsonl --anker pb-anker.json
 ```
 
 | Exit-Code | Bedeutung                                                                                          |
@@ -65,11 +79,11 @@ Der Befehl braucht keine Datenbank und kein Netz. Er funktioniert auch auf einem
 
 Der Anker ist eine Zeile Text: welche Installation, wie weit die Kette reicht (Nummer und Prüfsumme des letzten Belegs), welcher Schlüssel zuletzt signiert hat und mit welchem Schlüssel die Kette begonnen hat. Nur wenn du ihn **außerhalb von PaiBot** aufbewahrst, kannst du später zeigen, dass die Kette bis dorthin vollständig und unverändert ist.
 
-1. Exportiere die Belege („Belege exportieren“, folgt mit der Oberfläche).
-2. Lass dir den Anker des Exports ausgeben. Der Befehl prüft die Kette und schreibt den Anker als letzte Zeile:
+1. Auf der Seite „Belege“ steht rechts der Kasten **Kettenkopf außerhalb aufbewahren** mit dem aktuellen Anker. Klick auf **Anker kopieren** oder auf **Als Datei sichern** (Datei `pb-anker.json`).
+2. Oder ohne Oberfläche: Lass dir den Anker eines Exports ausgeben. Der Befehl prüft die Kette und schreibt den Anker als letzte Zeile:
 
    ```text
-   pnpm belege:pruefen anker belege.jsonl
+   pnpm belege:pruefen anker paibot-belege-2026-11-21.jsonl
    ```
 
    ```text
@@ -79,13 +93,31 @@ Der Anker ist eine Zeile Text: welche Installation, wie weit die Kette reicht (N
    Derselbe Anker steht auch in der ersten Zeile des Exports unter `"anchor"`.
 3. Speichere diese Zeile als Datei `pb-anker.json` an einem Ort, auf den der Server keinen Zugriff hat: ein USB-Stick, ein Passwort-Manager, eine E-Mail an dich selbst.
 4. Wiederhole das ab und zu, zum Beispiel einmal im Monat. Ein neuerer Anker ersetzt den alten nicht, er reicht nur weiter.
-5. Zum Prüfen: `pnpm belege:pruefen belege.jsonl --anker pb-anker.json`. Statt der Datei geht auch der Text selbst in Anführungszeichen: `--anker '{"format":"pb-anker",…}'`.
+5. Zum Prüfen in PaiBot: Füge den Anker im Feld **Mit meinem aufbewahrten Anker prüfen** ein oder klick auf **Anker-Datei wählen**, dann auf **Mit Anker prüfen**. Der Anker bleibt in deinem Browser und geht nicht an den Server; der Sinn ist ja, dass er außerhalb liegt.
+6. Zum Prüfen ohne PaiBot: `pnpm belege:pruefen paibot-belege-2026-11-21.jsonl --anker pb-anker.json`. Statt der Datei geht auch der Text selbst in Anführungszeichen: `--anker '{"format":"pb-anker",…}'`.
 
-Passt die Kette nicht zum Anker, nennt die Ausgabe den Grund, zum Beispiel „Die Kette ist kürzer als der Anker: Am Ende fehlen Belege.“ und Exit-Code `1`.
+Passt die Kette nicht zum Anker, nennen Seite und Befehl den Grund, zum Beispiel „Die Kette ist kürzer als der Anker: Am Ende fehlen Belege.“ (Befehl: Exit-Code `1`). Ohne aufbewahrten Anker fällt ein vollständig ausgetauschter Datenbestand nicht auf.
+
+Nimm als Anker nur einen, den du selbst außerhalb aufbewahrt hast. Den Anker in der ersten Zeile eines Exports hat der Server geschrieben; er ist zum Notieren da, nicht als Beweis gegen denselben Server.
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche (Seite „Belege“, Prüfen eines Belegs, Prüfen der Kette, Export).
+Folgt mit der Oberfläche. Die Bilder entstehen per Skript, sobald die Aufnahmen für diese Seite eingetragen sind.
+
+<!--
+Gewünschte Aufnahmen (Beispiel-Daten: eingerichtete Installation mit Bot „Pai“, ein paar An- und
+Abmeldungen, eine Unterhaltung mit zwei Antworten des Test-Anbieters; dunkles Design):
+1. belege-liste: /belege, Rechner 1440×900, Ausgangszustand (Liste, Zusammenfassung, rechts Anker-Kasten).
+2. belege-kette-geprueft: /belege, Rechner, Klick auf „Ganze Kette prüfen“, warten bis „Vertrauenswürdig“.
+3. belege-kette-handy: /belege, Handy 390×844, nach „Ganze Kette prüfen“.
+4. beleg-karte: Klick auf eine Zeile „Modell angefragt“ mit Art „Entscheidung“, Rechner.
+5. beleg-geprueft: auf der Karte „Beleg prüfen“, warten bis „Beleg stimmt“, Ergebnis im Bild.
+6. beleg-technik: „Technische Ansicht“ aufklappen, Rechner.
+7. belege-anker: /belege, im Anker-Kasten „Anker kopieren“ klicken (Meldung „Kopiert.“), Rechner.
+8. belege-anker-pruefen: kopierten Anker in „Mit meinem aufbewahrten Anker prüfen“ einfügen, „Mit Anker prüfen“, Ergebnis „Vertrauenswürdig … Mit deinem aufbewahrten Anker verglichen“.
+9. belege-export: „Belege exportieren“, Meldung mit den beiden Belegen des Exports im Bild.
+10. regeln: /regeln, Rechner und Handy.
+-->
 
 ## Einstellungen
 
@@ -158,7 +190,15 @@ Beim Nachrechnen (Prüfung 4) gilt:
 - Es zählen nur die Regeln, die zum festgehaltenen Regelstand gehörten. Eine später dazugekommene Regel ändert alte Entscheidungen nicht.
 - Standard-Regeln zählen mit ihrem Inhalt aus dem Code von PaiBot, nicht mit dem aus der Datenbank.
 - Passt der Inhalt einer damals angewandten Regel nicht mehr zu ihrer Prüfsumme im Beleg, meldet der Prüfer genau diese Regel als geändert.
-- Ältere Belege ohne festgehaltenen Regelstand rechnet er mit den heutigen Regeln nach und sagt dazu „Regelstand nicht festgehalten“.
+- Ältere Belege ohne festgehaltenen Regelstand rechnet er mit den heutigen Regeln nach und sagt dazu „Regelstand nicht festgehalten“. Das gilt nur für Ketten älterer Installationen: Trägt der Start-Beleg die neue Fassung der Kette (`format: 2`), muss jede Entscheidung ihren Regelstand und je Regel die Prüfsumme tragen; fehlt das, ist die Kette ungültig („Regelstand fehlt“).
+
+Über die ganze Kette prüft er zusätzlich je Aktion:
+
+- Ein Ergebnis braucht vorher die Entscheidung derselben Aktion (gleiche Aktion, gleicher Akteur, gleiches Ziel). Fehlt sie, meldet er „Ergebnis ohne Entscheidung“.
+- „ok“, „Fehler“ und „abgebrochen“ passen nur zu einer Erlaubnis, „abgelehnt“ nur zu einer anderen Entscheidung; sonst „Ergebnis passt nicht zur Entscheidung“.
+- Je Aktion gibt es höchstens eine Entscheidung und ein Ergebnis; eine zweite meldet er als „Aktion doppelt“.
+
+Die Datenbank lässt solche Belege gar nicht erst zu: Sie nimmt je Aktion nur eine Entscheidung und ein Ergebnis an, und ein Ergebnis nur nach einer passenden Entscheidung. Der Prüfer erkennt es trotzdem, etwa in einem Export, der außerhalb von PaiBot verändert wurde.
 
 ### Was der Prüfer erkennt – und was nicht
 
@@ -168,7 +208,9 @@ Beim Nachrechnen (Prüfung 4) gilt:
 | Ein Beleg ist mit einem fremden Schlüssel signiert                               | erkannt                                         | erkannt                                                    |
 | Der öffentliche Schlüssel in der Datenbank wurde ausgetauscht                    | erkannt (Vergleich)                             | erkannt                                                    |
 | Schlüsselwechsel, den nur der neue Schlüssel signiert hat                        | gemeldet (Stufe „Vertrauenskette unterbrochen“) | gemeldet                                                   |
-| Am Ende fehlen Belege                                                            | **nicht erkennbar**                             | erkannt („kürzer als der Anker“)                           |
+| Am Ende fehlen Belege (bis zum Stand des Ankers)                                 | **nicht erkennbar**                             | erkannt („kürzer als der Anker“)                           |
+| Am Ende fehlen Belege, die nach dem Anker entstanden sind                        | **nicht erkennbar**                             | **nicht erkennbar**                                        |
+| Ergebnis ohne passende Entscheidung, Aktion doppelt                              | erkannt                                         | erkannt                                                    |
 | Belege bis zum Anker umgeschrieben und neu signiert (mit dem echten Schlüssel)   | **nicht erkennbar**                             | erkannt („Beleg an der Stelle des Ankers ist ein anderer“) |
 | Die Datenbank wurde vollständig ausgetauscht, mit eigenem Schlüssel neu signiert | **nicht erkennbar**                             | erkannt („beginnt mit einem anderen Schlüssel“)            |
 
@@ -183,6 +225,8 @@ Der Export ist eine Textdatei im Format JSON Lines (`application/x-ndjson`):
 
 Beteiligte Teile: `packages/receipts` (Bauen, Prüfsumme, Signatur, Anhängen, Prüfer, Anker, Nachrechnen, Export, Befehl), `packages/crypto` (Signaturschlüssel), `packages/db` (Tabellen `belege`, `rules` und `installation_keys`, nur anhängen).
 
+In der Web-App liefern Lese-Routen nur Rohdaten: `GET /api/belege` (Liste mit Blättern), `GET /api/belege/<kennung>` (Beleg mit Vorgänger, Nachfolger und zugehörigem Beleg), `GET /api/belege/kette` (die Kette in Stücken im Format des Exports), `GET /api/belege/schluessel` (Start-Beleg und Schlüsselwechsel) und `GET /api/regeln` (Regelstand und alle Fassungen zum Nachrechnen). Geprüft wird im Browser mit `@paibot/receipts/pruefen`. Nur als Rückfall prüft der Server (`GET /api/belege/<kennung>/pruefung` bzw. `GET /api/belege/kette?pruefung=server`). Der Export (`POST /api/belege/export`) ist eine eigene Aktion `belege.exportieren` und läuft durch das Tor.
+
 ## Das Tor
 
 Jeder Beleg „Entscheidung“ und „Ergebnis“ entsteht im Tor. Wie das Tor entscheidet, welche Regeln und Grenzen es prüft und wann es ablehnt, steht auf der Seite [Das Tor](funktion-tor.md).
@@ -191,10 +235,13 @@ Jeder Beleg „Entscheidung“ und „Ergebnis“ entsteht im Tor. Wie das Tor e
 
 - **Wer den Server vollständig kontrolliert** (Datenbank **und** `PAIBOT_SECRET`), kann die ganze Kette neu schreiben oder mit einem eigenen Schlüssel neu beginnen. Das fällt nur mit einem Anker auf, den du vorher außerhalb aufbewahrt hast, und nur für Belege bis zu diesem Anker.
 - **Abgeschnittenes Ende:** Fehlen die letzten Belege, bleibt der Rest eine gültige Kette. Ohne Anker ist das nicht erkennbar; mit Anker nur bis zu dessen Stand.
+- **Erster Anker:** Er stammt aus der Installation selbst. War sie schon beim ersten Anker manipuliert, bestätigt er die Fälschung. Notiere deshalb früh nach der Einrichtung die Kurzform des Start-Schlüssels und einen ersten Anker.
 - **Schlüsselwechsel mit `signedBy: "new"`** bestätigt kein alter Schlüssel. Der Prüfer meldet ihn als unterbrochene Vertrauenskette, nie als „gültig, alle Schlüssel aus der Kette“.
 - **Ältere Belege ohne Regelstand:** Sie werden mit den heutigen Regeln nachgerechnet. Ist seither eine Regel dazugekommen, kann eine damals richtige Entscheidung abweichen. Belege mit Regelstand betrifft das nicht.
 - Belege enthalten keine Inhalte. Ob eine Antwort wirklich zu einer Nachricht passt, prüft nur der Server über die Kontext-Prüfsumme, und nur solange die Nachricht noch gespeichert ist.
-- Prüfen im Browser setzt Ed25519 in Web Crypto voraus. Kann der Browser das nicht, prüft der Server (folgt mit der Oberfläche).
+- Prüfen im Browser setzt Ed25519 in Web Crypto voraus. Kann der Browser das nicht, prüft der Server; das Ergebnis heißt dann „vom Server geprüft“, und ein eingefügter Anker wird nicht verglichen.
+- „Beleg prüfen“ prüft einen Beleg und seine Nachbarn, nicht die ganze Kette. Ob irgendwo ein Beleg fehlt, zeigt erst „Ganze Kette prüfen“.
+- Den zugehörigen Entscheidungs- bzw. Ergebnis-Beleg sucht die Karte in den 500 Belegen davor bzw. danach.
 
 ## Fehlerbehebung
 
@@ -208,4 +255,6 @@ Jeder Beleg „Entscheidung“ und „Ergebnis“ entsteht im Tor. Wie das Tor e
 | „kein gültiger Anker“            | Der Text nach `--anker` ist keine vollständige Anker-Zeile                                                                                           | Die ganze Zeile `{"format":"pb-anker",…}` übernehmen oder die Datei `pb-anker.json` angeben                               |
 | „kürzer als der Anker“           | Am Ende der Kette fehlen Belege, oder der Export ist älter als der Anker                                                                             | Einen neueren Export prüfen; fehlen die Belege auch dort, wurden sie entfernt                                             |
 | „anderen Schlüssel als im Anker“ | Die Kette beginnt nicht mit deinem Start-Beleg                                                                                                       | Die Datenbank wurde ersetzt oder es ist der Export einer anderen Installation                                             |
+| „Fehler hier“ in der Liste       | An diesem Beleg schlägt eine Prüfung fehl; alles danach ist „nicht bestätigt“                                                                        | Beleg öffnen und „Beleg prüfen“; der Grund steht im Ergebnis                                                              |
+| „vom Server geprüft“             | Dein Browser kann Ed25519 in Web Crypto nicht                                                                                                        | Einen aktuellen Browser nehmen, wenn du unabhängig vom Server prüfen willst; oder den Export mit dem Befehl prüfen        |
 | Exit-Code `3`                    | Ein Schlüsselwechsel ist nur vom neuen Schlüssel signiert                                                                                            | War das dein eigener Wechsel (Schlüssel verloren)? Dann ab jetzt einen neuen Anker aufbewahren                            |

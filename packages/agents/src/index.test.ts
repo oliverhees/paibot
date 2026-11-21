@@ -50,7 +50,10 @@ describe("Schnittstelle", () => {
 
   it("die Lauf-Steuerung ist umgesetzt (kein Platzhalter mehr)", async () => {
     const stale = await agents.failStaleRuns({
-      db: { query: { runs: { findMany: async () => [] } } } as never,
+      // Datenbank ohne Läufe: jede Abfrage liefert nichts.
+      db: {
+        select: () => ({ from: () => ({ where: () => ({ orderBy: async () => [] }) }) }),
+      } as never,
       clock: { now: () => new Date() },
     });
     expect(stale).toEqual([]);

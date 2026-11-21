@@ -43,16 +43,15 @@ export async function failStaleRuns(
 ): Promise<RunId[]> {
   const { db, clock } = deps;
   const now = clock.now();
-  const running = await findStale(
-    db,
-    "running",
-    new Date(now.getTime() - (options.staleAfterMs ?? RUN_TUNING.staleAfterMs)),
-  );
-  const queued = await findStale(
-    db,
-    "queued",
-    new Date(now.getTime() - (options.queuedStaleAfterMs ?? RUN_TUNING.queuedStaleAfterMs)),
-  );
+  // Herzschlag (sonst Start bzw. Anlegen) bei `running`, Anlegen bei `queued`.
+  const running = await repo.runs.findStale(db, {
+    before: new Date(now.getTime() - (options.staleAfterMs ?? RUN_TUNING.staleAfterMs)),
+    statuses: ["running"],
+  });
+  const queued = await repo.runs.findStale(db, {
+    before: new Date(now.getTime() - (options.queuedStaleAfterMs ?? RUN_TUNING.queuedStaleAfterMs)),
+    statuses: ["queued"],
+  });
 
   const failed: RunId[] = [];
   for (const run of [...running, ...queued]) {
@@ -61,31 +60,6 @@ export async function failStaleRuns(
     if (deps.receipts !== undefined) await closeOpenDecisions(db, deps.receipts, run, now);
   }
   return failed;
-}
-
-/**
- * Läufe in `status`, deren letztes Lebenszeichen vor `before` liegt: bei `running` der Herzschlag
- * (sonst Start bzw. Anlegen), bei `queued` das Anlegen. Die Zeit geht als Text mit Typ in die
- * Abfrage, damit sie mit jedem Treiber gleich ankommt.
- */
-async function findStale(db: Database, status: "running" | "queued", before: Date): Promise<Run[]> {
-  const rows = await db.query.runs.findMany({
-    columns: { id: true },
-    where: (t, { and, eq, sql }) =>
-      and(
-        eq(t.status, status),
-        status === "running"
-          ? sql`coalesce(${t.heartbeatAt}, ${t.startedAt}, ${t.createdAt}) < ${before.toISOString()}::timestamptz`
-          : sql`${t.createdAt} < ${before.toISOString()}::timestamptz`,
-      ),
-    orderBy: (t, { asc }) => [asc(t.createdAt), asc(t.id)],
-  });
-  const found: Run[] = [];
-  for (const row of rows) {
-    const run = await repo.runs.get(db, row.id);
-    if (run !== undefined) found.push(run);
-  }
-  return found;
 }
 
 /** Beendet einen Lauf als fehlgeschlagen; `false`, wenn ihn inzwischen ein anderer beendet hat. */

@@ -37,9 +37,9 @@ describe("scramVerifier", () => {
 });
 
 describe("APP_TABLE_RIGHTS", () => {
-  it("Belege und Regeln: nur lesen und anhängen", () => {
+  it("Belege: nur lesen und anhängen; Regeln: nur lesen", () => {
     expect(APP_TABLE_RIGHTS.belege).toBe("select, insert");
-    expect(APP_TABLE_RIGHTS.rules).toBe("select, insert");
+    expect(APP_TABLE_RIGHTS.rules).toBe("select");
     expect(Object.values(APP_TABLE_RIGHTS).join()).not.toMatch(/truncate|trigger|references/);
   });
 

@@ -17,14 +17,21 @@ import {
   index,
   integer,
   jsonb,
-  pgTable,
   primaryKey,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { bots } from "./anbieter";
-import { idCheck, inListCheck, matches, optionalIdCheck, PATTERNS, valueList } from "./helfer";
+import {
+  idCheck,
+  inListCheck,
+  matches,
+  optionalIdCheck,
+  PATTERNS,
+  pgTable,
+  valueList,
+} from "./helfer";
 import {
   ACTIVE_RUN_STATUSES,
   CONVERSATION_EVENT_TYPES,

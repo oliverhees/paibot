@@ -44,7 +44,8 @@ describe.skipIf(BASE_URL === undefined)("runMigrations gegen echtes Postgres", (
   async function lockHeld(sql: postgres.Sql): Promise<boolean> {
     const rows = await sql`
       select 1 from pg_locks
-      where locktype = 'advisory' and objid = ${MIGRATION_LOCK_KEY} and granted`;
+      where locktype = 'advisory' and objid = ${MIGRATION_LOCK_KEY} and granted
+        and database = (select oid from pg_database where datname = current_database())`;
     return rows.length > 0;
   }
 

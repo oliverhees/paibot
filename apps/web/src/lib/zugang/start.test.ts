@@ -27,7 +27,23 @@ describe("Zugang beim Start", () => {
     await zugangBeimStart(u.dienste);
     expect(u.log.filter((z) => z.startsWith("Einrichtungs-Code: "))).toHaveLength(1);
     expect(u.log).toContain(t("zugang.ohne_proxy"));
-    expect(u.dienste.code.aktiv()).toBe(true);
+    expect(await u.dienste.code.aktiv(u.db)).toBe(true);
+  });
+
+  it("Neustart vor der Einrichtung: kein neuer Code, nur ein Hinweis; der alte gilt weiter", async () => {
+    const u = await testUmgebung();
+    await zugangBeimStart(u.dienste);
+    const zeile = u.log.find((z) => z.startsWith("Einrichtungs-Code: "));
+    const code = zeile?.slice("Einrichtungs-Code: ".length, "Einrichtungs-Code: ".length + 14);
+    if (code === undefined) throw new Error("kein Code im Log");
+    // Neuer Prozess: eigene Dienste, eigener Code-Halter, dieselbe Datenbank.
+    const neustart = await testUmgebung({ db: u.db });
+    await zugangBeimStart(neustart.dienste);
+    expect(neustart.log.some((z) => z.startsWith("Einrichtungs-Code: "))).toBe(false);
+    expect(neustart.log).toContain(
+      t("einrichtung.code.vorhanden", { zeit: u.zeit().toISOString() }),
+    );
+    expect(await neustart.dienste.code.pruefen(u.db, code)).toBe(true);
   });
 
   it("nach der Einrichtung: kein Code", async () => {
@@ -37,7 +53,7 @@ describe("Zugang beim Start", () => {
     });
     await zugangBeimStart(u.dienste);
     expect(u.log.some((z) => z.startsWith("Einrichtungs-Code"))).toBe(false);
-    expect(u.dienste.code.aktiv()).toBe(false);
+    expect(await u.dienste.code.aktiv(u.db)).toBe(false);
   });
 });
 

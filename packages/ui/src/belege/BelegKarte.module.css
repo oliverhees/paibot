@@ -1,0 +1,131 @@
+/**
+ * PaiBot – Stile der Beleg-Karte (Kassenbon).
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.karte {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 16px 16px;
+  border-radius: 14px;
+  background: var(--surface-raised);
+  /* gestanzter Rand oben wie bei einem Bon */
+  -webkit-mask:
+    radial-gradient(circle at 8px 0, transparent 4px, #000 4.5px) 0 0 / 16px 100% repeat-x;
+  mask: radial-gradient(circle at 8px 0, transparent 4px, #000 4.5px) 0 0 / 16px 100% repeat-x;
+}
+
+.kopf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.siegel {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.siegel[data-siegel="ok"] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.siegel[data-siegel="warn"] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.siegel[data-siegel="fehler"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.titel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.titel strong {
+  font-size: var(--schrift-b);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.etikett {
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zeilen {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 9px 12px;
+  margin: 0;
+  padding: 14px 0 0;
+  border-top: 1px dashed var(--line-strong);
+  font-size: var(--schrift-m);
+}
+
+.zeile {
+  display: contents;
+}
+
+.zeilen dt {
+  color: var(--ink-soft);
+}
+
+.zeilen dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+@container (max-width: 520px) {
+  .zeilen {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 0;
+  }
+
+  .zeilen dd {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .zeilen {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 0;
+  }
+
+  .zeilen dd {
+    margin-bottom: 8px;
+  }
+}

@@ -20,21 +20,30 @@ import {
 import { invalidInput, PaiBotError } from "@paibot/shared/fehler";
 import type { HmacDigest, IsoTime, Sha256Digest } from "@paibot/shared/grundtypen";
 import type { InstallationId, KeyId, ReceiptId } from "@paibot/shared/ids";
-import type { Decision } from "@paibot/shared/tor";
+import type { Decision, ListDecision } from "@paibot/shared/tor";
 import { CanonicalizeError, type CanonicalValue, canonicalize } from "./canonical";
 
 /** Inhalt eines neuen Belegs, ohne die Angaben zur Kette. */
 export type ReceiptDraft =
   | {
       type: "start";
-      facts: { installationId: InstallationId; publicKey: string; software: string };
+      facts: {
+        installationId: InstallationId;
+        publicKey: string;
+        software: string;
+        /** Fassung der Kette (`RECEIPT_CHAIN_FORMAT`); fehlt bei älteren Ketten. */
+        format?: number;
+      };
     }
   | { type: "key_change"; facts: KeyChangeFacts }
   | {
       type: "decision";
       action: ActionRequest;
-      /** Entscheidung des Tors; `matchedRules` wird im Beleg zu `decision.rules`. */
-      decision: Decision;
+      /**
+       * Entscheidung des Tors; `matchedRules` wird im Beleg zu `decision.rules`. Das Tor liefert
+       * immer eine `Decision` mit Regelstand; `ListDecision` bleibt für Belege älterer Form.
+       */
+      decision: Decision | ListDecision;
       /** Fakten, die das Tor gesehen hat: nur Ganzzahlen, Texte, Schalter, keine Inhalte. */
       facts: Readonly<Record<string, unknown>>;
       context?: { digest: HmacDigest };

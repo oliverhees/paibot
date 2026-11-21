@@ -89,7 +89,10 @@ export async function loadRunContext(
       const recent = await repo.messages.listForConversation(tx, conversation.id, {
         limit: options.historyMaxMessages,
       });
-      const tokensToday = await sumTokensSince(tx, startOfDay(options.now, settings.timezone));
+      const tokensToday = await repo.messages.tokensSince(
+        tx,
+        startOfDay(options.now, settings.timezone),
+      );
       const context: RunContext = {
         run,
         conversation,
@@ -104,14 +107,6 @@ export async function loadRunContext(
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },
   );
-}
-
-async function sumTokensSince(db: Database, since: Date): Promise<number> {
-  const rows = await db.query.messages.findMany({
-    columns: { tokensIn: true, tokensOut: true },
-    where: (t, { and, eq, gte }) => and(eq(t.role, "assistant"), gte(t.createdAt, since)),
-  });
-  return rows.reduce((sum, row) => sum + (row.tokensIn ?? 0) + (row.tokensOut ?? 0), 0);
 }
 
 /** Nachrichten bis einschließlich der auslösenden; spätere bleiben weg. */

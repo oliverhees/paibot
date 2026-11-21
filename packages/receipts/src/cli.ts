@@ -8,7 +8,12 @@
  * @since     2026-11-20
  */
 
-import { type ChainAnchor, encodeAnchor, parseAnchor } from "@paibot/shared/belege";
+import {
+  type ChainAnchor,
+  type ChainProblem,
+  encodeAnchor,
+  parseAnchor,
+} from "@paibot/shared/belege";
 import { t } from "@paibot/shared/texte";
 import { ExportFormatError, parseJsonl } from "./jsonl";
 import { type ChainReport, type CheckResult, createAnchor, verifyChain } from "./verify";
@@ -21,6 +26,11 @@ import { type ChainReport, type CheckResult, createAnchor, verifyChain } from ".
  * - 3: Kette in sich gültig, aber die Vertrauenskette ist gebrochen (Schlüsselwechsel ohne
  *   Beglaubigung).
  */
+/** Text zu einem Problem der Kette (jedes Problem hat einen Text-Schlüssel). */
+function problemText(problem: ChainProblem): string {
+  return t(`belege.problem.${problem}`);
+}
+
 export const CLI_EXIT = { gueltig: 0, ungueltig: 1, fehler: 2, vertrauenGebrochen: 3 } as const;
 
 const USAGE_FORMS = [
@@ -190,7 +200,7 @@ function printReport(report: ChainReport, io: CliIo): number {
   io.out(t(`belege.urteil.${verdict.level}`));
   for (const finding of verdict.findings) {
     const where = finding.seq === undefined ? "" : ` (${finding.seq})`;
-    io.out(`  ✗ ${t(`belege.problem.${finding.problem}`)}${where}`);
+    io.out(`  ✗ ${problemText(finding.problem)}${where}`);
   }
   if (verdict.anchor === "fehlt") io.out(t("belege.anker.ohne"));
 

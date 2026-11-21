@@ -311,7 +311,7 @@ describe("Start", () => {
     expect(lines.at(-2)).toMatch(/^error Datenbank nach 0 s nicht erreichbar\. Prüfe DATABASE_URL/);
   });
 
-  it("wartet, bis die Web-App migriert hat, und migriert nie selbst", async () => {
+  it("wartet, bis der Dienst migrate migriert hat, und migriert nie selbst", async () => {
     const leer: MigrationState = { status: "leer", expected: 6, applied: 0 };
     const { deps, calls, lines } = fakeDeps({
       states: [leer, leer, AKTUELL],
@@ -320,7 +320,7 @@ describe("Start", () => {
     const worker = await runWorker(CONFIG, ENV, deps);
     expect(calls.filter((c) => c === "migrationState")).toHaveLength(3);
     expect(lines).toContain(
-      "info Warte auf die Migrationen der Web-App (0 von 6 Migrationen angewendet) …",
+      "info Warte auf die Migrationen des Dienstes migrate (0 von 6 Migrationen angewendet) …",
     );
     expect(calls.some((c) => /migrat/i.test(c) && c !== "migrationState")).toBe(false);
     await worker.stop();

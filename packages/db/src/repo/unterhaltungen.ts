@@ -82,7 +82,7 @@ export async function rename(
     () =>
       db
         .update(conversations)
-        .set({ title, updatedAt: sql`now()` })
+        .set({ title, updatedAt: sql`pg_catalog.now()` })
         .where(eq(conversations.id, id))
         .returning(),
     standardFehler,
@@ -100,7 +100,7 @@ export async function setSchleuseMode(
     () =>
       db
         .update(conversations)
-        .set({ schleuseMode: mode, updatedAt: sql`now()` })
+        .set({ schleuseMode: mode, updatedAt: sql`pg_catalog.now()` })
         .where(eq(conversations.id, id))
         .returning(),
     standardFehler,

@@ -35,6 +35,31 @@ export { type ScrollMasse, type ScrollRand, scrollRand, scrollt } from "./basis/
 export { type FokusFalleOptionen, useFokusFalle } from "./basis/useFokusFalle";
 export { Wortmarke } from "./basis/Wortmarke";
 export {
+  AnkerKasten,
+  type AnkerKastenProps,
+  type AnkerKastenTexte,
+} from "./belege/AnkerKasten";
+export {
+  BelegKarte,
+  type BelegKarteProps,
+  type BelegKarteZeile,
+  type BelegSiegel,
+} from "./belege/BelegKarte";
+export {
+  PruefUrteil,
+  type PruefUrteilProps,
+  type PruefUrteilPunkt,
+  type PruefUrteilZustand,
+} from "./belege/PruefUrteil";
+export {
+  type RegelEintrag,
+  RegelListe,
+  type RegelListeProps,
+  type RegelStufe,
+  TorWeg,
+  type TorWegProps,
+} from "./belege/RegelListe";
+export {
   AntwortZeile,
   type AntwortZeileProps,
   type BelegAngabe,

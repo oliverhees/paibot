@@ -19,6 +19,7 @@ import {
   modelChoiceInput,
   passwordChangeInput,
   providerInput,
+  receiptChainQuery,
   receiptListQuery,
   schleuseInput,
   sendMessageInput,
@@ -379,6 +380,7 @@ export const API_ROUTEN = {
     zugang: "besitzer",
     antwort: "json",
     veraendernd: false,
+    eingabe: receiptChainQuery,
   },
   belegeSchluessel: {
     methode: "GET",

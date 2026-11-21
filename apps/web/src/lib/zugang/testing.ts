@@ -55,6 +55,8 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
   const anbieterAufrufe: string[] = [];
   let naechsterCode = TEST_CODE;
   const code = erstelleCodeHalter(() => naechsterCode);
+  /** Noch laufendes `neuerCode`; `anfrage` wartet darauf. */
+  let ausstehend: Promise<unknown> = Promise.resolve();
   const belegSchluessel = belegSchluesselAus(db, schluessel.belege);
   const zustand = {
     hinterProxy: optionen.hinterProxy ?? true,
@@ -101,10 +103,20 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
     log,
     anbieterAufrufe,
     rahmen,
-    /** Erzeugt einen neuen Code (der alte gilt nicht mehr). */
-    neuerCode(wert: string) {
+    /**
+     * Erzeugt einen neuen Code (der alte gilt nicht mehr) und speichert seinen Prüfwert. Die
+     * nächste `anfrage` wartet, bis er gespeichert ist; wer selbst weiterprüft, wartet auf das
+     * Ergebnis.
+     */
+    neuerCode(wert: string): Promise<string | undefined> {
       naechsterCode = wert;
-      return code.erzeugen();
+      const neu = ausstehend.then(() => code.ersetzen(db, jetzt));
+      ausstehend = neu.catch(() => undefined);
+      return neu;
+    },
+    /** Wartet, bis ein laufendes `neuerCode` fertig ist. */
+    bereit(): Promise<unknown> {
+      return ausstehend;
     },
     zeit(): Date {
       return jetzt;
@@ -176,6 +188,7 @@ export async function anfrage(
   body: { ok: boolean; daten?: unknown; fehler?: { code: string } };
   antwort: Response;
 }> {
+  await u.bereit();
   const dose = optionen.dose ?? new Keksdose();
   const kopf = new Headers(optionen.kopf);
   if (optionen.origin !== null) kopf.set("origin", optionen.origin ?? TEST_ORIGIN);

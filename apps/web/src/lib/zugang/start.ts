@@ -12,12 +12,13 @@
 import { type Database, repo } from "@paibot/db";
 import { t } from "@paibot/shared/texte";
 import { prozessDienste, type ZugangsDienste } from "./dienste";
-import { codeSicherstellen } from "./einrichtungs-code";
+import { type CodeStand, codeSicherstellen } from "./einrichtungs-code";
 
 /**
- * Läuft nach den Migrationen. Ist PaiBot noch nicht eingerichtet, entsteht ein neuer
- * Einrichtungs-Code und steht genau einmal im Log. Jeder Neustart erzeugt einen neuen Code; der
- * alte gilt dann nicht mehr.
+ * Läuft nach den Migrationen. Ist PaiBot noch nicht eingerichtet und gilt noch kein
+ * Einrichtungs-Code, entsteht einer und steht genau einmal im Log. Gilt schon einer (früherer
+ * Start, anderer Prozess), entsteht kein neuer; dann steht nur ein Hinweis im Log, wann er erzeugt
+ * wurde.
  */
 export async function zugangBeimStart(d: ZugangsDienste = prozessDienste()): Promise<void> {
   if (d.appOrigin() === undefined) {
@@ -30,13 +31,17 @@ export async function zugangBeimStart(d: ZugangsDienste = prozessDienste()): Pro
   } catch {
     return; // ohne Datenbank (Entwicklung ohne DATABASE_URL) gibt es keine Einrichtung
   }
+  let stand: CodeStand;
   try {
     if (await repo.settings.isSetupComplete(db)) return;
+    stand = await codeSicherstellen(d.code, db, d.uhr.now(), d.log.info);
   } catch {
     d.log.warn(
       "Zustand der Einrichtung nicht lesbar; der Einrichtungs-Code entsteht beim ersten Aufruf.",
     );
     return;
   }
-  codeSicherstellen(d.code, d.log.info);
+  if (stand.art === "vorhanden") {
+    d.log.info(t("einrichtung.code.vorhanden", { zeit: stand.seit.toISOString() }));
+  }
 }
