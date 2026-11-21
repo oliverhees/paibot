@@ -447,6 +447,16 @@ export const API_ROUTEN = {
     veraendernd: false,
   },
 
+  // Bekannte Geräte: Hinweis bei Anmeldung von einem neuen Gerät
+  /** „Das war ich“: schließt auf diesem Gerät den Hinweis auf neue Anmeldungen. */
+  geraeteHinweisBestaetigen: {
+    methode: "POST",
+    pfad: "/api/zugang/geraete/hinweis",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "geraet.bestaetigen",
+  },
   /**
    * Not-Aus an oder aus. Einschalten genügt die Sitzung; Aufheben verlangt das aktuelle Passwort
    * (Vorbedingung V-10). Versuche mit Passwort zählen auf `passwortAendern` (in der Route, damit

@@ -75,6 +75,7 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   },
   "geraet.hinzufuegen": { deviceId: ids.deviceId },
   "geraet.entfernen": { deviceId: ids.deviceId },
+  "geraet.bestaetigen": { deviceId: ids.deviceId },
   "notaus.umschalten": { installationId: ids.installationId },
 };
 
@@ -164,6 +165,7 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
   },
   "geraet.hinzufuegen": { credential: "sitzung", kind: "browser" },
   "geraet.entfernen": { credential: "sitzung", deviceActive: true, thisDevice: false },
+  "geraet.bestaetigen": { credential: "sitzung", newDevices: 1 },
   // Aufheben mit bestätigtem Passwort: so ist die Vorbedingung V-10 geprüft und erfüllt.
   "notaus.umschalten": {
     credential: "sitzung",

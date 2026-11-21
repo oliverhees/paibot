@@ -121,6 +121,17 @@
   font-weight: 650;
 }
 
+/* Weitere Hinweise (z. B. neue Anmeldung) unter der Leiste, über der Kopfzeile. */
+.hinweise {
+  flex: none;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hinweise:empty {
+  display: none;
+}
+
 .formular {
   display: flex;
   flex-direction: column;

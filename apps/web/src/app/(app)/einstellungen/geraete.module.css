@@ -1,0 +1,26 @@
+/**
+ * PaiBot – Abschnitt „Bekannte Geräte“ im Reiter „Zugang“ (ergänzt einstellungen.module.css).
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.titel:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+  border-radius: var(--radius-xs);
+}
+
+.titel:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}

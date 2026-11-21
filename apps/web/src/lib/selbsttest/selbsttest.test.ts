@@ -10,7 +10,7 @@
  * @since     2026-11-21
  */
 
-import { repo } from "@paibot/db";
+import { geraete, repo } from "@paibot/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { einrichtungAbschliessen } from "../zugang/einrichtung";
 import {
@@ -106,6 +106,10 @@ describe("GET /api/selbsttest", () => {
     expect(nach.einrichtung?.ergebnis).toBe("ok");
     expect(nach.notaus?.ergebnis).toBe("ok");
     expect(nach.zugang?.text).toMatch(/Bekannte Geräte: 1\. Offene Sitzungen: 1\./);
+    // Gegen die Tabelle der Geräte: gültige Geräte des Besitzers.
+    const [besitzer] = await u.db.select().from(geraete);
+    const echt = await repo.geraete.list(u.db, besitzer?.ownerId as never, { now: new Date() });
+    expect(echt).toHaveLength(1);
     for (const p of daten.pruefungen) {
       if (p.ergebnis !== "ok") expect(p.ausweg, p.id).toBeTruthy();
     }

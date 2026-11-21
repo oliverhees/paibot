@@ -104,7 +104,7 @@ export async function anmelden(kontext: RoutenKontext<"anmelden">): Promise<{ an
   );
   const bekannt = bisher?.ownerId === ownerId ? bisher : undefined;
   const ergebnis = await kontext.tor(
-    _nachweisPasswort(ownerId),
+    _nachweisPasswort(ownerId, bekannt?.id),
     { type: "zugang.anmelden", target: { ownerId } },
     { remember: eingabe.remember },
     async () => {

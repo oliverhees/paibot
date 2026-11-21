@@ -39,6 +39,7 @@ import {
 } from "../../lib/navigation";
 import styles from "./app.module.css";
 import { NotAusDialog, type NotAusFrage, NotAusKnopf, NotAusLeiste } from "./NotAus";
+import notausStyles from "./notaus.module.css";
 
 export interface AppRahmenProps {
   bot: { name: string; farbe: BotColor };
@@ -48,6 +49,8 @@ export interface AppRahmenProps {
   unterhaltungen: readonly UnterhaltungKurz[];
   /** Not-Aus an (vom Server); danach hält der Rahmen den Zustand selbst aktuell. */
   notAus?: boolean;
+  /** Weitere Hinweise über der Kopfzeile, unter der Leiste des Not-Aus (z. B. neue Anmeldung). */
+  hinweise?: ReactNode;
   children: ReactNode;
 }
 
@@ -116,6 +119,7 @@ export function AppRahmen({
   region,
   unterhaltungen: vomServer,
   notAus: notAusVomServer = false,
+  hinweise,
   children,
 }: AppRahmenProps) {
   const pfad = usePathname();
@@ -186,9 +190,12 @@ export function AppRahmen({
         obenZusatz={
           <NotAusKnopf an={notAus} onClick={() => setNotAusFrage(notAus ? "aus" : "an")} />
         }
-        {...(notAus
-          ? { hinweis: <NotAusLeiste onFortsetzen={() => setNotAusFrage("aus")} /> }
-          : {})}
+        hinweis={
+          <>
+            {notAus && <NotAusLeiste onFortsetzen={() => setNotAusFrage("aus")} />}
+            {hinweise !== undefined && <div className={notausStyles.hinweise}>{hinweise}</div>}
+          </>
+        }
         kopf={kopf ?? <span className={styles.kopfTitel}>{kopfTitel(pfad)}</span>}
         {...(flaeche === undefined ? {} : { flaeche })}
         flaecheOffen={flaecheOffen}

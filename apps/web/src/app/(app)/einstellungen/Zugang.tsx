@@ -1,5 +1,6 @@
 /**
- * PaiBot – Reiter „Zugang“: Passwort ändern, aktive Sitzungen, alle Sitzungen beenden, abmelden.
+ * PaiBot – Reiter „Zugang“: Passwort ändern, bekannte Geräte, aktive Sitzungen, alle Sitzungen
+ * beenden, abmelden.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -18,6 +19,7 @@ import { grobesGeraet, passwortPruefliste, zeitpunkt } from "../../../lib/einste
 import type { SitzungZeile } from "../../../lib/einstellungen/typen";
 import { AbmeldenKnopf } from "./AbmeldenKnopf";
 import styles from "./einstellungen.module.css";
+import { Geraete } from "./Geraete";
 
 export interface ZugangProps {
   zeitzone: string;
@@ -84,7 +86,7 @@ function PasswortAendern({ passwortMin, geaendert }: { passwortMin: number; geae
 
   return (
     <form className={styles.kachel} onSubmit={(e) => void absenden(e)} noValidate>
-      <h2>{t("einstellungen.passwort.aendern")}</h2>
+      <h2 id="passwort-titel">{t("einstellungen.passwort.aendern")}</h2>
       <p className={styles.leise}>{t("einstellungen.passwort.text")}</p>
       {geaendert && (
         <p className={`${styles.hinweis} ${styles.hinweisOk}`} role="status">
@@ -266,6 +268,7 @@ export function Zugang({ zeitzone, passwortMin, passwortGeaendert }: ZugangProps
   return (
     <>
       <PasswortAendern passwortMin={passwortMin} geaendert={passwortGeaendert} />
+      <Geraete zeitzone={zeitzone} />
       <Sitzungen zeitzone={zeitzone} />
       <section className={styles.kachel} aria-labelledby="abmelden-titel">
         <h2 id="abmelden-titel">{t("navigation.abmelden")}</h2>

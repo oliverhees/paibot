@@ -69,7 +69,20 @@ export class Keksdose {
   hat(name) {
     return [...this.#kekse.keys()].some((k) => k === name || k.endsWith(`-${name}`));
   }
+  /** Ein Cookie mit Namen und Wert (auch mit Präfix wie `__Host-`), sonst `undefined`. */
+  finde(name) {
+    for (const [k, wert] of this.#kekse) {
+      if (k === name || k.endsWith(`-${name}`)) return { name: k, wert };
+    }
+    return undefined;
+  }
+  setze(name, wert) {
+    this.#kekse.set(name, wert);
+  }
 }
+
+/** Name des Geräte-Cookies der App (bei https mit Präfix `__Host-`). */
+export const GERAETE_COOKIE = "pb_geraet";
 
 /** Kennung des Browsers für die Besuche dieses Skripts: ein zweites, erfundenes Gerät in der Liste der Sitzungen. */
 export const BEISPIEL_GERAET =
@@ -160,9 +173,17 @@ export async function richteEin(lauf) {
   return besuch;
 }
 
-/** Meldet sich mit dem Wegwerf-Passwort an; der Besuch trägt danach die Sitzung. */
+/**
+ * Meldet sich mit dem Wegwerf-Passwort an; der Besuch trägt danach die Sitzung. Mit dem
+ * Geräte-Cookie aus der Einrichtung (`lauf.beispielGeraet`) ist es dasselbe bekannte Beispiel-Gerät,
+ * kein neues; sonst sähen alle anderen Geräte (der Browser der Aufnahmen) den Hinweis auf eine neue
+ * Anmeldung.
+ */
 export async function meldeAn(lauf) {
   const besuch = new Besuch(lauf.url);
+  if (lauf.beispielGeraet?.name && lauf.beispielGeraet?.wert) {
+    besuch.dose.setze(lauf.beispielGeraet.name, lauf.beispielGeraet.wert);
+  }
   await besuch.seite("/anmelden");
   const ergebnis = await besuch.api("POST", "/api/zugang/anmelden", {
     password: lauf.passwort,
@@ -245,7 +266,10 @@ export async function stelleHer(ziel, datei = laufDatei()) {
     throw new Error("Keine Lauf-Datei gefunden. Erst `pnpm doku:app` starten.");
   const meldungen = [];
   if (!(await istEingerichtet(lauf.url))) {
-    await richteEin(lauf);
+    const besuch = await richteEin(lauf);
+    // Geräte-Cookie merken: spätere Anmeldungen dieses Skripts sind dann dasselbe Gerät.
+    const geraet = besuch.dose.finde(GERAETE_COOKIE);
+    if (geraet !== undefined) lauf = aendereLauf({ beispielGeraet: geraet }, datei);
     meldungen.push("Eingerichtet: Bot „Pai“, Beispiel-Modell, Test-Anbieter, Datenschleuse aus.");
   }
   if (lauf.zustand === "frisch") lauf = aendereLauf({ zustand: "eingerichtet" }, datei);

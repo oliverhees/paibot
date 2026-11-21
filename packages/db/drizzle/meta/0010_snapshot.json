@@ -1,6 +1,6 @@
 {
-  "id": "f3adefc3-f3ce-420b-a3f0-3397317fab1c",
-  "prevId": "ba319d5f-4678-4e05-a0ee-639d7c66f4d4",
+  "id": "ff413d19-0d6c-4001-83d0-11a916feeafa",
+  "prevId": "7afafb2e-29ae-478f-8eb6-55ebd63a3e8b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -761,7 +761,7 @@
         },
         "belege_action_werte": {
           "name": "belege_action_werte",
-          "value": "\"public\".\"belege\".\"action\" is null or \"public\".\"belege\".\"action\" in ('einrichtung.abschliessen', 'zugang.anmelden', 'zugang.abmelden', 'zugang.alle_abmelden', 'zugang.passwort_aendern', 'anbieter.speichern', 'anbieter.loeschen', 'modell.waehlen', 'bot.aendern', 'schleuse.umschalten', 'einstellung.aendern', 'unterhaltung.anlegen', 'unterhaltung.umbenennen', 'unterhaltung.loeschen', 'nachricht.senden', 'modell.anfragen', 'lauf.abbrechen', 'belege.exportieren', 'werkzeug.aufrufen', 'geraet.hinzufuegen', 'geraet.entfernen', 'notaus.umschalten')"
+          "value": "\"public\".\"belege\".\"action\" is null or \"public\".\"belege\".\"action\" in ('einrichtung.abschliessen', 'zugang.anmelden', 'zugang.abmelden', 'zugang.alle_abmelden', 'zugang.passwort_aendern', 'anbieter.speichern', 'anbieter.loeschen', 'modell.waehlen', 'bot.aendern', 'schleuse.umschalten', 'einstellung.aendern', 'unterhaltung.anlegen', 'unterhaltung.umbenennen', 'unterhaltung.loeschen', 'nachricht.senden', 'modell.anfragen', 'lauf.abbrechen', 'belege.exportieren', 'werkzeug.aufrufen', 'geraet.hinzufuegen', 'geraet.entfernen', 'geraet.bestaetigen', 'notaus.umschalten')"
         },
         "belege_actor_format": {
           "name": "belege_actor_format",
@@ -1052,7 +1052,7 @@
         },
         "rules_action_werte": {
           "name": "rules_action_werte",
-          "value": "\"public\".\"rules\".\"action\" in ('*', 'einrichtung.abschliessen', 'zugang.anmelden', 'zugang.abmelden', 'zugang.alle_abmelden', 'zugang.passwort_aendern', 'anbieter.speichern', 'anbieter.loeschen', 'modell.waehlen', 'bot.aendern', 'schleuse.umschalten', 'einstellung.aendern', 'unterhaltung.anlegen', 'unterhaltung.umbenennen', 'unterhaltung.loeschen', 'nachricht.senden', 'modell.anfragen', 'lauf.abbrechen', 'belege.exportieren', 'werkzeug.aufrufen', 'geraet.hinzufuegen', 'geraet.entfernen', 'notaus.umschalten')"
+          "value": "\"public\".\"rules\".\"action\" in ('*', 'einrichtung.abschliessen', 'zugang.anmelden', 'zugang.abmelden', 'zugang.alle_abmelden', 'zugang.passwort_aendern', 'anbieter.speichern', 'anbieter.loeschen', 'modell.waehlen', 'bot.aendern', 'schleuse.umschalten', 'einstellung.aendern', 'unterhaltung.anlegen', 'unterhaltung.umbenennen', 'unterhaltung.loeschen', 'nachricht.senden', 'modell.anfragen', 'lauf.abbrechen', 'belege.exportieren', 'werkzeug.aufrufen', 'geraet.hinzufuegen', 'geraet.entfernen', 'geraet.bestaetigen', 'notaus.umschalten')"
         },
         "rules_effect_werte": {
           "name": "rules_effect_werte",
@@ -2097,6 +2097,12 @@
         },
         "revoked_at": {
           "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notice_seen_at": {
+          "name": "notice_seen_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

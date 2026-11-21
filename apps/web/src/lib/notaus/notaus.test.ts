@@ -117,6 +117,7 @@ describe("PUT /api/notaus", () => {
     expect(entscheidung.action).toMatchObject({ type: "notaus.umschalten", actor: "besitzer" });
     expect(entscheidung.facts).toEqual({
       credential: "sitzung",
+      device: expect.stringMatching(/^ger_/),
       on: true,
       wasOn: false,
       currentPasswordVerified: false,
