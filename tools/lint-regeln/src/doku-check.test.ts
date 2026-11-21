@@ -71,6 +71,37 @@ const SEITE = [
   "",
 ].join("\n");
 
+const ENTWICKLER_VORLAGE = [
+  "# <Name>",
+  "",
+  "## Zweck",
+  "",
+  "## Aufbau",
+  "",
+  "`pfad/datei.ts`",
+  "",
+  "## Tests",
+  "",
+].join("\n");
+
+const ENTWICKLER_SEITE = [
+  "# Beispiel für Entwickler",
+  "",
+  "## Zweck",
+  "",
+  "Zum Testen.",
+  "",
+  "## Aufbau",
+  "",
+  "- `src/beispiel.ts` mit `tuWas` (`src/beispiel.ts#tuWas`)",
+  "- Ordner `src/`",
+  "",
+  "## Tests",
+  "",
+  "`src/beispiel.test.ts`",
+  "",
+].join("\n");
+
 type Dateien = Record<string, string>;
 
 /** Ein vollständiges, fehlerfreies Beispiel-Projekt. */
@@ -84,6 +115,10 @@ function grundstock(): Dateien {
     "docs/screenshots.json": JSON.stringify({ aufnahmen: [{ name: "beispiel", pfad: "/" }] }),
     "docs/assets/banner.png": "png",
     "docs/assets/screenshots/beispiel.png": "png",
+    "docs/entwickler/VORLAGE.md": ENTWICKLER_VORLAGE,
+    "docs/entwickler/beispiel.md": ENTWICKLER_SEITE,
+    "src/beispiel.ts": "export function tuWas() {}\n",
+    "src/beispiel.test.ts": "// Test\n",
   };
 }
 
@@ -397,6 +432,122 @@ describe("doku:check", () => {
       (m) => m.file === "docs/screenshots.json" && !m.problem.includes("fehlt die Datei"),
     );
     expect(zurListe).toEqual([]);
+  });
+
+  it("h) fehlt die Entwickler-Seite zu einer Funktion, ist das ein Fehler", () => {
+    const { code, ausgabe } = pruefe(mit({}, ["docs/entwickler/beispiel.md"]), false);
+    expect(code).toBe(1);
+    expect(ausgabe).toMatch(
+      /FEHLER +docs\/funktion-beispiel\.md: Die Entwickler-Seite docs\/entwickler\/beispiel\.md fehlt/,
+    );
+  });
+
+  it("h) auch der Befehl endet rot, wenn die Entwickler-Seite fehlt", () => {
+    const { code, ausgabe } = befehl(mit({}, ["docs/entwickler/beispiel.md"]));
+    expect(code).toBe(1);
+    expect(ausgabe).toContain("Die Entwickler-Seite docs/entwickler/beispiel.md fehlt");
+  });
+
+  it("h) die Entwickler-Seite braucht die Abschnitte ihrer Vorlage in derselben Reihenfolge", () => {
+    const ohne = pruefe(
+      mit({ "docs/entwickler/beispiel.md": ENTWICKLER_SEITE.replace("## Tests", "## Sonst") }),
+    );
+    expect(ohne.code).toBe(1);
+    expect(ohne.ausgabe).toMatch(/FEHLER +docs\/entwickler\/beispiel\.md: .*„## Tests“ fehlt/);
+    const vertauscht = ENTWICKLER_SEITE.replace("## Zweck", "## TAUSCH")
+      .replace("## Tests", "## Zweck")
+      .replace("## TAUSCH", "## Tests");
+    const falsch = pruefe(mit({ "docs/entwickler/beispiel.md": vertauscht }));
+    expect(falsch.code).toBe(1);
+    expect(falsch.ausgabe).toContain("falschen Reihenfolge");
+  });
+
+  it("h) die Pflicht-Abschnitte kommen aus docs/entwickler/VORLAGE.md", () => {
+    const vorlage = `${ENTWICKLER_VORLAGE}\n## Bekannte Schwächen\n`;
+    const { code, ausgabe } = pruefe(mit({ "docs/entwickler/VORLAGE.md": vorlage }));
+    expect(code).toBe(1);
+    expect(ausgabe).toContain("„## Bekannte Schwächen“ fehlt");
+  });
+
+  it("h) fehlt die Vorlage für Entwickler-Seiten, ist das ein Fehler", () => {
+    const { code, ausgabe } = pruefe(mit({}, ["docs/entwickler/VORLAGE.md"]));
+    expect(code).toBe(1);
+    expect(ausgabe).toContain("Die Vorlage für Entwickler-Seiten fehlt");
+  });
+
+  it("i) ein Verweis auf eine Datei, die es nicht gibt, ist ein Fehler", () => {
+    const seite = ENTWICKLER_SEITE.replace("Zum Testen.", "Siehe `src/gibt-es-nicht.ts`.");
+    const { code, ausgabe } = pruefe(mit({ "docs/entwickler/beispiel.md": seite }));
+    expect(code).toBe(1);
+    expect(ausgabe).toMatch(
+      /FEHLER +docs\/entwickler\/beispiel\.md: Zeile 5: Die Datei `src\/gibt-es-nicht\.ts` gibt es im Repo nicht/,
+    );
+  });
+
+  it("i) ein Name nach # muss in der Datei vorkommen", () => {
+    const seite = ENTWICKLER_SEITE.replace("#tuWas", "#tuNichts");
+    const { code, ausgabe } = pruefe(mit({ "docs/entwickler/beispiel.md": seite }));
+    expect(code).toBe(1);
+    expect(ausgabe).toContain("„tuNichts“ kommt in src/beispiel.ts nicht vor");
+    // Teil eines längeren Namens zählt nicht.
+    const teil = pruefe(
+      mit({ "docs/entwickler/beispiel.md": ENTWICKLER_SEITE.replace("#tuWas", "#tuW") }),
+    );
+    expect(teil.code).toBe(1);
+  });
+
+  it("i) Ordner enden mit „/“, Dateien nicht", () => {
+    const ordnerOhne = pruefe(
+      mit({
+        "docs/entwickler/beispiel.md": ENTWICKLER_SEITE.replace("Ordner `src/`", "`docs/assets`"),
+      }),
+    );
+    // ohne Endung kein Verweis: wird nicht geprüft
+    expect(ordnerOhne.code).toBe(0);
+    const dateiMit = pruefe(
+      mit({
+        "docs/entwickler/beispiel.md": ENTWICKLER_SEITE.replace(
+          "Ordner `src/`",
+          "`src/beispiel.ts/`",
+        ),
+      }),
+    );
+    expect(dateiMit.code).toBe(1);
+    expect(dateiMit.ausgabe).toContain("ist eine Datei");
+    const fehlenderOrdner = pruefe(
+      mit({ "docs/entwickler/beispiel.md": ENTWICKLER_SEITE.replace("Ordner `src/`", "`lib/`") }),
+    );
+    expect(fehlenderOrdner.code).toBe(1);
+  });
+
+  it("i) Pakete, Routen, Adressen und Codeblöcke gelten nicht als Verweis", () => {
+    const seite = ENTWICKLER_SEITE.replace(
+      "Zum Testen.",
+      [
+        "`@paibot/db/testing`, `/api/chat`, `https://paibot.de/x.ts`, `text/event-stream`,",
+        "`./lokal.ts`, `../oben.ts`, `pnpm --filter @paibot/gate test`",
+        "",
+        "```bash",
+        "cat gibt/es/nicht.ts",
+        "```",
+      ].join("\n"),
+    );
+    const { code, ergebnis } = pruefe(mit({ "docs/entwickler/beispiel.md": seite }), true);
+    expect(ergebnis.fehler).toEqual([]);
+    expect(code).toBe(0);
+  });
+
+  it("i) die Vorlage selbst wird nicht auf Verweise geprüft", () => {
+    // ENTWICKLER_VORLAGE enthält `pfad/datei.ts`, das es nicht gibt.
+    expect(pruefe(grundstock(), true).code).toBe(0);
+  });
+
+  it("die echten Entwickler-Seiten bestehen die Prüfung", () => {
+    const ergebnis = pruefeDoku({ wurzel: ROOT });
+    const entwickler = ergebnis.fehler.filter(
+      (m) => m.file.startsWith("docs/entwickler/") || m.problem.includes("Entwickler-Seite"),
+    );
+    expect(entwickler).toEqual([]);
   });
 
   it("unbekannte Angaben brechen mit einer Erklärung ab", () => {

@@ -171,7 +171,7 @@ Suche, Sichern und Neu erzeugen haben keine eigenen Einstellungen. Feste Werte: 
 | ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------- |
 | Modell des Bots        | Seite „Modell und Anbieter“        | Ohne gewähltes Modell antwortet der Bot nicht („Für deinen Bot ist kein Modell gewählt.“) | keins                                     |
 | Anweisung des Bots     | Seite „Bot“                        | Steht am Ende der Anweisung an das Modell                                                 | leer                                      |
-| Ausgabegrenze des Bots | in dieser Version fest             | Höchstens so viele Token je Antwort                                                       | 4096                                      |
+| Ausgabegrenze des Bots | nicht in der Oberfläche            | Höchstens so viele Token je Antwort                                                       | 4096                                      |
 | Datenschleuse          | Schalter je Unterhaltung, Standard | `An`: jede Anfrage geht über die Datenschleuse oder gar nicht                             | aus                                       |
 | Verlaufsgrenze (Token) | Einstellungen                      | Wie viel vom bisherigen Gespräch mitgeschickt wird (etwa 4 Zeichen je Token)              | keine eigene Grenze                       |
 | Tagesbudget (Token)    | Einstellungen                      | Ist es erreicht, lehnt das Tor weitere Anfragen bis Mitternacht (deine Zeitzone) ab       | keins                                     |

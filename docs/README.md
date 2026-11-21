@@ -33,6 +33,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Hintergrund-Läufe      | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)    |
 | Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit               |
 | Entwickeln und Testen  | [entwickeln.md](entwickeln.md)                                           | vorhanden                           |
+| Entwickler-Doku        | [entwickler/README.md](entwickler/README.md)                             | vorhanden, je Funktion eine Seite   |
 | Lizenzen der Pakete    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                           |
 | Beitragsvereinbarung   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                           |
 | Vorlage für Funktion   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                           |
@@ -44,6 +45,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ### Neu
 
+- **Entwickler-Doku:** Zu jeder Funktion gibt es eine Seite für Entwickler mit Aufbau, Datenmodell, Schnittstellen, Sicherheit, Tests und bekannten Schwächen; jede Aussage nennt die Stelle im Code ([Entwickler-Doku](entwickler/README.md)).
 - **Seitenleiste mit Menü „Du“:** Unten links stehen die Werkzeuge (Belege, Regeln, Datenschleuse, Modell und Anbieter), ein- und ausklappbar. Der Knopf „Du“ öffnet Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden ([Einstellungen und Info](funktion-einstellungen.md)).
 - **Chat-Eingabe:** Nach dem Senden bleibt der Cursor im Feld; die Leiste zeigt schon die Plätze für geplante Funktionen (gesperrt, „kommt später“). Dazu Suche in allen Unterhaltungen, Unterhaltung als Datei sichern und Antwort neu erzeugen ([Chat](funktion-chat.md)).
 - **Eigener Anbieter in der Oberfläche:** OpenAI-kompatible Anbieter anlegen, ändern und entfernen, auch auf deinem Rechner ([Anbieter und Modelle](funktion-anbieter-und-modelle.md)).
@@ -130,13 +132,14 @@ Schritte in `vorher` (je Schritt genau eine Aktion):
 
 Ziele als Objekt: genau eines von `css`, `beschriftung`, `rolle` (mit `name`) oder `text`, dazu `"genau": false` für Teil-Treffer und `"nr": 0` für den ersten von mehreren Treffern. Für `text` gibt es Sonderwerte, damit nie ein Geheimnis in der Liste steht: `$einrichtungs-code` (Code aus dem Log), `$passwort` (Wegwerf-Passwort des Laufs), `$anbieter-schluessel` (Schlüssel des Test-Anbieters).
 
-Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
+Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob es zu jeder Funktionsseite die Entwickler-Seite `entwickler/<name>.md` mit den Abschnitten aus [entwickler/VORLAGE.md](entwickler/VORLAGE.md) gibt, ob jeder Datei-Verweis in den Entwickler-Seiten auf eine vorhandene Datei zeigt, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
 
 ## Neue Doku-Seite anlegen
 
 1. `docs/VORLAGE-funktion.md` kopieren, z. B. nach `docs/funktion-<name>.md`.
 2. Alle Abschnitte ausfüllen (nichts behaupten, was der Code nicht kann).
-3. Die Seite in der Tabelle oben eintragen.
-4. Screenshots in `screenshots.json` eintragen und mit `pnpm doku:screenshots` aufnehmen.
+3. `entwickler/VORLAGE.md` nach `docs/entwickler/<name>.md` kopieren und für Entwickler beschreiben, wie die Funktion gebaut ist; jede Aussage mit Pfad im Code belegen.
+4. Die Seite in der Tabelle oben eintragen.
+5. Screenshots in `screenshots.json` eintragen und mit `pnpm doku:screenshots` aufnehmen.
 
 PaiBot wird entwickelt von [HR CodeLabs](https://hr-codelabs.de).

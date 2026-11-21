@@ -154,20 +154,20 @@ Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas 
 
 ## Fehlerbehebung
 
-| Beobachtung                                  | Ursache                                                      | Was tun                                                                                    |
-| -------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| „Dafür gibt es noch keine Regel.“            | Für diese Aktion passt keine Regel (R-999)                   | In der Basisversion gibt es dafür keinen Weg; die Aktion ist nicht vorgesehen              |
-| „Das Tor hat die Aktion abgelehnt.“ mit G-01 | Datenschleuse ist an, aber nicht erreichbar                  | Prüf, ob die Datenschleuse läuft, oder schalte sie für diese Unterhaltung aus              |
-| Abgelehnt mit G-02                           | Anbieter ist ausgeschaltet oder steht außerhalb der EU       | Anbieter einschalten oder einen Anbieter in der EU bzw. lokal wählen                       |
-| Abgelehnt mit G-03                           | Nachricht zu lang oder Ausgabegrenze der Anfrage zu hoch     | Nachricht kürzen; die Ausgabegrenze legst du beim Bot fest                                 |
-| Abgelehnt mit G-04                           | Tagesbudget ist aufgebraucht                                 | Bis morgen warten oder das Budget in den Einstellungen erhöhen                             |
-| „Alle Bots sind angehalten.“ (G-05)          | Not-Aus ist an                                               | Oben auf **Fortsetzen** klicken und dein aktuelles Passwort eingeben                       |
-| Fortsetzen: „Das Passwort stimmt nicht.“     | Beim Aufheben fehlt das richtige Passwort (V-10)             | Aktuelles Passwort eingeben; vergessen: siehe [Zugang](funktion-einrichtung-und-zugang.md) |
-| Abgelehnt mit V-01                           | Die Unterhaltung gibt es nicht (mehr)                        | Seite neu laden und eine vorhandene Unterhaltung öffnen                                    |
-| Abgelehnt mit V-02                           | Dein Bot antwortet noch                                      | Antwort abwarten oder abbrechen, dann erneut senden                                        |
-| Abgelehnt mit V-03                           | Es läuft keine Antwort, die sich abbrechen lässt             | Nichts zu tun; die Antwort ist schon fertig                                                |
-| Abgelehnt mit V-04                           | Der Dienst der Datenschleuse ist nicht eingerichtet          | Datenschleuse einrichten, dann einschalten                                                 |
-| Abgelehnt mit V-06                           | Das aktuelle Passwort stimmt nicht                           | Aktuelles Passwort richtig eingeben                                                        |
-| Abgelehnt mit V-07                           | Die Einrichtung ist schon abgeschlossen                      | Anmelden statt neu einrichten                                                              |
-| Abgelehnt mit R-006                          | Passwort oder Code für eine Aktion, die eine Sitzung braucht | Anmelden; danach gilt deine Sitzung                                                        |
-| Fehler `intern` bei jeder Aktion             | Eine eingebaute Regel in der Datenbank weicht ab             | Datenbank aus einer Sicherung wiederherstellen; nichts wurde ausgeführt                    |
+| Beobachtung                                  | Ursache                                                      | Was tun                                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| „Dafür gibt es noch keine Regel.“            | Für diese Aktion passt keine Regel (R-999)                   | In der Basisversion gibt es dafür keinen Weg; die Aktion ist nicht vorgesehen                    |
+| „Das Tor hat die Aktion abgelehnt.“ mit G-01 | Datenschleuse ist an, aber nicht erreichbar                  | Prüf, ob die Datenschleuse läuft, oder schalte sie für diese Unterhaltung aus                    |
+| Abgelehnt mit G-02                           | Anbieter ist ausgeschaltet oder steht außerhalb der EU       | Anbieter einschalten oder einen Anbieter in der EU bzw. lokal wählen                             |
+| Abgelehnt mit G-03                           | Nachricht zu lang oder Ausgabegrenze der Anfrage zu hoch     | Nachricht kürzen; die Ausgabegrenze gehört zum Bot und lässt sich in der Oberfläche nicht ändern |
+| Abgelehnt mit G-04                           | Tagesbudget ist aufgebraucht                                 | Bis morgen warten oder das Budget in den Einstellungen erhöhen                                   |
+| „Alle Bots sind angehalten.“ (G-05)          | Not-Aus ist an                                               | Oben auf **Fortsetzen** klicken und dein aktuelles Passwort eingeben                             |
+| Fortsetzen: „Das Passwort stimmt nicht.“     | Beim Aufheben fehlt das richtige Passwort (V-10)             | Aktuelles Passwort eingeben; vergessen: siehe [Zugang](funktion-einrichtung-und-zugang.md)       |
+| Abgelehnt mit V-01                           | Die Unterhaltung gibt es nicht (mehr)                        | Seite neu laden und eine vorhandene Unterhaltung öffnen                                          |
+| Abgelehnt mit V-02                           | Dein Bot antwortet noch                                      | Antwort abwarten oder abbrechen, dann erneut senden                                              |
+| Abgelehnt mit V-03                           | Es läuft keine Antwort, die sich abbrechen lässt             | Nichts zu tun; die Antwort ist schon fertig                                                      |
+| Abgelehnt mit V-04                           | Der Dienst der Datenschleuse ist nicht eingerichtet          | Datenschleuse einrichten, dann einschalten                                                       |
+| Abgelehnt mit V-06                           | Das aktuelle Passwort stimmt nicht                           | Aktuelles Passwort richtig eingeben                                                              |
+| Abgelehnt mit V-07                           | Die Einrichtung ist schon abgeschlossen                      | Anmelden statt neu einrichten                                                                    |
+| Abgelehnt mit R-006                          | Passwort oder Code für eine Aktion, die eine Sitzung braucht | Anmelden; danach gilt deine Sitzung                                                              |
+| Fehler `intern` bei jeder Aktion             | Eine eingebaute Regel in der Datenbank weicht ab             | Datenbank aus einer Sicherung wiederherstellen; nichts wurde ausgeführt                          |

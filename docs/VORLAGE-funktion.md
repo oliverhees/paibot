@@ -17,6 +17,7 @@ Seit:      2026-11-18
 > - „So benutzt du es“ eine Anleitung Schritt für Schritt ist (nummerierte Liste),
 > - die Bilder per Skript entstehen (Eintrag in [screenshots.json](screenshots.json), `pnpm doku:screenshots`),
 > - die Seite in [docs/README.md](README.md) eingetragen ist,
+> - die Entwickler-Seite `docs/entwickler/<name>.md` nach [docs/entwickler/VORLAGE.md](entwickler/VORLAGE.md) dabei ist (jede Aussage am Code belegt),
 > - `pnpm doku:check` grün ist.
 
 **Ergebnis:** <ein Satz: Was hast du danach, was vorher nicht ging?>

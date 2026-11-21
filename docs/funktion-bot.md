@@ -70,7 +70,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 - Es gibt einen Bot. Weitere Bots anlegen ist nicht Teil dieser Version.
 - In dieser Version hat der Bot keine Werkzeuge: Er schreibt Antworten und führt selbst nichts aus.
 - Eine kurze Rolle oder Beschreibung des Bots lässt sich noch nicht speichern; die Navigation zeigt „dein persönlicher Assistent“.
-- Die Ausgabegrenze je Antwort bleibt auf dem Wert aus der Einrichtung; die Seite zeigt sie nicht.
+- Die Ausgabegrenze je Antwort hat den Standard 4096 Token; die Einrichtung setzt keinen eigenen Wert. Die Seite „Bot“ zeigt sie nicht und bietet kein Feld dafür; beim Speichern schickt sie den gespeicherten Wert unverändert zurück. Ändern lässt sie sich in dieser Version nur über die Schnittstelle der App (`PUT /api/bot`).
 
 ## Fehlerbehebung
 
