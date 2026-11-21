@@ -39,6 +39,8 @@ export const ERROR_STATUS = {
   /** Die Antwort war größer als erlaubt; PaiBot hat sie abgebrochen. */
   antwort_zu_gross: 502,
   limit_erreicht: 429,
+  /** Die gewählte Routing-Regel gibt es beim Anbieter nicht (mehr) oder sie ist ausgeschaltet. */
+  regel_unbekannt: 409,
   unterbrochen: 500,
   intern: 500,
   /** Der Not-Aus ist an: Bots nehmen nichts an und fragen kein Modell an. */

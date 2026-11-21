@@ -55,7 +55,7 @@ Bei EUrouter wählst du keine Modelle aus einer Liste, sondern eine deiner Routi
    ![Karte „Anbieter hinzufügen“: Auswahl mit EUrouter (gewählt), Mistral AI (direkt) und „Eigener oder lokaler Anbieter“, je mit Angaben und Konto-Link; darunter das Feld für den Schlüssel](assets/screenshots/modelle-anbieter-wahl.png)
 10. Oben erscheint EUrouter, darunter die Karte „Routing-Regel für …“. Trag bei „Name der Routing-Regel“ den Namen genau so ein, wie er in deinem Konto bei EUrouter unter „Routing“ steht, und klicke „Regel prüfen und hinzufügen“. Die Prüfung ist eine sehr kleine echte Anfrage an ein Modell und kostet bei EUrouter wenige Token. Funktioniert die Regel, steht grün, wer laut EUrouter geantwortet hat und dessen Sitz laut der Anbieter-Liste von EUrouter; die Regel steht dann zur Wahl.
 
-    ![Karte „Routing-Regel für Pai“: die Regel „EU Beispiel“ steht zur Wahl; grün „Regel „EU Beispiel“ funktioniert und ist gespeichert“ mit „Antwort von Beispiel EU-Anbieter · Sitz Niederlande laut EUrouter“](assets/screenshots/modelle-regel-hinzugefuegt.png)
+    ![Karte „Routing-Regel für Pai“: die Regel „Beispiel-Regel“ steht zur Wahl; grün „Regel „Beispiel-Regel“ funktioniert und ist gespeichert“ mit „Antwort von Beispiel-Anbieter Nord · Sitz Niederlande laut EUrouter“](assets/screenshots/modelle-regel-hinzugefuegt.png)
 11. Kennt EUrouter den Namen nicht (oder ist die Regel ausgeschaltet), steht rot, was du tun kannst; gespeichert ist dann nichts.
 
     ![Rot: „Regel nicht gespeichert“ – EUrouter kennt keine eingeschaltete Regel mit dem Namen „Gibt es nicht“, mit dem Ausweg, den Namen im Konto unter „Routing“ nachzusehen](assets/screenshots/modelle-regel-unbekannt.png)
@@ -124,7 +124,7 @@ Trag bei Bedarf einen neuen ein.
 
 ## So sieht es aus
 
-Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Sie zeigen den Test-Anbieter der Beispiel-Umgebung („Lokaler Anbieter“ auf dem eigenen Rechner) mit erfundenen Modellen; auch „EUrouter“ ist in den Bildern dieser Test-Anbieter, mit der Beispiel-Regel „EU Beispiel“ und dem erfundenen „Beispiel EU-Anbieter“. In einigen Bildern heißt der Bot „Kai“, weil er auf der Seite „Bot“ vorher umbenannt wurde.
+Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Sie zeigen den Test-Anbieter der Beispiel-Umgebung („Lokaler Anbieter“ auf dem eigenen Rechner) mit erfundenen Modellen; auch „EUrouter“ ist in den Bildern dieser Test-Anbieter, mit der Beispiel-Regel „Beispiel-Regel“ und dem erfundenen „Beispiel-Anbieter Nord“. In einigen Bildern heißt der Bot „Kai“, weil er auf der Seite „Bot“ vorher umbenannt wurde.
 
 Nach dem Entfernen eines weiteren Anbieters zeigt die Seite wieder den verbleibenden:
 

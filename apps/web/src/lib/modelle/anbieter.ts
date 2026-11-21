@@ -508,6 +508,53 @@ export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
   return { daten: { modelle } };
 }
 
+/** Modell aus der Liste des Anbieters; `id` nur, wenn PaiBot es schon gespeichert hat. */
+export interface GelesenesModell {
+  id?: ModelId;
+  slug: string;
+  displayName: string;
+  contextWindow?: number;
+}
+
+/**
+ * `POST /api/anbieter/:id/modelle/lesen`: holt die Modell-Liste beim Anbieter und zeigt sie, ohne
+ * etwas zu speichern (kein Beleg, keine Änderung). Nur so darf die Seite „Modell und Anbieter“
+ * beim Öffnen die Liste zeigen; gespeichert wird erst beim Abgleichen oder Übernehmen.
+ */
+export async function anbieterModelleLesen(k: RoutenKontext<"anbieterModelleLesen">) {
+  const { provider, apiKeyEnc } = await anbieterMitSchluessel(k.db, k.params.id ?? "");
+  if (supportsRoutingRules(provider.templateKey)) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("routingregel.liste_nicht", { anbieter: provider.name }),
+      ausweg: t("routingregel.liste_nicht.ausweg"),
+    });
+  }
+  const schluessel = gespeicherterSchluessel(k.dienste, provider, apiKeyEnc);
+  if (schluessel === undefined && !ohneSchluesselErlaubt(provider.region)) {
+    throw verbindungsFehler(
+      "schluessel_ungueltig",
+      provider.name,
+      provider.templateKey === "eigener",
+    );
+  }
+  const ergebnis = await verbindungPruefen(k.dienste, endpunktVon(provider), schluessel);
+  const gespeichert = new Map(
+    (await repo.models.list(k.db, { providerId: provider.id as ProviderId }))
+      .filter((m) => m.enabled)
+      .map((m) => [m.slug, m.id as ModelId]),
+  );
+  const modelle: GelesenesModell[] = ergebnis.models.map((m) => {
+    const id = gespeichert.get(m.slug);
+    return {
+      ...(id === undefined ? {} : { id }),
+      slug: m.slug,
+      displayName: m.displayName,
+      ...(m.contextWindow === undefined ? {} : { contextWindow: m.contextWindow }),
+    };
+  });
+  return { daten: { modelle } };
+}
+
 async function modelleAbgleichen(
   k: RoutenKontext<"anbieterModelle">,
   id: ProviderId,

@@ -28,7 +28,9 @@ beforeEach(() => {
   provider.reset();
   provider.configure({
     apiKey: API_KEY,
-    routingRules: [{ name: "EU Regel", provider: "beispiel-eu", model: "beispiel/modell-1" }],
+    routingRules: [
+      { name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/modell-1" },
+    ],
   });
 });
 
@@ -44,17 +46,17 @@ describe("Motor mit Routing-Regel", () => {
       baseUrl,
       apiKey: API_KEY,
       templateKey: "eurouter",
-      slug: routingRuleSlug("EU Regel"),
+      slug: routingRuleSlug("Beispiel-Regel"),
     });
     const events = await zugang.step(createAiSdkMotor(), TURN);
     const body = provider.requests.at(-1)?.body as Record<string, unknown>;
-    expect(body.rule_name).toBe("EU Regel");
+    expect(body.rule_name).toBe("Beispiel-Regel");
     expect("model" in body).toBe(false);
     expect(body.stream).toBe(true);
     expect(events.filter((e) => e.type === "text-delta").length).toBeGreaterThan(0);
     expect(events.at(-1)).toMatchObject({
       type: "finish",
-      servedBy: { provider: "beispiel-eu", model: "beispiel/modell-1" },
+      servedBy: { provider: "beispiel-nord", model: "beispiel/modell-1" },
     });
   });
 

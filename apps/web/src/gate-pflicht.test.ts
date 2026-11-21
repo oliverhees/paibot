@@ -30,6 +30,7 @@ import {
   TEST_ORIGIN,
   TEST_PASSWORT,
   TEST_SCHLUESSEL,
+  TEST_VERWALTUNGSSCHLUESSEL,
   TEST_VORLAGEN_URL,
   type TestUmgebung,
   testUmgebung,
@@ -519,7 +520,7 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
     vorher: mitEurouter,
     aufruf: async (s) => ({
       params: { id: await eurouterId(s) },
-      koerper: { name: "EU Beispiel" },
+      koerper: { name: "Beispiel-Regel" },
     }),
   },
   anbieterRegelEntfernen: {
@@ -527,18 +528,51 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
       const s = await mitEurouter();
       await rufe(s, "anbieterRegelHinzufuegen", {
         params: { id: await eurouterId(s) },
-        koerper: { name: "EU Beispiel" },
+        koerper: { name: "Beispiel-Regel" },
       });
       return s;
     },
     aufruf: async (s) => {
       const id = await eurouterId(s);
       const regel = (await repo.models.list(s.u.db, { providerId: id as never })).find(
-        (m) => m.slug === "rule:EU Beispiel",
+        (m) => m.slug === "rule:Beispiel-Regel",
       );
       if (regel === undefined) throw new Error("keine Regel");
       return { params: { id, modellId: regel.id } };
     },
+  },
+  anbieterVerwaltungsschluesselSetzen: {
+    vorher: mitEurouter,
+    aufruf: async (s) => ({
+      params: { id: await eurouterId(s) },
+      koerper: { managementKey: TEST_VERWALTUNGSSCHLUESSEL },
+    }),
+  },
+  anbieterVerwaltungsschluesselEntfernen: {
+    vorher: async () => {
+      const s = await mitEurouter();
+      await rufe(s, "anbieterVerwaltungsschluesselSetzen", {
+        params: { id: await eurouterId(s) },
+        koerper: { managementKey: TEST_VERWALTUNGSSCHLUESSEL },
+      });
+      return s;
+    },
+    aufruf: async (s) => ({ params: { id: await eurouterId(s) } }),
+  },
+  anbieterRegelNeuPruefen: {
+    vorher: async () => {
+      const s = await mitEurouter();
+      await rufe(s, "anbieterRegelHinzufuegen", {
+        params: { id: await eurouterId(s) },
+        koerper: { name: "Beispiel-Regel" },
+      });
+      await rufe(s, "anbieterVerwaltungsschluesselSetzen", {
+        params: { id: await eurouterId(s) },
+        koerper: { managementKey: TEST_VERWALTUNGSSCHLUESSEL },
+      });
+      return s;
+    },
+    aufruf: async (s) => ({ params: { id: await eurouterId(s) }, koerper: {} }),
   },
   notausUmschalten: { vorher: einrichten, aufruf: async () => ({ koerper: { on: true } }) },
   unterhaltungExport: {
@@ -586,6 +620,21 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
   anbieterVerbindungstest: {
     vorher: einrichten,
     aufruf: async (s) => ({ koerper: { providerId: await anbieterId(s) } }),
+  },
+  anbieterModelleLesen: {
+    vorher: einrichten,
+    aufruf: async (s) => ({ params: { id: await anbieterId(s) } }),
+  },
+  anbieterRegelListe: {
+    vorher: async () => {
+      const s = await mitEurouter();
+      await rufe(s, "anbieterVerwaltungsschluesselSetzen", {
+        params: { id: await eurouterId(s) },
+        koerper: { managementKey: TEST_VERWALTUNGSSCHLUESSEL },
+      });
+      return s;
+    },
+    aufruf: async (s) => ({ params: { id: await eurouterId(s) } }),
   },
   datenschleuse: { vorher: einrichten, aufruf: async () => ({}) },
   einstellungen: { vorher: einrichten, aufruf: async () => ({}) },

@@ -53,7 +53,9 @@ beforeEach(() => {
   fake.reset();
   fake.configure({
     apiKey: KEY,
-    routingRules: [{ name: "EU Beispiel", provider: "beispiel-anbieter", model: "beispiel/m-1" }],
+    routingRules: [
+      { name: "Beispiel-Regel", provider: "beispiel-anbieter", model: "beispiel/m-1" },
+    ],
   });
 });
 
@@ -61,9 +63,9 @@ const endpoint = () => ({ templateKey: "eurouter" as const, baseUrl, region: "lo
 
 describe("Eintrag einer Routing-Regel", () => {
   it("Name ↔ Slug nur bei EUrouter; andere Anbieter haben keine Regeln", () => {
-    const slug = routingRuleSlug("EU Beispiel");
-    expect(slug).toBe("rule:EU Beispiel");
-    expect(routingRuleNameOf("eurouter", slug)).toBe("EU Beispiel");
+    const slug = routingRuleSlug("Beispiel-Regel");
+    expect(slug).toBe("rule:Beispiel-Regel");
+    expect(routingRuleNameOf("eurouter", slug)).toBe("Beispiel-Regel");
     // Gegenprobe: dieselbe Kennung bei Mistral oder einem eigenen Anbieter ist ein Modell.
     expect(routingRuleNameOf("mistral", slug)).toBeUndefined();
     expect(routingRuleNameOf("eigener", slug)).toBeUndefined();
@@ -81,13 +83,13 @@ describe("Eintrag einer Routing-Regel", () => {
 
 describe("checkRoutingRule (gegen den Test-Anbieter)", () => {
   it("bekannte Regel: ok, mit Anbieter und Modell aus der Antwort; Anfrage ohne model", async () => {
-    const result = await checkRoutingRule(endpoint(), KEY, "EU Beispiel");
+    const result = await checkRoutingRule(endpoint(), KEY, "Beispiel-Regel");
     expect(result).toEqual({
       ok: true,
       servedBy: { provider: "beispiel-anbieter", model: "beispiel/m-1" },
     });
     const sent = fake.requests.at(-1)?.body as Record<string, unknown>;
-    expect(sent.rule_name).toBe("EU Beispiel");
+    expect(sent.rule_name).toBe("Beispiel-Regel");
     expect("model" in sent).toBe(false);
     expect(sent.max_tokens).toBeLessThanOrEqual(8);
     expect(sent.stream).toBe(false);
@@ -105,19 +107,19 @@ describe("checkRoutingRule (gegen den Test-Anbieter)", () => {
   });
 
   it("falscher Schlüssel, Limit, 403 und Ausfall haben eigene Codes", async () => {
-    expect(await checkRoutingRule(endpoint(), "sk-falsch", "EU Beispiel")).toMatchObject({
+    expect(await checkRoutingRule(endpoint(), "sk-falsch", "Beispiel-Regel")).toMatchObject({
       code: "schluessel_ungueltig",
     });
     fake.failNext({ kind: "status", status: 429 });
-    expect(await checkRoutingRule(endpoint(), KEY, "EU Beispiel")).toMatchObject({
+    expect(await checkRoutingRule(endpoint(), KEY, "Beispiel-Regel")).toMatchObject({
       code: "limit_erreicht",
     });
     fake.failNext({ kind: "status", status: 403 });
-    expect(await checkRoutingRule(endpoint(), KEY, "EU Beispiel")).toMatchObject({
+    expect(await checkRoutingRule(endpoint(), KEY, "Beispiel-Regel")).toMatchObject({
       code: "abgelehnt",
     });
     fake.failNext({ kind: "status", status: 503 });
-    expect(await checkRoutingRule(endpoint(), KEY, "EU Beispiel")).toMatchObject({
+    expect(await checkRoutingRule(endpoint(), KEY, "Beispiel-Regel")).toMatchObject({
       code: "anbieter_nicht_erreichbar",
     });
   });
@@ -125,7 +127,7 @@ describe("checkRoutingRule (gegen den Test-Anbieter)", () => {
   it("anderer Anbieter oder unbrauchbarer Name: keine Anfrage", async () => {
     const before = fake.requests.length;
     expect(
-      await checkRoutingRule({ ...endpoint(), templateKey: "mistral" }, KEY, "EU Beispiel"),
+      await checkRoutingRule({ ...endpoint(), templateKey: "mistral" }, KEY, "Beispiel-Regel"),
     ).toMatchObject({ ok: false });
     expect(await checkRoutingRule(endpoint(), KEY, "a\u0000b")).toMatchObject({ ok: false });
     expect(fake.requests.length).toBe(before);
@@ -192,7 +194,7 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
   });
 
   const chatBody = JSON.stringify({
-    model: "rule:EU Beispiel",
+    model: "rule:Beispiel-Regel",
     messages: [{ role: "user", content: "hi" }],
     stream: true,
     stream_options: { include_usage: true },
@@ -200,7 +202,7 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
 
   it("Regel: model fällt weg, rule_name geht mit; der Strom nennt den Anbieter", async () => {
     const text = await permitFor(async (permit) => {
-      const m = resolveModel(permit, choiceWith(routingRuleSlug("EU Beispiel")), { secretsKey });
+      const m = resolveModel(permit, choiceWith(routingRuleSlug("Beispiel-Regel")), { secretsKey });
       const response = await m.fetch(`${m.baseUrl}/chat/completions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -209,7 +211,7 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
       return response.text();
     });
     const sent = fake.requests.at(-1)?.body as Record<string, unknown>;
-    expect(sent.rule_name).toBe("EU Beispiel");
+    expect(sent.rule_name).toBe("Beispiel-Regel");
     expect("model" in sent).toBe(false);
     expect(sent.stream).toBe(true);
     expect(text).toContain('"provider":"beispiel-anbieter"');
@@ -218,18 +220,18 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
 
   it("Gegenprobe: gleicher Slug bei Mistral ist ein Modell, kein rule_name", async () => {
     await permitFor(async (permit) => {
-      const m = resolveModel(permit, choiceWith("rule:EU Beispiel", "mistral"), { secretsKey });
+      const m = resolveModel(permit, choiceWith("rule:Beispiel-Regel", "mistral"), { secretsKey });
       await m.fetch(`${m.baseUrl}/chat/completions`, { method: "POST", body: chatBody });
     });
     const sent = fake.requests.at(-1)?.body as Record<string, unknown>;
-    expect(sent.model).toBe("rule:EU Beispiel");
+    expect(sent.model).toBe("rule:Beispiel-Regel");
     expect("rule_name" in sent).toBe(false);
   });
 
   it("Körper, der kein JSON-Objekt ist, wird bei einer Regel nicht gesendet", async () => {
     const before = fake.requests.length;
     const error = await permitFor(async (permit) => {
-      const m = resolveModel(permit, choiceWith(routingRuleSlug("EU Beispiel")), { secretsKey });
+      const m = resolveModel(permit, choiceWith(routingRuleSlug("Beispiel-Regel")), { secretsKey });
       return m.fetch(`${m.baseUrl}/chat/completions`, { method: "POST", body: "[1]" }).then(
         () => undefined,
         (e: unknown) => e,
@@ -266,7 +268,7 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
       },
       (permit) => {
         try {
-          resolveModel(permit, choiceWith(routingRuleSlug("EU Beispiel")), {
+          resolveModel(permit, choiceWith(routingRuleSlug("Beispiel-Regel")), {
             secretsKey,
             schleuse: { baseUrl, apiKey: "sk-schleuse-xyz" },
           });

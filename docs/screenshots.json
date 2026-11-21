@@ -247,7 +247,7 @@
       },
       {
         "tippe": "Name der Regel 1",
-        "text": "EU Beispiel"
+        "text": "Beispiel-Regel"
       },
       {
         "klick": {
@@ -3110,7 +3110,7 @@
         },
         {
           "tippe": "Name der Routing-Regel",
-          "text": "EU Beispiel"
+          "text": "Beispiel-Regel"
         },
         {
           "klick": {
@@ -3122,7 +3122,7 @@
           "warteAufText": "funktioniert und ist gespeichert"
         }
       ],
-      "beschreibung": "EUrouter hinzugefügt, Regel „EU Beispiel“ geprüft und gespeichert, mit dem Anbieter, der geantwortet hat"
+      "beschreibung": "EUrouter hinzugefügt, Regel „Beispiel-Regel“ geprüft und gespeichert, mit dem Anbieter, der geantwortet hat"
     },
     {
       "pfad": "/modelle",

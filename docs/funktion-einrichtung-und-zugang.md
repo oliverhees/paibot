@@ -18,7 +18,7 @@ Wer eine neue Installation im Internet zuerst erreicht, könnte sonst das Passwo
 
 ## So benutzt du es
 
-Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist dort der Test-Anbieter von PaiBot auf dem eigenen Rechner verbunden; die Modelle heißen „Beispiel-Modell …“, die Routing-Regel „EU Beispiel“. Bei dir stehen dort dein Anbieter, deine Modelle bzw. deine Regeln.
+Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist dort der Test-Anbieter von PaiBot auf dem eigenen Rechner verbunden; die Modelle heißen „Beispiel-Modell …“, die Routing-Regel „Beispiel-Regel“. Bei dir stehen dort dein Anbieter, deine Modelle bzw. deine Regeln.
 
 ### Einrichten
 
@@ -69,7 +69,7 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
 
    - **EUrouter:** Trag zusätzlich die Namen deiner Routing-Regeln ein (eine oder mehrere, mit „Weitere Regel“). Die Namen findest du in deinem Konto bei EUrouter unter „Routing“; schreib sie genau so, auch groß und klein. Klick auf „Schlüssel und Regeln prüfen“. Für jede Regel schickt PaiBot eine sehr kleine echte Anfrage an ein Modell; das kostet bei EUrouter wenige Token. Bei jeder Regel steht danach, ob sie funktioniert und wer laut EUrouter geantwortet hat – mit dessen Sitz laut der Anbieter-Liste von EUrouter. Eine Liste einzelner Modelle bietet PaiBot bei EUrouter nicht an.
 
-     ![Einrichtung mit EUrouter: Schlüssel und die Regeln „EU Beispiel“ und „Gibt es nicht“; grün „Verbindung steht. 1 von 2 Regeln geprüft.“, darunter „„EU Beispiel“ funktioniert. Antwort von Beispiel EU-Anbieter · Sitz Niederlande laut EUrouter“ und „„Gibt es nicht“ geht nicht“ mit Ausweg](assets/screenshots/einrichtung-regeln.png)
+     ![Einrichtung mit EUrouter: Schlüssel und die Regeln „Beispiel-Regel“ und „Gibt es nicht“; grün „Verbindung steht. 1 von 2 Regeln geprüft.“, darunter „„Beispiel-Regel“ funktioniert. Antwort von Beispiel-Anbieter Nord · Sitz Niederlande laut EUrouter“ und „„Gibt es nicht“ geht nicht“ mit Ausweg](assets/screenshots/einrichtung-regeln.png)
 
      Dasselbe im hellen Design:
 
@@ -81,7 +81,7 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
 
    Bei EUrouter stehen hier die geprüften Regeln:
 
-   ![Einrichtung mit EUrouter, Schritt 5 von 7: „Routing-Regel wählen“ mit der geprüften Regel „EU Beispiel“ und dem Anbieter, der geantwortet hat](assets/screenshots/einrichtung-regel.png)
+   ![Einrichtung mit EUrouter, Schritt 5 von 7: „Routing-Regel wählen“ mit der geprüften Regel „Beispiel-Regel“ und dem Anbieter, der geantwortet hat](assets/screenshots/einrichtung-regel.png)
 
 8. Entscheide, ob die Datenschleuse für neue Unterhaltungen standardmäßig an ist. Der Schalter lässt sich nur bedienen, wenn die Datenschleuse auf deinem Server eingerichtet ist; sonst bleibt sie aus, und PaiBot sagt dir das unter dem Schalter. Klick auf „Weiter“.
 

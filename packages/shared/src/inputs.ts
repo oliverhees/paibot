@@ -77,6 +77,8 @@ export const setupInput = z
     passwordRepeat: z.string().max(LIMITS.passwordMaxChars),
     /** Schlüssel für EUrouter; fehlt, wenn der Schritt übersprungen wurde. */
     apiKey: apiKeySchema.optional(),
+    /** Nur bei EUrouter: zweiter Schlüssel, nur zum Lesen der Routing-Regeln (freiwillig). */
+    managementKey: apiKeySchema.optional(),
     /** Modell aus der Liste des Anbieters; nur mit Schlüssel. */
     modelSlug: z.string().min(1).max(LIMITS.modelSlugChars).optional(),
     /** Gewählter Anbieter; ohne Angabe der Anbieter, den der Server für die Einrichtung vorsieht. */
@@ -95,6 +97,9 @@ export const setupInput = z
   })
   .refine((input) => input.ruleNames === undefined || input.apiKey !== undefined, {
     path: ["ruleNames"],
+  })
+  .refine((input) => input.managementKey === undefined || input.ruleNames !== undefined, {
+    path: ["managementKey"],
   })
   .refine(
     (input) => input.ruleName === undefined || (input.ruleNames ?? []).includes(input.ruleName),
@@ -183,6 +188,8 @@ export const setupConnectionTestInput = z.strictObject({
   templateKey: providerTemplateKeySchema.optional(),
   /** Nur bei EUrouter: Namen der Routing-Regeln, die geprüft werden (je eine kleine Anfrage). */
   ruleNames: z.array(routingRuleNameSchema).min(1).max(LIMITS.routingRulesPerCheck).optional(),
+  /** Nur bei EUrouter: zweiter Schlüssel, nur zum Lesen der Routing-Regeln (freiwillig). */
+  managementKey: apiKeySchema.optional(),
 });
 export type SetupConnectionTestInput = z.infer<typeof setupConnectionTestInput>;
 
@@ -219,6 +226,20 @@ export const modelChoiceInput = z.strictObject({ modelId: idSchema("model") });
  */
 export const routingRuleInput = z.strictObject({ name: routingRuleNameSchema });
 export type RoutingRuleInput = z.infer<typeof routingRuleInput>;
+
+/**
+ * Zweiter Schlüssel eines EUrouter-Eintrags (`PUT /api/anbieter/:id/verwaltungsschluessel`): nur
+ * zum Lesen der Routing-Regeln des Kontos, nie für Chat-Aufrufe.
+ */
+export const managementKeyInput = z.strictObject({ managementKey: apiKeySchema });
+export type ManagementKeyInput = z.infer<typeof managementKeyInput>;
+
+/**
+ * Regeln erneut prüfen (`POST /api/anbieter/:id/regeln/neu-pruefen`): eine gespeicherte Regel
+ * (`modelId`) oder, ohne Angabe, alle gespeicherten Regeln des Anbieters.
+ */
+export const ruleRecheckInput = z.strictObject({ modelId: idSchema("model").optional() });
+export type RuleRecheckInput = z.infer<typeof ruleRecheckInput>;
 export type ModelChoiceInput = z.infer<typeof modelChoiceInput>;
 
 /** Einstellungen ändern. `null` entfernt eine Grenze. Mindestens ein Feld. */

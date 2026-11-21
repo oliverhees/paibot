@@ -121,6 +121,7 @@ export type MotorErrorCode = Extract<
   | "anbieter_nicht_erreichbar"
   | "schluessel_ungueltig"
   | "limit_erreicht"
+  | "regel_unbekannt"
   | "schleuse_blockiert"
   | "unterbrochen"
   | "intern"
@@ -130,6 +131,7 @@ export const MOTOR_ERROR_CODES = [
   "anbieter_nicht_erreichbar",
   "schluessel_ungueltig",
   "limit_erreicht",
+  "regel_unbekannt",
   "schleuse_blockiert",
   "unterbrochen",
   "intern",

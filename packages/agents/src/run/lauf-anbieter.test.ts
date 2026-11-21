@@ -223,18 +223,23 @@ describe("mit dem echten Motor", () => {
   });
 
   it("Routing-Regel: rule_name statt model; Anbieter laut Strom in Nachricht, Ereignis und Beleg", async () => {
-    const env = await setup({ templateKey: "eurouter", modelSlug: routingRuleSlug("EU Regel") });
+    const env = await setup({
+      templateKey: "eurouter",
+      modelSlug: routingRuleSlug("Beispiel-Regel"),
+    });
     provider.configure({
-      routingRules: [{ name: "EU Regel", provider: "beispiel-eu", model: "beispiel/modell-1" }],
+      routingRules: [
+        { name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/modell-1" },
+      ],
     });
     const { runId } = await env.queueMessage(QUESTION);
     const outcome = await executeRun(runId, env.deps, never());
     expect(outcome.status).toBe("succeeded");
     const [request] = chatRequests(provider);
     const body = request?.body as Record<string, unknown>;
-    expect(body.rule_name).toBe("EU Regel");
+    expect(body.rule_name).toBe("Beispiel-Regel");
     expect("model" in body).toBe(false);
-    const servedBy = { provider: "beispiel-eu", model: "beispiel/modell-1" };
+    const servedBy = { provider: "beispiel-nord", model: "beispiel/modell-1" };
     const message = await repo.messages.get(env.db, outcome.messageId as never);
     expect(message?.servedBy).toEqual(servedBy);
     const completed = (await env.events()).find((e) => e.type === "message.completed");

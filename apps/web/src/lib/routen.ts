@@ -18,12 +18,14 @@ import {
   conversationSearchQuery,
   killSwitchInput,
   loginInput,
+  managementKeyInput,
   modelChoiceInput,
   passwordChangeInput,
   providerInput,
   receiptChainQuery,
   receiptListQuery,
   routingRuleInput,
+  ruleRecheckInput,
   schleuseInput,
   sendMessageInput,
   settingsInput,
@@ -383,6 +385,58 @@ export const API_ROUTEN = {
     antwort: "json",
     veraendernd: true,
     aktion: "anbieter.speichern",
+  },
+  /**
+   * Zweiter Schlüssel eines EUrouter-Eintrags, nur zum Lesen der Routing-Regeln des Kontos. Wird
+   * nur gespeichert, wenn die Regel-Liste damit gelesen werden kann.
+   */
+  anbieterVerwaltungsschluesselSetzen: {
+    methode: "PUT",
+    pfad: "/api/anbieter/:id/verwaltungsschluessel",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "anbieter.speichern",
+    eingabe: managementKeyInput,
+    limits: ["verbindungstest"],
+  },
+  /** Zweiten Schlüssel entfernen; gelesene Vorgaben der Regeln gehen mit. */
+  anbieterVerwaltungsschluesselEntfernen: {
+    methode: "DELETE",
+    pfad: "/api/anbieter/:id/verwaltungsschluessel",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "anbieter.speichern",
+  },
+  /** Regel-Liste des Kontos lesen (mit dem zweiten Schlüssel); schreibt nichts. */
+  anbieterRegelListe: {
+    methode: "POST",
+    pfad: "/api/anbieter/:id/regeln/liste",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+    limits: ["verbindungstest"],
+  },
+  /** Gelesene Vorgaben einer oder aller gespeicherten Regeln erneut prüfen und speichern. */
+  anbieterRegelNeuPruefen: {
+    methode: "POST",
+    pfad: "/api/anbieter/:id/regeln/neu-pruefen",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "anbieter.speichern",
+    eingabe: ruleRecheckInput,
+    limits: ["verbindungstest"],
+  },
+  /** Modell-Liste beim Anbieter lesen, ohne etwas zu speichern (Seite öffnen schreibt nichts). */
+  anbieterModelleLesen: {
+    methode: "POST",
+    pfad: "/api/anbieter/:id/modelle/lesen",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+    limits: ["verbindungstest"],
   },
 
   datenschleuse: {

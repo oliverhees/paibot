@@ -194,6 +194,8 @@ export const providerSchema = z.strictObject({
   name: z.string().min(1).max(100),
   baseUrl: z.url(),
   keySet: z.boolean(),
+  /** Nur wenn ein zweiter Schlüssel (nur zum Lesen der Routing-Regeln) hinterlegt ist; nie der Schlüssel. */
+  managementKeySet: z.boolean().optional(),
   region: regionSchema,
   /** Land als ISO-3166-Code, fehlt bei unbekanntem Land. */
   country: z

@@ -155,7 +155,14 @@ export const ACTIONS = {
   "anbieter.speichern": action(
     "besitzer",
     { providerId },
-    { ...ownerFacts, created: z.boolean(), region: regionSchema, keySet: z.boolean() },
+    {
+      ...ownerFacts,
+      created: z.boolean(),
+      region: regionSchema,
+      keySet: z.boolean(),
+      /** Ob ein zweiter Schlüssel (nur zum Lesen der Routing-Regeln) hinterlegt ist; nie der Schlüssel. */
+      managementKeySet: z.boolean().optional(),
+    },
   ),
   "anbieter.loeschen": action("besitzer", { providerId }, ownerFacts),
   "modell.waehlen": action("besitzer", { botId, modelId }, ownerFacts),
