@@ -121,6 +121,8 @@ describe.skipIf(BASE_URL === undefined)(
         log: silent,
       });
       expect(start).toMatchObject({ ok: false, reason: "zu_viele_rechte" });
+      // Behebt der Migrations-Schritt selbst: kein Rat, die Prüfung abzuschalten.
+      expect(start.ok ? "" : start.message).not.toContain("PAIBOT_ALLOW_PRIVILEGED_DB");
 
       await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
       const after = postgres(appUrl, { max: 1, onnotice: () => undefined });
@@ -150,7 +152,35 @@ describe.skipIf(BASE_URL === undefined)(
 
       const check = postgres(appUrl, { max: 1, onnotice: () => undefined });
       cleanup.push(() => check.end({ timeout: 2 }));
-      expect((await checkAppRole(check)).issues).toContain("schatten_tabellen");
+      const befund = await checkAppRole(check);
+      expect(befund.issues).toContain("schatten_tabellen");
+      expect(befund.shadowTables).toEqual(["pgboss.belege", "pgboss.rules"]);
+
+      // Die Meldung beim Start nennt die Tabellen und den Ausweg, ohne die Prüfung abzuschalten.
+      const start = await checkDatabase({
+        env: { DATABASE_URL: appUrl },
+        migrationsFolder: MIGRATIONS_FOLDER,
+        production: true,
+        attempts: 1,
+        log: silent,
+      });
+      const meldung = start.ok ? "" : start.message;
+      expect(meldung).toContain("pgboss.belege, pgboss.rules");
+      expect(meldung).toContain("drop table");
+      expect(meldung).not.toContain("PAIBOT_ALLOW_PRIVILEGED_DB");
+
+      // Der nächste Migrations-Schritt verschiebt sie in die Quarantäne; danach startet PaiBot.
+      const lauf = await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
+      expect(lauf.appRole?.quarantined).toHaveLength(2);
+      expect(lauf.appRole?.quarantined[0]).toMatch(
+        /^pgboss\.belege -> paibot_quarantaene\.belege_\d{14}$/,
+      );
+      const nachher = postgres(appUrl, { max: 1, onnotice: () => undefined });
+      cleanup.push(() => nachher.end({ timeout: 2 }));
+      expect(await checkAppRole(nachher)).toMatchObject({ status: "eingeschraenkt", issues: [] });
+      const name = (lauf.appRole?.quarantined[1] ?? "").split(" -> ")[1] ?? "";
+      expect(await codeOf(nachher.unsafe(`select count(*) from ${name}`))).toBe("42501");
+      expect(await codeOf(nachher.unsafe(`drop table ${name}`))).toBe("42501");
     });
 
     it("die App-Rolle schreibt keine Regeln, auch nicht mit eigener Nummer", async () => {
@@ -187,6 +217,18 @@ describe.skipIf(BASE_URL === undefined)(
       const blocked = postgres(appUrl, { max: 1, onnotice: () => undefined, connect_timeout: 3 });
       expect(await codeOf(blocked`select 1`)).toBe("28P01");
       await blocked.end({ timeout: 1 });
+      // Der Start erkennt das und nennt den Ausweg.
+      const start = await checkDatabase({
+        env: { DATABASE_URL: appUrl },
+        migrationsFolder: MIGRATIONS_FOLDER,
+        production: true,
+        attempts: 1,
+        log: silent,
+      });
+      const meldung = start.ok ? "" : start.message;
+      expect(meldung).toContain("kann sich nicht anmelden");
+      expect(meldung).toContain("Migrations-Schritt");
+      expect(meldung).not.toContain(password);
 
       await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
       const again = postgres(appUrl, { max: 1, onnotice: () => undefined });

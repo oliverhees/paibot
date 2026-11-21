@@ -96,6 +96,38 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
     await roundTrip(appUrl);
   }, 60_000);
 
+  it("der Migrations-Schritt hebt Sperren der Anmeldung auf, andere Zähler bleiben", async () => {
+    const db = await createPostgresTestDatabase(BASE_URL ?? "", { migrate: false });
+    opened.push(db);
+    const appUrl = newRole(db);
+    const exit = (() => undefined) as unknown as (code: number) => never;
+    const migrate = {
+      NODE_ENV: "production",
+      PAIBOT_ROLE: "migrate",
+      DATABASE_URL: appUrl,
+      DATABASE_MIGRATION_URL: db.url,
+      MIGRATIONS_DIR: MIGRATIONS_FOLDER,
+    } as NodeJS.ProcessEnv;
+    await prepareStart(migrate, { log: silent, exit });
+    const { db: app, sql } = createDb(appUrl);
+    try {
+      const now = new Date();
+      for (const key of [
+        "anmelden:gesamt",
+        "anmelden:ip:192.0.2.1",
+        "anmelden:takt:2",
+        "nachricht:x",
+      ]) {
+        await repo.rateLimit.hit(app, { key, max: 1, windowSeconds: 900, now });
+      }
+      await prepareStart(migrate, { log: silent, exit });
+      const rest = await sql<{ key: string }[]>`select key from public.rate_limits order by key`;
+      expect(rest.map((r) => r.key)).toEqual(["nachricht:x"]);
+    } finally {
+      await sql.end({ timeout: 2 });
+    }
+  }, 60_000);
+
   it("bestehende Installation: Warteschlange des bisherigen Besitzers wird an die App-Rolle übergeben", async () => {
     const db = await createPostgresTestDatabase(BASE_URL ?? "");
     opened.push(db);
