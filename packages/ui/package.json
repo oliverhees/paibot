@@ -9,7 +9,7 @@
     ".": "./src/index.ts",
     "./tokens.css": "./src/tokens.css",
     "./schriften.css": "./src/schriften.css",
-    "./avatar.css": "./src/avatar.css"
+    "./lade.css": "./src/lade.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

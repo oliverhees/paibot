@@ -24,7 +24,7 @@ Du willst, dass dein Bot in deinem Ton antwortet und weiß, wofür du ihn brauch
 2. Ändere unter „Name“ den Namen deines Bots (höchstens 60 Zeichen).
 3. Schreib unter „Anweisung“, wie dein Bot antworten soll und worauf er achten soll. Unter dem Feld zählt PaiBot mit, wie viele der 8000 Zeichen du schon nutzt.
 4. Ein Klick auf eine der „Beispiel-Anweisungen“ hängt den Satz an deine Anweisung an. Gespeichert ist noch nichts.
-5. Wähle unter „Aussehen“ eine Farbe. Jede Farbe gehört fest zu einer Form; die Vorschau oben zeigt das Ergebnis.
+5. Wähle unter „Aussehen“ eine Farbe. Jede Farbe gehört fest zu einer Form; die Vorschau oben zeigt das Ergebnis. Die Vorschau lebt ruhig: Der Avatar blinzelt und atmet, schaut aber nicht auf deinen Mauszeiger. Alle sieben Formen haben dasselbe Gesicht; was dein Bot im Chat gerade tut, zeigt dieses Gesicht dort (siehe [Chat](funktion-chat.md), „Der Avatar zeigt, was dein Bot tut“). Mit „weniger Bewegung“ in deinem System steht er still.
 6. Sobald etwas geändert ist, steht oben „Ungespeicherte Änderungen“. Klicke „Speichern“ oder „Änderungen verwerfen“.
 
    ![Name auf „Kai“ geändert, Beispiel „Duze mich und schreib locker.“ in der Anweisung, violette Raute gewählt; oben „Ungespeicherte Änderungen“](assets/screenshots/bot-geaendert.png)

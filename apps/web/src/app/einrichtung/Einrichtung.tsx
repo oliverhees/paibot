@@ -16,7 +16,7 @@ import type { ApiErrorDetail } from "@paibot/shared/api";
 import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import {
-  Avatar,
+  AvatarLebendig,
   Button,
   Icon,
   type IconName,
@@ -156,6 +156,7 @@ export function Einrichtung({
   const [schluessel, setSchluessel] = useState("");
   const [modelle, setModelle] = useState<Modell[] | undefined>();
   const [testLaeuft, setTestLaeuft] = useState(false);
+  const [codeLaeuft, setCodeLaeuft] = useState(false);
   const [testOk, setTestOk] = useState<string | undefined>();
   const [modell, setModell] = useState<string | undefined>();
   const [schleuse, setSchleuse] = useState(false);
@@ -267,7 +268,7 @@ export function Einrichtung({
       }
       case "bot": {
         const ok = botName.trim() !== "";
-        fehlerSetzen("bot", ok ? undefined : t("fehler.eingabe_ungueltig"));
+        fehlerSetzen("bot", ok ? undefined : t("bot.name.leer"));
         return ok;
       }
       default:
@@ -372,8 +373,25 @@ export function Einrichtung({
     gehe(ziel);
   }
 
+  /** Schritt 1: Der Server sagt gleich, ob der Code stimmt (nichts wird gespeichert). */
+  async function codePruefen(): Promise<boolean> {
+    if (!pruefeSchritt()) return false;
+    setCodeLaeuft(true);
+    const antwort = await apiFetch<{ gueltig: true }>("POST", "/api/einrichtung/code-pruefen", {
+      setupCode: code,
+    });
+    setCodeLaeuft(false);
+    if (antwort.ok) return true;
+    fehlerSetzen("code", fehlerZuordnen(antwort.fehler).text);
+    return false;
+  }
+
   async function weiter(event: FormEvent) {
     event.preventDefault();
+    if (schritt === "code") {
+      if (!codeLaeuft && (await codePruefen())) naechster();
+      return;
+    }
     // Schlüssel eingegeben, aber noch nicht getestet: erst testen, dann weiter zur Modell-Wahl.
     if (schritt === "schluessel" && !eigenSpaeter && schluessel.trim() !== "" && !geprueft) {
       if (await verbindungTesten()) gehe("modell");
@@ -407,7 +425,7 @@ export function Einrichtung({
       </header>
       <main className={styles.buehne}>
         <div className={styles.begleiter}>
-          <Avatar farbe="limette" groesse={92} zustand={sendet ? "arbeitet" : "bereit"} />
+          <AvatarLebendig farbe="limette" groesse={92} zustand={sendet ? "denkt" : "ruhig"} />
           <p className={styles.sprechblase} aria-live="polite">
             {sprache}
           </p>
@@ -872,7 +890,7 @@ export function Einrichtung({
                   <span />
                 )}
                 <span className={styles.rechts}>
-                  {schritt === "schluessel" && !eigenSpaeter && (
+                  {schritt === "schluessel" && !eigenSpaeter && !geprueft && (
                     <Button art="leise" onClick={spaeterEintragen}>
                       {t("einrichtung.schluessel.ueberspringen")}
                     </Button>
@@ -881,7 +899,7 @@ export function Einrichtung({
                     art="primaer"
                     type="submit"
                     groesse={schritt === "bot" ? "gross" : "normal"}
-                    laedt={sendet}
+                    laedt={sendet || codeLaeuft}
                   >
                     {schritt === "bot"
                       ? sendet

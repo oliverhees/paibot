@@ -19,6 +19,11 @@ export const EINSTELLUNGEN_REITER: readonly ReiterLink[] = [
   { id: "modelle", text: t("seite.modelle"), href: "/modelle" },
   { id: "zugang", text: t("einstellungen.reiter.zugang"), href: "/einstellungen" },
   { id: "grenzen", text: t("einstellungen.reiter.grenzen"), href: "/einstellungen/grenzen" },
+  {
+    id: "darstellung",
+    text: t("einstellungen.reiter.darstellung"),
+    href: "/einstellungen/darstellung",
+  },
   { id: "info", text: t("seite.info"), href: "/info" },
   {
     id: "selbsttest",
@@ -27,7 +32,7 @@ export const EINSTELLUNGEN_REITER: readonly ReiterLink[] = [
   },
 ];
 
-export type EinstellungenReiter = "zugang" | "grenzen" | "info" | "selbsttest";
+export type EinstellungenReiter = "zugang" | "grenzen" | "darstellung" | "info" | "selbsttest";
 
 /** Link ohne Vorabladen: Seiten werden erst beim Klick geholt. */
 function OhneVorabladen(props: ComponentProps<typeof Link>) {

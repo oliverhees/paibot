@@ -78,4 +78,4 @@ pnpm --filter @paibot/web test
 ## Bekannte Schwächen
 
 - **Nur Sicht von innen:** Grenzen im Reverse-Proxy, Sicherung, Updates und Herkunft der Images kann der Selbsttest nicht prüfen; die Oberfläche listet sie unter „Bitte selbst prüfen“ (Anwender-Doku, Abschnitt „Grenzen“; Render-Test `apps/web/src/app/(app)/einstellungen/selbsttest/selbsttest.test.ts`).
-- **Proxy nur an `X-Forwarded-For` erkennbar:** Anwender-Doku, Abschnitt „Grenzen“; die Prüfung steht in `apps/web/src/lib/selbsttest/pruefungen.ts#pruefeProxy`.
+- **Proxy nur an Nebenzeichen erkennbar:** Next.js setzt `X-Forwarded-For` bei jeder Anfrage selbst, falls sie fehlt (in Next.js 16.4.6, Datei „base-server.js“ im Paket `next`: `req.headers["x-forwarded-for"] ??= …remoteAddress`); die Kopfzeile beweist also keinen Proxy. `proxyErkennbar` wertet nur `Forwarded`, `X-Real-Ip`, `X-Forwarded-Server`, `Via` und mehrere Adressen in `X-Forwarded-For` aus; ein Proxy ohne diese Zeichen bleibt unsichtbar, `TRUST_PROXY=1` ergibt dann „nicht feststellbar“ (Hinweis). Anwender-Doku, Abschnitt „Grenzen“; Tests in `apps/web/src/lib/selbsttest/pruefungen.test.ts` und `selbsttest.test.ts`.

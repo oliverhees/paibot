@@ -26,33 +26,39 @@ Belegte Entscheidungen im Code:
 
 ## Aufbau
 
-| Datei                                             | Aufgabe                                                                                                                                                            |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps/web/src/lib/chat/aktionen.ts`               | Chat-Routen: Unterhaltungen, Nachrichten senden, Stopp, neu erzeugen, Datenschleuse je Unterhaltung                                                                |
-| `apps/web/src/lib/chat/laden.ts`                  | Lesen auf dem Server: Seitenleiste, Verlauf, kurze Belege, Bereitschaft                                                                                            |
-| `apps/web/src/lib/chat/ansicht.ts`                | Zustands-Kern der Ansicht als reine Funktionen (Ereignisse anwenden, Doppel verwerfen)                                                                             |
-| `apps/web/src/lib/chat/export.ts`                 | Unterhaltung als Markdown-Datei; HTML, Bilder, Skript-Links und Steuerzeichen werden entschärft (`sichererInhalt`)                                                 |
-| `apps/web/src/lib/chat/suche.ts`                  | Suche in Titeln und Nachrichten                                                                                                                                    |
-| `apps/web/src/lib/chat/fassungen.ts`              | Fassungen einer neu erzeugten Antwort                                                                                                                              |
-| `apps/web/src/lib/warteschlange.ts`               | Warteschlange der Web-App zum Einreihen                                                                                                                            |
-| `apps/web/src/lib/sse/ereignis-route.ts`          | Route des Ereignis-Stroms: Sitzung, Eingaben, Platz, Strom                                                                                                         |
-| `apps/web/src/lib/sse/strom.ts`                   | ein Strom: erst LISTEN, dann nachholen, dann live                                                                                                                  |
-| `apps/web/src/lib/sse/verteiler.ts`               | gemeinsame LISTEN-Verbindung                                                                                                                                       |
-| `apps/web/src/lib/sse/grenzen.ts`                 | Zeiten, Puffer, Anzahl Ströme (`STROM_GRENZEN`)                                                                                                                    |
-| `apps/web/src/lib/sse/use-conversation-events.ts` | React-Hook `useConversationEvents`                                                                                                                                 |
-| `packages/jobs/src/index.ts`                      | `createQueue`; `packages/jobs/src/pgboss-queue.ts` (`jobIdForRun`)                                                                                                 |
-| `packages/agents/src/run/ausfuehren.ts`           | `executeRun`: ein Lauf von der Nachricht bis zur Antwort                                                                                                           |
-| `packages/agents/src/run/kontext.ts`              | Kontext in einem Lesestand, Verlauf begrenzen, Fakten von `modell.anfragen`                                                                                        |
-| `packages/agents/src/run/strom.ts`                | Text-Stücke bündeln und als `text.delta` schreiben                                                                                                                 |
-| `packages/agents/src/run/waechter.ts`             | Herzschlag, Abbruch-Wunsch, Not-Aus, Zeitgrenzen; hält nach `GUARD_READ_FAILURES` Lesefehlern oder `GUARD_READ_TIMEOUT_MS` hängendem Lesen an                      |
-| `packages/agents/src/run/aufraeumen.ts`           | `failStaleRuns`: hängende Läufe beenden; der Worker ruft es auch im Betrieb regelmäßig auf (`startStaleCleanup`, `staleIntervalMs` in `apps/worker/src/worker.ts`) |
-| `packages/agents/src/prompt.ts`                   | Anweisung an das Modell (`buildSystemPrompt`)                                                                                                                      |
-| `packages/agents/src/motor-aisdk.ts`              | Motor (`createAiSdkMotor`)                                                                                                                                         |
-| `apps/worker/src/worker.ts`                       | Rolle `worker`: Start, Warteschlange, sauberes Ende                                                                                                                |
-| `apps/worker/src/lauf.ts`                         | Auftrag bearbeiten; scheitert die Steuerung, Lauf als fehlgeschlagen abschließen (`failRun`)                                                                       |
-| `apps/worker/src/abhaengigkeiten.ts`              | echte Abhängigkeiten eines Laufs: Datenbank, Tor, Motor, Datenschleuse                                                                                             |
-| `apps/web/src/app/(app)/chat/ChatSeite.tsx`       | Oberfläche; Seite einer Unterhaltung `apps/web/src/app/(app)/chat/[id]/page.tsx`                                                                                   |
-| `packages/ui/src/chat/ChatEingabe.tsx`            | Eingabefeld: Fokus kehrt nach Senden oder Stopp zurück (`fokusZurueck` in `packages/ui/src/chat/eingabe.ts`); gesperrte Plätze für noch nicht gebaute Funktionen   |
+| Datei                                                  | Aufgabe                                                                                                                                                            |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/web/src/lib/chat/aktionen.ts`                    | Chat-Routen: Unterhaltungen, Nachrichten senden, Stopp, neu erzeugen, Datenschleuse je Unterhaltung                                                                |
+| `apps/web/src/lib/chat/laden.ts`                       | Lesen auf dem Server: Seitenleiste, Verlauf, kurze Belege, Bereitschaft                                                                                            |
+| `apps/web/src/lib/chat/ansicht.ts`                     | Zustands-Kern der Ansicht als reine Funktionen (Ereignisse anwenden, Doppel verwerfen)                                                                             |
+| `apps/web/src/lib/chat/export.ts`                      | Unterhaltung als Markdown-Datei; HTML, Bilder, Skript-Links und Steuerzeichen werden entschärft (`sichererInhalt`)                                                 |
+| `apps/web/src/lib/chat/suche.ts`                       | Suche in Titeln und Nachrichten                                                                                                                                    |
+| `apps/web/src/lib/chat/fassungen.ts`                   | Fassungen einer neu erzeugten Antwort                                                                                                                              |
+| `apps/web/src/lib/warteschlange.ts`                    | Warteschlange der Web-App zum Einreihen                                                                                                                            |
+| `apps/web/src/lib/sse/ereignis-route.ts`               | Route des Ereignis-Stroms: Sitzung, Eingaben, Platz, Strom                                                                                                         |
+| `apps/web/src/lib/sse/strom.ts`                        | ein Strom: erst LISTEN, dann nachholen, dann live                                                                                                                  |
+| `apps/web/src/lib/sse/verteiler.ts`                    | gemeinsame LISTEN-Verbindung                                                                                                                                       |
+| `apps/web/src/lib/sse/grenzen.ts`                      | Zeiten, Puffer, Anzahl Ströme (`STROM_GRENZEN`)                                                                                                                    |
+| `apps/web/src/lib/sse/use-conversation-events.ts`      | React-Hook `useConversationEvents`                                                                                                                                 |
+| `packages/jobs/src/index.ts`                           | `createQueue`; `packages/jobs/src/pgboss-queue.ts` (`jobIdForRun`)                                                                                                 |
+| `packages/agents/src/run/ausfuehren.ts`                | `executeRun`: ein Lauf von der Nachricht bis zur Antwort                                                                                                           |
+| `packages/agents/src/run/kontext.ts`                   | Kontext in einem Lesestand, Verlauf begrenzen, Fakten von `modell.anfragen`                                                                                        |
+| `packages/agents/src/run/strom.ts`                     | Text-Stücke bündeln und als `text.delta` schreiben                                                                                                                 |
+| `packages/agents/src/run/waechter.ts`                  | Herzschlag, Abbruch-Wunsch, Not-Aus, Zeitgrenzen; hält nach `GUARD_READ_FAILURES` Lesefehlern oder `GUARD_READ_TIMEOUT_MS` hängendem Lesen an                      |
+| `packages/agents/src/run/aufraeumen.ts`                | `failStaleRuns`: hängende Läufe beenden; der Worker ruft es auch im Betrieb regelmäßig auf (`startStaleCleanup`, `staleIntervalMs` in `apps/worker/src/worker.ts`) |
+| `packages/agents/src/prompt.ts`                        | Anweisung an das Modell (`buildSystemPrompt`)                                                                                                                      |
+| `packages/agents/src/motor-aisdk.ts`                   | Motor (`createAiSdkMotor`)                                                                                                                                         |
+| `apps/worker/src/worker.ts`                            | Rolle `worker`: Start, Warteschlange, sauberes Ende                                                                                                                |
+| `apps/worker/src/lauf.ts`                              | Auftrag bearbeiten; scheitert die Steuerung, Lauf als fehlgeschlagen abschließen (`failRun`)                                                                       |
+| `apps/worker/src/abhaengigkeiten.ts`                   | echte Abhängigkeiten eines Laufs: Datenbank, Tor, Motor, Datenschleuse                                                                                             |
+| `apps/web/src/app/(app)/chat/ChatSeite.tsx`            | Oberfläche; Seite einer Unterhaltung `apps/web/src/app/(app)/chat/[id]/page.tsx`                                                                                   |
+| `apps/web/src/lib/chat/avatar.ts`                      | Zustand und Ausdruck des Avatars aus Ereignissen (`avatarZustand`, `avatarAufEreignis`, `AvatarMerker` für „fertig“ und Fehler)                                    |
+| `apps/web/src/app/(app)/chat/useChatAvatar.ts`         | Haken: hält den Merker, gibt dem Avatar Text-Stücke und Ausdrücke, räumt den Zeitgeber ab                                                                          |
+| `apps/web/src/lib/chat/startbereich.ts`                | Wahl der Fassung des Startbereichs: Standard, Prüfung, Cookie `paibot_startbereich`                                                                                |
+| `packages/ui/src/startbereich/`                        | Bausteine des Startbereichs (`Startbereich`, drei Fassungen, `StartStilleSitz`, Gruß nach Tageszeit)                                                               |
+| `packages/ui/src/avatar-lebendig/`                     | Baustein `AvatarLebendig` (Standbild aus Daten, Takt in `leben.ts`)                                                                                                |
+| `apps/web/src/app/(app)/einstellungen/Darstellung.tsx` | Reiter „Darstellung“: Wahl der Fassung mit Vorschau                                                                                                                |
+| `packages/ui/src/chat/ChatEingabe.tsx`                 | Eingabefeld: Fokus kehrt nach Senden oder Stopp zurück (`fokusZurueck` in `packages/ui/src/chat/eingabe.ts`); gesperrte Plätze für noch nicht gebaute Funktionen   |
 
 Datenfluss einer Nachricht:
 
@@ -118,25 +124,30 @@ Ereignisse (`packages/shared/src/events.ts#EVENT_DATA`): `message.created`, `run
 
 ## Tests
 
-| Test                                                                                | Prüft                                                                                      |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `apps/web/src/lib/chat/aktionen.test.ts`                                            | Chat-Routen über den Rahmen: Sitzung, Prüfzeichen, Tor, Belege; Senden ganz oder gar nicht |
-| `apps/web/src/lib/chat/ansicht.test.ts`                                             | Zustands-Kern: Abbruch, Fehler, Ablehnung, Doppel, Neuladen                                |
-| `apps/web/src/lib/chat/neu-erzeugen.test.ts`                                        | Antwort neu erzeugen                                                                       |
-| `apps/web/src/lib/chat/export.test.ts`, `apps/web/src/lib/chat/suche.test.ts`       | Export (auch Entschärfung) und Suche                                                       |
-| `apps/web/src/lib/chat/browser-module.test.ts`                                      | Browser-Module laden weder Zod noch Routen-Vertrag                                         |
-| `apps/web/src/lib/sse/ereignis-route.test.ts`                                       | Strom gegen PGlite: nachholen, live, ohne Lücke und Doppel, Grenzen                        |
-| `apps/web/src/lib/sse/strom-postgres.test.ts`                                       | Strom gegen echtes Postgres (nur mit `PAIBOT_TEST_DATABASE_URL`)                           |
-| `apps/web/src/lib/sse/client-kern.test.ts`                                          | Strom im Browser: Reihenfolge, Doppel, Neuverbinden                                        |
-| `packages/agents/src/run/lauf.test.ts`                                              | Lauf-Steuerung mit Test-Motor: Glücksfall, Ablehnung, Abbruch, Fehler                      |
-| `packages/agents/src/run/lauf-anbieter.test.ts`                                     | Lauf-Steuerung mit echtem Motor gegen den Test-Anbieter                                    |
-| `packages/agents/src/run/sperren-postgres.test.ts`                                  | Sperr-Reihenfolge gegen echtes Postgres                                                    |
-| `packages/agents/src/run/datenbank-ausfall-postgres.test.ts`                        | Wächter hält bei Ausfall der Datenbank an; Stopp-Wunsch ohne Herzschlag endet              |
-| `packages/agents/src/motor-aisdk.test.ts`, `packages/agents/src/motor-netz.test.ts` | Motor: Streaming, Abbruch, Fehler; nur das Ziel aus dem Zugang                             |
-| `packages/jobs/src/queue.test.ts`                                                   | Reihenfolge je Unterhaltung, parallele Unterhaltungen, kein Doppel-Lauf                    |
-| `apps/worker/src/lauf.test.ts`, `apps/worker/src/worker.test.ts`                    | Auftrag, Start-Reihenfolge, Ende bei Signal                                                |
-| `packages/db/src/repo/laeufe.test.ts`, `packages/db/src/repo/ereignisse.test.ts`    | ein offener Lauf, Statuswechsel; laufende Nummer                                           |
-| `tools/durchstich/src/lauf.test.ts`                                                 | Durchstich über die echte Lauf-Steuerung bis zum Test-Anbieter                             |
+| Test                                                                                  | Prüft                                                                                      |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `apps/web/src/lib/chat/aktionen.test.ts`                                              | Chat-Routen über den Rahmen: Sitzung, Prüfzeichen, Tor, Belege; Senden ganz oder gar nicht |
+| `apps/web/src/lib/chat/ansicht.test.ts`                                               | Zustands-Kern: Abbruch, Fehler, Ablehnung, Doppel, Neuladen                                |
+| `apps/web/src/lib/chat/neu-erzeugen.test.ts`                                          | Antwort neu erzeugen                                                                       |
+| `apps/web/src/lib/chat/avatar.test.ts`                                                | Avatar folgt den Ereignissen: denkt, schreibt, fertig, Abbruch, Fehler, Not-Aus, Zeitgeber |
+| `apps/web/src/lib/chat/startbereich.test.ts`, `apps/web/src/lib/chat/anzeige.test.ts` | Wahl der Fassung (Cookie), Zeitangabe für „Zuletzt“ (`kurzTagText`)                        |
+| `apps/web/src/app/(app)/chat/ChatSeite.test.ts`                                       | Startbereich im ersten Bild je Fassung, fehlende Zahl der Belege                           |
+| `apps/web/src/app/(app)/einstellungen/seiten.test.ts`                                 | Reiter „Darstellung“                                                                       |
+| `packages/ui/browser/avatar.test.mjs`, `packages/ui/browser/startbereich.test.mjs`    | Avatar und Startbereich im echten Browser (`pnpm --filter @paibot/ui test:browser`)        |
+| `apps/web/src/lib/chat/export.test.ts`, `apps/web/src/lib/chat/suche.test.ts`         | Export (auch Entschärfung) und Suche                                                       |
+| `apps/web/src/lib/chat/browser-module.test.ts`                                        | Browser-Module laden weder Zod noch Routen-Vertrag                                         |
+| `apps/web/src/lib/sse/ereignis-route.test.ts`                                         | Strom gegen PGlite: nachholen, live, ohne Lücke und Doppel, Grenzen                        |
+| `apps/web/src/lib/sse/strom-postgres.test.ts`                                         | Strom gegen echtes Postgres (nur mit `PAIBOT_TEST_DATABASE_URL`)                           |
+| `apps/web/src/lib/sse/client-kern.test.ts`                                            | Strom im Browser: Reihenfolge, Doppel, Neuverbinden                                        |
+| `packages/agents/src/run/lauf.test.ts`                                                | Lauf-Steuerung mit Test-Motor: Glücksfall, Ablehnung, Abbruch, Fehler                      |
+| `packages/agents/src/run/lauf-anbieter.test.ts`                                       | Lauf-Steuerung mit echtem Motor gegen den Test-Anbieter                                    |
+| `packages/agents/src/run/sperren-postgres.test.ts`                                    | Sperr-Reihenfolge gegen echtes Postgres                                                    |
+| `packages/agents/src/run/datenbank-ausfall-postgres.test.ts`                          | Wächter hält bei Ausfall der Datenbank an; Stopp-Wunsch ohne Herzschlag endet              |
+| `packages/agents/src/motor-aisdk.test.ts`, `packages/agents/src/motor-netz.test.ts`   | Motor: Streaming, Abbruch, Fehler; nur das Ziel aus dem Zugang                             |
+| `packages/jobs/src/queue.test.ts`                                                     | Reihenfolge je Unterhaltung, parallele Unterhaltungen, kein Doppel-Lauf                    |
+| `apps/worker/src/lauf.test.ts`, `apps/worker/src/worker.test.ts`                      | Auftrag, Start-Reihenfolge, Ende bei Signal                                                |
+| `packages/db/src/repo/laeufe.test.ts`, `packages/db/src/repo/ereignisse.test.ts`      | ein offener Lauf, Statuswechsel; laufende Nummer                                           |
+| `tools/durchstich/src/lauf.test.ts`                                                   | Durchstich über die echte Lauf-Steuerung bis zum Test-Anbieter                             |
 
 Ausführen:
 
@@ -149,6 +160,9 @@ pnpm --filter @paibot/jobs test
 
 ## Bekannte Schwächen
 
+- **Avatar-Zustand nur aus der Sitzung:** „Fehler“ und „fertig“ entstehen aus Ereignissen, die diese Seite gesehen hat (`apps/web/src/lib/chat/avatar.ts#AvatarMerker`). Öffnest du eine Unterhaltung, deren letzter Lauf fehlschlug, steht der Avatar auf „ruhig“; der Fehler steht im Verlauf.
+- **Schreibstelle ungefähr:** Der Blick des Avatars zum Eingabefeld rechnet mit der Länge der letzten Zeile (`schreibstelle` in `apps/web/src/app/(app)/chat/ChatSeite.tsx`), nicht mit dem echten Cursor.
+- **Browser-Tests nicht unter `turbo`:** Die Browser-Tests für Avatar und Startbereich laufen nur mit `pnpm --filter @paibot/ui test:browser`; unter `turbo run test` fehlt Playwright im Pfad.
 - **Keine Werkzeuge:** Die Schleife über Werkzeug-Aufrufe ist nur als Stelle vorbereitet; `continueWithTools` gibt immer `false` zurück (`packages/agents/src/run/ausfuehren.ts`).
 - **Kein neuer Versuch nach Absturz:** Ein Auftrag, der beim Absturz des Workers lief, wird nicht wiederholt (`packages/jobs/src/vertrag.ts#RUN_QUEUE`); den Lauf beendet `failStaleRuns` beim Start des Workers (`packages/agents/src/run/aufraeumen.ts`).
 - **Verlauf in Zeichen geschätzt:** Die Verlaufsgrenze in Token wird mit 4 Zeichen je Token umgerechnet (`CHARS_PER_TOKEN` in `packages/agents/src/run/ausfuehren.ts`).

@@ -10,7 +10,9 @@
 
 import { t } from "@paibot/shared/texte";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { ladeBereitschaft } from "../../lib/chat/laden";
+import { FASSUNG_COOKIE, fassungAus } from "../../lib/chat/startbereich";
 import { datenbank } from "../../lib/datenbank";
 import { schleuseEingerichtet } from "../../lib/schleuse/schleuse";
 import { prozessDienste } from "../../lib/zugang/dienste";
@@ -29,5 +31,6 @@ export default async function StartSeite() {
     await schleuseEingerichtet(db, prozessDienste()),
     (anbieter) => prozessDienste().unterAnbieter(anbieter),
   );
-  return <ChatSeite key="neu" bereitschaft={bereitschaft} />;
+  const fassung = fassungAus((await cookies()).get(FASSUNG_COOKIE)?.value);
+  return <ChatSeite key="neu" bereitschaft={bereitschaft} fassung={fassung} />;
 }

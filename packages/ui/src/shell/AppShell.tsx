@@ -21,7 +21,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { Avatar, type AvatarZustand } from "../avatar/Avatar";
+import { AvatarLebendig } from "../avatar-lebendig/AvatarLebendig";
+import type { AvatarLebendigZustand } from "../avatar-lebendig/daten";
 import { Icon, type IconName } from "../basis/Icon";
 import { IconButton } from "../basis/IconButton";
 import { klassen } from "../basis/klassen";
@@ -53,7 +54,7 @@ export interface NavBot {
   /** Rolle in einem Satz; wird nie abgeschnitten, sondern umbrochen. */
   rolle: string;
   farbe: BotColor;
-  zustand?: AvatarZustand;
+  zustand?: AvatarLebendigZustand;
   /** Wort zum Zustand, z. B. „arbeitet“ (nur nötig, wenn der Zustand nicht „bereit“ ist). */
   zustandText?: string;
   href?: string;
@@ -307,7 +308,12 @@ export function AppShell({
                   className={styles.botReihe}
                   data-aktiv={bot.aktiv || bot.unterhaltungen.some((u) => u.aktiv) || undefined}
                 >
-                  <Avatar farbe={bot.farbe} groesse={20} zustand={bot.zustand} still />
+                  <AvatarLebendig
+                    farbe={bot.farbe}
+                    groesse={20}
+                    zustand={bot.zustand ?? "ruhig"}
+                    still
+                  />
                   <span className={styles.botText}>
                     <span className={styles.botName}>
                       {bot.href ? (
@@ -322,7 +328,7 @@ export function AppShell({
                       ) : (
                         bot.name
                       )}
-                      {bot.zustand && bot.zustand !== "bereit" && bot.zustandText && (
+                      {bot.zustand && bot.zustand !== "ruhig" && bot.zustandText && (
                         <span className={styles.botZustand} data-zustand={bot.zustand}>
                           {bot.zustandText}
                         </span>

@@ -39,7 +39,7 @@ describe("Reiter Selbsttest", () => {
         pruefungen: [
           pruefeVersion("1.0.0"),
           pruefeNotAus(true),
-          pruefeProxy({ vertraut: true, weitergereicht: false }),
+          pruefeProxy({ vertraut: true, erkennbar: false }),
         ],
       }),
     );

@@ -33,11 +33,11 @@
   ],
   "milestones": [
     {
-      "title": "Folge 2 – Server",
+      "title": "Server-Grundlage",
       "description": "PaiBot läuft auf dem eigenen Server: Docker Compose, Datenbank und Statusprüfung."
     },
     {
-      "title": "Folge 3 – Basisversion",
+      "title": "Basisversion",
       "description": "Die erste benutzbare Fassung: Chat mit deinem Bot, eigene Modelle, zuschaltbare Datenschleuse und ein Beleg für jede Aktion."
     },
     {

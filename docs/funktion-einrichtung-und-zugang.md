@@ -38,7 +38,7 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
    Einrichtungs-Code: K7QD-9M2F-XW4H (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)
    ```
 
-3. Gib den Code ein. Bindestriche und Kleinbuchstaben sind egal. Klick auf „Weiter“. Fehlt der Code oder hat er die falsche Form, sagt das Feld, wie er aussehen muss; ob er stimmt, prüft PaiBot erst beim Verbindungstest und beim Abschluss.
+3. Gib den Code ein. Bindestriche und Kleinbuchstaben sind egal. Klick auf „Weiter“. Fehlt der Code oder hat er die falsche Form, sagt das Feld, wie er aussehen muss; ob er stimmt, prüft PaiBot schon bei „Weiter“. Ein falscher Code zeigt „Der Einrichtungs-Code stimmt nicht.“ gleich in diesem Schritt.
 
    ![Einrichtung, Schritt 1 mit rot umrandetem Feld und dem Hinweis „Der Code hat 12 Zeichen, zum Beispiel K7QD-9M2F-XW4H.“](assets/screenshots/einrichtung-code-fehler.png)
 
@@ -55,7 +55,7 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
    ![Einrichtung auf dem Handy: Mistral AI gewählt, darunter die Angaben laut Mistral zum EU-Endpunkt und zum Training](assets/screenshots/einrichtung-anbieter-handy.png)
 
 6. Trag den Schlüssel deines Anbieters ein.
-   - **Mistral AI oder eigener Anbieter:** Klick auf „Verbindung testen“. Hast du noch keinen Schlüssel, klick auf „Später eintragen“. Einen eigenen Anbieter, den dein Server nicht vorgibt, richtest du nach der Einrichtung unter „Modell und Anbieter“ ein; dann steht hier nur dieser Hinweis.
+   - **Mistral AI oder eigener Anbieter:** Klick auf „Verbindung testen“. Hast du noch keinen Schlüssel, klick auf „Später eintragen“. Steht der Test auf „Verbindung steht“, gibt es „Später eintragen“ nicht mehr, damit du den getesteten Schlüssel nicht aus Versehen verwirfst; es bleibt „Weiter“. Einen eigenen Anbieter, den dein Server nicht vorgibt, richtest du nach der Einrichtung unter „Modell und Anbieter“ ein; dann steht hier nur dieser Hinweis.
 
      ![Einrichtung, Schritt 4 von 7: leeres Feld „Schlüssel für Lokaler Anbieter“, darunter „Verbindung testen“, unten „Später eintragen“ und „Weiter“](assets/screenshots/einrichtung-schluessel.png)
 
@@ -87,7 +87,7 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
 
    ![Einrichtung, Schritt 6 von 7: Schalter „Standard für neue Unterhaltungen: Aus“, darunter der Hinweis, dass die Datenschleuse auf diesem Server nicht eingerichtet ist](assets/screenshots/einrichtung-schleuse.png)
 
-9. Gib deinem Bot einen Namen (Vorschlag: „Pai“) und klick auf „Einrichtung abschließen“.
+9. Gib deinem Bot einen Namen (Vorschlag: „Pai“) und klick auf „Einrichtung abschließen“. Lässt du das Feld leer, steht dort „Gib deinem Bot einen Namen.“
 
    ![Einrichtung, Schritt 7 von 7: Feld „Name deines Bots“ mit dem Vorschlag „Pai“ und der Knopf „Einrichtung abschließen“](assets/screenshots/einrichtung-bot.png)
 
@@ -133,7 +133,13 @@ Meldet sich jemand mit deinem Passwort in einem Browser an, der noch kein bekann
    - **Alle Sitzungen beenden**: meldet überall ab, auch hier; danach meldest du dich neu an.
 
    ![Nach „Das war ich nicht“: „So sicherst du deinen Zugang“ mit den Links „Passwort ändern“ und „Zu „Alle Sitzungen beenden““](assets/screenshots/hinweis-das-war-ich-nicht.png)
-5. Ist das fremde Gerät weg (neues Passwort, „Alle Sitzungen beenden“ oder unter **Bekannte Geräte** entfernt), verschwindet auch die Leiste.
+5. Ist ein Gerät weg (neues Passwort, „Alle Sitzungen beenden“, unter **Bekannte Geräte** entfernt oder von einem elften Gerät verdrängt), meldet die Leiste das ebenfalls. Sie heißt dann **Änderungen an deinen Geräten** und nennt je Änderung eine Zeile, die neueste zuerst:
+   - „Neu angemeldet: Chrome auf Linux, am 20.11.2026, 14:31“
+   - „Entfernt: Chrome auf Linux, am 20.11.2026, 14:35“: Das Gerät wurde unter **Bekannte Geräte** entfernt.
+   - „Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): …“: Ein elftes Gerät hat das älteste verdrängt.
+   - „Alle Geräte abgemeldet (3), am …“: „Alle Sitzungen beenden“ oder ein neues Passwort; gleichzeitig abgemeldete Geräte stehen als eine Zeile.
+
+   Die Leiste nennt nie das Gerät, auf dem du sie siehst. Ein Gerät, das neu dazukommt, sieht auch Änderungen der letzten 7 Tage vor seiner Anmeldung. Wie die Leiste mit „Das war ich“ geschlossen wird, steht oben; danach erscheint sie erst wieder, wenn sich etwas Neues ändert. Auf dem Gerät, von dem aus du ein Gerät unter **Bekannte Geräte** entfernst, steht „Entfernt“ nicht in der Leiste: Dort verschwindet die Leiste mit der Anmeldung dieses Geräts sofort, ohne dass du die Seite neu laden musst. Auf deinen übrigen Geräten erscheint die Zeile „Entfernt: …“.
 
 ### Ausgesperrt? So kommst du wieder hinein
 
@@ -203,7 +209,7 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 
 ## So funktioniert es
 
-- **Einrichtungs-Code:** 12 Zeichen aus 32 Zeichen (60 Bit Zufall). PaiBot speichert nur seinen Prüfwert (SHA-256) in der Datenbank und schreibt den Code genau einmal ins Log, beim ersten Start. Er gilt 24 Stunden, längstens bis zum Ende der Einrichtung; danach entsteht beim nächsten Aufruf ein neuer. Richte PaiBot deshalb gleich nach dem ersten Start ein. Ein Neustart oder ein zweiter Prozess erzeugt keinen neuen; dann steht im Log nur ein Hinweis, wann der Code erzeugt wurde. Erst ein neuer Lauf des Migrations-Schritts verwirft ihn (siehe „Code verloren“). Falsche Codes zählen je Adresse: nach 5 Fehlversuchen in 15 Minuten ist für diese Adresse Pause. Der Verbindungstest der Einrichtung verlangt denselben Code und zählt zusätzlich höchstens 10 Tests in 15 Minuten.
+- **Einrichtungs-Code:** 12 Zeichen aus 32 Zeichen (60 Bit Zufall). PaiBot speichert nur seinen Prüfwert (SHA-256) in der Datenbank und schreibt den Code genau einmal ins Log, beim ersten Start. Er gilt 24 Stunden, längstens bis zum Ende der Einrichtung; danach entsteht beim nächsten Aufruf ein neuer. Richte PaiBot deshalb gleich nach dem ersten Start ein. Ein Neustart oder ein zweiter Prozess erzeugt keinen neuen; dann steht im Log nur ein Hinweis, wann der Code erzeugt wurde. Erst ein neuer Lauf des Migrations-Schritts verwirft ihn (siehe „Code verloren“). Falsche Codes zählen je Adresse: nach 5 Fehlversuchen in 15 Minuten ist für diese Adresse Pause. Das gilt gleich für die Prüfung bei „Weiter“, für den Verbindungstest und für den Abschluss; die Prüfung bei „Weiter“ speichert nichts. Der Verbindungstest der Einrichtung verlangt denselben Code und zählt zusätzlich höchstens 10 Tests in 15 Minuten.
 - **Abschluss in einem Rutsch:** Alles läuft in einer einzigen Datenbank-Transaktion: Signaturschlüssel der Installation erzeugen und verschlüsselt speichern, Beleg „Start“ als erster Eintrag der Beleg-Kette, dann über das [Tor](funktion-tor.md) die Aktionen „Einrichtung abgeschlossen“ (Konto, Einstellungen, erste Sitzung), „Bot geändert“, „Anbieter gespeichert“ (Schlüssel verschlüsselt und an Anbieter und Adresse gebunden), „Modell gewählt“ und gegebenenfalls „Datenschleuse umgeschaltet“. Scheitert ein Schritt, bleibt nichts davon übrig. Kommen zwei Abschlüsse gleichzeitig, gewinnt genau einer; der andere bekommt „PaiBot ist schon eingerichtet“.
 - **Passwort:** gespeichert nur als scrypt-Hash. Vor jeder Prüfung zählt PaiBot den Versuch, in der Datenbank und auch bei gleichzeitigen Anfragen genau:
   - je Adresse: höchstens 5 Fehlversuche in 15 Minuten und 20 an einem Tag. Die Fenster gleiten: Versuche vom Ende des letzten Fensters zählen am Anfang des nächsten anteilig mit, eine Pause dauert deshalb bis zu 30 Minuten bzw. zwei Tage. IPv6-Adressen zählen je Netz (/64), weil ein Anschluss meist ein ganzes Netz hat.

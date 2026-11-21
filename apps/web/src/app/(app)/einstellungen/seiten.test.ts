@@ -13,12 +13,16 @@ import { readFileSync } from "node:fs";
 import { LIMITS } from "@paibot/shared/konstanten";
 import { type FunctionComponent, createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { EinstellungenAnzeige } from "../../../lib/einstellungen/typen";
 import { API_ROUTEN } from "../../../lib/routen";
+import { Darstellung } from "./Darstellung";
 import { EinstellungenRahmen } from "./EinstellungenRahmen";
 import { Grenzen } from "./Grenzen";
 import { Zugang } from "./Zugang";
+
+// Die Geräte-Liste lädt die Seite nach dem Entfernen neu (`router.refresh`); beim Rendern ohne Router ersetzt dies ihn.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined }) }));
 
 const ANZEIGE: EinstellungenAnzeige = {
   zeitzone: "Europe/Berlin",
@@ -165,5 +169,33 @@ describe("Browser-Module der Einstellungen", () => {
       const route = Object.values(API_ROUTEN).find((r) => r.methode === methode && r.pfad === pfad);
       expect(route, `${methode} ${pfad}`).toBeDefined();
     }
+  });
+});
+
+describe("Reiter Darstellung", () => {
+  const html = (anfang: "begruessung" | "startbrett" | "stille") =>
+    renderToStaticMarkup(h(Darstellung, { anfang }));
+
+  it("zeigt die drei Fassungen als Auswahl mit Vorschau, die gemerkte ist gewählt", () => {
+    const aus = html("startbrett");
+    expect(aus).toContain("Startbereich einer leeren Unterhaltung");
+    expect(aus.match(/type="radio"/g)).toHaveLength(3);
+    for (const name of ["Begrüßung", "Startbrett", "Stille"]) expect(aus).toContain(name);
+    expect(aus.match(/data-skizze=/g)).toHaveLength(3);
+    expect(aus.match(/checked=""/g)).toHaveLength(1);
+    expect(aus).toMatch(/value="startbrett"[^>]*checked=""|checked=""[^>]*value="startbrett"/);
+    expect(aus).toContain("Die Wahl gilt nur für diesen Browser.");
+  });
+
+  it("ohne gemerkte Wahl ist „Begrüßung“ gewählt, der Reiter steht in der Leiste", () => {
+    expect(html("begruessung")).toMatch(
+      /value="begruessung"[^>]*checked=""|checked=""[^>]*value="begruessung"/,
+    );
+    const rahmen = EinstellungenRahmen as FunctionComponent<{ aktiv: string }>;
+    const aus = renderToStaticMarkup(h(rahmen, { aktiv: "darstellung" }, "x"));
+    expect(aus).toContain('href="/einstellungen/darstellung"');
+    expect(aus).toMatch(
+      /href="\/einstellungen\/darstellung"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/einstellungen\/darstellung"/,
+    );
   });
 });

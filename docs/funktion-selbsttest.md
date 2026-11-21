@@ -19,9 +19,9 @@ Viele Fehler beim Betrieb fallen erst auf, wenn etwas schiefgeht: eine falsche A
 ## So benutzt du es
 
 1. Melde dich an und klick unten links in der Seitenleiste auf **Du**, dann unter **Hilfe** auf **Selbsttest** (oder in den Einstellungen auf den Reiter **Selbsttest**).
-2. PaiBot prüft sofort; oben steht die Zusammenfassung, zum Beispiel „11 in Ordnung · 2 Hinweise · 0 Fehler“.
+2. PaiBot prüft sofort; oben steht die Zusammenfassung, zum Beispiel „10 in Ordnung · 3 Hinweise · 0 Fehler“.
 
-   ![Reiter „Selbsttest“: oben die Zusammenfassung „11 in Ordnung · 2 Hinweise · 0 Fehler“ und „Erneut prüfen“, darunter die ersten Prüfungen mit „Hinweis“ bzw. „In Ordnung“](assets/screenshots/selbsttest.png)
+   ![Reiter „Selbsttest“: oben die Zusammenfassung „10 in Ordnung · 3 Hinweise · 0 Fehler“ und „Erneut prüfen“, darunter die ersten Prüfungen mit „Hinweis“ bzw. „In Ordnung“](assets/screenshots/selbsttest.png)
 3. Geh die Liste von oben nach unten durch. Bei jedem Punkt mit **Hinweis** (gelb) oder **Fehler** (rot) steht unter **So behebst du es**, was zu tun ist.
 
    ![Punkt „Adresse (APP_URL)“ mit „Hinweis“: APP_URL beginnt mit http://, darunter „So behebst du es“](assets/screenshots/selbsttest-hinweise.png)
@@ -42,21 +42,21 @@ Die Bilder zu den Schritten stehen oben (Beispiel-Daten, Beispiel-Installation a
 
 Am Selbsttest selbst gibt es nichts einzustellen. Er liest diese Einstellungen deiner Installation:
 
-| Prüfung                    | Woher                                                      | In Ordnung, wenn …                                                                       |
-| -------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Adresse (APP_URL)          | Umgebungsvariable `APP_URL` und die Adresse dieser Anfrage | sie mit `https://` beginnt und zur Adresse passt, über die du die Seite geöffnet hast    |
-| Vorgeschalteter Proxy      | `TRUST_PROXY` und ob eine weitergereichte Adresse ankommt  | beides zusammenpasst: `TRUST_PROXY=1` mit Proxy, sonst aus                               |
-| Verbindung deines Browsers | dein Browser                                               | die Seite über https kommt (über http zum eigenen Rechner: Hinweis)                      |
-| Schutz-Kopfzeilen          | die Antwort, wie sie bei deinem Browser ankommt            | Content-Security-Policy und die weiteren Schutz-Kopfzeilen da sind, über https auch HSTS |
-| Rechte der Datenbank-Rolle | Verbindung aus `DATABASE_URL`                              | die Rolle eingeschränkt ist (kein Superuser, kann Belege und Regeln nicht ändern)        |
-| Schalter erhöhte Rechte    | Umgebungsvariable `PAIBOT_ALLOW_PRIVILEGED_DB`             | sie nicht gesetzt ist                                                                    |
-| Stand der Datenbank        | angewendete Migrationen gegenüber dieser Version           | alle angewendet sind                                                                     |
-| Worker                     | letzte Meldung des Workers (alle 30 Sekunden)              | die Meldung jünger als 5 Minuten ist                                                     |
-| Datenschleuse              | letzte Meldung des Workers                                 | sie aus (freiwillig) oder bereit ist                                                     |
-| Einrichtung                | Einstellungen in der Datenbank                             | sie abgeschlossen ist                                                                    |
-| Not-Aus                    | Einstellungen in der Datenbank                             | er aus ist (an: Hinweis)                                                                 |
-| Geräte und Sitzungen       | bekannte Geräte und offene Sitzungen                       | immer; die Zahlen helfen dir, fremde Geräte zu bemerken                                  |
-| Version                    | Stand dieser Installation                                  | immer; ob es eine neuere gibt, prüft PaiBot nicht                                        |
+| Prüfung                    | Woher                                                       | In Ordnung, wenn …                                                                       |
+| -------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Adresse (APP_URL)          | Umgebungsvariable `APP_URL` und die Adresse dieser Anfrage  | sie mit `https://` beginnt und zur Adresse passt, über die du die Seite geöffnet hast    |
+| Vorgeschalteter Proxy      | `TRUST_PROXY` und ob die Anfrage Zeichen eines Proxys trägt | `TRUST_PROXY=1` und ein Proxy erkennbar ist, oder `TRUST_PROXY` aus und keiner erkennbar |
+| Verbindung deines Browsers | dein Browser                                                | die Seite über https kommt (über http zum eigenen Rechner: Hinweis)                      |
+| Schutz-Kopfzeilen          | die Antwort, wie sie bei deinem Browser ankommt             | Content-Security-Policy und die weiteren Schutz-Kopfzeilen da sind, über https auch HSTS |
+| Rechte der Datenbank-Rolle | Verbindung aus `DATABASE_URL`                               | die Rolle eingeschränkt ist (kein Superuser, kann Belege und Regeln nicht ändern)        |
+| Schalter erhöhte Rechte    | Umgebungsvariable `PAIBOT_ALLOW_PRIVILEGED_DB`              | sie nicht gesetzt ist                                                                    |
+| Stand der Datenbank        | angewendete Migrationen gegenüber dieser Version            | alle angewendet sind                                                                     |
+| Worker                     | letzte Meldung des Workers (alle 30 Sekunden)               | die Meldung jünger als 5 Minuten ist                                                     |
+| Datenschleuse              | letzte Meldung des Workers                                  | sie aus (freiwillig) oder bereit ist                                                     |
+| Einrichtung                | Einstellungen in der Datenbank                              | sie abgeschlossen ist                                                                    |
+| Not-Aus                    | Einstellungen in der Datenbank                              | er aus ist (an: Hinweis)                                                                 |
+| Geräte und Sitzungen       | bekannte Geräte und offene Sitzungen                        | immer; die Zahlen helfen dir, fremde Geräte zu bemerken                                  |
+| Version                    | Stand dieser Installation                                   | immer; ob es eine neuere gibt, prüft PaiBot nicht                                        |
 
 ## So funktioniert es
 
@@ -70,16 +70,16 @@ Am Selbsttest selbst gibt es nichts einzustellen. Er liest diese Einstellungen d
 
 - Der Selbsttest sieht nur, was von innen sichtbar ist. Grenzen im Reverse-Proxy, ob deine Sicherung funktioniert (siehe [Sicherung und Wiederherstellung](sicherung.md)), ob du Updates einspielst und woher deine Images stammen, musst du selbst prüfen; die Seite listet das unter „Bitte selbst prüfen“.
 - Die Adresse wird mit der Kopfzeile `Host` der Anfrage verglichen. Schreibt ein Proxy den Host um, kann die Prüfung „andere Adresse“ melden, obwohl dein Browser die richtige nutzt.
-- Ob ein Proxy davorsteht, erkennt PaiBot nur an der weitergereichten Adresse (`X-Forwarded-For`). Ein Proxy, der sie nicht setzt, sieht aus wie kein Proxy.
+- Ob ein Proxy davorsteht, lässt sich von innen nicht sicher feststellen: Die App setzt die Kopfzeile `X-Forwarded-For` mit der Adresse der direkten Verbindung auch ohne Proxy selbst. PaiBot sagt deshalb nur dann „In Ordnung“ mit Proxy, wenn die Anfrage etwas trägt, das die App nicht selbst setzt: eine der Kopfzeilen `Forwarded`, `X-Real-Ip`, `X-Forwarded-Server`, `Via` oder mehrere Adressen in `X-Forwarded-For`. Ein Proxy, der keine davon setzt, bleibt unsichtbar; bei `TRUST_PROXY=1` steht dann ein Hinweis „nicht feststellbar“, den du selbst klären musst.
 - Zweiter Faktor und Wiederherstellungs-Codes sind noch nicht gebaut und deshalb noch keine Prüfung (geplant).
 
 ## Fehlerbehebung
 
-| Beobachtung                                     | Ursache                                                           | Was tun                                                                                     |
-| ----------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| „Der Selbsttest konnte nicht geladen werden.“   | Web-App oder Datenbank antwortet gerade nicht                     | Kurz warten, **Erneut prüfen**; sonst das Log von `web` ansehen                             |
-| „Konnte gerade nicht geprüft werden.“ bei Rolle | Die Datenbank war bei der Prüfung nicht erreichbar                | Seite in ein paar Sekunden neu laden                                                        |
-| Adresse: „über eine andere Adresse geöffnet“    | `APP_URL` passt nicht zur Adresse im Browser                      | PaiBot über die Adresse aus `APP_URL` öffnen oder `APP_URL` anpassen und `web` neu starten  |
-| Proxy: Hinweis trotz Proxy                      | Der Proxy setzt `X-Forwarded-For` nicht                           | Proxy so einstellen, dass er die Adresse weiterreicht; Coolify und Caddy tun das von selbst |
-| Worker: „hat sich noch nie gemeldet“            | Der Dienst `worker` läuft nicht oder erreicht die Datenbank nicht | `docker compose ps` und das Log von `worker` ansehen                                        |
-| Stand der Datenbank: Migrationen fehlen         | Der Migrations-Schritt lief nach einem Update nicht               | Dienst `migrate` erneut starten (z. B. `docker compose up -d`)                              |
+| Beobachtung                                     | Ursache                                                            | Was tun                                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| „Der Selbsttest konnte nicht geladen werden.“   | Web-App oder Datenbank antwortet gerade nicht                      | Kurz warten, **Erneut prüfen**; sonst das Log von `web` ansehen                               |
+| „Konnte gerade nicht geprüft werden.“ bei Rolle | Die Datenbank war bei der Prüfung nicht erreichbar                 | Seite in ein paar Sekunden neu laden                                                          |
+| Adresse: „über eine andere Adresse geöffnet“    | `APP_URL` passt nicht zur Adresse im Browser                       | PaiBot über die Adresse aus `APP_URL` öffnen oder `APP_URL` anpassen und `web` neu starten    |
+| Proxy: „nicht feststellbar“ trotz Proxy         | Der Proxy setzt keine der erkennbaren Kopfzeilen (siehe „Grenzen“) | Selbst prüfen, dass er `X-Forwarded-For` setzt und der Port der App nicht frei erreichbar ist |
+| Worker: „hat sich noch nie gemeldet“            | Der Dienst `worker` läuft nicht oder erreicht die Datenbank nicht  | `docker compose ps` und das Log von `worker` ansehen                                          |
+| Stand der Datenbank: Migrationen fehlen         | Der Migrations-Schritt lief nach einem Update nicht                | Dienst `migrate` erneut starten (z. B. `docker compose up -d`)                                |

@@ -11,7 +11,7 @@
 "use client";
 
 import { t } from "@paibot/shared/texte";
-import { Avatar, Button, TextField, Wortmarke } from "@paibot/ui";
+import { AvatarLebendig, Button, TextField, Wortmarke } from "@paibot/ui";
 import { type FormEvent, useState } from "react";
 import { apiFetch } from "../../lib/api/client";
 import styles from "./anmelden.module.css";
@@ -55,7 +55,7 @@ export function Anmelden() {
     <main className={styles.seite}>
       <form className={styles.karte} onSubmit={(e) => void anmelden(e)} noValidate>
         <div className={styles.oben}>
-          <Avatar farbe="limette" groesse={60} zustand={sendet ? "arbeitet" : "schlaeft"} />
+          <AvatarLebendig farbe="limette" groesse={60} zustand={sendet ? "denkt" : "ruhig"} />
           <h1 className={styles.titel}>{t("anmelden.willkommen")}</h1>
           <p className={styles.leise}>{t("anmelden.hinweis")}</p>
         </div>

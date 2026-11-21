@@ -12,9 +12,9 @@ import { APP_NAME } from "@paibot/shared";
 import { CSRF } from "@paibot/shared/konstanten";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import "@paibot/ui/lade.css";
 import "@paibot/ui/schriften.css";
 import "@paibot/ui/tokens.css";
-import "@paibot/ui/avatar.css";
 import "./globals.css";
 import { seitenPruefzeichen } from "../lib/zugang/seite";
 

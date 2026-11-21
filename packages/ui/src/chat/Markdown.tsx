@@ -85,6 +85,8 @@ export interface MarkdownProps {
   text: string;
   /** Texte für abgesetzte Blöcke (Etikett, Kopieren, Kopiert). */
   blockTexte: EntwurfTexte;
+  /** Ein abgesetzter Block wurde kopiert. */
+  onKopiert?: () => void;
 }
 
 /**
@@ -92,7 +94,7 @@ export interface MarkdownProps {
  * bzw. Text und nie geladen), Links nur mit http/https, mit `rel="noopener noreferrer nofollow"`
  * und sichtbarem Ziel.
  */
-export function Markdown({ text, blockTexte }: MarkdownProps) {
+export function Markdown({ text, blockTexte, onKopiert }: MarkdownProps) {
   const komponenten: Components = {
     a: ({ href, children, node }) => {
       const ziel = sichereUrl(href);
@@ -116,7 +118,15 @@ export function Markdown({ text, blockTexte }: MarkdownProps) {
     pre: ({ node }) => {
       const knoten = node as unknown as HastKnoten | undefined;
       const inhalt = textVon(knoten).replace(/\n$/, "");
-      return <EntwurfBlock text={inhalt} texte={blockTexte} sprache={spracheVon(knoten)} />;
+      const sprache = spracheVon(knoten);
+      return (
+        <EntwurfBlock
+          text={inhalt}
+          texte={blockTexte}
+          {...(sprache === undefined ? {} : { sprache })}
+          {...(onKopiert === undefined ? {} : { onKopiert })}
+        />
+      );
     },
   };
   return (

@@ -79,6 +79,7 @@ Aus dem Routen-Vertrag `apps/web/src/lib/routen.ts#API_ROUTEN`:
 | Route                                    | Zugang   | Aktion                     |
 | ---------------------------------------- | -------- | -------------------------- |
 | `GET /api/einrichtung`                   | vorab    | – (lesend)                 |
+| `POST /api/einrichtung/code-pruefen`     | vorab    | – (nicht verändernd)       |
 | `POST /api/einrichtung/verbindungstest`  | vorab    | – (nicht verändernd)       |
 | `POST /api/einrichtung`                  | vorab    | `einrichtung.abschliessen` |
 | `POST /api/zugang/anmelden`              | vorab    | `zugang.anmelden`          |
