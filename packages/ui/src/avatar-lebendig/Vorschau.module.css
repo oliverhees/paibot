@@ -1,0 +1,113 @@
+/**
+ * PaiBot – Stile der Vorschau für den lebendigen Avatar.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.vorschau {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--ink);
+  font-size: var(--schrift-m);
+}
+
+.titel {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.raster {
+  display: grid;
+  grid-template-columns: auto repeat(8, minmax(64px, 1fr));
+  gap: 10px 6px;
+  align-items: center;
+  justify-items: center;
+}
+
+.kopfzelle {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  text-align: center;
+}
+
+.zeilenkopf {
+  justify-self: start;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.buehne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  padding: 18px;
+  border-radius: var(--radius-karte);
+  background: var(--surface);
+}
+
+.figuren {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  padding: 10px 14px 8px 4px;
+}
+
+.chip {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  white-space: nowrap;
+}
+
+.knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.knopf {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.knopf[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.eingabe {
+  width: 100%;
+  max-width: 320px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-feld);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+}
+
+.antwort {
+  min-height: 1.5em;
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+}

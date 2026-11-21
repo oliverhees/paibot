@@ -15,6 +15,7 @@ import { t, tList } from "@paibot/shared/texte";
 import {
   AntwortZeile,
   Avatar,
+  AvatarLebendigVorschau,
   Button,
   ChatBubble,
   ChatEingabe,
@@ -300,6 +301,10 @@ export function Beispiele() {
                 <figcaption>still</figcaption>
               </figure>
             </div>
+          </Karte>
+
+          <Karte titel="Lebendiger Avatar: alle Formen und Zustände" breit>
+            <AvatarLebendigVorschau />
           </Karte>
 
           <Karte titel="Nachrichten" breit>

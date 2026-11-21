@@ -1646,4 +1646,14 @@ export const de = {
   "hinweis.aenderung.verdraengt":
     "Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): {geraet}, am {zeit}",
   "hinweis.aenderung.alle": "Alle Geräte abgemeldet ({anzahl}), am {zeit}",
+
+  // Lebendiger Avatar: kurzer Text je Zustand für Bildschirmleser (der Avatar selbst ist Schmuck)
+  "avatar.zustand.ruhig": "{name} ist bereit",
+  "avatar.zustand.hoert_zu": "{name} hört zu",
+  "avatar.zustand.denkt": "{name} denkt nach",
+  "avatar.zustand.schreibt": "{name} schreibt",
+  "avatar.zustand.wartet": "{name} wartet auf dich",
+  "avatar.zustand.fertig": "{name} ist fertig",
+  "avatar.zustand.fehler": "Bei {name} ist ein Fehler aufgetreten",
+  "avatar.zustand.angehalten": "{name} ist angehalten",
 } as const satisfies Record<string, string | readonly string[]>;
