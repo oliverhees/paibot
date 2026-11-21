@@ -56,6 +56,16 @@ Datenfluss beim Anhängen (`packages/receipts/src/writer.ts#createReceiptWriter`
 Sperr-Reihenfolge: erst die Beleg-Sperre, dann die Zeile der Unterhaltung (Kommentar an `createReceiptWriter`). Die Nummer der Sperre steht in `packages/db/src/sperren.ts#BELEGE_LOCK_KEY`.
 
 In der Web-App liest `belegSchluesselAus` den aktiven Schlüssel aus `installation_keys` und entschlüsselt ihn, gebunden an Kennung und öffentlichen Teil (`apps/web/src/lib/gate.ts#belegSchluesselAus`).
+Er bleibt danach im Speicher (`cachedReceiptKeys`); `refresh()` lädt neu, früher geholte Schlüssel-Objekte bleiben dabei lesbar (`packages/receipts/src/writer.ts#cachedReceiptKeys`).
+
+Im Worker hält ein Schlüssel-Halter den Schlüssel für alle Läufe (`apps/worker/src/abhaengigkeiten.ts#buildRunDeps`, `packages/crypto/src/key-holder.ts#createSigningKeyHolder`):
+
+1. Vor jedem Lauf liest `prepare()` den aktiven Schlüssel neu und ruft `load()`; so gilt ein nach dem Start eingerichteter oder gewechselter Schlüssel ohne Neustart.
+2. Liefert der Lader denselben Schlüssel (gleiche Kennung, gleicher öffentlicher Teil), bleibt das Fach unverändert; Läufe, die ihn schon geholt haben und auf die Beleg-Sperre warten, signieren weiter damit. Der eben entschlüsselte private Teil wird nicht behalten.
+3. Ein anderer Schlüssel ersetzt das Fach; der private Teil des bisherigen wird verworfen, ältere Schlüssel-Objekte scheitern danach beim Lesen mit `schluessel_nicht_geladen`.
+4. Laufen mehrere `load()` gleichzeitig, zählt das zuletzt begonnene; ein `discard()` gilt auch für schon begonnene.
+5. Ist der geholte Schlüssel unter der Sperre nicht mehr der aktive der Kette, lädt der Schreiber über `refresh()` neu und versucht es einmal mit dem neuen (`packages/receipts/src/writer.ts#appendSignedLocked`).
+6. Scheitert das Laden (z. B. Entschlüsseln), wirft nur die Vorbereitung dieses Laufs; der Lauf endet mit `intern`, das gehaltene Fach und die anderen Läufe bleiben unberührt (`apps/worker/src/lauf.ts#createRunHandler`). Die Meldung nennt nur den Fehlercode.
 
 ## Datenmodell und Migrationen
 
@@ -107,21 +117,23 @@ Prüfungen je Beleg: `inhalt`, `signatur`, `kette`, `entscheidung`, `kontext` (`
 
 ## Tests
 
-| Test                                                                            | Prüft                                                                               |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `packages/receipts/src/verify.test.ts`                                          | gültige Kette und Manipulationen an der richtigen Stelle                            |
-| `packages/receipts/src/anker.test.ts`                                           | gekürzte, umgeschriebene, ausgetauschte Kette mit und ohne Anker                    |
-| `packages/receipts/src/writer.test.ts`                                          | Anhängen unter Sperre                                                               |
-| `packages/receipts/src/postgres.test.ts`                                        | gleichzeitiges Anhängen über zwei Verbindungen (nur mit `PAIBOT_TEST_DATABASE_URL`) |
-| `packages/receipts/src/tor.test.ts`                                             | Tor mit echtem Schreiber gegen PGlite                                               |
-| `packages/receipts/src/nachrechnen.test.ts`                                     | damaliger Regelstand, geänderte Regeln, ältere Belege ohne Regelstand               |
-| `packages/receipts/src/canonical.test.ts`, `packages/receipts/src/hash.test.ts` | kanonische Form und Prüfsumme                                                       |
-| `packages/receipts/src/jsonl.test.ts`, `packages/receipts/src/cli.test.ts`      | Export und Befehl                                                                   |
-| `packages/receipts/src/bundle.test.ts`                                          | Prüfer bündelbar für den Browser                                                    |
-| `packages/receipts/src/geraet-fakt.test.ts`                                     | Fakt `device` in Belegen, ältere Belege ohne ihn bleiben gültig                     |
-| `apps/web/src/lib/belege/routen.test.ts`                                        | Routen: nur mit Sitzung, Blättern, 404, Kette, Server-Prüfung, Export               |
-| `apps/web/src/lib/belege/pruefung.test.ts`                                      | Prüf-Logik der Seite mit echten Ketten                                              |
-| `apps/web/src/lib/belege/oberflaeche.test.ts`                                   | Browser-Module laden weder Zod noch Server-Code                                     |
+| Test                                                                            | Prüft                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/receipts/src/verify.test.ts`                                          | gültige Kette und Manipulationen an der richtigen Stelle                                                                                                                               |
+| `packages/receipts/src/anker.test.ts`                                           | gekürzte, umgeschriebene, ausgetauschte Kette mit und ohne Anker                                                                                                                       |
+| `packages/receipts/src/writer.test.ts`                                          | Anhängen unter Sperre                                                                                                                                                                  |
+| `packages/receipts/src/postgres.test.ts`                                        | gleichzeitiges Anhängen über zwei Verbindungen (nur mit `PAIBOT_TEST_DATABASE_URL`)                                                                                                    |
+| `packages/receipts/src/tor.test.ts`                                             | Tor mit echtem Schreiber gegen PGlite                                                                                                                                                  |
+| `packages/receipts/src/nachrechnen.test.ts`                                     | damaliger Regelstand, geänderte Regeln, ältere Belege ohne Regelstand                                                                                                                  |
+| `packages/receipts/src/canonical.test.ts`, `packages/receipts/src/hash.test.ts` | kanonische Form und Prüfsumme                                                                                                                                                          |
+| `packages/receipts/src/jsonl.test.ts`, `packages/receipts/src/cli.test.ts`      | Export und Befehl                                                                                                                                                                      |
+| `packages/receipts/src/bundle.test.ts`                                          | Prüfer bündelbar für den Browser                                                                                                                                                       |
+| `packages/receipts/src/geraet-fakt.test.ts`                                     | Fakt `device` in Belegen, ältere Belege ohne ihn bleiben gültig                                                                                                                        |
+| `packages/crypto/src/key-holder.test.ts`                                        | Schlüssel-Halter: derselbe Schlüssel erneut und gleichzeitig geladen, Wechsel, Reihenfolge, `discard`, Ladefehler                                                                      |
+| `apps/worker/src/schluessel-gleichzeitig.test.ts`                               | gleichzeitige Läufe im Worker mit fest gesteuerter Reihenfolge, Wechsel ohne Neustart und während ein Lauf wartet, Ladefehler nur im eigenen Lauf (nur mit `PAIBOT_TEST_DATABASE_URL`) |
+| `apps/web/src/lib/belege/routen.test.ts`                                        | Routen: nur mit Sitzung, Blättern, 404, Kette, Server-Prüfung, Export                                                                                                                  |
+| `apps/web/src/lib/belege/pruefung.test.ts`                                      | Prüf-Logik der Seite mit echten Ketten                                                                                                                                                 |
+| `apps/web/src/lib/belege/oberflaeche.test.ts`                                   | Browser-Module laden weder Zod noch Server-Code                                                                                                                                        |
 
 Ausführen:
 
@@ -135,3 +147,5 @@ pnpm --filter @paibot/web test
 - **Abgeschnittenes Ende ohne Anker nicht erkennbar** und mit Anker nur bis zu dessen Stand (`packages/receipts/src/anker.test.ts`).
 - **Kontext-Prüfung nur, solange der Inhalt gespeichert ist:** Ohne Inhalt ergibt Prüfung 5 `entfaellt` (`packages/receipts/src/server.ts#checkContext`).
 - **Wartezeit auf die Sperre begrenzt:** Hält jemand die Beleg-Sperre länger als `RECEIPT_LOCK_WAIT_MS`, scheitert das Anhängen und damit die Aktion (`packages/receipts/src/writer.ts#RECEIPT_LOCK_WAIT_MS`).
+- **Schlüsselwechsel in zwei Schritten:** Wird der neue Schlüssel in `installation_keys` gespeichert, bevor der Beleg „Schlüsselwechsel“ in der Kette steht, kann ein Worker-Lauf, der den alten Schlüssel schon geholt hat, mit `schluessel_nicht_geladen` scheitern: Die Kette verlangt noch den alten, der Halter hat ihn schon verworfen. Es entsteht kein falsch signierter Beleg. Schlüssel und Wechsel-Beleg gehören deshalb in eine Transaktion, wie im Test (`apps/worker/src/schluessel-gleichzeitig.test.ts`, `packages/crypto/src/key-holder.ts#createSigningKeyHolder`).
+- **Privater Teil nur verworfen, nicht überschrieben:** JavaScript kann einen Text nicht löschen; nach `discard()` oder einem Wechsel verschwindet nur der letzte Verweis (Kommentar an `SigningKeyHolder.discard` in `packages/crypto/src/key-holder.ts`).
