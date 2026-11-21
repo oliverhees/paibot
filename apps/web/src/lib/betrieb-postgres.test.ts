@@ -117,6 +117,7 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
     const env = (extra: Record<string, string>) =>
       ({
         NODE_ENV: "production",
+        APP_URL: "https://paibot.example.de",
         PAIBOT_SECRET: secret,
         MIGRATIONS_DIR: MIGRATIONS_FOLDER,
         ...extra,

@@ -85,6 +85,7 @@ services:
     security_opt:
       - no-new-privileges:true
     mem_limit: ${PAIBOT_MIGRATE_SPEICHER:-384m}
+    pids_limit: 256
     healthcheck:
       disable: true
     # Kein veröffentlichter Port.
@@ -101,7 +102,10 @@ services:
       PAIBOT_SECRET: ${PAIBOT_SECRET:?PAIBOT_SECRET fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}
       APP_URL: ${APP_URL:-http://localhost:3000}
       PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
-      TRUST_PROXY: ${TRUST_PROXY:-}
+      # Die App ist nur über den eigenen Proxy erreichbar (Port nur auf 127.0.0.1, Coolify im
+      # Docker-Netz); dann zählt die Adresse, die der Proxy in X-Forwarded-For anhängt.
+      # Nur auf 0 setzen, wenn kein Proxy davor sitzt.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,6 +127,7 @@ services:
     security_opt:
       - no-new-privileges:true
     mem_limit: ${PAIBOT_WEB_SPEICHER:-768m}
+    pids_limit: 256
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 30s
@@ -176,6 +181,7 @@ services:
       - no-new-privileges:true
     # Laufende Antworten werden in der Größe begrenzt; die Grenze fängt den Rest ab.
     mem_limit: ${PAIBOT_WORKER_SPEICHER:-512m}
+    pids_limit: 256
     # Zeit zum sauberen Beenden: Abbruch-Signal an laufende Antworten, höchstens 20 s warten.
     stop_grace_period: 30s
     healthcheck:

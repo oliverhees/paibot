@@ -15,7 +15,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { kopfzeilenMitNonce } from "./lib/kopfzeilen";
 import { koerperGrenzeFuerPfad } from "./lib/routen";
 import { stand } from "./lib/stand";
-import { istHttps } from "./lib/umgebung";
+import { hostPasstNicht, istHttps } from "./lib/umgebung";
 import { prozessDienste } from "./lib/zugang/dienste";
 import { cookieLesen, neuerVorabWert, vorabCookie, vorabCookieName } from "./lib/zugang/sitzung";
 import { brauchtZustand, entscheide, istDatei } from "./lib/zugang/weiterleitung";
@@ -32,6 +32,30 @@ export function laengeZuGross(laenge: string | null, grenze: number): boolean {
   if (laenge === null) return false;
   const text = laenge.trim();
   return !/^\d{1,15}$/.test(text) || Number(text) > grenze;
+}
+
+const HOST_GEMELDET = Symbol.for("paibot.web.host-gemeldet");
+
+/**
+ * Schreibt einmal je Prozess einen Hinweis ins Log, wenn eine Anfrage an einen anderen Host geht
+ * als `APP_URL` nennt (dann scheitern Anmelden und Einrichtung). Der Host steht nur gekürzt und
+ * ohne Sonderzeichen im Log.
+ */
+export function hostHinweis(
+  host: string | null,
+  origin: string | undefined,
+  warnen: (zeile: string) => void,
+): void {
+  const halter = globalThis as { [HOST_GEMELDET]?: true };
+  if (halter[HOST_GEMELDET] || !hostPasstNicht(host, origin)) return;
+  halter[HOST_GEMELDET] = true;
+  const sauber = (host ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9.:[\]-]/g, "")
+    .slice(0, 100);
+  warnen(
+    `[paibot] Anfrage an ${sauber}, APP_URL ist aber ${origin}. Anmelden und Einrichtung klappen nur über die Adresse aus APP_URL; trage dort genau die Adresse ein, die im Browser steht.`,
+  );
 }
 
 export async function proxy(request: NextRequest) {
@@ -58,6 +82,9 @@ export async function proxy(request: NextRequest) {
 
   const dienste = prozessDienste();
   const rahmen = { appUrl: dienste.appOrigin() };
+  if (!entwicklung && pfad !== "/api/health") {
+    hostHinweis(request.headers.get("host"), rahmen.appUrl, (zeile) => console.warn(zeile));
+  }
   const cookieKopf = request.headers.get("cookie");
   const vorabName = vorabCookieName(rahmen);
   const vorabVorhanden = cookieLesen(cookieKopf, vorabName) !== undefined;

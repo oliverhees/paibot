@@ -20,6 +20,7 @@ import {
   type StartLog,
 } from "@paibot/db/migrate";
 import { t } from "@paibot/shared/texte";
+import { proxyWarnung, pruefeAppUrl } from "./umgebung";
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -75,7 +76,7 @@ function checkSecret(env: Env): string[] {
 
 /**
  * Prüft die Pflicht-Einstellungen für den Betrieb und liefert verständliche Fehler (nie mit den
- * Werten selbst): `PAIBOT_SECRET` (nur Rolle `web`, der Migrations-Schritt braucht es nicht) und
+ * Werten selbst): `PAIBOT_SECRET` und `APP_URL` (nur Rolle `web`, siehe `pruefeAppUrl`) und
  * `DATABASE_URL` mit einem Passwort ab 24 Zeichen, das kein Platzhalter ist.
  *
  * - Rolle `web`: `DATABASE_MIGRATION_URL` darf nicht gesetzt sein; die Zugangsdaten der
@@ -94,7 +95,11 @@ export function checkProductionEnv(env: Env, role: StartRole = "web"): string[] 
   if (role === "migrate" && (migration === undefined || migration === "")) {
     errors.push("DATABASE_MIGRATION_URL fehlt (Zugang der Migrations-Rolle).");
   }
-  if (role === "web") errors.push(...checkSecret(env));
+  if (role === "web") {
+    errors.push(...checkSecret(env));
+    const appUrl = pruefeAppUrl(env).fehler;
+    if (appUrl !== undefined) errors.push(appUrl);
+  }
   const names =
     role === "migrate"
       ? (["DATABASE_URL", "DATABASE_MIGRATION_URL"] as const)
@@ -130,6 +135,14 @@ export function checkProductionEnv(env: Env, role: StartRole = "web"): string[] 
     );
   }
   return errors;
+}
+
+/** Hinweise für den Betrieb, die den Start nicht abbrechen (Rolle `web`). */
+export function productionWarnings(env: Env): string[] {
+  const warnungen = [...pruefeAppUrl(env).warnungen];
+  const proxy = proxyWarnung(env);
+  if (proxy !== undefined) warnungen.push(proxy);
+  return warnungen;
 }
 
 const consoleLog: StartLog = {
@@ -212,6 +225,9 @@ export async function prepareStart(env: NodeJS.ProcessEnv, options: StartOptions
       log.error("Start abgebrochen: Einstellungen unvollständig.");
       exit(1);
       return;
+    }
+    if (production && role === "web") {
+      for (const message of productionWarnings(env)) log.warn(message);
     }
   } else if (!env.DATABASE_URL) {
     log.warn("DATABASE_URL fehlt – Migrationen übersprungen.");
