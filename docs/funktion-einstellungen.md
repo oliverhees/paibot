@@ -10,7 +10,7 @@ Seit:      2026-11-21
 
 # Einstellungen und Info
 
-**Ergebnis:** Du änderst dein Passwort, siehst, wo du angemeldet bist, meldest alle Geräte ab, legst eine Tagesgrenze für dein Modell fest und findest Stand, Lizenz und Hilfe von PaiBot an einer Stelle.
+**Ergebnis:** Du änderst dein Passwort, siehst, wo du angemeldet bist, entfernst einzelne Geräte oder meldest alle ab, legst eine Tagesgrenze für dein Modell fest und findest Stand, Lizenz und Hilfe von PaiBot an einer Stelle.
 
 ## Wofür
 
@@ -40,6 +40,19 @@ Unter **Einstellungen** regelst du den Zugang zu deinem PaiBot und die Grenzen, 
 4. Melde dich mit deinem Passwort wieder an.
 
 Nur dieses Gerät abmelden: Knopf **Abmelden** im Reiter **Zugang**, auf der Seite **Info** oder unten in der Navigation.
+
+**Bekannte Geräte ansehen und eines entfernen**
+
+1. Klick in der Navigation auf **Einstellungen**. Im Reiter **Zugang** steht unter **Passwort ändern** der Abschnitt **Bekannte Geräte**: jeder Browser, in dem du dich angemeldet hast, mit grober Angabe (zum Beispiel „Firefox auf Windows“), wann PaiBot ihn **zuerst** und **zuletzt gesehen** hat und bis wann er **gültig** ist. Der Browser, den du gerade benutzt, steht oben und trägt die Marke **dieses Gerät**.
+
+   ![Abschnitt „Bekannte Geräte“: oben „Chrome auf Linux“ mit der Marke „dieses Gerät“, darunter weitere Geräte, je mit „zuerst gesehen“, „zuletzt gesehen“, „gültig bis“ und dem Knopf „Entfernen“](assets/screenshots/geraete-liste.png)
+2. Kennst du ein Gerät nicht oder benutzt du es nicht mehr (zum Beispiel ein verlorenes Handy), klick in seiner Zeile auf **Entfernen**.
+3. Lies die Rückfrage: Das Gerät ist danach kein bekanntes Gerät mehr, und alle seine Sitzungen enden sofort. Klick auf **Entfernen**, um es zu bestätigen, oder auf **Abbrechen** (oder drück Escape), wenn du es dir anders überlegst.
+
+   ![Rückfrage „Gerät entfernen?“: „„Firefox auf Windows“ ist danach kein bekanntes Gerät mehr. Alle Sitzungen dieses Geräts enden sofort …“ mit „Abbrechen“ und „Entfernen“](assets/screenshots/geraet-entfernen-rueckfrage.png)
+4. Über der Liste steht „Gerät entfernt: …“, das Gerät ist aus der Liste verschwunden. Wer es benutzt, muss sich neu mit dem Passwort anmelden.
+5. Entfernst du **dieses Gerät**, sagt die Rückfrage das vorher deutlich: Du wirst in diesem Browser sofort abgemeldet und landest auf der Anmeldung.
+6. Wer was entfernt hat, steht unter [Belege](funktion-belege.md): Der Beleg „Gerät entfernt“ nennt das Gerät, das entfernt wurde, und in der Zeile **Gerät** das Gerät, von dem aus du es getan hast. So nennen alle Belege deiner Aktionen das Gerät, von dem sie kamen.
 
 **Grenzen festlegen**
 
@@ -71,6 +84,8 @@ Am Handy, Reiter „Zugang“, „Grenzen“ und die Seite „Info“:
 
 ![Reiter „Zugang“ auf dem Handy](assets/screenshots/einstellungen-zugang-handy.png)
 
+![Abschnitt „Bekannte Geräte“ auf dem Handy: „Chrome auf Linux“ mit der Marke „dieses Gerät“ und dem Knopf „Entfernen“](assets/screenshots/geraete-liste-handy.png)
+
 ![Reiter „Grenzen“ auf dem Handy](assets/screenshots/einstellungen-grenzen-handy.png)
 
 ![Seite „Info“ auf dem Handy, oberer Teil](assets/screenshots/info-handy.png)
@@ -87,6 +102,8 @@ Am Handy, Reiter „Zugang“, „Grenzen“ und die Seite „Info“:
 
 - **Passwort ändern** prüft zuerst dein aktuelles Passwort. Nur wenn es stimmt, lässt das Tor die Aktion zu (Vorbedingung „Aktuelles Passwort bestätigt“). Danach werden in einem Schritt das neue Passwort gespeichert und alle Sitzungen und bekannten Geräte gelöscht; dieses Gerät bekommt eine neue Sitzung und gilt wieder als bekannt. Auch ein falsches aktuelles Passwort steht als abgelehnte Aktion im Protokoll.
 - **Sitzungen** zeigt nur, was gespeichert ist: Zeitpunkte und die Browser-Kennung, aus der PaiBot eine grobe Angabe wie „Chrome auf Android“ macht. Adressen oder Orte speichert PaiBot nicht. Lässt sich nichts sicher erkennen, steht „Gerät ohne Angabe“ da.
+- **Bekannte Geräte** zeigt die gültigen Einträge aus dem Geräte-Verzeichnis auf dem Server (höchstens 10): grobe Angabe aus der gespeicherten Browser-Kennung, wann zuerst und zuletzt gesehen, bis wann gültig. Adressen oder Orte speichert PaiBot auch hier nicht. **Entfernen** ist die Aktion „Gerät entfernt“: Sie läuft durch das Tor, bekommt zwei Belege und widerruft das Gerät; seine Sitzungen enden in derselben Aktion. War es dieses Gerät, löscht PaiBot auch die Cookies dieses Browsers.
+- **Gerät im Beleg:** Jede Aktion, die du in PaiBot auslöst, nennt im Beleg „Entscheidung“ das Gerät, von dem sie kam (die Kennung aus dem Verzeichnis). Die Belege-Seite zeigt dazu die grobe Angabe; steht das Gerät nicht mehr im Verzeichnis (widerrufene Geräte fallen nach 30 Tagen heraus), steht dort „nicht mehr im Verzeichnis“ und die Kennung. Ältere Belege ohne diese Angabe bleiben gültig.
 - **Alle Sitzungen beenden** löscht alle Sitzungen. Offene Verbindungen anderer Geräte (zum Beispiel ein laufender Chat) enden spätestens beim nächsten Herzschlag nach etwa 15 Sekunden.
 - **Grenzen speichern** schickt nur die geänderten Felder. Die Aktion „Einstellung geändert“ läuft durch das Tor und bekommt zwei Belege (Entscheidung und Ergebnis); die Belege nennen, welche Felder sich geändert haben. Den Link zum Beleg zeigt die Seite direkt nach dem Speichern.
 - Das **Tagesbudget** prüft das Tor als feste Grenze (G-04) bei jeder Anfrage an das Modell, ohne KI. Gezählt werden Eingabe und Ausgabe aller Antworten deines Bots seit Mitternacht in deiner Zeitzone, genau wie unter „Heute verbraucht“.
@@ -94,7 +111,9 @@ Am Handy, Reiter „Zugang“, „Grenzen“ und die Seite „Info“:
 
 ## Grenzen
 
-- **Alle anderen abmelden, aber hier angemeldet bleiben** gibt es als eigenen Knopf nicht: „Alle Sitzungen beenden“ meldet auch dieses Gerät ab. Wer nur die anderen Geräte loswerden will, ändert das Passwort.
+- **Alle anderen abmelden, aber hier angemeldet bleiben** gibt es als eigenen Knopf nicht: „Alle Sitzungen beenden“ meldet auch dieses Gerät ab. Wer nur die anderen Geräte loswerden will, entfernt sie einzeln unter **Bekannte Geräte** oder ändert das Passwort.
+- Die Geräte-Angabe ist grob und kommt aus der Browser-Kennung, die der Browser selbst meldet. Zwei Browser derselben Art heißen gleich (zum Beispiel zweimal „Chrome auf Linux“); unterscheide sie an den Zeiten.
+- Ein Gerät lässt sich nicht umbenennen.
 - Der **Not-Aus**, der alle Bots anhält, ist in dieser Version nicht in der Oberfläche einstellbar.
 - **Sprache** lässt sich noch nicht umstellen; PaiBot spricht Deutsch.
 - Konto löschen, alle Daten exportieren und Sicherungen gibt es in den Einstellungen nicht.
@@ -109,6 +128,9 @@ Am Handy, Reiter „Zugang“, „Grenzen“ und die Seite „Info“:
 | „Gib eine ganze Zahl von 1 bis … ein oder lass das Feld leer.“                                                                                        | Null, Kommazahl, Text oder zu große Zahl bei einer Grenze.                  | Ganze Zahl eintragen oder das Feld leeren.                                      |
 | „Es gibt nichts zu speichern.“                                                                                                                        | Nichts wurde geändert.                                                      | Erst einen Wert ändern, dann speichern.                                         |
 | Im Chat: „Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: G-04 „Tagesbudget“.“ (auf der Seite „Grenzen“: „Die Tagesgrenze ist erreicht.“) | Dein Bot hat heute so viele Token verbraucht, wie du erlaubst.              | Bis Mitternacht warten oder das Tagesbudget erhöhen bzw. leeren.                |
+| „Die Geräte lassen sich gerade nicht laden.“                                                                                                          | Die Anfrage an den Server ist gescheitert.                                  | „Noch einmal versuchen“ klicken; hilft das nicht, ins Log von PaiBot schauen.   |
+| „Dieses Gerät gibt es nicht mehr …“ nach „Entfernen“                                                                                                  | Das Gerät wurde schon entfernt, zum Beispiel auf einem anderen Gerät.       | Nichts zu tun; die Liste ist neu geladen.                                       |
+| Nach „Entfernen“ landest du auf der Anmeldung                                                                                                         | Du hast dieses Gerät entfernt.                                              | Neu anmelden; der Browser wird dabei wieder ein bekanntes Gerät.                |
 | „Die Sitzungen lassen sich gerade nicht laden.“                                                                                                       | Die Anfrage an den Server ist gescheitert.                                  | „Noch einmal versuchen“ klicken; hilft das nicht, ins Log von PaiBot schauen.   |
 | Nach dem Speichern landest du auf der Anmeldung                                                                                                       | Deine Sitzung war abgelaufen oder wurde auf einem anderen Gerät beendet.    | Neu anmelden und die Änderung wiederholen.                                      |
 | Nach mehreren Versuchen, das Passwort zu ändern, landest du auf der Anmeldung                                                                         | Mehr als 5 Versuche in 15 Minuten: PaiBot beendet zum Schutz diese Sitzung. | Neu anmelden und es mit dem richtigen aktuellen Passwort noch einmal versuchen. |

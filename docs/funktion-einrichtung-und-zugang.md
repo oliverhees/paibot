@@ -92,6 +92,26 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
 
 4. Zum Abmelden klick in der Navigation unten auf „Abmelden“ (am Handy erst auf „Menü öffnen“), zu sehen im Bild der App in Schritt 10 oben.
 
+### Hinweis bei Anmeldung von einem neuen Gerät
+
+Meldet sich jemand mit deinem Passwort in einem Browser an, der noch kein bekanntes Gerät ist, siehst du das auf deinen anderen Geräten.
+
+1. Melde dich in einem neuen Browser an (zum Beispiel auf einem neuen Handy). Er wird ein bekanntes Gerät und steht in den Einstellungen unter **Bekannte Geräte** mit der Marke **dieses Gerät**. Dieser Browser selbst zeigt keinen Hinweis.
+
+   ![Einstellungen „Zugang“ im neuen Browser: unter „Bekannte Geräte“ steht er oben mit der Marke „dieses Gerät“](assets/screenshots/geraete-neues-geraet.png)
+2. Auf jedem anderen angemeldeten Gerät erscheint beim nächsten Seitenaufruf oben die Leiste **Neue Anmeldung von einem neuen Gerät** mit grober Angabe und Zeitpunkt, zum Beispiel „Chrome auf Linux, am 20.11.2026, 14:31“. Sie bleibt, bis du auf diesem Gerät antwortest.
+
+   ![Leiste „Neue Anmeldung von einem neuen Gerät“ über den Einstellungen: „Chrome auf Linux, am 20.11.2026, 14:31“, „Warst du das?“, Knöpfe „Das war ich“ und „Das war ich nicht“](assets/screenshots/hinweis-neue-anmeldung.png)
+3. Warst du es, klick auf **Das war ich**. Die Leiste ist auf diesem Gerät geschlossen; auf deinen anderen Geräten bleibt sie, bis du sie dort ebenfalls bestätigst. Erst ein Gerät, das später dazukommt, bringt sie wieder.
+
+   ![Statt der Leiste steht oben „Danke. Der Hinweis ist auf diesem Gerät geschlossen.“](assets/screenshots/hinweis-bestaetigt.png)
+4. Warst du es nicht, klick auf **Das war ich nicht**. Darunter stehen zwei Wege, deinen Zugang zu sichern:
+   - **Passwort ändern** (der beste erste Schritt): beendet alle anderen Sitzungen und entfernt alle anderen Geräte; dieser Browser bleibt angemeldet. Der Link führt zu „Passwort ändern“ in den Einstellungen.
+   - **Alle Sitzungen beenden**: meldet überall ab, auch hier; danach meldest du dich neu an.
+
+   ![Nach „Das war ich nicht“: „So sicherst du deinen Zugang“ mit den Links „Passwort ändern“ und „Zu „Alle Sitzungen beenden““](assets/screenshots/hinweis-das-war-ich-nicht.png)
+5. Ist das fremde Gerät weg (neues Passwort, „Alle Sitzungen beenden“ oder unter **Bekannte Geräte** entfernt), verschwindet auch die Leiste.
+
 ### Ausgesperrt? So kommst du wieder hinein
 
 Versucht jemand massenhaft Passwörter, bremst PaiBot die Anmeldung für alle (siehe „So funktioniert es“). So kommst du trotzdem hinein:
@@ -113,6 +133,10 @@ Die Bilder zu jedem Schritt stehen oben in der Anleitung. Hier die Ansichten am 
 Auf dem Handy steht der Bot mit seiner Sprechblase über dem Schritt.
 
 ![Einrichtung, Schritt 1 auf dem Handy im dunklen Design: Pai mit Sprechblase oben, darunter Begrüßung und das Feld für den Code](assets/screenshots/einrichtung-code-handy.png)
+
+Der Hinweis auf eine neue Anmeldung auf dem Handy:
+
+![Leiste „Neue Anmeldung von einem neuen Gerät“ auf dem Handy mit „Das war ich“ und „Das war ich nicht“](assets/screenshots/hinweis-neue-anmeldung-handy.png)
 
 Die Anmeldung auf dem Handy im hellen Design:
 
@@ -166,7 +190,8 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 - **Sitzung:** Bei jeder Anmeldung entsteht ein neues Zufalls-Token. Der Browser bekommt es als Cookie (`HttpOnly`, `SameSite=Lax`, `Path=/`, bei https zusätzlich `Secure`); in der Datenbank steht nur seine Prüfsumme. Eine Sitzung gilt 30 Tage ab der letzten Benutzung, höchstens aber 90 Tage ab der Anmeldung; beides prüft der Server. Abmelden löscht die Sitzung, ein Passwortwechsel löscht alle. Beim Passwort ändern gelten höchstens 5 Versuche in 15 Minuten je Sitzung; darüber endet die Sitzung, mit der es versucht wurde, und du meldest dich neu an. Deine anderen Sitzungen zählen getrennt.
 - **Untergeschobene Anfragen:** Jede Anfrage, die etwas verändert, muss genau von `APP_URL` kommen (`Origin`) und ein Prüfzeichen mitschicken, das aus deiner Sitzung abgeleitet ist und in jeder Seite steht. Beides fehlt einer fremden Seite.
 - **Schutz jeder Route:** Ein Proxy vor allen Anfragen leitet ohne Einrichtung zur Einrichtung und ohne Anmeldung zur Anmeldung und beantwortet Schnittstellen ohne Sitzung mit „Nicht angemeldet“. Zusätzlich prüft jede Seite und jede Schnittstelle die Sitzung selbst. Jede Antwort trägt strenge Sicherheits-Kopfzeilen: Skripte laufen nur mit einer Nonce, die für jede Antwort neu entsteht; HSTS geht nur bei https mit.
-- **Belege:** An- und Abmelden, alle Sitzungen beenden und das Passwort ändern stehen als Belege im Protokoll. Fehlversuche nicht; sie stehen nur im Zähler.
+- **Hinweis bei neuer Anmeldung:** Jedes Gerät merkt sich auf dem Server, bis wann du neue Anmeldungen auf ihm bestätigt hast (am Anfang: seit es dazukam). Neu ist für ein Gerät jedes andere gültige Gerät, das danach dazukam. Eine erneute Anmeldung mit einem bekannten Gerät ist keine neue Anmeldung. „Das war ich“ ist die Aktion „Neue Anmeldung bestätigt“ durch das Tor mit Beleg und gilt nur für das Gerät, auf dem du sie wählst. Der Hinweis nennt nur die grobe Angabe aus der Browser-Kennung und den Zeitpunkt; Adressen speichert PaiBot nicht.
+- **Belege:** An- und Abmelden, alle Sitzungen beenden, das Passwort ändern, Geräte hinzufügen und entfernen und „Das war ich“ stehen als Belege im Protokoll; jeder Beleg „Entscheidung“ nennt das Gerät, von dem die Aktion kam (bei der ersten Anmeldung in einem neuen Browser gibt es dieses Gerät erst danach; der Beleg „Gerät hinzugefügt“ nennt es). Fehlversuche nicht; sie stehen nur im Zähler.
 
 ## Grenzen
 
@@ -175,7 +200,8 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 - Der Einrichtungs-Code liegt im Speicher des Dienstes `web`. Laufen mehrere `web`-Dienste gleichzeitig, hat jeder seinen eigenen Code.
 - Die Seite für Sitzungen und Passwortwechsel kommt mit den Einstellungen; die Schnittstellen dafür gibt es schon.
 - Hast du die Einrichtung abgeschlossen, lässt sie sich nicht wiederholen.
-- Eine Ansicht der bekannten Geräte in den Einstellungen gibt es noch nicht; die Schnittstellen dafür (`GET /api/zugang/geraete`, `POST /api/zugang/geraete/<id>/entfernen`) gibt es schon. Bis dahin entfernt „Alle Sitzungen beenden“ alle Geräte auf einmal.
+- Der Hinweis auf eine neue Anmeldung erscheint nur in PaiBot selbst, beim nächsten Seitenaufruf; eine Nachricht aufs Handy oder per Mail gibt es nicht. Sitzungen aus der Zeit vor dem Geräte-Verzeichnis gehören zu keinem Gerät und zeigen keinen Hinweis; nach der nächsten Anmeldung schon.
+- Fehlversuche der Anmeldung stehen nicht im Protokoll der Belege, auch nicht zusammengefasst; sie zählen nur für die Limits.
 - Während einer Flut von Fehlversuchen kommt ein Browser, der noch kein bekanntes Gerät ist (neues Handy, gelöschte Cookies, privates Fenster), nur selten an der gemeinsamen Bremse vorbei. Dann hilft ein bekanntes Gerät oder ein neuer Lauf von `migrate` (siehe „Ausgesperrt?“). Einen eigenen Notfall-Code für die Anmeldung gibt es nicht.
 - Die Limits je Adresse sind nur so gut wie die Adresse, die dein Proxy weitergibt. Steht ein weiterer Dienst vor deinem Proxy (etwa ein CDN), stell den Proxy so ein, dass er die echte Adresse der Besucher weitergibt; sonst teilen sich alle Besucher die Adresse dieses Dienstes. Steht `web` in einem Docker-Netz mit anderen Anwendungen, können diese die Adresse vortäuschen; `web` gehört deshalb nur in die Netze aus dem Compose. Ein bekanntes Gerät kommt in beiden Fällen trotzdem an.
 
@@ -191,6 +217,7 @@ Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal
 | „Die Anfrage konnte nicht bestätigt werden.“                   | Seite war lange offen oder Cookies wurden gelöscht                                      | Seite neu laden                                                                           |
 | Nach dem Anmelden sofort wieder „Anmelden“                     | Browser speichert keine Cookies, oder `APP_URL` ist https, die Seite aber http          | Cookies erlauben; PaiBot über die Adresse aus `APP_URL` öffnen                            |
 | Hinweis „TRUST_PROXY ist nicht gesetzt“                        | PaiBot kennt die Adresse der Besucher nicht                                             | Hinter einem Proxy `TRUST_PROXY=1` setzen (siehe Einstellungen)                           |
+| Leiste „Neue Anmeldung von einem neuen Gerät“, obwohl du es warst | Du hast dich in einem neuen Browser, einem privaten Fenster oder nach dem Löschen der Cookies angemeldet | Auf jedem anderen Gerät „Das war ich“ wählen                                              |
 | „Datenbank nicht erreichbar“ statt der Anmeldung               | Datenbank läuft nicht oder ist nicht eingerichtet                                       | Log ansehen, Datenbank starten, Seite neu laden                                           |
 
 ## Bilder neu aufnehmen
