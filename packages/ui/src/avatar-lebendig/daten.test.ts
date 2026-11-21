@@ -38,7 +38,10 @@ describe("Gesichts-Tabellen", () => {
   });
 
   it("zeigen jeden Zustand als Standbild anders", () => {
-    const bilder = AVATAR_LEBENDIG_ZUSTAENDE.map((z) => JSON.stringify(gesichtFuer(z)));
+    // Nur, was man sieht: die Arbeits-Marke zählt nicht.
+    const bilder = AVATAR_LEBENDIG_ZUSTAENDE.map((z) =>
+      JSON.stringify({ ...gesichtFuer(z), arbeit: undefined }),
+    );
     expect(new Set(bilder).size).toBe(AVATAR_LEBENDIG_ZUSTAENDE.length);
   });
 
