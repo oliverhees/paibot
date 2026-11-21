@@ -9,6 +9,7 @@
  */
 
 import { prepareStart } from "./lib/betrieb";
+import { zugangBeimStart } from "./lib/zugang/start";
 
 /**
  * Läuft beim Serverstart (`prepareStart`): Mit `PAIBOT_ROLE=migrate` Migrations-Schritt und Ende
@@ -17,4 +18,5 @@ import { prepareStart } from "./lib/betrieb";
  */
 export async function applyMigrations() {
   await prepareStart(process.env);
+  await zugangBeimStart();
 }

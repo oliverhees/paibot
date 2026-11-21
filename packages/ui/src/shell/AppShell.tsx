@@ -120,6 +120,8 @@ export interface AppShellProps {
   onFlaecheOffen?: (offen: boolean) => void;
   /** Füllt den umgebenden Rahmen statt des ganzen Fensters (z. B. in einer Vorschau). */
   eingebettet?: boolean;
+  /** Zusätzlicher Inhalt unten in der Navigation, über der Fußzeile (z. B. „Abmelden“). */
+  unten?: ReactNode;
   /** Link-Komponente, z. B. die des Frameworks; Standard `a`. */
   link?: ComponentType<{
     href: string;
@@ -169,6 +171,7 @@ export function AppShell({
   flaecheOffen,
   onFlaecheOffen,
   eingebettet = false,
+  unten,
   link: Link = StandardLink,
 }: AppShellProps) {
   const huelle = useRef<HTMLDivElement>(null);
@@ -326,6 +329,7 @@ export function AppShell({
                 </li>
               ))}
             </ul>
+            {unten}
             <Footer className={styles.fuss} />
           </div>
         </aside>

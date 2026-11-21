@@ -1,0 +1,85 @@
+/**
+ * PaiBot – Stile der Anmeldung: Karte in der Mitte.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.seite {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+}
+
+.karte {
+  width: min(100%, 400px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 32px 30px 28px;
+}
+
+.oben {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.titel {
+  margin: 4px 0 0;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+}
+
+.bleiben {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--schrift-m);
+  cursor: pointer;
+  width: fit-content;
+}
+
+.bleiben input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.bleiben input:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.marke {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+@media (max-width: 420px) {
+  .karte {
+    padding: 26px 18px 22px;
+  }
+}
