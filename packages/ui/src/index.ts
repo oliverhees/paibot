@@ -10,6 +10,7 @@
 
 // Die Tokens liegen in `@paibot/ui/tokens.css`.
 
+export * from "./app-bausteine/index";
 export { FORM_ZU_FARBE, FORMEN, formFuer, gesichtFuer } from "./avatar/formen";
 export type { Zufall } from "./avatar/zufall";
 export {
