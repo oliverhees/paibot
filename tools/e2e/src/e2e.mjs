@@ -315,6 +315,12 @@ async function main() {
 
   await schritt("Einrichtung: Code", seite, async () => {
     await seite.goto(`${app}/einrichtung`);
+    // Ein falscher Code fällt schon hier auf und bleibt im ersten Schritt.
+    erwarte("/api/einrichtung/code-pruefen", 401);
+    await seite.getByLabel("Einrichtungs-Code").fill("ZZZZ-ZZZZ-ZZZZ");
+    await seite.getByRole("button", { name: "Weiter" }).click();
+    await seite.getByText("Der Einrichtungs-Code stimmt nicht.").waitFor();
+    await seite.getByText("Schritt 1 von 7").waitFor();
     await seite.getByLabel("Einrichtungs-Code").fill(stack.einrichtungsCode);
     await seite.getByRole("button", { name: "Weiter" }).click();
     await seite.getByRole("heading", { name: "Passwort festlegen" }).waitFor();
@@ -337,6 +343,10 @@ async function main() {
     await seite.getByLabel("Schlüssel für", { exact: false }).fill(stack.anbieterSchluessel);
     await seite.getByRole("button", { name: "Verbindung testen" }).click();
     await seite.getByText("Verbindung steht").first().waitFor();
+    // Nach dem Test gibt es „Später eintragen“ nicht mehr: Es würde den getesteten Schlüssel verwerfen.
+    if (await seite.getByRole("button", { name: "Später eintragen" }).count()) {
+      throw new Error("„Später eintragen“ steht neben einem erfolgreichen Test.");
+    }
     await seite.getByRole("button", { name: "Weiter" }).click();
     await seite.getByRole("heading", { name: "Modell wählen" }).waitFor();
   });
@@ -346,6 +356,13 @@ async function main() {
     await seite.getByText("Datenschleuse als Standard").first().waitFor();
     await seite.getByRole("button", { name: "Weiter" }).click();
     await seite.getByRole("heading", { name: "Wie soll dein Bot heißen?" }).waitFor();
+    // Ein leerer Name wird erklärt, nicht mit einer allgemeinen Meldung abgewiesen.
+    const botName = seite.getByLabel("Name deines Bots");
+    const vorschlag = await botName.inputValue();
+    await botName.fill("");
+    await seite.getByRole("button", { name: "Einrichtung abschließen" }).click();
+    await seite.getByText("Gib deinem Bot einen Namen.").waitFor();
+    await botName.fill(vorschlag);
     await seite.getByRole("button", { name: "Einrichtung abschließen" }).click();
     await seite.getByRole("heading", { name: "Alles bereit" }).waitFor();
   });
@@ -510,6 +527,41 @@ async function main() {
     await seite.getByRole("switch", { name: "Neue Unterhaltungen mit Datenschleuse" }).click();
     await seite.getByText("Gespeichert: Neue Unterhaltungen starten ohne Datenschleuse.").waitFor();
   });
+
+  // ---- Unbekannte Adresse in der App: eine Fehlerseite mit genau einem Hauptbereich ---------------
+  await schritt("404 im App-Rahmen: ein Hauptbereich", seite, async () => {
+    erwarte("/belege/B-0054", 404);
+    const antwort = await seite.goto(`${app}/belege/B-0054`);
+    if (antwort?.status() !== 404) throw new Error(`Status ${antwort?.status()} statt 404.`);
+    await seite.getByRole("heading", { name: "Diese Seite gibt es nicht" }).waitFor();
+    const haupt = await seite.locator("main").count();
+    if (haupt !== 1) throw new Error(`${haupt} Hauptbereiche (<main>) statt einem.`);
+  });
+
+  // ---- Gerät entfernen: die Leiste „Neue Anmeldung“ verschwindet ohne Neuladen -------------------
+  const zeitweilig = await neuesGeraet(app, { adresse: "198.51.100.30" });
+  const zeitweiligSeite = await zeitweilig.newPage();
+  await schritt("Gerät entfernen: Leiste verschwindet ohne Neuladen", seite, async () => {
+    const status = await anmeldeVersuch(zeitweiligSeite, app, PASSWORT);
+    if (status !== 200) throw new Error(`Anmeldung auf dem weiteren Gerät: ${status}.`);
+    // Seine Seite bleibt nicht offen: Nach dem Entfernen würde sie sonst 401 melden.
+    await zeitweiligSeite.goto("about:blank");
+    await seite.goto(`${app}/einstellungen`);
+    const leiste = seite.locator("[aria-label='Hinweis auf neue Anmeldung']");
+    await leiste.getByText("Neue Anmeldung von einem neuen Gerät").waitFor();
+    await seite.getByText("dieses Gerät").first().waitFor();
+    await seite
+      .locator("section[aria-labelledby='geraete-titel'] li")
+      .filter({ hasNotText: "dieses Gerät" })
+      .first()
+      .getByRole("button")
+      .click();
+    await seite.getByRole("alertdialog").getByRole("button", { name: "Entfernen" }).click();
+    await seite.getByText(/^Gerät entfernt/).waitFor();
+    // Ohne Neuladen: Die Leiste nennt die Anmeldung eines Geräts nicht mehr, das es nicht mehr gibt.
+    await leiste.waitFor({ state: "detached", timeout: 10_000 });
+  });
+  await zeitweilig.close();
 
   // ---- Passwort ändern meldet alle anderen Geräte ab ---------------------------------------------
   const NEUES_PASSWORT = `Neuer-${randomBytes(9).toString("base64url")}-Satz`;
@@ -925,7 +977,7 @@ for (const [name, ok] of pruefungen) log(`${ok ? "ok    " : "FEHLER"} ${name}`);
 if (fehler) log(`Abbruch: ${fehler.message.split("\n").slice(0, 3).join(" ")}`);
 for (const v of netz.verstoesse) log(`Netz (${v.rolle}): ${v.art} → ${v.ziel}`);
 for (const u of ergebnis.fremdImBrowser) log(`Browser: ${u}`);
-for (const k of konsolenFehler) log(`Konsole (${k.art}): ${k.text}`);
+for (const k of konsolenFehler) log(`Konsole (${k.art}): ${k.text}${k.url ? ` [${k.url}]` : ""}`);
 log(`Ergebnis, Logs und Bilder: ${ausgabe}`);
 const ok = pruefungen.every(([, v]) => v);
 log(ok ? "Ende-zu-Ende-Prüfung bestanden." : "Ende-zu-Ende-Prüfung NICHT bestanden.");

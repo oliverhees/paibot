@@ -13,6 +13,7 @@
 
 import { t } from "@paibot/shared/texte";
 import { Button, Dialog, ErrorState, Icon, LoadingState, StatusChip } from "@paibot/ui";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
 import { grobesGeraet, zeitpunkt } from "../../../lib/einstellungen/anzeige";
@@ -31,6 +32,7 @@ function fehlerText(fehler: { text: string; ausweg?: string }): string {
 }
 
 export function Geraete({ zeitzone }: { zeitzone: string }) {
+  const router = useRouter();
   const [liste, setListe] = useState<Liste>({ zustand: "laedt" });
   const [frage, setFrage] = useState<GeraetZeile | undefined>();
   const [laeuft, setLaeuft] = useState(false);
@@ -81,6 +83,8 @@ export function Geraete({ zeitzone }: { zeitzone: string }) {
       setFehler(fehlerText(antwort.fehler));
     }
     await laden();
+    // Die Leiste „Neue Anmeldung“ oben kommt vom Server: neu laden, damit sie das Gerät nicht mehr zeigt.
+    router.refresh();
     // Der Knopf der Zeile ist weg: Fokus auf die Überschrift, damit er nicht verloren geht.
     titel.current?.focus();
   }

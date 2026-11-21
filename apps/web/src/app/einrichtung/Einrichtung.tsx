@@ -268,7 +268,7 @@ export function Einrichtung({
       }
       case "bot": {
         const ok = botName.trim() !== "";
-        fehlerSetzen("bot", ok ? undefined : t("fehler.eingabe_ungueltig"));
+        fehlerSetzen("bot", ok ? undefined : t("bot.name.leer"));
         return ok;
       }
       default:
@@ -890,7 +890,7 @@ export function Einrichtung({
                   <span />
                 )}
                 <span className={styles.rechts}>
-                  {schritt === "schluessel" && !eigenSpaeter && (
+                  {schritt === "schluessel" && !eigenSpaeter && !geprueft && (
                     <Button art="leise" onClick={spaeterEintragen}>
                       {t("einrichtung.schluessel.ueberspringen")}
                     </Button>

@@ -12,13 +12,16 @@
 import { readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { geraeteSortiert, hinweisTexte } from "../../../lib/einstellungen/geraete";
 import type { GeraetZeile } from "../../../lib/einstellungen/typen";
 import { API_ROUTEN } from "../../../lib/routen";
 import { NeueAnmeldung } from "../NeueAnmeldung";
 import { Geraete } from "./Geraete";
 import { Zugang } from "./Zugang";
+
+// Die Geräte-Liste lädt die Seite nach dem Entfernen neu (`router.refresh`); beim Rendern ohne Router ersetzt dies ihn.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined }) }));
 
 const FIREFOX = "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0";
 const SAFARI =
@@ -178,5 +181,12 @@ describe("Browser-Module der Geräte", () => {
       const route = Object.values(API_ROUTEN).find((r) => r.methode === methode && r.pfad === pfad);
       expect(route, aufruf).toBeDefined();
     }
+  });
+});
+
+describe("Geräte entfernen", () => {
+  it("lädt danach die Seite neu, damit die Leiste „Neue Anmeldung“ das Gerät nicht mehr zeigt", () => {
+    const quelle = readFileSync(new URL("./Geraete.tsx", import.meta.url), "utf8");
+    expect(quelle).toMatch(/await laden\(\);\s*\/\/[^\n]*\n\s*router\.refresh\(\);/);
   });
 });

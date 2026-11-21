@@ -37,3 +37,9 @@
 .link:hover {
   filter: brightness(1.06);
 }
+
+/* Innerhalb des App-Rahmens: kein eigenes Vollbild, der Rahmen hat schon den Hauptbereich. */
+.imRahmen {
+  min-height: 0;
+  padding-block: 48px;
+}

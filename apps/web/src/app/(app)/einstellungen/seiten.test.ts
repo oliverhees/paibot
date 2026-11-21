@@ -13,12 +13,15 @@ import { readFileSync } from "node:fs";
 import { LIMITS } from "@paibot/shared/konstanten";
 import { type FunctionComponent, createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { EinstellungenAnzeige } from "../../../lib/einstellungen/typen";
 import { API_ROUTEN } from "../../../lib/routen";
 import { EinstellungenRahmen } from "./EinstellungenRahmen";
 import { Grenzen } from "./Grenzen";
 import { Zugang } from "./Zugang";
+
+// Die Geräte-Liste lädt die Seite nach dem Entfernen neu (`router.refresh`); beim Rendern ohne Router ersetzt dies ihn.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined }) }));
 
 const ANZEIGE: EinstellungenAnzeige = {
   zeitzone: "Europe/Berlin",
