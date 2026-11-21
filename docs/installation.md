@@ -71,6 +71,8 @@ Die Container laufen gehärtet: ohne Root-Rechte, ohne Linux-Fähigkeiten (`cap_
 
 Web-App und Worker haben eine Speicher-Grenze (Standard: `web` 768 MB, `worker` 512 MB, `migrate` 384 MB). Wird sie überschritten, beendet Docker den Dienst und startet ihn neu, statt dass der ganze Server voll läuft. Die Werte reichen für die Basisversion mit einigen gleichzeitigen Antworten; mehr gleichzeitige Antworten (`PAIBOT_WORKER_CONCURRENCY`) brauchen mehr Speicher beim Worker.
 
+Die Logs jedes Dienstes sind begrenzt: höchstens 3 Dateien zu je 10 MB (Docker-Treiber `json-file`). Ältere Zeilen fallen dann weg; so kann eine Flut von Anfragen die Platte nicht über die Logs füllen. Zähler der Limits (Anmelden, Einrichtung) räumt PaiBot selbst auf, sobald ihr Zeitfenster vorbei ist.
+
 Der Worker hat keinen Port. Er hängt im internen Netz (für die Datenbank) und im Netz nach außen, weil er die Anfragen an die Modell-Anbieter stellt. Er bekommt wie die Web-App nur die eingeschränkte App-Rolle (`DATABASE_URL`), nie die Zugangsdaten der Migrations-Rolle; die hat nur `migrate`. Sein Healthcheck prüft eine Herzschlag-Datei unter `/tmp`, die er alle zehn Sekunden schreibt, solange die Datenbank antwortet und kein Lauf hängt.
 
 ## Mit fertigem Image

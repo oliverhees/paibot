@@ -28,10 +28,18 @@
 # Sie hat keine Datenbank und keinen Port; nur der Worker erreicht sie (Netz paibot-schleuse).
 name: paibot
 
+# Logs je Dienst höchstens 3 Dateien zu je 10 MB (Docker rotiert sonst nicht von selbst).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
     restart: unless-stopped
+    logging: *logging
     user: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-paibot}
@@ -62,6 +70,7 @@ services:
       context: ..
       dockerfile: apps/web/Dockerfile
     restart: "no"
+    logging: *logging
     environment:
       PAIBOT_ROLE: migrate
       DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
@@ -96,6 +105,7 @@ services:
       context: ..
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
+    logging: *logging
     environment:
       # Nur die App-Rolle. Bewusst ohne DATABASE_MIGRATION_URL: web migriert nie.
       DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
@@ -147,6 +157,7 @@ services:
       context: ..
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
+    logging: *logging
     environment:
       PAIBOT_ROLE: worker
       DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
@@ -217,6 +228,7 @@ services:
              presidio/recognizers-config.yml /app/config/
         RUN mkdir -p /app/rules /app/state
     restart: unless-stopped
+    logging: *logging
     user: "65534:65534"
     entrypoint:
       - /bin/sh
@@ -315,6 +327,7 @@ services:
         COPY presidio/analyzer-config.yml presidio/recognizers-config.yml /conf/
         USER 1001
     restart: unless-stopped
+    logging: *logging
     user: "1001"
     command: ["gunicorn", "-w", "1", "-b", "0.0.0.0:3000", "app:create_app()"]
     environment:
