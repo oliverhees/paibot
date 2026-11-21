@@ -20,23 +20,51 @@ PaiBot braucht ein Sprachmodell, das die Antworten schreibt. Das Modell läuft n
 
 ## So benutzt du es
 
-1. Öffne „Modell und Anbieter“ und wähle die Vorlage **EUrouter** (Region EU) oder **Eigener Anbieter (OpenAI-kompatibel)**.
-2. Trage bei einem eigenen Anbieter die Basis-URL ein und wähle die Region (`eu`, `außerhalb der EU`, `lokal`).
-3. Trage den Schlüssel ein. Er wird verschlüsselt gespeichert und nie wieder angezeigt.
-4. Klicke „Verbindung testen“. Bei Erfolg erscheint die Liste der passenden Modelle.
-5. Wähle das Standard-Modell.
+Den Anbieter verbindest du meist schon in der Einrichtung. Danach änderst du alles auf der Seite „Modell und Anbieter“ (Navigation links bzw. im Menü am Handy).
 
-Beispiel für einen lokalen Anbieter (Region `lokal`):
+**Schlüssel ersetzen**
+
+1. Öffne „Modell und Anbieter“. Oben siehst du den Anbieter mit Adresse, Region (zum Beispiel „EU“) und „Schlüssel hinterlegt“. Den Schlüssel selbst zeigt PaiBot nie an, auch nicht teilweise.
+2. Klicke „Verbindung testen“, um den gespeicherten Schlüssel zu prüfen. Das Ergebnis steht in einem Satz darunter, zum Beispiel „Verbindung steht. 12 passende Modelle gefunden.“
+3. Klicke „Schlüssel ersetzen“ und füge den neuen Schlüssel in das Feld ein.
+4. Klicke „Verbindung testen“. Nimmt der Anbieter den Schlüssel nicht an, steht dort, was du tun kannst; gespeichert ist dann nichts.
+5. Klicke „Schlüssel speichern“. PaiBot prüft den Schlüssel beim Anbieter noch einmal und speichert ihn nur, wenn er angenommen wird. Danach lädt die Modell-Liste neu.
+
+**Modell wählen**
+
+6. Unter „Modell für …“ steht, mit welchem Modell dein Bot gerade arbeitet; dieses Modell trägt in der Liste die Marke „aktuell“.
+7. Die Liste kommt direkt vom Anbieter. Bei mehr als acht Modellen erscheint ein Suchfeld; tippe einen Teil des Namens ein.
+8. Wähle ein Modell und klicke „Modell übernehmen“. Ab der nächsten Antwort nutzt dein Bot dieses Modell.
+
+**Schlüssel entfernen**
+
+9. Klicke „Schlüssel entfernen“ und bestätige die Rückfrage. Damit entfernst du den Anbieter samt Schlüssel; dein Bot hat danach kein Modell mehr.
+10. Um wieder zu starten, füge einen Schlüssel ein, klicke „Schlüssel speichern“ und wähle ein Modell (Schritte 3 bis 8).
+
+Beispiel für das Ergebnis eines Tests mit falschem Schlüssel:
 
 ```text
-Basis-URL: http://localhost:11434/v1
-Region:    lokal
-Schlüssel: (leer lassen, wenn der Anbieter keinen braucht)
+EUrouter hat den Schlüssel nicht angenommen. Prüf, ob du den Schlüssel vollständig kopiert hast,
+oder erzeuge in deinem Konto bei EUrouter einen neuen.
 ```
+
+Einen eigenen, OpenAI-kompatiblen Anbieter (zum Beispiel lokal mit Ollama) kann PaiBot technisch schon anbinden; eine Oberfläche zum Eintragen gibt es in dieser Version noch nicht (geplant).
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Die Aufnahmen entstehen per Skript aus der laufenden App mit Beispiel-Daten (siehe [screenshots.json](screenshots.json)).
+Folgt mit der Oberfläche. Die Aufnahmen entstehen per Skript aus der laufenden App mit Beispiel-Daten.
+
+<!--
+Gewünschte Aufnahmen (dunkel, Beispiel-Daten, Test-Anbieter mit Schlüssel „beispiel-…“ und 12 Modellen):
+1. modelle-start · /modelle · Rechner 1440 · nach der Einrichtung mit Schlüssel und Modell; Karte „Anbieter“ mit „Schlüssel hinterlegt“, Liste mit Marke „aktuell“
+2. modelle-test-ok · /modelle · Rechner · Klick „Verbindung testen“ → Meldung „Verbindung steht. … passende Modelle gefunden.“
+3. modelle-schluessel-falsch · /modelle · Rechner · Klick „Schlüssel ersetzen“, falschen Schlüssel eintragen, „Verbindung testen“ → Satz mit Ausweg, Feld rot
+4. modelle-schluessel-gespeichert · /modelle · Rechner · richtigen Schlüssel eintragen, „Schlüssel speichern“ → „Schlüssel gespeichert …“
+5. modelle-suche · /modelle · Rechner · in „Modell suchen“ „zweites“ tippen, „Zweites Test-Modell“ wählen
+6. modelle-uebernommen · /modelle · Rechner · „Modell übernehmen“ → „… arbeitet jetzt mit Zweites Test-Modell.“
+7. modelle-entfernen · /modelle · Rechner · „Schlüssel entfernen“ → Rückfrage-Dialog offen
+8. modelle-handy · /modelle · Handy 390 · Startzustand
+-->
 
 ## Einstellungen
 

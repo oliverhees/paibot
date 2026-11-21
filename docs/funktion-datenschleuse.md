@@ -86,11 +86,27 @@ Voraussetzung: PaiBot läuft schon mit Docker Compose (siehe [Installation](inst
 
    Danach gilt die Datenschleuse für PaiBot als „nicht installiert“. Eine Unterhaltung, die die Datenschleuse verlangt, bekommt dann keine Antwort, statt ungeschützt an den Anbieter zu gehen.
 
+**In PaiBot nachsehen und den Standard festlegen**
+
+8. Öffne in PaiBot die Seite „Datenschleuse“. Unter „Zustand“ steht „eingerichtet“ oder „nicht eingerichtet“. Bei „nicht eingerichtet“ zeigt die Seite die Schritte 1 bis 4 von oben und einen Link auf diese Anleitung.
+9. Ist sie eingerichtet, zeigt „Letzte Anfrage über die Datenschleuse“, wie die letzte Nachricht mit eingeschalteter Datenschleuse lief: bereit, gestoppt oder nicht bereit, mit dem, was du tun kannst. PaiBot fragt die Datenschleuse dafür nicht selbst ab (die Web-App hängt nicht in ihrem Netz), sondern liest das Ergebnis aus den Belegen des Workers.
+10. Schalte „Neue Unterhaltungen mit Datenschleuse“ ein. Neue Unterhaltungen starten dann geschützt; in jeder Unterhaltung kannst du sie einzeln umschalten. Solange die Datenschleuse nicht eingerichtet ist, lässt sich der Schalter nicht einschalten.
+11. Unter „So sieht eine maskierte Anfrage aus“ zeigt die Seite ein Beispiel mit erfundenen Daten: Was du schreibst, was das Modell sieht und was du zurückbekommst.
+
 Auf einem Server mit Coolify: [Datenschleuse zuschalten mit Coolify](deploy-coolify.md#datenschleuse-zuschalten).
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Den Schalter „Datenschleuse“ an der Unterhaltung und den Hinweis an jeder Antwort gibt es erst mit der Chat-Oberfläche. Bis dahin prüfst du den Dienst wie in Schritt 5 und 6.
+Folgt mit der Oberfläche. Die Aufnahmen entstehen per Skript aus der laufenden App mit Beispiel-Daten.
+
+<!--
+Gewünschte Aufnahmen (dunkel, Beispiel-Daten):
+1. datenschleuse-nicht-eingerichtet · /datenschleuse · Rechner 1440 · Web-App ohne SCHLEUSE_URL; Zustand „nicht eingerichtet“ mit Schritten, Schalter gesperrt, Beispiel
+2. datenschleuse-eingerichtet · /datenschleuse · Rechner · Web-App mit SCHLEUSE_URL, noch keine geschützte Anfrage
+3. datenschleuse-an · /datenschleuse · Rechner · Schalter „Neue Unterhaltungen mit Datenschleuse“ einschalten → „Gespeichert: …“
+4. datenschleuse-letzte-anfrage · /datenschleuse · Rechner · nach einer geschützten Nachricht (Beleg „modell.anfragen“ mit Datenschleuse); Karte „Letzte Anfrage über die Datenschleuse“
+5. datenschleuse-handy · /datenschleuse · Handy 390 · Zustand wie 1
+-->
 
 ## Einstellungen
 
@@ -155,7 +171,8 @@ Mit dem Rückfall `SCHLEUSE_SCHLUESSEL_WEG=umgebung` liegt er an zwei Stellen: v
 - **Dateien und Bilder:** Bilder und Dateien als Anhang werden nicht geprüft, sondern blockiert. Die Anfrage geht dann gar nicht raus.
 - Was nach dem Zurücktauschen in PaiBot gespeichert wird, ist der Klartext (Unterhaltungen in deiner Datenbank).
 - Ohne Oberfläche gibt es noch keinen Schalter je Unterhaltung und keinen Hinweis an der Antwort (geplant mit der Chat-Oberfläche).
-- Den Zustand der Datenschleuse (aus, nicht erreichbar, Schlüssel falsch, bereit) prüft der Worker; eine Anzeige dazu gibt es erst mit der Oberfläche.
+- Den Zustand der Datenschleuse (aus, nicht erreichbar, Schlüssel falsch, bereit) prüft nur der Worker. Die Seite „Datenschleuse“ zeigt deshalb nicht den Zustand in diesem Moment, sondern das Ergebnis der letzten geschützten Anfrage; „nicht erreichbar“ und „Schlüssel falsch“ unterscheidet sie dabei nicht. Eine laufende Anzeige ist geplant.
+- „Eingerichtet“ liest die Seite aus `SCHLEUSE_URL` in der Umgebung der Web-App. Bekommt nur der Worker diese Variable, zeigt die Seite „nicht eingerichtet“, und der Standard lässt sich nicht einschalten.
 - `SCHLEUSE_SCHLUESSEL_WEG` muss für Worker und Konfiguration gleich sein. Beide lesen ihn aus `deploy/.env`; nach einer Änderung `pnpm schleuse:config --env-datei deploy/.env` und `up -d` ausführen.
 - Ein Neustart der Datenschleuse löscht ihren Zwischenstand; laufende Unterhaltungen beginnen bei der Verallgemeinerung von vorn.
 
