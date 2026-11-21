@@ -26,27 +26,27 @@ Belegte Entscheidungen im Code:
 
 ## Aufbau
 
-| Datei                                                                         | Aufgabe                                                                                           |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `apps/web/src/lib/zugang/einrichtung.ts`                                      | `einrichtungsStatus`, `einrichtungVerbindungstest`, `einrichtungAbschliessen`                     |
-| `apps/web/src/lib/zugang/einrichtungs-code.ts`                                | Code erzeugen, prüfen, Log-Zeile, Prüfwert; Gültigkeit `CODE_GUELTIG_MS` (24 Stunden)             |
-| `apps/web/src/lib/zugang/start.ts`                                            | `zugangBeimStart`: Code beim Serverstart ins Log, solange nicht eingerichtet                      |
-| `apps/web/src/lib/zugang/anmeldung.ts`                                        | `anmelden`, `abmelden`, `alleAbmelden`, `passwortAendern`, `geraetEntfernen`, `geraetHinzufuegen` |
-| `apps/web/src/lib/zugang/sitzung.ts`                                          | Sitzung anlegen, aus dem Cookie prüfen, gleitend verlängern, beenden; Cookies                     |
-| `apps/web/src/lib/zugang/geraet.ts`                                           | bekannte Geräte: signiertes Cookie, Kennung auf dem Server nur als SHA-256                        |
-| `apps/web/src/lib/zugang/hinweis.ts`                                          | Hinweis auf den anderen Geräten bei Anmeldung von einem neuen Gerät                               |
-| `apps/web/src/lib/zugang/passwort.ts`                                         | Passwort prüfen mit begrenzter Gleichzeitigkeit und gleicher Dauer ohne Besitzer                  |
-| `apps/web/src/lib/zugang/nachweis.ts`                                         | geprüfte Sitzung und Nachweise (`sitzung`, `passwort`, `einrichtungs_code`) für das Tor           |
-| `apps/web/src/lib/zugang/weiterleitung.ts`                                    | Entscheidung des Proxys je Anfrage: durchlassen, umleiten oder 401 (reine Funktion)               |
-| `apps/web/src/lib/zugang/seite.ts`                                            | Zugang für Server-Seiten                                                                          |
-| `apps/web/src/lib/zugang/dienste.ts`                                          | Datenbank, Umgebung, Schlüssel, Uhr, Code je Prozess (`prozessDienste`)                           |
-| `apps/web/src/lib/csrf.ts`                                                    | Herkunft prüfen, Prüfzeichen ableiten und vergleichen                                             |
-| `apps/web/src/lib/rate-limit.ts`                                              | Rate-Limits zählen (sperren mit `Retry-After` oder verzögern), gemeinsame Bremse `BREMSE`         |
-| `apps/web/src/proxy.ts`                                                       | Proxy vor jeder Anfrage: Sicherheits-Kopfzeilen mit Nonce, Körper-Grenze, Weiterleitung           |
-| `packages/crypto/src/password.ts`                                             | scrypt (`SCRYPT_PARAMS`: N 32768, r 8, p 1)                                                       |
-| `packages/crypto/src/token.ts`                                                | zufällige Tokens und ihre Prüfsumme (`newToken`, `hashToken`)                                     |
-| `packages/crypto/src/master.ts`                                               | `PAIBOT_SECRET` laden und Unterschlüssel ableiten (`deriveKey`, `KEY_PURPOSES`)                   |
-| `apps/web/src/app/einrichtung/page.tsx`, `apps/web/src/app/anmelden/page.tsx` | Seiten Einrichtung und Anmelden                                                                   |
+| Datei                                                                         | Aufgabe                                                                                                                                                                       |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/lib/zugang/einrichtung.ts`                                      | `einrichtungsStatus`, `einrichtungVerbindungstest`, `einrichtungAbschliessen`                                                                                                 |
+| `apps/web/src/lib/zugang/einrichtungs-code.ts`                                | Code erzeugen, prüfen, Log-Zeile, Prüfwert; Gültigkeit `CODE_GUELTIG_MS` (24 Stunden)                                                                                         |
+| `apps/web/src/lib/zugang/start.ts`                                            | `zugangBeimStart`: Code beim Serverstart ins Log, solange nicht eingerichtet                                                                                                  |
+| `apps/web/src/lib/zugang/anmeldung.ts`                                        | `anmelden`, `abmelden`, `alleAbmelden`, `passwortAendern`, `geraetEntfernen`, `geraetHinzufuegen`                                                                             |
+| `apps/web/src/lib/zugang/sitzung.ts`                                          | Sitzung anlegen, aus dem Cookie prüfen, gleitend verlängern, beenden; Cookies                                                                                                 |
+| `apps/web/src/lib/zugang/geraet.ts`                                           | bekannte Geräte: signiertes Cookie, Kennung auf dem Server nur als SHA-256; gilt nur in derselben Art Browser (`browserArt`)                                                  |
+| `apps/web/src/lib/zugang/hinweis.ts`                                          | Hinweis auf den anderen Geräten bei neuem Gerät, Entfernen, Verdrängen und „alle abgemeldet“ (`repo.geraete.aenderungenSeit`; ein neues Gerät sieht `RUECKBLICK_TAGE` zurück) |
+| `apps/web/src/lib/zugang/passwort.ts`                                         | Passwort prüfen mit begrenzter Gleichzeitigkeit und gleicher Dauer ohne Besitzer                                                                                              |
+| `apps/web/src/lib/zugang/nachweis.ts`                                         | geprüfte Sitzung und Nachweise (`sitzung`, `passwort`, `einrichtungs_code`) für das Tor                                                                                       |
+| `apps/web/src/lib/zugang/weiterleitung.ts`                                    | Entscheidung des Proxys je Anfrage: durchlassen, umleiten oder 401 (reine Funktion)                                                                                           |
+| `apps/web/src/lib/zugang/seite.ts`                                            | Zugang für Server-Seiten                                                                                                                                                      |
+| `apps/web/src/lib/zugang/dienste.ts`                                          | Datenbank, Umgebung, Schlüssel, Uhr, Code je Prozess (`prozessDienste`)                                                                                                       |
+| `apps/web/src/lib/csrf.ts`                                                    | Herkunft prüfen, Prüfzeichen ableiten und vergleichen                                                                                                                         |
+| `apps/web/src/lib/rate-limit.ts`                                              | Rate-Limits zählen (sperren mit `Retry-After` oder verzögern), gemeinsame Bremse `BREMSE`                                                                                     |
+| `apps/web/src/proxy.ts`                                                       | Proxy vor jeder Anfrage: Sicherheits-Kopfzeilen mit Nonce, Körper-Grenze, Weiterleitung                                                                                       |
+| `packages/crypto/src/password.ts`                                             | scrypt (`SCRYPT_PARAMS`: N 32768, r 8, p 1)                                                                                                                                   |
+| `packages/crypto/src/token.ts`                                                | zufällige Tokens und ihre Prüfsumme (`newToken`, `hashToken`)                                                                                                                 |
+| `packages/crypto/src/master.ts`                                               | `PAIBOT_SECRET` laden und Unterschlüssel ableiten (`deriveKey`, `KEY_PURPOSES`)                                                                                               |
+| `apps/web/src/app/einrichtung/page.tsx`, `apps/web/src/app/anmelden/page.tsx` | Seiten Einrichtung und Anmelden                                                                                                                                               |
 
 Ablauf des Abschlusses (`apps/web/src/lib/zugang/einrichtung.ts#einrichtungAbschliessen`):
 
@@ -68,7 +68,7 @@ Ablauf des Abschlusses (`apps/web/src/lib/zugang/einrichtung.ts#einrichtungAbsch
 | `settings`          | `packages/db/src/schema/settings.ts` | u. a. Prüfwert des Einrichtungs-Codes und Abschluss der Einrichtung |
 | `installation_keys` | `packages/db/src/schema/tor.ts`      | Signaturschlüssel, beim Abschluss angelegt                          |
 
-Migrationen: `packages/db/drizzle/0001_basis.sql` (`owner`, `sessions`, `rate_limits`), `packages/db/drizzle/0006_regeln_und_belege.sql` (`setup_code_hash`, `setup_code_created_at` mit CHECKs und Trigger `settings_einrichtungs_code_ohne_besitzer`), `packages/db/drizzle/0008_bekannte_geraete.sql` (`geraete`, `sessions.device_id`), `packages/db/drizzle/0009_hinweis_neue_geraete.sql` (`geraete.notice_seen_at`).
+Migrationen: `packages/db/drizzle/0001_basis.sql` (`owner`, `sessions`, `rate_limits`), `packages/db/drizzle/0006_regeln_und_belege.sql` (`setup_code_hash`, `setup_code_created_at` mit CHECKs und Trigger `settings_einrichtungs_code_ohne_besitzer`), `packages/db/drizzle/0008_bekannte_geraete.sql` (`geraete`, `sessions.device_id`), `packages/db/drizzle/0009_hinweis_neue_geraete.sql` (`geraete.notice_seen_at`), `packages/db/drizzle/0013_widerruf_grund.sql` (`geraete.revoke_reason` mit CHECKs `geraete_revoke_reason_werte` und `geraete_revoke_reason_mit_widerruf`; die App-Rolle darf die Spalte setzen, `packages/db/src/rollen.ts#APP_TABLE_RIGHTS`).
 
 Zugriff über `packages/db/src/repo/besitzer.ts`, `packages/db/src/repo/sitzungen.ts`, `packages/db/src/repo/geraete.ts` (`MAX_GERAETE` 10, `AUFBEWAHREN_TAGE` 30) und `packages/db/src/repo/ratenbegrenzung.ts`.
 
@@ -106,20 +106,20 @@ Die Route-Dateien liegen unter `apps/web/src/app/api/einrichtung/` und `apps/web
 
 ## Tests
 
-| Test                                                                         | Prüft                                                                                   |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `apps/web/src/lib/zugang/einrichtung.test.ts`                                | Code, Limits, Abschluss in einer Transaktion, Belege, danach gesperrt                   |
-| `apps/web/src/lib/zugang/einrichtung-postgres.test.ts`                       | zwei gleichzeitige Abschlüsse, genau einer gewinnt (nur mit `PAIBOT_TEST_DATABASE_URL`) |
-| `apps/web/src/lib/zugang/einrichtungs-code.test.ts`                          | Form, Zufall, Prüfung, Log-Zeile, Prüfwert, Neustart, mehrere Prozesse                  |
-| `apps/web/src/lib/zugang/anmeldung.test.ts`                                  | Anmelden, Sitzung, Abmelden, Passwortwechsel, CSRF                                      |
-| `apps/web/src/lib/zugang/anmelde-schutz.test.ts`                             | Schutz beim Anmelden und Passwort ändern (Netze, gemeinsame Bremse)                     |
-| `apps/web/src/lib/zugang/passwort.test.ts`                                   | höchstens zwei gleichzeitig, gleiche Dauer ohne Besitzer                                |
-| `apps/web/src/lib/zugang/hinweis.test.ts`                                    | Gerät im Beleg, Hinweis bei neuem Gerät                                                 |
-| `apps/web/src/lib/zugang/start.test.ts`                                      | Code genau einmal ins Log, Sitzungsprüfung für den Ereignis-Strom                       |
-| `apps/web/src/lib/csrf.test.ts`, `apps/web/src/lib/rate-limit.test.ts`       | Herkunft und Prüfzeichen; Rate-Limits                                                   |
-| `apps/web/src/proxy.test.ts`                                                 | Weiterleitungen, Nonce, CSP, HSTS nur bei https, 401 für API                            |
-| `packages/crypto/src/password.test.ts`, `packages/crypto/src/master.test.ts` | Passwort-Hash; Wurzel-Geheimnis und Ableitung                                           |
-| `packages/db/src/repo/zugang.test.ts`                                        | Besitzer, Sitzungen, Rate-Limit in der Datenbank                                        |
+| Test                                                                         | Prüft                                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/lib/zugang/einrichtung.test.ts`                                | Code, Limits, Abschluss in einer Transaktion, Belege, danach gesperrt                                         |
+| `apps/web/src/lib/zugang/einrichtung-postgres.test.ts`                       | zwei gleichzeitige Abschlüsse, genau einer gewinnt (nur mit `PAIBOT_TEST_DATABASE_URL`)                       |
+| `apps/web/src/lib/zugang/einrichtungs-code.test.ts`                          | Form, Zufall, Prüfung, Log-Zeile, Prüfwert, Neustart, mehrere Prozesse                                        |
+| `apps/web/src/lib/zugang/anmeldung.test.ts`                                  | Anmelden, Sitzung, Abmelden, Passwortwechsel, CSRF                                                            |
+| `apps/web/src/lib/zugang/anmelde-schutz.test.ts`                             | Schutz beim Anmelden und Passwort ändern (Netze, gemeinsame Bremse)                                           |
+| `apps/web/src/lib/zugang/passwort.test.ts`                                   | höchstens zwei gleichzeitig, gleiche Dauer ohne Besitzer                                                      |
+| `apps/web/src/lib/zugang/hinweis.test.ts`                                    | Gerät im Beleg, Hinweis bei neuem Gerät, Spuren von Entfernen, Verdrängen, „alle“; Cookie aus anderem Browser |
+| `apps/web/src/lib/zugang/start.test.ts`                                      | Code genau einmal ins Log, Sitzungsprüfung für den Ereignis-Strom                                             |
+| `apps/web/src/lib/csrf.test.ts`, `apps/web/src/lib/rate-limit.test.ts`       | Herkunft und Prüfzeichen; Rate-Limits                                                                         |
+| `apps/web/src/proxy.test.ts`                                                 | Weiterleitungen, Nonce, CSP, HSTS nur bei https, 401 für API                                                  |
+| `packages/crypto/src/password.test.ts`, `packages/crypto/src/master.test.ts` | Passwort-Hash; Wurzel-Geheimnis und Ableitung                                                                 |
+| `packages/db/src/repo/zugang.test.ts`                                        | Besitzer, Sitzungen, Rate-Limit in der Datenbank                                                              |
 
 Ausführen:
 
