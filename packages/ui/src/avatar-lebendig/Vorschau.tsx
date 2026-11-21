@@ -65,7 +65,12 @@ export function AvatarLebendigVorschau() {
   const eingabe = useRef<HTMLInputElement>(null);
   const lauf = useRef(0);
 
-  useEffect(() => () => void (lauf.current += 1), []);
+  useEffect(
+    () => () => {
+      lauf.current += 1;
+    },
+    [],
+  );
 
   const spiele = async () => {
     const nr = ++lauf.current;
@@ -143,7 +148,7 @@ export function AvatarLebendigVorschau() {
             </span>
           </div>
           <div>
-            <div className={styles.knoepfe} role="group" aria-label="Zustand wählen">
+            <div className={styles.knoepfe} role="toolbar" aria-label="Zustand wählen">
               {AVATAR_LEBENDIG_ZUSTAENDE.map((z) => (
                 <button
                   key={z}
@@ -160,7 +165,7 @@ export function AvatarLebendigVorschau() {
                 </button>
               ))}
             </div>
-            <div className={styles.knoepfe} role="group" aria-label="Ausdruck auslösen">
+            <div className={styles.knoepfe} role="toolbar" aria-label="Ausdruck auslösen">
               {AVATAR_AUSDRUECKE.map((a) => (
                 <button
                   key={a}
