@@ -1,0 +1,76 @@
+/**
+ * PaiBot – Stile der Zulieferung: ein Kärtchen mit Titel, Absender und Beleg.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.karte {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px 9px 9px;
+  border-radius: 14px;
+  border: 1px solid var(--line-mid);
+  background: var(--surface-sunken);
+  max-width: 440px;
+  text-align: left;
+}
+
+.karte[data-breit="true"] {
+  max-width: none;
+}
+
+.kachel {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--ink-soft);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  line-height: 18px;
+}
+
+.text b {
+  font-weight: 600;
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.text small {
+  font-size: 12px;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.an {
+  font-size: 12px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.avatar {
+  line-height: 0;
+  flex: none;
+}
+
+@media (max-width: 959px) {
+  .an {
+    display: none;
+  }
+}

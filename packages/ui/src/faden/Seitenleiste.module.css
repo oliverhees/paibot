@@ -1,0 +1,345 @@
+/**
+ * PaiBot – Stile der Seitenleiste mit Pai, Teams, Fäden und Not-Aus.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.seite {
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 12px 12px;
+}
+
+.marke {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 6px 12px;
+}
+
+.wort {
+  font: 800 21px / 1 var(--font-brand);
+  letter-spacing: -0.03em;
+  color: var(--accent-text);
+  flex: 1;
+}
+
+.plus {
+  border: 0;
+  font: inherit;
+  color: var(--ink-soft);
+  display: flex;
+  background: none;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.notaus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-mid);
+  border-radius: 14px;
+  padding: 9px 10px 9px 12px;
+  margin-bottom: 14px;
+}
+
+.punkt {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  flex: none;
+}
+
+.notaus .text {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 18px;
+}
+
+.notaus small {
+  display: block;
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+.notaus button {
+  border: 0;
+  font: 600 12.5px / 1 var(--font-sans);
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--radius-pill);
+  padding: 8px 11px;
+  cursor: pointer;
+}
+
+.notaus[data-an="true"] {
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  background: var(--danger-soft);
+}
+
+.notaus[data-an="true"] .punkt {
+  background: var(--danger);
+}
+
+.notaus[data-an="true"] button {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.post {
+  border: 0;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--warn-soft);
+  color: var(--ink);
+  font-size: 13px;
+  margin-bottom: 12px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.post b {
+  color: var(--warn);
+  font-weight: 650;
+}
+
+.post > svg {
+  color: var(--warn);
+}
+
+.post > svg:last-child {
+  margin-left: auto;
+}
+
+.abschnitt {
+  margin: 8px 6px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+}
+
+.abschnitt h2 {
+  flex: 1;
+  margin: 0;
+  font: 600 11.5px / 16px var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.zeile {
+  border: 0;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  min-height: 34px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.zeile:hover {
+  background: var(--surface-raised);
+}
+
+.zeile .name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  line-height: 17px;
+}
+
+.zeile .name b {
+  font-weight: 600;
+}
+
+.zeile .name small {
+  display: block;
+  font-size: var(--schrift-s);
+  line-height: 16px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zeile .rolle {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.leitung {
+  font: 600 10px / 1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-mid);
+  border-radius: 5px;
+  padding: 2px 4px;
+  margin-left: 5px;
+  vertical-align: 1px;
+}
+
+.stand {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.stand[data-art="warn"] {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.stand[data-art="aktiv"] {
+  color: var(--accent-text);
+}
+
+.team {
+  margin: 2px 0 6px;
+}
+
+.teamKopf {
+  border: 0;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.teamKopf .stapel {
+  margin-left: auto;
+  display: inline-flex;
+}
+
+.glieder {
+  margin-left: 16px;
+  padding-left: 9px;
+  border-left: 1px solid var(--line);
+}
+
+.faden {
+  border: 0;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 17px;
+  min-height: 28px;
+  width: 100%;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  cursor: pointer;
+}
+
+.faden:hover,
+.faden[aria-current="true"] {
+  background: var(--surface-raised);
+}
+
+.faden .titel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.faden > svg {
+  color: var(--ink-soft);
+}
+
+.faden[data-neu="true"] {
+  color: var(--ink-soft);
+}
+
+.unter {
+  margin: 0 0 4px 32px;
+}
+
+.unter .faden {
+  font-size: 12.5px;
+  min-height: 24px;
+  color: var(--ink-soft);
+}
+
+.ruhig {
+  color: var(--ink-soft);
+}
+
+.fuss {
+  margin-top: auto;
+  padding: 12px 6px 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 14px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  flex-wrap: wrap;
+}
+
+.fuss span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.leer {
+  margin: 2px 6px 0;
+  padding: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* biome-ignore lint/style/noDescendingSpecificity: der Zustand überschreibt bewusst die Grundregel */
+.leer button {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-mid);
+  font: 500 12.5px / 18px var(--font-sans);
+  color: var(--ink);
+  background: none;
+  cursor: pointer;
+}

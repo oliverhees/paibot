@@ -1,0 +1,124 @@
+/**
+ * PaiBot – Stile der Fragen an dich: Band im Kopf und Karten in der Leiste.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.band {
+  border-top: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  background: var(--warn-soft);
+  padding: 11px 14px 12px;
+}
+
+.kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px / 18px var(--font-sans);
+  color: var(--warn);
+  margin: 0 0 8px;
+}
+
+.frage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13.5px;
+  line-height: 19px;
+  flex-wrap: wrap;
+}
+
+.frage + .frage {
+  border-top: 1px solid color-mix(in srgb, var(--warn) 20%, transparent);
+}
+
+.text {
+  flex: 1;
+  min-width: 200px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.text b {
+  font-weight: 600;
+}
+
+.wahl {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--line-mid);
+  font: 500 12.5px / 18px var(--font-sans);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.chip:hover {
+  border-color: var(--line-strong);
+}
+
+.chip[data-erste="true"] {
+  border-color: var(--accent-text);
+}
+
+.chipText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hinweis {
+  margin: 6px 0 0;
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+/* In der Leiste: je Frage eine Karte */
+.karte {
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  background: var(--warn-soft);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.karte .oben {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.karte .oben b {
+  font-weight: 600;
+}
+
+.leer {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+@media (max-width: 959px) {
+  .text {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+}
