@@ -102,6 +102,8 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
     const appUrl = newRole(db);
     const exit = (() => undefined) as unknown as (code: number) => never;
     const migrate = {
+      // Nicht „production“: Dort gelten zusätzlich die Regeln für Passwörter der Zugänge.
+      NODE_ENV: "test",
       PAIBOT_ROLE: "migrate",
       DATABASE_URL: appUrl,
       DATABASE_MIGRATION_URL: db.url,
