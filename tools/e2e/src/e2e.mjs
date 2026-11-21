@@ -863,10 +863,19 @@ async function main() {
       await navigation.getByRole("link", { name: "Belege" }).waitFor({ state: "hidden" });
       await navigation.getByRole("button", { name: "Du", exact: true }).waitFor();
       await seite.reload();
-      await navigation.getByRole("button", { name: /^Werkzeuge/ }).waitFor();
-      if ((await knopf.getAttribute("aria-expanded")) !== "false") {
-        throw new Error("Eingeklappter Zustand nach dem Neuladen vergessen.");
-      }
+      // Der gemerkte Zustand gilt, sobald die Seite im Browser läuft (nicht schon im Server-HTML).
+      await seite
+        .waitForFunction(
+          () =>
+            document
+              .querySelector("aside[aria-label='Navigation'] button[aria-controls][aria-expanded]")
+              ?.getAttribute("aria-expanded") === "false",
+          undefined,
+          { timeout: 10_000 },
+        )
+        .catch(() => {
+          throw new Error("Eingeklappter Zustand nach dem Neuladen vergessen.");
+        });
       await knopf.focus();
       await seite.keyboard.press("Enter");
       await navigation.getByRole("link", { name: "Belege" }).waitFor();
