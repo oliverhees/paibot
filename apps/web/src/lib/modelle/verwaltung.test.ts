@@ -24,7 +24,12 @@ import { newId, type ProviderId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
 import { describe, expect, it, vi } from "vitest";
 import { ladeBereitschaft, modellInfo } from "../chat/laden";
-import { TEST_SCHLUESSEL, TEST_VERWALTUNGSSCHLUESSEL, TEST_VORLAGEN_URL } from "../zugang/testing";
+import {
+  TEST_MODELLE,
+  TEST_SCHLUESSEL,
+  TEST_VERWALTUNGSSCHLUESSEL,
+  TEST_VORLAGEN_URL,
+} from "../zugang/testing";
 import { anbieterModelle, anbieterModelleLesen } from "./anbieter";
 import { anbieterRegelHinzufuegen, regelnVon } from "./regeln";
 import { modelleSeitenDaten } from "./seite";
@@ -369,6 +374,66 @@ describe("Kennzeichnung „EU“ nur mit belegter Vorgabe", () => {
       { name: "Zweite Regel", eu: false, gespeichert: false },
     ]);
     expect(await letzteNummer(e.u)).toBe(vorher);
+  });
+});
+
+describe("Vorgaben gelten nur für die Schlüssel, mit denen sie gelesen wurden", () => {
+  async function mitEuRegel() {
+    const e = await mitEurouter();
+    await e.setzen();
+    await e.hinzufuegen("Beispiel-Regel");
+    expect(await euRegeln(e)).toEqual(["Beispiel-Regel"]);
+    return e;
+  }
+  const aendern = (e: Awaited<ReturnType<typeof mitEurouter>>, koerper: object) =>
+    e.rufe(e.r.anbieterAendern, "PUT", `/api/anbieter/${e.id}`, {
+      params: { id: e.id },
+      koerper: { ...EUROUTER, ...koerper },
+    });
+
+  it("neuer oder erneut eingetragener Chat-Schlüssel: gelesene Vorgaben und Kennzeichnung weg", async () => {
+    const e = await mitEuRegel();
+    const r = await aendern(e, { apiKey: TEST_SCHLUESSEL });
+    expect(r.status).toBe(200);
+    expect(await euRegeln(e)).toEqual([]);
+    for (const x of await regelnVon(e.u.db, await anbieter(e))) expect(x.vorgabe).toBeUndefined();
+    // Der zweite Schlüssel bleibt; „Erneut prüfen“ stellt die Kennzeichnung wieder her.
+    expect((await anbieter(e)).managementKeySet).toBe(true);
+    expect((await e.neuPruefen()).status).toBe(200);
+    expect(await euRegeln(e)).toEqual(["Beispiel-Regel"]);
+  });
+
+  it("entfernter Chat-Schlüssel: Vorgaben weg", async () => {
+    const e = await mitEuRegel();
+    // Ein lokaler Dienst ohne Schlüssel: der Ersatz nimmt dann auch einen leeren Schlüssel an.
+    e.u.dienste.verbindungTesten = async () => ({ ok: true, models: TEST_MODELLE });
+    const r = await aendern(e, { removeApiKey: true });
+    expect(r.status).toBe(200);
+    expect(await euRegeln(e)).toEqual([]);
+  });
+
+  it("Gegenprobe: Umbenennen ohne Schlüssel-Änderung lässt die Vorgaben stehen", async () => {
+    const e = await mitEuRegel();
+    const r = await aendern(e, { name: "EUrouter privat" });
+    expect(r.status).toBe(200);
+    expect(await euRegeln(e)).toEqual(["Beispiel-Regel"]);
+  });
+
+  it("anderer zweiter Schlüssel: alte Vorgaben weg, auch wenn die neue Liste unvollständig ist und die Regel nicht nennt", async () => {
+    const e = await mitEuRegel();
+    e.u.zustand.kontoRegeln = [];
+    e.u.zustand.unvollstaendig = true;
+    expect((await e.setzen()).status).toBe(200);
+    expect(await euRegeln(e)).toEqual([]);
+    for (const x of await regelnVon(e.u.db, await anbieter(e))) expect(x.vorgabe).toBeUndefined();
+  });
+
+  it("entfernter zweiter Schlüssel: Vorgaben weg", async () => {
+    const e = await mitEuRegel();
+    await e.rufe(e.h.weg, "DELETE", `/api/anbieter/${e.id}/verwaltungsschluessel`, {
+      params: { id: e.id },
+    });
+    expect(await euRegeln(e)).toEqual([]);
   });
 });
 

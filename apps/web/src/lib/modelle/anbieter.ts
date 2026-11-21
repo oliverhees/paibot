@@ -30,6 +30,7 @@ import type { RoutenKontext } from "../api/route";
 import type { EinrichtungsAnbieter } from "../umgebung";
 import type { ZugangsDienste } from "../zugang/dienste";
 import { regelnPruefen, regelnVon } from "./regeln";
+import { vorgabenLoeschen } from "./verwaltung";
 
 /** Vorlage für einen neuen Anbieter, wie die Einrichtung ihn verbindet (ohne Geheimnisse). */
 export type AnbieterVorlage = EinrichtungsAnbieter;
@@ -363,6 +364,9 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
           : { apiKeyEnc: verschluesseln(k.dienste, id, baseUrl, apiKey) }),
       });
       if (neu === undefined) throw new PaiBotError("nicht_gefunden");
+      // Ein anderer oder entfernter Chat-Schlüssel kann zu einem anderen Konto gehören: Die gelesenen
+      // Vorgaben der Regeln gelten nicht mehr, die Kennzeichnung fehlt bis zum erneuten Prüfen.
+      if (apiKey !== undefined || entferntSchluessel) await vorgabenLoeschen(k.db, alt);
       const value = testen
         ? await repo.providers.setCheckResult(k.db, id, { ok: true, at: k.dienste.uhr.now() })
         : neu;

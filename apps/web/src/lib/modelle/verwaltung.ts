@@ -135,6 +135,18 @@ async function gespeicherteRegeln(db: Database, anbieter: Provider) {
   return ergebnis;
 }
 
+/**
+ * Löscht alle gelesenen Vorgaben der Regeln eines Anbieters. Nötig, sobald sich ein Schlüssel des
+ * Eintrags ändert oder entfällt: PaiBot kann nicht prüfen, ob beide Schlüssel zum selben Konto
+ * gehören, und eine Vorgabe hängt nur am Namen der Regel. Die Kennzeichnung fehlt dann, bis neu
+ * geprüft wird.
+ */
+export async function vorgabenLoeschen(db: Database, anbieter: Provider): Promise<void> {
+  for (const regel of await gespeicherteRegeln(db, anbieter)) {
+    await repo.models.setRulePolicy(db, regel.id, null);
+  }
+}
+
 export interface VorgabenErgebnis {
   /** Regeln, deren Vorgaben aktualisiert wurden. */
   aktualisiert: string[];
@@ -200,6 +212,8 @@ export async function anbieterVerwaltungsschluesselSetzen(
     async () => {
       const neu = await repo.providers.update(k.db, providerId, { managementKeyEnc: enc });
       if (neu === undefined) throw new PaiBotError("nicht_gefunden");
+      // Ein anderer zweiter Schlüssel kann zu einem anderen Konto gehören: Altes gilt nicht mehr.
+      await vorgabenLoeschen(k.db, provider);
       const vorgaben = await vorgabenAnwenden(k.db, provider, liste, jetzt);
       return { value: { anbieter: neu, vorgaben }, result: { status: "ok" } };
     },
@@ -231,9 +245,7 @@ export async function anbieterVerwaltungsschluesselEntfernen(
     async () => {
       const neu = await repo.providers.update(k.db, providerId, { managementKeyEnc: null });
       if (neu === undefined) throw new PaiBotError("nicht_gefunden");
-      for (const regel of await gespeicherteRegeln(k.db, provider)) {
-        await repo.models.setRulePolicy(k.db, regel.id, null);
-      }
+      await vorgabenLoeschen(k.db, provider);
       return { value: neu, result: { status: "ok" } };
     },
   );
