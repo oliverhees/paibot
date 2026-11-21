@@ -104,6 +104,8 @@ const GEHEIM_BAU = {
   worker: ["    environment:", `      PAIBOT_SECRET: ${D}{PAIBOT_SECRET:?fehlt}`],
 };
 
+const WEB_PORTS = ["    ports:", '      - "127.0.0.1:3000:3000"'];
+
 /** Coolify-Datei zur kleinen Aufstellung: web zuerst, Geheimnisse und Adresse aus Coolify. */
 function coolify(ersetzen: (text: string) => string = (t) => t, webZuerst = true): string {
   const bau = aufstellung("bau", GEHEIM_BAU);
@@ -124,10 +126,10 @@ function coolify(ersetzen: (text: string) => string = (t) => t, webZuerst = true
   );
 }
 
-function mitCoolify(coolifyText: string) {
+function mitCoolify(coolifyText: string, extra: Partial<Record<string, string[]>> = GEHEIM_BAU) {
   return vergleich({
-    bau: aufstellung("bau", GEHEIM_BAU),
-    image: aufstellung("image", GEHEIM_BAU),
+    bau: aufstellung("bau", extra),
+    image: aufstellung("image", extra),
     coolify: coolifyText,
   });
 }
@@ -197,6 +199,69 @@ describe("compose:vergleich", () => {
     const ohnePort = mitCoolify(coolify((t) => t.replace("\n      SERVICE_URL_WEB_3000:", "")));
     expect(ohnePort.code).toBe(1);
     expect(ohnePort.ausgabe).toContain("SERVICE_URL_WEB_3000");
+  });
+
+  describe("Port bei web", () => {
+    const mitPorts = { ...GEHEIM_BAU, web: WEB_PORTS };
+    const ports = WEB_PORTS.join("\n");
+    const expose = '    expose:\n      - "3000"';
+    /** Coolify-Datei zur Bau-Datei mit „ports:“ bei web; `web` ersetzt den Port-Block. */
+    const fassung = (web: string) =>
+      coolify().replace(
+        "    pids_limit: 256\n    environment:\n      APP_URL",
+        `    pids_limit: 256\n${web}\n    environment:\n      APP_URL`,
+      );
+
+    it("richtige Fassung: expose 3000 statt ports → Exit 0", () => {
+      const text = fassung(expose);
+      expect(text).toContain(expose);
+      const r = mitCoolify(text, mitPorts);
+      expect(r.ausgabe).toContain("Compose-Vergleich Coolify ok");
+      expect(r.code).toBe(0);
+    });
+
+    it("Coolify-Datei mit ports (bei web oder einem anderen Dienst) → Exit 1 mit klarer Meldung", () => {
+      const beiWeb = mitCoolify(fassung(ports), mitPorts);
+      expect(beiWeb.code).toBe(1);
+      expect(beiWeb.ausgabe).toContain("veröffentlicht einen Port");
+      expect(beiWeb.ausgabe).toContain("Dienst web");
+
+      const beiPostgres = mitCoolify(
+        fassung(expose).replace(
+          "    cap_drop: [ALL]",
+          '    cap_drop: [ALL]\n    ports:\n      - "5432:5432"',
+        ),
+        mitPorts,
+      );
+      expect(beiPostgres.code).toBe(1);
+      expect(beiPostgres.ausgabe).toContain("Dienst postgres veröffentlicht einen Port");
+    });
+
+    it("expose mit anderem Port oder fehlt beides → Exit 1", () => {
+      const anders = mitCoolify(fassung('    expose:\n      - "4000"'), mitPorts);
+      expect(anders.code).toBe(1);
+      expect(anders.ausgabe).toContain("genau den Block „expose:“");
+
+      const zusaetzlich = mitCoolify(
+        fassung('    expose:\n      - "3000"\n      - "4000"'),
+        mitPorts,
+      );
+      expect(zusaetzlich.code).toBe(1);
+
+      const fehltBeides = mitCoolify(coolify(), mitPorts);
+      expect(fehltBeides.code).toBe(1);
+      expect(fehltBeides.ausgabe).toContain("genau den Block „expose:“");
+    });
+
+    it("expose bei einem anderen Dienst als web bleibt ein Unterschied → Exit 1", () => {
+      const text = fassung(expose).replace(
+        "    cap_drop: [ALL]",
+        '    cap_drop: [ALL]\n    expose:\n      - "5432"',
+      );
+      const r = mitCoolify(text, mitPorts);
+      expect(r.code).toBe(1);
+      expect(r.ausgabe).toContain("Erster Unterschied zur Coolify-Datei (Dienst postgres)");
+    });
   });
 
   it("Schreibweisen, die YAML 1.1 anders liest (oktal, yes/no/on/off, Basis 60) → Exit 1", () => {
