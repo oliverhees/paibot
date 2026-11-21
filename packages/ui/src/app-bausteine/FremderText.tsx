@@ -8,6 +8,8 @@
  * @since     2026-11-21
  */
 
+"use client";
+
 import { t } from "@paibot/shared/texte";
 import { useId, useState } from "react";
 import { Icon } from "../basis/Icon";

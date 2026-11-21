@@ -8,6 +8,8 @@
  * @since     2026-11-21
  */
 
+"use client";
+
 import type { BotColor } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { useId } from "react";

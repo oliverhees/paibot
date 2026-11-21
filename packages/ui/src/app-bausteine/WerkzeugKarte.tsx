@@ -8,6 +8,8 @@
  * @since     2026-11-21
  */
 
+"use client";
+
 import { t } from "@paibot/shared/texte";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Button } from "../basis/Button";
