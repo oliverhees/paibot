@@ -62,6 +62,8 @@ Lief PaiBot bei dir schon mit nur `POSTGRES_PASSWORD`, startet der neue Stand er
 
 Musst du sofort wieder online sein, ohne umzustellen: `PAIBOT_ALLOW_PRIVILEGED_DB=1` setzen. PaiBot startet dann mit Warnung im Log. Das ist nur für den Übergang gedacht.
 
+**Hinter Coolify `TRUST_PROXY=1` setzen.** Coolify stellt einen Proxy (Traefik) vor PaiBot. Trag beim Dienst `web` die Umgebungsvariable `TRUST_PROXY=1` ein, damit PaiBot die Adresse der Besucher aus dem Eintrag kennt, den der Proxy anhängt. Ohne sie bremst PaiBot Anmelde-Versuche nur, statt sie je Adresse zu sperren, und meldet das beim Start im Log und auf der Seite „Einrichtung“. Mehr dazu in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
+
 ## 4. Prüfen
 
 ```bash

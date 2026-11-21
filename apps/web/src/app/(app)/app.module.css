@@ -1,0 +1,83 @@
+/**
+ * PaiBot – Stile der angemeldeten App: Abmelden in der Navigation und die Startseite.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-20
+ */
+
+.abmelden {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.abmeldenKnopf {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 32px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--schrift-m);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.abmeldenKnopf:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.abmeldenKnopf:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.abmeldenKnopf:disabled {
+  cursor: progress;
+}
+
+.fehler {
+  margin: 0;
+  padding: 0 8px;
+  color: var(--danger);
+  font-size: var(--schrift-s);
+}
+
+.kopfTitel {
+  font-weight: 600;
+  font-size: var(--schrift-b);
+}
+
+.start {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.absatz {
+  display: block;
+}
+
+.absatz + .absatz {
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .abmeldenKnopf {
+    transition: none;
+  }
+}

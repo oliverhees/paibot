@@ -8,32 +8,24 @@
  * @since     2026-11-20
  */
 
+import { t } from "@paibot/shared/texte";
 import { EmptyState, Logo } from "@paibot/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "./not-found.module.css";
 
-// Texte der Seite. Passende Schlüssel in `@paibot/shared` gibt es noch nicht
-// (vorhanden ist nur `fehler.nicht_gefunden`).
-const NICHT_GEFUNDEN_TEXTE = {
-  seitentitel: "Seite nicht gefunden",
-  titel: "Diese Seite gibt es nicht",
-  text: "Die Adresse stimmt nicht oder die Seite wurde verschoben. Von der Startseite aus findest du alles Weitere.",
-  link: "Zur Startseite",
-} as const;
-
-export const metadata: Metadata = { title: NICHT_GEFUNDEN_TEXTE.seitentitel };
+export const metadata: Metadata = { title: t("nicht_gefunden.seitentitel") };
 
 export default function NotFound() {
   return (
     <main className={styles.seite}>
       <EmptyState
         bild={<Logo titel="PaiBot" />}
-        titel={NICHT_GEFUNDEN_TEXTE.titel}
-        text={NICHT_GEFUNDEN_TEXTE.text}
+        titel={t("nicht_gefunden.titel")}
+        text={t("nicht_gefunden.text")}
         aktion={
           <Link href="/" className={styles.link}>
-            {NICHT_GEFUNDEN_TEXTE.link}
+            {t("nicht_gefunden.link")}
           </Link>
         }
       />

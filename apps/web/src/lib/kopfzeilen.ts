@@ -23,6 +23,11 @@ export interface KopfzeilenOptionen {
    * entsteht die statische Fassung für `next.config.ts`.
    */
   nonce?: string;
+  /**
+   * Läuft die App über https (`APP_URL`)? Nur dann geht HSTS mit; ohne Angabe gilt die bisherige
+   * Regel (HSTS außerhalb der Entwicklung).
+   */
+  https?: boolean;
 }
 
 /** Eine Nonce besteht aus Base64-Zeichen; alles andere könnte die Regel verändern. */
@@ -109,7 +114,7 @@ export function sicherheitsKopfzeilen(optionen: KopfzeilenOptionen): Kopfzeile[]
     { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   ];
   // Nur ausgeliefert, wenn die Seite über https kam; über http ignorieren Browser die Zeile.
-  if (!optionen.entwicklung) {
+  if (!optionen.entwicklung && optionen.https !== false) {
     zeilen.push({ key: "Strict-Transport-Security", value: "max-age=31536000" });
   }
   return zeilen;
@@ -120,13 +125,20 @@ export function sicherheitsKopfzeilen(optionen: KopfzeilenOptionen): Kopfzeile[]
  * Middleware zusätzlich als Anfrage-Kopfzeile `Content-Security-Policy` und `x-nonce` weitergibt,
  * damit Next die Nonce an seine Skripte schreibt.
  */
-export function kopfzeilenMitNonce(entwicklung: boolean): {
+export function kopfzeilenMitNonce(
+  entwicklung: boolean,
+  https?: boolean,
+): {
   nonce: string;
   kopfzeilen: Kopfzeile[];
   csp: string;
 } {
   const nonce = neueNonce();
-  const kopfzeilen = sicherheitsKopfzeilen({ entwicklung, nonce });
+  const kopfzeilen = sicherheitsKopfzeilen({
+    entwicklung,
+    nonce,
+    ...(https === undefined ? {} : { https }),
+  });
   const csp = kopfzeilen.find((z) => z.key === "Content-Security-Policy")?.value ?? "";
   return { nonce, kopfzeilen, csp };
 }

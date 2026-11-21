@@ -9,6 +9,7 @@
  */
 
 import { prepareStart } from "./lib/betrieb";
+import { zugangBeimStart } from "./lib/zugang/start";
 
 /**
  * Bereitet beim Serverstart die Datenbank vor: Migrationen mit der Migrations-Rolle, Rechte der
@@ -17,4 +18,5 @@ import { prepareStart } from "./lib/betrieb";
  */
 export async function applyMigrations() {
   await prepareStart(process.env);
+  await zugangBeimStart();
 }

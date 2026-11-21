@@ -9,12 +9,17 @@
  */
 
 import { APP_NAME } from "@paibot/shared";
+import { CSRF } from "@paibot/shared/konstanten";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "@paibot/ui/schriften.css";
 import "@paibot/ui/tokens.css";
 import "@paibot/ui/avatar.css";
 import "./globals.css";
+import { seitenPruefzeichen } from "../lib/zugang/seite";
+
+/** Alle Seiten werden je Anfrage erzeugt: nur so trägt jede Antwort ihre eigene Nonce. */
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -39,10 +44,12 @@ export const viewport: Viewport = {
   colorScheme: "dark light",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const pruefzeichen = await seitenPruefzeichen();
   return (
     <html lang="de">
       <head>
+        {pruefzeichen && <meta name={CSRF.metaName} content={pruefzeichen} />}
         <link
           rel="preload"
           href="/fonts/inter-latin-wght-normal.woff2"
