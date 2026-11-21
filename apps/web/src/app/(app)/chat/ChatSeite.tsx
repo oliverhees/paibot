@@ -11,7 +11,7 @@
 
 "use client";
 
-import "../../../lib/chat/ohne-auswertung";
+import "../../../lib/ohne-auswertung";
 import type { ApiErrorDetail } from "@paibot/shared/api";
 import type { ConversationId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";

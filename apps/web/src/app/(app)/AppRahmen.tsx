@@ -11,7 +11,7 @@
 
 "use client";
 
-import "../../lib/chat/ohne-auswertung";
+import "../../lib/ohne-auswertung";
 import type { BotColor, Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { AppShell, type AppShellFlaeche, type AppShellTexte, Icon } from "@paibot/ui";

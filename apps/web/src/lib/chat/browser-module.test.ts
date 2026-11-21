@@ -46,7 +46,7 @@ describe("Browser-Module des Chats", () => {
     for (const datei of ["../../app/(app)/AppRahmen.tsx", "../../app/(app)/chat/ChatSeite.tsx"]) {
       const text = readFileSync(new URL(datei, import.meta.url), "utf8");
       const erster = text.match(/^import [^;]*;/m)?.[0];
-      expect(erster, datei).toMatch(/^import "[./]+lib\/chat\/ohne-auswertung";$/);
+      expect(erster, datei).toMatch(/^import "[./]+lib\/ohne-auswertung";$/);
     }
   });
 });
