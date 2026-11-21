@@ -25,6 +25,13 @@ Du musst nichts einschalten. Das Tor arbeitet bei jeder Aktion mit:
 3. Ist die Aktion erlaubt, wird sie ausgeführt. Danach schreibt das Tor einen zweiten Beleg mit dem Ergebnis.
 4. Ist sie nicht erlaubt, passiert nichts. Du bekommst eine verständliche Meldung, und auch das steht als Beleg im Protokoll.
 
+So siehst du die Regeln und Entscheidungen in PaiBot an:
+
+1. Klick in der Navigation auf **Belege** und rechts auf **Regeln ansehen**. Die Seite **Regeln** zeigt jede geltende Regel mit Kennung (zum Beispiel `R-001`), Fassung, einem Satz in Worten („Besitzer verwaltet seine Installation: erlaubt, mit Beleg.“), für welche Aktionen sie gilt, unter welchen Bedingungen und mit welcher Stufe (fragen, vorbereiten, ausführen mit Beleg; „lehnt ab“ bei Regeln, die ablehnen). Darüber steht der aktuelle Regelstand.
+2. Darunter stehen die festen **Grenzen** G-01 bis G-05 und die **Vorbedingungen** in Worten. Diese Regeln sind fest eingebaut.
+3. Zurück auf der Seite **Belege** klickst du auf einen Beleg der Art „Entscheidung“. Die Karte nennt das Ergebnis mit Stufe, die angewandte Regel mit Fassung und Prüfsumme, den Regelstand und jede Vorbedingung und Grenze mit „erfüllt“, „eingehalten“, „verletzt“ oder „trifft hier nicht zu“.
+4. **Beleg prüfen** rechnet die Entscheidung in deinem Browser mit dem damaligen Regelstand nach, ohne KI. Stimmt sie, steht dort „Entscheidung folgt aus Regel R-001“.
+
 Beispiel einer Entscheidung, wie sie im Beleg steht:
 
 ```text
@@ -38,7 +45,15 @@ Regelstand:    7
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Die Regeln und Belege erscheinen dann auf der Seite „Belege“.
+Folgt mit der Oberfläche. Die Bilder entstehen per Skript, sobald die Aufnahmen für diese Seite eingetragen sind.
+
+<!--
+Gewünschte Aufnahmen (Beispiel-Daten wie auf der Seite „Belege“; dunkles Design):
+1. regeln: /regeln, Rechner 1440×900, Ausgangszustand (Weg Aktion → Tor → Beleg, Liste der Regeln).
+2. regeln-grenzen: /regeln, nach unten gescrollt bis Grenzen und Vorbedingungen, Rechner.
+3. regeln-handy: /regeln, Handy 390×844.
+4. tor-entscheidung: /belege, Klick auf eine Zeile „Nachricht gesendet“ mit Art „Entscheidung“, dann „Beleg prüfen“; Karte mit Regel, Regelstand, Vorbedingungen V-01/V-02, Grenzen und dem Ergebnis „Entscheidung folgt aus Regel R-001“.
+-->
 
 ## Die drei Stufen
 

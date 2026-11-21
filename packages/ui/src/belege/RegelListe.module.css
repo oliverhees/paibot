@@ -1,0 +1,151 @@
+/**
+ * PaiBot – Stile der Regel-Liste und des Wegs durch das Tor.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.regel {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.regel:first-child {
+  border-top: 0;
+}
+
+.nr {
+  padding-top: 2px;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.text {
+  min-width: 0;
+}
+
+.satz {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.satz b {
+  font-weight: 650;
+}
+
+.erkl {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  overflow-wrap: anywhere;
+}
+
+.stufen {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.stufen span {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--line-mid);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.stufen span[data-an="ja"] {
+  box-shadow: none;
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+  font-weight: 650;
+}
+
+.stufen span[data-an="frage"] {
+  box-shadow: none;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 650;
+}
+
+.stufen span[data-an="nie"] {
+  box-shadow: none;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 650;
+}
+
+.weg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--schrift-s);
+}
+
+.station {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pfeil {
+  color: var(--ink-soft);
+}
+
+.kasten {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.station[data-mitte] .kasten {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.kasten strong {
+  font-size: var(--schrift-m);
+  font-weight: 600;
+}
+
+.kasten span {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 600px) {
+  .regel {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .stufen {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
