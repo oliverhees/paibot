@@ -11,12 +11,22 @@
 
 import { GATE_FORMAT } from "@paibot/shared/tor";
 import { GATE_FORMAT_1 } from "./fassung-1";
+import { GATE_FORMAT_2 } from "./fassung-2";
 import type { GateFormatSpec } from "./typ";
 
-export type { EvaluatedRule, FormatLimitFn, FormatPrecondition, GateFormatSpec } from "./typ";
+export type {
+  CapDefinition,
+  EvaluatedRule,
+  FormatLimitFn,
+  FormatPrecondition,
+  GateFormatSpec,
+} from "./typ";
 
 /** Eingefrorene Beschreibung je Fassung. Eine Fassung wird nie geändert, nur neue kommen dazu. */
-export const GATE_FORMATS: Readonly<Record<1, GateFormatSpec>> = { 1: GATE_FORMAT_1 };
+export const GATE_FORMATS: Readonly<Record<1 | 2, GateFormatSpec>> = {
+  1: GATE_FORMAT_1,
+  2: GATE_FORMAT_2,
+};
 
 /** Höchste Fassung, die dieser Stand kennt. */
 export const KNOWN_GATE_FORMAT = Math.max(...Object.keys(GATE_FORMATS).map(Number));

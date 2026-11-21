@@ -24,7 +24,8 @@ import { TOOL_CALL_STATUSES, toolCallSchema } from "./objects";
 const time = "2026-11-20T10:00:00.000Z";
 const digest = `hmac-sha256:${"0a".repeat(32)}`;
 
-const facts = {
+/** Fakten, die schon `werkzeug.ausfuehren` hat (Werkzeug, Lauf, Abdruck, Not-Aus). */
+const basisFakten = {
   botOfConversation: true,
   runRunning: true,
   toolName: "kalender_lesen",
@@ -33,6 +34,26 @@ const facts = {
   argsDigest: digest,
   killSwitch: false,
 };
+
+/** Pflicht-Fakten eines Werkzeug-Wunschs (alle außer `toolServer`). */
+const torFakten = {
+  toolKey: "eingebaut/kalender.lesen",
+  toolDigest: `sha256:${"1b".repeat(32)}`,
+  toolReach: "intern",
+  toolForeign: false,
+  toolRegistered: true,
+  toolOffered: true,
+  inputValid: true,
+  untrustedInput: false,
+  step: 0,
+  callIndexInStep: 0,
+  maxCallsPerStep: 8,
+  callsInRun: 0,
+  maxCallsPerRun: 16,
+  trigger: "chat",
+};
+
+const facts = { ...basisFakten, ...torFakten };
 
 describe("Aktion werkzeug.aufrufen", () => {
   it("steht in ACTIONS; gespeichert werden alle Aktionen außer den noch nicht speicherbaren", () => {
@@ -70,6 +91,42 @@ describe("Aktion werkzeug.aufrufen", () => {
     expect(schema.safeParse({ ...facts, toolKind: "loeschen" }).success).toBe(false);
   });
 
+  it.each([
+    ...Object.keys(torFakten),
+    "toolName",
+    "toolSource",
+    "toolKind",
+    "botOfConversation",
+    "runRunning",
+    "argsDigest",
+    "killSwitch",
+  ])("Pflicht-Fakt %s fehlt: ungültig", (name) => {
+    const { [name]: _, ...ohne } = facts as Record<string, unknown>;
+    expect(ACTIONS["werkzeug.aufrufen"].facts.safeParse(ohne).success).toBe(false);
+  });
+
+  it("Kennung, Abdruck, Reichweite und Auslöser haben feste Formen", () => {
+    const schema = ACTIONS["werkzeug.aufrufen"].facts;
+    for (const [name, value] of [
+      ["toolKey", "Eingebaut/x"],
+      ["toolKey", "eingebaut"],
+      ["toolKey", `${"a".repeat(76)}/${"b".repeat(64)}`],
+      ["toolKey", { quelle: "eingebaut" }],
+      ["toolDigest", digest],
+      ["toolReach", "extern"],
+      ["trigger", "zeitplan"],
+      ["step", -1],
+      ["callIndexInStep", 0.5],
+      ["maxCallsPerStep", 0],
+      ["maxCallsPerRun", 0],
+    ] as const) {
+      expect(schema.safeParse({ ...facts, [name]: value }).success, `${name}`).toBe(false);
+    }
+    expect(
+      schema.safeParse({ ...facts, toolKey: `${"a".repeat(75)}/${"b".repeat(64)}` }).success,
+    ).toBe(true);
+  });
+
   it("der Server steht genau dann in den Fakten, wenn die Quelle mcp ist", () => {
     for (const type of ["werkzeug.aufrufen", "werkzeug.ausfuehren"] as const) {
       const schema = ACTIONS[type].facts;
@@ -77,7 +134,7 @@ describe("Aktion werkzeug.aufrufen", () => {
         type === "werkzeug.aufrufen"
           ? facts
           : {
-              ...facts,
+              ...basisFakten,
               approvalGranted: true,
               approvalConsumed: false,
               approvalExpired: false,

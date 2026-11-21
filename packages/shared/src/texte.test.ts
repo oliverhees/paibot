@@ -13,6 +13,7 @@ import { ACTION_TYPES } from "./actions";
 import { ERROR_CODES } from "./errors";
 import {
   ACTIVE_STANDARD_RULES,
+  CAP_IDS,
   LIMIT_IDS,
   PRECONDITION_IDS,
   STANDARD_RULE_IDS,
@@ -97,6 +98,7 @@ describe("Text-Schlüssel", () => {
       ...UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id),
       ...LIMIT_IDS,
       ...PRECONDITION_IDS,
+      ...CAP_IDS,
     ]);
     for (const key of TEXT_KEYS) {
       if (key.startsWith("aktion.")) expect(actions.has(key.slice("aktion.".length))).toBe(true);

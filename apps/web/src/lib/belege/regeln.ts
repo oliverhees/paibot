@@ -104,9 +104,15 @@ export function regelEintraege(regeln: readonly RuleDefinition[]): RegelZeile[] 
     });
 }
 
-/** Die festen Grenzen G-01 bis G-05. */
+/**
+ * Grenzen, die nur Werkzeug-Aufrufe betreffen. Werkzeuge gibt es in dieser Fassung noch nicht;
+ * die Seite zeigt sie deshalb nicht, wie die reinen Werkzeug-Vorbedingungen.
+ */
+export const NUR_WERKZEUG_GRENZEN: readonly string[] = ["G-17"];
+
+/** Die festen Grenzen (ohne die reinen Werkzeug-Grenzen). */
 export function grenzenEintraege(): RegelZeile[] {
-  return LIMIT_IDS.map((id) => ({
+  return LIMIT_IDS.filter((id) => !NUR_WERKZEUG_GRENZEN.includes(id)).map((id) => ({
     nr: id,
     titel: regelName(id, id),
     wirkung: t("regeln.wirkung.grenze"),

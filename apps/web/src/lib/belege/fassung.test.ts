@@ -16,6 +16,7 @@ import type { ReceiptEntry } from "@paibot/shared/belege";
 import { t } from "@paibot/shared/texte";
 import { describe, expect, it } from "vitest";
 import {
+  alsFassung1,
   FASSUNG_RULES,
   ketteNeuereFassung,
   ketteUnbekanntesFeld,
@@ -110,11 +111,9 @@ describe("Belege-Seite und Fassung des Tors", () => {
 
   it("Hinweis Rückschritt erscheint als Hinweis, die Stufe bleibt gültig", async () => {
     const kette = await TestKette.neu();
-    const a = await kette.decision(undefined, (body) => {
-      (body.decision as Record<string, unknown>).gateFormat = 1;
-    });
+    const a = await kette.decision();
     await kette.result(a);
-    const b = await kette.decision();
+    const b = await kette.decision(undefined, alsFassung1);
     await kette.result(b);
     const ergebnis = await seite(kette);
     expect(ergebnis.stufe).toBe("gueltig");

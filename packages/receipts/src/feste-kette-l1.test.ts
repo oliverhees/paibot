@@ -19,8 +19,8 @@ import { describe, expect, it } from "vitest";
 import { CLI_EXIT, runCli } from "./cli";
 import { parseJsonl } from "./jsonl";
 import { decisionFormat, reevaluate } from "./nachrechnen";
-import { altReceiptEntrySchema } from "./testdaten/altes-lese-schema";
 import { l1ReceiptEntryReadSchema } from "./testdaten/lese-schema-l1";
+import { vorFassungReceiptEntrySchema } from "./testdaten/lese-schema-vor-fassung";
 import { verifyChain } from "./verify";
 
 /*
@@ -131,7 +131,7 @@ describe("feste Kette vom Stand mit Tor-Fassung 1", () => {
     expect(lines).toHaveLength(70);
     for (const line of lines) {
       const entry = JSON.parse(line) as unknown;
-      expect(altReceiptEntrySchema.safeParse(entry).success, line.slice(0, 40)).toBe(true);
+      expect(vorFassungReceiptEntrySchema.safeParse(entry).success, line.slice(0, 40)).toBe(true);
       expect(l1ReceiptEntryReadSchema.safeParse(entry).success, line.slice(0, 40)).toBe(true);
     }
   });

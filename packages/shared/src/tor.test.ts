@@ -63,6 +63,14 @@ const modelFacts: Facts<"modell.anfragen"> = {
   killSwitch: false,
   targetOrigin: "https://api.eurouter.ai",
   targetDigest: `sha256:${"a".repeat(64)}`,
+  step: 0,
+  maxSteps: 1,
+  runTokens: 0,
+  stepTokenEstimate: 1227,
+  maxRunTokens: 500000,
+  toolCount: 0,
+  untrustedInput: false,
+  trigger: "chat",
 };
 
 describe("Aktionen", () => {
@@ -193,7 +201,16 @@ describe("Regeln", () => {
     expect(ACTIVE_STANDARD_RULES.map((rule) => rule.id)).toEqual([...STANDARD_RULE_IDS]);
     for (const rule of STANDARD_RULE_VERSIONS)
       expect(ruleDefinitionSchema.parse(rule)).toEqual(rule);
-    expect(Object.keys(LIMITS_BY_ID)).toEqual(["G-01", "G-02", "G-03", "G-04", "G-05"]);
+    expect(Object.keys(LIMITS_BY_ID)).toEqual([
+      "G-01",
+      "G-02",
+      "G-03",
+      "G-04",
+      "G-05",
+      "G-16",
+      "G-17",
+      "G-18",
+    ]);
   });
 
   it("Regel-IDs sind lesbar oder erzeugt", () => {

@@ -80,6 +80,15 @@ function decidedFor(baseUrl: string): Facts<"modell.anfragen"> {
     botMaxOutputTokens: 100,
     tokensToday: 0,
     killSwitch: false,
+    // Übergangswerte, bis ein Lauf mehrere Schritte macht.
+    step: 0,
+    maxSteps: 1,
+    runTokens: 0,
+    stepTokenEstimate: 0,
+    maxRunTokens: 500000,
+    toolCount: 0,
+    untrustedInput: false,
+    trigger: "chat",
     ...providerTargetFacts(providerId, baseUrl),
   };
 }

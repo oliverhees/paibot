@@ -13,7 +13,7 @@ import type { Facts } from "@paibot/shared/aktionen";
 import { ACTIVE_STANDARD_RULES } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import { denialCode, evaluate } from "./evaluate";
-import { BOT_ACTIONS, sampleAction, sampleFacts } from "./testdaten";
+import { DECIDED_BOT_ACTIONS as BOT_ACTIONS, sampleAction, sampleFacts } from "./testdaten";
 
 function umschalten(facts: Partial<Facts<"notaus.umschalten">>) {
   return evaluate(

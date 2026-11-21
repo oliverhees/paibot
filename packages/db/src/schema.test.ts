@@ -11,6 +11,7 @@
 import {
   ACTIVE_RUN_STATUSES,
   fingerprintSchema,
+  GATE_FORMAT,
   ID_PREFIX,
   type IdKind,
   newId,
@@ -133,10 +134,15 @@ describe("Beispiel-Werte passen zu den Verträgen", () => {
 
   it("Beleg-Körper aus den Beispiel-Zeilen sind gültige Belege", () => {
     expect(receiptBodyWriteSchema.safeParse(belegRow(keyId).body).success).toBe(true);
+    // Beispiel-Zeilen der Datenbank tragen keine Fassung; als Beleg dieser Fassung des Tors mit
+    // Fassungsangabe und Vorbedingungen.
+    const body = belegRow(keyId, { seq: 2, prevHash: sha256Digest(), type: "decision" })
+      .body as unknown as { decision: Record<string, unknown> };
     expect(
-      receiptBodyWriteSchema.safeParse(
-        belegRow(keyId, { seq: 2, prevHash: sha256Digest(), type: "decision" }).body,
-      ).success,
+      receiptBodyWriteSchema.safeParse({
+        ...body,
+        decision: { ...body.decision, gateFormat: GATE_FORMAT, preconditions: [] },
+      }).success,
     ).toBe(true);
   });
 

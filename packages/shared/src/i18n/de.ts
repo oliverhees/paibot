@@ -1668,4 +1668,44 @@ export const de = {
   "pruefung.nicht_pruefbar": "in sich stimmig, aber mit dieser Fassung nicht vollständig prüfbar",
   "belege.einzel.ergebnis_kette":
     "Ob dieses Ergebnis zu seiner Entscheidung und deren Fassung passt, zeigt die Prüfung der ganzen Kette.",
+
+  // Routing-Regeln mit zweitem Schlüssel: Vorgaben aus dem Konto, Kennzeichnung nur mit Beleg
+  "fehler.regel_unbekannt":
+    "Die gewählte Routing-Regel gibt es bei deinem Anbieter nicht mehr, oder sie ist ausgeschaltet.",
+  "fehler.regel_unbekannt.ausweg":
+    "Wähl unter „Modell und Anbieter“ in den Einstellungen eine Regel neu.",
+
+  // Tor-Fassung 2: Werkzeug-Verträge, neue Grenzen, Vorbedingungen und Deckel
+  "fehler.freigabe_noetig":
+    "Dafür bräuchte PaiBot deine Erlaubnis; das kann es in dieser Version noch nicht fragen.",
+  "fehler.werkzeug_unbekannt": "Dieses Werkzeug gibt es hier nicht.",
+  "fehler.werkzeug_eingabe_ungueltig": "Die Eingabe für das Werkzeug ist nicht gültig.",
+  "fehler.werkzeug_zeitgrenze": "Das Werkzeug hat nicht rechtzeitig geantwortet.",
+  "fehler.werkzeug_fehler": "Das Werkzeug hat einen Fehler gemeldet.",
+  "fehler.ausgang_unbekannt": "Ob der Werkzeug-Aufruf gewirkt hat, ist nicht bekannt.",
+  "fehler.schritte_aufgebraucht": "Die Antwort hat alle erlaubten Schritte gebraucht.",
+  "fehler.zu_viele_aufrufe": "Die Antwort hat alle erlaubten Werkzeug-Aufrufe gebraucht.",
+  "werkzeug.huelle.abgelehnt": "Nicht erlaubt: {titel}.",
+  "werkzeug.huelle.unbekannt": "Dieses Werkzeug gibt es nicht. Verfügbar: {namen}.",
+  "werkzeug.huelle.eingabe": "Eingabe ungültig: {feld} {art}",
+  "werkzeug.huelle.zeitgrenze": "Das Werkzeug hat nicht rechtzeitig geantwortet.",
+  "werkzeug.huelle.fehler": "Das Werkzeug hat einen Fehler gemeldet.",
+  "werkzeug.huelle.freigabe_noetig":
+    "Dafür bräuchte ich deine Erlaubnis; das kann ich in dieser Version noch nicht fragen.",
+  "tor.deckel.D-01":
+    "Gedeckelt: Pai hat in dieser Anfrage fremde Inhalte gelesen; Schreiben und Senden gehen nur mit deinem Okay.",
+  "regel.R-010": "Bot liest in der Doku seiner Version",
+  "regel.G-16": "Schritte je Lauf",
+  "regel.G-17": "Werkzeug-Aufrufe je Lauf",
+  "regel.G-18": "Token je Lauf",
+  "regeln.grenze.G-16": "Eine Antwort macht höchstens so viele Schritte wie erlaubt.",
+  "regeln.grenze.G-17": "Eine Antwort ruft höchstens so viele Werkzeuge auf wie erlaubt.",
+  "regeln.grenze.G-18": "Eine Antwort verbraucht zusammen höchstens so viele Token wie erlaubt.",
+  "regel.V-12": "Werkzeug angeboten",
+  "regel.V-13": "Eingabe des Werkzeugs gültig",
+  "regel.V-14": "Aufrufe je Schritt",
+  "regeln.vorbedingung.V-12": "Das Werkzeug gibt es, und es stand für diesen Schritt zur Wahl.",
+  "regeln.vorbedingung.V-13": "Die Eingabe passt zum Werkzeug.",
+  "regeln.vorbedingung.V-14": "Ein Schritt ruft höchstens so viele Werkzeuge auf wie erlaubt.",
+  "regel.D-01": "Nach fremden Inhalten fragen",
 } as const satisfies Record<string, string | readonly string[]>;

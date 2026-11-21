@@ -70,9 +70,10 @@ export interface ChainLink {
  * `Decision.matchedRules` wird zu `decision.rules`.
  *
  * Fassung: Eine Entscheidung muss `decision.gateFormat === GATE_FORMAT` tragen, sonst
- * `PaiBotError("eingabe_ungueltig")`. Solange `GATE_FORMAT` 1 ist, steht die Fassung nicht im
- * Beleg (fehlend heißt Fassung 1), damit ein Beleg genau so aussieht wie vor den Fassungen und
- * auch ältere PaiBot-Fassungen ihn lesen. Jede andere Fassung käme in `decision.gateFormat`.
+ * `PaiBotError("eingabe_ungueltig")`. Ab Fassung 2 steht die Fassung immer in
+ * `decision.gateFormat`, dazu die Vorbedingungen und bei Aktionen mit Deckel die Deckel (`caps`);
+ * kein Feld der Entscheidung fällt still weg. (In Fassung 1 fehlte die Angabe; fehlend heißt
+ * beim Lesen Fassung 1.)
  *
  * Schreiben wie Prüfen: Eine Entscheidung und ein Ergebnis müssen zusätzlich zur aktuellen,
  * eingefrorenen Fassung passen (`GATE_FORMATS[GATE_FORMAT]`, `decisionFormat` bzw.
@@ -115,14 +116,15 @@ function buildReceiptBody(draft: ReceiptDraft, link: ChainLink): ReceiptBody {
         type: "decision",
         action: draft.action,
         decision: {
-          // Fassung 1 steht nicht im Beleg; jede andere Angabe kommt hinein (und Fassung 1 weist
-          // das Schreib-Schema dann ab).
+          // Fassung 1 stand nicht im Beleg; ab Fassung 2 steht sie immer darin (Pflicht im
+          // Schreib-Schema).
           gateFormat: draft.decision.gateFormat === 1 ? undefined : draft.decision.gateFormat,
           outcome: draft.decision.outcome,
           stage: draft.decision.stage,
           rules: draft.decision.matchedRules,
           limits: draft.decision.limits,
           preconditions: draft.decision.preconditions,
+          caps: draft.decision.caps,
           ruleStand: draft.decision.ruleStand,
           reason: draft.decision.reason,
         },

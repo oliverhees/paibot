@@ -34,17 +34,15 @@ import {
 } from "./gate";
 import { isGatePermit } from "./permit";
 import { ruleSnapshot } from "./regel-hash";
-import { ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
+import { DECIDED_ACTIONS as ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
 
 /** Aktionen, die die Standard-Regeln mit den Beispiel-Fakten erlauben. */
 /**
- * Mit den gespeicherten Standard-Regeln erlaubt: alles außer dem Werkzeug-Aufruf (R-005 fragt) und
- * der Ausführung nach Freigabe (ihre Regeln R-007/R-008 kommen erst mit der nächsten Migration in die
- * Datenbank; Tests dazu in `freigabe.test.ts`).
+ * Mit den gespeicherten Standard-Regeln erlaubt: jede Aktion der aktuellen Fassung außer dem
+ * Werkzeug-Aufruf (R-005 fragt). Die Freigabe-Aktionen kennt die aktuelle Fassung nicht (Tests
+ * dazu in `freigabe.test.ts`).
  */
-const ALLOWED_BY_DEFAULT = ACTION_TYPES.filter(
-  (type) => type !== "werkzeug.aufrufen" && type !== "werkzeug.ausfuehren",
-);
+const ALLOWED_BY_DEFAULT = ACTION_TYPES.filter((type) => type !== "werkzeug.aufrufen");
 
 type Entry =
   | { kind: "decision"; record: DecisionRecord; ref: ReceiptRef }
@@ -285,7 +283,7 @@ describe("nicht erlaubte Aktion", () => {
       const rules: RuleDefinition[] = [
         {
           ...ACTIVE_STANDARD_RULES[0],
-          id: "R-010",
+          id: "R-110",
           source: "owner",
           priority: 1,
           effect: outcome === "deny" ? "deny" : outcome === "ask" ? "ask" : "allow",
@@ -911,7 +909,7 @@ describe("Fassung des Tors", () => {
     const { ports, log, entries } = memoryPorts();
     const action = sampleAction("nachricht.senden");
     await createGate(ports).run(action, sampleFacts("nachricht.senden"), okExecute(log));
-    expect(GATE_FORMAT).toBe(1);
+    expect(GATE_FORMAT).toBe(2);
     expect(dec(entries)?.decision.gateFormat).toBe(GATE_FORMAT);
   });
 

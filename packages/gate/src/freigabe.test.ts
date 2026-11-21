@@ -1,6 +1,8 @@
 /**
- * PaiBot – Tests für die Freigabe eines wartenden Werkzeug-Aufrufs: Antwort des Besitzers und
- * Ausführung als eigene Entscheidung des Tors, mit der Regel „einmal erlaubt“.
+ * PaiBot – Tests für die Freigabe eines Werkzeug-Aufrufs. Die aktuelle Fassung des Tors kennt
+ * keine Freigabe: Antwort des Besitzers und Ausführung danach sind dort ungültig und werden
+ * abgelehnt. Wie Fassung 1 (nur noch zum Nachrechnen älterer Belege) die Freigabe entschied, hält
+ * der zweite Teil fest: Antwort und Ausführung als eigene Entscheidung, Regel „einmal erlaubt“.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -13,12 +15,14 @@ import { type ActionRequest, botActor, type Facts } from "@paibot/shared/aktione
 import type { HmacDigest } from "@paibot/shared/grundtypen";
 import { type ActionId, type BotId, newId } from "@paibot/shared/ids";
 import { describe, expect, it } from "vitest";
+import { evaluate } from "./evaluate";
 import {
   ACTIVE_STANDARD_RULES,
   createGate,
   type DecisionRecord,
   denialCode,
   type Gate,
+  GateDenied,
   hashRule,
   isGateDenied,
   type ResultRecord,
@@ -26,6 +30,7 @@ import {
   UNSTORED_STANDARD_RULE_VERSIONS,
   verifyRuleSnapshot,
 } from "./index";
+import { sampleFacts } from "./testdaten";
 
 const RULES = [...ACTIVE_STANDARD_RULES, ...UNSTORED_STANDARD_RULE_VERSIONS];
 const DIGEST = `hmac-sha256:${"a7".repeat(32)}` as HmacDigest;
@@ -53,24 +58,67 @@ interface WaitingCall {
   };
 }
 
-function setup() {
+/**
+ * Ein Tor, das wie `gate.run` abläuft, aber mit Fassung 1 entscheidet (`evaluate` mit
+ * `format: 1`). Nur für Tests: So bleibt sichtbar, wie Fassung 1 die Freigabe entschied.
+ */
+function fassung1Gate(entries: Entry[], next: () => number, now: () => Date): Pick<Gate, "run"> {
+  return {
+    async run(action, facts, execute) {
+      const decision = evaluate(action, facts, await ruleSnapshot(RULES), { format: 1 });
+      entries.push({
+        kind: "decision",
+        record: structuredClone({
+          action,
+          facts,
+          decision: { ...decision, gateFormat: 1 },
+          time: now(),
+        }),
+      });
+      const decisionRef = { receiptId: newId("receipt"), seq: next() };
+      if (decision.outcome !== "allow") {
+        const result = { status: "denied" as const, code: denialCode(decision) };
+        entries.push({ kind: "result", record: { action, result, time: now() } });
+        const resultRef = { receiptId: newId("receipt"), seq: next() };
+        throw new GateDenied(
+          decision,
+          { decision: decisionRef, result: resultRef },
+          { actionId: action.actionId, type: action.type },
+        );
+      }
+      const executed = await execute(undefined as never);
+      entries.push({ kind: "result", record: { action, result: executed.result, time: now() } });
+      return {
+        value: executed.value,
+        decision,
+        receipts: { decision: decisionRef, result: { receiptId: newId("receipt"), seq: next() } },
+      };
+    },
+  };
+}
+
+function setup(format: 1 | 2 = 1) {
   const entries: Entry[] = [];
   let seq = 0;
   let tick = 0;
-  const gate: Gate = createGate({
-    rules: { load: () => ruleSnapshot(RULES) },
-    receipts: {
-      async appendDecision(record) {
-        entries.push({ kind: "decision", record: structuredClone(record) });
-        return { receiptId: newId("receipt"), seq: ++seq };
-      },
-      async appendResult(record) {
-        entries.push({ kind: "result", record: structuredClone(record) });
-        return { receiptId: newId("receipt"), seq: ++seq };
-      },
-    },
-    clock: { now: () => new Date(Date.UTC(2026, 10, 20, 10, 0, 0, ++tick)) },
-  });
+  const now = () => new Date(Date.UTC(2026, 10, 20, 10, 0, 0, ++tick));
+  const gate: Pick<Gate, "run"> =
+    format === 1
+      ? fassung1Gate(entries, () => ++seq, now)
+      : createGate({
+          rules: { load: () => ruleSnapshot(RULES) },
+          receipts: {
+            async appendDecision(record) {
+              entries.push({ kind: "decision", record: structuredClone(record) });
+              return { receiptId: newId("receipt"), seq: ++seq };
+            },
+            async appendResult(record) {
+              entries.push({ kind: "result", record: structuredClone(record) });
+              return { receiptId: newId("receipt"), seq: ++seq };
+            },
+          },
+          clock: { now },
+        });
   const botId = newId("bot") as BotId;
   const conversationId = newId("conversation");
   const runId = newId("run");
@@ -89,13 +137,17 @@ function setup() {
       actor: botActor(botId),
       target: { conversationId, runId, botId },
     };
-    const facts: Facts<"werkzeug.aufrufen"> = {
-      botOfConversation: true,
-      runRunning: true,
-      ...toolFacts,
-      argsDigest,
-      killSwitch: false,
-    };
+    // Fassung 1 kennt nur die Fakten von damals; die aktuelle Fassung verlangt alle.
+    const facts = (
+      format === 1
+        ? { botOfConversation: true, runRunning: true, ...toolFacts, argsDigest, killSwitch: false }
+        : {
+            ...sampleFacts("werkzeug.aufrufen"),
+            ...toolFacts,
+            toolKey: "eingebaut/notiz.schreiben",
+            argsDigest,
+          }
+    ) as Facts<"werkzeug.aufrufen">;
     const error = await gate
       .run(action, facts, async () => ({
         value: undefined,
@@ -204,7 +256,37 @@ function receiptsPerAction(entries: readonly Entry[]): Map<string, string[]> {
   return byAction;
 }
 
-describe("Freigabe und Ausführung eines wartenden Werkzeug-Aufrufs", () => {
+describe("aktuelle Fassung: keine Freigabe", () => {
+  it("fragt das Tor bei einem Werkzeug-Aufruf, gibt es keine Antwort und keine Ausführung danach", async () => {
+    const s = setup(2);
+    const call = await s.request();
+    const answered = await caught(s.answer(call));
+    expect(isGateDenied(answered)).toBe(true);
+    if (!isGateDenied(answered)) return;
+    // Die Aktion gibt es in der aktuellen Fassung nicht: Eingabe ungültig, abgelehnt.
+    expect(answered.outcome).toBe("deny");
+    expect(answered.decision).toMatchObject({ matchedRules: [], preconditions: [] });
+    expect(answered.code).toBe("abgelehnt");
+    expect(call.approval).toBeUndefined();
+
+    const executed = await caught(s.execute(call));
+    expect(isGateDenied(executed)).toBe(true);
+    if (!isGateDenied(executed)) return;
+    expect(executed.outcome).toBe("deny");
+    expect(executed.decision.matchedRules).toEqual([]);
+    expect(s.toolRuns()).toBe(0);
+
+    // Auch abgelehnte Aktionen haben je zwei Belege, alle mit der aktuellen Fassung.
+    const perAction = receiptsPerAction(s.entries);
+    expect(perAction.size).toBe(3);
+    for (const kinds of perAction.values()) expect(kinds).toEqual(["decision", "result"]);
+    for (const entry of s.entries) {
+      if (entry.kind === "decision") expect(entry.record.decision.gateFormat).toBe(2);
+    }
+  });
+});
+
+describe("Fassung 1: Freigabe und Ausführung eines wartenden Werkzeug-Aufrufs", () => {
   it("Ablauf: fragen → Freigabe erteilen → genau eine Ausführung, je Aktion zwei Belege", async () => {
     const s = setup();
     const call = await s.request();

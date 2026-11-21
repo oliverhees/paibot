@@ -20,6 +20,7 @@ import { CLI_EXIT, runCli } from "./cli";
 import { parseJsonl } from "./jsonl";
 import { reevaluate } from "./nachrechnen";
 import {
+  alsFassung1,
   FASSUNG_RULES,
   ketteNeuereFassung,
   ketteUnbekanntesFeld,
@@ -65,7 +66,7 @@ async function cli(text: string): Promise<{ exit: number; out: string[] }> {
 
 describe("Schreiben: nur die aktuelle Fassung", () => {
   it("buildReceipt weist eine Entscheidung ab, deren Fassung nicht GATE_FORMAT ist", () => {
-    for (const format of [undefined, 0, 2, 99]) {
+    for (const format of [undefined, 0, 1, 99]) {
       let caught: unknown;
       try {
         buildReceipt(draftWith(format), link());
@@ -76,11 +77,13 @@ describe("Schreiben: nur die aktuelle Fassung", () => {
     }
   });
 
-  it("Fassung 1 steht nicht im Beleg", () => {
+  it("Fassung 2 steht im Beleg, mit Vorbedingungen", () => {
     const body = buildReceipt(draftWith(GATE_FORMAT), link());
-    expect(GATE_FORMAT).toBe(1);
+    expect(GATE_FORMAT).toBe(2);
     expect(body.type).toBe("decision");
-    expect(Object.hasOwn((body as { decision: object }).decision, "gateFormat")).toBe(false);
+    const decision = (body as { decision: Record<string, unknown> }).decision;
+    expect(decision.gateFormat).toBe(2);
+    expect(Array.isArray(decision.preconditions)).toBe(true);
   });
 });
 
@@ -158,6 +161,7 @@ describe("Inhalt je Fassung", () => {
   it("gateFormat 1 ausdrücklich im Beleg ist Fassung 1 und in Ordnung", async () => {
     const kette = await TestKette.neu();
     const action = await kette.decision(sendAction(), (body) => {
+      alsFassung1(body);
       (body.decision as Record<string, unknown>).gateFormat = 1;
     });
     await kette.result(action);
@@ -182,7 +186,7 @@ describe("Inhalt je Fassung", () => {
 describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
   it("unbekanntes Feld zu Fassung 1: ungültig; zu Fassung 99: nicht prüfbar", async () => {
     const alt = await TestKette.neu();
-    const a = await alt.decision();
+    const a = await alt.decision(sendAction(), alsFassung1);
     await alt.result(a, { status: "ok" }, neueresErgebnis);
     const altReport = await verifyChain(alt.entries, { rules: FASSUNG_RULES });
     expect(altReport.verdict.level).toBe("ungueltig");
@@ -198,7 +202,7 @@ describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
 
   it("ein Ergebnis mit unbekanntem Code zu Fassung 1 ist ungültig", async () => {
     const kette = await TestKette.neu();
-    const action = await kette.decision();
+    const action = await kette.decision(sendAction(), alsFassung1);
     await kette.result(action, { status: "ok" }, (body) => {
       (body.result as Record<string, unknown>).code = "werkzeug_zeitlimit";
     });
@@ -208,13 +212,11 @@ describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
 });
 
 describe("Hinweis Rückschritt", () => {
-  it("Entscheidung ohne Feld nach einer mit gateFormat 1: Hinweis, Urteil unverändert", async () => {
+  it("Entscheidung ohne Feld (Fassung 1) nach einer mit gateFormat 2: Hinweis, Urteil unverändert", async () => {
     const kette = await TestKette.neu();
-    const a = await kette.decision(sendAction(), (body) => {
-      (body.decision as Record<string, unknown>).gateFormat = 1;
-    });
+    const a = await kette.decision();
     await kette.result(a);
-    const b = await kette.decision();
+    const b = await kette.decision(sendAction(), alsFassung1);
     await kette.result(b);
     const report = await verifyChain(kette.entries, { rules: FASSUNG_RULES });
     expect(report.verdict).toEqual({
@@ -230,10 +232,20 @@ describe("Hinweis Rückschritt", () => {
 
   it("ohne Feld in jeder Entscheidung: kein Hinweis", async () => {
     const kette = await TestKette.neu();
-    const a = await kette.decision();
+    const a = await kette.decision(sendAction(), alsFassung1);
     await kette.result(a);
     const report = await verifyChain(kette.entries, { rules: FASSUNG_RULES });
     expect(report.verdict.notes).toBeUndefined();
+  });
+
+  it("mit Feld in jeder Entscheidung: kein Hinweis", async () => {
+    const kette = await TestKette.neu();
+    for (let i = 0; i < 2; i++) {
+      const a = await kette.decision();
+      await kette.result(a);
+    }
+    const report = await verifyChain(kette.entries, { rules: FASSUNG_RULES });
+    expect(report.verdict).toEqual({ level: "vertrauenswuerdig", findings: [], anchor: "fehlt" });
   });
 });
 

@@ -187,6 +187,21 @@ function werkzeugFakten(call: ToolCall, werkzeug: Werkzeug): Facts<"werkzeug.auf
     toolKind: werkzeug.art ?? "schreiben",
     argsDigest: contextDigest(KONTEXT, `${TOOL_ARGS_DIGEST_PREFIX}${kanonisch(call.input)}`),
     killSwitch: false,
+    toolKey:
+      quelle.source === "mcp" ? `mcp/${quelle.server}/${call.name}` : `eingebaut/${call.name}`,
+    toolDigest: `sha256:${"0".repeat(64)}`,
+    toolReach: "intern",
+    toolForeign: false,
+    toolRegistered: true,
+    toolOffered: true,
+    inputValid: true,
+    untrustedInput: false,
+    step: 0,
+    callIndexInStep: 0,
+    maxCallsPerStep: 8,
+    callsInRun: 0,
+    maxCallsPerRun: 16,
+    trigger: "chat",
   };
 }
 
@@ -607,6 +622,20 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
       toolKind: "lesen",
       argsDigest: contextDigest(KONTEXT, `${TOOL_ARGS_DIGEST_PREFIX}{"ort":"Berlin"}`),
       killSwitch: false,
+      toolKey: "mcp/test-server/wetter",
+      toolDigest: `sha256:${"0".repeat(64)}`,
+      toolReach: "intern",
+      toolForeign: false,
+      toolRegistered: true,
+      toolOffered: true,
+      inputValid: true,
+      untrustedInput: false,
+      step: 0,
+      callIndexInStep: 0,
+      maxCallsPerStep: 8,
+      callsInRun: 0,
+      maxCallsPerRun: 16,
+      trigger: "chat",
     });
     const werkzeugBelege = s.zugang.receipts.entries.filter((entry) =>
       s.werkzeugAktionen.includes(entry.record.action.actionId),

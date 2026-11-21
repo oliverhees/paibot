@@ -13,6 +13,8 @@ import { z } from "zod";
 import { ACTIONS, type ActionRequest, actionRequestSchema } from "./actions";
 import { errorCodeSchema } from "./errors";
 import {
+  capCheckSchema,
+  GATE_FORMAT,
   limitCheckSchema,
   outcomeSchema,
   preconditionCheckSchema,
@@ -22,6 +24,7 @@ import {
   storedRuleRefSchema,
 } from "./gate";
 import {
+  countSchema,
   fingerprintSchema,
   hmacDigestSchema,
   isoTimeSchema,
@@ -70,14 +73,22 @@ const factsRecordSchema = z.record(
   z.union([scalarSchema, z.array(z.union([z.string().max(200), z.number().int()]))]),
 );
 
+/**
+ * Schreib-Form der Entscheidung, nur für die aktuelle Fassung des Tors (`GATE_FORMAT`). Ältere
+ * Belege (ohne Fassung, ohne Vorbedingungen) liest `receiptBodyReadSchema`.
+ */
 export const receiptDecisionSchema = z.strictObject({
+  /** Fassung des Tors, mit der entschieden wurde; ab Fassung 2 Pflicht. */
+  gateFormat: z.literal(GATE_FORMAT),
   outcome: outcomeSchema,
   stage: stageSchema,
   /** Angewandte Regeln mit Fassung und Prüfsumme des Inhalts. */
   rules: z.array(storedRuleRefSchema),
   limits: z.array(limitCheckSchema),
-  /** Vorbedingungen der Aktion; fehlt bei Belegen aus der Zeit vor den Vorbedingungen. */
-  preconditions: z.array(preconditionCheckSchema).optional(),
+  /** Vorbedingungen der Aktion; ab Fassung 2 Pflicht. */
+  preconditions: z.array(preconditionCheckSchema),
+  /** Deckel der Aktion; Pflicht genau bei Aktionen mit Deckel (prüft die Fassung je Aktion). */
+  caps: z.array(capCheckSchema).optional(),
   /** Stand des Regel-Protokolls, mit dem nachgerechnet wird (`rules.listActiveAsOf`). */
   ruleStand: ruleStandSchema.optional(),
   reason: z.string().min(1).max(500),
@@ -92,6 +103,12 @@ export const receiptResultSchema = z.strictObject({
   tokens: tokenUsageSchema.optional(),
   /** Wer laut Antwort der Schnittstelle geantwortet hat (nur `modell.anfragen`, wenn gemeldet). */
   servedBy: servedBySchema.optional(),
+  /** Modell laut Antwort der Schnittstelle, als Text. */
+  modelReported: z.string().max(200).optional(),
+  /** Stand der Doku, in der nachgeschlagen wurde (nur beim Nachschlagen in der Doku). */
+  docStand: z.string().max(80).optional(),
+  /** Zahl der Fundstellen (nur beim Nachschlagen in der Doku). */
+  found: countSchema.optional(),
 });
 export type ReceiptResult = z.infer<typeof receiptResultSchema>;
 
@@ -172,9 +189,9 @@ const resultBody = z.strictObject({
  * Schreib-Form eines Beleg-Körpers: streng, nur für die aktuelle Fassung des Tors (`GATE_FORMAT`).
  * Das einzige Schema, mit dem `buildReceipt` prüft. Er wird kanonisch serialisiert, gehasht und
  * signiert. Optionale Felder fehlen, statt `null` zu sein. Die Fakten eines Belegs „Entscheidung“
- * passen zur Aktion; bei einem Schlüsselwechsel passt `keyId` zu `facts.signedBy`. In Fassung 1
- * steht die Fassung nicht im Beleg (fehlend heißt Fassung 1); ein Feld `decision.gateFormat` wird
- * hier abgewiesen.
+ * passen zur Aktion; bei einem Schlüsselwechsel passt `keyId` zu `facts.signedBy`. Ab Fassung 2
+ * steht die Fassung immer im Beleg (`decision.gateFormat` gleich `GATE_FORMAT`), ebenso die
+ * Vorbedingungen.
  *
  * Zum Lesen nie dieses Schema nehmen, sondern `receiptBodyReadSchema`: Belege einer neueren
  * Fassung bestehen es nicht.

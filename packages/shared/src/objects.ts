@@ -56,6 +56,14 @@ export type MessageRole = z.infer<typeof messageRoleSchema>;
 
 export const MESSAGE_STATUSES = ["complete", "streaming", "cancelled", "failed"] as const;
 export const messageStatusSchema = z.enum(MESSAGE_STATUSES);
+
+/**
+ * Woher der Text einer Nachricht des Bots stammt: vom Modell oder als fester Text von PaiBot
+ * (z. B. eine Meldung der Steuerung). In dieser Fassung nur festgelegt, noch nicht gespeichert.
+ */
+export const MESSAGE_ORIGINS = ["modell", "fest"] as const;
+export const messageOriginSchema = z.enum(MESSAGE_ORIGINS);
+export type MessageOrigin = z.infer<typeof messageOriginSchema>;
 export type MessageStatus = z.infer<typeof messageStatusSchema>;
 
 /**
@@ -194,6 +202,8 @@ export const providerSchema = z.strictObject({
   name: z.string().min(1).max(100),
   baseUrl: z.url(),
   keySet: z.boolean(),
+  /** Nur wenn ein zweiter Schlüssel (nur zum Lesen der Routing-Regeln) hinterlegt ist; nie der Schlüssel. */
+  managementKeySet: z.boolean().optional(),
   region: regionSchema,
   /** Land als ISO-3166-Code, fehlt bei unbekanntem Land. */
   country: z
@@ -252,6 +262,16 @@ export type Session = z.infer<typeof sessionSchema>;
 /** Name eines Werkzeugs, wie ihn auch das Modell sieht. */
 export const TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 export const toolNameSchema = z.string().regex(TOOL_NAME_PATTERN);
+
+/**
+ * Kennung eines Werkzeugs in Regeln, Belegen und Oberfläche: Quelle/Name, z. B.
+ * `eingebaut/doku.nachschlagen`, mit höchstens einer weiteren Ebene (`mcp/<server>/<name>`).
+ * Steht hier statt in `werkzeug.ts`, weil die Fakten der Aktionen sie brauchen; `werkzeug.ts`
+ * gibt sie weiter.
+ */
+export const TOOL_KEY_PATTERN = /^[a-z][a-z0-9]*(\/[a-z0-9][a-z0-9_.-]{0,63}){1,2}$/;
+export const toolKeySchema = z.string().max(140).regex(TOOL_KEY_PATTERN);
+export type ToolKey = z.infer<typeof toolKeySchema>;
 
 /** Woher ein Werkzeug kommt: eingebaut in PaiBot oder von einem MCP-Server. */
 export const TOOL_SOURCES = ["eingebaut", "mcp"] as const;

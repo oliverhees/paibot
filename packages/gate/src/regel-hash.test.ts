@@ -19,7 +19,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { evaluate } from "./evaluate";
 import { hashRule, ruleSnapshot } from "./regel-hash";
-import { ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
+import { DECIDED_ACTIONS as ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
 
 async function sha256(text: string): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));

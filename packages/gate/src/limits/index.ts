@@ -1,5 +1,5 @@
 /**
- * PaiBot – Grenzen des Tors (G-01 bis G-05) als kleine, reine Funktionen.
+ * PaiBot – Grenzen des Tors (G-01 bis G-05, G-16 bis G-18) als kleine, reine Funktionen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -9,72 +9,83 @@
  */
 
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
-import type { LimitCheck, LimitName } from "@paibot/shared/tor";
-import {
-  limitAnbieterRegion as anbieterRegion1,
-  GATE_FORMAT_1,
-  limitLaenge as laenge1,
-  limitNotAus as notAus1,
-  limitSchleuseGefordert as schleuseGefordert1,
-  limitTagesbudget as tagesbudget1,
-} from "../fassungen/fassung-1";
+import { GATE_FORMAT, type GateLimitName, type LimitCheck } from "@paibot/shared/tor";
+import { currentGateFormat, gateFormatSpec } from "../fassungen/index";
 
 /**
  * Eine Grenze: rein, ohne I/O. Liefert immer genau einen `LimitCheck` mit ihrem Namen; für
  * Aktionen, die sie nicht betrifft, mit `result: "entfaellt"`.
  *
- * Die Grenzen hier sind die der aktuellen Fassung (`GATE_FORMAT`, heute Fassung 1; ein Test
- * prüft, dass beides zusammenpasst); die eingefrorenen Umsetzungen stehen in `../fassungen/`. Ob eine Aktion einen Fakt kennt (G-05),
- * richtet sich nach der Aktionsliste dieser Fassung, nicht nach den heutigen Verträgen.
+ * Die Grenzen hier sind die der aktuellen Fassung (`GATE_FORMAT`, `currentGateFormat()`); die
+ * eingefrorenen Umsetzungen stehen in `../fassungen/`. Ob eine Aktion einen Fakt kennt (G-05),
+ * richtet sich nach der Aktionsliste der Fassung, nicht nach den heutigen Verträgen.
  */
 export type LimitFn = (action: ActionRequest, facts: Facts) => LimitCheck;
 
-/** Reihenfolge der Grenzen in jeder Entscheidung: G-01 bis G-05. */
-export const LIMIT_ORDER: readonly LimitName[] = GATE_FORMAT_1.limitOrder;
+// Beim Laden nicht werfen: Kennt dieser Stand `GATE_FORMAT` nicht (nur in Tests mit verstellter
+// Fassung möglich), bleiben Liste und Funktionen leer, und `checkLimits` meldet den Fehler.
+const CURRENT = gateFormatSpec(GATE_FORMAT);
+
+/** Reihenfolge der Grenzen in jeder Entscheidung (die der aktuellen Fassung). */
+export const LIMIT_ORDER: readonly GateLimitName[] = CURRENT?.limitOrder ?? [];
+
+/** Alle Grenzen der aktuellen Fassung nach Namen. */
+export const LIMIT_FUNCTIONS = (CURRENT?.limits ?? {}) as Readonly<Record<GateLimitName, LimitFn>>;
 
 /**
  * G-01 `schleuse_gefordert`: betrifft `modell.anfragen`. Ist `requestedMode` `on`, muss `route`
  * `schleuse` sein und `schleuseReachable` gelten, sonst `verletzt` (kein Rückfall auf direkt).
  * Bei `off` `ok`. `value`: die Route.
  */
-export const limitSchleuseGefordert: LimitFn = schleuseGefordert1;
+export const limitSchleuseGefordert: LimitFn = LIMIT_FUNCTIONS.schleuse_gefordert;
 
 /**
  * G-02 `anbieter_region`: betrifft `modell.anfragen`. `providerEnabled` muss gelten und `region`
  * `eu` oder `local` sein; `non_eu` ist `verletzt`. `value`: die Region.
  */
-export const limitAnbieterRegion: LimitFn = anbieterRegion1;
+export const limitAnbieterRegion: LimitFn = LIMIT_FUNCTIONS.anbieter_region;
 
 /**
  * G-03 `laenge`: betrifft `nachricht.senden` und `modell.anfragen`. `inputChars` höchstens
  * `maxInputChars`; bei `modell.anfragen` zusätzlich `maxOutputTokens` höchstens
  * `botMaxOutputTokens`. `value`: `inputChars`.
  */
-export const limitLaenge: LimitFn = laenge1;
+export const limitLaenge: LimitFn = LIMIT_FUNCTIONS.laenge;
 
 /**
  * G-04 `tagesbudget`: betrifft `modell.anfragen`. Ohne `dailyTokenBudget` `entfaellt`; sonst muss
  * `tokensToday` kleiner als das Budget sein. `value`: `tokensToday`.
  */
-export const limitTagesbudget: LimitFn = tagesbudget1;
+export const limitTagesbudget: LimitFn = LIMIT_FUNCTIONS.tagesbudget;
 
 /**
  * G-05 `not_aus`: betrifft jede Aktion, deren Fakten laut Fassung `killSwitch` kennen
  * (`nachricht.senden`, `modell.anfragen`, `werkzeug.aufrufen`, …), und jede, die ihn trotzdem
  * mitbringt. Ist er gesetzt oder fehlt er, `verletzt`. `value`: der Schalter.
  */
-export const limitNotAus: LimitFn = notAus1;
+export const limitNotAus: LimitFn = LIMIT_FUNCTIONS.not_aus;
 
-/** Alle Grenzen nach Namen. */
-export const LIMIT_FUNCTIONS: Readonly<Record<LimitName, LimitFn>> = {
-  schleuse_gefordert: limitSchleuseGefordert,
-  anbieter_region: limitAnbieterRegion,
-  laenge: limitLaenge,
-  tagesbudget: limitTagesbudget,
-  not_aus: limitNotAus,
-};
+/**
+ * G-16 `lauf_schritte`: betrifft `modell.anfragen`. `step` kleiner als `maxSteps`; fehlt ein
+ * Fakt oder ist er keine Ganzzahl ab 0, `verletzt`. `value`: `step`.
+ */
+export const limitLaufSchritte: LimitFn = LIMIT_FUNCTIONS.lauf_schritte;
 
-/** Prüft alle Grenzen in der Reihenfolge `LIMIT_ORDER`; das Ergebnis hat immer fünf Einträge. */
+/**
+ * G-17 `lauf_aufrufe`: betrifft die Aktionen in `TOOL_GATE_ACTIONS`. `callsInRun` kleiner als
+ * `maxCallsPerRun`; fehlt ein Fakt oder ist er keine Ganzzahl ab 0, `verletzt`. `value`:
+ * `callsInRun`.
+ */
+export const limitLaufAufrufe: LimitFn = LIMIT_FUNCTIONS.lauf_aufrufe;
+
+/**
+ * G-18 `lauf_token`: betrifft `modell.anfragen`. `runTokens + stepTokenEstimate` höchstens
+ * `maxRunTokens`; fehlt ein Fakt oder ist er keine Ganzzahl ab 0, `verletzt`. `value`: die Summe
+ * (nur wenn beide Summanden Zahlen sind).
+ */
+export const limitLaufToken: LimitFn = LIMIT_FUNCTIONS.lauf_token;
+
+/** Prüft alle Grenzen in der Reihenfolge `LIMIT_ORDER` (je Grenze genau ein Eintrag). */
 export function checkLimits(action: ActionRequest, facts: Facts): LimitCheck[] {
-  return GATE_FORMAT_1.checkLimits(action, facts);
+  return currentGateFormat().checkLimits(action, facts);
 }

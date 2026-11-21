@@ -22,7 +22,7 @@ import { signedEntry, TEST_INSTALLATION, testKey } from "./testhilfen";
 import { verifyChain } from "./verify";
 
 // Ein geteiltes Schema ändert sich, die Fassung des Tors nicht: Region `ch` ist danach überall
-// in den lebenden Verträgen erlaubt, in der eingefrorenen Fassung 1 nicht.
+// in den lebenden Verträgen erlaubt, in der eingefrorenen aktuellen Fassung (2) nicht.
 vi.mock("@paibot/shared/objekte", async (importOriginal) => {
   const original = await importOriginal<typeof import("@paibot/shared/objekte")>();
   const { z } = await import("zod");
@@ -69,7 +69,7 @@ describe("Schreiben wie Prüfen", () => {
             preconditions: [],
             ruleStand: 1,
             reason: "Abgelehnt.",
-            gateFormat: 1,
+            gateFormat: 2,
           },
           facts,
         },

@@ -1,0 +1,167 @@
+/**
+ * PaiBot – Fassung 2 ist eine Obermenge von Fassung 1: Jeder feste Fall der Fassung 1
+ * (`fassung-1.korpus.json`) ergibt unter Fassung 2 dieselbe Entscheidung, wenn die neuen
+ * Pflicht-Fakten mit festen Füllwerten ergänzt werden. Neue Grenzen, Vorbedingungen und Deckel
+ * stehen dahinter. Einzige Ausnahme: Fälle der Aktionen `werkzeug.freigeben` und
+ * `werkzeug.ausfuehren`, die Fassung 2 nicht kennt (dort „Eingabe ungültig“).
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+import type { RuleDefinition } from "@paibot/shared/tor";
+import { describe, expect, it } from "vitest";
+import korpus from "./fassung-1.korpus.json";
+import { GATE_FORMAT_2 } from "./fassung-2";
+
+interface Pruefung {
+  name: string;
+  result: string;
+  value?: unknown;
+}
+
+interface Fall {
+  name: string;
+  action: { type?: string } | null;
+  facts: Record<string, unknown> | null;
+  rules: RuleDefinition[];
+  stand?: number;
+  expected: Record<string, unknown> & {
+    limits: Pruefung[];
+    preconditions: Pruefung[];
+    reason: string;
+  };
+}
+
+const KORPUS = korpus as unknown as { cases: Fall[] };
+const UNGUELTIG = "Das Tor hat die Aktion abgelehnt. Die Eingabe ist nicht gültig.";
+const AUSNAHMEN = ["werkzeug.freigeben", "werkzeug.ausfuehren"];
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+/** Füllwerte für die neuen Pflicht-Fakten (bei `modell.anfragen` die Übergangswerte). */
+function fuellen(type: string | undefined, facts: Record<string, unknown> | null): unknown {
+  if (facts === null) return facts;
+  if (type === "modell.anfragen") {
+    const input = facts.inputChars;
+    const output = facts.maxOutputTokens;
+    return {
+      ...facts,
+      step: 0,
+      maxSteps: 1,
+      runTokens: 0,
+      stepTokenEstimate: isCount(input) && isCount(output) ? Math.ceil(input / 4) + output : 0,
+      maxRunTokens: 500000,
+      toolCount: 0,
+      untrustedInput: false,
+      trigger: "chat",
+    };
+  }
+  if (type === "werkzeug.aufrufen") {
+    return {
+      ...facts,
+      toolKey: `eingebaut/${String(facts.toolName)}`,
+      toolDigest: `sha256:${"0".repeat(64)}`,
+      toolReach: "intern",
+      toolForeign: false,
+      toolRegistered: true,
+      toolOffered: true,
+      inputValid: true,
+      untrustedInput: false,
+      step: 0,
+      callIndexInStep: 0,
+      maxCallsPerStep: 8,
+      callsInRun: 0,
+      maxCallsPerRun: 16,
+      trigger: "chat",
+    };
+  }
+  return facts;
+}
+
+/** Erwartung unter Fassung 2: alte Einträge unverändert, Neues dahinter. */
+function erwartung(fall: Fall, facts: unknown): Record<string, unknown> {
+  const type = fall.action?.type;
+  const { reason: _reason, ...alt } = fall.expected;
+  const gueltig = fall.expected.reason !== UNGUELTIG;
+  const neu = (name: string, value?: unknown) =>
+    gueltig
+      ? { name, result: "ok", ...(value === undefined ? {} : { value }) }
+      : { name, result: "entfaellt" };
+  const f = facts as Record<string, unknown>;
+  const limits = [
+    ...fall.expected.limits,
+    type === "modell.anfragen"
+      ? neu("lauf_schritte", 0)
+      : { name: "lauf_schritte", result: "entfaellt" },
+    type === "werkzeug.aufrufen"
+      ? neu("lauf_aufrufe", 0)
+      : { name: "lauf_aufrufe", result: "entfaellt" },
+    type === "modell.anfragen"
+      ? neu("lauf_token", f.stepTokenEstimate)
+      : { name: "lauf_token", result: "entfaellt" },
+  ];
+  const out: Record<string, unknown> = { ...alt, limits };
+  if (type === "werkzeug.aufrufen") {
+    out.preconditions = [
+      ...fall.expected.preconditions,
+      ...["werkzeug_angeboten", "eingabe_gueltig", "aufrufe_je_schritt"].map((name) => ({
+        name,
+        result: gueltig ? "ok" : "entfaellt",
+      })),
+    ];
+    out.caps = [{ name: "fremd_dann_fragen", result: "entfaellt" }];
+  }
+  return out;
+}
+
+function rechne(fall: Fall, facts: unknown): Record<string, unknown> {
+  const action = fall.action as never;
+  const decision =
+    fall.stand === undefined
+      ? GATE_FORMAT_2.evaluate(action, facts, fall.rules)
+      : GATE_FORMAT_2.evaluate(action, facts, { stand: fall.stand, rules: fall.rules as never });
+  const { reason: _reason, ...rest } = decision as unknown as Record<string, unknown>;
+  return rest;
+}
+
+const AUSNAHME_FAELLE = KORPUS.cases.filter((fall) => AUSNAHMEN.includes(fall.action?.type ?? ""));
+const FAELLE = KORPUS.cases.filter((fall) => !AUSNAHMEN.includes(fall.action?.type ?? ""));
+
+describe("Obermenge: Korpus der Fassung 1 unter Fassung 2", () => {
+  it("Zahl der Fälle und der Ausnahmen", () => {
+    expect(KORPUS.cases).toHaveLength(128);
+    expect(FAELLE).toHaveLength(123);
+    expect(AUSNAHME_FAELLE.map((fall) => fall.name).sort()).toEqual([
+      "aktion werkzeug.ausfuehren",
+      "aktion werkzeug.freigeben",
+      "vorbedingung V-05 verletzt werkzeug.ausfuehren",
+      "vorbedingung V-08 verletzt werkzeug.freigeben",
+      "vorbedingung V-09 verletzt werkzeug.freigeben",
+    ]);
+  });
+
+  for (const fall of FAELLE) {
+    it(fall.name, () => {
+      const facts = fuellen(fall.action?.type, fall.facts);
+      expect(rechne(fall, facts)).toStrictEqual(erwartung(fall, facts));
+    });
+  }
+
+  for (const fall of AUSNAHME_FAELLE) {
+    it(`Ausnahme: ${fall.name} ist in Fassung 2 ungültig`, () => {
+      expect(rechne(fall, fall.facts)).toStrictEqual({
+        outcome: "deny",
+        stage: "ask",
+        matchedRules: [],
+        limits: GATE_FORMAT_2.limitOrder.map((name) => ({ name, result: "entfaellt" })),
+        preconditions: [],
+      });
+    });
+  }
+});

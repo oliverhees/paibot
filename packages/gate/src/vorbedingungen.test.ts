@@ -21,7 +21,12 @@ import {
 } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import { checkPreconditions, denialCode, evaluate } from "./evaluate";
-import { ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
+import {
+  DECIDED_ACTIONS as ACTION_TYPES,
+  ACTION_TYPES as ALL_ACTION_TYPES,
+  sampleAction,
+  sampleFacts,
+} from "./testdaten";
 
 type Definition = {
   name: string;
@@ -54,7 +59,12 @@ function resultOf(type: ActionType, facts: Record<string, unknown>, name: string
  * Ein Wert, der die Bedingung sicher nicht erfüllt. Vorbedingungen vergleichen Schalter oder zwei
  * Fakten miteinander (dann ein anderer Abdruck als der im Vergleichs-Fakt).
  */
-function violating(condition: RuleCondition): unknown {
+function violating(condition: RuleCondition, facts: Record<string, unknown>): unknown {
+  if (condition.op === "lt") {
+    // Vergleich mit einem anderen Fakt (V-14): gleich groß ist schon verletzt.
+    expect(typeof condition.value === "object" && condition.value !== null).toBe(true);
+    return facts[(condition.value as { fact: string }).fact];
+  }
   expect(condition.op).toBe("eq");
   if (typeof condition.value === "object" && condition.value !== null) {
     expect(Object.keys(condition.value)).toEqual(["fact"]);
@@ -70,16 +80,32 @@ function reasonFor(ids: readonly PreconditionId[]): string {
   });
 }
 
-/** Je Vorbedingung und Aktion: erfüllt, verletzt, Fakt fehlt. */
+/** Je Vorbedingung und Aktion der aktuellen Fassung: erfüllt, verletzt, Fakt fehlt. */
 const CASES = PRECONDITION_IDS.flatMap((id) =>
-  definition(id).actions.map((type) => [id, type] as const),
+  definition(id)
+    .actions.filter((type) => ACTION_TYPES.includes(type))
+    .map((type) => [id, type] as const),
 );
 
 describe("jede Vorbedingung × erfüllt / verletzt / Fakt fehlt", () => {
   it("jede Vorbedingung gilt für mindestens eine Aktion der Verträge", () => {
     for (const id of PRECONDITION_IDS) {
       expect(definition(id).actions.length, id).toBeGreaterThan(0);
-      for (const type of definition(id).actions) expect(ACTION_TYPES).toContain(type);
+      for (const type of definition(id).actions) expect(ALL_ACTION_TYPES).toContain(type);
+    }
+  });
+
+  it("V-08 und V-09 gelten nur für werkzeug.freigeben; die aktuelle Fassung kennt die Aktion nicht", () => {
+    // Die Freigabe-Aktionen sind in der aktuellen Fassung ungültige Eingaben; ihre Vorbedingungen
+    // lassen sich deshalb nur in Fassung 1 verletzen (dort halten die festen Fälle sie fest).
+    const unreachable = PRECONDITION_IDS.filter(
+      (id) => !definition(id).actions.some((type) => ACTION_TYPES.includes(type)),
+    );
+    expect(unreachable).toEqual(["V-08", "V-09"]);
+    for (const type of ["werkzeug.freigeben", "werkzeug.ausfuehren"] as const) {
+      expect(ACTION_TYPES).not.toContain(type);
+      const decision = decide(type, sampleFacts(type) as Record<string, unknown>);
+      expect(decision).toMatchObject({ outcome: "deny", matchedRules: [], preconditions: [] });
     }
   });
 
@@ -95,7 +121,7 @@ describe("jede Vorbedingung × erfüllt / verletzt / Fakt fehlt", () => {
     for (const condition of definition(id).require) {
       const facts = {
         ...(sampleFacts(type) as Record<string, unknown>),
-        [condition.fact]: violating(condition),
+        [condition.fact]: violating(condition, sampleFacts(type) as Record<string, unknown>),
       };
       const decision = decide(type, facts);
       expect(decision.outcome).toBe("deny");
