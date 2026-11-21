@@ -148,7 +148,7 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 | Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                | ✅ fertig und getestet |
 | Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                | ✅ fertig und getestet |
 | [Einrichtung und Anmeldung](docs/funktion-einrichtung-und-zugang.md) mit Schutz vor zu vielen Versuchen | ✅ fertig und getestet |
-| [Chat](docs/funktion-chat.md) mit deinem Bot: Antwort Stück für Stück, Stopp, Beleg zu jeder Antwort    | ✅ fertig und getestet |
+| [Chat](docs/funktion-chat.md): Antwort live, Stopp, neu erzeugen, Suche, als Datei sichern, Belege      | ✅ fertig und getestet |
 | Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                           | ✅ fertig und getestet |
 | [Belege](docs/funktion-belege.md): Protokoll mit Prüfer im Browser und mit `pnpm belege:pruefen`        | ✅ fertig und getestet |
 | [Modell und Anbieter](docs/funktion-anbieter-und-modelle.md) mit Ausgangs-Liste                         | ✅ fertig und getestet |

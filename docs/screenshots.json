@@ -1913,6 +1913,196 @@
       "beschreibung": "Schlüssel entfernen: Rückfrage"
     },
     {
+      "name": "chat-suche",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": {
+            "rolle": "searchbox",
+            "name": "Unterhaltungen durchsuchen"
+          },
+          "text": "Donnerstag"
+        },
+        {
+          "warteAufText": "Nachrichten"
+        },
+        {
+          "warteAuf": "mark"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
+      "beschreibung": "Chat: Suche in der Seitenleiste, Treffer in Nachrichten mit markiertem Suchwort"
+    },
+    {
+      "name": "chat-suche-handy",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "tippe": {
+            "rolle": "searchbox",
+            "name": "Unterhaltungen durchsuchen"
+          },
+          "text": "Max"
+        },
+        {
+          "warteAufText": "Titel"
+        },
+        {
+          "warteAuf": "mark"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
+      "beschreibung": "Chat auf dem Handy: Suche im Menü mit Treffern in Titel und Nachrichten"
+    },
+    {
+      "name": "chat-suche-leer",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": {
+            "rolle": "searchbox",
+            "name": "Unterhaltungen durchsuchen"
+          },
+          "text": "Urlaubsplanung"
+        },
+        {
+          "warteAufText": "Nichts gefunden"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
+      "beschreibung": "Chat: Suche ohne Treffer mit Hinweis"
+    },
+    {
+      "name": "chat-sichern",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Weitere Aktionen"
+          }
+        },
+        {
+          "klick": {
+            "text": "Als Datei sichern",
+            "genau": false
+          }
+        },
+        {
+          "warteAuf": "[role='dialog']"
+        },
+        {
+          "warteAufText": "persönliche Inhalte"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Dialog „Unterhaltung als Datei sichern“ mit Hinweis auf persönliche Inhalte"
+    },
+    {
+      "name": "chat-neu-erzeugt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "anbieter": {
+            "reply": "Hallo Max,\n\nDonnerstag passt mir. Ich freue mich auf unser Gespräch und bringe die Unterlagen mit.\n\nBis dann"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Neu erzeugen"
+          }
+        },
+        {
+          "warteAufText": "Fassung 2 von 2"
+        },
+        {
+          "warteAufText": "bringe die Unterlagen mit"
+        },
+        {
+          "warteAuf": "button[aria-label^='Beleg prüfen']"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: Antwort neu erzeugt, „Fassung 2 von 2“ unter der Antwort"
+    },
+    {
+      "name": "chat-fassung-frueher",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Antwort an Max Mustermann"
+          }
+        },
+        {
+          "warteAufText": "Fassung 2 von 2"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Vorige Fassung"
+          }
+        },
+        {
+          "warteAufText": "Frühere Fassung 1 von 2"
+        },
+        {
+          "warteAufText": "Viele Grüße"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: zur früheren Fassung geblättert, „Ersetzt durch eine neuere Fassung.“"
+    },
+    {
       "name": "modelle-entfernt",
       "pfad": "/modelle",
       "zustand": "mit-beispieldaten",
