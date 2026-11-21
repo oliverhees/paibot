@@ -14,32 +14,33 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ## Inhalt
 
-| Bereich                | Datei                                                                    | Stand                               |
-| ---------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
-| Installation           | [installation.md](installation.md)                                       | vorhanden                           |
-| Server mit Coolify     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                           |
-| Aktualisieren          | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                           |
-| Sicherung              | [sicherung.md](sicherung.md)                                             | vorhanden, Befehle ohne Oberfläche  |
-| Einrichtung und Zugang | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern              |
-| Chat                   | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern              |
-| Bot                    | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern              |
-| Anbieter und Modelle   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern              |
-| Datenschleuse          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar |
-| Belege                 | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern              |
-| Das Tor und die Regeln | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern              |
-| Einstellungen und Info | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern              |
-| Selbsttest             | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern              |
-| Architektur            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit               |
-| Hintergrund-Läufe      | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)    |
-| Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit               |
-| Entwickeln und Testen  | [entwickeln.md](entwickeln.md)                                           | vorhanden                           |
-| Entwickler-Doku        | [entwickler/README.md](entwickler/README.md)                             | vorhanden, je Funktion eine Seite   |
-| Lizenzen der Pakete    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                           |
-| Beitragsvereinbarung   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                           |
-| Vorlage für Funktion   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                           |
-| Bots im Team           | folgt mit der Funktion                                                   | geplant                             |
-| Apps per MCP           | folgt mit der Funktion                                                   | geplant                             |
-| Browser-Dienst         | folgt mit der Funktion                                                   | geplant                             |
+| Bereich                | Datei                                                                    | Stand                                  |
+| ---------------------- | ------------------------------------------------------------------------ | -------------------------------------- |
+| Installation           | [installation.md](installation.md)                                       | vorhanden                              |
+| Server mit Coolify     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                              |
+| Aktualisieren          | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                              |
+| Sicherung              | [sicherung.md](sicherung.md)                                             | vorhanden, Befehle ohne Oberfläche     |
+| Einrichtung und Zugang | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern                 |
+| Chat                   | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern                 |
+| Bot                    | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern                 |
+| Anbieter und Modelle   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern                 |
+| Datenschleuse          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar    |
+| Belege                 | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern                 |
+| Das Tor und die Regeln | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern                 |
+| Einstellungen und Info | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern                 |
+| Selbsttest             | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern                 |
+| Architektur            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit                  |
+| Hintergrund-Läufe      | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)       |
+| Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit                  |
+| Entwickeln und Testen  | [entwickeln.md](entwickeln.md)                                           | vorhanden                              |
+| Entwickler-Doku        | [entwickler/README.md](entwickler/README.md)                             | vorhanden, je Funktion eine Seite      |
+| Doku-Index im Image    | [entwickler/doku-index.md](entwickler/doku-index.md)                     | vorhanden (Grundlage, ohne Oberfläche) |
+| Lizenzen der Pakete    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                              |
+| Beitragsvereinbarung   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                              |
+| Vorlage für Funktion   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                              |
+| Bots im Team           | folgt mit der Funktion                                                   | geplant                                |
+| Apps per MCP           | folgt mit der Funktion                                                   | geplant                                |
+| Browser-Dienst         | folgt mit der Funktion                                                   | geplant                                |
 
 „Mit Bildern“ heißt: Die Seite hat zu jedem Schritt in der Oberfläche ein Bild aus der laufenden App, aufgenommen per Skript mit Beispiel-Daten.
 
@@ -132,7 +133,7 @@ Schritte in `vorher` (je Schritt genau eine Aktion):
 
 Ziele als Objekt: genau eines von `css`, `beschriftung`, `rolle` (mit `name`) oder `text`, dazu `"genau": false` für Teil-Treffer und `"nr": 0` für den ersten von mehreren Treffern. Für `text` gibt es Sonderwerte, damit nie ein Geheimnis in der Liste steht: `$einrichtungs-code` (Code aus dem Log), `$passwort` (Wegwerf-Passwort des Laufs), `$anbieter-schluessel` (Schlüssel des Test-Anbieters).
 
-Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob es zu jeder Funktionsseite die Entwickler-Seite `entwickler/<name>.md` mit den Abschnitten aus [entwickler/VORLAGE.md](entwickler/VORLAGE.md) gibt, ob jeder Datei-Verweis in den Entwickler-Seiten auf eine vorhandene Datei zeigt, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
+Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob es zu jeder Funktionsseite die Entwickler-Seite `entwickler/<name>.md` mit den Abschnitten aus [entwickler/VORLAGE.md](entwickler/VORLAGE.md) gibt, ob jeder Datei-Verweis in den Entwickler-Seiten auf eine vorhandene Datei zeigt, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Es lehnt außerdem ab: HTML-Kommentare außer dem Urheber-Kopf ganz am Anfang einer Seite, unsichtbare und Bidi-Zeichen, Seiten unter `docs/`, die in keiner der beiden Listen in `scripts/doku-umfang.mjs` stehen („in den Index“ für die Anwender-Doku, „nicht in den Index“ mit Grund), und in den Seiten der ersten Liste typische Formulierungen eingeschleuster Anweisungen (nur eine Stichprobe, kein Schutz). Jede neue Seite unter `docs/` gehört deshalb in eine der beiden Listen. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
 
 ## Neue Doku-Seite anlegen
 

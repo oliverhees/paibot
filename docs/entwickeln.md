@@ -26,6 +26,8 @@ pnpm dev            # Web-App starten
 pnpm lint && pnpm headers:check && pnpm typecheck && pnpm test && pnpm build
 ```
 
+Den Text-Index der Doku, der ins Image kommt, baut `pnpm doku:index` (Datei `doku-index.json` im Ordner `doku-index`, nicht im Repo); beim Bau des Images läuft das von selbst ([Doku-Index](entwickler/doku-index.md)).
+
 Mit `pnpm dev` (nicht Produktion) migriert die Web-App die Datenbank aus `DATABASE_URL` beim Start selbst. In Produktion und im Docker-Stack tut sie das nie: Dort richtet zuerst der Einmal-Dienst `migrate` Migrationen und App-Rolle ein, danach starten `web` und `worker` nur mit der App-Rolle. Wer den Produktions-Build lokal startet, führt deshalb vorher denselben Schritt aus (`PAIBOT_ROLE=migrate` mit `DATABASE_URL` der App-Rolle und `DATABASE_MIGRATION_URL`).
 
 Voraussetzungen: Node.js 22 und pnpm 10 (siehe [CONTRIBUTING.md](../CONTRIBUTING.md)).
