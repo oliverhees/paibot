@@ -68,8 +68,8 @@
     {
       "idx": 9,
       "version": "7",
-      "when": 1795251698198,
-      "tag": "0011_chat_ergaenzungen",
+      "when": 1795249737262,
+      "tag": "0009_hinweis_neue_geraete",
       "breakpoints": true
     }
   ]
