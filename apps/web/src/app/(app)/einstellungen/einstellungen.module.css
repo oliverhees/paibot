@@ -1,0 +1,356 @@
+/**
+ * PaiBot – Gestaltung der Einstellungen und der Info.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.rahmen {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rahmen > h1 {
+  margin: 0;
+}
+
+.inhalt {
+  flex: 1;
+  padding: 24px 28px 48px;
+}
+
+.spalte {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.stapel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.vorspann {
+  margin: 0;
+  color: var(--ink-soft);
+  max-width: 66ch;
+  font-size: var(--schrift-b);
+}
+
+.abschnitt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.abschnittKopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.abschnittKopf h2 {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 600;
+}
+
+.kachel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.kachel h2,
+.kachel h3 {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 600;
+}
+
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.klein {
+  font-size: var(--schrift-s);
+}
+
+.felder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 16px;
+}
+
+.knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.pruefliste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pruefliste li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.pruefliste li[data-ok] {
+  color: var(--ink);
+}
+
+.hinweis {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  font-size: var(--schrift-m);
+}
+
+.hinweis > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-soft);
+}
+
+.hinweisWarn {
+  background: var(--warn-soft);
+}
+
+.hinweisWarn > svg {
+  color: var(--warn);
+}
+
+.hinweisOk > svg {
+  color: var(--ok);
+}
+
+.meldung {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--schrift-m);
+}
+
+.meldung a,
+.textLink {
+  color: var(--accent-text);
+  font-weight: 550;
+}
+
+.meldung a:focus-visible,
+.textLink:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+  border-radius: var(--radius-xs);
+}
+
+.fehlerText {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--schrift-m);
+}
+
+.sitzungen {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sitzung {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.sitzung:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.sitzungText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sitzungGeraet {
+  font-weight: 550;
+  font-size: var(--schrift-m);
+  overflow-wrap: anywhere;
+}
+
+.sitzungZeit {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.verbrauch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Breite über ein `value` der nativen Fortschrittsanzeige statt eines style-Attributs. */
+.fortschritt {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.fortschritt::-webkit-progress-bar {
+  background: var(--surface-raised);
+  border-radius: var(--radius-pill);
+}
+
+.fortschritt::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+.fortschritt::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+.fortschritt[data-erreicht]::-webkit-progress-value {
+  background: var(--danger);
+}
+
+.fortschritt[data-erreicht]::-moz-progress-bar {
+  background: var(--danger);
+}
+
+/* Info */
+
+.marke {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.markeWort {
+  font-size: 28px;
+}
+
+.infoZeilen {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px 16px;
+  margin: 0;
+  font-size: var(--schrift-m);
+}
+
+.infoZeilen dt {
+  color: var(--ink-soft);
+}
+
+.infoZeilen dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.absatz {
+  margin: 0;
+  font-size: var(--schrift-m);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.links a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--schrift-m);
+  font-weight: 500;
+}
+
+.links a:hover {
+  background: var(--line-mid);
+}
+
+.links a:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.links a svg {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 719px) {
+  .inhalt {
+    padding: 18px 16px 40px;
+  }
+
+  .infoZeilen {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .infoZeilen dd + dt {
+    margin-top: 10px;
+  }
+}

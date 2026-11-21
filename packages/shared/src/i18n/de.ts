@@ -504,7 +504,6 @@ export const de = {
   "einstellungen.grenzen.laeuft": "Wird gespeichert …",
   "einstellungen.grenzen.gespeichert": "Gespeichert.",
   "einstellungen.grenzen.beleg": "Beleg Nr. {nummer} ansehen",
-  "info.marke": "PaiBot",
   "info.lizenz": "Lizenz",
   "info.lizenz.name": "PaiBot Fair-Code-Lizenz 1.1, für eine Person",
   "info.lizenz.person": "PaiBot ist für eine Person gedacht: privat und für deine eigene Arbeit.",
