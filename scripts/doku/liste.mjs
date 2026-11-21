@@ -45,7 +45,7 @@ function pruefeZiel(wo, ziel, standard) {
   }
   const arten = Object.keys(ziel).filter((k) => ZIEL_ARTEN.includes(k));
   const unbekannt = Object.keys(ziel).filter(
-    (k) => !ZIEL_ARTEN.includes(k) && k !== "name" && k !== "genau",
+    (k) => !ZIEL_ARTEN.includes(k) && k !== "name" && k !== "genau" && k !== "nr",
   );
   if (arten.length !== 1 || unbekannt.length > 0 || !istText(ziel[arten[0]])) {
     fehler(`${wo}: Ziel braucht genau eines von ${ZIEL_ARTEN.join(", ")} (Text).`);
@@ -55,6 +55,9 @@ function pruefeZiel(wo, ziel, standard) {
   }
   if (ziel.genau !== undefined && typeof ziel.genau !== "boolean") {
     fehler(`${wo}: „genau“ ist true oder false.`);
+  }
+  if (ziel.nr !== undefined && (!Number.isInteger(ziel.nr) || ziel.nr < 0)) {
+    fehler(`${wo}: „nr“ ist die Stelle unter mehreren Treffern, ab 0.`);
   }
   return { ...ziel, genau: ziel.genau ?? true };
 }
@@ -83,6 +86,14 @@ function pruefeAnbieter(wo, wert) {
     if (art === "text" && typeof v !== "string") fehler(`${wo}: „anbieter.${feld}“ ist ein Text.`);
     if (art === "zahl" && (!Number.isInteger(v) || v < 0 || v > 600_000)) {
       fehler(`${wo}: „anbieter.${feld}“ ist eine ganze Zahl von 0 bis 600000.`);
+    }
+    if (
+      art === "modelle" &&
+      (!Array.isArray(v) ||
+        v.length === 0 ||
+        !v.every((m) => m && istText(m.id) && istText(m.name)))
+    ) {
+      fehler(`${wo}: „anbieter.${feld}“ ist eine Liste von Modellen mit „id“ und „name“.`);
     }
   }
   return { ...wert };

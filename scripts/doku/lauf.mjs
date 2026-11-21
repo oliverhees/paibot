@@ -90,6 +90,7 @@ export const ANBIETER_STANDARD = Object.freeze({
   chunkChars: 400,
   firstChunkDelayMs: 0,
   chunkDelayMs: 0,
+  holdAfterChunks: 0,
 });
 
 /** Felder, die ein Schritt „anbieter“ am Test-Anbieter setzen darf. */
@@ -98,6 +99,8 @@ export const ANBIETER_FELDER = Object.freeze({
   chunkChars: "zahl",
   firstChunkDelayMs: "zahl",
   chunkDelayMs: "zahl",
+  holdAfterChunks: "zahl",
+  models: "modelle",
 });
 
 /** Sonderwerte für `tippe`: Platzhalter statt Geheimnis in docs/screenshots.json. */

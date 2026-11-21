@@ -36,7 +36,7 @@ import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { legeDatenbankAn, loescheDatenbank, starteEigenenServer } from "./datenbank.mjs";
 import {
   ANBIETER_STANDARD,
@@ -58,6 +58,14 @@ const STANDALONE = path.join(WEB, ".next", "standalone");
 const WORKER = path.join(ROOT, "apps", "worker", "dist", "worker.mjs");
 const ANBIETER = path.join(ROOT, "tools", "fake-provider", "dist", "fake-provider.mjs");
 const MIGRATIONEN = path.join(ROOT, "packages", "db", "drizzle");
+const UHR = path.join(ROOT, "scripts", "doku", "beispiel-uhr.mjs");
+
+/**
+ * Beispiel-Uhr für Web-App und Worker (scripts/doku/beispiel-uhr.mjs): Sie beginnt eine Minute vor
+ * der festen Uhrzeit des Browsers im Aufnahme-Skript und läuft tausendmal langsamer als die echte.
+ */
+const UHR_START = "2026-11-20T14:31:00+01:00";
+const UHR_FAKTOR = 1000;
 
 const args = process.argv.slice(2);
 const trenner = args.indexOf("--");
@@ -463,6 +471,8 @@ async function main() {
   const url = `http://127.0.0.1:${webPort}`;
   const geheimnis = randomBytes(32).toString("base64");
   const gemeinsam = {
+    NODE_OPTIONS: `--import=${pathToFileURL(UHR).href}`,
+    PAIBOT_DOKU_UHR: `${UHR_START}|${Date.now()}|${UHR_FAKTOR}`,
     NODE_ENV: "production",
     PAIBOT_SECRET: geheimnis,
     DATABASE_URL: db.app,

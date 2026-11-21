@@ -54,7 +54,9 @@
 //   ausschnitt  CSS-Selector; dann wird nur dieses Element aufgenommen (optional)
 //   datenschleuse  "aus" (Standard bei „zustand“), "bereit", "schluessel_falsch", "nicht_erreichbar":
 //               Zustand der Beispiel-Datenschleuse; `pnpm doku:app` startet den Worker dafür neu
-//   verdecke    Liste von CSS-Selectoren, die im Bild grau verdeckt werden (Uhrzeit, Prüfsummen)
+//   verdecke    Liste von Selectoren (CSS oder Playwright, z. B. dd:has-text("blg_")), deren
+//               Stellen im Bild mit der Farbe ihrer Umgebung gefüllt werden (Uhrzeit der Datenbank,
+//               Kennungen, Prüfsummen)
 //   thema       "dunkel" (Standard) oder "hell"
 //   beschreibung  Notiz für Menschen, wird nicht ausgewertet (optional)
 // Oben in der Datei: "ablaeufe": { "<name>": [Schritte] } für wiederkehrende Folgen.
@@ -71,9 +73,10 @@
 // Playwright gehört bewusst nicht zu den Abhängigkeiten des Projekts, damit `pnpm install`
 // für alle schlank bleibt. Es wird erst hier geladen und nur gebraucht, wer Screenshots aufnimmt.
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -85,6 +88,7 @@ import {
   setzeSonderwert,
 } from "./doku/lauf.mjs";
 import { ListenFehler, ordneAufnahmen, pruefeListe } from "./doku/liste.mjs";
+import { lesePng, schreibePng, verdecke as verdeckeFlaechen } from "./doku/png.mjs";
 import { istEingerichtet, stelleHer, steuereAnbieter } from "./doku-beispieldaten.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -95,9 +99,6 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 /** Feste Uhrzeit für alle Aufnahmen, damit angezeigte Zeiten sich nicht ändern. */
 const UHRZEIT = "2026-11-20T14:32:00+01:00";
-
-/** Farbe verdeckter Stellen (Feld „verdecke“): ruhiges Grau, im dunklen wie im hellen Design erkennbar. */
-const VERDECK_FARBE = "#5b6170";
 
 function fail(message) {
   console.error(message);
@@ -278,6 +279,11 @@ async function waitUntilSettled(page) {
 
 /** Playwright-Locator zu einem geprüften Ziel. */
 function locate(page, ziel) {
+  const treffer = finde(page, ziel);
+  return ziel.nr === undefined ? treffer : treffer.nth(ziel.nr);
+}
+
+function finde(page, ziel) {
   const exact = ziel.genau !== false;
   if (ziel.css) return page.locator(ziel.css);
   if (ziel.beschriftung) return page.getByLabel(ziel.beschriftung, { exact });
@@ -360,8 +366,9 @@ async function shoot(browser, entry, baseUrl) {
   });
   // „Anker kopieren“ und ähnliche Knöpfe schreiben in die Zwischenablage
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseUrl });
+  let page;
   try {
-    const page = await context.newPage();
+    page = await context.newPage();
     const problems = watch(context, page, baseUrl);
     // Meldungen der Content-Security-Policy kommen als Ereignis in der Seite; das Skript dafür
     // läuft über das Werkzeug des Browsers, nicht als Teil der Seite.
@@ -404,20 +411,48 @@ async function shoot(browser, entry, baseUrl) {
     if (!checks.inter) problems.push("Die Schrift „Inter“ ist nicht geladen.");
     if (problems.length > 0) throw new Error(problems.join(" | "));
     const file = path.join(OUT_DIR, `${entry.name}.png`);
-    const options = {
-      path: file,
-      animations: "disabled",
-      caret: "hide",
-      // Stellen mit echter Uhrzeit des Servers oder Zufall (Prüfsummen, Signaturen) werden
-      // verdeckt, damit ein zweiter Lauf dasselbe Bild liefert.
-      ...(entry.verdecke.length > 0
-        ? { mask: entry.verdecke.map((css) => page.locator(css)), maskColor: VERDECK_FARBE }
-        : {}),
-    };
-    if (entry.ausschnitt) await page.locator(entry.ausschnitt).screenshot(options);
-    else await page.screenshot(options);
+    const options = { animations: "disabled", caret: "hide" };
+    // Stellen mit echter Uhrzeit der Datenbank oder Zufall (Kennungen, Prüfsummen, Signaturen)
+    // werden im fertigen Bild mit der Farbe ihrer Umgebung gefüllt (scripts/doku/png.mjs), damit
+    // ein zweiter Lauf dasselbe Bild liefert. Die Seite selbst bleibt unberührt.
+    const ursprung = entry.ausschnitt
+      ? await page.locator(entry.ausschnitt).boundingBox()
+      : { x: 0, y: 0 };
+    const flaechen = [];
+    for (const css of entry.verdecke) {
+      for (const stelle of await page.locator(css).all()) {
+        if (!(await stelle.isVisible())) continue;
+        const box = await stelle.boundingBox();
+        if (box) {
+          flaechen.push({
+            x: (box.x - ursprung.x) * entry.skalierung,
+            y: (box.y - ursprung.y) * entry.skalierung,
+            breite: box.width * entry.skalierung,
+            hoehe: box.height * entry.skalierung,
+          });
+        }
+      }
+    }
+    const bild = entry.ausschnitt
+      ? await page.locator(entry.ausschnitt).screenshot(options)
+      : await page.screenshot(options);
     if (problems.length > 0) throw new Error(problems.join(" | "));
+    writeFileSync(
+      file,
+      flaechen.length > 0 ? schreibePng(verdeckeFlaechen(lesePng(bild), flaechen)) : bild,
+    );
     console.log(`ok   ${path.relative(ROOT, file)}`);
+  } catch (error) {
+    // Bild des Fehlers zum Nachsehen, außerhalb der Doku
+    const datei = path.join(os.tmpdir(), "paibot-doku-fehler", `${entry.name}.png`);
+    try {
+      mkdirSync(path.dirname(datei), { recursive: true });
+      await page?.screenshot({ path: datei });
+      error.message += `\n     Bild des Zustands: ${datei}`;
+    } catch {
+      // kein Bild möglich
+    }
+    throw error;
   } finally {
     await context.close();
   }

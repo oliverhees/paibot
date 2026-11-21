@@ -67,6 +67,11 @@ export interface FakeProviderOptions {
   firstChunkDelayMs: number;
   /** Pause zwischen den Stücken in Millisekunden. */
   chunkDelayMs: number;
+  /**
+   * Hält den Strom nach so vielen Text-Stücken an, bis der Aufrufer die Verbindung schließt
+   * (z. B. „Stopp“ im Chat). 0 = nie. So lässt sich eine Antwort mitten im Schreiben festhalten.
+   */
+  holdAfterChunks: number;
   /** Ist er gesetzt, muss jede Anfrage `Authorization: Bearer <apiKey>` senden, sonst 401. */
   apiKey?: string;
   /**
@@ -130,6 +135,7 @@ const DEFAULT_OPTIONS: FakeProviderOptions = {
   chunkChars: 8,
   firstChunkDelayMs: 0,
   chunkDelayMs: 0,
+  holdAfterChunks: 0,
 };
 
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -310,6 +316,7 @@ function checkBehaviour(value: unknown): Partial<FakeProviderOptions> | string {
         break;
       case "firstChunkDelayMs":
       case "chunkDelayMs":
+      case "holdAfterChunks":
         if (!whole(v, 0)) return `\`${key}\` muss eine ganze Zahl ab 0 sein.`;
         change[key] = v as number;
         break;
@@ -616,6 +623,13 @@ export function createFakeProvider(
         if (exchange.closed) return;
       }
       res.write(`data: ${JSON.stringify(events[i])}\n\n`);
+      if (settings.holdAfterChunks > 0 && i === settings.holdAfterChunks) {
+        await new Promise<void>((resolve) => {
+          if (exchange.closed) resolve();
+          else exchange.res.once("close", () => resolve());
+        });
+        return;
+      }
     }
     res.end("data: [DONE]\n\n");
   }

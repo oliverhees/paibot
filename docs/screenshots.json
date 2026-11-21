@@ -109,6 +109,36 @@
       {
         "warteAufText": "Wie soll dein Bot heißen?"
       }
+    ],
+    "chat-max-oeffnen": [
+      {
+        "klick": {
+          "rolle": "link",
+          "name": "Antwort an Max Mustermann"
+        }
+      },
+      {
+        "warteAufText": "Viele Grüße"
+      }
+    ],
+    "chat-absage-oeffnen": [
+      {
+        "klick": {
+          "rolle": "link",
+          "name": "Schreib mir eine freundliche Absage für einen Termin."
+        }
+      },
+      {
+        "warteAufText": "Soll ich einen neuen Termin vorschlagen?"
+      }
+    ],
+    "handy-menue": [
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Menü öffnen"
+        }
+      }
     ]
   },
   "aufnahmen": [
@@ -486,6 +516,1353 @@
           "warteAufText": "Datenbank nicht erreichbar"
         }
       ]
+    },
+    {
+      "name": "chat-leer",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Chat: neue, leere Unterhaltung mit Beispiel-Fragen"
+    },
+    {
+      "name": "chat-antwort",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "anbieter": {
+            "reply": "Gern, hier ist ein Entwurf:\n\n```\nHallo Max,\n\nleider muss ich unseren Termin am Donnerstag absagen. Mir ist etwas dazwischengekommen.\nPasst dir nächste Woche Dienstag um 10 Uhr?\n\nViele Grüße\n```\n\nSoll ich einen neuen Termin vorschlagen?"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schreib mir eine freundliche Absage für einen Termin."
+          }
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "Soll ich einen neuen Termin vorschlagen?"
+        },
+        {
+          "warteAuf": "button[aria-label^='Beleg prüfen']"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Beispiel-Frage gesendet, fertige Antwort mit Entwurfs-Block und Beleg-Zeile"
+    },
+    {
+      "name": "chat-streamt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "anbieter": {
+            "reply": "Gern. Ein Vorschlag für deine Woche: Montag das Angebot fertig schreiben, Dienstag die Rückrufe, Mittwoch Zeit für den Website-Text, Donnerstag die Steuerunterlagen sortieren, Freitag Puffer.",
+            "chunkChars": 73,
+            "holdAfterChunks": 1
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Hilf mir, meine Woche zu planen."
+          }
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "fertig schreiben,"
+        },
+        {
+          "warteAuf": "button[aria-label='Stopp']"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Antwort kommt gerade (erstes Stück da, der Test-Anbieter hält danach an), Knopf „Stopp“"
+    },
+    {
+      "name": "chat-abgebrochen",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Hilf mir, meine Woche zu planen."
+          }
+        },
+        {
+          "warteAuf": "button[aria-label='Stopp']"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Stopp"
+          }
+        },
+        {
+          "warteAufText": "Abgebrochen. Der Text bis hierhin bleibt stehen."
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: Antwort mit „Stopp“ abgebrochen, der Text bis dahin bleibt"
+    },
+    {
+      "name": "chat-beleg",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-absage-oeffnen"
+        },
+        {
+          "klick": "button[aria-label^='Beleg prüfen']"
+        },
+        {
+          "warteAuf": "aside[aria-label='Arbeitsfläche']"
+        },
+        {
+          "warteAufText": "Als eigene Seite öffnen"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_leise']:has-text('blg_')"],
+      "beschreibung": "Chat: Klick auf „Beleg“ unter der Antwort, rechts die Arbeitsfläche mit dem Beleg"
+    },
+    {
+      "name": "chat-belege-liste",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-absage-oeffnen"
+        },
+        {
+          "klick": "button[aria-label^='Beleg prüfen']"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Alle Belege dieser Unterhaltung",
+            "genau": false
+          }
+        },
+        {
+          "warteAuf": "aside[aria-label='Arbeitsfläche']"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Arbeitsfläche mit allen Belegen dieser Unterhaltung"
+    },
+    {
+      "name": "chat-menue",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Weitere Aktionen"
+          }
+        },
+        {
+          "warteAufText": "Unterhaltung löschen"
+        }
+      ],
+      "verdecke": ["[class*='_tag']", "[class*='_wer'] [class*='_zeit']"],
+      "beschreibung": "Chat: Menü „⋯“ in der Kopfzeile geöffnet"
+    },
+    {
+      "name": "chat-loeschen",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Weitere Aktionen"
+          }
+        },
+        {
+          "klick": {
+            "text": "Unterhaltung löschen",
+            "genau": false
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Rückfrage vor dem Löschen einer Unterhaltung"
+    },
+    {
+      "name": "chat-handy",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "ablauf": "chat-max-oeffnen"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat auf dem Handy: Unterhaltung mit fertiger Antwort, Beleg-Zeile gekürzt"
+    },
+    {
+      "name": "chat-handy-zeile",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "direkt · lokal",
+            "genau": false
+          }
+        },
+        {
+          "warteAuf": "[aria-expanded='true']"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat auf dem Handy: Beleg-Zeile mit Tipp auf den Weg ausgeklappt"
+    },
+    {
+      "name": "chat-handy-beleg",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": "button[aria-label^='Beleg prüfen']"
+        },
+        {
+          "warteAufText": "Als eigene Seite öffnen"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_leise']:has-text('blg_')"],
+      "beschreibung": "Chat auf dem Handy: Beleg als Blatt von unten"
+    },
+    {
+      "name": "datenschleuse-nicht-eingerichtet",
+      "pfad": "/datenschleuse",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Datenschleuse: auf diesem Server nicht eingerichtet (Worker ohne Datenschleuse)"
+    },
+    {
+      "name": "datenschleuse-handy",
+      "pfad": "/datenschleuse",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "beschreibung": "Datenschleuse auf dem Handy, nicht eingerichtet"
+    },
+    {
+      "name": "datenschleuse-eingerichtet",
+      "pfad": "/datenschleuse",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "Die Datenschleuse ist bereit."
+        }
+      ],
+      "datenschleuse": "bereit",
+      "beschreibung": "Datenschleuse: Worker meldet „bereit“ (Beispiel-Datenschleuse), noch keine geschützte Anfrage"
+    },
+    {
+      "name": "datenschleuse-an",
+      "pfad": "/datenschleuse",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "switch",
+            "name": "Neue Unterhaltungen mit Datenschleuse"
+          }
+        },
+        {
+          "warteAufText": "Gespeichert"
+        }
+      ],
+      "datenschleuse": "bereit",
+      "beschreibung": "Datenschleuse: Standard für neue Unterhaltungen eingeschaltet"
+    },
+    {
+      "name": "chat-geschuetzt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "anbieter": {
+            "reply": "Gern: Ruf Max Mustermann heute noch an und besprich das Angebot."
+          }
+        },
+        {
+          "tippe": "Nachricht",
+          "text": "Ruf bitte Max Mustermann an, er wartet auf das Angebot."
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "und besprich das Angebot."
+        },
+        {
+          "warteAuf": "button[aria-label^='Beleg prüfen']"
+        }
+      ],
+      "datenschleuse": "bereit",
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Antwort über die Datenschleuse (Weg „geschützt“)"
+    },
+    {
+      "name": "datenschleuse-letzte-anfrage",
+      "pfad": "/datenschleuse",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "zeige": {
+            "text": "Letzte Anfrage über die Datenschleuse"
+          }
+        }
+      ],
+      "datenschleuse": "bereit",
+      "beschreibung": "Datenschleuse: Karte „Letzte Anfrage über die Datenschleuse“ nach einer geschützten Nachricht"
+    },
+    {
+      "name": "chat-schleuse-schluessel",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Ruf bitte Max Mustermann an",
+            "genau": false
+          }
+        },
+        {
+          "warteAufText": "und besprich das Angebot."
+        },
+        {
+          "tippe": "Nachricht",
+          "text": "Und schreib ihm bitte noch eine kurze Mail."
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "Zur Datenschleuse"
+        }
+      ],
+      "datenschleuse": "schluessel_falsch",
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Datenschleuse nimmt den Schlüssel von PaiBot nicht an, Hinweis an der Antwort"
+    },
+    {
+      "name": "datenschleuse-schluessel",
+      "pfad": "/datenschleuse",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "switch",
+            "name": "Neue Unterhaltungen mit Datenschleuse"
+          }
+        },
+        {
+          "warteAufText": "Gespeichert"
+        }
+      ],
+      "datenschleuse": "schluessel_falsch",
+      "beschreibung": "Datenschleuse: Worker meldet „Schlüssel passt nicht“; Standard wieder aus"
+    },
+    {
+      "name": "belege-liste",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "beschreibung": "Belege: Liste, Zusammenfassung und Anker-Kasten"
+    },
+    {
+      "name": "belege-kette-geprueft",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Ganze Kette prüfen"
+          }
+        },
+        {
+          "warteAufText": "Vertrauenswürdig"
+        }
+      ],
+      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "beschreibung": "Belege: ganze Kette im Browser geprüft"
+    },
+    {
+      "name": "belege-kette-handy",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Ganze Kette prüfen"
+          }
+        },
+        {
+          "warteAufText": "Vertrauenswürdig"
+        }
+      ],
+      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "beschreibung": "Belege auf dem Handy nach „Ganze Kette prüfen“"
+    },
+    {
+      "name": "beleg-karte",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Modell angefragt, erlaubt",
+            "genau": false,
+            "nr": 0
+          }
+        },
+        {
+          "warteAufText": "Beleg prüfen"
+        }
+      ],
+      "verdecke": ["dt:has-text('Kennung') + dd [class*='_leise']"],
+      "beschreibung": "Ein Beleg als Karte (Modell angefragt, Entscheidung)"
+    },
+    {
+      "name": "beleg-geprueft",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Modell angefragt, erlaubt",
+            "genau": false,
+            "nr": 0
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Beleg prüfen"
+          }
+        },
+        {
+          "warteAufText": "Beleg stimmt"
+        }
+      ],
+      "verdecke": [
+        "dt:has-text('Kennung') + dd [class*='_leise']",
+        "li:has-text('Signatur gültig (Schlüssel')"
+      ],
+      "beschreibung": "Beleg geprüft: „Beleg stimmt“"
+    },
+    {
+      "name": "beleg-technik",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Modell angefragt, erlaubt",
+            "genau": false,
+            "nr": 0
+          }
+        },
+        {
+          "klick": {
+            "text": "Technische Ansicht"
+          }
+        },
+        {
+          "zeige": {
+            "text": "Beleg kopieren"
+          }
+        }
+      ],
+      "verdecke": [
+        "details dt:text-is('Prüfsumme') + dd",
+        "details dt:text-is('Signatur') + dd",
+        "details dt:text-is('Schlüssel') + dd",
+        "details dt:text-is('Vorgänger') + dd",
+        "details dt:text-is('Kennung') + dd",
+        "textarea[class*='_json']",
+        "dt:has-text('Kennung') + dd [class*='_leise']"
+      ],
+      "beschreibung": "Beleg mit aufgeklappter technischer Ansicht"
+    },
+    {
+      "name": "belege-anker",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anker kopieren"
+          }
+        },
+        {
+          "warteAufText": "Kopiert."
+        }
+      ],
+      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "beschreibung": "Belege: Anker kopiert"
+    },
+    {
+      "name": "belege-anker-pruefen",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anker kopieren"
+          }
+        },
+        {
+          "warteAufText": "Kopiert."
+        },
+        {
+          "klick": {
+            "beschriftung": "Mit meinem aufbewahrten Anker prüfen"
+          }
+        },
+        {
+          "taste": "Control+V"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Mit Anker prüfen"
+          }
+        },
+        {
+          "warteAufText": "Mit deinem aufbewahrten Anker verglichen"
+        }
+      ],
+      "verdecke": ["textarea"],
+      "beschreibung": "Belege: Kette mit dem aufbewahrten Anker geprüft"
+    },
+    {
+      "name": "belege-export",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Belege exportieren"
+          }
+        },
+        {
+          "warteAufText": "Der Export selbst steht in den Belegen"
+        }
+      ],
+      "verdecke": ["textarea[aria-label='Anker der Kette']"],
+      "beschreibung": "Belege exportiert: Meldung mit den beiden Belegen des Exports"
+    },
+    {
+      "name": "regeln",
+      "pfad": "/regeln",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Regeln: Weg Aktion → Tor → Beleg und die geltenden Regeln"
+    },
+    {
+      "name": "regeln-grenzen",
+      "pfad": "/regeln",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "zeige": {
+            "rolle": "heading",
+            "name": "Vorbedingungen"
+          }
+        }
+      ],
+      "beschreibung": "Regeln: Grenzen und Vorbedingungen"
+    },
+    {
+      "name": "regeln-handy",
+      "pfad": "/regeln",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "beschreibung": "Regeln auf dem Handy"
+    },
+    {
+      "name": "tor-entscheidung",
+      "pfad": "/belege",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Nachricht gesendet, erlaubt",
+            "genau": false,
+            "nr": 0
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Beleg prüfen"
+          }
+        },
+        {
+          "warteAufText": "Entscheidung folgt aus Regel"
+        }
+      ],
+      "verdecke": [
+        "dt:has-text('Kennung') + dd [class*='_leise']",
+        "li:has-text('Signatur gültig (Schlüssel')"
+      ],
+      "beschreibung": "Entscheidung des Tors als Beleg, nachgerechnet"
+    },
+    {
+      "name": "einstellungen-zugang",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Einstellungen, Reiter „Zugang“: Passwort ändern und Sitzungen"
+    },
+    {
+      "name": "einstellungen-zugang-handy",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "beschreibung": "Einstellungen „Zugang“ auf dem Handy"
+    },
+    {
+      "name": "einstellungen-passwort-pruefliste",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": "Aktuelles Passwort",
+          "text": "$passwort"
+        },
+        {
+          "tippe": "Neues Passwort",
+          "text": "zebra-wolke-laterne-77"
+        },
+        {
+          "tippe": "Neues Passwort wiederholen",
+          "text": "zebra-wolke-laterne-77"
+        }
+      ],
+      "beschreibung": "Passwort ändern: Felder ausgefüllt, Prüfliste erfüllt"
+    },
+    {
+      "name": "einstellungen-alle-beenden",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Alle Sitzungen beenden"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        }
+      ],
+      "beschreibung": "Rückfrage vor „Alle Sitzungen beenden“"
+    },
+    {
+      "name": "einstellungen-grenzen",
+      "pfad": "/einstellungen/grenzen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Einstellungen, Reiter „Grenzen“"
+    },
+    {
+      "name": "einstellungen-grenzen-handy",
+      "pfad": "/einstellungen/grenzen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "beschreibung": "Grenzen auf dem Handy"
+    },
+    {
+      "name": "einstellungen-grenzen-beleg",
+      "pfad": "/einstellungen/grenzen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": {
+            "rolle": "textbox",
+            "name": "Tagesbudget (Token)"
+          },
+          "text": "50000"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Speichern"
+          }
+        },
+        {
+          "warteAufText": "Gespeichert."
+        }
+      ],
+      "beschreibung": "Grenzen gespeichert, mit Link zum Beleg"
+    },
+    {
+      "name": "info",
+      "pfad": "/info",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "verdecke": ["dt:has-text('Installations-ID') + dd"],
+      "beschreibung": "Info: Stand, Lizenz, Entwickelt von"
+    },
+    {
+      "name": "info-handy",
+      "pfad": "/info",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "verdecke": ["dt:has-text('Installations-ID') + dd"],
+      "beschreibung": "Info auf dem Handy"
+    },
+    {
+      "name": "info-unten",
+      "pfad": "/info",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "zeige": {
+            "rolle": "heading",
+            "name": "Bestandteile und ihre Lizenzen"
+          }
+        }
+      ],
+      "beschreibung": "Info auf dem Handy, unten: Hilfe, Sicherheitslücke, Bestandteile"
+    },
+    {
+      "name": "bot-start",
+      "pfad": "/bot",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Seite „Bot“ nach der Einrichtung"
+    },
+    {
+      "name": "bot-handy",
+      "pfad": "/bot",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "beschreibung": "Seite „Bot“ auf dem Handy"
+    },
+    {
+      "name": "bot-darf",
+      "pfad": "/bot",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "zeige": {
+            "rolle": "heading",
+            "name": "Was dein Bot darf"
+          }
+        }
+      ],
+      "beschreibung": "Seite „Bot“: „Was dein Bot darf“"
+    },
+    {
+      "name": "bot-geaendert",
+      "pfad": "/bot",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": "Name",
+          "text": "Kai"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Duze mich und schreib locker."
+          }
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Raute in Violett"
+          }
+        },
+        {
+          "warteAufText": "Ungespeicherte Änderungen"
+        }
+      ],
+      "beschreibung": "Seite „Bot“: Name, Anweisung und Farbe geändert, noch nicht gespeichert"
+    },
+    {
+      "name": "bot-gespeichert",
+      "pfad": "/bot",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": "Name",
+          "text": "Kai"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Duze mich und schreib locker."
+          }
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Raute in Violett"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Speichern"
+          }
+        },
+        {
+          "warteAufText": "Gespeichert."
+        }
+      ],
+      "beschreibung": "Seite „Bot“: gespeichert, die Navigation zeigt den neuen Namen"
+    },
+    {
+      "name": "modelle-start",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Modell und Anbieter: Anbieter mit hinterlegtem Schlüssel, Modell-Liste"
+    },
+    {
+      "name": "modelle-handy",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "beschreibung": "Modell und Anbieter auf dem Handy"
+    },
+    {
+      "name": "modelle-test-ok",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Verbindung testen"
+          }
+        },
+        {
+          "warteAufText": "Verbindung steht"
+        }
+      ],
+      "beschreibung": "Verbindung testen: Verbindung steht"
+    },
+    {
+      "name": "modelle-schluessel-falsch",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schlüssel ersetzen"
+          }
+        },
+        {
+          "tippe": {
+            "beschriftung": "Neuer Schlüssel",
+            "genau": false
+          },
+          "text": "beispiel-falscher-schluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Verbindung testen"
+          }
+        },
+        {
+          "warteAufText": "hat den Schlüssel nicht angenommen"
+        }
+      ],
+      "beschreibung": "Schlüssel ersetzen mit falschem Schlüssel: Test schlägt fehl"
+    },
+    {
+      "name": "modelle-schluessel-gespeichert",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schlüssel ersetzen"
+          }
+        },
+        {
+          "tippe": {
+            "beschriftung": "Neuer Schlüssel",
+            "genau": false
+          },
+          "text": "$anbieter-schluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schlüssel speichern"
+          }
+        },
+        {
+          "warteAufText": "Schlüssel gespeichert"
+        }
+      ],
+      "beschreibung": "Schlüssel ersetzt und gespeichert"
+    },
+    {
+      "name": "modelle-suche",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "anbieter": {
+            "models": [
+              {
+                "id": "beispiel/allrounder",
+                "name": "Beispiel-Modell Allrounder",
+                "contextLength": 128000
+              },
+              {
+                "id": "beispiel/kompakt",
+                "name": "Beispiel-Modell Kompakt",
+                "contextLength": 32000
+              },
+              {
+                "id": "beispiel/schnell",
+                "name": "Beispiel-Modell Schnell",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/gruendlich",
+                "name": "Beispiel-Modell Gründlich",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/lang",
+                "name": "Beispiel-Modell Langer Kontext",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/mini",
+                "name": "Beispiel-Modell Mini",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/code",
+                "name": "Beispiel-Modell Code",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/texte",
+                "name": "Beispiel-Modell Texte",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/uebersetzen",
+                "name": "Beispiel-Modell Übersetzen",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/tabellen",
+                "name": "Beispiel-Modell Tabellen",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/zweites",
+                "name": "Beispiel-Modell Zweites",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/ruhig",
+                "name": "Beispiel-Modell Ruhig",
+                "contextLength": 64000
+              }
+            ]
+          }
+        },
+        {
+          "gehe": "/modelle"
+        },
+        {
+          "tippe": "Modell suchen",
+          "text": "zweites"
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Beispiel-Modell Zweites",
+            "genau": false
+          }
+        }
+      ],
+      "beschreibung": "Mehr als acht Modelle: Suchfeld, „zweites“ gesucht und gewählt"
+    },
+    {
+      "name": "modelle-uebernommen",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "anbieter": {
+            "models": [
+              {
+                "id": "beispiel/allrounder",
+                "name": "Beispiel-Modell Allrounder",
+                "contextLength": 128000
+              },
+              {
+                "id": "beispiel/kompakt",
+                "name": "Beispiel-Modell Kompakt",
+                "contextLength": 32000
+              },
+              {
+                "id": "beispiel/schnell",
+                "name": "Beispiel-Modell Schnell",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/gruendlich",
+                "name": "Beispiel-Modell Gründlich",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/lang",
+                "name": "Beispiel-Modell Langer Kontext",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/mini",
+                "name": "Beispiel-Modell Mini",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/code",
+                "name": "Beispiel-Modell Code",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/texte",
+                "name": "Beispiel-Modell Texte",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/uebersetzen",
+                "name": "Beispiel-Modell Übersetzen",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/tabellen",
+                "name": "Beispiel-Modell Tabellen",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/zweites",
+                "name": "Beispiel-Modell Zweites",
+                "contextLength": 64000
+              },
+              {
+                "id": "beispiel/ruhig",
+                "name": "Beispiel-Modell Ruhig",
+                "contextLength": 64000
+              }
+            ]
+          }
+        },
+        {
+          "gehe": "/modelle"
+        },
+        {
+          "tippe": "Modell suchen",
+          "text": "zweites"
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Beispiel-Modell Zweites",
+            "genau": false
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Modell übernehmen"
+          }
+        },
+        {
+          "warteAufText": "arbeitet jetzt mit"
+        }
+      ],
+      "beschreibung": "Modell übernommen"
+    },
+    {
+      "name": "modelle-entfernen",
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schlüssel entfernen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog'], [role='dialog'], dialog[open]"
+        }
+      ],
+      "beschreibung": "Schlüssel entfernen: Rückfrage"
     }
   ]
 }
