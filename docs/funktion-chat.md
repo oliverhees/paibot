@@ -22,7 +22,10 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 
 1. Melde dich an. Du landest auf der Startseite mit der Überschrift „Frag deinen Bot etwas“. Das ist eine neue, noch leere Unterhaltung.
 2. Schreib deine Frage in das Feld „Schreib Pai eine Nachricht“ (statt „Pai“ steht dort der Name deines Bots). Oder klick auf eine der drei Beispiel-Fragen: Sie landet im Feld, gesendet wird noch nichts.
-3. Drück **Enter**, um zu senden. Für eine neue Zeile drückst du **Umschalt+Enter**.
+3. Drück **Enter** oder klick auf den Pfeil rechts, um zu senden. Für eine neue Zeile drückst du **Umschalt+Enter**. Hat das Feld den Fokus, zeigt es eine schmale Linie in der Akzentfarbe. Nach dem Senden bleibt der Cursor im Feld, auch wenn die Antwort fertig ist oder du sie stoppst; du kannst also gleich weiterschreiben.
+
+   ![Feld mit getippter Nachricht „Was steht diese Woche an?“ und der Fokus-Linie in der Akzentfarbe; unten links die gedämpften Plätze für spätere Funktionen und der Schalter „Datenschleuse aus“, rechts ein leerer Ring und der Pfeil zum Senden](assets/screenshots/chat-eingabe.png)
+
 4. Die Unterhaltung erscheint links in der Seitenleiste unter deinem Bot. Ihr Titel ist der Anfang deiner ersten Nachricht (höchstens 60 Zeichen); ändern kannst du ihn später.
 
    ![Neue, leere Unterhaltung: Überschrift „Frag deinen Bot etwas“, drei Beispiel-Fragen, darunter das Feld „Schreib Pai eine Nachricht“ mit dem Schalter „Datenschleuse aus“](assets/screenshots/chat-leer.png)
@@ -48,7 +51,7 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 
    ![Abgebrochene Antwort: der Text bis zum Stopp bleibt stehen, darunter „Abgebrochen. Der Text bis hierhin bleibt stehen.“ und der Beleg](assets/screenshots/chat-abgebrochen.png)
 
-3. Solange eine Antwort läuft, kannst du in dieser Unterhaltung nichts Neues senden. Danach geht es wie gewohnt weiter.
+3. Solange eine Antwort läuft, kannst du in dieser Unterhaltung nichts Neues senden. Danach geht es wie gewohnt weiter; der Cursor steht wieder im Nachrichtenfeld.
 
 **Belege einer Unterhaltung ansehen**
 
@@ -62,6 +65,11 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
    ![Arbeitsfläche mit allen Belegen dieser Unterhaltung, neuester oben, jeweils mit Kennung und Uhrzeit](assets/screenshots/chat-belege-liste.png)
 
 4. Ohne Klick auf einen Beleg öffnest du die Liste über das Symbol rechts oben in der Kopfzeile oder über **⋯ → Belege dieser Unterhaltung**. Mit dem Kreuz schließt du sie.
+
+**Die Leiste unter dem Feld**
+
+1. Links unter dem Feld stehen gedämpfte Symbole für Funktionen, die noch kommen: **Datei anhängen** (Bilder, Dokumente), **Merken**, **Ziel**, **Freigabe-Stufe**, **Web-Zugriff** und **Spracheingabe**. Sie sind gesperrt und tun nichts; zeigst du mit der Maus darauf, steht dort „… kommt später“. Rechts neben dem Pfeil steht ein leerer Ring: Dort soll später stehen, wie voll der Verlauf für das Modell ist. Er zeigt noch keine Zahl.
+2. Daneben steht der Schalter **Datenschleuse** (siehe unten). Am Handy bricht die Leiste in zwei Zeilen um.
 
 **Datenschleuse für diese Unterhaltung**
 
@@ -167,7 +175,7 @@ Suche, Sichern und Neu erzeugen haben keine eigenen Einstellungen. Feste Werte: 
 | Datenschleuse          | Schalter je Unterhaltung, Standard | `An`: jede Anfrage geht über die Datenschleuse oder gar nicht                             | aus                                       |
 | Verlaufsgrenze (Token) | Einstellungen                      | Wie viel vom bisherigen Gespräch mitgeschickt wird (etwa 4 Zeichen je Token)              | keine eigene Grenze                       |
 | Tagesbudget (Token)    | Einstellungen                      | Ist es erreicht, lehnt das Tor weitere Anfragen bis Mitternacht (deine Zeitzone) ab       | keins                                     |
-| Not-Aus                | in dieser Version ohne Schalter    | Ist er an, lehnt das Tor jede Anfrage des Bots ab                                         | aus                                       |
+| Not-Aus                | Schalter oben in der Seitenleiste  | Ist er an, lehnt das Tor jede Anfrage des Bots ab                                         | aus                                       |
 | Zeitzone               | Einstellungen                      | Für das Datum in der Anweisung und den Beginn des Tagesbudgets                            | Zeitzone des Browsers bei der Einrichtung |
 
 Feste Werte der Lauf-Steuerung (im Code, `RUN_TUNING`):
@@ -240,6 +248,7 @@ Beteiligte Teile: `apps/web/src/app/(app)/chat/` und `apps/web/src/lib/chat/` (S
 - Neu erzeugt wird nur die letzte Antwort einer Unterhaltung. Eine Antwort weiter oben lässt sich nicht neu erzeugen, und eine frühere Fassung lässt sich nicht wieder zur gültigen machen; dafür erzeugst du neu.
 - Beim Neu erzeugen mit anderem Modell wechselt das Modell des Bots, nicht nur das einer Antwort.
 - Die gesicherte Datei enthält eine Antwort, die beim Sichern noch lief, ohne Text (gekennzeichnet).
+- Die Plätze in der Leiste unter dem Feld sind **geplant, nicht gebaut**: Datei anhängen (Bilder, Dokumente), Merken (der Bot merkt sich etwas), Ziel (der Bot arbeitet, bis ein Ziel erreicht ist), Freigabe-Stufe (fragen, vorbereiten, ausführen mit Beleg), Web-Zugriff, Spracheingabe und die Anzeige, wie voll der Verlauf ist. Bis dahin sind sie gesperrt und ohne Verhalten.
 - Eine Nachricht hat höchstens 32.000 Zeichen. Kurz vor der Grenze zeigt die Eingabe, wie viele noch gehen; darüber wird nicht gesendet.
 
 ## Fehlerbehebung

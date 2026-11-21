@@ -18,9 +18,22 @@ Unter **Einstellungen** regelst du den Zugang zu deinem PaiBot und die Grenzen, 
 
 ## So benutzt du es
 
+**Die Seitenleiste: Werkzeuge und das Menü „Du“**
+
+1. Unten links in der Seitenleiste stehen die **Werkzeuge**: Belege, Regeln, Datenschleuse sowie Modell und Anbieter. Mit **Werkzeuge einklappen** blendest du sie aus; die Liste deiner Unterhaltungen bekommt dann den Platz. **Werkzeuge ausklappen** zeigt sie wieder. Dein Browser merkt sich, wie du es eingestellt hast. Im Menü am Handy stehen die Werkzeuge immer offen.
+
+   ![Seitenleiste mit eingeklappten Werkzeugen: oben die Unterhaltungen, unten „Werkzeuge ausklappen“, darunter der Knopf „Du“ und die Fußzeile](assets/screenshots/navigation-eingeklappt.png)
+2. Ganz unten steht der Knopf **Du**. Klick darauf (oder drück Enter bzw. die Leertaste, wenn er den Fokus hat). Es öffnet sich ein Menü mit **Zugang**, **Einstellungen**, **Neuigkeiten**, unter **Hilfe** die Einträge **Dokumentation**, **Roadmap** und **Selbsttest**, dann **Info** und abgesetzt **Abmelden**. Mit den Pfeiltasten wählst du, Escape schließt das Menü.
+
+   ![Geöffnetes Menü „Du“ über dem Knopf: Zugang, Einstellungen, Neuigkeiten mit dem Stand, unter „Hilfe“ Dokumentation, Roadmap und Selbsttest, dann Info und rot abgesetzt „Abmelden“](assets/screenshots/navigation-du.png)
+3. **Neuigkeiten** zeigt den Stand deiner Installation und öffnet die Liste der Änderungen in einem neuen Tab. PaiBot fragt nicht von selbst nach neuen Versionen; wie du aktualisierst, steht unter [Aktualisieren](aktualisieren.md). **Dokumentation** öffnet paibot.de/doku, **Roadmap** paibot.de/bauplan, jeweils in einem neuen Tab und erst, wenn du klickst. Ohne Internet funktioniert PaiBot unverändert.
+4. Am Handy öffnest du zuerst das Menü oben links; der Knopf **Du** steht dort unten.
+
+   ![Auf dem Handy das Menü der Seitenleiste mit geöffnetem Menü „Du“](assets/screenshots/navigation-du-handy.png)
+
 **Passwort ändern**
 
-1. Klick in der Navigation auf **Einstellungen**. Der Reiter **Zugang** ist offen.
+1. Klick unten links auf **Du** und dann auf **Zugang**. Es öffnen sich die Einstellungen mit dem Reiter **Zugang**.
 2. Gib im Kasten **Passwort ändern** dein **aktuelles Passwort** ein.
 3. Gib das **neue Passwort** zweimal ein. Die Prüfliste darunter zeigt, ob es mindestens 12 Zeichen hat und ob beide Eingaben gleich sind.
 
@@ -39,11 +52,11 @@ Unter **Einstellungen** regelst du den Zugang zu deinem PaiBot und die Grenzen, 
    ![Rückfrage „Alle Sitzungen beenden?“ mit „Abbrechen“ und „Alle Sitzungen beenden“](assets/screenshots/einstellungen-alle-beenden.png)
 4. Melde dich mit deinem Passwort wieder an.
 
-Nur dieses Gerät abmelden: Knopf **Abmelden** im Reiter **Zugang**, auf der Seite **Info** oder unten in der Navigation.
+Nur dieses Gerät abmelden: **Du → Abmelden** unten in der Seitenleiste, oder der Knopf **Abmelden** im Reiter **Zugang** bzw. auf der Seite **Info**.
 
 **Bekannte Geräte ansehen und eines entfernen**
 
-1. Klick in der Navigation auf **Einstellungen**. Im Reiter **Zugang** steht unter **Passwort ändern** der Abschnitt **Bekannte Geräte**: jeder Browser, in dem du dich angemeldet hast, mit grober Angabe (zum Beispiel „Firefox auf Windows“), wann PaiBot ihn **zuerst** und **zuletzt gesehen** hat und bis wann er **gültig** ist. Der Browser, den du gerade benutzt, steht oben und trägt die Marke **dieses Gerät**.
+1. Klick unten links auf **Du → Zugang**. Im Reiter **Zugang** steht unter **Passwort ändern** der Abschnitt **Bekannte Geräte**: jeder Browser, in dem du dich angemeldet hast, mit grober Angabe (zum Beispiel „Firefox auf Windows“), wann PaiBot ihn **zuerst** und **zuletzt gesehen** hat und bis wann er **gültig** ist. Der Browser, den du gerade benutzt, steht oben und trägt die Marke **dieses Gerät**.
 
    ![Abschnitt „Bekannte Geräte“: oben „Chrome auf Linux“ mit der Marke „dieses Gerät“, darunter weitere Geräte, je mit „zuerst gesehen“, „zuletzt gesehen“, „gültig bis“ und dem Knopf „Entfernen“](assets/screenshots/geraete-liste.png)
 2. Kennst du ein Gerät nicht oder benutzt du es nicht mehr (zum Beispiel ein verlorenes Handy), klick in seiner Zeile auf **Entfernen**.
@@ -56,7 +69,7 @@ Nur dieses Gerät abmelden: Knopf **Abmelden** im Reiter **Zugang**, auf der Sei
 
 **Grenzen festlegen**
 
-1. Klick in den Einstellungen auf den Reiter **Grenzen**.
+1. Klick unten links auf **Du → Einstellungen** (oder in den Einstellungen auf den Reiter **Grenzen**).
 2. Unter **Tagesbudget (Token)** siehst du, wie viele Token dein Bot heute schon verbraucht hat (seit Mitternacht in deiner Zeitzone). Trag eine Zahl ein, zum Beispiel `50000`, oder lass das Feld leer für keine Tagesgrenze.
 
    ![Reiter „Grenzen“: Tagesbudget mit „Heute verbraucht“, Verlaufsgrenze und Zeitzone „Europe/Berlin“, unten „Speichern“](assets/screenshots/einstellungen-grenzen.png)
@@ -68,7 +81,7 @@ Nur dieses Gerät abmelden: Knopf **Abmelden** im Reiter **Zugang**, auf der Sei
 
 **Info ansehen**
 
-1. Klick in der Navigation auf **Info** (oder in den Einstellungen auf den Reiter **Info**).
+1. Klick unten links auf **Du → Info** (oder in den Einstellungen auf den Reiter **Info**).
 2. Oben stehen Stand und Installations-ID deiner Installation, die Lizenz, wer PaiBot entwickelt und der Hinweis auf PaiBot Enterprise für Teams.
 
    ![Seite „Info“: Stand, Installations-ID (im Bild ausgeblendet), Lizenz, Entwickelt von HR CodeLabs und der Hinweis auf PaiBot Enterprise für Teams](assets/screenshots/info.png)

@@ -89,7 +89,7 @@ Alle Bilder entstehen per Skript aus der App, nicht von Hand (`pnpm doku:app -- 
 
 **PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für eine Person. Heute chattest du mit deinem Bot, und jede seiner Aktionen läuft durch ein Tor mit festen Regeln und bekommt einen Beleg. Das Ziel ist mehr als ein einzelner Chatbot: ein ganzes Team aus Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten (geplant, siehe [Roadmap](#roadmap)).
 
-PaiBot läuft **bei dir** auf deinem eigenen Server (mit Docker Compose, auch auf dem eigenen Rechner), nutzt **Modelle aus der EU** (ein eigenes lokales Modell in der Oberfläche ist geplant), und eine zuschaltbare **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
+PaiBot läuft **bei dir** auf deinem eigenen Server (mit Docker Compose, auch auf dem eigenen Rechner), nutzt **Modelle aus der EU** (eigene Anbieter, auch ein lokales Modell auf deinem Rechner, legst du in der Oberfläche an), und eine zuschaltbare **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
 
 <p align="center">
   <img src="docs/assets/idee.jpg" alt="Die Idee: Problem, Lösung, Bauplan" width="90%">
@@ -102,7 +102,7 @@ Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa
 |                  | PaiBot                                                                                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                                                 |
-| **Welche KI?**   | EU-Modelle über EUrouter; eigene, OpenAI-kompatible Anbieter (auch auf dem eigenen Rechner) sind technisch angebunden, die Oberfläche dafür ist geplant |
+| **Welche KI?**   | EU-Modelle über EUrouter; eigene, OpenAI-kompatible Anbieter (auch auf dem eigenen Rechner) legst du in der Oberfläche an                              |
 | **Deine Daten**  | zuschaltbare Datenschleuse: Namen, E-Mails, IBANs werden vor dem Modell maskiert und in der Antwort zurückgetauscht                                     |
 | **Rechte**       | jede Aktion läuft durch ein Tor mit festen Regeln ohne KI und bekommt einen Beleg; Werkzeuge mit eigenen Rechten je Bot sind geplant                    |
 | **Kontrolle**    | Belege zu jeder Aktion, im Browser prüfbar; eine Freigabe vor Aktionen, die etwas nach außen schicken, ist geplant                                      |
@@ -113,7 +113,7 @@ Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa
 |     | Funktion                                                       | Status                                                                                                                        |
 | --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | 🖥️  | Läuft auf eigenem Server (Docker Compose, Coolify)             | vorhanden, siehe [`docs/installation.md`](docs/installation.md); ein veröffentlichtes Image gibt es noch nicht                |
-| 💬  | Chat mit deinem Bot, Antwort Stück für Stück, Stopp            | vorhanden ([Chat](docs/funktion-chat.md))                                                                                     |
+| 💬  | Chat mit deinem Bot, Antwort Stück für Stück, Stopp            | vorhanden ([Chat](docs/funktion-chat.md)); Anhänge, Spracheingabe, Merken und Web-Zugriff geplant                             |
 | 🧾  | Tor und Belege: feste Regeln ohne KI, Beleg zu jeder Aktion    | vorhanden ([Belege](docs/funktion-belege.md), [Das Tor](docs/funktion-tor.md))                                                |
 | 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | vorhanden als zuschaltbarer Dienst, Schalter je Unterhaltung ([Datenschleuse](docs/funktion-datenschleuse.md)); Standard: aus |
 | 🤖  | Dein Bot mit Name, Anweisung und Aussehen                      | vorhanden ([Bot](docs/funktion-bot.md)); weitere Bots mit Rollen und Gedächtnis: geplant                                      |
@@ -142,6 +142,8 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 ## Stand
 
 > 🚧 **PaiBot ist im Bau.** Die Basisversion lässt sich schon einrichten und benutzen: Einrichtung und Anmeldung, Chat mit deinem Bot, Belege und Regeln, Modell und Anbieter, Datenschleuse, Bot sowie Einstellungen und Info. Eine veröffentlichte Version (Release mit fertigem Image) gibt es noch nicht; installiert wird aus dem Quellcode.
+>
+> **Die erste Version ist zum Ausprobieren gedacht.** Bevor du ihr echte Daten anvertraust, fehlen noch ein Notfall-Zugang, die erneute Bestätigung heikler Aktionen und ein zweiter Faktor beim Anmelden.
 
 | Was                                                                                                                  | Stand                  |
 | -------------------------------------------------------------------------------------------------------------------- | ---------------------- |
@@ -162,6 +164,11 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 | [Eigener Anbieter](docs/funktion-anbieter-und-modelle.md) in der Oberfläche, auch auf deinem Rechner                 | ✅ fertig und getestet |
 | [Not-Aus als Schalter](docs/funktion-tor.md#not-aus-alle-bots-anhalten): alle Bots anhalten, mit Passwort fortsetzen | ✅ fertig und getestet |
 | [Selbsttest](docs/funktion-selbsttest.md): Ist meine Installation richtig eingestellt?                               | ✅ fertig und getestet |
+| [Bekannte Geräte](docs/funktion-einstellungen.md) und Hinweis bei Anmeldung von einem neuen Gerät                    | ✅ fertig und getestet |
+| „Zugang abriegeln“ (alle Geräte auf einen Schlag sperren)                                                            | 🗓️ geplant             |
+| Zweiter Faktor beim Anmelden                                                                                         | 🗓️ geplant             |
+| Notfall-Zugang                                                                                                       | 🗓️ geplant             |
+| Erneute Bestätigung heikler Aktionen                                                                                 | 🗓️ geplant             |
 | Apps anbinden per MCP                                                                                                | 🗓️ geplant danach      |
 | Bots im Team                                                                                                         | 🗓️ geplant danach      |
 

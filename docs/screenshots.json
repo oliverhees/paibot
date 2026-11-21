@@ -118,7 +118,7 @@
         }
       },
       {
-        "warteAufText": "Viele Grüße"
+        "warteAufText": "Hallo Max,"
       }
     ],
     "chat-absage-oeffnen": [
@@ -1829,6 +1829,91 @@
         "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
       ],
       "beschreibung": "Chat: zur früheren Fassung geblättert, „Ersetzt durch eine neuere Fassung.“"
+    },
+    {
+      "name": "chat-eingabe",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": {
+            "rolle": "textbox",
+            "name": "Nachricht"
+          },
+          "text": "Was steht diese Woche an?"
+        }
+      ],
+      "beschreibung": "Chat: Nachricht getippt, Feld mit Fokus (Linie in der Akzentfarbe); in der Leiste die gesperrten Plätze für spätere Funktionen und rechts der leere Ring"
+    },
+    {
+      "name": "navigation-du",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Du"
+          }
+        },
+        {
+          "warteAuf": "[role='menu']"
+        }
+      ],
+      "beschreibung": "Seitenleiste: Menü „Du“ geöffnet mit Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden"
+    },
+    {
+      "name": "navigation-du-handy",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Du"
+          }
+        },
+        {
+          "warteAuf": "[role='menu']"
+        }
+      ],
+      "beschreibung": "Handy: Menü der Seitenleiste mit geöffnetem Menü „Du“"
+    },
+    {
+      "name": "navigation-eingeklappt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Werkzeuge einklappen"
+          }
+        },
+        {
+          "warteAuf": "button[aria-expanded='false'][aria-controls]"
+        }
+      ],
+      "beschreibung": "Seitenleiste: Werkzeuge eingeklappt, die Liste der Unterhaltungen hat mehr Platz; darunter das Menü „Du“"
     },
     {
       "name": "geraete-liste",

@@ -44,6 +44,10 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ### Neu
 
+- **Seitenleiste mit Menü „Du“:** Unten links stehen die Werkzeuge (Belege, Regeln, Datenschleuse, Modell und Anbieter), ein- und ausklappbar. Der Knopf „Du“ öffnet Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden ([Einstellungen und Info](funktion-einstellungen.md)).
+- **Chat-Eingabe:** Nach dem Senden bleibt der Cursor im Feld; die Leiste zeigt schon die Plätze für geplante Funktionen (gesperrt, „kommt später“). Dazu Suche in allen Unterhaltungen, Unterhaltung als Datei sichern und Antwort neu erzeugen ([Chat](funktion-chat.md)).
+- **Eigener Anbieter in der Oberfläche:** OpenAI-kompatible Anbieter anlegen, ändern und entfernen, auch auf deinem Rechner ([Anbieter und Modelle](funktion-anbieter-und-modelle.md)).
+- **Bekannte Geräte und Hinweis bei neuer Anmeldung:** Liste der Browser, in denen du angemeldet warst, einzeln entfernbar; eine Leiste meldet Anmeldungen von neuen Geräten ([Einstellungen und Info](funktion-einstellungen.md), [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
 - **Sicherung und Wiederherstellung:** Ein Befehl sichert die Installation (Datenbank und Begleit-Datei mit Prüfsumme und Anker der Belege-Kette), ein Befehl spielt sie in eine frische Installation zurück und prüft danach Tabellen, Migrationen und die Belege-Kette ([Sicherung](sicherung.md)).
 - **Bilder für alle Funktionsseiten:** Chat, Bot, Anbieter und Modelle, Datenschleuse, Belege, Regeln sowie Einstellungen und Info zeigen jeden Schritt mit einem Bild aus der laufenden App, aufgenommen per Skript in einer Beispiel-Umgebung ([Screenshots](#screenshots)).
 - **Belege filtern und Schlüssel ansehen:** Filter nach Aktion und Unterhaltung (auch als Lesezeichen), Kasten „Schlüssel dieser Installation“ mit Kurzform ([Belege](funktion-belege.md)).

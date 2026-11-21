@@ -168,6 +168,6 @@ Die Antworten tragen keine Angabe zur eingesetzten Software (`X-Powered-By` fehl
 
 **Grenzen:**
 
-- Die Skript-Regel erlaubt heute Skripte, die Next.js in die Seite schreibt (`'unsafe-inline'`). Eine Fassung mit einmaligem Kennwert pro Anfrage (Nonce) ist vorbereitet, aber noch nicht eingeschaltet.
+- Im Betrieb erlaubt die Skript-Regel nur Skripte deines Servers mit dem einmaligen Kennwert der Anfrage (Nonce, dazu `'strict-dynamic'`); `'unsafe-inline'` für Skripte gibt es dort nicht. Die Nonce setzt der Proxy der App für jede Anfrage neu. Einzelne Stil-Angaben direkt an Elementen (`style-src-attr`) sind erlaubt, weil die Oberfläche sie für Größen und Abstände braucht.
 - In der Entwicklung (`pnpm dev`) sind die Regeln für den Hot-Reload lockerer. Im Betrieb gilt das nicht.
 - Die Kopfzeilen schützen die Seite im Browser. Sie ersetzen weder Passwort noch Netzwerk-Schutz deines Servers.
