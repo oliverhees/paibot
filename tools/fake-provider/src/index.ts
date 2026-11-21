@@ -12,6 +12,15 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Socket } from "node:net";
+import { checkScript, DEFAULT_SCRIPT_PIECES, type FakeScript, splitInto, stepAt } from "./drehbuch";
+
+export {
+  checkScript,
+  type FakeScript,
+  type FakeScriptStep,
+  type FakeScriptToolCall,
+  toolCallsRepeated,
+} from "./drehbuch";
 
 /** Pfade der nachgebildeten Schnittstelle, relativ zur Wurzel des Servers. */
 export const FAKE_PROVIDER_PATHS = {
@@ -29,6 +38,8 @@ export const FAKE_CONTROL_PATHS = {
   fehler: "/_steuerung/fehler",
   /** `POST` mit einem Teil von `FakeProviderOptions` als JSON: Verhalten ändern. */
   verhalten: "/_steuerung/verhalten",
+  /** `POST` mit einem `FakeScript` als JSON: Drehbuch setzen, Position 0 (falsche Form: 400). */
+  drehbuch: "/_steuerung/drehbuch",
   /** `POST`: Protokoll und Fehler zurücksetzen, Verhalten auf den Start-Stand. */
   zuruecksetzen: "/_steuerung/zuruecksetzen",
 } as const;
@@ -110,6 +121,12 @@ export interface FakeProviderOptions {
    * Ein leerer `reply` lässt den Text vor dem Aufruf weg.
    */
   toolCall?: FakeToolCall;
+  /**
+   * Drehbuch: Die n-te Chat-Anfrage seit dem Setzen bekommt `steps[n]`. `toolCall` und `reply`
+   * gelten dann nur noch nach dem letzten Schritt mit `after: "normal"` (Standard). Fehlgeschlagene
+   * Anfragen (geplante Fehler, falscher Schlüssel, ungültige Körper) verbrauchen keinen Schritt.
+   */
+  script?: FakeScript;
 }
 
 /** Ein Werkzeug-Aufruf, den der Test-Anbieter statt (oder nach) dem Text meldet. */
@@ -138,6 +155,8 @@ export interface RecordedRequest {
   receivedAt: string;
   /** `true`, wenn der Aufrufer die Verbindung vor dem Ende der Antwort geschlossen hat. */
   closedByClient: boolean;
+  /** Index des Drehbuch-Schritts, der diese Anfrage beantwortet hat (bei Wiederholung der letzte). */
+  scriptStep?: number;
 }
 
 export interface FakeProvider {
@@ -150,6 +169,8 @@ export interface FakeProvider {
   /** Die nächsten `count` Anfragen (Standard 1) schlagen wie angegeben fehl. */
   failNext(failure: FakeFailure, count?: number): void;
   reset(): void;
+  /** Wie viele Chat-Anfragen seit dem Setzen des Drehbuchs (bzw. `reset`) schon beantwortet wurden. */
+  scriptPosition(): number;
 }
 
 const DEFAULT_MODELS: FakeModel[] = [
@@ -172,6 +193,14 @@ const MAX_BODY_BYTES = 5 * 1024 * 1024;
 const HEALTH_PATH = "/health";
 
 type Message = { role: string; content: unknown };
+
+/** Ein Werkzeug-Aufruf, wie er gesendet wird; `pieces` nur für Aufrufe aus dem Drehbuch. */
+interface PlannedCall {
+  id: string;
+  name: string;
+  arguments: string;
+  pieces: number | undefined;
+}
 
 /** Lauf einer Anfrage: wird `closed`, sobald die Verbindung zu ist (Client oder Server). */
 interface Exchange {
@@ -414,6 +443,16 @@ function checkBehaviour(value: unknown): Partial<FakeProviderOptions> | string {
           return "`toolCall` braucht `name` und `arguments` (oder null zum Entfernen).";
         }
         break;
+      case "script": {
+        if (v === null) {
+          (change as { script: FakeScript | undefined }).script = undefined;
+          break;
+        }
+        const checked = checkScript(v);
+        if (typeof checked === "string") return checked;
+        change.script = checked;
+        break;
+      }
       default:
         return `Unbekannte Einstellung: ${key}`;
     }
@@ -436,6 +475,7 @@ export function createFakeProvider(
   let records: RecordedRequest[] = [];
   let failures: FakeFailure[] = [];
   const nextId = createCounter();
+  let scriptPosition = 0;
   const exchanges = new Set<Exchange>();
   const sockets = new Set<Socket>();
   let server: Server | undefined;
@@ -456,6 +496,7 @@ export function createFakeProvider(
         if (
           key === "apiKey" ||
           key === "toolCall" ||
+          key === "script" ||
           key === "routingRules" ||
           key === "providers" ||
           key === "modelFormat"
@@ -466,6 +507,7 @@ export function createFakeProvider(
       }
     }
     current = next as unknown as FakeProviderOptions;
+    if ("script" in change) scriptPosition = 0;
   }
 
   function endHard(exchange: Exchange): void {
@@ -477,6 +519,7 @@ export function createFakeProvider(
     records = [];
     failures = [];
     current = { ...startOptions };
+    scriptPosition = 0;
     for (const exchange of exchanges) endHard(exchange);
   }
 
@@ -616,34 +659,63 @@ export function createFakeProvider(
   ): Promise<void> {
     const { res } = exchange;
     const settings = current;
-    const text = typeof settings.reply === "function" ? settings.reply(messages) : settings.reply;
+    // Den Schritt gleich zu Beginn festlegen, damit parallele Anfragen verschiedene Schritte bekommen.
+    const scripted = stepAt(settings.script, scriptPosition);
+    if (settings.script !== undefined) scriptPosition += 1;
+    if (scripted && exchange.record) exchange.record.scriptStep = scripted.index;
+
     const lastRole = messages[messages.length - 1]?.role;
-    const tool = lastRole === "tool" ? undefined : settings.toolCall;
-    const toolArguments =
-      tool === undefined
-        ? ""
-        : typeof tool.arguments === "string"
-          ? tool.arguments
-          : JSON.stringify(tool.arguments);
-    const callId = tool?.id ?? `call_fake_${nextId()}`;
+    const legacyTool = scripted || lastRole === "tool" ? undefined : settings.toolCall;
+    const text = scripted
+      ? (scripted.step.text ?? "")
+      : typeof settings.reply === "function"
+        ? settings.reply(messages)
+        : settings.reply;
+    const calls: PlannedCall[] = scripted
+      ? (scripted.step.toolCalls ?? []).map((call) => ({
+          id: call.id ?? `call_fake_${nextId()}`,
+          name: call.name,
+          arguments:
+            typeof call.arguments === "string" ? call.arguments : JSON.stringify(call.arguments),
+          pieces: call.pieces ?? DEFAULT_SCRIPT_PIECES,
+        }))
+      : legacyTool
+        ? [
+            {
+              id: legacyTool.id ?? `call_fake_${nextId()}`,
+              name: legacyTool.name,
+              arguments:
+                typeof legacyTool.arguments === "string"
+                  ? legacyTool.arguments
+                  : JSON.stringify(legacyTool.arguments),
+              pieces: undefined,
+            },
+          ]
+        : [];
+    const reasoning = scripted?.step.reasoning;
+    const reasoningField = reasoning?.field ?? "reasoning";
     const model = typeof body.model === "string" ? body.model : (rule?.model ?? "");
     // Wie bei einem Vermittler: Wer geantwortet hat, steht in jedem Stück und in der Antwort.
     const servedBy = rule === undefined ? {} : { provider: rule.provider };
     const id = `chatcmpl-fake-${nextId()}`;
     const created = Math.floor(Date.now() / 1000);
-    const finishReason = tool ? "tool_calls" : "stop";
-    const usage = {
-      prompt_tokens: messages.reduce((sum, m) => sum + countTokens(contentToText(m.content)), 0),
-      completion_tokens: countTokens(text + (tool ? tool.name + toolArguments : "")),
-      get total_tokens() {
-        return this.prompt_tokens + this.completion_tokens;
-      },
-    };
-    const usageJson = {
-      prompt_tokens: usage.prompt_tokens,
-      completion_tokens: usage.completion_tokens,
-      total_tokens: usage.total_tokens,
-    };
+    const finishReason = scripted?.step.finish ?? (calls.length > 0 ? "tool_calls" : "stop");
+    const usageSetting = scripted?.step.usage;
+    const fixedUsage = typeof usageSetting === "object" ? usageSetting : undefined;
+    const promptTokens = fixedUsage
+      ? fixedUsage.prompt
+      : messages.reduce((sum, m) => sum + countTokens(contentToText(m.content)), 0);
+    const completionTokens = fixedUsage
+      ? fixedUsage.completion
+      : countTokens(text + calls.map((call) => call.name + call.arguments).join(""));
+    const usageJson =
+      usageSetting === false
+        ? undefined
+        : {
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            total_tokens: promptTokens + completionTokens,
+          };
 
     await sleep(settings.firstChunkDelayMs, exchange);
     if (exchange.closed) return;
@@ -652,12 +724,15 @@ export function createFakeProvider(
       if (abort) return endHard(exchange);
       const message: Record<string, unknown> = {
         role: "assistant",
-        content: text === "" && tool ? null : text,
+        content: text === "" && calls.length > 0 ? null : text,
       };
-      if (tool) {
-        message.tool_calls = [
-          { id: callId, type: "function", function: { name: tool.name, arguments: toolArguments } },
-        ];
+      if (reasoning) message[reasoningField] = reasoning.text;
+      if (calls.length > 0) {
+        message.tool_calls = calls.map((call) => ({
+          id: call.id,
+          type: "function",
+          function: { name: call.name, arguments: call.arguments },
+        }));
       }
       sendJson(res, 200, {
         id,
@@ -665,7 +740,7 @@ export function createFakeProvider(
         created,
         model,
         choices: [{ index: 0, message, finish_reason: finishReason }],
-        usage: usageJson,
+        ...(usageJson ? { usage: usageJson } : {}),
         ...servedBy,
       });
       return;
@@ -683,27 +758,30 @@ export function createFakeProvider(
     });
 
     const events: unknown[] = [chunk({ role: "assistant", content: "" })];
+    if (reasoning) {
+      for (const piece of splitText(reasoning.text, settings.chunkChars))
+        events.push(chunk({ [reasoningField]: piece }));
+    }
     for (const piece of splitText(text, settings.chunkChars))
       events.push(chunk({ content: piece }));
-    if (tool) {
+    for (const [index, call] of calls.entries()) {
       events.push(
         chunk({
           tool_calls: [
-            {
-              index: 0,
-              id: callId,
-              type: "function",
-              function: { name: tool.name, arguments: "" },
-            },
+            { index, id: call.id, type: "function", function: { name: call.name, arguments: "" } },
           ],
         }),
       );
-      for (const piece of splitText(toolArguments, settings.chunkChars)) {
-        events.push(chunk({ tool_calls: [{ index: 0, function: { arguments: piece } }] }));
+      const pieces =
+        call.pieces === undefined
+          ? splitText(call.arguments, settings.chunkChars)
+          : splitInto(call.arguments, call.pieces);
+      for (const piece of pieces) {
+        events.push(chunk({ tool_calls: [{ index, function: { arguments: piece } }] }));
       }
     }
     events.push(chunk({}, finishReason));
-    if (includeUsage)
+    if (includeUsage && usageJson)
       events.push({
         id,
         object: "chat.completion.chunk",
@@ -789,6 +867,12 @@ export function createFakeProvider(
       if (typeof change === "string") return bad(change);
       configure(change);
       return sendJson(res, 200, { ok: true });
+    }
+    if (path === FAKE_CONTROL_PATHS.drehbuch) {
+      const script = checkScript(parsed.value);
+      if (typeof script === "string") return bad(script);
+      configure({ script });
+      return sendJson(res, 200, { ok: true, schritte: script.steps.length });
     }
     // zuruecksetzen
     reset();
@@ -887,6 +971,7 @@ export function createFakeProvider(
     configure,
     failNext,
     reset,
+    scriptPosition: () => scriptPosition,
   };
 }
 
