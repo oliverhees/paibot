@@ -154,7 +154,14 @@ function setup(format: 1 | 2 = 1) {
         result: { status: "ok" },
       }))
       .catch((caught: unknown) => caught);
+    // Das Tor fragt (R-005); in Fassung 2 ist das abgelehnt, in Fassung 1 wartete der Aufruf.
     expect(isGateDenied(error) && error.waitsForApproval).toBe(true);
+    if (format === 2 && isGateDenied(error)) {
+      expect(error.toolCallDecision()).toMatchObject({
+        outcome: "deny",
+        errorCode: "freigabe_noetig",
+      });
+    }
     return {
       toolCallId: action.actionId,
       argsDigest,

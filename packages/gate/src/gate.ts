@@ -20,6 +20,7 @@ import type { ReceiptResult, ReceiptUndo } from "@paibot/shared/belege";
 import { type ErrorCode, invalidInput, isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { type HmacDigest, sha256DigestSchema, toIsoTime } from "@paibot/shared/grundtypen";
 import type { ActionId, ReceiptId } from "@paibot/shared/ids";
+import { t } from "@paibot/shared/texte";
 import {
   ACTIVE_STANDARD_RULES,
   type Decision,
@@ -142,8 +143,8 @@ export interface Gate {
    * 5. Bei `deny`, `ask` oder `prepare`: nichts wird ausgeführt; Beleg „Ergebnis“ mit
    *    `status: "denied"` und dem Code aus `denialCode` (bei verletzter Vorbedingung deren
    *    Fehlercode, sonst `OUTCOME_ERROR_CODE`); danach `GateDenied`. In dieser Fassung gibt es
-   *    weder Freigabe noch Vorbereitung im Tor, `ask` und `prepare` enden deshalb so; bei `ask`
-   *    trägt `GateDenied` den Zustand, mit dem die Lauf-Steuerung auf die Freigabe wartet.
+   *    weder Freigabe noch Vorbereitung im Tor, `ask` und `prepare` enden deshalb so; auch ein
+   *    „fragen“ an einem Werkzeug-Aufruf ist abgelehnt (`toolCallDecision`), nichts wartet.
    *
    * Invariante: Jede Aktion, die bis Schritt 3 kommt, hat genau zwei Belege, verbunden über
    * `action.actionId`.
@@ -278,29 +279,27 @@ function failureResult(error: unknown): ReceiptResult {
 }
 
 /**
- * Was die Lauf-Steuerung für den gespeicherten Werkzeug-Aufruf braucht, wenn das Tor ihn nicht
- * erlaubt hat (passt zu `repo.toolCalls.recordDecision`):
- * - `ask`: der Aufruf wartet auf die Freigabe des Besitzers, nur der Beleg „Entscheidung“ zählt;
- * - `deny`: der Aufruf ist abgelehnt, mit beiden Belegen, dem Grund für das Modell und dem Code.
+ * Was die Lauf-Steuerung für einen nicht erlaubten Werkzeug-Aufruf braucht. In dieser Fassung gibt
+ * es keine Freigabe: auch „fragen“ ist abgelehnt (das Tor hat das Ergebnis „abgelehnt“ schon
+ * belegt). Immer mit beiden Belegen, dem Text für das Modell und dem Code.
  */
-export type DeniedToolCall =
-  | { outcome: "ask"; actionId: ActionId; decisionReceiptId: ReceiptId }
-  | {
-      outcome: "deny";
-      actionId: ActionId;
-      decisionReceiptId: ReceiptId;
-      resultReceiptId: ReceiptId;
-      output: string;
-      errorCode: ErrorCode;
-    };
+export type DeniedToolCall = {
+  outcome: "deny";
+  actionId: ActionId;
+  decisionReceiptId: ReceiptId;
+  resultReceiptId: ReceiptId;
+  output: string;
+  /** Bei „fragen“ des Tors `freigabe_noetig`, sonst der Code von `GateDenied`. */
+  errorCode: ErrorCode;
+};
 
 /**
  * Das Tor hat eine Aktion nicht erlaubt. `code` ist `denialCode(decision)`: der Fehlercode einer
  * verletzten Vorbedingung (z. B. `lauf_aktiv`), sonst `abgelehnt` (Ergebnis `deny`) oder
  * `regel_fehlt` (`ask`, `prepare`); `text` ist der Grund aus der Entscheidung.
  *
- * Bei `outcome: "ask"` wartet die Aktion auf eine Freigabe (`waitsForApproval`); `actionId`,
- * `decision` und `receipts` reichen, um den Zustand zu speichern und später fortzusetzen.
+ * Bei `outcome: "ask"` hat das Tor „fragen“ entschieden (`waitsForApproval`). In dieser Fassung
+ * gibt es keine Freigabe; die Aktion ist abgelehnt, und nichts wartet auf eine Antwort.
  */
 export class GateDenied extends PaiBotError {
   readonly outcome: Exclude<Outcome, "allow">;
@@ -327,25 +326,33 @@ export class GateDenied extends PaiBotError {
     this.action = action.type;
   }
 
-  /** Wartet die Aktion auf eine Freigabe des Besitzers (Regel „fragen“)? */
+  /**
+   * Hat das Tor „fragen“ entschieden (Regel „fragen“ oder Deckel)? Nur Auskunft: In dieser
+   * Fassung folgt daraus kein Warten, im Produktionscode wird sie nicht benutzt.
+   */
   get waitsForApproval(): boolean {
     return this.outcome === "ask";
   }
 
-  /** Angaben für den gespeicherten Werkzeug-Aufruf (`repo.toolCalls.recordDecision`). */
+  /**
+   * Angaben für einen nicht erlaubten Werkzeug-Aufruf. „Fragen“ ist in dieser Fassung abgelehnt:
+   * Code `freigabe_noetig`, fester Text für das Modell. Sonst der Grund des Tors und `code`.
+   */
   toolCallDecision(): DeniedToolCall {
-    const decisionReceiptId = this.receipts.decision.receiptId;
-    if (this.waitsForApproval) {
-      return { outcome: "ask", actionId: this.actionId, decisionReceiptId };
-    }
-    return {
-      outcome: "deny",
+    const base = {
+      outcome: "deny" as const,
       actionId: this.actionId,
-      decisionReceiptId,
+      decisionReceiptId: this.receipts.decision.receiptId,
       resultReceiptId: this.receipts.result.receiptId,
-      output: this.decision.reason,
-      errorCode: this.code,
     };
+    if (this.outcome === "ask") {
+      return {
+        ...base,
+        output: t("werkzeug.huelle.freigabe_noetig"),
+        errorCode: "freigabe_noetig",
+      };
+    }
+    return { ...base, output: this.decision.reason, errorCode: this.code };
   }
 }
 

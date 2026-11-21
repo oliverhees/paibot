@@ -160,14 +160,7 @@ async function* runTurn(
         case "tool-call":
           // Vom Anbieter selbst ausgeführte Werkzeuge gibt es bei OpenAI-kompatiblen Anbietern
           // nicht; sicherheitshalber werden sie nie als Wunsch weitergereicht.
-          if (part.providerExecuted !== true) {
-            yield {
-              type: "tool-call",
-              callId: part.toolCallId,
-              name: part.toolName,
-              input: toJsonValue(part.input),
-            };
-          }
+          if (part.providerExecuted !== true) yield toolCallEvent(part);
           break;
         case "raw":
           servedBy = mergeServedBy(servedBy, servedByOf(part.rawValue));
@@ -315,6 +308,43 @@ function toToolOutput(result: ToolResult) {
 }
 
 /** Eingabe eines Werkzeug-Wunschs als reines JSON (ungültige Eingaben kommen als Text). */
+/** Höchstlänge des Rohtexts einer kaputten Eingabe in `rawInput`. */
+const MAX_RAW_INPUT_CHARS = 2000;
+
+/**
+ * Wunsch des Modells als Ereignis. `invalid` übernimmt nur den Vermerk der Bibliothek (geprüft
+ * wird später selbst). Liefert die Bibliothek die Eingabe als Text, der kein JSON ist (kaputtes
+ * JSON), steht der Text gekürzt in `rawInput` und `input` ist `null`.
+ */
+function toolCallEvent(part: {
+  toolCallId: string;
+  toolName: string;
+  input: unknown;
+  invalid?: unknown;
+}): MotorEvent {
+  const event: Extract<MotorEvent, { type: "tool-call" }> = {
+    type: "tool-call",
+    callId: part.toolCallId,
+    name: part.toolName,
+    input: toJsonValue(part.input),
+  };
+  if (part.invalid === true) event.invalid = true;
+  if (typeof part.input === "string" && !isJsonText(part.input)) {
+    event.input = null;
+    event.rawInput = part.input.slice(0, MAX_RAW_INPUT_CHARS);
+  }
+  return event;
+}
+
+function isJsonText(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function toJsonValue(value: unknown): JsonValue {
   if (value === undefined) return null;
   try {

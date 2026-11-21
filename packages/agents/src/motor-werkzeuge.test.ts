@@ -30,6 +30,7 @@ import type {
   ToolSpec,
   TurnMessage,
 } from "@paibot/shared/motor";
+import { t } from "@paibot/shared/texte";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createAiSdkMotor } from "./motor-aisdk";
 import {
@@ -131,8 +132,10 @@ async function werkzeugDurchsTor(call: ToolCall, s: Steuerung): Promise<ToolResu
     }));
     return { ...base, status: "ok", output: value };
   } catch (error) {
-    if (isGateDenied(error) && error.waitsForApproval) return "wartet";
-    if (isGateDenied(error)) return { ...base, status: "denied", output: error.decision.reason };
+    // In dieser Fassung wartet nichts: auch „fragen“ ist abgelehnt (`toolCallDecision`).
+    if (isGateDenied(error)) {
+      return { ...base, status: "denied", output: error.toolCallDecision().output };
+    }
     return { ...base, status: "error", output: "Das Werkzeug ist fehlgeschlagen." };
   }
 }
@@ -372,44 +375,30 @@ describe("Werkzeug-Aufruf, am Tor abgelehnt", () => {
   });
 });
 
-describe("Werkzeug-Aufruf wartet auf Freigabe und wird fortgesetzt", () => {
-  it("Lauf endet mit „wartet“, ein frischer Motor setzt nach der Freigabe aus der Datenbank fort", async () => {
+describe("Werkzeug-Aufruf, bei dem das Tor fragt", () => {
+  it("wird abgelehnt: nichts wartet, das Modell bekommt den festen Text, der Lauf endet", async () => {
     provider.configure({
       reply: antwortNachWerkzeug("Erledigt: "),
       toolCall: { id: "call_b", name: "notiz_loeschen", arguments: { id: 9 } },
     });
-    const regelnAus = (db: Db) => async (call: ToolCall) => {
-      const { rows } = await db.query("select 1 from test_freigaben where call_id = $1", [
-        call.callId,
-      ]);
-      // Ohne Freigabe gelten nur die Standard-Regeln: R-005 fragt vor jedem Werkzeug.
-      return rows.length > 0 ? [ERLAUBEN] : ACTIVE_STANDARD_RULES;
-    };
-
-    // Prozess 1: bis zur Frage.
-    const erste = await neueDb();
-    const ausfuehren1 = vi.fn(async () => "sollte nicht laufen");
-    const log1: MotorEvent[][] = [];
-    const p1: Steuerung = {
-      db: erste.client,
-      motor: aufzeichnen(createAiSdkMotor(), log1),
+    // Nur die Standard-Regeln: R-005 fragt vor jedem Werkzeug. Eine Freigabe gibt es in dieser
+    // Fassung nicht.
+    const { client } = await neueDb();
+    const ausfuehren = vi.fn(async () => "sollte nicht laufen");
+    const log: MotorEvent[][] = [];
+    const s: Steuerung = {
+      db: client,
+      motor: aufzeichnen(createAiSdkMotor(), log),
       zugang: modelAccess({ baseUrl, apiKey: API_KEY }),
-      werkzeuge: new Map([["notiz_loeschen", { spec: notiz, ausfuehren: ausfuehren1 }]]),
-      regelnFuer: regelnAus(erste.client),
+      werkzeuge: new Map([["notiz_loeschen", { spec: notiz, ausfuehren }]]),
+      regelnFuer: async () => ACTIVE_STANDARD_RULES,
       werkzeugAktionen: [],
     };
-    await speichere(erste.client, "lauf_2", "neu", [{ role: "user", text: "Lösch Notiz 9." }]);
-    expect(await steuere("lauf_2", p1)).toBe("wartet");
+    await speichere(client, "lauf_2", "neu", [{ role: "user", text: "Lösch Notiz 9." }]);
+    expect(await steuere("lauf_2", s)).toBe("fertig");
 
-    // Ein Aufruf ohne Ausführungsfunktion beendet den Schritt sauber.
-    expect(log1).toHaveLength(1);
-    expect(log1[0]).toEqual([
-      { type: "tool-call", callId: "call_b", name: "notiz_loeschen", input: { id: 9 } },
-      { type: "finish", finishReason: "tool-calls", usage: expect.any(Object) },
-    ]);
-    expect(provider.requests).toHaveLength(1);
-    expect(ausfuehren1).not.toHaveBeenCalled();
-    expect(decisions(p1.zugang.receipts, p1.werkzeugAktionen)).toMatchObject([
+    expect(ausfuehren).not.toHaveBeenCalled();
+    expect(decisions(s.zugang.receipts, s.werkzeugAktionen)).toMatchObject([
       {
         record: {
           action: { type: "werkzeug.aufrufen" },
@@ -417,70 +406,20 @@ describe("Werkzeug-Aufruf wartet auf Freigabe und wird fortgesetzt", () => {
         },
       },
     ]);
-    const gespeichert = await erste.client.query<{ status: string; verlauf: TurnMessage[] }>(
-      "select status, verlauf from test_laeufe where id = 'lauf_2'",
-    );
-    expect(gespeichert.rows[0]?.status).toBe("wartet");
-    expect(gespeichert.rows[0]?.verlauf.at(-1)).toEqual({
-      role: "assistant",
-      text: "",
-      toolCalls: [{ callId: "call_b", name: "notiz_loeschen", input: { id: 9 } }],
-    });
-
-    // Prozess endet: nur der Inhalt der Datenbank bleibt.
-    const abzug = await erste.client.dumpDataDir();
-    await erste.client.close();
-
-    // Prozess 2: neue Datenbank-Instanz aus dem Abzug, frischer Motor, neues Tor.
-    const PGliteCtor = erste.client.constructor as new (options: {
-      loadDataDir: Blob | File;
-    }) => Db;
-    const zweite = new PGliteCtor({ loadDataDir: abzug });
-    await zweite.waitReady;
-    await zweite.query("insert into test_freigaben (call_id) values ('call_b')");
-    const ausfuehren2 = vi.fn(async (input: JsonValue) => ({ geloescht: input }));
-    const log2: MotorEvent[][] = [];
-    const p2: Steuerung = {
-      db: zweite,
-      motor: aufzeichnen(createAiSdkMotor(), log2),
-      zugang: modelAccess({ baseUrl, apiKey: API_KEY }),
-      werkzeuge: new Map([["notiz_loeschen", { spec: notiz, ausfuehren: ausfuehren2 }]]),
-      regelnFuer: regelnAus(zweite),
-      werkzeugAktionen: [],
-    };
-    expect(await steuere("lauf_2", p2)).toBe("fertig");
-
-    expect(ausfuehren2).toHaveBeenCalledTimes(1);
-    expect(ausfuehren2).toHaveBeenCalledWith({ id: 9 });
+    expect(results(s.zugang.receipts, s.werkzeugAktionen)).toMatchObject([
+      { record: { result: { status: "denied", code: "regel_fehlt" } } },
+    ]);
     expect(provider.requests).toHaveLength(2);
-    expect(chatMessages(1).slice(1)).toEqual([
-      { role: "user", content: "Lösch Notiz 9." },
-      {
-        role: "assistant",
-        content: null,
-        tool_calls: [
-          {
-            id: "call_b",
-            type: "function",
-            function: { name: "notiz_loeschen", arguments: '{"id":9}' },
-          },
-        ],
-      },
-      { role: "tool", tool_call_id: "call_b", content: '{"geloescht":{"id":9}}' },
-    ]);
-    expect(log2[0]?.at(-1)).toMatchObject({ type: "finish", finishReason: "stop" });
-    expect(results(p2.zugang.receipts, p2.werkzeugAktionen)).toMatchObject([
-      { record: { result: { status: "ok" } } },
-    ]);
-    const ende = await zweite.query<{ status: string; verlauf: TurnMessage[] }>(
-      "select status, verlauf from test_laeufe where id = 'lauf_2'",
+    expect(chatMessages(1).at(-1)).toEqual({
+      role: "tool",
+      tool_call_id: "call_b",
+      content: t("werkzeug.huelle.freigabe_noetig"),
+    });
+    const ende = await client.query<{ status: string }>(
+      "select status from test_laeufe where id = 'lauf_2'",
     );
     expect(ende.rows[0]?.status).toBe("fertig");
-    expect(ende.rows[0]?.verlauf.at(-1)).toEqual({
-      role: "assistant",
-      text: 'Erledigt: {"geloescht":{"id":9}}',
-    });
-    await zweite.close();
+    await client.close();
   });
 });
 

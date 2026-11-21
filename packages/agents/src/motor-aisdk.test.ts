@@ -358,6 +358,47 @@ describe("Werkzeug-Wünsche und Verlauf", () => {
     ]);
   });
 
+  it.each([
+    ["im Strom in Stücken", 3],
+    ["an einem Stück", 1],
+  ] as const)(
+    "kaputtes JSON in den Argumenten (%s): rawInput gekürzt, input null, Vermerk invalid",
+    async (_art, pieces) => {
+      for (const roh of ['{"begriff": "Kaf', `{"begriff": "${"x".repeat(5000)}`]) {
+        provider.configure({
+          script: { steps: [{ toolCalls: [{ id: "c1", name: "suche", arguments: roh, pieces }] }] },
+        });
+        const events = await run(input({ tools: [search] }));
+        const call = events.map(({ event }) => event).find((event) => event.type === "tool-call");
+        expect(call).toEqual({
+          type: "tool-call",
+          callId: "c1",
+          name: "suche",
+          input: null,
+          invalid: true,
+          rawInput: roh.slice(0, 2000),
+        });
+        if (call?.type === "tool-call") expect(call.rawInput?.length).toBeLessThanOrEqual(2000);
+      }
+    },
+  );
+
+  it("gültige Eingabe: kein rawInput, kein Vermerk", async () => {
+    provider.configure({
+      script: {
+        steps: [{ toolCalls: [{ id: "c1", name: "suche", arguments: { begriff: "ok" } }] }],
+      },
+    });
+    const events = await run(input({ tools: [search] }));
+    const call = events.map(({ event }) => event).find((event) => event.type === "tool-call");
+    expect(call).toEqual({
+      type: "tool-call",
+      callId: "c1",
+      name: "suche",
+      input: { begriff: "ok" },
+    });
+  });
+
   it("schickt Aufrufe und Ergebnisse (ok, Fehler, abgelehnt) im Format des Anbieters", async () => {
     await run(
       input({
