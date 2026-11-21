@@ -22,6 +22,7 @@ import { providerTargetFacts } from "@paibot/llm";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import { newId } from "@paibot/shared/ids";
+import { GATE_FORMAT } from "@paibot/shared/tor";
 import { afterEach, describe, expect, it } from "vitest";
 import { createFakeMotor } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
@@ -78,7 +79,12 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     };
     const snapshot = await repo.rules.loadSnapshot(env.db);
     const decision = evaluate(action, facts, await ruleSnapshot(snapshot.rules, snapshot.stand));
-    await env.writer.appendDecision({ action, facts, decision, time: new Date() });
+    await env.writer.appendDecision({
+      action,
+      facts,
+      decision: { ...decision, gateFormat: GATE_FORMAT },
+      time: new Date(),
+    });
     return { env, runId, action, decision };
   }
 
