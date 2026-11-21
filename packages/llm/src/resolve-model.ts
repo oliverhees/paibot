@@ -25,7 +25,13 @@ import {
   providerEgressTarget,
 } from "./egress";
 import { providerFailure } from "./errors";
-import { SCHLEUSE_SESSION_HEADER, type SchleuseConnection, schleuseModelName } from "./schleuse";
+import {
+  SCHLEUSE_SESSION_HEADER,
+  type SchleuseConnection,
+  schleuseKeyPathOf,
+  schleuseModelName,
+} from "./schleuse";
+import { createSchleuseFetch } from "./schleuse-zugang";
 import { providerTargetDigest } from "./target";
 
 /** Gewählter Anbieter und gewähltes Modell, wie sie in der Datenbank stehen. */
@@ -73,7 +79,11 @@ export function isResolvedModel(value: unknown): value is ResolvedModel {
  *
  * - Route aus `permit.facts.route`: `direct` → Basis-URL und Schlüssel des Anbieters; `schleuse`
  *   → Basis-URL und Schlüssel der Datenschleuse, Modellname `schleuseModelName(...)` und
- *   Kopfzeile `SCHLEUSE_SESSION_HEADER` mit der ID der Unterhaltung.
+ *   Kopfzeile `SCHLEUSE_SESSION_HEADER` mit der ID der Unterhaltung. Auf dem Weg `anfrage`
+ *   (Standard) geht der Schlüssel des Anbieters als `api_key` im Körper jeder Chat-Anfrage mit, nur
+ *   an die Datenschleuse (`createSchleuseFetch`); auf dem Weg `umgebung` gar nicht. Fehlerantworten
+ *   der Datenschleuse wirft `fetch` als `PaiBotError` mit festem Code (`schleuse_blockiert`,
+ *   `schluessel_ungueltig`, …), ohne Text aus der Antwort.
  * - Ziel: `targetDigest` der Berechtigung muss zu Anbieter-ID und Basis-URL des übergebenen
  *   Datensatzes passen (`providerTargetDigest`), `targetOrigin` zum Origin (bei Route `schleuse`
  *   auch dem der Datenschleuse). Wurde die Adresse zwischen Entscheidung und Abruf geändert,
@@ -129,6 +139,7 @@ export function resolveModel(
   let slug: string;
   let headers: Record<string, string>;
   let egressTarget: EgressTarget;
+  let providerKey = "";
 
   if (facts.route === "schleuse") {
     if (!deps.schleuse) throw providerFailure("schleuse_nicht_installiert");
@@ -137,6 +148,9 @@ export function resolveModel(
     slug = schleuseModelName(provider.templateKey, model.slug);
     headers = { [SCHLEUSE_SESSION_HEADER]: choice.conversationId };
     egressTarget = { ...egressTargetOf(baseUrl), allowPrivate: true };
+    if (schleuseKeyPathOf(deps.schleuse) === "anfrage") {
+      providerKey = decryptProviderKey(provider, deps.secretsKey, provider.region === "local");
+    }
   } else {
     const check = checkProviderBaseUrl(provider.baseUrl, provider.region);
     if (!check.ok) throw providerFailure("anbieter_nicht_erreichbar");
@@ -152,13 +166,18 @@ export function resolveModel(
     deps.baseFetch,
     deps.lookup === undefined ? {} : { lookup: deps.lookup },
   );
-  const authorizedFetch: typeof fetch = async (input, init) => {
-    if (!isGatePermit(permit, "modell.anfragen")) throw providerFailure("abgelehnt");
-    const headerSource = init?.headers ?? (input instanceof Request ? input.headers : undefined);
-    const outgoing = new Headers(headerSource);
-    if (secret !== "") outgoing.set("authorization", `Bearer ${secret}`);
-    return guarded(input, { ...init, headers: outgoing });
-  };
+  const stillAllowed = () => isGatePermit(permit, "modell.anfragen");
+  const authorizedFetch: typeof fetch =
+    facts.route === "schleuse"
+      ? createSchleuseFetch({ guarded, baseUrl, schleuseKey: secret, providerKey, stillAllowed })
+      : async (input, init) => {
+          if (!stillAllowed()) throw providerFailure("abgelehnt");
+          const headerSource =
+            init?.headers ?? (input instanceof Request ? input.headers : undefined);
+          const outgoing = new Headers(headerSource);
+          if (secret !== "") outgoing.set("authorization", `Bearer ${secret}`);
+          return guarded(input, { ...init, headers: outgoing });
+        };
 
   const summary: ResolvedModelSummary = Object.freeze({
     providerId: provider.id,

@@ -15,6 +15,8 @@ export interface SeenRequest {
   method: string;
   url: string;
   headers: IncomingMessage["headers"];
+  /** Körper der Anfrage; vollständig, sobald die Anfrage zu Ende gelesen ist. */
+  body: string;
 }
 
 export type Handler = (req: IncomingMessage, res: ServerResponse) => void;
@@ -32,7 +34,17 @@ export async function startTestServer(initial?: Handler): Promise<TestServer> {
   let handler: Handler = initial ?? ((_req, res) => res.writeHead(404).end());
   const requests: SeenRequest[] = [];
   const server: Server = createServer((req, res) => {
-    requests.push({ method: req.method ?? "", url: req.url ?? "", headers: req.headers });
+    const seen: SeenRequest = {
+      method: req.method ?? "",
+      url: req.url ?? "",
+      headers: req.headers,
+      body: "",
+    };
+    requests.push(seen);
+    req.setEncoding("utf8");
+    req.on("data", (chunk: string) => {
+      seen.body += chunk;
+    });
     handler(req, res);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

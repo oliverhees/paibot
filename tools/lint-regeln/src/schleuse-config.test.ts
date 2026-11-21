@@ -60,11 +60,11 @@ function fehlerVon(env: Record<string, string>): string {
 }
 
 describe("schleuse:config", () => {
-  it("Standard: EUrouter, Schlüssel aus der Umgebung, mittleres Sprachmodell", () => {
+  it("Standard: EUrouter, Schlüssel je Anfrage, mittleres Sprachmodell", () => {
     const { dateien, werte } = erzeugeSchleuseKonfig({});
     expect(werte).toEqual({
       anbieter: ["eurouter"],
-      weg: "umgebung",
+      weg: "anfrage",
       sprachmodell: "de_core_news_md",
       qiStufe: "balanced",
     });
@@ -72,7 +72,7 @@ describe("schleuse:config", () => {
     expect(config).toContain('- model_name: "eurouter/*"');
     expect(config).toContain('model: "openai/*"');
     expect(config).toContain('api_base: "https://api.eurouter.ai/v1"');
-    expect(config).toContain('api_key: "os.environ/SCHLEUSE_ANBIETER_SCHLUESSEL"');
+    expect(config).not.toContain("api_key");
     expect(config).toContain('master_key: "os.environ/DATENSCHLEUSE_MASTER_KEY"');
     expect(config).toContain("default_on: true");
     expect(config).toContain('mode: ["pre_call", "post_call"]');
@@ -91,6 +91,18 @@ describe("schleuse:config", () => {
     expect(config).toContain('- model_name: "eigener/*"');
     expect(config).toContain('api_base: "https://api.eurouter.ai/v1"\n');
     expect(config.indexOf("eurouter/*")).toBeLessThan(config.indexOf("eigener/*"));
+  });
+
+  it("Weg „umgebung“ (Rückfall): Verweis auf SCHLEUSE_ANBIETER_SCHLUESSEL, nur ein Anbieter", () => {
+    const { dateien, werte } = erzeugeSchleuseKonfig({ SCHLEUSE_SCHLUESSEL_WEG: "umgebung" });
+    expect(werte.weg).toBe("umgebung");
+    expect(dateien["config.yaml"]).toContain('api_key: "os.environ/SCHLEUSE_ANBIETER_SCHLUESSEL"');
+    expect(
+      fehlerVon({
+        SCHLEUSE_SCHLUESSEL_WEG: "umgebung",
+        SCHLEUSE_ANBIETER: "eurouter=https://api.eurouter.ai/v1,eigener=https://llm.example.org/v1",
+      }),
+    ).toContain("nur ein Anbieter");
   });
 
   it("Weg „anfrage“: kein Verweis auf einen Schlüssel des Anbieters in der Datei", () => {
@@ -163,10 +175,12 @@ describe("schleuse:config", () => {
     ).toContain("nicht erlaubt");
   });
 
-  it("mit dem Schlüssel aus der Umgebung ist nur ein Anbieter möglich", () => {
-    expect(
-      fehlerVon({ SCHLEUSE_ANBIETER: "a=https://a.example.org/v1,b=https://b.example.org/v1" }),
-    ).toContain("nur ein Anbieter");
+  it("mehrere Anbieter gehen im Standard (Schlüssel je Anfrage), mit umgebung nicht", () => {
+    const zwei = "a=https://a.example.org/v1,b=https://b.example.org/v1";
+    expect(erzeugeSchleuseKonfig({ SCHLEUSE_ANBIETER: zwei }).werte.anbieter).toEqual(["a", "b"]);
+    expect(fehlerVon({ SCHLEUSE_ANBIETER: zwei, SCHLEUSE_SCHLUESSEL_WEG: "umgebung" })).toContain(
+      "nur ein Anbieter",
+    );
   });
 
   it("liest .env-Dateien wie Docker Compose (Kommentare, Anführungszeichen)", () => {
