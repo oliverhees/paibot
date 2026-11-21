@@ -217,7 +217,7 @@ SQL
 zurueckspielen() {
   ergebnis=$(zustand)
   case "$ergebnis" in
-    leer) meldung "Datenbank ist leer." ;;
+    leer) ;;
     frisch)
       meldung "Datenbank ist frisch (nie eingerichtet); sie wird vor dem Einspielen geleert."
       leeren
