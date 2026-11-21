@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
 import type { RaumBot } from "./namen";
 import {
   bestimmeAntworter,
+  ermittleNaechstenSchritt,
   type NaechsterSchritt,
-  naechsterSchritt,
   type RaumLage,
   type RundenEintrag,
   type RundenStand,
@@ -137,18 +137,18 @@ const eintrag = (botId: string, status: RundenEintrag["status"]): RundenEintrag 
   botId,
   status,
 });
-const FAKTEN = { tiefe: 1, anzahl: 3, tokens: 100, alterSekunden: 10 };
 const stand = (eintraege: RundenEintrag[], teil: Partial<RundenStand> = {}): RundenStand => ({
   eintraege,
   notAus: false,
   mitglieder: [IDEEN, ENTWURF, LEKTORAT],
-  fakten: FAKTEN,
   ...teil,
 });
 
-describe("Runde nacheinander", () => {
+describe("Runde nacheinander (Vorschlag für den nächsten Schritt)", () => {
   it("startet den ersten wartenden Bot, wenn niemand läuft", () => {
-    expect(naechsterSchritt(stand([eintrag("b1", "wartend"), eintrag("b2", "wartend")]))).toEqual({
+    expect(
+      ermittleNaechstenSchritt(stand([eintrag("b1", "wartend"), eintrag("b2", "wartend")])),
+    ).toEqual({
       aktion: "starten",
       botId: "b1",
     });
@@ -156,15 +156,15 @@ describe("Runde nacheinander", () => {
 
   it("startet nie einen Lauf, solange einer aktiv ist (auch wenn der aktive weiter hinten steht)", () => {
     const warten: NaechsterSchritt = { aktion: "warten", grund: "lauf_aktiv" };
-    expect(naechsterSchritt(stand([eintrag("b1", "aktiv"), eintrag("b2", "wartend")]))).toEqual(
-      warten,
-    );
-    expect(naechsterSchritt(stand([eintrag("b1", "wartend"), eintrag("b2", "aktiv")]))).toEqual(
-      warten,
-    );
-    expect(naechsterSchritt(stand([eintrag("b1", "aktiv"), eintrag("b2", "aktiv")]))).toEqual(
-      warten,
-    );
+    expect(
+      ermittleNaechstenSchritt(stand([eintrag("b1", "aktiv"), eintrag("b2", "wartend")])),
+    ).toEqual(warten);
+    expect(
+      ermittleNaechstenSchritt(stand([eintrag("b1", "wartend"), eintrag("b2", "aktiv")])),
+    ).toEqual(warten);
+    expect(
+      ermittleNaechstenSchritt(stand([eintrag("b1", "aktiv"), eintrag("b2", "aktiv")])),
+    ).toEqual(warten);
   });
 
   it("der nächste Bot kommt erst nach dem fertigen vorigen, in der Reihenfolge der Erwähnung", () => {
@@ -184,7 +184,7 @@ describe("Runde nacheinander", () => {
     ];
     stufen.forEach(([status], i) => {
       const e = reihe.map((id, n) => eintrag(id, status[n] as RundenEintrag["status"]));
-      expect(naechsterSchritt(stand(e))).toEqual(erwartet[i]);
+      expect(ermittleNaechstenSchritt(stand(e))).toEqual(erwartet[i]);
     });
   });
 
@@ -193,26 +193,31 @@ describe("Runde nacheinander", () => {
     let eintraege = reihe.map((id) => eintrag(id, "wartend"));
     const gestartet: string[] = [];
     for (let runde = 0; runde < 10; runde++) {
-      const schritt = naechsterSchritt(stand(eintraege));
+      const schritt = ermittleNaechstenSchritt(stand(eintraege));
       if (schritt.aktion === "ende") break;
       expect(schritt.aktion).toBe("starten");
       if (schritt.aktion !== "starten") break;
       gestartet.push(schritt.botId);
       eintraege = eintraege.map((e) => (e.botId === schritt.botId ? eintrag(e.botId, "aktiv") : e));
       expect(eintraege.filter((e) => e.status === "aktiv")).toHaveLength(1);
-      expect(naechsterSchritt(stand(eintraege))).toEqual({ aktion: "warten", grund: "lauf_aktiv" });
+      expect(ermittleNaechstenSchritt(stand(eintraege))).toEqual({
+        aktion: "warten",
+        grund: "lauf_aktiv",
+      });
       eintraege = eintraege.map((e) => (e.status === "aktiv" ? eintrag(e.botId, "fertig") : e));
     }
     expect(gestartet).toEqual(reihe);
   });
 
   it("Not-Aus: nichts startet, auch nicht neben einem laufenden Lauf", () => {
-    expect(naechsterSchritt(stand([eintrag("b1", "wartend")], { notAus: true }))).toEqual({
+    expect(ermittleNaechstenSchritt(stand([eintrag("b1", "wartend")], { notAus: true }))).toEqual({
       aktion: "ende",
       grund: "not_aus",
     });
     expect(
-      naechsterSchritt(stand([eintrag("b1", "aktiv"), eintrag("b2", "wartend")], { notAus: true })),
+      ermittleNaechstenSchritt(
+        stand([eintrag("b1", "aktiv"), eintrag("b2", "wartend")], { notAus: true }),
+      ),
     ).toEqual({
       aktion: "ende",
       grund: "not_aus",
@@ -226,11 +231,11 @@ describe("Runde nacheinander", () => {
       eintrag("b2", "abgebrochen"),
       eintrag("b3", "wartend"),
     ];
-    expect(naechsterSchritt(stand(nachAbbruch, { notAus: true }))).toEqual({
+    expect(ermittleNaechstenSchritt(stand(nachAbbruch, { notAus: true }))).toEqual({
       aktion: "ende",
       grund: "not_aus",
     });
-    expect(naechsterSchritt(stand(nachAbbruch, { notAus: false }))).toEqual({
+    expect(ermittleNaechstenSchritt(stand(nachAbbruch, { notAus: false }))).toEqual({
       aktion: "ende",
       grund: "vorheriger_lauf_abgebrochen",
     });
@@ -238,7 +243,7 @@ describe("Runde nacheinander", () => {
 
   it("ein fehlgeschlagener Lauf beendet die Runde", () => {
     const e = [eintrag("b1", "fehlgeschlagen"), eintrag("b2", "wartend")];
-    expect(naechsterSchritt(stand(e))).toEqual({
+    expect(ermittleNaechstenSchritt(stand(e))).toEqual({
       aktion: "ende",
       grund: "vorheriger_lauf_fehlgeschlagen",
     });
@@ -248,50 +253,22 @@ describe("Runde nacheinander", () => {
     const pausiert = stand([eintrag("b1", "wartend")], {
       mitglieder: [bot("b1", "Ideen", true), ENTWURF],
     });
-    expect(naechsterSchritt(pausiert)).toEqual({
+    expect(ermittleNaechstenSchritt(pausiert)).toEqual({
       aktion: "ueberspringen",
       botId: "b1",
       grund: "pausiert",
     });
     const weg = stand([eintrag("b9", "wartend")]);
-    expect(naechsterSchritt(weg)).toEqual({
+    expect(ermittleNaechstenSchritt(weg)).toEqual({
       aktion: "ueberspringen",
       botId: "b9",
       grund: "kein_mitglied",
     });
     const danach = stand([eintrag("b1", "uebersprungen"), eintrag("b2", "wartend")]);
-    expect(naechsterSchritt(danach)).toEqual({ aktion: "starten", botId: "b2" });
+    expect(ermittleNaechstenSchritt(danach)).toEqual({ aktion: "starten", botId: "b2" });
   });
 
   it("leere Runde ist fertig", () => {
-    expect(naechsterSchritt(stand([]))).toEqual({ aktion: "ende", grund: "fertig" });
-  });
-
-  describe("Grenzen des Auftrags beenden die Runde", () => {
-    const e = [eintrag("b1", "fertig"), eintrag("b2", "wartend")];
-    it.each([
-      ["Budget", { tokens: 200_000 }, "budget"],
-      ["Zeit", { alterSekunden: 1_800 }, "zeit"],
-      ["Anzahl", { anzahl: 21 }, "anzahl"],
-      ["Tiefe", { tiefe: 4 }, "tiefe"],
-    ])("%s", (_n, teil, grenze) => {
-      const schritt = naechsterSchritt(stand(e, { fakten: { ...FAKTEN, ...teil } }));
-      expect(schritt.aktion).toBe("ende");
-      if (schritt.aktion === "ende") {
-        expect(schritt.grund).toBe("grenze");
-        expect(schritt.verletzt?.map((v) => v.grenze)).toEqual([grenze]);
-      }
-    });
-
-    it("ein fehlender Fakt stoppt den Start", () => {
-      const schritt = naechsterSchritt(stand(e, { fakten: { tiefe: 1, anzahl: 2, tokens: 5 } }));
-      expect(schritt).toMatchObject({ aktion: "ende", grund: "grenze" });
-    });
-
-    it("eigene Grenzen gelten (Budget 1 000: der zweite Bot wird nicht gestartet)", () => {
-      const grenzen = { maxTiefe: 3, maxAnzahl: 20, maxTokens: 1_000, maxMinuten: 30 };
-      const schritt = naechsterSchritt(stand(e, { fakten: { ...FAKTEN, tokens: 1_200 }, grenzen }));
-      expect(schritt).toMatchObject({ aktion: "ende", grund: "grenze" });
-    });
+    expect(ermittleNaechstenSchritt(stand([]))).toEqual({ aktion: "ende", grund: "fertig" });
   });
 });

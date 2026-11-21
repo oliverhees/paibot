@@ -9,15 +9,22 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { type AuftragsFakten, pruefeAuftragGrenzen, STANDARD_AUFTRAGS_GRENZEN } from "./grenzen";
+import {
+  type AuftragsFakten,
+  type GrenzMessung,
+  messeAuftragsGrenzen,
+  STANDARD_AUFTRAGS_GRENZEN,
+} from "./grenzen";
 
 const OK: AuftragsFakten = { tiefe: 1, anzahl: 3, tokens: 1_000, alterSekunden: 60 };
-const verletzt = (f: AuftragsFakten, g = STANDARD_AUFTRAGS_GRENZEN) => {
-  const r = pruefeAuftragGrenzen(f, g);
-  return r.ok ? [] : r.verletzt.map((v) => `${v.grenze}:${v.grund}`);
+const NAMEN = ["tiefe", "anzahl", "budget", "zeit"] as const;
+const ueber = (f: AuftragsFakten, g = STANDARD_AUFTRAGS_GRENZEN) => {
+  const m = messeAuftragsGrenzen(f, g);
+  return NAMEN.filter((n) => m[n].ueberschreitet);
 };
+const fehlend = (m: GrenzMessung) => NAMEN.filter((n) => m[n].fehlt);
 
-describe("Grenzen je Auftrag", () => {
+describe("Messwerte zu den Grenzen je Auftrag", () => {
   it("Standardwerte", () => {
     expect(STANDARD_AUFTRAGS_GRENZEN).toEqual({
       maxTiefe: 3,
@@ -27,60 +34,63 @@ describe("Grenzen je Auftrag", () => {
     });
   });
 
-  it("alles im Rahmen ist ok", () => {
-    expect(pruefeAuftragGrenzen(OK)).toEqual({ ok: true });
+  it("liefert Wert und Grenze je Messwert und entscheidet nichts", () => {
+    const m = messeAuftragsGrenzen(OK);
+    expect(m).toEqual({
+      grenzenGueltig: true,
+      tiefe: { wert: 1, grenze: 3, fehlt: false, ueberschreitet: false },
+      anzahl: { wert: 3, grenze: 20, fehlt: false, ueberschreitet: false },
+      budget: { wert: 1_000, grenze: 200_000, fehlt: false, ueberschreitet: false },
+      zeit: { wert: 60, grenze: 1_800, fehlt: false, ueberschreitet: false },
+    });
+    // nur Fakten: kein Entscheidungsfeld
+    expect(Object.keys(m).sort()).toEqual(["anzahl", "budget", "grenzenGueltig", "tiefe", "zeit"]);
   });
 
   it.each([
-    ["Tiefe 3 ist erlaubt", { tiefe: 3 }, []],
-    ["Tiefe 4 ist zu tief", { tiefe: 4 }, ["tiefe:ueberschritten"]],
-    ["20 Aufträge sind erlaubt", { anzahl: 20 }, []],
-    ["der 21. Auftrag ist zu viel", { anzahl: 21 }, ["anzahl:ueberschritten"]],
-    ["199 999 Token sind ok", { tokens: 199_999 }, []],
-    ["200 000 Token sind verbraucht", { tokens: 200_000 }, ["budget:ueberschritten"]],
-    ["29:59 Minuten sind ok", { alterSekunden: 1_799 }, []],
-    ["30 Minuten sind abgelaufen", { alterSekunden: 1_800 }, ["zeit:ueberschritten"]],
+    ["Tiefe 3 liegt auf der Grenze", { tiefe: 3 }, []],
+    ["Tiefe 4 liegt darüber", { tiefe: 4 }, ["tiefe"]],
+    ["20 Aufträge liegen auf der Grenze", { anzahl: 20 }, []],
+    ["der 21. Auftrag liegt darüber", { anzahl: 21 }, ["anzahl"]],
+    ["199 999 Token sind unter der Grenze", { tokens: 199_999 }, []],
+    ["200 000 Token haben die Grenze erreicht", { tokens: 200_000 }, ["budget"]],
+    ["29:59 Minuten sind unter der Grenze", { alterSekunden: 1_799 }, []],
+    ["30 Minuten haben die Grenze erreicht", { alterSekunden: 1_800 }, ["zeit"]],
   ] as [string, Partial<AuftragsFakten>, string[]][])("%s", (_name, teil, erwartet) => {
-    expect(verletzt({ ...OK, ...teil })).toEqual(erwartet);
+    expect(ueber({ ...OK, ...teil })).toEqual(erwartet);
   });
 
-  it("meldet mehrere verletzte Grenzen zusammen, mit Wert und Limit", () => {
-    const r = pruefeAuftragGrenzen({ tiefe: 9, anzahl: 99, tokens: 5e6, alterSekunden: 1e6 });
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.verletzt.map((v) => v.grenze)).toEqual(["tiefe", "anzahl", "budget", "zeit"]);
-      expect(r.verletzt[2]).toEqual({
-        grenze: "budget",
-        grund: "ueberschritten",
-        wert: 5e6,
-        limit: 200_000,
-      });
-    }
+  it("meldet mehrere Überschreitungen zusammen, mit Wert und Grenze", () => {
+    const m = messeAuftragsGrenzen({ tiefe: 9, anzahl: 99, tokens: 5e6, alterSekunden: 1e6 });
+    expect(NAMEN.filter((n) => m[n].ueberschreitet)).toEqual([...NAMEN]);
+    expect(m.budget).toEqual({ wert: 5e6, grenze: 200_000, fehlt: false, ueberschreitet: true });
   });
 
-  it("jeder fehlende Fakt ist verletzt, nicht übersehen", () => {
-    expect(verletzt({})).toEqual([
-      "tiefe:fakt_fehlt",
-      "anzahl:fakt_fehlt",
-      "budget:fakt_fehlt",
-      "zeit:fakt_fehlt",
-    ]);
-    expect(verletzt({ ...OK, tokens: undefined })).toEqual(["budget:fakt_fehlt"]);
-    expect(verletzt({ ...OK, alterSekunden: undefined })).toEqual(["zeit:fakt_fehlt"]);
+  it("jeder fehlende Fakt ist als fehlend gemeldet", () => {
+    expect(fehlend(messeAuftragsGrenzen({}))).toEqual([...NAMEN]);
+    expect(fehlend(messeAuftragsGrenzen({ ...OK, tokens: undefined }))).toEqual(["budget"]);
+    expect(fehlend(messeAuftragsGrenzen({ ...OK, alterSekunden: undefined }))).toEqual(["zeit"]);
+    expect(messeAuftragsGrenzen({}).tiefe).toEqual({
+      wert: null,
+      grenze: 3,
+      fehlt: true,
+      ueberschreitet: false,
+    });
   });
 
-  it("unbrauchbare Zahlen zählen wie fehlende", () => {
+  it("unbrauchbare Zahlen zählen als fehlend", () => {
     for (const schlecht of [Number.NaN, Number.POSITIVE_INFINITY, -1, "5" as unknown as number]) {
-      expect(verletzt({ ...OK, tokens: schlecht })).toEqual(["budget:fakt_fehlt"]);
+      expect(fehlend(messeAuftragsGrenzen({ ...OK, tokens: schlecht }))).toEqual(["budget"]);
     }
-    expect(verletzt({ ...OK, tiefe: 1.5 })).toEqual(["tiefe:fakt_fehlt"]);
-    expect(verletzt({ ...OK, anzahl: -2 })).toEqual(["anzahl:fakt_fehlt"]);
+    expect(fehlend(messeAuftragsGrenzen({ ...OK, tiefe: 1.5 }))).toEqual(["tiefe"]);
+    expect(fehlend(messeAuftragsGrenzen({ ...OK, anzahl: -2 }))).toEqual(["anzahl"]);
   });
 
-  it("eigene Grenzen gelten, außerhalb des Bereichs ist es ein Fehler", () => {
+  it("eigene Grenzen gelten; Grenzen außerhalb des Bereichs werfen nicht, sie sind ungültig gemeldet", () => {
     const g = { maxTiefe: 1, maxAnzahl: 2, maxTokens: 1_000, maxMinuten: 1 };
-    expect(verletzt({ tiefe: 1, anzahl: 2, tokens: 999, alterSekunden: 59 }, g)).toEqual([]);
-    expect(verletzt({ tiefe: 2, anzahl: 3, tokens: 1_000, alterSekunden: 60 }, g)).toHaveLength(4);
+    expect(ueber({ tiefe: 1, anzahl: 2, tokens: 999, alterSekunden: 59 }, g)).toEqual([]);
+    expect(ueber({ tiefe: 2, anzahl: 3, tokens: 1_000, alterSekunden: 60 }, g)).toHaveLength(4);
+    expect(messeAuftragsGrenzen(OK, g).grenzenGueltig).toBe(true);
     for (const falsch of [
       { ...g, maxTiefe: 0 },
       { ...g, maxTiefe: 9 },
@@ -90,7 +100,7 @@ describe("Grenzen je Auftrag", () => {
       { ...g, maxMinuten: 241 },
       { ...g, maxMinuten: 0.5 },
     ]) {
-      expect(() => pruefeAuftragGrenzen(OK, falsch)).toThrow(RangeError);
+      expect(messeAuftragsGrenzen(OK, falsch).grenzenGueltig).toBe(false);
     }
   });
 });

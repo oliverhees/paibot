@@ -18,12 +18,6 @@ import {
   type ErwaehnungsHinweis,
   erkenneErwaehnungen,
 } from "./erwaehnungen";
-import {
-  type AuftragsFakten,
-  type AuftragsGrenzen,
-  pruefeAuftragGrenzen,
-  type Verletzung,
-} from "./grenzen";
 import type { RaumBot } from "./namen";
 
 /** Wer eine Nachricht im Raum geschrieben hat. Alles außer `besitzer` gilt wie ein Bot. */
@@ -140,11 +134,13 @@ export interface RundenStand {
   readonly notAus: boolean;
   /** Bots des Teams, wie sie jetzt sind (zum Zeitpunkt des Starts, nicht der Nachricht). */
   readonly mitglieder: readonly RaumBot[];
-  /** Fakten des Auftragsbaums zum Zeitpunkt des Starts des nächsten Laufs. */
-  readonly fakten: AuftragsFakten;
-  readonly grenzen?: AuftragsGrenzen;
 }
 
+/**
+ * Vorschlag für den nächsten Schritt einer Runde. „starten“ heißt nur: dieser Bot ist als
+ * Nächster dran. Ob der Lauf wirklich beginnt (Grenzen des Auftrags, Budget, Zeit, Not-Aus des
+ * Tors), entscheidet allein das Tor.
+ */
 export type NaechsterSchritt =
   | { readonly aktion: "starten"; readonly botId: string }
   | { readonly aktion: "warten"; readonly grund: "lauf_aktiv" }
@@ -159,19 +155,17 @@ export type NaechsterSchritt =
         | "fertig"
         | "not_aus"
         | "vorheriger_lauf_fehlgeschlagen"
-        | "vorheriger_lauf_abgebrochen"
-        | "grenze";
-      readonly verletzt?: readonly Verletzung[];
+        | "vorheriger_lauf_abgebrochen";
     };
 
 /**
  * Was passiert als Nächstes in einer Runde? Immer nur ein Lauf zugleich: solange irgendein Eintrag
  * `aktiv` ist, wird nichts gestartet. Der nächste Bot startet erst, wenn alle vor ihm `fertig`
- * oder `uebersprungen` sind. Nach Not-Aus, einem gescheiterten oder abgebrochenen Lauf und beim
- * Erreichen einer Grenze des Auftrags startet nichts mehr; nach dem Aufheben des Not-Aus auch
- * nicht von selbst, weil die Runde dann schon geendet hat.
+ * oder `uebersprungen` sind. Nach Not-Aus und nach einem gescheiterten oder abgebrochenen Lauf
+ * startet nichts mehr; nach dem Aufheben des Not-Aus auch nicht von selbst, weil die Runde dann
+ * schon geendet hat. Die Grenzen des Auftrags prüft diese Funktion nicht (siehe `grenzen.ts`).
  */
-export function naechsterSchritt(stand: RundenStand): NaechsterSchritt {
+export function ermittleNaechstenSchritt(stand: RundenStand): NaechsterSchritt {
   if (stand.notAus) return { aktion: "ende", grund: "not_aus" };
   if (stand.eintraege.some((e) => e.status === "aktiv")) {
     return { aktion: "warten", grund: "lauf_aktiv" };
@@ -188,8 +182,6 @@ export function naechsterSchritt(stand: RundenStand): NaechsterSchritt {
     const bot = stand.mitglieder.find((m) => m.id === eintrag.botId);
     if (!bot) return { aktion: "ueberspringen", botId: eintrag.botId, grund: "kein_mitglied" };
     if (bot.pausiert) return { aktion: "ueberspringen", botId: eintrag.botId, grund: "pausiert" };
-    const geprueft = pruefeAuftragGrenzen(stand.fakten, stand.grenzen);
-    if (!geprueft.ok) return { aktion: "ende", grund: "grenze", verletzt: geprueft.verletzt };
     return { aktion: "starten", botId: eintrag.botId };
   }
   return { aktion: "ende", grund: "fertig" };

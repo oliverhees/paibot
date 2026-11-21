@@ -9,8 +9,10 @@
  */
 
 /**
- * Grenzen je Auftrag (Tiefe, Anzahl, Token, Zeit) als reine Funktion. Ein fehlender oder
- * unbrauchbarer Fakt gilt als verletzt, nie als „nicht geprüft“.
+ * Messwerte zu den Grenzen je Auftrag (Tiefe, Anzahl, Token, Zeit). Die Funktion liefert nur
+ * Fakten: Wert, Grenze, „fehlt“ und „überschreitet“. Sie entscheidet nichts und wirft nicht;
+ * ob etwas abgelehnt wird (und dass ein fehlender Fakt als verletzt gilt), entscheidet allein das
+ * Tor, damit es keinen zweiten Weg ohne Beleg gibt.
  */
 
 export interface AuftragsGrenzen {
@@ -18,9 +20,9 @@ export interface AuftragsGrenzen {
   readonly maxTiefe: number;
   /** Höchste Anzahl Aufträge im Baum, den neuen eingerechnet. */
   readonly maxAnzahl: number;
-  /** Token-Budget des Baums: erreicht oder darüber ist verbraucht. */
+  /** Token-Budget des Baums. */
   readonly maxTokens: number;
-  /** Höchstalter des Baums (Alter der Wurzel) in Minuten: erreicht oder darüber ist abgelaufen. */
+  /** Höchstalter des Baums (Alter der Wurzel) in Minuten. */
   readonly maxMinuten: number;
 }
 
@@ -38,7 +40,7 @@ export const AUFTRAGS_GRENZEN_BEREICH = {
   maxMinuten: { min: 1, max: 240 },
 } as const;
 
-/** Was über den Auftragsbaum bekannt ist. Alles Pflicht; was fehlt, ist verletzt. */
+/** Was über den Auftragsbaum bekannt ist; jeder Wert kann fehlen. */
 export interface AuftragsFakten {
   /** Tiefe des Auftrags, der gestartet werden soll (Wurzel = 0). */
   readonly tiefe?: number | undefined;
@@ -50,66 +52,64 @@ export interface AuftragsFakten {
   readonly alterSekunden?: number | undefined;
 }
 
-export type GrenzName = "tiefe" | "anzahl" | "budget" | "zeit";
-
-export interface Verletzung {
-  readonly grenze: GrenzName;
-  readonly grund: "ueberschritten" | "fakt_fehlt";
-  readonly wert?: number;
-  readonly limit: number;
+/** Messwert zu einer Grenze. */
+export interface Messwert {
+  /** Der gemessene Wert; `null`, wenn er fehlt oder unbrauchbar ist (keine Zahl, negativ, unendlich). */
+  readonly wert: number | null;
+  /** Die Grenze (Zeit in Sekunden). */
+  readonly grenze: number;
+  /** Der Fakt fehlt oder ist unbrauchbar. */
+  readonly fehlt: boolean;
+  /** Der Wert liegt über der Grenze (Tiefe, Anzahl) bzw. hat sie erreicht (Token, Zeit). `false`, wenn der Fakt fehlt. */
+  readonly ueberschreitet: boolean;
 }
 
-export type GrenzErgebnis =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly verletzt: readonly Verletzung[] };
-
-function pruefeBereich(grenzen: AuftragsGrenzen): void {
-  for (const schluessel of Object.keys(AUFTRAGS_GRENZEN_BEREICH) as (keyof AuftragsGrenzen)[]) {
-    const wert = grenzen[schluessel];
-    const bereich = AUFTRAGS_GRENZEN_BEREICH[schluessel];
-    if (!Number.isInteger(wert) || wert < bereich.min || wert > bereich.max) {
-      throw new RangeError(`Grenze ${schluessel} außerhalb des erlaubten Bereichs`);
-    }
-  }
+export interface GrenzMessung {
+  /** Alle vier Grenzen liegen im erlaubten Bereich und sind ganze Zahlen. */
+  readonly grenzenGueltig: boolean;
+  readonly tiefe: Messwert;
+  readonly anzahl: Messwert;
+  readonly budget: Messwert;
+  readonly zeit: Messwert;
 }
 
-function brauchbar(wert: number | undefined, ganzzahl: boolean): wert is number {
-  if (typeof wert !== "number" || !Number.isFinite(wert) || wert < 0) return false;
-  return ganzzahl ? Number.isInteger(wert) : true;
+function grenzenImBereich(grenzen: AuftragsGrenzen): boolean {
+  return (Object.keys(AUFTRAGS_GRENZEN_BEREICH) as (keyof AuftragsGrenzen)[]).every((k) => {
+    const wert = grenzen[k];
+    const bereich = AUFTRAGS_GRENZEN_BEREICH[k];
+    return Number.isInteger(wert) && wert >= bereich.min && wert <= bereich.max;
+  });
+}
+
+function messe(
+  roh: number | undefined,
+  grenze: number,
+  ganzzahl: boolean,
+  erreicht: (wert: number, grenze: number) => boolean,
+): Messwert {
+  const brauchbar =
+    typeof roh === "number" &&
+    Number.isFinite(roh) &&
+    roh >= 0 &&
+    (!ganzzahl || Number.isInteger(roh));
+  if (!brauchbar) return { wert: null, grenze, fehlt: true, ueberschreitet: false };
+  return { wert: roh, grenze, fehlt: false, ueberschreitet: erreicht(roh, grenze) };
 }
 
 /**
- * Prüft alle vier Grenzen und meldet jede verletzte. `tiefe` und `anzahl` dürfen den Höchstwert
- * erreichen, `tokens` und das Alter nicht (dort heißt „erreicht“ schon „verbraucht“).
+ * Misst die Fakten gegen die Grenzen. `tiefe` und `anzahl` dürfen die Grenze erreichen, `tokens`
+ * und das Alter nicht (dort heißt „erreicht“ schon „verbraucht“). Wirft nie: Grenzen außerhalb des
+ * Bereichs zeigt `grenzenGueltig = false` an.
  */
-export function pruefeAuftragGrenzen(
+export function messeAuftragsGrenzen(
   fakten: AuftragsFakten,
   grenzen: AuftragsGrenzen = STANDARD_AUFTRAGS_GRENZEN,
-): GrenzErgebnis {
-  pruefeBereich(grenzen);
-  const verletzt: Verletzung[] = [];
-  const pruefe = (
-    grenze: GrenzName,
-    wert: number | undefined,
-    limit: number,
-    ganzzahl: boolean,
-    zuViel: (w: number) => boolean,
-  ) => {
-    if (!brauchbar(wert, ganzzahl)) {
-      verletzt.push({ grenze, grund: "fakt_fehlt", limit });
-    } else if (zuViel(wert)) {
-      verletzt.push({ grenze, grund: "ueberschritten", wert, limit });
-    }
+): GrenzMessung {
+  return {
+    grenzenGueltig: grenzenImBereich(grenzen),
+    tiefe: messe(fakten.tiefe, grenzen.maxTiefe, true, (w, g) => w > g),
+    anzahl: messe(fakten.anzahl, grenzen.maxAnzahl, true, (w, g) => w > g),
+    budget: messe(fakten.tokens, grenzen.maxTokens, false, (w, g) => w >= g),
+    zeit: messe(fakten.alterSekunden, grenzen.maxMinuten * 60, false, (w, g) => w >= g),
   };
-  pruefe("tiefe", fakten.tiefe, grenzen.maxTiefe, true, (w) => w > grenzen.maxTiefe);
-  pruefe("anzahl", fakten.anzahl, grenzen.maxAnzahl, true, (w) => w > grenzen.maxAnzahl);
-  pruefe("budget", fakten.tokens, grenzen.maxTokens, false, (w) => w >= grenzen.maxTokens);
-  pruefe(
-    "zeit",
-    fakten.alterSekunden,
-    grenzen.maxMinuten * 60,
-    false,
-    (w) => w >= grenzen.maxMinuten * 60,
-  );
-  return verletzt.length === 0 ? { ok: true } : { ok: false, verletzt };
 }

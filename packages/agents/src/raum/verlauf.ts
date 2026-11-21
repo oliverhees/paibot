@@ -21,6 +21,10 @@ import { vergleichsName } from "./namen";
 export interface VerlaufsEintrag {
   readonly role: "user" | "assistant";
   readonly text: string;
+  /** Der Lauf, aus dem der Beitrag stammt; `null` bei Nachrichten der Person oder ohne Angabe. */
+  readonly laufId: string | null;
+  /** Der Beitrag enthält Text aus fremder Quelle; wird unverändert aus der Eingabe durchgereicht. */
+  readonly enthaeltFremdenText: boolean;
 }
 
 export interface RaumNachricht {
@@ -29,6 +33,10 @@ export interface RaumNachricht {
   /** Bei Bot-Nachrichten der Bot, der sie geschrieben hat; fehlt er, gilt der Beitrag als fremd. */
   readonly botId?: string | null | undefined;
   readonly text: string;
+  /** Lauf, der den Beitrag erzeugt hat. */
+  readonly laufId?: string | null | undefined;
+  /** Kennzeichen „enthält fremden Text“; fehlt es, gilt es als nicht gesetzt. */
+  readonly enthaeltFremdenText?: boolean | undefined;
 }
 
 export interface VerlaufsBot {
@@ -108,8 +116,10 @@ function fremderBeitrag(name: string, text: string, maxZeichen: number): string 
 
 /**
  * Verlauf für `aktuellerBotId`. Eigene frühere Antworten bleiben `assistant`, Nachrichten der
- * Person `user`, Beiträge anderer Bots `user` mit Kennzeichnung. Leere Beiträge fallen weg,
- * aufeinanderfolgende `user`-Einträge werden zu einem zusammengefasst.
+ * Person `user`, Beiträge anderer Bots `user` mit Kennzeichnung. Leere Beiträge fallen weg.
+ * Jeder Eintrag trägt `laufId` und `enthaeltFremdenText` der Nachricht mit, damit das
+ * Kennzeichen über Bot-Grenzen hinweg weitergegeben werden kann. Einträge werden nicht
+ * zusammengefasst, damit die Herkunft je Beitrag erhalten bleibt.
  */
 export function baueRaumVerlauf(
   nachrichten: readonly RaumNachricht[],
@@ -117,17 +127,25 @@ export function baueRaumVerlauf(
 ): VerlaufsEintrag[] {
   const namen = beschriftungen(optionen.bots);
   const maxBeitrag = optionen.maxBeitragZeichen ?? STANDARD_MAX_BEITRAG_ZEICHEN;
-  const eintraege: { role: "user" | "assistant"; text: string }[] = [];
+  const eintraege: VerlaufsEintrag[] = [];
   for (const nachricht of nachrichten) {
     if (nachricht.text.trim() === "") continue;
+    const herkunft = {
+      laufId: nachricht.laufId ?? null,
+      enthaeltFremdenText: nachricht.enthaeltFremdenText === true,
+    };
     if (nachricht.autor === "besitzer") {
-      eintraege.push({ role: "user", text: nachricht.text });
+      eintraege.push({ role: "user", text: nachricht.text, ...herkunft });
     } else if (nachricht.autor === "bot") {
       if (nachricht.botId != null && nachricht.botId === optionen.aktuellerBotId) {
-        eintraege.push({ role: "assistant", text: nachricht.text });
+        eintraege.push({ role: "assistant", text: nachricht.text, ...herkunft });
       } else {
         const name = (nachricht.botId != null && namen.get(nachricht.botId)) || UNBEKANNTER_BOT;
-        eintraege.push({ role: "user", text: fremderBeitrag(name, nachricht.text, maxBeitrag) });
+        eintraege.push({
+          role: "user",
+          text: fremderBeitrag(name, nachricht.text, maxBeitrag),
+          ...herkunft,
+        });
       }
     }
   }
@@ -143,14 +161,10 @@ export function baueRaumVerlauf(
     behalten.unshift(eintrag);
   }
 
-  const verlauf: VerlaufsEintrag[] = [];
-  for (const eintrag of behalten) {
-    const letzter = verlauf[verlauf.length - 1];
-    if (letzter && letzter.role === "user" && eintrag.role === "user") {
-      verlauf[verlauf.length - 1] = { role: "user", text: `${letzter.text}\n\n${eintrag.text}` };
-    } else {
-      verlauf.push({ role: eintrag.role, text: eintrag.text });
-    }
-  }
-  return verlauf;
+  return behalten;
+}
+
+/** Fakt: Steht im Verlauf mindestens ein Beitrag mit dem Kennzeichen „enthält fremden Text“? */
+export function verlaufEnthaeltFremdenText(verlauf: readonly VerlaufsEintrag[]): boolean {
+  return verlauf.some((e) => e.enthaeltFremdenText);
 }

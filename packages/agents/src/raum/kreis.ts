@@ -9,8 +9,9 @@
  */
 
 /**
- * Kein Kreis im Auftragsbaum: ein Bot darf Arbeit nie an sich selbst oder an einen Bot geben, der
- * im Baum über ihm steht. Reine Funktion über eine Liste von Knoten.
+ * Fakten zum Kreis im Auftragsbaum: ist der Empfänger der Geber selbst oder einer seiner
+ * Vorfahren? Die Funktion liefert nur Fakten („Kreis erkannt“, Tiefe) und entscheidet nichts;
+ * ob eine Übergabe abgelehnt wird, entscheidet allein das Tor.
  */
 
 export interface AuftragsKnoten {
@@ -20,46 +21,80 @@ export interface AuftragsKnoten {
   readonly botId: string;
 }
 
-export type KreisErgebnis =
-  | { readonly ok: true; readonly tiefe: number }
-  | {
-      readonly ok: false;
-      readonly grund: "selbst" | "vorfahre" | "auftrag_unbekannt" | "baum_defekt";
-    };
+export interface KreisFakten {
+  /** Der Auftrag des Gebers steht im Baum. */
+  readonly auftragBekannt: boolean;
+  /** Der Baum ließ sich bis zur Wurzel lesen (keine Schleife, kein fehlender Elternknoten, keine doppelte Kennung, nicht zu lang). */
+  readonly baumLesbar: boolean;
+  /** Der Empfänger ist der Bot des Gebers. */
+  readonly empfaengerIstGeber: boolean;
+  /** Der Empfänger ist ein Bot über dem Geber im Baum. */
+  readonly empfaengerIstVorfahre: boolean;
+  /** `empfaengerIstGeber` oder `empfaengerIstVorfahre`: der Empfänger arbeitet schon im Strang. */
+  readonly kreisErkannt: boolean;
+  /** Tiefe des neuen Auftrags (Tiefe des Gebers + 1, Wurzel = 0); `null`, wenn der Baum nicht lesbar ist. */
+  readonly tiefeDesNeuen: number | null;
+}
 
-/** Ein Baum aus Millionen Knoten ist kein Baum mehr; die Suche nach oben bricht dort ab. */
+/** Ein Baum aus Tausenden Ebenen ist kein Baum mehr; die Suche nach oben bricht dort ab. */
 const MAX_KETTE = 1_000;
 
+const UNBEKANNT: KreisFakten = {
+  auftragBekannt: false,
+  baumLesbar: false,
+  empfaengerIstGeber: false,
+  empfaengerIstVorfahre: false,
+  kreisErkannt: false,
+  tiefeDesNeuen: null,
+};
+
 /**
- * Darf der Bot `anBotId` eine Aufgabe vom Auftrag `vonAuftragId` übernehmen? Nein, wenn er der
- * Geber selbst oder einer seiner Vorfahren im Baum ist. Ein Baum mit Schleife, mit fehlendem
- * Elternknoten oder mit doppelten Knoten-Kennungen wird abgelehnt (`baum_defekt`).
+ * Ermittelt die Kreis-Fakten für eine Übergabe vom Auftrag `vonAuftragId` an `anBotId`. Wirft nie;
+ * ein kaputter Baum (Schleife, fehlender Elternknoten, doppelte Kennung) steht als
+ * `baumLesbar = false`. Bot-Kennungen werden genau verglichen.
  */
-export function pruefeKeinKreis(
+export function ermittleKreisFakten(
   knoten: readonly AuftragsKnoten[],
   vonAuftragId: string,
   anBotId: string,
-): KreisErgebnis {
+): KreisFakten {
   const nachId = new Map<string, AuftragsKnoten>();
+  let doppelt = false;
   for (const k of knoten) {
-    if (nachId.has(k.id)) return { ok: false, grund: "baum_defekt" };
+    if (nachId.has(k.id)) doppelt = true;
     nachId.set(k.id, k);
   }
   let aktuell = nachId.get(vonAuftragId);
-  if (!aktuell) return { ok: false, grund: "auftrag_unbekannt" };
-  if (aktuell.botId === anBotId) return { ok: false, grund: "selbst" };
+  if (!aktuell) return UNBEKANNT;
+  const geber = aktuell.botId === anBotId;
+  const unlesbar: KreisFakten = {
+    auftragBekannt: true,
+    baumLesbar: false,
+    empfaengerIstGeber: geber,
+    empfaengerIstVorfahre: false,
+    kreisErkannt: geber,
+    tiefeDesNeuen: null,
+  };
+  if (doppelt) return unlesbar;
   const besucht = new Set<string>([aktuell.id]);
   let abstand = 0;
+  let vorfahre = false;
   while (aktuell.elternId !== null) {
     const eltern = nachId.get(aktuell.elternId);
     if (!eltern || besucht.has(eltern.id) || abstand >= MAX_KETTE) {
-      return { ok: false, grund: "baum_defekt" };
+      return { ...unlesbar, empfaengerIstVorfahre: vorfahre, kreisErkannt: geber || vorfahre };
     }
-    if (eltern.botId === anBotId) return { ok: false, grund: "vorfahre" };
+    if (eltern.botId === anBotId) vorfahre = true;
     besucht.add(eltern.id);
     aktuell = eltern;
     abstand += 1;
   }
-  // Tiefe des neuen Auftrags = Tiefe des Gebers + 1 (Wurzel = 0)
-  return { ok: true, tiefe: abstand + 1 };
+  return {
+    auftragBekannt: true,
+    baumLesbar: true,
+    empfaengerIstGeber: geber,
+    empfaengerIstVorfahre: vorfahre,
+    kreisErkannt: geber || vorfahre,
+    tiefeDesNeuen: abstand + 1,
+  };
 }
