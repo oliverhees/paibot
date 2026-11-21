@@ -335,7 +335,10 @@ describe("nicht erlaubte Aktion", () => {
       createGate(ports).run(sampleAction("modell.anfragen"), facts, execute),
     );
     expect(execute).not.toHaveBeenCalled();
-    expect((error as GateDenied).code).toBe("abgelehnt");
+    // Eigener Code mit festem Text und Ausweg; der Grund des Tors steht im Beleg.
+    expect((error as GateDenied).code).toBe("angehalten");
+    expect((error as GateDenied).text).toBeUndefined();
+    expect((error as GateDenied).decision.reason).toContain("G-05");
     expect(entries.map((e) => e.kind)).toEqual(["decision", "result"]);
   });
 

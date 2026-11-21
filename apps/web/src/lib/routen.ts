@@ -15,6 +15,7 @@ import {
   connectionTestInput,
   conversationCreateInput,
   conversationRenameInput,
+  killSwitchInput,
   loginInput,
   modelChoiceInput,
   passwordChangeInput,
@@ -444,6 +445,21 @@ export const API_ROUTEN = {
     zugang: "besitzer",
     antwort: "json",
     veraendernd: false,
+  },
+
+  /**
+   * Not-Aus an oder aus. Einschalten genügt die Sitzung; Aufheben verlangt das aktuelle Passwort
+   * (Vorbedingung V-10). Versuche mit Passwort zählen auf `passwortAendern` (in der Route, damit
+   * das Einschalten nie zählt).
+   */
+  notausUmschalten: {
+    methode: "PUT",
+    pfad: "/api/notaus",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "notaus.umschalten",
+    eingabe: killSwitchInput,
   },
 } as const satisfies Record<string, RoutenDefinition>;
 

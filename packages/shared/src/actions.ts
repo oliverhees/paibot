@@ -299,6 +299,24 @@ export const ACTIONS = {
       thisDevice: z.boolean(),
     },
   ),
+  /**
+   * Der Besitzer schaltet den Not-Aus („Alle Bots anhalten“) an oder aus. Die Fakten heißen
+   * bewusst nicht `killSwitch`: Die Grenze G-05 trifft so nur Aktionen, die zu einem Bot führen,
+   * und der Besitzer kann den Not-Aus immer wieder aufheben.
+   */
+  "notaus.umschalten": action(
+    "besitzer",
+    { installationId },
+    {
+      ...ownerFacts,
+      /** Der Not-Aus soll danach an sein. */
+      on: z.boolean(),
+      /** Der Not-Aus war vorher an. */
+      wasOn: z.boolean(),
+      /** Das aktuelle Passwort wurde in dieser Anfrage geprüft (Vorbedingung V-10 beim Aufheben). */
+      currentPasswordVerified: z.boolean(),
+    },
+  ),
 } as const;
 
 type Actions = typeof ACTIONS;

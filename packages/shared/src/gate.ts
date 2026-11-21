@@ -516,6 +516,13 @@ export const PRECONDITIONS = {
     require: [{ fact: "argsDigest", op: "eq", value: { fact: "waitingArgsDigest" } }],
     errorCode: "abgelehnt",
   },
+  "V-10": {
+    name: "notaus_aufheben_bestaetigt",
+    actions: ["notaus.umschalten"],
+    when: [{ fact: "on", op: "eq", value: false }],
+    require: [{ fact: "currentPasswordVerified", op: "eq", value: true }],
+    errorCode: "passwort_falsch",
+  },
 } as const satisfies Record<
   string,
   {

@@ -189,6 +189,20 @@ export const settingsInput = z
   });
 export type SettingsInput = z.infer<typeof settingsInput>;
 
+/**
+ * `PUT /api/notaus`: Not-Aus an (`on: true`) oder aus. Aufheben verlangt das aktuelle Passwort;
+ * beim Einschalten wird keins mitgeschickt.
+ */
+export const killSwitchInput = z
+  .strictObject({
+    on: z.boolean(),
+    currentPassword: passwordSchema.optional(),
+  })
+  .refine((input) => !(input.on && input.currentPassword !== undefined), {
+    path: ["currentPassword"],
+  });
+export type KillSwitchInput = z.infer<typeof killSwitchInput>;
+
 /** Abfrage der Beleg-Liste: Filter nach Aktion und Unterhaltung, blättern über `before` (seq). */
 export const receiptListQuery = z.strictObject({
   action: actionTypeSchema.optional(),

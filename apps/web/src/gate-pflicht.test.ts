@@ -453,6 +453,7 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
     vorher: einrichten,
     aufruf: async (s) => ({ params: { id: await anbieterId(s) } }),
   },
+  notausUmschalten: { vorher: einrichten, aufruf: async () => ({ koerper: { on: true } }) },
 };
 
 /**

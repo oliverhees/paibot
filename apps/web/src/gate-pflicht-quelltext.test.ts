@@ -209,6 +209,8 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   "worker/src/lauf.ts": { art: "betrieb", nur: ["events.append", "runs.finish"] },
   // Worker: gemessener Zustand der Datenschleuse (eine Zeile, Betriebszustand, keine Aktion).
   "worker/src/schleuse-meldung.ts": { art: "betrieb", nur: ["schleuse.report"] },
+  // Not-Aus umschalten (Aktion hinter `PUT /api/notaus`).
+  "web/src/lib/notaus/notaus.ts": { art: "aktion" },
 };
 
 function quelltexte(): { datei: string; text: string }[] {

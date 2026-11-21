@@ -113,11 +113,18 @@ export function preconditionId(name: PreconditionName): PreconditionId {
 
 /**
  * Fehlercode, mit dem eine nicht erlaubte Entscheidung gemeldet wird: bei einer verletzten
- * Vorbedingung deren `errorCode` (die erste nach ID), sonst `OUTCOME_ERROR_CODE`.
+ * Vorbedingung deren `errorCode` (die erste nach ID), bei verletztem Not-Aus (G-05) `angehalten`,
+ * sonst `OUTCOME_ERROR_CODE`.
  */
-export function denialCode(decision: Pick<Decision, "outcome" | "preconditions">): ErrorCode {
+export function denialCode(
+  decision: Pick<Decision, "outcome" | "preconditions"> & { limits?: Decision["limits"] },
+): ErrorCode {
   const violated = (decision.preconditions ?? []).find((check) => check.result === "verletzt");
   if (violated !== undefined) return PRECONDITIONS[preconditionId(violated.name)].errorCode;
+  const notAus = (decision.limits ?? []).some(
+    (check) => check.name === "not_aus" && check.result === "verletzt",
+  );
+  if (notAus) return "angehalten";
   return OUTCOME_ERROR_CODE[decision.outcome === "allow" ? "deny" : decision.outcome];
 }
 

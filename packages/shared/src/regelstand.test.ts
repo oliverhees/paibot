@@ -142,7 +142,9 @@ describe("Fassungen der Standard-Regeln", () => {
 
 describe("Vorbedingungen", () => {
   it("haben fortlaufende IDs, eindeutige Namen und gültige Fehlercodes", () => {
-    expect(PRECONDITION_IDS).toEqual(PRECONDITION_IDS.map((_, i) => `V-0${i + 1}`));
+    expect(PRECONDITION_IDS).toEqual(
+      PRECONDITION_IDS.map((_, i) => `V-${String(i + 1).padStart(2, "0")}`),
+    );
     const names = PRECONDITION_IDS.map((id) => PRECONDITIONS[id].name);
     expect(new Set(names).size).toBe(names.length);
     for (const id of PRECONDITION_IDS) {

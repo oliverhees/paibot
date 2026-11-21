@@ -311,7 +311,9 @@ export class GateDenied extends PaiBotError {
     action: { actionId: ActionId; type: ActionType },
   ) {
     const outcome = decision.outcome === "allow" ? "deny" : decision.outcome;
-    super(denialCode({ ...decision, outcome }), { text: decision.reason });
+    const code = denialCode({ ...decision, outcome });
+    // Beim Not-Aus gilt der feste Text mit Ausweg; der Grund des Tors steht im Beleg.
+    super(code, code === "angehalten" ? {} : { text: decision.reason });
     this.name = "GateDenied";
     this.outcome = outcome;
     this.decision = decision;

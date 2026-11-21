@@ -218,7 +218,7 @@ describe("Ablehnung durch das Tor: kein Abruf beim Anbieter", () => {
     const env = await setup([text("nie"), finish()]);
     await repo.settings.update(env.db, { killSwitch: true });
     const { runId } = await env.queueMessage(QUESTION);
-    await expectDenied(env, runId, "abgelehnt");
+    await expectDenied(env, runId, "angehalten");
   });
 
   it("Grenze Tagesbudget", async () => {
@@ -298,6 +298,31 @@ describe("Abbruch", () => {
     await repo.runs.requestCancel(env.db, runId);
     const outcome = await running;
     expect(outcome.status).toBe("cancelled");
+    expect((await env.receipts()).at(-1)?.body).toMatchObject({ result: { status: "cancelled" } });
+  });
+
+  it("Not-Aus mitten im Strom: Lauf endet als angehalten, Teiltext bleibt", async () => {
+    const env = await setup([text("Ein Teil"), { type: "bis-abbruch" }], {
+      tuning: { cancelPollMs: 20 },
+    });
+    const { runId } = await env.queueMessage(QUESTION);
+    const running = executeRun(runId, env.deps, never());
+    await waitFor(async () => (await env.events()).some((e) => e.type === "text.delta"));
+    await repo.settings.update(env.db, { killSwitch: true });
+    const outcome = await running;
+    expect(outcome).toMatchObject({ status: "cancelled", code: "angehalten" });
+    const message = await repo.messages.get(env.db, outcome.messageId as never);
+    expect(message).toMatchObject({
+      status: "cancelled",
+      content: "Ein Teil",
+      errorCode: "angehalten",
+    });
+    expect(await repo.runs.get(env.db, runId)).toMatchObject({
+      status: "cancelled",
+      errorCode: "angehalten",
+    });
+    const ende = (await env.events()).at(-1);
+    expect(ende).toMatchObject({ type: "run.cancelled", data: { code: "angehalten" } });
     expect((await env.receipts()).at(-1)?.body).toMatchObject({ result: { status: "cancelled" } });
   });
 
