@@ -24,7 +24,7 @@ Den Anbieter verbindest du meist schon in der Einrichtung. Danach änderst du al
 
 **Schlüssel ersetzen**
 
-1. Öffne „Modell und Anbieter“. Oben siehst du den Anbieter mit Adresse, Region (zum Beispiel „EU“) und „Schlüssel hinterlegt“. Den Schlüssel selbst zeigt PaiBot nie an, auch nicht teilweise.
+1. Öffne „Modell und Anbieter“. Oben siehst du den Anbieter mit Adresse, Region (zum Beispiel „EU“) und „Schlüssel hinterlegt“. Den Schlüssel selbst zeigt PaiBot nie an, auch nicht teilweise. Dieselbe Region steht oben in der Seitenleiste als „Modelle: EU“ (bzw. „lokal“ oder „außerhalb der EU“); sie folgt dem Anbieter des gewählten Modells. Ohne gewähltes Modell steht dort „noch keins“.
 2. Klicke „Verbindung testen“, um den gespeicherten Schlüssel zu prüfen. Das Ergebnis steht in einem Satz darunter, zum Beispiel „Verbindung steht. 12 passende Modelle gefunden.“
 3. Klicke „Schlüssel ersetzen“ und füge den neuen Schlüssel in das Feld ein.
 4. Klicke „Verbindung testen“. Nimmt der Anbieter den Schlüssel nicht an, steht dort, was du tun kannst; gespeichert ist dann nichts.

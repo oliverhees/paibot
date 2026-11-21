@@ -49,8 +49,9 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 **Datenschleuse für diese Unterhaltung**
 
 1. Unten in der Eingabe steht der Schalter **Datenschleuse an/aus**. Er gilt nur für diese Unterhaltung; neue Unterhaltungen beginnen mit dem Standard aus der Einrichtung.
-2. Ist die Datenschleuse auf deinem Server nicht eingerichtet, lässt sich der Schalter nicht einschalten. Über dem Feld steht dann „Die Datenschleuse ist auf diesem Server nicht eingerichtet.“ mit dem Link **So schaltest du sie zu** (siehe [Datenschleuse](funktion-datenschleuse.md)). Ausschalten geht immer.
+2. Ist die Datenschleuse auf deinem Server nicht eingerichtet (der Worker meldet sie nicht), lässt sich der Schalter nicht einschalten. Über dem Feld steht dann „Die Datenschleuse ist auf diesem Server nicht eingerichtet.“ mit dem Link **So schaltest du sie zu** (siehe [Datenschleuse](funktion-datenschleuse.md)). Ausschalten geht immer.
 3. Hat die Datenschleuse die letzte Anfrage gestoppt, steht über dem Feld „Datenschleuse nicht bereit“. Die Nachricht ging dann nicht an das Modell; es gibt keinen Rückfall auf den direkten Weg.
+4. Lag es an der Datenschleuse, sagt der Hinweis an der Stelle der Antwort genau, woran: Sie hat die Anfrage gestoppt, sie war nicht bereit, sie nimmt den Schlüssel von PaiBot (`SCHLEUSE_KEY`) nicht an, oder die Antwort war zu groß. Darunter steht, was du tun kannst, und der Link **Zur Datenschleuse**.
 
 **Unterhaltung umbenennen oder löschen**
 
@@ -154,7 +155,7 @@ Beteiligte Teile: `apps/web/src/app/(app)/chat/` und `apps/web/src/lib/chat/` (S
 - Pro Unterhaltung antwortet der Bot immer nur auf eine Nachricht zur selben Zeit.
 - Die Token-Zahlen meldet der Anbieter; PaiBot rechnet sie nicht nach.
 - Der Schalter „Datenschleuse“ gilt je Unterhaltung (oder als Standard). Ein eigener Schalter nur für eine einzelne Nachricht ist geplant.
-- Ob die Datenschleuse gerade bereit ist, erfährt die Seite erst, wenn eine Anfrage gestoppt wurde („Datenschleuse nicht bereit“). Einen laufenden Zustand vorab zeigt sie nicht.
+- Ob die Datenschleuse gerade bereit ist, zeigt der Chat erst, wenn eine Anfrage gestoppt wurde („Datenschleuse nicht bereit“). Den laufenden Zustand, den der Worker alle 30 Sekunden prüft, zeigt die Seite [Datenschleuse](funktion-datenschleuse.md).
 - Unter einer Antwort steht nicht, wie viele Angaben die Datenschleuse ersetzt hat; diese Zahl wird nicht festgehalten.
 - Die Seitenleiste zeigt die 100 zuletzt benutzten Unterhaltungen.
 - Eine Nachricht hat höchstens 32.000 Zeichen. Kurz vor der Grenze zeigt die Eingabe, wie viele noch gehen; darüber wird nicht gesendet.
@@ -174,4 +175,5 @@ Beteiligte Teile: `apps/web/src/app/(app)/chat/` und `apps/web/src/lib/chat/` (S
 | Antwort bleibt lange bei „schreibt …“                 | Worker läuft nicht                                                          | `docker compose logs worker` ansehen; Zeilen wie `Lauf lau_… beendet: succeeded` zeigen Läufe   |
 | „verbindet neu …“ bleibt stehen                       | Die Web-App ist nicht erreichbar                                            | Warten; sonst „Neu verbinden“ oder die Seite neu laden. Die Antwort läuft im Hintergrund weiter |
 | Schalter „Datenschleuse“ lässt sich nicht einschalten | Die Datenschleuse ist auf diesem Server nicht eingerichtet                  | [Datenschleuse](funktion-datenschleuse.md) einrichten                                           |
+| „… nimmt den Schlüssel von PaiBot nicht an“           | Worker und Datenschleuse haben verschiedene `SCHLEUSE_KEY`                  | `SCHLEUSE_KEY` in `deploy/.env` prüfen, Worker und Datenschleuse neu starten                    |
 | „… Zeichen zu viel“ über dem Feld                     | Die Nachricht ist länger als 32.000 Zeichen                                 | Kürzen oder auf mehrere Nachrichten verteilen                                                   |
