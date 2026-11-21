@@ -3336,7 +3336,8 @@
         {
           "ablauf": "start-fassung-startbrett"
         }
-      ]
+      ],
+      "verdecke": ["[class*='zeilen'] small"]
     },
     {
       "name": "chat-start-stille",
@@ -3519,7 +3520,11 @@
           "warteAuf": "header [data-zustand='fertig'], [data-zustand='fertig']"
         }
       ],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']"]
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ]
     }
   ]
 }

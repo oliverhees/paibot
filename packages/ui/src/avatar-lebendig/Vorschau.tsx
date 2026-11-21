@@ -10,7 +10,7 @@
 
 "use client";
 
-import { AVATAR_SHAPES, type AvatarShape, type BotColor } from "@paibot/shared/objekte";
+import type { AvatarShape, BotColor } from "@paibot/shared/objekte";
 import { useEffect, useRef, useState } from "react";
 import { AvatarLebendig, type AvatarLebendigSteuerung } from "./AvatarLebendig";
 import {
@@ -18,8 +18,12 @@ import {
   AVATAR_LEBENDIG_ZUSTAENDE,
   type AvatarAusdruck,
   type AvatarLebendigZustand,
+  FORM_GESICHT,
 } from "./daten";
 import styles from "./Vorschau.module.css";
+
+/** Alle Formen; `daten.test.ts` prüft, dass sie mit `AVATAR_SHAPES` übereinstimmen (ohne Zod im Browser). */
+const FORMEN_LISTE = Object.keys(FORM_GESICHT) as AvatarShape[];
 
 /** Namen nur für die Vorschau (die App nimmt ihre Texte aus `@paibot/shared`). */
 const ZUSTAND_NAME: Record<AvatarLebendigZustand, string> = {
@@ -215,7 +219,7 @@ export function AvatarLebendigVorschau() {
               {ZUSTAND_NAME[z]}
             </span>
           ))}
-          {AVATAR_SHAPES.map((form) => (
+          {FORMEN_LISTE.map((form) => (
             <Zeile key={form} form={form} />
           ))}
         </div>

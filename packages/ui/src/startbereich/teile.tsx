@@ -124,7 +124,11 @@ export function HerkunftAnzeige({
   herkunftText,
 }: Pick<StartDaten, "herkunft" | "herkunftText">) {
   if (herkunftText !== undefined) {
-    return <span className={klassen(styles.herkunft, styles.herkunftFremd)}>{herkunftText}</span>;
+    return (
+      <span className={klassen(styles.herkunft, styles.herkunftFremd, styles.herkunftText)}>
+        {herkunftText}
+      </span>
+    );
   }
   return herkunft === undefined ? null : <HerkunftMarke herkunft={herkunft} />;
 }
