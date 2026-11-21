@@ -19,6 +19,7 @@ import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { CHROMIUM_OPTIONEN, loescheCacheOrdner, neuerCacheOrdner } from "./hilfen.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HIER, "../../..");
@@ -199,6 +200,7 @@ const AUSDRUECKE = ["nicken", "kopfschuetteln", "anpacken", "einverstanden", "zw
 
 describe.skipIf(!bereit && !erzwungen)("Lebendiger Avatar im Browser", { timeout: 60_000 }, () => {
   let server;
+  let cacheOrdner;
   let browser;
   let basis;
 
@@ -207,8 +209,10 @@ describe.skipIf(!bereit && !erzwungen)("Lebendiger Avatar im Browser", { timeout
     const web = createRequire(path.join(WEB, "package.json"));
     const port = await freierPort();
     const thema = "dark";
+    cacheOrdner = neuerCacheOrdner();
     server = await createViteServer({
       configFile: false,
+      cacheDir: cacheOrdner,
       root: HIER,
       logLevel: "error",
       server: { host: "127.0.0.1", port, strictPort: true, fs: { allow: [REPO] }, hmr: false },
@@ -243,7 +247,7 @@ describe.skipIf(!bereit && !erzwungen)("Lebendiger Avatar im Browser", { timeout
     });
     await server.listen();
     basis = `http://127.0.0.1:${port}`;
-    browser = await chromium.launch();
+    browser = await chromium.launch(CHROMIUM_OPTIONEN);
     const warm = await browser.newPage();
     await warm.goto(basis);
     await warm.waitForSelector("#wurzel > *", { timeout: 90_000 });
@@ -253,6 +257,7 @@ describe.skipIf(!bereit && !erzwungen)("Lebendiger Avatar im Browser", { timeout
   afterAll(async () => {
     await browser?.close();
     await server?.close();
+    loescheCacheOrdner(cacheOrdner);
   });
 
   /** Neue Seite; `weniger` schaltet „weniger Bewegung“ ein. */

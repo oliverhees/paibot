@@ -207,11 +207,30 @@ Ohne Playwright meldet das Skript „ÜBERSPRUNGEN“ und endet mit Exit 0, mit 
 
 Was die Netz-Sperre nicht sieht: Verbindungen aus nativen Erweiterungen oder über interne Bindungen von Node am Modul `net` vorbei, Kind-Prozesse, die `NODE_OPTIONS` nicht erben, Programme außerhalb von Node (Postgres selbst, der Browser), lokale Unix-Sockets (zugelassen) und alles vor dem Laden der Sperre. Die Dienstnamen aus Docker Compose (`postgres`, `datenschleuse`, `web`, `worker`), die die Anbieter-Schicht zur Sicherheit auflöst, beantwortet die Sperre selbst mit „unbekannt“; sie stehen als `name-lokal` im Log und zählen nicht als Verstoß.
 
+### Browser-Tests der Oberfläche
+
+Fokus-Falle, Tastatur und Maße der Bausteine lassen sich nur in einem echten Browser prüfen. Die Tests liegen in `packages/ui/browser/` und laufen mit Vitest und Playwright (Chromium).
+
+```bash
+pnpm --filter @paibot/ui test:browser
+```
+
+Das braucht:
+
+- Playwright **1.63.0** mit dem passenden Chromium (Fassung 153, Revision 1243). Playwright gehört nicht zu den Abhängigkeiten des Projekts: Installiere es außerhalb (`npm install -g playwright && npx playwright install chromium`), ein globales Playwright wird über `NODE_PATH` gefunden.
+- Keinen gebauten Stand und keine laufende App: Jede Testdatei startet selbst einen Vite-Server auf einem freien Port und liefert ihre Prüfseite aus.
+- Keinen Zugang nach außen: Chromium löst nur `127.0.0.1` auf, ein Aufruf nach draußen scheitert sofort (`packages/ui/browser/hilfen.mjs`).
+
+Der Aufruf setzt `PAIBOT_BROWSER_TESTS=1`: Fehlt Playwright oder Chromium, schlägt der Lauf fehl. Unter `pnpm test` werden diese Tests ohne die Variable übersprungen.
+
+Für neue Browser-Tests gilt: Jeder Vite-Server bekommt mit `neuerCacheOrdner()` einen eigenen Zwischenspeicher (Option `cacheDir`) und räumt ihn mit `loescheCacheOrdner()` auf, und `chromium.launch(CHROMIUM_OPTIONEN)` startet den Browser. Teilen sich die Server den Standard-Ordner `node_modules/.vite`, bündeln sie beim ersten Lauf gleichzeitig dieselben Abhängigkeiten, und die Prüfseite bleibt leer.
+
 ### In der CI
 
 | Job             | Was er tut                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `e2e`           | nach `check`: Postgres als Dienst-Container, Playwright in fester Fassung, `pnpm build`, die Prüfung oben, danach beide Gegenproben (müssen mit Exit 1 und der passenden Meldung enden). Im Fehlerfall stehen Schritte, Prüfungen und die Enden der Logs im Protokoll.                                                                                                                                                                                                                                                                                                                                                                         |
+| `browser`       | nach `check`: Playwright und Chromium in fester Fassung (wie in `e2e`), dann `pnpm --filter @paibot/ui test:browser`. |
 | `ohne-internet` | nach `check`: der echte Docker-Stack mit `deploy/docker-compose.ohne-internet.yml`. Dort ist auch das Netz `paibot-aussen` intern, der Test-Anbieter steht im selben Netz, `web` veröffentlicht keinen Port. Ein Prüf-Container im Netz geht über HTTP Einrichtung, eine Nachricht mit Antwort, die Kette der Belege und den Export samt eigenständigem Prüfer durch (`tools/e2e/src/ohne-internet.mjs`). Danach versucht `tools/e2e/src/netz-probe.cjs` aus `web` und `worker` Verbindungen nach draußen (ein Dienst auf dem Runner, öffentliche Adressen, Namen): keine darf klappen, Postgres und der Test-Anbieter müssen erreichbar sein. |
 
 Den Job `ohne-internet` kannst du mit Docker auch lokal nachstellen:
@@ -308,3 +327,5 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 | E2E: „Nicht gebaut“                | `pnpm build` fehlt                              | `pnpm build`, dann erneut                               |
 | E2E: Verstoß in `netz.jsonl`       | ein Prozess wollte nach außen                   | `rolle`, `ziel` und `stapel` im Eintrag zeigen, wer     |
 | Tests gegen Postgres übersprungen  | `PAIBOT_TEST_DATABASE_URL` ist nicht gesetzt    | Variable auf einen Wegwerf-Server setzen (siehe oben)   |
+| Browser-Tests: `#wurzel > *` nie sichtbar | Server teilen sich den Zwischenspeicher `node_modules/.vite` | je Server `cacheDir` mit `neuerCacheOrdner()` setzen   |
+| Browser-Tests: Chromium nicht gefunden    | Playwright oder Chromium fehlt                               | Playwright 1.63.0 und Chromium installieren (siehe oben) |
