@@ -23,6 +23,7 @@
     "doku:beispieldaten": "node scripts/doku-beispieldaten.mjs",
     "doku:screenshots": "node scripts/doku-screenshots.mjs",
     "doku:check": "node scripts/doku-check.mjs",
+    "doku:index": "node scripts/doku-index.mjs",
     "compose:vergleich": "node scripts/compose-vergleich.mjs",
     "e2e": "turbo run build --output-logs=errors-only && node tools/e2e/src/e2e.mjs",
     "schleuse:config": "node scripts/schleuse-config.mjs",

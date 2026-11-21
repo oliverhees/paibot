@@ -13,8 +13,18 @@
 **/coverage
 .git
 .github
-# Doku und Screenshots gehören nicht ins Image
+# Doku und Screenshots gehören nicht ins Image. Ausnahme: die Seiten der Liste „in den Index“
+# (scripts/doku-umfang.mjs); aus ihnen baut `pnpm doku:index` den Text-Index im Image. Bilder
+# (docs/assets) bleiben draußen.
 docs
+!docs/README.md
+!docs/funktion-*.md
+!docs/installation.md
+!docs/aktualisieren.md
+!docs/sicherung.md
+!docs/sicherheit.md
+!docs/deploy-coolify.md
+!docs/architektur.md
 # Umgebungs-Dateien mit Geheimnissen (auch unter anderem Namen, z. B. build-time.env)
 **/.env
 **/.env.*

@@ -9,9 +9,15 @@
  * @since     2026-11-20
  */
 
-import { evaluate } from "@paibot/gate";
+import { evaluate, gateFormatSpec, KNOWN_GATE_FORMAT } from "@paibot/gate";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
-import type { ReceiptBody, ReceiptEntry } from "@paibot/shared/belege";
+import {
+  type ReceiptBody,
+  type ReceiptEntry,
+  receiptBodyReadSchema,
+  receiptContextSchema,
+  receiptUndoSchema,
+} from "@paibot/shared/belege";
 import { RULE_HASH_PREFIX } from "@paibot/shared/bindung";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import {
@@ -63,12 +69,14 @@ export interface RuleHistory {
   current(): Promise<readonly RuleVersion[]>;
 }
 
-/** Warum das Nachrechnen `fehler` meldet. */
+/** Warum das Nachrechnen `fehler` (bzw. bei `fassung_unbekannt` `nicht_pruefbar`) meldet. */
 export const REEVALUATION_PROBLEMS = [
   "nicht_berechenbar",
   "regel_fehlt",
   "regel_geaendert",
   "entscheidung_abweichend",
+  "fassung_unbekannt",
+  "fassung_unpassend",
 ] as const;
 /**
  * - `nicht_berechenbar`: Aktion oder Fakten lassen sich nicht auswerten.
@@ -76,12 +84,16 @@ export const REEVALUATION_PROBLEMS = [
  * - `regel_geaendert`: der Inhalt einer damals angewandten Regel passt nicht mehr zu ihrer
  *   Prüfsumme im Beleg, oder eine Standard-Regel weicht von ihrer Fassung im Code ab.
  * - `entscheidung_abweichend`: mit denselben Regeln und Fakten käme heute etwas anderes heraus.
+ * - `fassung_unbekannt`: der Beleg stammt aus einer neueren Fassung des Tors, die dieser Stand
+ *   nicht kennt (Zustand `nicht_pruefbar`, nie `fehler`).
+ * - `fassung_unpassend`: der Beleg passt nicht zu seiner (bekannten) Fassung.
  */
 export type ReevaluationProblem = (typeof REEVALUATION_PROBLEMS)[number];
 
 /** Ergebnis des Nachrechnens einer Entscheidung. */
 export interface Reevaluation {
-  status: "ok" | "fehler" | "entfaellt";
+  /** `nicht_pruefbar`: Beleg aus einer neueren Fassung des Tors (`fassung_unbekannt`). */
+  status: "ok" | "fehler" | "entfaellt" | "nicht_pruefbar";
   /** Was das Tor mit den gespeicherten Fakten und den Regeln dieses Stands entscheidet. */
   expected?: ListDecision;
   /**
@@ -108,6 +120,10 @@ export interface Reevaluation {
  *    dieselbe Prüfsumme haben (`regel_geaendert`).
  * 4. `outcome`, `stage`, Regeln, Grenzen und (falls im Beleg) Vorbedingungen müssen gleich sein,
  *    sonst `entscheidung_abweichend`.
+ *
+ * Gerechnet wird mit der Fassung des Belegs (`decision.gateFormat`, fehlend = 1), siehe
+ * `decisionFormat`: Kennt dieser Stand die Fassung nicht, ist das Ergebnis `nicht_pruefbar` mit
+ * `fassung_unbekannt`; passt der Beleg nicht zu seiner Fassung, `fehler` mit `fassung_unpassend`.
  *
  * Mit einer Liste läuft es sofort, mit einer `RuleHistory` (z. B. Datenbank) als Promise.
  * `entfaellt` bei anderen Belegtypen.
@@ -151,6 +167,12 @@ function decide(
     ...extra,
   });
 
+  const fit = decisionFormat(body);
+  if (fit.status === "unbekannt") {
+    return { status: "nicht_pruefbar", ruleStand, problem: "fassung_unbekannt" };
+  }
+  if (fit.status === "unpassend") return fail("fassung_unpassend");
+
   let effective: GateRule[];
   try {
     const resolved = resolveRules(rules);
@@ -173,7 +195,9 @@ function decide(
 
   let expected: ListDecision;
   try {
-    expected = evaluate(body.action as ActionRequest, body.facts as unknown as Facts, effective);
+    expected = evaluate(body.action as ActionRequest, body.facts as unknown as Facts, effective, {
+      format: fit.format,
+    });
   } catch {
     return fail("nicht_berechenbar");
   }
@@ -223,4 +247,103 @@ function sameValue(a: unknown, b: unknown): boolean {
   } catch {
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Inhalt je Fassung
+
+/** Wie eine Entscheidung zu ihrer Fassung steht. */
+export type FormatFit =
+  | { status: "passt"; format: number }
+  | { status: "unbekannt"; format: number }
+  | { status: "unpassend"; format?: number };
+
+const DECISION_KEYS: ReadonlySet<string> = new Set([
+  "v",
+  "id",
+  "seq",
+  "time",
+  "prev",
+  "keyId",
+  "type",
+  "action",
+  "decision",
+  "facts",
+  "context",
+  "undo",
+]);
+const RESULT_KEYS: ReadonlySet<string> = new Set([
+  "v",
+  "id",
+  "seq",
+  "time",
+  "prev",
+  "keyId",
+  "type",
+  "action",
+  "result",
+  "undo",
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function onlyKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>): boolean {
+  return Object.keys(value).every((key) => allowed.has(key));
+}
+
+/** Fassung, die eine Entscheidung nennt (`decision.gateFormat`, fehlend = 1); sonst `undefined`. */
+export function declaredGateFormat(body: unknown): number | undefined {
+  if (!isRecord(body) || !isRecord(body.decision)) return undefined;
+  const format = body.decision.gateFormat ?? 1;
+  return typeof format === "number" && Number.isSafeInteger(format) ? format : undefined;
+}
+
+/**
+ * Prüft eine Entscheidung nach ihrer eigenen Fassung (`decision.gateFormat`, fehlend = 1):
+ * - Form wie beim Lesen (`receiptBodyReadSchema`) nicht erfüllt → `unpassend`.
+ * - Fassung größer als die höchste bekannte → `unbekannt` (Inhalt nicht prüfbar).
+ * - bekannte Fassung: Körper streng nach `GATE_FORMATS[n]` (Aktion aus der Fassung, Akteur und
+ *   Ziel nach der Aktion, Fakten der Aktion, Felder der Entscheidung, Kontext und Rückgängig,
+ *   keine weiteren Schlüssel) → `passt`, sonst `unpassend`.
+ */
+export function decisionFormat(body: unknown): FormatFit {
+  if (!isRecord(body) || body.type !== "decision") return { status: "unpassend" };
+  if (!receiptBodyReadSchema.safeParse(body).success) return { status: "unpassend" };
+  const format = declaredGateFormat(body);
+  if (format === undefined) return { status: "unpassend" };
+  const spec = gateFormatSpec(format);
+  if (spec === undefined) {
+    return format > KNOWN_GATE_FORMAT ? { status: "unbekannt", format } : { status: "unpassend" };
+  }
+  const action = body.action as { type?: unknown };
+  const type = typeof action.type === "string" ? action.type : "";
+  const factsSchema = Object.hasOwn(spec.facts, type) ? spec.facts[type] : undefined;
+  const fits =
+    onlyKeys(body, DECISION_KEYS) &&
+    spec.request.safeParse(body.action).success &&
+    factsSchema?.safeParse(body.facts).success === true &&
+    spec.decision.safeParse(body.decision).success &&
+    (body.context === undefined || receiptContextSchema.safeParse(body.context).success) &&
+    (body.undo === undefined || receiptUndoSchema.safeParse(body.undo).success);
+  return fits ? { status: "passt", format } : { status: "unpassend", format };
+}
+
+/**
+ * Prüft ein Ergebnis nach der Fassung `format` seiner Entscheidung: Form wie beim Lesen, Aktion
+ * aus der Fassung, Felder des Ergebnisses streng (`code` aus `errorCodes`), Rückgängig, keine
+ * weiteren Schlüssel. Unbekannte Fassung: nur die Form; passt sie, `undefined` (nicht prüfbar).
+ */
+export function resultFitsFormat(body: unknown, format: number): boolean | undefined {
+  if (!isRecord(body) || body.type !== "result") return false;
+  if (!receiptBodyReadSchema.safeParse(body).success) return false;
+  const spec = gateFormatSpec(format);
+  if (spec === undefined) return undefined;
+  return (
+    onlyKeys(body, RESULT_KEYS) &&
+    spec.request.safeParse(body.action).success &&
+    spec.result.safeParse(body.result).success &&
+    (body.undo === undefined || receiptUndoSchema.safeParse(body.undo).success)
+  );
 }

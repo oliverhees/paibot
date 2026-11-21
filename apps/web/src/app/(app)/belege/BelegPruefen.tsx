@@ -23,7 +23,7 @@ import {
   ladeUmfeld,
 } from "../../../lib/belege/laden";
 import { kannImBrowserPruefen, prueferLaden } from "../../../lib/belege/pruefer-laden";
-import { type EinzelErgebnis, pruefeEinzeln } from "../../../lib/belege/pruefung";
+import { type EinzelErgebnis, pruefeEinzeln, urteilZustand } from "../../../lib/belege/pruefung";
 import styles from "./belege.module.css";
 
 export interface BelegPruefenProps {
@@ -90,7 +90,7 @@ export function BelegPruefen({ belegId, art = "primaer", onErgebnis }: BelegPrue
       {zustand.art === "laeuft" && <PruefUrteil zustand="laeuft" titel={t("pruefung.laeuft")} />}
       {zustand.art === "fertig" && (
         <PruefUrteil
-          zustand={zustand.ergebnis.stufe}
+          zustand={urteilZustand(zustand.ergebnis.stufe)}
           titel={zustand.ergebnis.titel}
           punkte={zustand.ergebnis.punkte}
           {...(zustand.ergebnis.quelle === "server" ? { quelle: t("pruefung.server") } : {})}

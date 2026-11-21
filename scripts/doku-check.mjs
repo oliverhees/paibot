@@ -42,6 +42,12 @@
 //      endet mit „/“. Mit `pfad/datei.ts#name` muss „name“ zusätzlich in der Datei vorkommen.
 //      Codeblöcke zählen nicht; Angaben ohne „/“ oder ohne Dateiendung (`@paibot/db`, `/api/chat`)
 //      gelten nicht als Verweis.
+//   j) Keine versteckten Teile in docs/**/*.md: kein HTML-Kommentar außer dem Urheber-Kopf ganz am
+//      Anfang der Datei, kein unsichtbares, Bidi- oder Steuerzeichen (Fehler, nicht Warnung).
+//   k) Jede Seite docs/**/*.md steht in genau einer der beiden Listen in scripts/doku-umfang.mjs
+//      („in den Index“ / „nicht in den Index“).
+//   l) In den Seiten der Liste „in den Index“ kommt keine typische Form einer eingeschleusten
+//      Anweisung vor (Formen: scripts/doku-index/hilfen.mjs). Das ist eine Stichprobe, kein Schutz.
 //
 // Bewusst ohne Abhängigkeiten: Markdown wird mit einfachen Mustern gelesen. Codeblöcke,
 // Code in Backticks und HTML-Kommentare werden vorher entfernt.
@@ -50,6 +56,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SONDERWERTE } from "./doku/lauf.mjs";
 import { ListenFehler, pruefeListe } from "./doku/liste.mjs";
+import { findeEinschleusung, findeUnsichtbares } from "./doku-index/hilfen.mjs";
+import { inDenIndex, nichtInDenIndex } from "./doku-umfang.mjs";
 
 const VORLAGE = "docs/VORLAGE-funktion.md";
 const ENTWICKLER = "docs/entwickler/";
@@ -530,6 +538,62 @@ function checkIndex(files) {
   }
 }
 
+/** j) Kommentare außer dem Urheber-Kopf am Anfang und unsichtbare Zeichen. */
+function checkVersteckt(file, text) {
+  const normal = text.replace(/\r\n?/g, "\n");
+  let kopfEnde = 0;
+  if (normal.startsWith("<!--")) {
+    const ende = normal.indexOf("-->");
+    kopfEnde = ende === -1 ? 0 : ende + 3;
+  }
+  for (const treffer of normal.matchAll(/<!--/g)) {
+    if (treffer.index < kopfEnde) continue;
+    const zeile = normal.slice(0, treffer.index).split("\n").length;
+    error(
+      file,
+      `Zeile ${zeile}: Ein HTML-Kommentar steht nicht als Urheber-Kopf am Anfang der Datei.`,
+      "Den Kommentar entfernen; was gesagt werden soll, gehört als sichtbarer Text in die Seite.",
+    );
+  }
+  for (const fund of findeUnsichtbares(normal)) {
+    error(
+      file,
+      `Zeile ${fund.zeile}: Ein unsichtbares Zeichen (${fund.code}) steht im Text.`,
+      "Das Zeichen löschen (auch Bidi- und Steuerzeichen sind nicht erlaubt).",
+    );
+  }
+}
+
+/** k) Jede Seite steht in genau einer der beiden Listen. */
+function checkUmfang(file) {
+  const drin = inDenIndex(file);
+  const draussen = nichtInDenIndex(file);
+  if (!drin && !draussen) {
+    error(
+      file,
+      `Die Seite ${file} steht in keiner Liste.`,
+      "Die Seite in scripts/doku-umfang.mjs eintragen: IN_DEN_INDEX (Anwender-Doku) oder NICHT_IN_DEN_INDEX (mit Grund).",
+    );
+  } else if (drin && draussen) {
+    error(
+      file,
+      `Die Seite ${file} steht in beiden Listen.`,
+      "In scripts/doku-umfang.mjs aus einer der beiden Listen nehmen.",
+    );
+  }
+}
+
+/** l) Typische Formen eingeschleuster Anweisungen in Seiten, die in den Index kommen. */
+function checkEinschleusung(file, text) {
+  for (const fund of findeEinschleusung(text)) {
+    error(
+      file,
+      `Zeile ${fund.zeile}: Eine Wendung, wie sie eingeschleuste Anweisungen haben (${fund.form}).`,
+      "Den Satz umformulieren; so etwas wird in dieser Doku nie wörtlich zitiert, sondern beschrieben.",
+    );
+  }
+}
+
 /**
  * Prüft die Doku im Ordner `wurzel`. Gibt Fehler, Warnungen (je { file, problem, fix }), die Seiten
  * mit Übergangs-Vermerk und die Zahl der geprüften Seiten zurück; schreibt nichts aus.
@@ -551,6 +615,12 @@ export function pruefeDoku({ wurzel = PROJEKT, streng = false } = {}) {
   ];
   for (const file of scanned) checkReferences(file, names);
   for (const file of scanned) meldeGeheimnisse(file, readText(file));
+  for (const file of docs) {
+    const text = readText(file);
+    checkVersteckt(file, text);
+    checkUmfang(file);
+    if (inDenIndex(file)) checkEinschleusung(file, text);
+  }
   checkIndex(docs);
   checkDeveloperPages(functionPages);
   for (const file of docs.filter((f) => f.startsWith(ENTWICKLER) && f !== ENTWICKLER_VORLAGE)) {
