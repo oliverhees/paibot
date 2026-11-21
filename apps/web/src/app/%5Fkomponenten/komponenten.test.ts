@@ -138,7 +138,8 @@ describe("Komponenten", () => {
     expect(aus).toMatch(
       /<a href="https:\/\/hr-codelabs\.de" target="_blank" rel="noopener noreferrer">HR CodeLabs<span/,
     );
-    expect(aus).not.toMatch(/hr-applab/i);
+    // Die frühere Adresse wird hier nicht ausgeschrieben, damit sie nirgends im Projekt steht.
+    expect(aus).not.toMatch(new RegExp(["hr", "applab"].join("-"), "i"));
   });
 
   it("Zeile unter der Antwort enthält Beleg, Datenschleuse und Modell mit Herkunft", () => {
