@@ -27,6 +27,7 @@ import { type Queue, RUN_QUEUE } from "@paibot/jobs";
 import { type Heartbeat, startHeartbeat } from "./herzschlag";
 import { createRunHandler } from "./lauf";
 import { consoleLog, describeError, secretsOf, type WorkerLog } from "./protokoll";
+import { type SchleuseCheck, type SchleuseMeldung, startSchleuseMeldung } from "./schleuse-meldung";
 import { readStand } from "./stand";
 import { checkWorkerEnv, parseWorkerConfig } from "./umgebung";
 
@@ -84,6 +85,8 @@ export interface WorkerTiming {
   retryDelayMs: number;
   heartbeatIntervalMs: number;
   probeTimeoutMs: number;
+  /** Abstand, in dem der Zustand der Datenschleuse geprüft und gemeldet wird. */
+  schleuseIntervalMs: number;
 }
 
 export const WORKER_TIMING: WorkerTiming = {
@@ -92,6 +95,7 @@ export const WORKER_TIMING: WorkerTiming = {
   retryDelayMs: 2_000,
   heartbeatIntervalMs: 10_000,
   probeTimeoutMs: 5_000,
+  schleuseIntervalMs: 30_000,
 };
 
 /** Alles, was der Worker von außen braucht; Tests ersetzen es. */
@@ -103,6 +107,8 @@ export interface WorkerDeps {
   executeRun: typeof executeRunFn;
   failStaleRuns: typeof failStaleRunsFn;
   buildRunDeps(db: Database, env: Env): RunDepsSource;
+  /** Prüft die Datenschleuse und meldet ihren Zustand in die Datenbank (für die Web-App). */
+  schleuse?: SchleuseCheck;
   timing?: Partial<WorkerTiming>;
 }
 
@@ -141,7 +147,8 @@ function stateText(state: MigrationState): string {
  * 4. Rechte der Verbindung prüfen: zu viele Rechte brechen in Produktion ab (außer
  *    `PAIBOT_ALLOW_PRIVILEGED_DB=1`).
  * 5. Warteschlange starten, veraltete Läufe aufräumen (`failStaleRuns`), Lauf-Arbeiter anmelden.
- * 6. Herzschlag in die Health-Datei schreiben.
+ * 6. Zustand der Datenschleuse prüfen und in die Datenbank schreiben, danach regelmäßig.
+ * 7. Herzschlag in die Health-Datei schreiben.
  *
  * Jeder Abbruch steht im Log und endet mit `WorkerStartError`; offene Verbindungen werden geschlossen.
  */
@@ -283,7 +290,20 @@ export async function runWorker(
     await queue.startRunWorker(runs.handler, { concurrency: config.concurrency });
     log.info(`Bereit: nimmt Läufe an (höchstens ${config.concurrency} gleichzeitig).`);
 
-    // 6. Herzschlag
+    // 6. Zustand der Datenschleuse (die Web-App liest ihn, sie hat keinen Netz-Weg dorthin)
+    const schleuse: SchleuseMeldung | undefined =
+      deps.schleuse === undefined
+        ? undefined
+        : await startSchleuseMeldung({
+            db: database.db,
+            env,
+            check: deps.schleuse,
+            intervalMs: timing.schleuseIntervalMs,
+            log,
+            secrets,
+          });
+
+    // 7. Herzschlag
     let heartbeat: Heartbeat | undefined;
     if (config.healthFile !== undefined) {
       heartbeat = startHeartbeat({
@@ -291,6 +311,7 @@ export async function runWorker(
         intervalMs: timing.heartbeatIntervalMs,
         probeTimeoutMs: timing.probeTimeoutMs,
         log,
+        secrets,
         probe: async () => {
           const now = Date.now();
           if (runs.active().some((run) => now - run.startedAt > HANG_AFTER_MS)) {
@@ -312,6 +333,7 @@ export async function runWorker(
         stopping ??= (async () => {
           log.info("Beende: nehme keine neuen Läufe mehr an.");
           await heartbeat?.stop();
+          schleuse?.stop();
           const aborted = runs.abortAll("Der Worker wird beendet.");
           if (aborted > 0) {
             log.info(
@@ -354,7 +376,7 @@ export async function runWorker(
  * 1. Pflichtwerte prüfen, auf die Datenbank warten.
  * 2. Warten, bis der Dienst migrate migriert hat (der Worker migriert nie selbst), Rechte prüfen.
  * 3. Warteschlange starten, hängende Läufe aufräumen (`failStaleRuns`), `executeRun` als Handler anmelden.
- * 4. Herzschlag in die Health-Datei schreiben, solange er läuft.
+ * 4. Zustand der Datenschleuse melden und Herzschlag in die Health-Datei schreiben, solange er läuft.
  */
 export async function startWorker(
   config: WorkerConfig,

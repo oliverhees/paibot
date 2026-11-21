@@ -477,6 +477,34 @@ describe("Ende bei Signal", () => {
   });
 });
 
+describe("Zustand der Datenschleuse im Worker", () => {
+  it("meldet nach dem Start und regelmäßig, mit der Datenbank des Workers, und hört beim Beenden auf", async () => {
+    const { deps, calls, lines } = fakeDeps({ stale: async () => [] });
+    const gemeldet: { db: unknown; state: string }[] = [];
+    let geprueft = 0;
+    deps.schleuse = {
+      check: async (env) => {
+        geprueft += 1;
+        return env.SCHLEUSE_URL === undefined ? "aus" : "bereit";
+      },
+      report: async (db, state) => {
+        gemeldet.push({ db, state });
+      },
+    };
+    deps.timing = { ...deps.timing, schleuseIntervalMs: 15 };
+    const worker = await runWorker(CONFIG, ENV, deps);
+    expect(gemeldet).toHaveLength(1);
+    expect(gemeldet[0]?.state).toBe("aus");
+    expect(calls.at(-1)).toBe("queue.startRunWorker");
+    expect(lines).toContain("info Datenschleuse: aus.");
+    await waitFor(() => gemeldet.length >= 3);
+    await worker.stop();
+    const anzahl = geprueft;
+    await sleep(60);
+    expect(geprueft).toBe(anzahl);
+  });
+});
+
 describe("Herzschlag im Worker", () => {
   it("schreibt, solange die Datenbank antwortet, und setzt aus, wenn sie hängt", async () => {
     let hang = false;
