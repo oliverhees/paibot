@@ -66,6 +66,28 @@ describe("Belege-Seite und Fassung des Tors", () => {
     expect(zeilenStand(2, ergebnis).art).toBe("warn");
   });
 
+  it("nicht prüfbar: Nachrechnen und Zuordnung stehen nicht mit grünem Haken da", async () => {
+    const kette = await ketteNeuereFassung();
+    const ergebnis = await seite(kette);
+    const text = (schluessel: string) => t(schluessel as never, { anzahl: 1 } as never);
+    expect(ergebnis.punkte).toContainEqual({
+      art: "hinweis",
+      text: text("belege.geprueft.entscheidung_nicht_pruefbar"),
+    });
+    expect(ergebnis.punkte).toContainEqual({
+      art: "hinweis",
+      text: text("belege.geprueft.paare_nicht_pruefbar"),
+    });
+    for (const schluessel of ["belege.geprueft.entscheidung", "belege.geprueft.paare"]) {
+      expect(ergebnis.punkte.some((p) => p.text === t(schluessel as never))).toBe(false);
+    }
+    expect(ergebnis.punkte.filter((p) => p.art === "ok").map((p) => p.text)).toEqual([
+      t("belege.geprueft.inhalt", { anzahl: 3 }),
+      t("belege.geprueft.signatur"),
+      t("belege.geprueft.kette", { bis: "B-0003" }),
+    ]);
+  });
+
   it("Aktion außerhalb von Fassung 1 ohne Fassungsangabe: überall ungültig", async () => {
     const kette = await TestKette.neu();
     const action = await kette.decision(undefined, unbekannteAktion);

@@ -1661,6 +1661,10 @@ export const de = {
     "Beleg aus einer neueren PaiBot-Fassung: mit dieser Fassung nicht prüfbar.",
   "belege.befehl.ausgaenge":
     "Ausgänge: 0 vertrauenswürdig, 1 ungültig, 2 Aufruf oder Datei fehlerhaft, 3 Vertrauenskette gebrochen, 4 mit dieser Fassung nicht prüfbar (Belege aus einer neueren PaiBot-Fassung)",
+  "belege.geprueft.entscheidung_nicht_pruefbar":
+    "Entscheidungen nachgerechnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
+  "belege.geprueft.paare_nicht_pruefbar":
+    "Ergebnisse ihren Entscheidungen zugeordnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
   "belege.einzel.ergebnis_kette":
     "Ob dieses Ergebnis zu seiner Entscheidung und deren Fassung passt, zeigt die Prüfung der ganzen Kette.",
 } as const satisfies Record<string, string | readonly string[]>;

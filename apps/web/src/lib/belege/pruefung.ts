@@ -202,6 +202,15 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
   const schluesselProblem = verdict.findings.some(
     (f) => f.problem === "schluessel_nicht_aus_kette",
   );
+  // Entscheidungen aus einer neueren Fassung lassen sich weder nachrechnen noch ihren Ergebnissen
+  // nach Inhalt zuordnen: dann kein grüner Haken, sondern ein Hinweis mit der Anzahl.
+  const nichtPruefbar = verdict.findings.filter((f) => f.problem === "fassung_unbekannt").length;
+  const teilweise = (fehler: boolean, ok: string, offen: string): PruefPunkt =>
+    fehler
+      ? { art: "fehler", text: ok }
+      : nichtPruefbar > 0
+        ? { art: "hinweis", text: offen }
+        : { art: "ok", text: ok };
   const punkte: PruefPunkt[] = [
     {
       art: fehlerCheck === "inhalt" ? "fehler" : "ok",
@@ -215,10 +224,11 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
       art: fehlerCheck === "kette" ? "fehler" : "ok",
       text: t("belege.geprueft.kette", { bis: kennung(bericht.head?.seq ?? 0) }),
     },
-    {
-      art: fehlerCheck === "entscheidung" ? "fehler" : "ok",
-      text: t("belege.geprueft.entscheidung"),
-    },
+    teilweise(
+      fehlerCheck === "entscheidung",
+      t("belege.geprueft.entscheidung"),
+      t("belege.geprueft.entscheidung_nicht_pruefbar", { anzahl: nichtPruefbar }),
+    ),
   ];
   // Ältere Ketten (vor Fassung 2): Entscheidungen ohne Regelstand sind erlaubt, aber sichtbar. Ab
   // Fassung 2 meldet der Prüfer sie als Fehler „Regelstand fehlt“.
@@ -229,7 +239,13 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
       text: t("belege.geprueft.ohne_regelstand", { anzahl: zusatz.ohneRegelstand }),
     });
   }
-  punkte.push({ art: paarBefund ? "fehler" : "ok", text: t("belege.geprueft.paare") });
+  punkte.push(
+    teilweise(
+      paarBefund,
+      t("belege.geprueft.paare"),
+      t("belege.geprueft.paare_nicht_pruefbar", { anzahl: nichtPruefbar }),
+    ),
+  );
   for (const befund of verdict.findings) {
     punkte.push({
       art: HINWEIS_PROBLEME.includes(befund.problem) ? "hinweis" : "fehler",
