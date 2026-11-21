@@ -195,6 +195,8 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   },
   // Worker: Lauf als fehlgeschlagen markieren, wenn er abstürzt (Lebenszyklus, keine Aktion).
   "worker/src/lauf.ts": { art: "betrieb", nur: ["events.append", "runs.finish"] },
+  // Worker: gemessener Zustand der Datenschleuse (eine Zeile, Betriebszustand, keine Aktion).
+  "worker/src/schleuse-meldung.ts": { art: "betrieb", nur: ["schleuse.report"] },
 };
 
 function quelltexte(): { datei: string; text: string }[] {
