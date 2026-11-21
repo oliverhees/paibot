@@ -102,9 +102,9 @@ Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`. In Coolify stehen `web
 
 ## So sieht es aus
 
-Öffnest du deine Domain im Browser, zeigt die Startseite „Datenbank: ok“, sobald die Datenbank erreichbar ist.
+Öffnest du deine Domain im Browser, begrüßt dich die Einrichtung. Den Einrichtungs-Code findest du in Coolify bei der Anwendung unter „Logs“ (Suche nach „Einrichtungs-Code“). Wie es weitergeht, steht in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
 
-![Startseite von PaiBot im dunklen Design mit grünem Punkt und dem Status „Datenbank: ok“](assets/screenshots/startseite.png)
+![Einrichtung, Schritt 1 im dunklen Design: Begrüßung durch den Bot Pai und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf die Logs in Coolify](assets/screenshots/einrichtung-code.png)
 
 ## 5. Danach
 

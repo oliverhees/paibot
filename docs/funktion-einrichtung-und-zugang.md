@@ -18,9 +18,14 @@ Wer eine neue Installation im Internet zuerst erreicht, könnte sonst das Passwo
 
 ## So benutzt du es
 
+Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist dort der Test-Anbieter von PaiBot auf dem eigenen Rechner verbunden; deshalb steht als Name des Anbieters die Adresse `127.0.0.1:18080` und die Modelle heißen „Beispiel-Modell …“. Bei dir steht dort EUrouter mit seinen Modellen.
+
 ### Einrichten
 
 1. Starte PaiBot (siehe [Installation](installation.md)) und öffne die Adresse im Browser. Du landest automatisch auf der Seite „Einrichtung“.
+
+   ![Einrichtung, Schritt 1 von 5 im dunklen Design: Pai begrüßt dich, rechts drei Versprechen und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf das Log](assets/screenshots/einrichtung-code.png)
+
 2. Suche den Einrichtungs-Code im Log:
    - Docker Compose: `docker compose logs web | grep Einrichtungs-Code`
    - Coolify: in der Anwendung unter „Logs“ nach „Einrichtungs-Code“ suchen.
@@ -31,20 +36,61 @@ Wer eine neue Installation im Internet zuerst erreicht, könnte sonst das Passwo
    Einrichtungs-Code: K7QD-9M2F-XW4H (gilt bis zum Ende der Einrichtung)
    ```
 
-3. Gib den Code ein. Bindestriche und Kleinbuchstaben sind egal. Klick auf „Weiter“.
-4. Lege dein Passwort fest: mindestens 12 Zeichen, zweimal gleich eingegeben. Die Liste unter den Feldern zeigt, ob beides erfüllt ist. Gut zu merken und schwer zu erraten sind mehrere Wörter mit Bindestrichen.
-5. Trag den Schlüssel für EUrouter ein und klick auf „Verbindung testen“. PaiBot holt dabei die passenden Modelle. Hast du noch keinen Schlüssel, klick auf „Später eintragen“.
-6. Wähle ein Modell aus der Liste (nur mit Schlüssel).
-7. Entscheide, ob die Datenschleuse für neue Unterhaltungen standardmäßig an ist. Der Schalter lässt sich nur bedienen, wenn die Datenschleuse auf deinem Server eingerichtet ist; sonst bleibt sie aus.
+3. Gib den Code ein. Bindestriche und Kleinbuchstaben sind egal. Klick auf „Weiter“. Fehlt der Code oder hat er die falsche Form, sagt das Feld, wie er aussehen muss; ob er stimmt, prüft PaiBot erst beim Verbindungstest und beim Abschluss.
+
+   ![Einrichtung, Schritt 1 mit rot umrandetem Feld und dem Hinweis „Der Code hat 12 Zeichen, zum Beispiel K7QD-9M2F-XW4H.“](assets/screenshots/einrichtung-code-fehler.png)
+
+4. Lege dein Passwort fest: mindestens 12 Zeichen, zweimal gleich eingegeben. Die Liste unter den Feldern zeigt mit Haken, ob beides erfüllt ist. Gut zu merken und schwer zu erraten sind mehrere Wörter mit Bindestrichen. Klick auf „Weiter“.
+
+   ![Einrichtung, Schritt 2 von 5: beide Passwortfelder ausgefüllt (als Punkte), darunter zwei grüne Haken bei „mindestens 12 Zeichen“ und „beide Eingaben sind gleich“](assets/screenshots/einrichtung-passwort.png)
+
+5. Trag den Schlüssel deines Anbieters ein und klick auf „Verbindung testen“. Hast du noch keinen Schlüssel, klick auf „Später eintragen“.
+
+   ![Einrichtung, Schritt 3 von 5: leeres Feld „Schlüssel für 127.0.0.1:18080“ (Test-Anbieter), daneben „Verbindung testen“, unten „Später eintragen“ und „Weiter“](assets/screenshots/einrichtung-schluessel.png)
+
+   Nimmt der Anbieter den Schlüssel nicht an, steht das rot unter dem Feld. Prüfe den Schlüssel und teste noch einmal.
+
+   ![Einrichtung, Schritt 3 mit rot umrandetem Schlüsselfeld und dem Hinweis „Der Anbieter hat den Schlüssel nicht angenommen. Trag einen gültigen Schlüssel ein.“](assets/screenshots/einrichtung-schluessel-fehler.png)
+
+   Klappt es, steht unter dem Feld „Verbindung steht“ und wie viele passende Modelle PaiBot gefunden hat. Der Schritt „Modell“ kommt dazu, die Einrichtung hat jetzt sechs Schritte. Klick auf „Weiter“.
+
+   ![Einrichtung, Schritt 3 von 6: Schlüssel eingegeben (als Punkte) und darunter „Verbindung steht. 2 passende Modelle gefunden.“](assets/screenshots/einrichtung-schluessel-ok.png)
+
+6. Wähle ein Modell aus der Liste (nur mit Schlüssel) und klick auf „Weiter“.
+
+   ![Einrichtung, Schritt 4 von 6: zwei Modelle des Test-Anbieters, „Beispiel-Modell Allrounder“ ist gewählt und grün umrandet](assets/screenshots/einrichtung-modell.png)
+
+7. Entscheide, ob die Datenschleuse für neue Unterhaltungen standardmäßig an ist. Der Schalter lässt sich nur bedienen, wenn die Datenschleuse auf deinem Server eingerichtet ist; sonst bleibt sie aus, und PaiBot sagt dir das unter dem Schalter. Klick auf „Weiter“.
+
+   ![Einrichtung, Schritt 5 von 6: Schalter „Standard für neue Unterhaltungen: Aus“, darunter der Hinweis, dass die Datenschleuse auf diesem Server nicht eingerichtet ist](assets/screenshots/einrichtung-schleuse.png)
+
 8. Gib deinem Bot einen Namen (Vorschlag: „Pai“) und klick auf „Einrichtung abschließen“.
-9. Du siehst „Alles bereit“ und bist angemeldet. Mit „Zur App“ geht es weiter. Der Code gilt ab jetzt nicht mehr.
+
+   ![Einrichtung, Schritt 6 von 6: Feld „Name deines Bots“ mit dem Vorschlag „Pai“ und der Knopf „Einrichtung abschließen“](assets/screenshots/einrichtung-bot.png)
+
+9. Du siehst „Alles bereit“ mit allem, was eingerichtet ist, und bist angemeldet. Der Code gilt ab jetzt nicht mehr. Mit „Zur App“ geht es weiter.
+
+   ![„Alles bereit“: Haken bei Passwort, Name des Bots, verbundenem Anbieter und Modell, Hinweis „Datenschleuse als Standard aus“ und der Knopf „Zur App“](assets/screenshots/einrichtung-fertig.png)
+
+10. Die App öffnet sich: links dein Bot und die Navigation, in der Mitte der Platz für den Chat. Der Chat selbst ist noch im Bau.
+
+    ![Die App nach der Anmeldung: links PaiBot, der Bot Pai und die Navigation mit „Abmelden“, in der Mitte „Schreib deinem Bot“ mit dem Hinweis, dass der Chat im Bau ist](assets/screenshots/app-start.png)
 
 ### Anmelden und Abmelden
 
 1. Öffne PaiBot. Ohne gültige Sitzung landest du auf „Anmelden“.
-2. Gib dein Passwort ein. Mit „Angemeldet bleiben“ bleibt die Sitzung auch nach dem Schließen des Browsers erhalten.
+
+   ![Anmelden im dunklen Design: „Willkommen zurück“, Feld „Passwort“, „Angemeldet bleiben“ und der Knopf „Anmelden“](assets/screenshots/anmelden.png)
+
+2. Gib dein Passwort ein. Mit „Angemeldet bleiben“ bleibt die Sitzung auch nach dem Schließen des Browsers erhalten. Klickst du ohne Passwort auf „Anmelden“, weist das Feld darauf hin.
+
+   ![Anmelden mit rot umrandetem Feld und dem Hinweis „Gib dein Passwort ein.“](assets/screenshots/anmelden-leer.png)
+
 3. Klick auf „Anmelden“. Bei einem falschen Passwort steht unter dem Feld „Das Passwort stimmt nicht.“
-4. Zum Abmelden klick in der Navigation unten auf „Abmelden“ (am Handy erst auf „Menü öffnen“).
+
+   ![Anmelden nach einem falschen Passwort: unter dem Feld steht „Das Passwort stimmt nicht.“](assets/screenshots/anmelden-falsch.png)
+
+4. Zum Abmelden klick in der Navigation unten auf „Abmelden“ (am Handy erst auf „Menü öffnen“), zu sehen im Bild der App in Schritt 10 oben.
 
 ### Code verloren oder abgelaufen
 
@@ -54,31 +100,23 @@ Wer eine neue Installation im Internet zuerst erreicht, könnte sonst das Passwo
 
 ## So sieht es aus
 
-Der erste Schritt der Einrichtung: links dein Bot, rechts der Schritt mit dem Feld für den Code und dem Hinweis, wo der Code steht.
-
-![Einrichtung, Schritt 1 von 5 im dunklen Design: Begrüßung, drei Versprechen und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf das Log](assets/screenshots/einrichtung-code.png)
-
-Fehlt der Code oder hat er die falsche Form, sagt das Feld, wie er aussehen muss.
-
-![Einrichtung, Schritt 1 mit rot umrandetem Feld und dem Hinweis „Der Code hat 12 Zeichen, zum Beispiel K7QD-9M2F-XW4H.“](assets/screenshots/einrichtung-code-fehler.png)
+Die Bilder zu jedem Schritt stehen oben in der Anleitung. Hier die Ansichten am Handy, im hellen Design und die Seite für Adressen, die es nicht gibt.
 
 Auf dem Handy steht der Bot mit seiner Sprechblase über dem Schritt.
 
-![Einrichtung, Schritt 1 auf dem Handy](assets/screenshots/einrichtung-code-handy.png)
-
-Folgt mit der Oberfläche: Bilder der Schritte 2 bis 6 (Passwort, Schlüssel, Modell, Datenschleuse, Name des Bots) und von „Alles bereit“. Das Aufnahme-Skript kann bisher nur klicken, aber nichts eintippen; ohne Code im Feld zeigt die Einrichtung keinen späteren Schritt.
-
-Nach der Einrichtung: die Anmeldung mit dem Feld für dein Passwort.
-
-![Anmelden im dunklen Design: „Willkommen zurück“, Feld „Passwort“, „Angemeldet bleiben“ und der Knopf „Anmelden“](assets/screenshots/anmelden.png)
-
-Ohne Passwort weist das Feld darauf hin.
-
-![Anmelden mit dem Hinweis „Gib dein Passwort ein.“ unter dem Feld](assets/screenshots/anmelden-leer.png)
+![Einrichtung, Schritt 1 auf dem Handy im dunklen Design: Pai mit Sprechblase oben, darunter Begrüßung und das Feld für den Code](assets/screenshots/einrichtung-code-handy.png)
 
 Die Anmeldung auf dem Handy im hellen Design:
 
 ![Anmelden auf dem Handy im hellen Design](assets/screenshots/anmelden-handy-hell.png)
+
+Das Passwort im hellen Design, erst ein Feld ausgefüllt: Die Prüfliste zeigt, was noch fehlt.
+
+![Einrichtung, Schritt 2 im hellen Design: erstes Passwortfeld ausgefüllt, Haken bei „mindestens 12 Zeichen“, Kreuz bei „beide Eingaben sind gleich“](assets/screenshots/einrichtung-passwort-hell.png)
+
+Eine Adresse, die es in PaiBot nicht gibt, führt zu dieser Seite mit einem Link zurück zur Startseite.
+
+![Seite „Diese Seite gibt es nicht“ mit dem PaiBot-Logo und dem Link „Zur Startseite“](assets/screenshots/seite-nicht-gefunden.png)
 
 ## Einstellungen
 
@@ -124,22 +162,10 @@ Die Anmeldung auf dem Handy im hellen Design:
 
 ## Bilder neu aufnehmen
 
-Für Mitwirkende: Das Aufnahme-Skript fügt einen Stil in die Seite ein. Das erlaubt die strenge Content-Security-Policy des Betriebs nicht, deshalb laufen die Aufnahmen gegen den Entwicklungs-Server, mit leerer Wegwerf-Datenbank, dem [Test-Anbieter](entwickeln.md) und nur Beispiel-Daten.
+Für Mitwirkende: Alle Bilder dieser Seite entstehen per Skript aus der App im Produktions-Build, mit Wegwerf-Datenbank, dem [Test-Anbieter](entwickeln.md) und nur Beispiel-Daten. Der Ablauf steht in der [Doku-Übersicht](README.md#screenshots):
 
 ```bash
-# 1. Test-Anbieter (Beispiel-Schlüssel, kein echter)
-FAKE_PROVIDER_PORT=8080 FAKE_PROVIDER_API_KEY=beispiel-schluessel node tools/fake-provider/dist/fake-provider.mjs &
-# 2. App mit leerer Datenbank (DATABASE_URL, DATABASE_MIGRATION_URL, PAIBOT_SECRET wie in apps/web/.env.example)
-APP_URL=http://127.0.0.1:3000 TRUST_PROXY=1 \
-  PAIBOT_EINRICHTUNG_ANBIETER_URL=http://127.0.0.1:8080/v1 pnpm dev
-# 3. Bilder der Einrichtung
-PAIBOT_URL=http://127.0.0.1:3000 pnpm doku:screenshots einrichtung-code einrichtung-code-fehler einrichtung-code-handy
-# 4. Einrichtung mit Beispiel-Daten abschließen (Code aus dem Log)
-APP=http://127.0.0.1:3000; CODE=XXXX-XXXX-XXXX; JAR=$(mktemp)
-TOKEN=$(curl -s -c "$JAR" "$APP/einrichtung" | grep -o 'name="pb-pruefzeichen" content="[^"]*"' | cut -d'"' -f4)
-curl -s -b "$JAR" -H "Origin: $APP" -H "X-Pb-Pruefzeichen: $TOKEN" -H 'content-type: application/json' \
-  -d "{\"setupCode\":\"$CODE\",\"password\":\"Beispiel-Passwort-2026\",\"passwordRepeat\":\"Beispiel-Passwort-2026\",\"apiKey\":\"beispiel-schluessel\",\"modelSlug\":\"fake/test-modell\",\"schleuseModeDefault\":\"off\",\"botName\":\"Pai\"}" \
-  "$APP/api/einrichtung"
-# 5. Bilder der Anmeldung
-PAIBOT_URL=http://127.0.0.1:3000 pnpm doku:screenshots anmelden anmelden-leer anmelden-handy-hell
+pnpm build
+pnpm doku:app -- pnpm doku:screenshots   # App bereitstellen, alle Bilder aufnehmen, abräumen
+pnpm doku:check
 ```

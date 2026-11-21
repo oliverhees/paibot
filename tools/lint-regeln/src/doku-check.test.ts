@@ -298,6 +298,107 @@ describe("doku:check", () => {
     expect(ausgabe).toContain("Doku-Check fehlgeschlagen");
   });
 
+  it("f) Einträge mit zustand, anmeldung und Schritten mit Sonderwerten sind gültig", () => {
+    const liste = {
+      aufnahmen: [
+        {
+          name: "beispiel",
+          pfad: "/einrichtung",
+          zustand: "frisch",
+          vorher: [{ tippe: "Einrichtungs-Code", text: "$einrichtungs-code" }],
+        },
+        { name: "angemeldet", pfad: "/", zustand: "eingerichtet", anmeldung: true },
+      ],
+    };
+    const { code, ergebnis } = pruefe(
+      mit({
+        "docs/screenshots.json": JSON.stringify(liste),
+        "docs/assets/screenshots/angemeldet.png": "png",
+      }),
+      true,
+    );
+    expect(ergebnis.fehler).toEqual([]);
+    expect(code).toBe(0);
+  });
+
+  it("f) ein ungültiger Eintrag in screenshots.json ist ein Fehler", () => {
+    const { code, ausgabe } = pruefe(
+      mit({
+        "docs/screenshots.json": JSON.stringify({
+          aufnahmen: [{ name: "beispiel", pfad: "/", anmeldung: true }],
+        }),
+      }),
+    );
+    expect(code).toBe(1);
+    expect(ausgabe).toContain("Mit „anmeldung“ braucht es „zustand“");
+  });
+
+  // Werte, die wie Geheimnisse aussehen, entstehen erst im Test (nicht als Text in dieser Datei).
+  const zufall = (laenge: number) => "aB3".repeat(laenge).slice(0, laenge);
+  const token = (vorsatz: string, laenge: number) => `${vorsatz}${zufall(laenge)}`;
+
+  it.each([
+    ["Schlüssel im Format sk-", `Schlüssel: ${token("sk-", 32)}`],
+    ["GitHub-Token", `Token ${token("gh" + "p_", 36)}`],
+    ["privater Schlüssel", `-----BEGIN ${"PRIVATE"} KEY-----`],
+    ["Passwort in einer Adresse", `postgres://app:${zufall(24)}@db:5432/paibot`],
+    ["Zuweisung eines Zufallswerts", `PAIBOT_SECRET=${zufall(32)}`],
+  ])("g) %s in einem Doku-Text ist ein Fehler, auch im Codeblock", (_art, geheim) => {
+    const seite = SEITE.replace("Zum Testen.", `Zum Testen.\n\n\`\`\`bash\n${geheim}\n\`\`\``);
+    const { code, ausgabe } = pruefe(mit({ "docs/funktion-beispiel.md": seite }));
+    expect(code).toBe(1);
+    expect(ausgabe).toMatch(
+      /FEHLER +docs\/funktion-beispiel\.md: Zeile \d+: .* sieht wie ein Geheimnis aus/,
+    );
+    // Die Meldung wiederholt das Geheimnis nicht.
+    expect(ausgabe).not.toContain(geheim.slice(-12));
+  });
+
+  it("g) Beispiel-Werte und Platzhalter in der Doku sind erlaubt", () => {
+    const seite = SEITE.replace(
+      "Zum Testen.",
+      "Zum Testen: `FAKE_PROVIDER_API_KEY=beispiel-schluessel`, postgres://postgres:test@127.0.0.1/db, `PAIBOT_SECRET=<geheimnis>`, Code K7QD-9M2F-XW4H.",
+    );
+    expect(pruefe(mit({ "docs/funktion-beispiel.md": seite }), true).code).toBe(0);
+  });
+
+  it("g) in screenshots.json sind Geheimnis, Einrichtungs-Code und Zufallswert bei tippe ein Fehler", () => {
+    const eintrag = (text: string) =>
+      JSON.stringify({
+        aufnahmen: [
+          {
+            name: "beispiel",
+            pfad: "/einrichtung",
+            zustand: "frisch",
+            vorher: [{ tippe: "Feld", text }],
+          },
+        ],
+      });
+    const faelle: [string, string][] = [
+      [token("sk-", 30), "sieht wie ein Geheimnis aus"],
+      ["K7QD-9M2F-XW4H", "steht ein Einrichtungs-Code"],
+      [zufall(20), "wie ein Schlüssel oder Passwort aussieht"],
+    ];
+    for (const [text, meldung] of faelle) {
+      const { code, ausgabe } = pruefe(mit({ "docs/screenshots.json": eintrag(text) }));
+      expect(code, text).toBe(1);
+      expect(ausgabe).toContain(meldung);
+    }
+    for (const erlaubt of ["$passwort", "$anbieter-schluessel", "kein-richtiges-passwort"]) {
+      expect(pruefe(mit({ "docs/screenshots.json": eintrag(erlaubt) }), true).code, erlaubt).toBe(
+        0,
+      );
+    }
+  });
+
+  it("die echte Liste docs/screenshots.json ist gültig und ohne Geheimnis", () => {
+    const ergebnis = pruefeDoku({ wurzel: ROOT });
+    const zurListe = ergebnis.fehler.filter(
+      (m) => m.file === "docs/screenshots.json" && !m.problem.includes("fehlt die Datei"),
+    );
+    expect(zurListe).toEqual([]);
+  });
+
   it("unbekannte Angaben brechen mit einer Erklärung ab", () => {
     const { code, ausgabe } = befehl(grundstock(), "--schnell");
     expect(code).toBe(2);

@@ -40,7 +40,16 @@ Seit:      2026-11-07
 </p>
 
 <p align="center">
-  <sub><b>Vorschau mit Beispiel-Daten – die App ist im Bau.</b> Die Bilder zeigen den App-Rahmen mit erfundenen Inhalten; Chat und Seiten werden gerade angeschlossen (siehe <a href="#stand">Stand</a>).</sub>
+  <sub><b>Vorschau mit Beispiel-Daten, im Bau:</b> So soll die App mit Chat und Belegen aussehen. Der Chat und die Seiten werden gerade angeschlossen (siehe <a href="#stand">Stand</a>).</sub>
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/einrichtung-code.png" alt="Die echte Einrichtung von PaiBot: Pai begrüßt dich, rechts das Feld für den Einrichtungs-Code aus dem Log" width="76%">
+  <img src="docs/assets/screenshots/einrichtung-code-handy.png" alt="Die Einrichtung auf dem Handy" width="21%">
+</p>
+
+<p align="center">
+  <sub><b>Schon gebaut:</b> Einrichtung und Anmeldung, aufgenommen aus der laufenden App mit Beispiel-Daten. Alle Schritte mit Bildern: <a href="docs/funktion-einrichtung-und-zugang.md">Einrichtung und Zugang</a>.</sub>
 </p>
 
 <details>

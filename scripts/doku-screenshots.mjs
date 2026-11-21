@@ -10,12 +10,15 @@
 
 // Nimmt die Screenshots der Doku aus der laufenden App auf.
 //
-//   pnpm doku:screenshots                      alle Aufnahmen aus docs/screenshots.json
-//   pnpm doku:screenshots startseite           nur die genannten Aufnahmen (nach `name`)
+//   pnpm doku:app -- pnpm doku:screenshots      App bereitstellen, alle Aufnahmen, abräumen
+//   pnpm doku:screenshots                       alle Aufnahmen aus docs/screenshots.json
+//   pnpm doku:screenshots anmelden 404-seite    nur die genannten Aufnahmen (nach `name`)
 //   pnpm doku:screenshots --erlaube-fremde-url  auch eine URL außerhalb von localhost erlauben
 //
-// Aufnahmen der App (Standard): Die App muss laufen, Adresse aus PAIBOT_URL
-// (Standard http://127.0.0.1:3000).
+// Aufnahmen der App (Standard): Läuft `pnpm doku:app`, kommen Adresse, Einrichtungs-Code,
+// Wegwerf-Passwort und Zustand der App aus dessen Lauf-Datei (scripts/doku/lauf.mjs). Sonst muss die
+// App unter PAIBOT_URL laufen (Standard http://127.0.0.1:3000); Aufnahmen mit `zustand` oder
+// `anmeldung` gehen dann nicht.
 //
 // Aufnahmen von Entwicklungs-Seiten (`"modus": "entwicklung"`, z. B. /_komponenten/app): Diese
 // Seiten gibt es nur mit dem Entwicklungs-Server (`next dev`). Ist PAIBOT_DEV_URL gesetzt, wird
@@ -24,24 +27,41 @@
 //
 // Die Bilder landen in docs/assets/screenshots/<name>.png.
 //
-// Felder je Aufnahme in docs/screenshots.json:
+// Felder je Aufnahme in docs/screenshots.json (Prüfung in scripts/doku/liste.mjs):
 //   name        Dateiname ohne Endung (Pflicht)
 //   pfad        URL-Pfad in der App, z. B. "/" (Pflicht)
 //   modus       "app" (Standard) oder "entwicklung" (Seite nur mit `next dev`)
+//   zustand     "frisch" (nicht eingerichtet), "eingerichtet" oder "mit-beispieldaten" (optional).
+//               Das Skript ordnet die Aufnahmen so, dass jeder Zustand nur einmal hergestellt wird,
+//               und stellt ihn über die echten Wege der App her (scripts/doku-beispieldaten.mjs).
+//   anmeldung   true: vor der Aufnahme angemeldet (eine Sitzung je Lauf, über die Seite „Anmelden“)
+//   danach      "eingerichtet": die Schritte dieser frischen Aufnahme schließen die Einrichtung ab
+//   status      erwarteter HTTP-Status der Seite (Standard 200, z. B. 404 für die Fehlerseite)
 //   breite      Breite in Pixeln (Standard 1280)
 //   hoehe       Höhe in Pixeln (Standard 800)
 //   skalierung  Pixeldichte (Standard 2, also doppelte Auflösung)
 //   warteAuf    CSS-Selector, auf den vor der Aufnahme gewartet wird (optional)
-//   vorher      Schritte vor der Aufnahme, der Reihe nach (optional), z. B.
-//               [{ "klick": "button[aria-label='Arbeitsfläche zeigen']" },
-//                { "warteAuf": "[data-flaeche-offen]" }]
+//   vorher      Schritte vor der Aufnahme, der Reihe nach (optional):
+//                 { "klick": "<CSS>" }  oder  { "klick": { "rolle": "button", "name": "Weiter" } }
+//                 { "tippe": "<Beschriftung des Felds>", "text": "…" }  (Ziel auch als Objekt)
+//                 { "taste": "Enter" }   { "warteAuf": "<CSS>" }   { "warteAufText": "…" }
+//                 { "gehe": "/pfad" }    { "ablauf": "<Name aus „ablaeufe“>" }
+//               Ziel-Objekt: genau eines von css, beschriftung, rolle (mit name), text; dazu
+//               "genau": false für Teil-Treffer. Sonderwerte für „text“: $einrichtungs-code,
+//               $passwort, $anbieter-schluessel (nie echte Werte in die Liste schreiben).
 //   ausschnitt  CSS-Selector; dann wird nur dieses Element aufgenommen (optional)
 //   thema       "dunkel" (Standard) oder "hell"
 //   beschreibung  Notiz für Menschen, wird nicht ausgewertet (optional)
+// Oben in der Datei: "ablaeufe": { "<name>": [Schritte] } für wiederkehrende Folgen.
 //
-// Damit ein zweiter Lauf dieselben Bilder liefert, gilt für jede Aufnahme: feste Uhrzeit
-// (UHRZEIT unten), Animationen und Übergänge aus, Textcursor aus, Schriften geladen, App fertig
-// gestartet. Die Entwicklungs-Anzeigen des Frameworks werden ausgeblendet.
+// Ruhige, wiederholbare Aufnahmen ohne Eingriff in die Seite: feste Uhrzeit im Browser (UHRZEIT
+// unten), `prefers-reduced-motion: reduce`, Animationen und Textcursor beim Bild angehalten
+// (Playwright), Schriften und Bilder geladen, Ruhe im Netz, Maus in der Ecke. Es wird KEIN Stil
+// in die Seite eingefügt, die Content-Security-Policy der App bleibt unberührt und wirksam.
+//
+// Jede Aufnahme bricht ab bei: Fehler in der Seite, Meldung der Content-Security-Policy, Fehler
+// oder Warnung in der Konsole, Anfrage an einen fremden Host, seitlichem Scrollen, nicht
+// geladener Schrift „Inter“, unerwartetem Status.
 //
 // Playwright gehört bewusst nicht zu den Abhängigkeiten des Projekts, damit `pnpm install`
 // für alle schlank bleibt. Es wird erst hier geladen und nur gebraucht, wer Screenshots aufnimmt.
@@ -51,30 +71,18 @@ import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { aendereLauf, laufDatei, leseLauf, prozessLebt, setzeSonderwert } from "./doku/lauf.mjs";
+import { ListenFehler, ordneAufnahmen, pruefeListe } from "./doku/liste.mjs";
+import { istEingerichtet, stelleHer } from "./doku-beispieldaten.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB = path.join(ROOT, "apps", "web");
 const CONFIG = path.join(ROOT, "docs", "screenshots.json");
 const OUT_DIR = path.join(ROOT, "docs", "assets", "screenshots");
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-const MODI = new Set(["app", "entwicklung"]);
 
 /** Feste Uhrzeit für alle Aufnahmen, damit angezeigte Zeiten sich nicht ändern. */
 const UHRZEIT = "2026-11-20T14:32:00+01:00";
-
-/** Stil nur für die Aufnahme: ruhige Seite, keine Anzeigen des Entwicklungs-Servers. */
-const AUFNAHME_STIL = `
-  nextjs-portal, [data-nextjs-toast], [data-next-badge-root] { display: none !important; }
-  *, *::before, *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0s !important;
-    transition-delay: 0s !important;
-    caret-color: transparent !important;
-    scroll-behavior: auto !important;
-  }
-`;
 
 function fail(message) {
   console.error(message);
@@ -103,31 +111,24 @@ function checkUrl(name, value) {
   return url;
 }
 
-// biome-ignore lint/suspicious/noUndeclaredEnvVars: nur für dieses Skript, kein Turborepo-Task
-const appUrl = checkUrl("PAIBOT_URL", process.env.PAIBOT_URL ?? "http://127.0.0.1:3000");
+// Lauf von `pnpm doku:app` (falls vorhanden und lebendig)
+const LAUF = laufDatei();
+let lauf;
+try {
+  lauf = leseLauf(LAUF);
+} catch (error) {
+  fail(`Die Lauf-Datei ${LAUF} lässt sich nicht lesen: ${error.message}`);
+}
+if (lauf && !prozessLebt(lauf.pid)) lauf = undefined;
+
+const appUrl = checkUrl(
+  "PAIBOT_URL",
+  // biome-ignore lint/suspicious/noUndeclaredEnvVars: nur für dieses Skript, kein Turborepo-Task
+  lauf?.url ?? process.env.PAIBOT_URL ?? "http://127.0.0.1:3000",
+);
 // biome-ignore lint/suspicious/noUndeclaredEnvVars: nur für dieses Skript, kein Turborepo-Task
 const givenDevUrl = process.env.PAIBOT_DEV_URL;
 const devUrlFromEnv = givenDevUrl ? checkUrl("PAIBOT_DEV_URL", givenDevUrl) : undefined;
-
-function checkSteps(where, steps) {
-  if (steps === undefined) return [];
-  if (!Array.isArray(steps)) fail(`${where}: „vorher“ ist eine Liste von Schritten.`);
-  return steps.map((step, index) => {
-    const keys = step && typeof step === "object" ? Object.keys(step) : [];
-    const ok =
-      keys.length === 1 &&
-      (keys[0] === "klick" || keys[0] === "warteAuf") &&
-      typeof step[keys[0]] === "string" &&
-      step[keys[0]].length > 0;
-    if (!ok) {
-      fail(
-        `${where}: Schritt ${index + 1} in „vorher“ ist ungültig. Erlaubt ist genau eines von ` +
-          '{ "klick": "<CSS-Selector>" } oder { "warteAuf": "<CSS-Selector>" }.',
-      );
-    }
-    return step;
-  });
-}
 
 function loadConfig() {
   let raw;
@@ -136,45 +137,12 @@ function loadConfig() {
   } catch (error) {
     fail(`Die Liste ${path.relative(ROOT, CONFIG)} lässt sich nicht lesen: ${error.message}`);
   }
-  if (!Array.isArray(raw.aufnahmen) || raw.aufnahmen.length === 0) {
-    fail(`In ${path.relative(ROOT, CONFIG)} fehlt die Liste „aufnahmen“.`);
+  try {
+    return pruefeListe(raw);
+  } catch (error) {
+    if (error instanceof ListenFehler) fail(`${path.relative(ROOT, CONFIG)}: ${error.message}`);
+    throw error;
   }
-  const names = new Set();
-  return raw.aufnahmen.map((entry, index) => {
-    const where = `Aufnahme ${index + 1}`;
-    if (typeof entry.name !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(entry.name)) {
-      fail(
-        `${where}: „name“ fehlt oder ist ungültig (erlaubt: Kleinbuchstaben, Ziffern, Bindestrich).`,
-      );
-    }
-    if (names.has(entry.name)) fail(`${where}: Name „${entry.name}“ kommt doppelt vor.`);
-    names.add(entry.name);
-    const named = `${where} („${entry.name}“)`;
-    if (typeof entry.pfad !== "string" || !entry.pfad.startsWith("/")) {
-      fail(`${named}: „pfad“ muss mit / beginnen.`);
-    }
-    if (entry.thema !== undefined && entry.thema !== "dunkel" && entry.thema !== "hell") {
-      fail(`${named}: „thema“ ist „dunkel“ oder „hell“.`);
-    }
-    if (entry.modus !== undefined && !MODI.has(entry.modus)) {
-      fail(`${named}: „modus“ ist „app“ oder „entwicklung“.`);
-    }
-    if (
-      entry.skalierung !== undefined &&
-      (typeof entry.skalierung !== "number" || entry.skalierung < 1 || entry.skalierung > 3)
-    ) {
-      fail(`${named}: „skalierung“ ist eine Zahl von 1 bis 3.`);
-    }
-    return {
-      breite: 1280,
-      hoehe: 800,
-      skalierung: 2,
-      modus: "app",
-      thema: "dunkel",
-      ...entry,
-      vorher: checkSteps(named, entry.vorher),
-    };
-  });
 }
 
 async function loadPlaywright() {
@@ -236,6 +204,7 @@ async function startDevServer(firstPath) {
   const env = { ...process.env, NEXT_TELEMETRY_DISABLED: "1" };
   delete env.NODE_ENV;
   delete env.DATABASE_URL;
+  delete env.DATABASE_MIGRATION_URL;
   const child = spawn(
     process.execPath,
     [nextBin, "dev", "--port", String(port), "-H", "127.0.0.1"],
@@ -292,6 +261,74 @@ async function waitUntilSettled(page) {
   });
 }
 
+/** Playwright-Locator zu einem geprüften Ziel. */
+function locate(page, ziel) {
+  const exact = ziel.genau !== false;
+  if (ziel.css) return page.locator(ziel.css);
+  if (ziel.beschriftung) return page.getByLabel(ziel.beschriftung, { exact });
+  if (ziel.rolle) {
+    return page.getByRole(ziel.rolle, ziel.name ? { name: ziel.name, exact } : {});
+  }
+  return page.getByText(ziel.text, { exact });
+}
+
+async function runStep(page, step, baseUrl) {
+  const timeout = 15_000;
+  if (step.klick) await locate(page, step.klick).click({ timeout });
+  else if (step.tippe) {
+    await locate(page, step.tippe).fill(setzeSonderwert(step.text, lauf), { timeout });
+  } else if (step.taste) await page.keyboard.press(step.taste);
+  else if (step.warteAuf) await page.waitForSelector(step.warteAuf, { timeout });
+  else if (step.warteAufText) {
+    await page.getByText(step.warteAufText).first().waitFor({ state: "visible", timeout });
+  } else if (step.gehe) {
+    await page.goto(`${baseUrl}${step.gehe}`, { waitUntil: "load" });
+    await waitUntilSettled(page);
+  }
+}
+
+/** Meldet sich einmal je Lauf über die Seite „Anmelden“ an und merkt sich die Sitzung. */
+let sitzung;
+async function anmeldung(browser) {
+  if (sitzung) return sitzung;
+  const context = await browser.newContext({ locale: "de-DE", timezoneId: "Europe/Berlin" });
+  try {
+    const page = await context.newPage();
+    await page.goto(`${appUrl}/anmelden`, { waitUntil: "load" });
+    await waitUntilSettled(page);
+    await page.getByLabel("Passwort", { exact: true }).fill(setzeSonderwert("$passwort", lauf));
+    await page.getByRole("button", { name: "Anmelden", exact: true }).click();
+    await page.waitForURL(`${appUrl}/`, { timeout: 15_000 });
+    sitzung = await context.storageState();
+    return sitzung;
+  } finally {
+    await context.close();
+  }
+}
+
+/** Wächter einer Aufnahme: alles, was die Aufnahme ungültig macht. */
+function watch(context, page, baseUrl) {
+  const problems = [];
+  const host = new URL(baseUrl).host;
+  page.on("pageerror", (error) => problems.push(`Fehler in der Seite: ${error.message}`));
+  page.on("console", (message) => {
+    const type = message.type();
+    if (type !== "error" && type !== "warning") return;
+    // Antworten mit 4xx/5xx meldet Chromium so; gewollte Fehler (z. B. falsches Passwort)
+    // gehören zur Aufnahme. Unerwartete Status der Seite selbst prüft `status`.
+    if (message.text().startsWith("Failed to load resource")) return;
+    problems.push(`Konsole (${type}): ${message.text()}`);
+  });
+  context.route(
+    (url) => url.protocol.startsWith("http") && url.host !== host,
+    (route) => {
+      problems.push(`Anfrage an einen fremden Host: ${route.request().url()}`);
+      return route.abort("blockedbyclient");
+    },
+  );
+  return problems;
+}
+
 async function shoot(browser, entry, baseUrl) {
   const context = await browser.newContext({
     viewport: { width: entry.breite, height: entry.hoehe },
@@ -300,43 +337,97 @@ async function shoot(browser, entry, baseUrl) {
     reducedMotion: "reduce",
     locale: "de-DE",
     timezoneId: "Europe/Berlin",
+    ...(entry.anmeldung ? { storageState: await anmeldung(browser) } : {}),
   });
   try {
     const page = await context.newPage();
-    const pageErrors = [];
-    page.on("pageerror", (error) => pageErrors.push(error.message));
+    const problems = watch(context, page, baseUrl);
+    // Meldungen der Content-Security-Policy kommen als Ereignis in der Seite; das Skript dafür
+    // läuft über das Werkzeug des Browsers, nicht als Teil der Seite.
+    await page.addInitScript(() => {
+      document.addEventListener("securitypolicyviolation", (event) => {
+        console.error(
+          `Content-Security-Policy verletzt: ${event.violatedDirective} (${event.blockedURI || "inline"})`,
+        );
+      });
+    });
     await page.clock.setFixedTime(new Date(UHRZEIT));
     const response = await page.goto(`${baseUrl}${entry.pfad}`, { waitUntil: "load" });
-    if (!response?.ok()) {
-      throw new Error(`Die App antwortet mit Status ${response ? response.status() : "keiner"}.`);
+    const status = response ? response.status() : 0;
+    if (status !== entry.status) {
+      throw new Error(
+        `Die App antwortet mit Status ${status || "keiner"}, erwartet ${entry.status}.`,
+      );
     }
-    await page.addStyleTag({ content: AUFNAHME_STIL });
+    if (entry.modus === "app" && entry.zustand && !entry.danach) {
+      // Weiterleitung statt der Seite heißt: falscher Zustand der App
+      const ziel = new URL(page.url()).pathname;
+      if (ziel !== entry.pfad) throw new Error(`Weitergeleitet nach ${ziel} statt ${entry.pfad}.`);
+    }
     await waitUntilSettled(page);
-    if (entry.warteAuf) await page.waitForSelector(entry.warteAuf, { timeout: 10_000 });
-    for (const step of entry.vorher) {
-      if (step.klick) await page.locator(step.klick).click({ timeout: 10_000 });
-      else await page.waitForSelector(step.warteAuf, { timeout: 10_000 });
-    }
-    // Maus aus dem Bild, damit kein Hover-Zustand mit aufgenommen wird.
+    if (entry.warteAuf) await page.waitForSelector(entry.warteAuf, { timeout: 15_000 });
+    for (const step of entry.vorher) await runStep(page, step, baseUrl);
+    await page.waitForLoadState("networkidle");
+    // Maus in die Ecke, damit kein Hover-Zustand mit aufgenommen wird.
     await page.mouse.move(0, 0);
-    await page.evaluate(() => document.fonts.ready);
-    if (pageErrors.length > 0) {
-      throw new Error(`Fehler in der Seite: ${pageErrors.join(" | ")}`);
-    }
+    const checks = await page.evaluate(async () => {
+      await document.fonts.ready;
+      return {
+        breit: document.documentElement.scrollWidth > window.innerWidth,
+        inter: [...document.fonts].some(
+          (font) => font.family.replace(/["']/g, "") === "Inter" && font.status === "loaded",
+        ),
+      };
+    });
+    if (checks.breit) problems.push("Die Seite scrollt seitlich (breiter als das Fenster).");
+    if (!checks.inter) problems.push("Die Schrift „Inter“ ist nicht geladen.");
+    if (problems.length > 0) throw new Error(problems.join(" | "));
     const file = path.join(OUT_DIR, `${entry.name}.png`);
     const options = { path: file, animations: "disabled", caret: "hide" };
     if (entry.ausschnitt) await page.locator(entry.ausschnitt).screenshot(options);
     else await page.screenshot(options);
+    if (problems.length > 0) throw new Error(problems.join(" | "));
     console.log(`ok   ${path.relative(ROOT, file)}`);
   } finally {
     await context.close();
   }
 }
 
+/** Bringt die App vor einer Aufnahme in den verlangten Zustand (nur vorwärts möglich). */
+async function ensureState(entry) {
+  if (entry.modus !== "app" || entry.zustand === undefined) return;
+  if (!lauf) {
+    throw new Error(
+      "Diese Aufnahme braucht einen Zustand der App. Starte die App mit `pnpm doku:app` " +
+        "(oder in einem Befehl: `pnpm doku:app -- pnpm doku:screenshots`).",
+    );
+  }
+  const eingerichtet = await istEingerichtet(appUrl);
+  if (eingerichtet && lauf.zustand === "frisch")
+    lauf = aendereLauf({ zustand: "eingerichtet" }, LAUF);
+  if (entry.zustand === "frisch") {
+    if (eingerichtet) {
+      throw new Error(
+        "Die App ist schon eingerichtet; „frisch“ geht nur mit einer neuen App (pnpm doku:app neu starten).",
+      );
+    }
+    return;
+  }
+  const reihenfolge = ["frisch", "eingerichtet", "mit-beispieldaten"];
+  if (reihenfolge.indexOf(lauf.zustand) < reihenfolge.indexOf(entry.zustand)) {
+    console.log(`…    Zustand „${entry.zustand}“ wird hergestellt`);
+    const ergebnis = await stelleHer(entry.zustand, LAUF);
+    for (const meldung of ergebnis.meldungen) console.log(`     ${meldung}`);
+    lauf = ergebnis.lauf;
+  }
+}
+
 const entries = loadConfig();
-const selected = only.length > 0 ? entries.filter((entry) => only.includes(entry.name)) : entries;
 const unknown = only.filter((name) => !entries.some((entry) => entry.name === name));
 if (unknown.length > 0) fail(`Unbekannte Aufnahme: ${unknown.join(", ")}`);
+const selected = ordneAufnahmen(
+  only.length > 0 ? entries.filter((entry) => only.includes(entry.name)) : entries,
+);
 
 const playwright = await loadPlaywright();
 const { chromium } = playwright.chromium ? playwright : playwright.default;
@@ -365,7 +456,14 @@ try {
     const isDev = entry.modus === "entwicklung";
     if (isDev && !devUrl) continue;
     try {
+      await ensureState(entry);
       await shoot(browser, entry, isDev ? devUrl : appUrl);
+      if (entry.danach) {
+        if (!(await istEingerichtet(appUrl))) {
+          throw new Error("Nach den Schritten ist die App nicht eingerichtet (Feld „danach“).");
+        }
+        lauf = aendereLauf({ zustand: entry.danach }, LAUF);
+      }
     } catch (error) {
       failed += 1;
       console.error(`FEHLER ${entry.name}: ${error.message}`);

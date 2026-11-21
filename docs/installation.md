@@ -52,13 +52,13 @@ Danach zeigt `docker compose -f deploy/docker-compose.yml --env-file deploy/.env
 
 ## So sieht es aus
 
-Nach dem Start öffnest du `http://localhost:3000` im Browser. Mit erreichbarer Datenbank zeigt die Startseite „Datenbank: ok“.
+Nach dem Start öffnest du `http://localhost:3000` im Browser. Eine frische Installation zeigt zuerst die Einrichtung: Du gibst den Einrichtungs-Code aus dem Log ein, legst dein Passwort fest und verbindest einen Modell-Anbieter. Alle Schritte mit Bildern stehen in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
 
-![Startseite von PaiBot im dunklen Design mit grünem Punkt und dem Status „Datenbank: ok“](assets/screenshots/startseite.png)
+![Einrichtung, Schritt 1 im dunklen Design: Begrüßung durch den Bot Pai, drei Versprechen und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf das Log](assets/screenshots/einrichtung-code.png)
 
-Fehlt die `DATABASE_URL` (z. B. bei `pnpm dev` ohne `.env.local`), steht dort „Datenbank: nicht eingerichtet“. Das ist kein Fehler der App, sondern der Hinweis, dass noch keine Datenbank verbunden ist.
+Erreicht PaiBot die Datenbank nicht, steht statt der Einrichtung oder der Anmeldung der Hinweis „Datenbank nicht erreichbar“. Dann läuft der Dienst `postgres` nicht oder die Zugangsdaten passen nicht: Schau ins Log (`… logs postgres web`), starte die Datenbank und lade die Seite neu. Fehlt die `DATABASE_URL` ganz, startet PaiBot im Betrieb gar nicht erst; im Log steht dann „Start abgebrochen“.
 
-![Startseite von PaiBot mit grauem Punkt und dem Status „Datenbank: nicht eingerichtet“](assets/screenshots/startseite-ohne-datenbank.png)
+![Hinweis „Datenbank nicht erreichbar“ mit dem PaiBot-Logo im dunklen Design](assets/screenshots/datenbank-fehlt.png)
 
 ## Auf dem Server
 

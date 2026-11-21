@@ -28,12 +28,21 @@
 //      Eintrag in docs/screenshots.json seine Datei.
 //   d) Jede Seite docs/*.md ist in docs/README.md verlinkt (Warnung).
 //   e) Relative Links in docs/**/*.md und README.md zeigen auf vorhandene Dateien.
+//   f) docs/screenshots.json ist gültig, wie das Aufnahme-Skript sie liest (Felder wie `zustand`,
+//      `anmeldung`, `vorher`, siehe scripts/doku/liste.mjs).
+//   g) Kein Wert, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse,
+//      privater Schlüssel), steht in docs/screenshots.json oder in einem Doku-Text (auch nicht in
+//      Codeblöcken). In screenshots.json zusätzlich kein Einrichtungs-Code und keine Zufallswerte
+//      bei `tippe`; dafür gibt es die Sonderwerte ($einrichtungs-code, $passwort,
+//      $anbieter-schluessel).
 //
 // Bewusst ohne Abhängigkeiten: Markdown wird mit einfachen Mustern gelesen. Codeblöcke,
 // Code in Backticks und HTML-Kommentare werden vorher entfernt.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { SONDERWERTE } from "./doku/lauf.mjs";
+import { ListenFehler, pruefeListe } from "./doku/liste.mjs";
 
 const VORLAGE = "docs/VORLAGE-funktion.md";
 const INHALT = "docs/README.md";
@@ -148,14 +157,123 @@ function fileExists(rel) {
   return !rel.startsWith("..") && existsSync(abs(rel));
 }
 
+/** Muster für Werte, die wie ein Geheimnis aussehen. */
+const GEHEIMNIS_MUSTER = [
+  ["ein Schlüssel im Format „sk-…“", /\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}/],
+  ["ein GitHub-Token", /\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})/],
+  ["ein GitLab-Token", /\bglpat-[A-Za-z0-9_-]{20,}/],
+  ["ein Slack-Token", /\bxox[abprs]-[A-Za-z0-9-]{10,}/],
+  ["ein AWS-Zugangsschlüssel", /\bAKIA[0-9A-Z]{16}\b/],
+  ["ein privater Schlüssel", /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
+  ["ein JSON Web Token", /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
+  [
+    "ein Passwort in einer Datenbank-Adresse",
+    /\bpostgres(?:ql)?:\/\/[^:\s/@]+:([^@\s<>{}$]{16,})@/,
+  ],
+];
+/** Name wie KEY/SECRET/TOKEN/PASSWORT, dahinter ein Zufallswert. */
+const ZUWEISUNG =
+  /\b[A-Za-z_]*(?:key|secret|token|password|passwort|schluessel)[A-Za-z_]*["']?\s*[=:]\s*["']?([A-Za-z0-9+/_=-]{20,})/gi;
+const EINRICHTUNGS_CODE = /\b[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}\b/;
+
+/** Sieht ein Wert zufällig aus (Groß- und Kleinbuchstaben und Ziffern gemischt)? */
+function siehtZufaelligAus(wert) {
+  return /[A-Z]/.test(wert) && /[a-z]/.test(wert) && /\d/.test(wert);
+}
+
+/** Kurzer Auszug, der das Geheimnis selbst nicht wiederholt. */
+function auszug(wert) {
+  return `${wert.slice(0, 4)}…`;
+}
+
+/**
+ * Findet Werte, die wie ein Geheimnis aussehen. Liefert je Fund { art, auszug, zeile }; der Wert
+ * selbst wird nicht wiedergegeben.
+ */
+export function findeGeheimnisse(text) {
+  const funde = [];
+  const zeileVon = (index) => text.slice(0, index).split("\n").length;
+  for (const [art, muster] of GEHEIMNIS_MUSTER) {
+    const global = new RegExp(muster.source, "g");
+    for (const treffer of text.matchAll(global)) {
+      funde.push({ art, auszug: auszug(treffer[0]), zeile: zeileVon(treffer.index) });
+    }
+  }
+  for (const treffer of text.matchAll(ZUWEISUNG)) {
+    if (siehtZufaelligAus(treffer[1])) {
+      funde.push({
+        art: "ein Zufallswert nach einem Namen wie KEY, SECRET, TOKEN oder PASSWORT",
+        auszug: auszug(treffer[1]),
+        zeile: zeileVon(treffer.index),
+      });
+    }
+  }
+  return funde;
+}
+
+function meldeGeheimnisse(file, text) {
+  for (const fund of findeGeheimnisse(text)) {
+    error(
+      file,
+      `Zeile ${fund.zeile}: ${fund.art} („${fund.auszug}“) sieht wie ein Geheimnis aus.`,
+      "Echte Werte nie in die Doku schreiben: Beispiel-Werte oder Platzhalter wie <dein-schlüssel> nehmen.",
+    );
+  }
+}
+
+/** f) und g) für docs/screenshots.json. */
+function checkScreenshotList(raw, text) {
+  try {
+    pruefeListe(raw);
+  } catch (e) {
+    if (!(e instanceof ListenFehler)) throw e;
+    error(
+      LISTE,
+      e.message,
+      "Eintrag wie im Abschnitt „Screenshots“ von docs/README.md beschrieben anlegen.",
+    );
+  }
+  meldeGeheimnisse(LISTE, text);
+  const besuche = (wert, schluessel) => {
+    if (typeof wert === "string") {
+      if (EINRICHTUNGS_CODE.test(wert)) {
+        error(
+          LISTE,
+          `Bei „${schluessel}“ steht ein Einrichtungs-Code („${auszug(wert)}“).`,
+          "Den Sonderwert $einrichtungs-code verwenden.",
+        );
+      }
+      if (
+        schluessel === "text" &&
+        !(wert in SONDERWERTE) &&
+        wert.length >= 16 &&
+        siehtZufaelligAus(wert)
+      ) {
+        error(
+          LISTE,
+          `Bei „tippe“ steht ein Wert, der wie ein Schlüssel oder Passwort aussieht („${auszug(wert)}“).`,
+          `Einen Sonderwert verwenden (${Object.keys(SONDERWERTE).join(", ")}) oder lesbaren Beispiel-Text.`,
+        );
+      }
+    } else if (Array.isArray(wert)) {
+      for (const teil of wert) besuche(teil, schluessel);
+    } else if (wert && typeof wert === "object") {
+      for (const [k, v] of Object.entries(wert)) besuche(v, k);
+    }
+  };
+  besuche(raw, "");
+}
+
 function screenshotNames() {
   if (!existsSync(abs(LISTE))) {
     error(LISTE, "Die Liste der Screenshots fehlt.", 'Datei mit { "aufnahmen": [] } anlegen.');
     return new Set();
   }
   let raw;
+  let text;
   try {
-    raw = JSON.parse(readText(LISTE));
+    text = readText(LISTE);
+    raw = JSON.parse(text);
   } catch (e) {
     error(LISTE, `Die Datei ist kein gültiges JSON (${e.message}).`, "JSON-Fehler beheben.");
     return new Set();
@@ -164,6 +282,7 @@ function screenshotNames() {
     error(LISTE, "Die Liste „aufnahmen“ fehlt.", 'Als { "aufnahmen": [ … ] } anlegen.');
     return new Set();
   }
+  checkScreenshotList(raw, text);
   const names = new Set();
   for (const entry of raw.aufnahmen) {
     if (typeof entry?.name !== "string") continue;
@@ -333,6 +452,7 @@ export function pruefeDoku({ wurzel = PROJEKT, streng = false } = {}) {
     ...(existsSync(abs("README.md")) ? ["README.md"] : []),
   ];
   for (const file of scanned) checkReferences(file, names);
+  for (const file of scanned) meldeGeheimnisse(file, readText(file));
   checkIndex(docs);
 
   if (transitional.length > 0) {
