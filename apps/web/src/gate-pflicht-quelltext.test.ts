@@ -178,15 +178,22 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   "web/src/lib/schleuse/schleuse.ts": { art: "aktion" },
   "web/src/lib/zugang/anmeldung.ts": { art: "aktion" },
   "web/src/lib/zugang/einrichtung.ts": { art: "aktion" },
-  // Zähler der Rate-Limits: vor jeder weiteren Arbeit, auch vor dem Tor.
-  "web/src/lib/rate-limit.ts": { art: "betrieb", nur: ["rateLimit.hit", "rateLimit.reset"] },
+  // Zähler der Rate-Limits: vor jeder weiteren Arbeit, auch vor dem Tor; Sperren der Anmeldung
+  // aufheben (Ausweg im Migrations-Schritt).
+  "web/src/lib/rate-limit.ts": {
+    art: "betrieb",
+    nur: ["rateLimit.hit", "rateLimit.reset", "rateLimit.deleteByPrefix"],
+  },
   // Einrichtungs-Code: entsteht vor der Einrichtung, wenn es noch keinen Signaturschlüssel gibt.
   "web/src/lib/zugang/einrichtungs-code.ts": {
     art: "betrieb",
     nur: ["settings.ensure", "settings.setSetupCode"],
   },
-  // Beim Start: Code nach abgeschlossener Einrichtung löschen.
-  "web/src/lib/betrieb.ts": { art: "betrieb", nur: ["settings.clearSetupCode"] },
+  // Migrations-Schritt: offenen Einrichtungs-Code verwerfen, Sperren der Anmeldung aufheben.
+  "web/src/lib/betrieb.ts": {
+    art: "betrieb",
+    nur: ["settings.clearSetupCode", "rateLimit.deleteByPrefix"],
+  },
   // Sitzungen: anlegen/beenden rufen nur die Aktionen (Anmelden, Abmelden, Einrichtung) in ihrer
   // Ausführung; verlängern und abgelaufene beenden gehört zur Prüfung jeder Anfrage.
   "web/src/lib/zugang/sitzung.ts": {

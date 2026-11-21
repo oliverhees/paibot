@@ -329,9 +329,10 @@ export async function anbieterVerbindungstest(k: RoutenKontext<"anbieterVerbindu
 }
 
 /**
- * `GET /api/anbieter/:id/modelle`: holt die passenden Modelle beim Anbieter und hält sie in der
+ * `POST /api/anbieter/:id/modelle`: holt die passenden Modelle beim Anbieter und hält sie in der
  * Datenbank vor, damit der Bot eines davon über seine Kennung wählen kann. Modelle, die der
- * Anbieter nicht mehr meldet, sind danach nicht mehr wählbar.
+ * Anbieter nicht mehr meldet, sind danach nicht mehr wählbar. Das Abgleichen ist eine Änderung am
+ * Anbieter und läuft durch das Tor (Aktion `anbieter.speichern`, mit Beleg).
  */
 export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
   const { provider, apiKeyEnc } = await anbieterMitSchluessel(k.db, k.params.id ?? "");
@@ -341,9 +342,27 @@ export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
     throw verbindungsFehler("schluessel_ungueltig", provider.name);
   }
   const ergebnis = await verbindungPruefen(k.dienste, endpunktVon(provider), schluessel);
-  const modelle = await k.db.transaction(async (tx) => {
+  const abgleich = await k.tor(
+    k.nachweis,
+    { type: "anbieter.speichern", target: { providerId: id } },
+    { created: false, region: provider.region, keySet: schluessel !== undefined },
+    async () => {
+      const liste = await modelleAbgleichen(k, id, ergebnis.models);
+      return { value: liste, result: { status: "ok" } };
+    },
+  );
+  const modelle = abgleich.value;
+  return { daten: { modelle } };
+}
+
+async function modelleAbgleichen(
+  k: RoutenKontext<"anbieterModelle">,
+  id: ProviderId,
+  gemeldeteModelle: readonly { slug: string; displayName: string; contextWindow?: number }[],
+): Promise<ModellEintrag[]> {
+  return k.db.transaction(async (tx) => {
     const liste: ModellEintrag[] = [];
-    for (const info of ergebnis.models) {
+    for (const info of gemeldeteModelle) {
       const m = await repo.models.upsert(tx, {
         providerId: id,
         slug: info.slug,
@@ -358,7 +377,7 @@ export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
         ...(m.contextWindow === undefined ? {} : { contextWindow: m.contextWindow }),
       });
     }
-    const gemeldet = new Set(ergebnis.models.map((m) => m.slug));
+    const gemeldet = new Set(gemeldeteModelle.map((m) => m.slug));
     for (const m of await repo.models.list(tx, { providerId: id })) {
       if (m.enabled && !gemeldet.has(m.slug)) {
         await repo.models.setEnabled(tx, m.id as ModelId, false);
@@ -366,5 +385,4 @@ export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
     }
     return liste;
   });
-  return { daten: { modelle } };
 }

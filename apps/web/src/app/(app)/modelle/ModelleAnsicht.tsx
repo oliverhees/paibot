@@ -103,7 +103,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     }
     setListe({ zustand: "laedt" });
     const antwort = await apiFetch<{ modelle: ModellZeile[] }>(
-      "GET",
+      "POST",
       `/api/anbieter/${encodeURIComponent(a.id)}/modelle`,
     );
     if (antwort.ok) setListe({ zustand: "fertig", modelle: antwort.daten.modelle });

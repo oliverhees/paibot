@@ -328,12 +328,14 @@ export const API_ROUTEN = {
     eingabe: connectionTestInput,
     limits: ["verbindungstest"],
   },
+  /** Holt die Modell-Liste beim Anbieter und gleicht sie mit den gespeicherten Modellen ab. */
   anbieterModelle: {
-    methode: "GET",
+    methode: "POST",
     pfad: "/api/anbieter/:id/modelle",
     zugang: "besitzer",
     antwort: "json",
-    veraendernd: false,
+    veraendernd: true,
+    aktion: "anbieter.speichern",
   },
 
   datenschleuse: {
