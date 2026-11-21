@@ -104,15 +104,15 @@ curl https://paibot.deine-domain.de/api/health
 
 Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`. In Coolify stehen `web` und `worker` auf „healthy“; im Log von `worker` steht „Bereit: nimmt Läufe an“.
 
-| Ergebnis                                               | Bedeutung                                                                     | Was tun                                                                                      |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `"db":"ok"`                                            | alles läuft                                                                   | –                                                                                            |
-| `"db":"down"`, HTTP 503                                | App läuft, Datenbank nicht erreichbar                                         | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen                        |
-| Im Log von `web`: „WARNUNG: … zu vielen Rechten“       | App arbeitet mit zu vielen Rechten                                            | „Bestehende Installation umstellen“ und `PAIBOT_ALLOW_PRIVILEGED_DB` wieder entfernen        |
-| Deploy bricht ab, Log: „Start abgebrochen“             | Pflichtwert fehlt, zu kurz oder Platzhalter; oder „Datenbank nicht auf Stand“ | die Zeile davor im Log nennt den Wert; Werte wie in Schritt 4 erzeugen                       |
-| `web` und `worker` starten nicht                       | `migrate` ist mit Fehler beendet                                              | Log von `migrate` in Coolify lesen                                                           |
-| keine Antwort                                          | Domain, DNS oder Proxy falsch                                                 | A-Record und Domain-Eintrag beim Dienst `web` prüfen                                         |
-| Dienst `worker` nicht „healthy“                        | Worker wartet noch auf `migrate` oder die Datenbank, oder sein Start brach ab | Logs von `worker` in Coolify lesen; die letzte Zeile vor „Start abgebrochen“ nennt den Grund |
+| Ergebnis                                         | Bedeutung                                                                     | Was tun                                                                                      |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `"db":"ok"`                                      | alles läuft                                                                   | –                                                                                            |
+| `"db":"down"`, HTTP 503                          | App läuft, Datenbank nicht erreichbar                                         | Logs von `postgres` und `web` in Coolify prüfen, Passwort vergleichen                        |
+| Im Log von `web`: „WARNUNG: … zu vielen Rechten“ | App arbeitet mit zu vielen Rechten                                            | „Bestehende Installation umstellen“ und `PAIBOT_ALLOW_PRIVILEGED_DB` wieder entfernen        |
+| Deploy bricht ab, Log: „Start abgebrochen“       | Pflichtwert fehlt, zu kurz oder Platzhalter; oder „Datenbank nicht auf Stand“ | die Zeile davor im Log nennt den Wert; Werte wie in Schritt 4 erzeugen                       |
+| `web` und `worker` starten nicht                 | `migrate` ist mit Fehler beendet                                              | Log von `migrate` in Coolify lesen                                                           |
+| keine Antwort                                    | Domain, DNS oder Proxy falsch                                                 | A-Record und Domain-Eintrag beim Dienst `web` prüfen                                         |
+| Dienst `worker` nicht „healthy“                  | Worker wartet noch auf `migrate` oder die Datenbank, oder sein Start brach ab | Logs von `worker` in Coolify lesen; die letzte Zeile vor „Start abgebrochen“ nennt den Grund |
 
 ## So sieht es aus
 

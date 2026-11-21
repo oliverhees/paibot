@@ -160,11 +160,11 @@ Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), w
 
 **Größe von Anfragen:** PaiBot nimmt Anfragen nur bis zu einer festen Größe an (16 KiB, Nachrichten 256 KiB) und weist größere schon an der angegebenen Länge mit 413 ab. Begrenze die Größe zusätzlich in deinem Proxy, damit große Anfragen gar nicht erst bis zur App kommen, z. B. auf 1 MiB:
 
-| Proxy           | Einstellung                                                                                                      |
-| --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Caddy           | `request_body { max_size 1MB }`                                                                                  |
-| nginx           | `client_max_body_size 1m;`                                                                                       |
-| Traefik/Coolify | Middleware `buffering` mit `maxRequestBodyBytes=1048576` (siehe [Coolify](deploy-coolify.md))                   |
+| Proxy           | Einstellung                                                                                   |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| Caddy           | `request_body { max_size 1MB }`                                                               |
+| nginx           | `client_max_body_size 1m;`                                                                    |
+| Traefik/Coolify | Middleware `buffering` mit `maxRequestBodyBytes=1048576` (siehe [Coolify](deploy-coolify.md)) |
 
 Fehlt ein Pflichtwert, bricht schon `docker compose` mit einer Meldung „… fehlt“ ab. Ist ein Wert zu kurz, falsch geformt oder noch ein Platzhalter, startet die App nicht und nennt im Log, welcher Wert es ist (nie den Wert selbst).
 
