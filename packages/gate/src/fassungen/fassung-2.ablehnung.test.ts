@@ -17,7 +17,7 @@ import { denialCode } from "../evaluate";
 import { createGate, isGateDenied } from "../gate";
 import { ruleSnapshot } from "../regel-hash";
 import { sampleAction, sampleFacts } from "../testdaten";
-import { GATE_FORMAT_2 } from "./fassung-2";
+import { GATE_FORMAT_2, limitLaufToken } from "./fassung-2";
 
 const ERLAUBT_WERKZEUG: RuleDefinition = {
   id: "R-100",
@@ -139,6 +139,42 @@ describe("Fehlercode einer Ablehnung in Fassung 2", () => {
     expect(error.toolCallDecision()).toMatchObject({
       outcome: "deny",
       errorCode: "freigabe_noetig",
+    });
+  });
+});
+
+describe("Große Zahlen bei G-18", () => {
+  const MAX = Number.MAX_SAFE_INTEGER;
+  const token = (change: Record<string, unknown>) =>
+    entscheide("modell.anfragen", change).limits.find((l) => l.name === "lauf_token");
+
+  it("Summe außerhalb der sicheren Ganzzahlen: verletzt, ohne Wert, limit_erreicht", () => {
+    for (const change of [
+      { runTokens: MAX - 10, stepTokenEstimate: 1227, maxRunTokens: MAX },
+      { runTokens: MAX, stepTokenEstimate: MAX, maxRunTokens: MAX },
+    ]) {
+      expect(token(change)).toEqual({ name: "lauf_token", result: "verletzt" });
+      expect(codes(entscheide("modell.anfragen", change))).toBe("limit_erreicht");
+    }
+  });
+
+  it("Summe genau auf der Grenze: ok mit Wert", () => {
+    expect(token({ runTokens: MAX - 1227, stepTokenEstimate: 1227, maxRunTokens: MAX })).toEqual({
+      name: "lauf_token",
+      result: "ok",
+      value: MAX,
+    });
+  });
+
+  it("ein Summand außerhalb der sicheren Ganzzahlen ist ungültige Eingabe", () => {
+    const decision = entscheide("modell.anfragen", { runTokens: MAX + 1, maxRunTokens: MAX });
+    expect(decision.outcome).toBe("deny");
+    expect(decision.limits.every((l) => l.result === "entfaellt")).toBe(true);
+    // Die Grenze selbst bleibt auch ohne Eingabeprüfung verletzt und ohne Wert.
+    const facts = { ...sampleFacts("modell.anfragen"), runTokens: MAX + 1 };
+    expect(limitLaufToken({ type: "modell.anfragen" }, facts)).toEqual({
+      name: "lauf_token",
+      result: "verletzt",
     });
   });
 });

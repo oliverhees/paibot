@@ -775,7 +775,8 @@ export const limitLaufAufrufe: FormatLimitFn = (action, facts) => {
 
 /**
  * G-18 `lauf_token`: `runTokens + stepTokenEstimate <= maxRunTokens`; fehlt ein Fakt oder ist
- * keine Ganzzahl: verletzt.
+ * keine Ganzzahl: verletzt. Liegt die Summe außerhalb der sicheren Ganzzahlen, ist sie größer als
+ * jede zulässige Grenze: verletzt, ohne Wert, damit der Beleg schreibbar bleibt.
  */
 export const limitLaufToken: FormatLimitFn = (action, facts) => {
   const name = "lauf_token";
@@ -784,7 +785,8 @@ export const limitLaufToken: FormatLimitFn = (action, facts) => {
   const estimate = fact(facts, "stepTokenEstimate");
   const maxRunTokens = fact(facts, "maxRunTokens");
   const both = isCount(runTokens) && isCount(estimate);
-  const sum = both ? runTokens + estimate : undefined;
+  const raw = both ? runTokens + estimate : undefined;
+  const sum = isCount(raw) ? raw : undefined;
   return check(name, sum !== undefined && isCount(maxRunTokens) && sum <= maxRunTokens, sum);
 };
 
