@@ -23,6 +23,7 @@ import type { ActionId, ReceiptId } from "@paibot/shared/ids";
 import {
   ACTIVE_STANDARD_RULES,
   type Decision,
+  GATE_FORMAT,
   type GatePermit,
   type Outcome,
   priorityFitsSource,
@@ -64,7 +65,11 @@ export interface ReceiptRef {
 export interface DecisionRecord<T extends ActionType = ActionType> {
   action: ActionRequest<T>;
   facts: Facts<T>;
-  decision: Decision;
+  /**
+   * Entscheidung des Tors mit der Fassung, mit der es entschieden hat (`GATE_FORMAT`). Der
+   * Schreiber nimmt nur Entscheidungen der aktuellen Fassung an.
+   */
+  decision: Decision & { readonly gateFormat: number };
   time: Date;
   /** Kontext-Prüfsumme über die ausgehende Anfrage bzw. die Eingabe. */
   context?: { digest: HmacDigest };
@@ -200,7 +205,7 @@ export function createGate(ports: GatePorts): Gate {
     const decisionRecord: DecisionRecord = {
       action: checkedAction,
       facts: checkedFacts,
-      decision,
+      decision: { ...decision, gateFormat: GATE_FORMAT },
       time: clock.now(),
     };
     if (options.context !== undefined) decisionRecord.context = options.context;

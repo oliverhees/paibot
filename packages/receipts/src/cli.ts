@@ -18,6 +18,11 @@ import { t } from "@paibot/shared/texte";
 import { ExportFormatError, parseJsonl } from "./jsonl";
 import { type ChainReport, type CheckResult, createAnchor, verifyChain } from "./verify";
 
+/** Text zu einem Problem der Kette (jedes Problem hat einen Text-Schlüssel). */
+function problemText(problem: ChainProblem): string {
+  return t(`belege.problem.${problem}`);
+}
+
 /**
  * Exit-Codes des Befehls:
  * - 0: Kette vertrauenswürdig (bzw. Anker ausgegeben).
@@ -25,13 +30,16 @@ import { type ChainReport, type CheckResult, createAnchor, verifyChain } from ".
  * - 2: Aufruf, Datei oder Anker fehlerhaft.
  * - 3: Kette in sich gültig, aber die Vertrauenskette ist gebrochen (Schlüsselwechsel ohne
  *   Beglaubigung).
+ * - 4: Kette mit dieser Fassung nicht prüfbar: Sie enthält Belege aus einer neueren
+ *   PaiBot-Fassung. Nie 0.
  */
-/** Text zu einem Problem der Kette (jedes Problem hat einen Text-Schlüssel). */
-function problemText(problem: ChainProblem): string {
-  return t(`belege.problem.${problem}`);
-}
-
-export const CLI_EXIT = { gueltig: 0, ungueltig: 1, fehler: 2, vertrauenGebrochen: 3 } as const;
+export const CLI_EXIT = {
+  gueltig: 0,
+  ungueltig: 1,
+  fehler: 2,
+  vertrauenGebrochen: 3,
+  nichtPruefbar: 4,
+} as const;
 
 const USAGE_FORMS = [
   "pnpm belege:pruefen <datei.jsonl> --anker <anker|pb-anker.json>",
@@ -40,6 +48,7 @@ const USAGE_FORMS = [
 
 function describe(check: CheckResult): string | undefined {
   if (check.status === "entfaellt") return undefined;
+  if (check.status === "nicht_pruefbar") return `? ${t("belege.problem.fassung_unbekannt")}`;
   const ok = check.status === "ok";
   const mark = ok ? "✓" : "✗";
   switch (check.check) {
@@ -70,6 +79,7 @@ export interface CliIo {
 function usage(io: CliIo): number {
   io.err(t("belege.befehl.aufruf"));
   for (const form of USAGE_FORMS) io.err(`       ${form}`);
+  io.err(t("belege.befehl.ausgaenge"));
   return CLI_EXIT.fehler;
 }
 
@@ -187,8 +197,14 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<number
 function printReport(report: ChainReport, io: CliIo): number {
   const { verdict } = report;
   const failure = report.firstFailure;
+  // Ohne fehlgeschlagene Prüfung heißt die Kette nur dann „gültig“, wenn nichts offen bleibt:
+  // Belege aus einer neueren Fassung machen sie „nicht vollständig prüfbar“.
   const ergebnis =
-    failure === undefined ? t("pruefung.gueltig") : t("pruefung.ungueltig", { seq: failure.seq });
+    failure !== undefined
+      ? t("pruefung.ungueltig", { seq: failure.seq })
+      : verdict.level === "nicht_pruefbar"
+        ? t("pruefung.nicht_pruefbar")
+        : t("pruefung.gueltig");
   io.out(t("belege.befehl.kette", { ergebnis, anzahl: report.checked }));
   if (failure === undefined && report.head !== undefined) {
     io.out(t("belege.befehl.kopf", report.head));
@@ -202,9 +218,13 @@ function printReport(report: ChainReport, io: CliIo): number {
     const where = finding.seq === undefined ? "" : ` (${finding.seq})`;
     io.out(`  ✗ ${problemText(finding.problem)}${where}`);
   }
+  for (const note of verdict.notes ?? []) {
+    io.out(`  ℹ ${t(`belege.hinweis.${note.note}`)} (${note.seq})`);
+  }
   if (verdict.anchor === "fehlt") io.out(t("belege.anker.ohne"));
 
   if (verdict.level === "vertrauenswuerdig") return CLI_EXIT.gueltig;
   if (verdict.level === "vertrauen_gebrochen") return CLI_EXIT.vertrauenGebrochen;
+  if (verdict.level === "nicht_pruefbar") return CLI_EXIT.nichtPruefbar;
   return CLI_EXIT.ungueltig;
 }

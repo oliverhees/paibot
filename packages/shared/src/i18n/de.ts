@@ -1646,4 +1646,26 @@ export const de = {
   "hinweis.aenderung.verdraengt":
     "Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): {geraet}, am {zeit}",
   "hinweis.aenderung.alle": "Alle Geräte abgemeldet ({anzahl}), am {zeit}",
+
+  // Belege: Fassung des Tors je Entscheidung
+  "belege.urteil.nicht_pruefbar":
+    "Diese Kette enthält Belege aus einer neueren PaiBot-Fassung. Diese Fassung kann sie nicht vollständig prüfen. Prüfe mit derselben oder einer neueren Fassung. Hast du PaiBot nie auf eine neuere Fassung aktualisiert, ist das ein Warnzeichen.",
+  "belege.problem.fassung_unbekannt": "Beleg aus einer neueren PaiBot-Fassung",
+  "belege.problem.fassung_unpassend": "Beleg passt nicht zu seiner Fassung",
+  "belege.hinweis.fassung_rueckschritt":
+    "Nach einem Beleg mit Fassungsangabe folgt einer ohne. Das kann beim Update kurz vorkommen.",
+  "belege.grund.entscheidung.fassung_unbekannt": "Beleg aus einer neueren PaiBot-Fassung",
+  "belege.grund.entscheidung.fassung_unpassend": "Beleg passt nicht zu seiner Fassung",
+  "belege.stand.nicht_pruefbar": "nicht prüfbar",
+  "belege.einzel.nicht_pruefbar":
+    "Beleg aus einer neueren PaiBot-Fassung: mit dieser Fassung nicht prüfbar.",
+  "belege.befehl.ausgaenge":
+    "Ausgänge: 0 vertrauenswürdig, 1 ungültig, 2 Aufruf oder Datei fehlerhaft, 3 Vertrauenskette gebrochen, 4 mit dieser Fassung nicht prüfbar (Belege aus einer neueren PaiBot-Fassung)",
+  "belege.geprueft.entscheidung_nicht_pruefbar":
+    "Entscheidungen nachgerechnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
+  "belege.geprueft.paare_nicht_pruefbar":
+    "Ergebnisse ihren Entscheidungen zugeordnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
+  "pruefung.nicht_pruefbar": "in sich stimmig, aber mit dieser Fassung nicht vollständig prüfbar",
+  "belege.einzel.ergebnis_kette":
+    "Ob dieses Ergebnis zu seiner Entscheidung und deren Fassung passt, zeigt die Prüfung der ganzen Kette.",
 } as const satisfies Record<string, string | readonly string[]>;

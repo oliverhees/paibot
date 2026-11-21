@@ -15,7 +15,7 @@ import {
   type IdKind,
   newId,
   publicKeySchema,
-  receiptBodySchema,
+  receiptBodyWriteSchema,
   STORED_ACTION_TYPES,
   sha256DigestSchema,
   signatureSchema,
@@ -132,9 +132,9 @@ describe("Beispiel-Werte passen zu den Verträgen", () => {
   });
 
   it("Beleg-Körper aus den Beispiel-Zeilen sind gültige Belege", () => {
-    expect(receiptBodySchema.safeParse(belegRow(keyId).body).success).toBe(true);
+    expect(receiptBodyWriteSchema.safeParse(belegRow(keyId).body).success).toBe(true);
     expect(
-      receiptBodySchema.safeParse(
+      receiptBodyWriteSchema.safeParse(
         belegRow(keyId, { seq: 2, prevHash: sha256Digest(), type: "decision" }).body,
       ).success,
     ).toBe(true);
@@ -1043,7 +1043,7 @@ describe("belege", () => {
       seq += 1;
       const zeile = belegRow(bisher, { seq, prevHash });
       const signierer = signedBy === "new" ? neu.id : bisher;
-      const body = receiptBodySchema.parse({
+      const body = receiptBodyWriteSchema.parse({
         v: 1,
         id: zeile.id,
         seq,
