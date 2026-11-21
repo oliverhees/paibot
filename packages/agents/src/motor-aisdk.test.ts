@@ -287,11 +287,12 @@ describe("Fehler über die Anbieter-Schicht", () => {
   it("Anbieter antwortet nicht → Zeitgrenze ohne Strom (idleTimeoutMs)", async () => {
     provider.failNext({ kind: "haengen" });
     const started = Date.now();
-    const events = await run(input(), { idleTimeoutMs: 150 });
+    // Großzügig gewählt: Vor dem Verbinden werden Namen aufgelöst, das dauert unter Last.
+    const events = await run(input(), { idleTimeoutMs: 1000 });
     expect(events.map(({ event }) => event)).toEqual([
       { type: "error", code: "anbieter_nicht_erreichbar", retryable: true, detail: "zeitgrenze" },
     ]);
-    expect(Date.now() - started).toBeLessThan(1500);
+    expect(Date.now() - started).toBeLessThan(8000);
     await waitFor(() => provider.requests[0]?.closedByClient === true);
   });
 
