@@ -99,7 +99,9 @@ export function SchleuseAnsicht(props: SchleuseAnsichtProps) {
               {befund.ausweg && <span className={styles.leise}> {befund.ausweg}</span>}
             </p>
             <p className={styles.leise}>
-              {befund.geprueft} {t("datenschleuse.worker.hinweis")}
+              {/* Veraltet nennt der Satz oben die Zeit schon. */}
+              {worker?.veraltet ? "" : `${befund.geprueft} `}
+              {t("datenschleuse.worker.hinweis")}
             </p>
           </>
         ) : eingerichtet ? (
