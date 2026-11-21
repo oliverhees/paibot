@@ -106,8 +106,9 @@ jobs:
             if printf '%s\n' "$umgebung" | grep -qF "$superuser_pw"; then
               echo "$dienst: Passwort des Tabellen-Besitzers im laufenden Prozess"; exit 1
             fi
-            # Test-Hilfen (PGlite, Test-Anbieter) sind nicht im Produktions-Bündel.
-            if docker exec "$id" sh -c 'grep -rlsiE "pglite|fake-provider" /app/apps/web/.next/server /app/apps/worker/dist/worker.mjs; find /app -path "*pglite*" -print -quit' | grep -q .; then
+            # Test-Hilfen (PGlite, Test-Datenbank, Test-Anbieter) sind nicht im Produktions-Bündel.
+            # Gesucht wird nach Code der Pakete, nicht nach Namen in Pfaden anderer Pakete.
+            if docker exec "$id" sh -c 'grep -rlsF -e "@electric-sql/pglite/dist" -e "createTestDb" -e "createFakeProvider" /app/apps/web/.next/server /app/apps/worker/dist/worker.mjs; find /app -path "*/node_modules/@electric-sql/pglite" -print -quit' | grep -q .; then
               echo "$dienst: Test-Hilfen im Bündel"; exit 1
             fi
           done

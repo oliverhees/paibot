@@ -19,8 +19,10 @@
 # kennt die Zugangsdaten des Tabellen-Besitzers; er migriert und beendet sich (Exit 0). web und
 # worker starten erst danach und prüfen nur noch Stand und Rechte.
 #
-# Speicher-Grenzen: PAIBOT_WEB_SPEICHER (Standard 768m) und PAIBOT_WORKER_SPEICHER (Standard
-# 512m). Ein Dienst, der darüber kommt, wird beendet und neu gestartet, statt den Server zu füllen.
+# Speicher-Grenzen: PAIBOT_WEB_SPEICHER (Standard 768m), PAIBOT_WORKER_SPEICHER (512m) und
+# PAIBOT_MIGRATE_SPEICHER (384m). Ein Dienst, der darüber kommt, wird beendet und neu gestartet,
+# statt den Server zu füllen. Die Werte reichen für die Basisversion mit wenigen gleichzeitigen
+# Antworten (gemessen im Leerlauf: Web-App gut 120 MB, Worker knapp 100 MB).
 #
 # Datenschleuse: Profil schleuse (Dienste datenschleuse und schleuse-analyzer), Standard aus.
 # Sie hat keine Datenbank und keinen Port; nur der Worker erreicht sie (Netz paibot-schleuse).
