@@ -131,7 +131,7 @@ export function einrichtungsAnbieter(env: Env): EinrichtungsAnbieter {
 }
 
 /** Ergebnis der Prüfung von `APP_URL` beim Start in Produktion. */
-export interface AppUrlBefund {
+export interface AppUrlPruefung {
   /** Grund, aus dem der Start abbricht. */
   fehler?: string;
   /** Hinweis fürs Log; der Start geht weiter. */
@@ -162,7 +162,7 @@ function istEigenesNetz(host: string): boolean {
  * Warnung (Start geht weiter): `http://` im eigenen Netz (private Adressen, Namen ohne Punkt oder
  * mit `.local`, `.lan`, `.home.arpa`, `.internal`) und Pfad oder Abfrage in der Adresse.
  */
-export function pruefeAppUrl(env: Env): AppUrlBefund {
+export function pruefeAppUrl(env: Env): AppUrlPruefung {
   const warnungen: string[] = [];
   const wert = env.APP_URL?.trim();
   const beispiel = "z. B. APP_URL=https://paibot.example.de";

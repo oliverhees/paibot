@@ -152,9 +152,9 @@ describe.skipIf(BASE_URL === undefined)(
 
       const check = postgres(appUrl, { max: 1, onnotice: () => undefined });
       cleanup.push(() => check.end({ timeout: 2 }));
-      const befund = await checkAppRole(check);
-      expect(befund.issues).toContain("schatten_tabellen");
-      expect(befund.shadowTables).toEqual(["pgboss.belege", "pgboss.rules"]);
+      const pruefung = await checkAppRole(check);
+      expect(pruefung.issues).toContain("schatten_tabellen");
+      expect(pruefung.shadowTables).toEqual(["pgboss.belege", "pgboss.rules"]);
 
       // Die Meldung beim Start nennt die Tabellen und den Ausweg, ohne die Prüfung abzuschalten.
       const start = await checkDatabase({
