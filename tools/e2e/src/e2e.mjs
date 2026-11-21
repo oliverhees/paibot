@@ -795,11 +795,7 @@ async function main() {
   });
 
   await schritt("Neu erzeugen: zweite Fassung, erste bleibt erreichbar", seite, async () => {
-    // Die Tagesgrenze aus dem Schritt davor wieder aufheben.
-    await seite.goto(`${app}/einstellungen/grenzen`);
-    await seite.getByRole("textbox", { name: "Tagesbudget (Token)" }).fill("");
-    await seite.getByRole("button", { name: "Speichern" }).click();
-    await seite.getByText("Gespeichert.").waitFor();
+    // Die Tagesgrenze hat der Not-Aus-Schritt davor schon aufgehoben.
     const ZWEITE = "Zweite Fassung: Mir geht es gut, danke der Nachfrage.";
     await stack.anbieter.verhalten({ reply: ZWEITE, holdAfterChunks: 0 });
     await seite.goto(`${app}${unterhaltung}`);
@@ -814,12 +810,12 @@ async function main() {
     // Zur ersten Fassung blättern: die alte Antwort steht unverändert da.
     await verlauf.getByRole("button", { name: "Vorige Fassung" }).click();
     await verlauf.getByText("Frühere Fassung 1 von 2").waitFor();
-    await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
+    await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).last().waitFor();
     // Nach dem Neuladen sind beide Fassungen da, die neueste vorn.
     await seite.reload();
     await verlauf.getByText(ZWEITE, { exact: true }).waitFor();
     await verlauf.getByRole("button", { name: "Vorige Fassung" }).click();
-    await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
+    await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).last().waitFor();
     await stack.anbieter.verhalten({ reply: BEISPIEL_ANTWORT, holdAfterChunks: 0 });
   });
 
