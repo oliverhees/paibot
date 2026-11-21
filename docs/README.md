@@ -41,36 +41,67 @@ Die Doku ist auch unter https://paibot.de/doku zu lesen.
 
 ## Screenshots
 
-Die Bilder liegen in `docs/assets/screenshots/`. Sie werden nicht von Hand gemacht, sondern aus der laufenden App aufgenommen, damit sie nach Änderungen neu entstehen können und nicht veralten.
+Die Bilder liegen in `docs/assets/screenshots/`. Sie werden nicht von Hand gemacht, sondern aus der laufenden App aufgenommen, damit sie nach Änderungen neu entstehen können und nicht veralten. **Sie zeigen nur Beispiel-Daten**: erfundene Namen und Texte, Wegwerf-Passwort, Test-Anbieter auf dem eigenen Rechner. Nie echte Namen, Adressen, Schlüssel oder Unterhaltungen.
 
-| Was                 | Wo                                                                       |
-| ------------------- | ------------------------------------------------------------------------ |
-| Liste der Aufnahmen | [screenshots.json](screenshots.json) (Name, Pfad, Größe, Wartebedingung) |
-| Skript              | `scripts/doku-screenshots.mjs`                                           |
-| Alle neu aufnehmen  | `pnpm doku:screenshots`                                                  |
-| Eine neu aufnehmen  | `pnpm doku:screenshots startseite`                                       |
+| Was                 | Wo                                                                           |
+| ------------------- | ---------------------------------------------------------------------------- |
+| Liste der Aufnahmen | [screenshots.json](screenshots.json)                                         |
+| Aufnahme-Skript     | `scripts/doku-screenshots.mjs` (Prüfung der Liste: `scripts/doku/liste.mjs`) |
+| App bereitstellen   | `scripts/doku/app.mjs`                                                       |
+| Beispiel-Daten      | `scripts/doku-beispieldaten.mjs`                                             |
 
-So geht es:
+So geht es (einmalig vorher `pnpm build`, damit die App im Produktions-Build vorliegt):
 
-1. App lokal starten, mit Beispiel-Daten (Standard-Adresse `http://127.0.0.1:3000`, sonst `PAIBOT_URL` setzen).
-2. `pnpm doku:screenshots` ausführen.
-3. Neue Bilder ansehen und mit der Änderung committen.
+1. `pnpm doku:app -- pnpm doku:screenshots` stellt die App bereit, nimmt alle Bilder auf und räumt danach alles wieder ab. Einzelne Bilder: Namen anhängen, z. B. `pnpm doku:app -- pnpm doku:screenshots anmelden app-start`.
+2. Neue Bilder ansehen.
+3. `pnpm doku:check` ausführen und die Bilder mit der Änderung committen.
+
+Wer die App zwischendurch selbst ansehen will, startet sie getrennt: `pnpm doku:app` in einem Terminal (läuft bis Strg+C), dann in einem zweiten `pnpm doku:beispieldaten` (richtet ein und füllt Beispiele ein) oder `pnpm doku:screenshots`. Adresse, Code und Wegwerf-Passwort stehen in der Lauf-Datei, deren Ort `pnpm doku:app` beim Start nennt.
+
+Was `pnpm doku:app` tut:
+
+- Es startet eine frische Wegwerf-Datenbank: einen eigenen Postgres aus den Programmen des Systems (`initdb`, `pg_ctl`; als root über den Benutzer `postgres`) oder, wenn `PAIBOT_DOKU_DATABASE_URL` auf einen Wegwerf-Server zeigt, eine eigene Datenbank dort. Sie heißt immer `paibot_doku_<zufall>` und trägt einen Vermerk; gelöscht wird am Ende nur, was beides hat. Eine andere Datenbank fasst das Skript nie an.
+- Es startet den [Test-Anbieter](entwickeln.md) nur an `127.0.0.1` auf Port 18080 (anders: `PAIBOT_DOKU_ANBIETER_PORT`; die Adresse erscheint in der Einrichtung als Name des Anbieters), mit erfundenen Modellen und einem Wegwerf-Schlüssel.
+- Es startet Web-App und Worker im Produktions-Build, so wie Nutzer die App sehen, mit zufällig erzeugten Geheimnissen und ohne Werte aus deiner Umgebung, und liest den Einrichtungs-Code aus dem Log.
+- Am Ende (auch bei Strg+C oder Fehler) beendet es alle Prozesse, löscht Datenbank, temporäre Ordner und Lauf-Datei.
 
 Gut zu wissen:
 
 - Das Skript braucht [Playwright](https://playwright.dev), das nicht zum Projekt gehört. Einmalig: `npm install -g playwright && npx playwright install chromium`.
-- Es bricht ab, wenn `PAIBOT_URL` nicht auf den eigenen Rechner zeigt. So werden keine echten Daten fotografiert. Bewusste Ausnahme: `--erlaube-fremde-url`.
-- Die App und die Aufnahmen gibt es im dunklen und im hellen Design. Welches Design ein Bild zeigt, steht im Feld `thema` (`"dunkel"` ist der Standard, `"hell"` die Alternative).
+- Ohne `pnpm doku:app` nimmt es die App unter `PAIBOT_URL` auf (Standard `http://127.0.0.1:3000`); Aufnahmen mit `zustand` oder `anmeldung` gehen dann nicht. Es bricht ab, wenn die Adresse nicht auf den eigenen Rechner zeigt. Bewusste Ausnahme: `--erlaube-fremde-url`.
+- Ruhige, gleiche Bilder ohne Eingriff in die Seite: feste Uhrzeit im Browser, reduzierte Bewegung, Animationen und Textcursor beim Bild angehalten, Schriften geladen, Ruhe im Netz. Es fügt keinen Stil in die Seite ein; die Content-Security-Policy der App bleibt wirksam.
+- Eine Aufnahme scheitert bei einem Fehler in der Seite, einer Meldung der Content-Security-Policy, einem Fehler oder einer Warnung in der Konsole, einer Anfrage an einen fremden Host, seitlichem Scrollen oder wenn die Schrift „Inter“ fehlt. So prüft jeder Lauf auch die App.
 
-Felder, die das Aufnahme-Skript zusätzlich kennt (alle optional, Beispiele in [screenshots.json](screenshots.json)):
+Felder einer Aufnahme (Pflicht sind nur `name` und `pfad`):
 
-| Feld         | Wofür                                                                                                                                                                                                                                                                                                 |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modus`      | `"app"` (Standard) nimmt die laufende App auf. `"entwicklung"` ist für Seiten, die es nur mit `next dev` gibt: Das Skript startet den Entwicklungs-Server selbst (ohne Datenbank, nur Beispiel-Daten) und beendet ihn danach wieder. Mit `PAIBOT_DEV_URL` nutzt es stattdessen einen schon laufenden. |
-| `vorher`     | Schritte vor der Aufnahme, der Reihe nach, z. B. ein Klick (`{ "klick": "<Selector>" }`) und das Warten auf ein Element (`{ "warteAuf": "<Selector>" }`). So entstehen Bilder von geöffneten Bereichen.                                                                                               |
-| `skalierung` | Pixeldichte von 1 bis 3. Standard ist 2 (doppelte Auflösung, scharf auf hochauflösenden Bildschirmen).                                                                                                                                                                                                |
+| Feld                     | Wofür                                                                                                                                                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`, `pfad`           | Dateiname ohne Endung und Seite in der App, z. B. `"/anmelden"`.                                                                                                                                                              |
+| `zustand`                | `"frisch"` (nicht eingerichtet), `"eingerichtet"` oder `"mit-beispieldaten"`. Das Skript ordnet die Aufnahmen so, dass jeder Zustand nur einmal hergestellt wird, und stellt ihn über die echten Wege der App her.            |
+| `anmeldung`              | `true`: Die Aufnahme ist angemeldet (eine Sitzung je Lauf, über die Seite „Anmelden“). Braucht `zustand` „eingerichtet“ oder „mit-beispieldaten“.                                                                             |
+| `danach`                 | `"eingerichtet"`: Die Schritte dieser frischen Aufnahme schließen die Einrichtung selbst ab (Bild „Alles bereit“). Höchstens einmal.                                                                                          |
+| `vorher`                 | Schritte vor der Aufnahme, der Reihe nach (siehe unten).                                                                                                                                                                      |
+| `warteAuf`, `ausschnitt` | CSS-Selector, auf den gewartet wird, bzw. das Element, das allein aufgenommen wird.                                                                                                                                           |
+| `status`                 | Erwarteter HTTP-Status der Seite, Standard 200 (z. B. 404 für die Fehlerseite).                                                                                                                                               |
+| `breite`, `hoehe`        | Fenster in Pixeln (Standard 1280 × 800; die Doku nutzt 1440 × 900 am Rechner und 390 × 844 am Handy).                                                                                                                         |
+| `thema`                  | `"dunkel"` (Standard) oder `"hell"`.                                                                                                                                                                                          |
+| `skalierung`             | Pixeldichte von 1 bis 3, Standard 2.                                                                                                                                                                                          |
+| `modus`                  | `"app"` (Standard) oder `"entwicklung"` für Seiten, die es nur mit `next dev` gibt: Das Skript startet den Entwicklungs-Server selbst (ohne Datenbank) und beendet ihn danach. Mit `PAIBOT_DEV_URL` nutzt es einen laufenden. |
 
-Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
+Schritte in `vorher` (je Schritt genau eine Aktion):
+
+| Schritt                                                                            | Wirkung                                                            |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `{ "klick": "<CSS>" }` oder `{ "klick": { "rolle": "button", "name": "Weiter" } }` | klickt                                                             |
+| `{ "tippe": "<Beschriftung des Felds>", "text": "…" }`                             | füllt das Feld mit dieser Beschriftung                             |
+| `{ "taste": "Enter" }`                                                             | drückt eine Taste                                                  |
+| `{ "warteAuf": "<CSS>" }`, `{ "warteAufText": "…" }`                               | wartet auf ein Element bzw. einen sichtbaren Text                  |
+| `{ "gehe": "/pfad" }`                                                              | öffnet eine andere Seite                                           |
+| `{ "ablauf": "<name>" }`                                                           | setzt eine benannte Folge aus `"ablaeufe"` (oben in der Liste) ein |
+
+Ziele als Objekt: genau eines von `css`, `beschriftung`, `rolle` (mit `name`) oder `text`, dazu `"genau": false` für Teil-Treffer. Für `text` gibt es Sonderwerte, damit nie ein Geheimnis in der Liste steht: `$einrichtungs-code` (Code aus dem Log), `$passwort` (Wegwerf-Passwort des Laufs), `$anbieter-schluessel` (Schlüssel des Test-Anbieters).
+
+Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
 
 ## Neue Doku-Seite anlegen
 

@@ -1,19 +1,117 @@
 {
+  "ablaeufe": {
+    "einrichtung-bis-passwort": [
+      {
+        "tippe": "Einrichtungs-Code",
+        "text": "$einrichtungs-code"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Passwort festlegen"
+      }
+    ],
+    "einrichtung-passwort-eingeben": [
+      {
+        "tippe": "Passwort",
+        "text": "$passwort"
+      },
+      {
+        "tippe": "Passwort wiederholen",
+        "text": "$passwort"
+      }
+    ],
+    "einrichtung-bis-schluessel": [
+      {
+        "ablauf": "einrichtung-bis-passwort"
+      },
+      {
+        "ablauf": "einrichtung-passwort-eingeben"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Modell-Anbieter verbinden"
+      }
+    ],
+    "einrichtung-schluessel-testen": [
+      {
+        "tippe": {
+          "beschriftung": "Schlüssel für",
+          "genau": false
+        },
+        "text": "$anbieter-schluessel"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Verbindung testen"
+        }
+      },
+      {
+        "warteAufText": "Verbindung steht"
+      }
+    ],
+    "einrichtung-bis-modell": [
+      {
+        "ablauf": "einrichtung-bis-schluessel"
+      },
+      {
+        "ablauf": "einrichtung-schluessel-testen"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Modell wählen"
+      }
+    ],
+    "einrichtung-bis-schleuse": [
+      {
+        "ablauf": "einrichtung-bis-modell"
+      },
+      {
+        "klick": {
+          "text": "Beispiel-Modell Allrounder"
+        }
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Datenschleuse als Standard"
+      }
+    ],
+    "einrichtung-bis-bot": [
+      {
+        "ablauf": "einrichtung-bis-schleuse"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Wie soll dein Bot heißen?"
+      }
+    ]
+  },
   "aufnahmen": [
-    {
-      "name": "startseite",
-      "pfad": "/",
-      "warteAuf": ".status[data-db='ok']",
-      "beschreibung": "Startseite mit „Datenbank: ok“ (App mit laufender Datenbank)",
-      "hoehe": 640
-    },
-    {
-      "name": "startseite-ohne-datenbank",
-      "pfad": "/",
-      "warteAuf": ".status[data-db='not_configured']",
-      "beschreibung": "Startseite mit „Datenbank: nicht eingerichtet“ (App ohne DATABASE_URL)",
-      "hoehe": 640
-    },
     {
       "name": "vorschau-app-rechner-dunkel",
       "pfad": "/_komponenten/app",
@@ -87,18 +185,27 @@
       "beschreibung": "Vorschau auf dem Handy mit offenem Blatt „Belege“, dunkles Design"
     },
     {
+      "breite": 1440,
+      "hoehe": 900,
       "name": "einrichtung-code",
+      "zustand": "frisch",
       "pfad": "/einrichtung",
       "warteAuf": "h1",
-      "beschreibung": "Einrichtung, Schritt 1: Einrichtungs-Code eingeben (frische Installation, TRUST_PROXY=1)"
+      "beschreibung": "Einrichtung, Schritt 1: Feld für den Einrichtungs-Code (frische Installation)"
     },
     {
+      "breite": 1440,
+      "hoehe": 900,
       "name": "einrichtung-code-fehler",
+      "zustand": "frisch",
       "pfad": "/einrichtung",
       "warteAuf": "h1",
       "vorher": [
         {
-          "klick": "button[type='submit']"
+          "klick": {
+            "rolle": "button",
+            "name": "Weiter"
+          }
         },
         {
           "warteAuf": "input[aria-invalid='true']"
@@ -108,6 +215,7 @@
     },
     {
       "name": "einrichtung-code-handy",
+      "zustand": "frisch",
       "pfad": "/einrichtung",
       "warteAuf": "h1",
       "breite": 390,
@@ -115,18 +223,195 @@
       "beschreibung": "Einrichtung, Schritt 1 auf dem Handy"
     },
     {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-passwort",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-passwort"
+        },
+        {
+          "ablauf": "einrichtung-passwort-eingeben"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 2: Passwort zweimal eingegeben, Prüfliste erfüllt"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-passwort-hell",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "thema": "hell",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-passwort"
+        },
+        {
+          "tippe": "Passwort",
+          "text": "$passwort"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 2 im hellen Design: erst ein Feld ausgefüllt, Prüfliste halb erfüllt"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-schluessel",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-schluessel"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 3: Schlüssel für den Anbieter, noch leer"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-schluessel-fehler",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-schluessel"
+        },
+        {
+          "tippe": {
+            "beschriftung": "Schlüssel für",
+            "genau": false
+          },
+          "text": "beispiel-falscher-schluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Verbindung testen"
+          }
+        },
+        {
+          "warteAuf": "input[aria-invalid='true']"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 3: Verbindung testen mit falschem Schlüssel"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-schluessel-ok",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-schluessel"
+        },
+        {
+          "ablauf": "einrichtung-schluessel-testen"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 3: Verbindung steht, Modelle gefunden (Test-Anbieter)"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-modell",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-modell"
+        },
+        {
+          "klick": {
+            "text": "Beispiel-Modell Allrounder"
+          }
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 4: Modell gewählt (Beispiel-Modelle des Test-Anbieters)"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-schleuse",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-schleuse"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 5: Datenschleuse als Standard (auf diesem Server nicht eingerichtet)"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-bot",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-bot"
+        }
+      ],
+      "beschreibung": "Einrichtung, Schritt 6: Name des Bots"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "einrichtung-fertig",
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "danach": "eingerichtet",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-bis-bot"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Einrichtung abschließen"
+          }
+        },
+        {
+          "warteAufText": "Alles bereit"
+        }
+      ],
+      "beschreibung": "Einrichtung abgeschlossen: „Alles bereit“ (schließt die Einrichtung wirklich ab)"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
       "name": "anmelden",
+      "zustand": "eingerichtet",
       "pfad": "/anmelden",
       "warteAuf": "h1",
       "beschreibung": "Anmelden nach der Einrichtung (ohne Sitzung)"
     },
     {
+      "breite": 1440,
+      "hoehe": 900,
       "name": "anmelden-leer",
+      "zustand": "eingerichtet",
       "pfad": "/anmelden",
       "warteAuf": "h1",
       "vorher": [
         {
-          "klick": "button[type='submit']"
+          "klick": {
+            "rolle": "button",
+            "name": "Anmelden"
+          }
         },
         {
           "warteAuf": "input[aria-invalid='true']"
@@ -135,13 +420,72 @@
       "beschreibung": "Anmelden: Hinweis, wenn kein Passwort eingegeben ist"
     },
     {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "anmelden-falsch",
+      "zustand": "eingerichtet",
+      "pfad": "/anmelden",
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "tippe": "Passwort",
+          "text": "kein-richtiges-passwort"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anmelden"
+          }
+        },
+        {
+          "warteAufText": "Das Passwort stimmt nicht."
+        }
+      ],
+      "beschreibung": "Anmelden mit falschem Passwort"
+    },
+    {
       "name": "anmelden-handy-hell",
+      "zustand": "eingerichtet",
       "pfad": "/anmelden",
       "warteAuf": "h1",
       "breite": 390,
       "hoehe": 844,
       "thema": "hell",
       "beschreibung": "Anmelden auf dem Handy, helles Design"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "app-start",
+      "zustand": "eingerichtet",
+      "anmeldung": true,
+      "pfad": "/",
+      "warteAuf": "main",
+      "beschreibung": "Die App nach der Anmeldung: Grundgerüst mit Navigation, Chat folgt"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "seite-nicht-gefunden",
+      "zustand": "eingerichtet",
+      "anmeldung": true,
+      "pfad": "/gibt-es-nicht",
+      "status": 404,
+      "warteAuf": "main h2",
+      "beschreibung": "Seite nicht gefunden (angemeldet)"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "name": "datenbank-fehlt",
+      "modus": "entwicklung",
+      "pfad": "/einrichtung",
+      "beschreibung": "Hinweis „Datenbank nicht erreichbar“ (App ohne Datenbank)",
+      "vorher": [
+        {
+          "warteAufText": "Datenbank nicht erreichbar"
+        }
+      ]
     }
   ]
 }
