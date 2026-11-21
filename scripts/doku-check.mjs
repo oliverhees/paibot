@@ -35,16 +35,25 @@
 //      Codeblöcken). In screenshots.json zusätzlich kein Einrichtungs-Code und keine Zufallswerte
 //      bei `tippe`; dafür gibt es die Sonderwerte ($einrichtungs-code, $passwort,
 //      $anbieter-schluessel).
+//   h) Zu jeder Seite docs/funktion-<name>.md gibt es die Entwickler-Seite docs/entwickler/<name>.md
+//      mit den Abschnitten (## …) aus docs/entwickler/VORLAGE.md in derselben Reihenfolge.
+//   i) In den Seiten unter docs/entwickler/ zeigt jeder Verweis auf eine Datei im Repo, geschrieben
+//      als Code in Backticks (`packages/gate/src/gate.ts`), auf eine vorhandene Datei; ein Ordner
+//      endet mit „/“. Mit `pfad/datei.ts#name` muss „name“ zusätzlich in der Datei vorkommen.
+//      Codeblöcke zählen nicht; Angaben ohne „/“ oder ohne Dateiendung (`@paibot/db`, `/api/chat`)
+//      gelten nicht als Verweis.
 //
 // Bewusst ohne Abhängigkeiten: Markdown wird mit einfachen Mustern gelesen. Codeblöcke,
 // Code in Backticks und HTML-Kommentare werden vorher entfernt.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SONDERWERTE } from "./doku/lauf.mjs";
 import { ListenFehler, pruefeListe } from "./doku/liste.mjs";
 
 const VORLAGE = "docs/VORLAGE-funktion.md";
+const ENTWICKLER = "docs/entwickler/";
+const ENTWICKLER_VORLAGE = "docs/entwickler/VORLAGE.md";
 const INHALT = "docs/README.md";
 const LISTE = "docs/screenshots.json";
 const SCREENSHOTS = "docs/assets/screenshots/";
@@ -98,6 +107,25 @@ function stripCode(text) {
     .replace(/^(\s*)(```|~~~)[^\n]*\n[\s\S]*?^\s*\2[^\n]*$/gm, blank)
     .replace(/`[^`\n]*`/g, blank);
 }
+
+/**
+ * Code in Backticks außerhalb von Codeblöcken und HTML-Kommentaren: [{ code, zeile }].
+ */
+function codeSpans(text) {
+  const blank = (match) => match.replace(/[^\n]/g, " ");
+  const clean = text
+    .replace(/<!--[\s\S]*?-->/g, blank)
+    .replace(/^(\s*)(```|~~~)[^\n]*\n[\s\S]*?^\s*\2[^\n]*$/gm, blank);
+  const out = [];
+  for (const match of clean.matchAll(/`([^`\n]+)`/g)) {
+    out.push({ code: match[1].trim(), zeile: clean.slice(0, match.index).split("\n").length });
+  }
+  return out;
+}
+
+/** Pfad im Repo, optional mit #name: Ordner enden mit „/“, Dateien haben eine Endung. */
+const REPO_PFAD =
+  /^(?![a-z][a-z0-9+.-]*:)(?!\.{0,2}\/)([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.()[\]-]+)*(?:\/|\/[A-Za-z0-9_()[\]-][A-Za-z0-9_.()[\]-]*\.[A-Za-z0-9]+))(?:#([A-Za-z_$][\w$]*))?$/;
 
 /** Abschnitte zweiter Ebene: [{ titel, zeile, text }]. */
 function sections(text) {
@@ -317,29 +345,8 @@ const isScreenshot = (rel) => rel.startsWith(SCREENSHOTS);
 
 /** a) und b): Abschnitte einer Funktionsseite. */
 function checkFunctionPage(file, required) {
-  const text = readText(file);
-  const found = sections(text);
-  const titles = found.map((s) => s.titel);
-  if (!/^#\s+\S/m.test(stripCode(text))) {
-    error(file, "Die Überschrift (# Name der Funktion) fehlt.", `Wie in ${VORLAGE} anlegen.`);
-  }
-  const missing = required.filter((t) => !titles.includes(t));
-  for (const title of missing) {
-    error(
-      file,
-      `Der Pflicht-Abschnitt „## ${title}“ fehlt.`,
-      `Abschnitt ergänzen; Reihenfolge wie in ${VORLAGE}: ${required.join(" · ")}.`,
-    );
-  }
-  const order = titles.filter((t) => required.includes(t));
-  const expected = required.filter((t) => titles.includes(t));
-  if (order.join("\n") !== expected.join("\n")) {
-    error(
-      file,
-      `Die Pflicht-Abschnitte stehen in der falschen Reihenfolge (${order.join(" · ")}).`,
-      `Umstellen auf: ${expected.join(" · ")}.`,
-    );
-  }
+  checkSections(file, required, VORLAGE);
+  const found = sections(readText(file));
   const guide = found.find((s) => s.titel === ANLEITUNG);
   if (guide && !/^\s{0,3}\d+[.)]\s+\S/m.test(guide.text)) {
     error(
@@ -369,6 +376,97 @@ function checkFunctionPage(file, required) {
     `Screenshot aus ${SCREENSHOTS} einbinden (Eintrag in ${LISTE}, \`pnpm doku:screenshots\`) ` +
       "oder einen Absatz mit „Ohne Oberfläche.“ bzw. „Folgt mit der Oberfläche.“ beginnen.",
   );
+}
+
+/** Pflicht-Abschnitte einer Vorlage (Überschriften zweiter Ebene). */
+function headingsOf(rel, what) {
+  if (!existsSync(abs(rel))) {
+    error(rel, `Die ${what} fehlt.`, "Vorlage wiederherstellen.");
+    return null;
+  }
+  return sections(readText(rel)).map((s) => s.titel);
+}
+
+/** Pflicht-Abschnitte einer Seite in der Reihenfolge der Vorlage. */
+function checkSections(file, required, vorlage) {
+  const text = readText(file);
+  const titles = sections(text).map((s) => s.titel);
+  if (!/^#\s+\S/m.test(stripCode(text))) {
+    error(file, "Die Überschrift (# Name) fehlt.", `Wie in ${vorlage} anlegen.`);
+  }
+  for (const title of required.filter((t) => !titles.includes(t))) {
+    error(
+      file,
+      `Der Pflicht-Abschnitt „## ${title}“ fehlt.`,
+      `Abschnitt ergänzen; Reihenfolge wie in ${vorlage}: ${required.join(" · ")}.`,
+    );
+  }
+  const order = titles.filter((t) => required.includes(t));
+  const expected = required.filter((t) => titles.includes(t));
+  if (order.join("\n") !== expected.join("\n")) {
+    error(
+      file,
+      `Die Pflicht-Abschnitte stehen in der falschen Reihenfolge (${order.join(" · ")}).`,
+      `Umstellen auf: ${expected.join(" · ")}.`,
+    );
+  }
+}
+
+/** h): Zu jeder Funktionsseite die Entwickler-Seite mit den Pflicht-Abschnitten. */
+function checkDeveloperPages(functionPages) {
+  if (functionPages.length === 0) return;
+  const required = headingsOf(ENTWICKLER_VORLAGE, "Vorlage für Entwickler-Seiten");
+  if (!required) return;
+  for (const page of functionPages) {
+    const name = path.posix.basename(page).replace(/^funktion-/, "");
+    const dev = `${ENTWICKLER}${name}`;
+    if (!fileExists(dev)) {
+      error(
+        page,
+        `Die Entwickler-Seite ${dev} fehlt.`,
+        `${ENTWICKLER_VORLAGE} nach ${dev} kopieren und jede Aussage am Code belegen.`,
+      );
+      continue;
+    }
+    checkSections(dev, required, ENTWICKLER_VORLAGE);
+  }
+}
+
+/** i): Verweise auf Dateien im Repo in den Entwickler-Seiten. */
+function checkRepoPaths(file) {
+  for (const { code, zeile } of codeSpans(readText(file))) {
+    const match = REPO_PFAD.exec(code);
+    if (!match) continue;
+    const [, rel, name] = match;
+    const ziel = rel.replace(/\/$/, "");
+    if (!fileExists(ziel)) {
+      error(
+        file,
+        `Zeile ${zeile}: Die Datei \`${rel}\` gibt es im Repo nicht.`,
+        "Pfad relativ zum Projektstamm schreiben und prüfen, ob die Datei noch so heißt.",
+      );
+      continue;
+    }
+    const istOrdner = statSync(abs(ziel)).isDirectory();
+    if (rel.endsWith("/") !== istOrdner) {
+      error(
+        file,
+        `Zeile ${zeile}: \`${rel}\` ist ${istOrdner ? "ein Ordner" : "eine Datei"}.`,
+        istOrdner ? "Ordner mit „/“ am Ende schreiben." : "Datei ohne „/“ am Ende schreiben.",
+      );
+      continue;
+    }
+    if (
+      name &&
+      !new RegExp(`(?<![\\w$])${name.replace(/\$/g, "\\$")}(?![\\w$])`).test(readText(ziel))
+    ) {
+      error(
+        file,
+        `Zeile ${zeile}: „${name}“ kommt in ${ziel} nicht vor.`,
+        "Namen der Funktion, Tabelle oder Konstante prüfen oder den Verweis anpassen.",
+      );
+    }
+  }
 }
 
 /** c) und e): Bilder und Links einer Seite. */
@@ -448,12 +546,16 @@ export function pruefeDoku({ wurzel = PROJEKT, streng = false } = {}) {
   const functionPages = docs.filter((f) => /^docs\/funktion-[^/]+\.md$/.test(f));
   for (const file of functionPages) checkFunctionPage(file, required);
   const scanned = [
-    ...docs.filter((f) => f !== VORLAGE),
+    ...docs.filter((f) => f !== VORLAGE && f !== ENTWICKLER_VORLAGE),
     ...(existsSync(abs("README.md")) ? ["README.md"] : []),
   ];
   for (const file of scanned) checkReferences(file, names);
   for (const file of scanned) meldeGeheimnisse(file, readText(file));
   checkIndex(docs);
+  checkDeveloperPages(functionPages);
+  for (const file of docs.filter((f) => f.startsWith(ENTWICKLER) && f !== ENTWICKLER_VORLAGE)) {
+    checkRepoPaths(file);
+  }
 
   if (transitional.length > 0) {
     const list = strict ? errors : warnings;
@@ -471,6 +573,8 @@ export function pruefeDoku({ wurzel = PROJEKT, streng = false } = {}) {
     warnungen: warnings,
     uebergang: transitional,
     funktionsseiten: functionPages.length,
+    entwicklerseiten: docs.filter((f) => f.startsWith(ENTWICKLER) && f !== ENTWICKLER_VORLAGE)
+      .length,
     seiten: scanned.length,
   };
 }
@@ -499,11 +603,12 @@ function main(args) {
     } else usage(`Unbekannte Angabe: ${args[i]}`);
   }
   const ergebnis = pruefeDoku({ wurzel, streng });
-  const { fehler, warnungen, uebergang, funktionsseiten, seiten } = ergebnis;
+  const { fehler, warnungen, uebergang, funktionsseiten, entwicklerseiten, seiten } = ergebnis;
   print("WARNUNG", warnungen, console.warn);
   print("FEHLER ", fehler, console.error);
   console.log(
-    `Doku-Check: ${funktionsseiten} Funktionsseiten, ${seiten} Seiten auf Bilder und Links geprüft.`,
+    `Doku-Check: ${funktionsseiten} Funktionsseiten, ${entwicklerseiten} Entwickler-Seiten, ` +
+      `${seiten} Seiten auf Bilder und Links geprüft.`,
   );
   console.log(
     `Übergangs-Vermerk „Folgt mit der Oberfläche“: ${uebergang.length} Seite(n)` +
