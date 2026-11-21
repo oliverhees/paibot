@@ -57,8 +57,9 @@
 //   verdecke    Liste von Selectoren (CSS oder Playwright, z. B. dd:has-text("blg_")), deren
 //               Stellen im Bild mit der Farbe ihrer Umgebung gefüllt werden (Uhrzeit der Datenbank,
 //               Kennungen, Prüfsummen)
-//   zeigeFertig true: Das Bild soll den kurzen Moment „fertig“ des Avatars zeigen. Sonst wartet das
-//               Skript, bis er vorbei ist, damit ein zweiter Lauf dasselbe Bild liefert.
+//   zeigeFertig true: Das Bild soll den kurzen Moment „fertig“ des Avatars zeigen; er bleibt dafür
+//               stehen. Sonst wartet das Skript, bis er vorbei ist, damit ein zweiter Lauf dasselbe
+//               Bild liefert.
 //   thema       "dunkel" (Standard) oder "hell"
 //   beschreibung  Notiz für Menschen, wird nicht ausgewertet (optional)
 // Oben in der Datei: "ablaeufe": { "<name>": [Schritte] } für wiederkehrende Folgen.
@@ -403,6 +404,15 @@ async function shoot(browser, entry, baseUrl) {
       });
     });
     await page.clock.setFixedTime(new Date(UHRZEIT));
+    if (entry.zeigeFertig === true) {
+      // Der Moment „fertig“ dauert in der App 1800 ms. Für dieses Bild bleibt er stehen, sonst hängt
+      // es vom Zufall ab, ob der Zeitgeber vor der Aufnahme abläuft. Das ändert nur die Wartezeit
+      // dieses einen Zeitgebers im Browser dieser Aufnahme, nicht die Seite.
+      await page.addInitScript(() => {
+        const echt = window.setTimeout.bind(window);
+        window.setTimeout = (fn, ms, ...rest) => echt(fn, ms === 1800 ? 600_000 : ms, ...rest);
+      });
+    }
     const response = await page.goto(`${baseUrl}${entry.pfad}`, { waitUntil: "load" });
     const status = response ? response.status() : 0;
     if (status !== entry.status) {
