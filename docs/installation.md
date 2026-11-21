@@ -65,7 +65,7 @@ Erreicht PaiBot die Datenbank nicht, steht statt der Einrichtung oder der Anmeld
 
 ## Auf dem Server
 
-Der Ablauf ist derselbe Stack, nur mit Domain und HTTPS davor. Schritt für Schritt mit Coolify: [deploy-coolify.md](deploy-coolify.md). Coolify ist bequem, aber nicht nötig: Wer einen eigenen Reverse-Proxy nutzt, startet denselben Compose-Stack und leitet seine Domain auf Port 3000 des Dienstes `web`.
+Der Ablauf ist derselbe Stack, nur mit Domain und HTTPS davor. Schritt für Schritt mit Coolify: [deploy-coolify.md](deploy-coolify.md); dort mit eigener Compose-Datei `deploy/docker-compose.coolify.yml`, bei der Coolify Passwörter, `PAIBOT_SECRET` und `APP_URL` selbst erzeugt. Coolify ist bequem, aber nicht nötig: Wer einen eigenen Reverse-Proxy nutzt, startet denselben Compose-Stack und leitet seine Domain auf Port 3000 des Dienstes `web`.
 
 Die Datenbank hat keinen veröffentlichten Port; sie hängt nur im internen Netz `paibot-intern`, das keinen Weg nach draußen hat. Die Web-App ist nur an `127.0.0.1` gebunden. Von außen erreichst du PaiBot nur über den Proxy mit HTTPS.
 
