@@ -34,6 +34,7 @@ const TABLES = [
   "rate_limits",
   "rules",
   "runs",
+  "schleuse_zustand",
   "sessions",
   "settings",
   "tool_calls",

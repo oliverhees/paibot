@@ -9,6 +9,7 @@
  */
 
 export * from "./anbieter";
+export * from "./schleuse";
 export * from "./settings";
 export * from "./tor";
 export * from "./unterhaltungen";
