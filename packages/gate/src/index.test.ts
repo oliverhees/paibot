@@ -75,7 +75,13 @@ describe("Schnittstelle", () => {
     expect(denied.status).toBe(403);
     expect(denied.text).toBe("Dafür gibt es noch keine Regel.");
     expect(gate.isGateDenied(denied)).toBe(true);
+    // „Fragen“ ist nur Auskunft; der Werkzeug-Aufruf ist abgelehnt.
     expect(denied.waitsForApproval).toBe(true);
+    expect(denied.toolCallDecision()).toMatchObject({
+      outcome: "deny",
+      errorCode: "freigabe_noetig",
+      resultReceiptId: ref.receiptId,
+    });
   });
 
   it("createGate liefert ein Tor mit run", () => {

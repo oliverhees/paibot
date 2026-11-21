@@ -14,8 +14,8 @@ import type { ErrorCode } from "@paibot/shared/fehler";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import type {
   Decision,
+  GateLimitName,
   LimitCheck,
-  LimitName,
   ListDecision,
   PreconditionCheck,
   RuleCondition,
@@ -34,6 +34,19 @@ export interface FormatPrecondition {
   readonly when?: readonly RuleCondition[];
   readonly require: readonly RuleCondition[];
   readonly errorCode: ErrorCode;
+}
+
+/**
+ * Ein Deckel einer Fassung: Gilt `when` und mindestens eine Bedingung aus `anyOf`, wird aus einem
+ * `allow` das Ergebnis `then`; andere Ergebnisse bleiben.
+ */
+export interface CapDefinition {
+  readonly id: string;
+  readonly name: string;
+  readonly actions: readonly string[];
+  readonly then: "ask";
+  readonly when: readonly RuleCondition[];
+  readonly anyOf: readonly RuleCondition[];
 }
 
 /** Eine Grenze einer Fassung: rein, liefert immer genau ein Ergebnis mit ihrem Namen. */
@@ -55,8 +68,13 @@ export interface GateFormatSpec {
   readonly actor: Readonly<Record<string, ActorKind>>;
   /** Ganze Anfrage an das Tor (Kennung, Aktion, Akteur passend zur Aktion, Ziel), streng. */
   readonly request: z.ZodType;
-  /** Felder der Entscheidung im Beleg, streng. */
+  /** Felder der Entscheidung im Beleg, streng (für alle Aktionen gemeinsam). */
   readonly decision: z.ZodType;
+  /**
+   * Felder der Entscheidung im Beleg für genau diese Aktion, streng (z. B. Deckel genau bei
+   * Aktionen mit Deckel). Fehlt sie, gilt `decision`. Ab Fassung 2 Pflicht.
+   */
+  decisionFor?(type: string): z.ZodType;
   /** Felder des Ergebnisses im Beleg, streng. */
   readonly result: z.ZodType;
   /** Codes, die ein Ergebnis tragen darf. */
@@ -66,9 +84,18 @@ export interface GateFormatSpec {
   /** Grenzen nach Namen. */
   readonly limits: Readonly<Record<string, FormatLimitFn>>;
   /** Reihenfolge der Grenzen in jeder Entscheidung. */
-  readonly limitOrder: readonly LimitName[];
-  /** Deckel über die Regeln hinaus; in Fassung 1 keine. */
-  readonly caps: readonly never[];
+  readonly limitOrder: readonly GateLimitName[];
+  /** Deckel über die Regeln hinaus, nach Kennung geordnet; in Fassung 1 keine. */
+  readonly caps: readonly CapDefinition[];
+  /** Reihenfolge der Deckel in jeder Entscheidung (Namen). Ab Fassung 2 Pflicht. */
+  readonly capOrder?: readonly string[];
+  /**
+   * Fehlercode für das Ergebnis einer nicht erlaubten Entscheidung dieser Fassung. Ab Fassung 2
+   * Pflicht; Fassung 1 rechnet mit `denialCode` aus `evaluate.ts`.
+   */
+  denialCode?(
+    decision: Pick<Decision, "outcome" | "preconditions"> & { limits?: Decision["limits"] },
+  ): ErrorCode;
   /** Kennt die Aktion laut dieser Fassung den Fakt? */
   hasFact(type: string, name: string): boolean;
   /** Gilt eine Bedingung für diese Fakten (mit dem Akteur unter `akteur`)? */

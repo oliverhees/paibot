@@ -199,12 +199,16 @@ function printReport(report: ChainReport, io: CliIo): number {
   const failure = report.firstFailure;
   // Ohne fehlgeschlagene Prüfung heißt die Kette nur dann „gültig“, wenn nichts offen bleibt:
   // Belege aus einer neueren Fassung machen sie „nicht vollständig prüfbar“.
+  // Ein Rückschritt der Fassung ändert die Stufe nicht, aber die Kette heißt dann nicht „gültig“.
+  const warnung = (verdict.notes ?? []).length > 0;
   const ergebnis =
     failure !== undefined
       ? t("pruefung.ungueltig", { seq: failure.seq })
       : verdict.level === "nicht_pruefbar"
         ? t("pruefung.nicht_pruefbar")
-        : t("pruefung.gueltig");
+        : warnung && verdict.level === "vertrauenswuerdig"
+          ? t("pruefung.mit_warnung")
+          : t("pruefung.gueltig");
   io.out(t("belege.befehl.kette", { ergebnis, anzahl: report.checked }));
   if (failure === undefined && report.head !== undefined) {
     io.out(t("belege.befehl.kopf", report.head));
@@ -213,13 +217,17 @@ function printReport(report: ChainReport, io: CliIo): number {
     const line = describe(check);
     if (line !== undefined) io.out(`  ${line}`);
   }
-  io.out(t(`belege.urteil.${verdict.level}`));
+  io.out(
+    warnung && verdict.level === "vertrauenswuerdig"
+      ? t("belege.urteil.vertrauenswuerdig_warnung")
+      : t(`belege.urteil.${verdict.level}`),
+  );
   for (const finding of verdict.findings) {
     const where = finding.seq === undefined ? "" : ` (${finding.seq})`;
     io.out(`  ✗ ${problemText(finding.problem)}${where}`);
   }
   for (const note of verdict.notes ?? []) {
-    io.out(`  ℹ ${t(`belege.hinweis.${note.note}`)} (${note.seq})`);
+    io.out(`  ⚠ ${t(`belege.warnung.${note.note}`)} (${note.seq})`);
   }
   if (verdict.anchor === "fehlt") io.out(t("belege.anker.ohne"));
 

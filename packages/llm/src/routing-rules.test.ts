@@ -173,6 +173,15 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
       botMaxOutputTokens: 8,
       tokensToday: 0,
       killSwitch: false,
+      // Übergangswerte, bis ein Lauf mehrere Schritte macht.
+      step: 0,
+      maxSteps: 1,
+      runTokens: 0,
+      stepTokenEstimate: 0,
+      maxRunTokens: 500000,
+      toolCount: 0,
+      untrustedInput: false,
+      trigger: "chat",
     };
     return withTestPermit(request, facts, fn);
   }
@@ -263,6 +272,15 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
         botMaxOutputTokens: 8,
         tokensToday: 0,
         killSwitch: false,
+        // Übergangswerte, bis ein Lauf mehrere Schritte macht.
+        step: 0,
+        maxSteps: 1,
+        runTokens: 0,
+        stepTokenEstimate: 0,
+        maxRunTokens: 500000,
+        toolCount: 0,
+        untrustedInput: false,
+        trigger: "chat",
       },
       (permit) => {
         try {

@@ -48,6 +48,8 @@ const action = {
   target: { conversationId, messageId },
 } as const;
 
+type Decided = Extract<ReceiptBody, { type: "decision" }>;
+
 const decision: ReceiptBody = {
   v: 1,
   id: receiptId(2),
@@ -56,10 +58,12 @@ const decision: ReceiptBody = {
   type: "decision",
   action,
   decision: {
+    gateFormat: 2,
     outcome: "allow",
     stage: "execute",
     rules: [{ id: "R-001", version: 1 }],
     limits: [{ name: "laenge", result: "ok", value: 5 }],
+    preconditions: [],
     reason: "Besitzer verwaltet seine Installation",
   },
   facts: {
@@ -146,8 +150,8 @@ describe("Beleg-Körper", () => {
       { ...result, result: { status: "ok", tokens: { input: 1.5, output: 2 } } },
       { ...result, result: { status: "fertig" } },
       { ...result, result: { status: "ok", digest: `sha256:${hex}` } },
-      { ...decision, facts: { ...decision.facts, inputChars: 4.5 } },
-      { ...decision, facts: { ...decision.facts, text: "Hallo" } },
+      { ...(decision as Decided), facts: { ...(decision as Decided).facts, inputChars: 4.5 } },
+      { ...(decision as Decided), facts: { ...(decision as Decided).facts, text: "Hallo" } },
       { ...decision, context: { digest: `sha256:${hex}` } },
       { ...decision, decision: undefined },
       { ...decision, type: "result" },

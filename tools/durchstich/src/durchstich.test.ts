@@ -163,6 +163,15 @@ async function modelRequest(): Promise<{
       botMaxOutputTokens: bot.maxOutputTokens,
       tokensToday: 0,
       killSwitch: false,
+      // Übergangswerte, bis ein Lauf mehrere Schritte macht.
+      step: 0,
+      maxSteps: 1,
+      runTokens: 0,
+      stepTokenEstimate: 0,
+      maxRunTokens: 500000,
+      toolCount: 0,
+      untrustedInput: false,
+      trigger: "chat",
       // Ziel aus dem gelesenen Anbieter: Abdruck von ID und Basis-URL, geprüft vor dem Abruf.
       ...providerTargetFacts(provider.id, provider.baseUrl),
     },

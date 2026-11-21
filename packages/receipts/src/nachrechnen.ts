@@ -202,14 +202,27 @@ function decide(
     return fail("nicht_berechenbar");
   }
 
-  const recorded = body.decision;
+  // Fassung 1: Vorbedingungen nur, wenn der Beleg sie trägt (ältere Belege ohne). Ab Fassung 2
+  // wird immer alles verglichen, auch Vorbedingungen und Deckel; ein fehlendes Feld weicht ab.
+  const recorded = body.decision as DecisionBody["decision"] & {
+    preconditions?: unknown;
+    caps?: unknown;
+  };
+  const strict = fit.format >= 2;
   const same =
     expected.outcome === recorded.outcome &&
     expected.stage === recorded.stage &&
     sameValue(expected.matchedRules.map(idAndVersion), recorded.rules.map(idAndVersion)) &&
     sameValue(expected.limits, recorded.limits) &&
-    (recorded.preconditions === undefined ||
-      sameValue(expected.preconditions ?? [], recorded.preconditions));
+    (strict
+      ? recorded.preconditions !== undefined &&
+        sameValue(expected.preconditions ?? [], recorded.preconditions)
+      : recorded.preconditions === undefined ||
+        sameValue(expected.preconditions ?? [], recorded.preconditions)) &&
+    (!strict ||
+      (expected.caps === undefined
+        ? recorded.caps === undefined
+        : recorded.caps !== undefined && sameValue(expected.caps, recorded.caps)));
   if (!same) return fail("entscheidung_abweichend", { expected });
   return { status: "ok", expected, ruleStand };
 }
@@ -324,7 +337,7 @@ export function decisionFormat(body: unknown): FormatFit {
     onlyKeys(body, DECISION_KEYS) &&
     spec.request.safeParse(body.action).success &&
     factsSchema?.safeParse(body.facts).success === true &&
-    spec.decision.safeParse(body.decision).success &&
+    (spec.decisionFor?.(type) ?? spec.decision).safeParse(body.decision).success &&
     (body.context === undefined || receiptContextSchema.safeParse(body.context).success) &&
     (body.undo === undefined || receiptUndoSchema.safeParse(body.undo).success);
   return fits ? { status: "passt", format } : { status: "unpassend", format };

@@ -18,6 +18,7 @@ import {
   CREDENTIALS,
   type Credential,
   type Facts,
+  TOOL_GATE_ACTIONS,
 } from "./actions";
 import type { ErrorCode } from "./errors";
 import {
@@ -34,7 +35,7 @@ import { type ActionId, idSchema, type ReceiptId } from "./id";
  * Änderung am Tor, die für gleiche Fakten ein anderes Ergebnis von `evaluate` geben kann, hebt
  * diese Zahl; eine Fassung selbst wird nie geändert.
  */
-export const GATE_FORMAT = 1;
+export const GATE_FORMAT = 2;
 
 /** Stufen einer Aktion: nachfragen, vorbereiten, ausführen (mit Beleg). */
 export const STAGES = ["ask", "prepare", "execute"] as const;
@@ -101,11 +102,24 @@ export const LIMITS_BY_ID = {
   "G-03": "laenge",
   "G-04": "tagesbudget",
   "G-05": "not_aus",
+  /** `modell.anfragen`: `step < maxSteps`. */
+  "G-16": "lauf_schritte",
+  /** Aktionen in `TOOL_GATE_ACTIONS`: `callsInRun < maxCallsPerRun`. */
+  "G-17": "lauf_aufrufe",
+  /** `modell.anfragen`: `runTokens + stepTokenEstimate <= maxRunTokens`. */
+  "G-18": "lauf_token",
 } as const;
 export type LimitId = keyof typeof LIMITS_BY_ID;
-export type LimitName = (typeof LIMITS_BY_ID)[LimitId];
+/** Name einer Grenze (alle Grenzen, die dieser Stand kennt). */
+export type GateLimitName = (typeof LIMITS_BY_ID)[LimitId];
+/**
+ * Namen der Grenzen G-01 bis G-05. Die eingefrorene Fassung 1 des Tors nennt diesen Typ und wird
+ * nie geändert; er bleibt deshalb auf diese fünf Grenzen beschränkt. Für alle Grenzen gilt
+ * `GateLimitName`.
+ */
+export type LimitName = (typeof LIMITS_BY_ID)["G-01" | "G-02" | "G-03" | "G-04" | "G-05"];
 export const LIMIT_IDS = Object.keys(LIMITS_BY_ID) as [LimitId, ...LimitId[]];
-export const LIMIT_NAMES = Object.values(LIMITS_BY_ID) as [LimitName, ...LimitName[]];
+export const LIMIT_NAMES = Object.values(LIMITS_BY_ID) as [GateLimitName, ...GateLimitName[]];
 export const limitNameSchema = z.enum(LIMIT_NAMES);
 
 /** Ergebnis einer Grenze: eingehalten, verletzt oder für diese Aktion nicht zutreffend. */
@@ -237,6 +251,31 @@ const R002_V1 = {
   enabled: true,
   title: "Bot darf antworten",
   reason: "Der Bot der Unterhaltung darf ein Modell anfragen, wenn alle Grenzen eingehalten sind.",
+} as const satisfies RuleDefinition;
+
+/**
+ * Standard-Regel R-010: Der Bot der Unterhaltung darf in der mitgelieferten Doku nachschlagen. Sie
+ * steht im Code fest, aber noch nicht in der Datenbank; eine spätere Migration legt sie an.
+ */
+const R010_V1 = {
+  id: "R-010",
+  version: 1,
+  action: "werkzeug.aufrufen",
+  effect: "allow",
+  stage: "execute",
+  conditions: [
+    { fact: ACTOR_FACT, op: "eq", value: "bot" },
+    { fact: "botOfConversation", op: "eq", value: true },
+    { fact: "toolKey", op: "eq", value: "eingebaut/doku.nachschlagen" },
+    { fact: "toolSource", op: "eq", value: "eingebaut" },
+    { fact: "toolKind", op: "eq", value: "lesen" },
+    { fact: "toolReach", op: "eq", value: "intern" },
+  ],
+  priority: 90,
+  source: "standard",
+  enabled: true,
+  title: "Bot liest in der Doku seiner Version",
+  reason: "In der mitgelieferten Doku nachschlagen ändert nichts und geht nicht nach außen.",
 } as const satisfies RuleDefinition;
 
 const R999_V1 = {
@@ -373,13 +412,14 @@ const R008_V1 = {
 
 /**
  * Fassungen der Standard-Regeln, die im Code feststehen, aber noch nicht in der Datenbank stehen
- * (sie gehören zu Aktionen aus `UNSTORED_ACTION_TYPES`). Das Tor erkennt sie als Standard-Regeln
- * wie die aus `STANDARD_RULE_VERSIONS`; die nächste Migration legt genau diese Zeilen an, danach
- * wandern sie dorthin.
+ * (R-007 und R-008 gehören zu Aktionen aus `UNSTORED_ACTION_TYPES`, R-010 wirkt erst mit dem
+ * ersten Werkzeug). Das Tor erkennt sie als Standard-Regeln wie die aus `STANDARD_RULE_VERSIONS`;
+ * eine spätere Migration legt genau diese Zeilen an, danach wandern sie dorthin.
  */
 export const UNSTORED_STANDARD_RULE_VERSIONS = [
   R007_V1,
   R008_V1,
+  R010_V1,
 ] as const satisfies readonly RuleDefinition[];
 
 /** Je Standard-Regel die neueste Fassung, in der Reihenfolge von `STANDARD_RULE_IDS`. */
@@ -536,6 +576,27 @@ export const PRECONDITIONS = {
     require: [{ fact: "answerIsLatest", op: "eq", value: true }],
     errorCode: "nicht_gefunden",
   },
+  "V-12": {
+    name: "werkzeug_angeboten",
+    actions: TOOL_GATE_ACTIONS,
+    require: [
+      { fact: "toolRegistered", op: "eq", value: true },
+      { fact: "toolOffered", op: "eq", value: true },
+    ],
+    errorCode: "werkzeug_unbekannt",
+  },
+  "V-13": {
+    name: "eingabe_gueltig",
+    actions: TOOL_GATE_ACTIONS,
+    require: [{ fact: "inputValid", op: "eq", value: true }],
+    errorCode: "werkzeug_eingabe_ungueltig",
+  },
+  "V-14": {
+    name: "aufrufe_je_schritt",
+    actions: TOOL_GATE_ACTIONS,
+    require: [{ fact: "callIndexInStep", op: "lt", value: { fact: "maxCallsPerStep" } }],
+    errorCode: "limit_erreicht",
+  },
 } as const satisfies Record<
   string,
   {
@@ -569,6 +630,51 @@ export const preconditionCheckSchema = z.strictObject({
 });
 export type PreconditionCheck = z.infer<typeof preconditionCheckSchema>;
 
+/**
+ * Deckel: greifen nach den Regeln und machen aus einem `allow` ein `ask`, wenn `when` gilt und
+ * mindestens eine Bedingung aus `anyOf`. Keine Regel und keine Einstellung hebt einen Deckel auf;
+ * `deny`, `ask` und `prepare` bleiben, wie sie sind.
+ */
+export const CAPS = {
+  "D-01": {
+    name: "fremd_dann_fragen",
+    actions: ["werkzeug.aufrufen"],
+    // biome-ignore lint/suspicious/noThenProperty: Feld des Vertrags (ein Text, keine Funktion)
+    then: "ask",
+    when: [{ fact: "untrustedInput", op: "eq", value: true }],
+    anyOf: [
+      { fact: "toolKind", op: "eq", value: "schreiben" },
+      { fact: "toolReach", op: "eq", value: "nach_aussen" },
+    ],
+  },
+} as const satisfies Record<
+  string,
+  {
+    name: string;
+    actions: readonly ActionType[];
+    then: "ask";
+    when: readonly RuleCondition[];
+    anyOf: readonly RuleCondition[];
+  }
+>;
+export type CapId = keyof typeof CAPS;
+export const CAP_IDS = Object.keys(CAPS) as [CapId, ...CapId[]];
+export const CAP_NAMES = ["fremd_dann_fragen"] as const;
+export type CapName = (typeof CAP_NAMES)[number];
+/** Ergebnis eines Deckels: nicht zutreffend, zutreffend ohne Wirkung (nicht `allow`), gedeckelt. */
+export const CAP_RESULTS = ["entfaellt", "nicht_noetig", "gedeckelt"] as const;
+export type CapResult = (typeof CAP_RESULTS)[number];
+export const capCheckSchema = z.strictObject({
+  name: z.enum(CAP_NAMES),
+  result: z.enum(CAP_RESULTS),
+});
+export type CapCheck = z.infer<typeof capCheckSchema>;
+
+/** IDs der Deckel einer Aktion, nach ID geordnet. */
+export function capsFor(action: ActionType): CapId[] {
+  return CAP_IDS.filter((id) => (CAPS[id].actions as readonly string[]).includes(action));
+}
+
 /** Entscheidung des Tors für eine Aktion. */
 export const decisionSchema = z.strictObject({
   outcome: outcomeSchema,
@@ -577,6 +683,11 @@ export const decisionSchema = z.strictObject({
   limits: z.array(limitCheckSchema),
   /** Vorbedingungen der Aktion (`preconditionsFor`), leer bei Aktionen ohne. */
   preconditions: z.array(preconditionCheckSchema),
+  /**
+   * Deckel der Aktion (`capsFor`). Ab Fassung 2 bei jeder Aktion mit Deckel gesetzt, sonst nie;
+   * optional, weil Fassung 1 keine Deckel kennt.
+   */
+  caps: z.array(capCheckSchema).optional(),
   /** Stand des Regel-Protokolls beim Entscheiden. Das Tor entscheidet immer mit einem Regelstand. */
   ruleStand: ruleStandSchema,
   /** Deutscher Satz, warum das Tor so entschieden hat. */

@@ -10,6 +10,7 @@
  * @since     2026-11-21
  */
 
+import { evaluate, ruleSnapshot } from "@paibot/gate";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
@@ -20,6 +21,7 @@ import { CLI_EXIT, runCli } from "./cli";
 import { parseJsonl } from "./jsonl";
 import { reevaluate } from "./nachrechnen";
 import {
+  alsFassung1,
   FASSUNG_RULES,
   ketteNeuereFassung,
   ketteUnbekanntesFeld,
@@ -65,7 +67,7 @@ async function cli(text: string): Promise<{ exit: number; out: string[] }> {
 
 describe("Schreiben: nur die aktuelle Fassung", () => {
   it("buildReceipt weist eine Entscheidung ab, deren Fassung nicht GATE_FORMAT ist", () => {
-    for (const format of [undefined, 0, 2, 99]) {
+    for (const format of [undefined, 0, 1, 99]) {
       let caught: unknown;
       try {
         buildReceipt(draftWith(format), link());
@@ -76,11 +78,13 @@ describe("Schreiben: nur die aktuelle Fassung", () => {
     }
   });
 
-  it("Fassung 1 steht nicht im Beleg", () => {
+  it("Fassung 2 steht im Beleg, mit Vorbedingungen", () => {
     const body = buildReceipt(draftWith(GATE_FORMAT), link());
-    expect(GATE_FORMAT).toBe(1);
+    expect(GATE_FORMAT).toBe(2);
     expect(body.type).toBe("decision");
-    expect(Object.hasOwn((body as { decision: object }).decision, "gateFormat")).toBe(false);
+    const decision = (body as { decision: Record<string, unknown> }).decision;
+    expect(decision.gateFormat).toBe(2);
+    expect(Array.isArray(decision.preconditions)).toBe(true);
   });
 });
 
@@ -158,6 +162,7 @@ describe("Inhalt je Fassung", () => {
   it("gateFormat 1 ausdrücklich im Beleg ist Fassung 1 und in Ordnung", async () => {
     const kette = await TestKette.neu();
     const action = await kette.decision(sendAction(), (body) => {
+      alsFassung1(body);
       (body.decision as Record<string, unknown>).gateFormat = 1;
     });
     await kette.result(action);
@@ -182,7 +187,7 @@ describe("Inhalt je Fassung", () => {
 describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
   it("unbekanntes Feld zu Fassung 1: ungültig; zu Fassung 99: nicht prüfbar", async () => {
     const alt = await TestKette.neu();
-    const a = await alt.decision();
+    const a = await alt.decision(sendAction(), alsFassung1);
     await alt.result(a, { status: "ok" }, neueresErgebnis);
     const altReport = await verifyChain(alt.entries, { rules: FASSUNG_RULES });
     expect(altReport.verdict.level).toBe("ungueltig");
@@ -198,7 +203,7 @@ describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
 
   it("ein Ergebnis mit unbekanntem Code zu Fassung 1 ist ungültig", async () => {
     const kette = await TestKette.neu();
-    const action = await kette.decision();
+    const action = await kette.decision(sendAction(), alsFassung1);
     await kette.result(action, { status: "ok" }, (body) => {
       (body.result as Record<string, unknown>).code = "werkzeug_zeitlimit";
     });
@@ -207,14 +212,75 @@ describe("Ergebnis nach der Fassung seiner Entscheidung", () => {
   });
 });
 
-describe("Hinweis Rückschritt", () => {
-  it("Entscheidung ohne Feld nach einer mit gateFormat 1: Hinweis, Urteil unverändert", async () => {
+/** „gültig“ oder „vertrauenswürdig“ ohne Einschränkung (nicht „ungültig“). */
+const UNEINGESCHRAENKT = /(?<!un)gültig|vertrauenswürdig/i;
+
+describe("Warnung Rückschritt", () => {
+  it("Werkzeug-Aufruf als Fassung 1 nach Fassung 2, der nach Fassung 2 gedeckelt wäre: Warnung, Stufe unverändert", async () => {
     const kette = await TestKette.neu();
-    const a = await kette.decision(sendAction(), (body) => {
-      (body.decision as Record<string, unknown>).gateFormat = 1;
-    });
+    const a = await kette.decision();
     await kette.result(a);
-    const b = await kette.decision();
+    // Signiert, ohne Fassungsangabe, mit den Fakten von Fassung 1: Fassung 1 kennt keinen Deckel.
+    const werkzeug = {
+      actionId: newId("action"),
+      type: "werkzeug.aufrufen" as const,
+      actor: `bot:${newId("bot")}` as const,
+      target: { conversationId: newId("conversation"), runId: newId("run"), botId: newId("bot") },
+    };
+    werkzeug.target.botId = werkzeug.actor.slice(4) as never;
+    const fakten1 = {
+      botOfConversation: true,
+      runRunning: true,
+      toolName: "notiz_schreiben",
+      toolSource: "eingebaut",
+      toolKind: "schreiben",
+      argsDigest: `hmac-sha256:${"a7".repeat(32)}`,
+      killSwitch: false,
+    };
+    const regel = {
+      ...FASSUNG_RULES[0],
+      id: "R-200",
+      action: "werkzeug.aufrufen",
+      conditions: [],
+    } as (typeof FASSUNG_RULES)[number];
+    const snapshot = await ruleSnapshot([...FASSUNG_RULES, { ...regel, seq: 2 }]);
+    const entscheidung1 = evaluate(werkzeug as never, fakten1 as never, snapshot, { format: 1 });
+    expect(entscheidung1.outcome).toBe("allow");
+    await kette.decision(sendAction(), (body) => {
+      const { matchedRules, ...rest } = entscheidung1 as unknown as Record<string, unknown>;
+      body.action = werkzeug;
+      body.facts = fakten1;
+      body.decision = { ...rest, rules: matchedRules };
+    });
+    await kette.result(sendAction(), { status: "ok" }, (body) => {
+      body.action = werkzeug;
+    });
+    const report = await verifyChain(kette.entries, {
+      rules: snapshot.rules,
+    });
+    expect(report.verdict).toEqual({
+      level: "vertrauenswuerdig",
+      findings: [],
+      anchor: "fehlt",
+      notes: [{ note: "fassung_rueckschritt", seq: 4 }],
+    });
+    const { exit, out } = await cli(await kette.text());
+    expect(exit).toBe(CLI_EXIT.gueltig);
+    expect(out[0]).toBe(
+      t("belege.befehl.kette", { ergebnis: t("pruefung.mit_warnung"), anzahl: 5 }),
+    );
+    expect(out[0]).not.toMatch(/gültig/);
+    expect(out).toContain(`  ⚠ ${t("belege.warnung.fassung_rueckschritt")} (4)`);
+    expect(out.join("\n")).not.toContain("ℹ");
+    expect(out[2]).toBe(t("belege.urteil.vertrauenswuerdig_warnung"));
+    for (const line of out) expect(line).not.toMatch(UNEINGESCHRAENKT);
+  });
+
+  it("Entscheidung ohne Feld (Fassung 1) nach einer mit gateFormat 2: Warnung, Urteil unverändert", async () => {
+    const kette = await TestKette.neu();
+    const a = await kette.decision();
+    await kette.result(a);
+    const b = await kette.decision(sendAction(), alsFassung1);
     await kette.result(b);
     const report = await verifyChain(kette.entries, { rules: FASSUNG_RULES });
     expect(report.verdict).toEqual({
@@ -225,15 +291,27 @@ describe("Hinweis Rückschritt", () => {
     });
     const { exit, out } = await cli(await kette.text());
     expect(exit).toBe(CLI_EXIT.gueltig);
-    expect(out.join("\n")).toContain(t("belege.hinweis.fassung_rueckschritt"));
+    expect(out.join("\n")).toContain(`⚠ ${t("belege.warnung.fassung_rueckschritt")}`);
+    expect(out[0]).toContain(t("pruefung.mit_warnung"));
+    for (const line of out) expect(line).not.toMatch(UNEINGESCHRAENKT);
   });
 
   it("ohne Feld in jeder Entscheidung: kein Hinweis", async () => {
     const kette = await TestKette.neu();
-    const a = await kette.decision();
+    const a = await kette.decision(sendAction(), alsFassung1);
     await kette.result(a);
     const report = await verifyChain(kette.entries, { rules: FASSUNG_RULES });
     expect(report.verdict.notes).toBeUndefined();
+  });
+
+  it("mit Feld in jeder Entscheidung: kein Hinweis", async () => {
+    const kette = await TestKette.neu();
+    for (let i = 0; i < 2; i++) {
+      const a = await kette.decision();
+      await kette.result(a);
+    }
+    const report = await verifyChain(kette.entries, { rules: FASSUNG_RULES });
+    expect(report.verdict).toEqual({ level: "vertrauenswuerdig", findings: [], anchor: "fehlt" });
   });
 });
 

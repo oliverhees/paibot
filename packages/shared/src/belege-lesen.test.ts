@@ -135,12 +135,22 @@ describe("Lese-Form", () => {
     expect(actionReadSchema.safeParse({ ...action, target: undefined }).success).toBe(false);
   });
 
-  it("Fassung 1 ohne Feld besteht beide Formen", () => {
+  it("Fassung 1 ohne Feld besteht nur noch die Lese-Form; die Schreib-Form verlangt Fassung 2", () => {
     expect(receiptBodyReadSchema.safeParse(decision).success).toBe(true);
-    expect(receiptBodyWriteSchema.safeParse(decision).success).toBe(true);
+    expect(receiptBodyWriteSchema.safeParse(decision).success).toBe(false);
     const mitFeld = { ...decision, decision: { ...decision.decision, gateFormat: 1 } };
     expect(receiptBodyReadSchema.safeParse(mitFeld).success).toBe(true);
     expect(receiptBodyWriteSchema.safeParse(mitFeld).success).toBe(false);
+    const zwei = {
+      ...decision,
+      decision: { ...decision.decision, gateFormat: 2, preconditions: [] },
+    };
+    expect(receiptBodyReadSchema.safeParse(zwei).success).toBe(true);
+    expect(receiptBodyWriteSchema.safeParse(zwei).success).toBe(true);
+    const { preconditions: _p, ...ohneVorbedingungen } = zwei.decision;
+    expect(
+      receiptBodyWriteSchema.safeParse({ ...zwei, decision: ohneVorbedingungen }).success,
+    ).toBe(false);
   });
 });
 

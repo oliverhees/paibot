@@ -31,6 +31,7 @@ import {
   ruleSchema,
   STANDARD_RULE_IDS,
   STANDARD_RULE_VERSIONS,
+  UNSTORED_STANDARD_RULE_VERSIONS,
 } from "./gate";
 import { idSchema, newId } from "./id";
 
@@ -63,6 +64,14 @@ const modelFacts: Facts<"modell.anfragen"> = {
   killSwitch: false,
   targetOrigin: "https://api.eurouter.ai",
   targetDigest: `sha256:${"a".repeat(64)}`,
+  step: 0,
+  maxSteps: 1,
+  runTokens: 0,
+  stepTokenEstimate: 1227,
+  maxRunTokens: 500000,
+  toolCount: 0,
+  untrustedInput: false,
+  trigger: "chat",
 };
 
 describe("Aktionen", () => {
@@ -189,11 +198,40 @@ describe("Aktionen", () => {
 });
 
 describe("Regeln", () => {
+  it("R-010 steht nur im Code: ungespeichert, nicht aktiv, nicht in den gespeicherten Fassungen", () => {
+    const r010 = UNSTORED_STANDARD_RULE_VERSIONS.find((rule) => rule.id === "R-010");
+    expect(r010).toMatchObject({
+      version: 1,
+      action: "werkzeug.aufrufen",
+      effect: "allow",
+      stage: "execute",
+      priority: 90,
+      source: "standard",
+    });
+    expect(ruleDefinitionSchema.parse(r010)).toEqual(r010);
+    expect(STANDARD_RULE_VERSIONS.map((rule) => rule.id)).not.toContain("R-010");
+    expect(ACTIVE_STANDARD_RULES.map((rule) => rule.id)).not.toContain("R-010");
+    expect(UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id)).toEqual([
+      "R-007",
+      "R-008",
+      "R-010",
+    ]);
+  });
+
   it("Standard-Regeln sind gültig und tragen die lesbaren IDs", () => {
     expect(ACTIVE_STANDARD_RULES.map((rule) => rule.id)).toEqual([...STANDARD_RULE_IDS]);
     for (const rule of STANDARD_RULE_VERSIONS)
       expect(ruleDefinitionSchema.parse(rule)).toEqual(rule);
-    expect(Object.keys(LIMITS_BY_ID)).toEqual(["G-01", "G-02", "G-03", "G-04", "G-05"]);
+    expect(Object.keys(LIMITS_BY_ID)).toEqual([
+      "G-01",
+      "G-02",
+      "G-03",
+      "G-04",
+      "G-05",
+      "G-16",
+      "G-17",
+      "G-18",
+    ]);
   });
 
   it("Regel-IDs sind lesbar oder erzeugt", () => {

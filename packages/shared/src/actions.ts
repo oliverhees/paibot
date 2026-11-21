@@ -15,6 +15,7 @@ import {
   regionSchema,
   routeSchema,
   schleuseModeSchema,
+  toolKeySchema,
   toolKindSchema,
   toolNameSchema,
   toolServerSchema,
@@ -112,6 +113,53 @@ const toolFacts = {
   toolKind: toolKindSchema,
 };
 
+/** Wohin ein Werkzeug wirkt: nur innerhalb von PaiBot oder nach außen. */
+export const TOOL_REACHES = ["intern", "nach_aussen"] as const;
+export const toolReachSchema = z.enum(TOOL_REACHES);
+export type ToolReach = z.infer<typeof toolReachSchema>;
+
+/** Was einen Lauf ausgelöst hat: eine Nachricht im Chat oder eine Automation. */
+export const RUN_TRIGGERS = ["chat", "automation"] as const;
+export const runTriggerSchema = z.enum(RUN_TRIGGERS);
+export type RunTrigger = z.infer<typeof runTriggerSchema>;
+
+/** Platzhalter-Name für Aufrufe mit ungültigem Namen; erfüllt `TOOL_NAME_PATTERN`. */
+export const UNKNOWN_TOOL_NAME = "unbekannt";
+
+/**
+ * Pflicht-Fakten jeder Aktion in `TOOL_GATE_ACTIONS` (alle nicht optional außer `toolServer`).
+ * V-12 bis V-14, G-17 und D-01 hängen an ihnen.
+ */
+const toolGateFacts = {
+  ...toolFacts,
+  /** Kennung des Werkzeugs, z. B. `eingebaut/doku.nachschlagen`. */
+  toolKey: toolKeySchema,
+  /** Abdruck der Beschreibung des Werkzeugs (`TOOL_DEFINITION_DIGEST_PREFIX`). */
+  toolDigest: sha256DigestSchema,
+  toolReach: toolReachSchema,
+  /** Das Werkzeug liefert Inhalte von außerhalb von PaiBot. */
+  toolForeign: z.boolean(),
+  /** Das Werkzeug ist registriert (Vorbedingung V-12). */
+  toolRegistered: z.boolean(),
+  /** Das Werkzeug stand in der Liste dieses Schritts (Vorbedingung V-12). */
+  toolOffered: z.boolean(),
+  /** Die Eingabe des Modells passt zum Schema des Werkzeugs (Vorbedingung V-13). */
+  inputValid: z.boolean(),
+  /** Der Lauf hat schon fremde Inhalte gelesen (Deckel D-01). */
+  untrustedInput: z.boolean(),
+  /** Nummer des Schritts im Lauf, ab 0. */
+  step: countSchema,
+  /** Nummer des Aufrufs in diesem Schritt, ab 0 (Vorbedingung V-14). */
+  callIndexInStep: countSchema,
+  maxCallsPerStep: positiveIntSchema,
+  /** Werkzeug-Aufrufe des Laufs vor diesem (Grenze G-17). */
+  callsInRun: countSchema,
+  maxCallsPerRun: positiveIntSchema,
+  /** Not-Aus (Grenze G-05). */
+  killSwitch: z.boolean(),
+  trigger: runTriggerSchema,
+};
+
 /** Fakten eines Werkzeug-Aufrufs mit der Regel „Server genau bei Quelle `mcp`“. */
 function toolAction<T extends z.ZodRawShape, F extends z.ZodRawShape>(target: T, facts: F) {
   const base = action("bot", target, { ...toolFacts, ...facts });
@@ -155,7 +203,14 @@ export const ACTIONS = {
   "anbieter.speichern": action(
     "besitzer",
     { providerId },
-    { ...ownerFacts, created: z.boolean(), region: regionSchema, keySet: z.boolean() },
+    {
+      ...ownerFacts,
+      created: z.boolean(),
+      region: regionSchema,
+      keySet: z.boolean(),
+      /** Ob ein zweiter Schlüssel (nur zum Lesen der Routing-Regeln) hinterlegt ist; nie der Schlüssel. */
+      managementKeySet: z.boolean().optional(),
+    },
   ),
   "anbieter.loeschen": action("besitzer", { providerId }, ownerFacts),
   "modell.waehlen": action("besitzer", { botId, modelId }, ownerFacts),
@@ -220,6 +275,21 @@ export const ACTIONS = {
       targetOrigin: originSchema,
       /** Abdruck von Anbieter-ID und Basis-URL (`targetDigestInput`), geprüft vor dem Abruf. */
       targetDigest: sha256DigestSchema,
+      /** Nummer des Schritts im Lauf, ab 0 (Grenze G-16). */
+      step: countSchema,
+      /** Höchstzahl der Schritte im Lauf (Grenze G-16). */
+      maxSteps: positiveIntSchema,
+      /** Token, die der Lauf schon verbraucht hat (Grenze G-18). */
+      runTokens: countSchema,
+      /** Geschätzte Token dieses Schritts (Grenze G-18). */
+      stepTokenEstimate: countSchema,
+      /** Höchstzahl der Token im Lauf (Grenze G-18). */
+      maxRunTokens: positiveIntSchema,
+      /** Zahl der Werkzeuge, die dieser Schritt dem Modell anbietet. */
+      toolCount: countSchema,
+      /** Der Lauf hat schon fremde Inhalte gelesen. */
+      untrustedInput: z.boolean(),
+      trigger: runTriggerSchema,
     },
   ),
   "lauf.abbrechen": action(
@@ -235,13 +305,13 @@ export const ACTIONS = {
   "werkzeug.aufrufen": toolAction(
     { conversationId, runId, botId },
     {
+      ...toolGateFacts,
       /** Der aufrufende Bot gehört zu dieser Unterhaltung. */
       botOfConversation: z.boolean(),
       /** Der Lauf läuft gerade (Vorbedingung V-05). */
       runRunning: z.boolean(),
-      /** Abdruck der Argumente (`TOOL_ARGS_DIGEST_PREFIX`); die Argumente selbst nie. */
+      /** Abdruck des Aufrufs (`TOOL_CALL_DIGEST_PREFIX`, Fassung 2); die Argumente selbst nie. */
       argsDigest: hmacDigestSchema,
-      killSwitch: z.boolean(),
     },
   ),
   /**
@@ -370,6 +440,10 @@ type Actions = typeof ACTIONS;
 export type ActionType = keyof Actions;
 export const ACTION_TYPES = Object.keys(ACTIONS) as [ActionType, ...ActionType[]];
 export const actionTypeSchema = z.enum(ACTION_TYPES);
+
+/** Aktionen, über die ein Werkzeug-Wunsch entschieden wird. V-12 bis V-14, G-17 und D-01 hängen daran. */
+export const TOOL_GATE_ACTIONS = ["werkzeug.aufrufen"] as const satisfies readonly ActionType[];
+export type ToolGateAction = (typeof TOOL_GATE_ACTIONS)[number];
 
 /** Aktionen für Werkzeug-Aufrufe des Bots (Teil von `ACTIONS`). */
 export const TOOL_ACTION_TYPES = [

@@ -117,6 +117,17 @@ export class TestKette {
   }
 }
 
+/**
+ * Macht aus einer Entscheidung über `nachricht.senden`, wie dieser Stand sie schreibt (Fassung 2),
+ * eine der Fassung 1: ohne Feld `gateFormat`, nur die fünf Grenzen von damals (G-16 bis G-18
+ * entfallen bei dieser Aktion ohnehin). Die Fakten sind in beiden Fassungen gleich.
+ */
+export function alsFassung1(body: Roh): void {
+  const decision = body.decision as Roh;
+  delete decision.gateFormat;
+  decision.limits = (decision.limits as unknown[]).slice(0, 5);
+}
+
 /** Setzt `decision.gateFormat` und ein Feld, das Fassung 1 nicht kennt. */
 export function neuereFassung(body: Roh): void {
   const decision = body.decision as Roh;
@@ -157,6 +168,7 @@ export async function ketteNeuereFassung(): Promise<TestKette> {
 export async function ketteUnbekanntesFeld(auchNeuere = false): Promise<TestKette> {
   const kette = await TestKette.neu();
   const action = await kette.decision(sendAction(), (body) => {
+    alsFassung1(body);
     (body.decision as Roh).caps = [];
   });
   await kette.result(action);

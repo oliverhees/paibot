@@ -64,6 +64,13 @@ export const RUN_TUNING: RunTuning = {
 export const MAX_MOTOR_STEPS = 1;
 
 /**
+ * Höchstzahl der Token eines Laufs (Grenze G-18), bis die Grenze einstellbar ist. Heute bleibt
+ * jeder Lauf weit darunter (Eingabe höchstens `maxRequestChars`, Ausgabe höchstens die
+ * Ausgabegrenze des Bots).
+ */
+export const TRANSITION_MAX_RUN_TOKENS = 500_000;
+
+/**
  * Zustand der Datenschleuse für einen Lauf. `state` (aus `probeSchleuse`) sagt, warum sie nicht
  * bereit ist; fehlt er, zählt nur `reachable`.
  */

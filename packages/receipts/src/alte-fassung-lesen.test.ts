@@ -1,7 +1,9 @@
 /**
- * PaiBot – Test: Jeder Beleg, den dieser Stand schreibt, besteht das Lese-Schema vom Stand vor der
- * Tor-Fassung (`testdaten/altes-lese-schema.ts`). Wer auf eine ältere PaiBot-Fassung zurückgeht,
- * kann die Belege weiter lesen.
+ * PaiBot – Test: Belege vom Stand mit Tor-Fassung 1 (die feste Kette `testdaten/kette-l1.jsonl`)
+ * bestehen das Lese-Schema vom Stand vor der Tor-Fassung (geschlossene Kopie
+ * `testdaten/lese-schema-vor-fassung.ts`). Belege, die dieser Stand schreibt (Fassung 2), besteht
+ * es nicht mehr: Ein Stand vor der Tor-Fassung erkennt sie nicht als Beleg. Dazu: Die ältere
+ * Kopie `testdaten/altes-lese-schema.ts` nimmt lebende Verträge und ist deshalb kein Maßstab.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -10,6 +12,7 @@
  * @since     2026-11-21
  */
 
+import { readFileSync } from "node:fs";
 import { createGate, type Execute, ruleSnapshot } from "@paibot/gate";
 import { ACTION_TYPES } from "@paibot/shared/aktionen";
 import { RECEIPT_CHAIN_FORMAT, type ReceiptEntry } from "@paibot/shared/belege";
@@ -19,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { sampleAction, sampleFacts } from "../../gate/src/testdaten";
 import { exportJsonl, parseJsonl } from "./jsonl";
 import { altReceiptEntrySchema } from "./testdaten/altes-lese-schema";
+import { vorFassungReceiptEntrySchema } from "./testdaten/lese-schema-vor-fassung";
 import { keyInfo, signedEntry, TEST_INSTALLATION, testKey } from "./testhilfen";
 import { verifyChain } from "./verify";
 
@@ -129,33 +133,83 @@ async function ketteVomTor(): Promise<{ entries: ReceiptEntry[]; text: string }>
   return { entries, text };
 }
 
-describe("Belege dieses Stands mit dem Lese-Schema von vorher", () => {
-  it("jeder Beleg der Kette besteht das alte Lese-Schema", async () => {
-    const { entries } = await ketteVomTor();
-    const decisions = entries.filter((e) => e.body.type === "decision");
-    expect(decisions.length).toBeGreaterThan(ACTION_TYPES.length);
-    for (const entry of entries) {
-      const parsed = altReceiptEntrySchema.safeParse(entry);
-      expect(parsed.success, `${entry.seq} ${entry.body.type}`).toBe(true);
-    }
-  });
+const KETTE_L1 = readFileSync(new URL("./testdaten/kette-l1.jsonl", import.meta.url), "utf8");
 
-  it("auch nach dem Weg über den Export (JSON-Zeilen), und die Kette ist vertrauenswürdig", async () => {
-    const { text } = await ketteVomTor();
-    const lines = text.trim().split("\n").slice(1);
+describe("Belege vom Stand mit Fassung 1 mit dem Lese-Schema von vorher", () => {
+  it("jeder Beleg der festen Kette besteht das Lese-Schema vor der Tor-Fassung", () => {
+    const lines = KETTE_L1.trim().split("\n").slice(1);
+    expect(lines).toHaveLength(70);
     for (const line of lines) {
-      expect(altReceiptEntrySchema.safeParse(JSON.parse(line)).success).toBe(true);
+      expect(
+        vorFassungReceiptEntrySchema.safeParse(JSON.parse(line)).success,
+        line.slice(0, 40),
+      ).toBe(true);
     }
-    const { entries } = parseJsonl(text);
-    const report = await verifyChain(entries);
-    expect(report.verdict).toEqual({ level: "vertrauenswuerdig", findings: [], anchor: "fehlt" });
   });
 
-  it("keine Entscheidung trägt eine Fassungsangabe", async () => {
-    const { entries } = await ketteVomTor();
+  it("keine Entscheidung der festen Kette trägt eine Fassungsangabe", () => {
+    const { entries } = parseJsonl(KETTE_L1);
     for (const entry of entries) {
       if (entry.body.type !== "decision") continue;
       expect(Object.hasOwn(entry.body.decision, "gateFormat")).toBe(false);
     }
+  });
+});
+
+describe("Belege dieses Stands (Fassung 2) und Leser von vorher", () => {
+  it("jede Entscheidung trägt gateFormat 2; ein Stand vor der Tor-Fassung erkennt sie nicht", async () => {
+    const { entries } = await ketteVomTor();
+    const decisions = entries.filter((e) => e.body.type === "decision");
+    expect(decisions.length).toBeGreaterThan(ACTION_TYPES.length - 3);
+    for (const entry of decisions) {
+      if (entry.body.type !== "decision") continue;
+      expect(entry.body.decision.gateFormat).toBe(2);
+      expect(vorFassungReceiptEntrySchema.safeParse(entry).success, String(entry.seq)).toBe(false);
+    }
+    // Start und Schlüsselwechsel haben sich nicht geändert.
+    for (const entry of entries.filter(
+      (e) => e.body.type !== "decision" && e.body.type !== "result",
+    )) {
+      expect(vorFassungReceiptEntrySchema.safeParse(entry).success, String(entry.seq)).toBe(true);
+    }
+  });
+
+  it("die Kette ist nach dem Weg über den Export vertrauenswürdig", async () => {
+    const { text } = await ketteVomTor();
+    const { entries } = parseJsonl(text);
+    const report = await verifyChain(entries);
+    expect(report.verdict).toEqual({ level: "vertrauenswuerdig", findings: [], anchor: "fehlt" });
+  });
+});
+
+describe("altes-lese-schema.ts ist kein Maßstab", () => {
+  const QUELLE = readFileSync(new URL("./testdaten/altes-lese-schema.ts", import.meta.url), "utf8");
+
+  it("nimmt lebende Verträge und lässt deshalb auch Belege dieses Stands durch", async () => {
+    const lebend = [...QUELLE.matchAll(/from\s+"(@paibot\/shared\/(aktionen|fehler|tor))"/g)].map(
+      (match) => match[1],
+    );
+    expect(lebend.sort()).toEqual([
+      "@paibot/shared/aktionen",
+      "@paibot/shared/fehler",
+      "@paibot/shared/tor",
+    ]);
+    // Dadurch: Ein Beleg der Fassung 2 mit acht Grenzen und neuen Fakten besteht es, obwohl ein Stand
+    // vor der Tor-Fassung ihn nicht lesen kann (siehe die geschlossene Kopie oben).
+    const { entries } = await ketteVomTor();
+    const model = entries.find(
+      (e) =>
+        e.body.type === "decision" &&
+        e.body.action.type === "modell.anfragen" &&
+        Object.hasOwn(e.body.facts, "maxRunTokens"),
+    );
+    expect(model).toBeDefined();
+    if (model === undefined) return;
+    const { gateFormat: _gateFormat, ...decision } = (
+      model.body as { decision: Record<string, unknown> }
+    ).decision;
+    const ohneFassung = { ...model, body: { ...model.body, decision } };
+    expect(altReceiptEntrySchema.safeParse(ohneFassung).success).toBe(true);
+    expect(vorFassungReceiptEntrySchema.safeParse(ohneFassung).success).toBe(false);
   });
 });

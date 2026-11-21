@@ -1,5 +1,5 @@
 /**
- * PaiBot – Tests der Grenzen G-01 bis G-05.
+ * PaiBot – Tests der Grenzen G-01 bis G-05 und G-16 bis G-18.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -11,12 +11,15 @@
 import { ACTIONS, type ActionRequest, type Facts } from "@paibot/shared/aktionen";
 import { LIMIT_NAMES, limitCheckSchema } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
-import { ACTION_TYPES, sampleAction, sampleFacts } from "../testdaten";
+import { DECIDED_ACTIONS as ACTION_TYPES, sampleAction, sampleFacts } from "../testdaten";
 import {
   checkLimits,
   LIMIT_FUNCTIONS,
   limitAnbieterRegion,
   limitLaenge,
+  limitLaufAufrufe,
+  limitLaufSchritte,
+  limitLaufToken,
   limitNotAus,
   limitSchleuseGefordert,
   limitTagesbudget,
@@ -157,6 +160,9 @@ describe("G-05 not_aus", () => {
       "entfaellt",
       "entfaellt",
       "ok",
+      "entfaellt",
+      "ok",
+      "entfaellt",
     ]);
   });
 });
@@ -166,6 +172,9 @@ describe("fehlende oder falsche Fakten lassen nichts durch", () => {
     const checks = checkLimits(ask, {} as Facts);
     expect(checks.map((c) => c.result)).toEqual([
       "verletzt",
+      "verletzt",
+      "verletzt",
+      "entfaellt",
       "verletzt",
       "verletzt",
       "entfaellt",
@@ -185,14 +194,17 @@ describe("fehlende oder falsche Fakten lassen nichts durch", () => {
 });
 
 describe("checkLimits", () => {
-  it.each(ACTION_TYPES)("%s: fünf gültige Einträge in der Reihenfolge G-01 bis G-05", (type) => {
-    const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
-    expect(checks.map((c) => c.name)).toEqual([...LIMIT_NAMES]);
-    for (const check of checks) {
-      expect(limitCheckSchema.safeParse(check).success).toBe(true);
-      expect(check.result).not.toBe("verletzt");
-    }
-  });
+  it.each(ACTION_TYPES)(
+    "%s: je Grenze ein gültiger Eintrag in der Reihenfolge der Fassung",
+    (type) => {
+      const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
+      expect(checks.map((c) => c.name)).toEqual([...LIMIT_NAMES]);
+      for (const check of checks) {
+        expect(limitCheckSchema.safeParse(check).success).toBe(true);
+        expect(check.result).not.toBe("verletzt");
+      }
+    },
+  );
 
   it.each(
     ACTION_TYPES.filter(
@@ -229,6 +241,69 @@ describe("checkLimits", () => {
   it("jede Grenze liefert ihren eigenen Namen", () => {
     for (const [name, fn] of Object.entries(LIMIT_FUNCTIONS)) {
       expect(fn(ask, sampleFacts("modell.anfragen") as Facts).name).toBe(name);
+    }
+  });
+});
+
+describe("G-16 bis G-18: Grenzen eines Laufs", () => {
+  it("G-16: Schritt kleiner als die Höchstzahl, sonst verletzt; Wert ist der Schritt", () => {
+    expect(limitLaufSchritte(ask, askFacts({ step: 0, maxSteps: 1 }))).toEqual({
+      name: "lauf_schritte",
+      result: "ok",
+      value: 0,
+    });
+    expect(limitLaufSchritte(ask, askFacts({ step: 1, maxSteps: 1 }))).toEqual({
+      name: "lauf_schritte",
+      result: "verletzt",
+      value: 1,
+    });
+  });
+
+  it("G-17: Aufrufe des Laufs kleiner als die Höchstzahl, nur bei werkzeug.aufrufen", () => {
+    const tool = sampleAction("werkzeug.aufrufen") as ActionRequest;
+    const facts = (change: Record<string, unknown>) =>
+      ({ ...sampleFacts("werkzeug.aufrufen"), ...change }) as Facts;
+    expect(limitLaufAufrufe(tool, facts({ callsInRun: 15 })).result).toBe("ok");
+    expect(limitLaufAufrufe(tool, facts({ callsInRun: 16 }))).toEqual({
+      name: "lauf_aufrufe",
+      result: "verletzt",
+      value: 16,
+    });
+    expect(limitLaufAufrufe(ask, askFacts({})).result).toBe("entfaellt");
+  });
+
+  it("G-18: Token des Laufs plus Schätzung höchstens die Höchstzahl; Wert ist die Summe", () => {
+    expect(
+      limitLaufToken(ask, askFacts({ runTokens: 100, stepTokenEstimate: 400, maxRunTokens: 500 })),
+    ).toEqual({ name: "lauf_token", result: "ok", value: 500 });
+    expect(
+      limitLaufToken(ask, askFacts({ runTokens: 101, stepTokenEstimate: 400, maxRunTokens: 500 })),
+    ).toEqual({ name: "lauf_token", result: "verletzt", value: 501 });
+  });
+
+  it("fehlender oder nicht ganzzahliger Fakt ist verletzt, nie entfällt", () => {
+    const raw = (change: Record<string, unknown>) =>
+      ({ ...sampleFacts("modell.anfragen"), ...change }) as unknown as Facts;
+    for (const change of [{ step: undefined }, { step: 0.5 }, { maxSteps: "1" }]) {
+      expect(limitLaufSchritte(ask, raw(change)).result).toBe("verletzt");
+    }
+    for (const change of [
+      { runTokens: undefined },
+      { stepTokenEstimate: 1.5 },
+      { maxRunTokens: null },
+    ]) {
+      expect(limitLaufToken(ask, raw(change)).result).toBe("verletzt");
+    }
+    const tool = sampleAction("werkzeug.aufrufen") as ActionRequest;
+    const { callsInRun: _, ...without } = sampleFacts("werkzeug.aufrufen");
+    expect(limitLaufAufrufe(tool, without as unknown as Facts).result).toBe("verletzt");
+  });
+
+  it("andere Aktionen: entfällt", () => {
+    for (const type of ACTION_TYPES.filter((t) => t !== "modell.anfragen")) {
+      const action = sampleAction(type) as ActionRequest;
+      expect(limitLaufSchritte(action, sampleFacts(type) as Facts).result, type).toBe("entfaellt");
+      expect(limitLaufToken(action, sampleFacts(type) as Facts).result, type).toBe("entfaellt");
     }
   });
 });

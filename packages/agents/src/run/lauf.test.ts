@@ -578,6 +578,14 @@ describe("failStaleRuns", () => {
       tokensToday: 0,
       killSwitch: false,
       ...providerTargetFacts(env.providerId, "http://127.0.0.1:9/v1"),
+      step: 0,
+      maxSteps: 1,
+      runTokens: 0,
+      stepTokenEstimate: Math.ceil(10 / 4) + 2048,
+      maxRunTokens: 500000,
+      toolCount: 0,
+      untrustedInput: false,
+      trigger: "chat",
     };
     const snapshot = await repo.rules.loadSnapshot(env.db);
     const decision = evaluate(action, facts, await ruleSnapshot(snapshot.rules, snapshot.stand));

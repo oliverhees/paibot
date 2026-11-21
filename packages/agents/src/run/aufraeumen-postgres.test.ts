@@ -27,6 +27,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createFakeMotor } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
 import { failStaleRuns } from "./aufraeumen";
+import { MAX_MOTOR_STEPS, TRANSITION_MAX_RUN_TOKENS } from "./vertrag";
 
 const baseUrl = process.env[TEST_DATABASE_URL_ENV];
 
@@ -76,6 +77,15 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
       tokensToday: 0,
       killSwitch,
       ...providerTargetFacts(env.providerId, "http://127.0.0.1:9/v1"),
+      // Werte eines Laufs mit einem Schritt ohne Werkzeuge, wie `kontext.ts#modelFacts`.
+      step: 0,
+      maxSteps: MAX_MOTOR_STEPS,
+      runTokens: 0,
+      stepTokenEstimate: 2051,
+      maxRunTokens: TRANSITION_MAX_RUN_TOKENS,
+      toolCount: 0,
+      untrustedInput: false,
+      trigger: "chat",
     };
     const snapshot = await repo.rules.loadSnapshot(env.db);
     const decision = evaluate(action, facts, await ruleSnapshot(snapshot.rules, snapshot.stand));
@@ -93,6 +103,7 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
   it("abgelehnte Aktion ohne Ergebnis: das Aufräumen schreibt „abgelehnt“, die Kette bleibt gültig", async () => {
     const { env, runId, action, decision } = await abgestuerzterLauf(true);
     expect(decision.outcome).not.toBe("allow");
+    expect(denialCode(decision)).toBe("angehalten");
 
     await failStaleRuns(
       { db: env.db, clock: spaeter, receipts: env.writer },
@@ -104,8 +115,15 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     expect(last).toMatchObject({
       type: "result",
       action: { actionId: action.actionId },
-      result: { status: "denied", code: denialCode(decision) },
+      result: { status: "denied", code: "angehalten" },
     });
+    const entscheidung = (await env.receipts()).find(
+      (entry) => entry.body.type === "decision" && entry.body.action.actionId === action.actionId,
+    )?.body;
+    expect(entscheidung).toMatchObject({ decision: { gateFormat: 2 } });
+    expect(
+      entscheidung?.type === "decision" && Array.isArray(entscheidung.decision.preconditions),
+    ).toBe(true);
     expect(await env.verify()).toMatchObject({ ok: true });
   }, 30_000);
 

@@ -34,7 +34,7 @@ import type {
   SchleuseMode,
   Settings,
 } from "@paibot/shared/objekte";
-import type { RunSchleuseStatus } from "./vertrag";
+import { MAX_MOTOR_STEPS, type RunSchleuseStatus, TRANSITION_MAX_RUN_TOKENS } from "./vertrag";
 
 /** Alles, was ein Lauf aus der Datenbank braucht, gelesen in einem Lesestand. */
 export interface RunContext {
@@ -303,6 +303,15 @@ export function modelFacts(input: {
       : { dailyTokenBudget: context.settings.dailyTokenBudget }),
     killSwitch: context.settings.killSwitch,
     ...target,
+    // Übergangswerte, bis die Steuerung mehrere Schritte macht: ein Schritt, keine Werkzeuge.
+    step: 0,
+    maxSteps: MAX_MOTOR_STEPS,
+    runTokens: 0,
+    stepTokenEstimate: Math.ceil(input.inputChars / 4) + context.bot.maxOutputTokens,
+    maxRunTokens: TRANSITION_MAX_RUN_TOKENS,
+    toolCount: 0,
+    untrustedInput: false,
+    trigger: "chat",
   };
 }
 

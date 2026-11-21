@@ -12,6 +12,7 @@
 import type { ActionRequest, ActionType, Facts } from "@paibot/shared/aktionen";
 import { PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
+import { t } from "@paibot/shared/texte";
 import {
   ACTIVE_STANDARD_RULES,
   GATE_FORMAT,
@@ -23,6 +24,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createGate,
   type DecisionRecord,
+  type DeniedToolCall,
   type Execute,
   GateDenied,
   type GatePorts,
@@ -34,17 +36,15 @@ import {
 } from "./gate";
 import { isGatePermit } from "./permit";
 import { ruleSnapshot } from "./regel-hash";
-import { ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
+import { DECIDED_ACTIONS as ACTION_TYPES, sampleAction, sampleFacts } from "./testdaten";
 
 /** Aktionen, die die Standard-Regeln mit den Beispiel-Fakten erlauben. */
 /**
- * Mit den gespeicherten Standard-Regeln erlaubt: alles außer dem Werkzeug-Aufruf (R-005 fragt) und
- * der Ausführung nach Freigabe (ihre Regeln R-007/R-008 kommen erst mit der nächsten Migration in die
- * Datenbank; Tests dazu in `freigabe.test.ts`).
+ * Mit den gespeicherten Standard-Regeln erlaubt: jede Aktion der aktuellen Fassung außer dem
+ * Werkzeug-Aufruf (R-005 fragt). Die Freigabe-Aktionen kennt die aktuelle Fassung nicht (Tests
+ * dazu in `freigabe.test.ts`).
  */
-const ALLOWED_BY_DEFAULT = ACTION_TYPES.filter(
-  (type) => type !== "werkzeug.aufrufen" && type !== "werkzeug.ausfuehren",
-);
+const ALLOWED_BY_DEFAULT = ACTION_TYPES.filter((type) => type !== "werkzeug.aufrufen");
 
 type Entry =
   | { kind: "decision"; record: DecisionRecord; ref: ReceiptRef }
@@ -285,7 +285,7 @@ describe("nicht erlaubte Aktion", () => {
       const rules: RuleDefinition[] = [
         {
           ...ACTIVE_STANDARD_RULES[0],
-          id: "R-010",
+          id: "R-110",
           source: "owner",
           priority: 1,
           effect: outcome === "deny" ? "deny" : outcome === "ask" ? "ask" : "allow",
@@ -316,7 +316,7 @@ describe("nicht erlaubte Aktion", () => {
     },
   );
 
-  it("fragen: der Fehler trägt den Zustand zum Warten (Entscheidung, Stufe, Belege)", async () => {
+  it("fragen: der Fehler trägt Entscheidung, Stufe und Belege", async () => {
     const { ports, entries } = memoryPorts();
     const facts = { ...sampleFacts("modell.anfragen"), botOfConversation: false };
     const error = (await caught(
@@ -763,7 +763,7 @@ describe("Vorbedingungen in gate.run", () => {
 describe("werkzeug.aufrufen", () => {
   const ARGS = { notiz: "Geheimes Rezept für Linsensuppe", id: 4711 };
 
-  it("Standard: fragen – nichts ausgeführt, der Fehler trägt den Warte-Zustand", async () => {
+  it("Standard: fragen – nichts ausgeführt, als Werkzeug-Aufruf abgelehnt (freigabe_noetig)", async () => {
     const { ports, log, entries } = memoryPorts();
     const action = sampleAction("werkzeug.aufrufen");
     const execute = vi.fn();
@@ -777,11 +777,35 @@ describe("werkzeug.aufrufen", () => {
     expect(error.actionId).toBe(action.actionId);
     expect(error.action).toBe("werkzeug.aufrufen");
     expect(error.decision.matchedRules).toMatchObject([{ id: "R-005", version: 1 }]);
+    // In dieser Fassung gibt es keine Freigabe: „fragen“ ist abgelehnt, mit beiden Belegen.
     expect(error.toolCallDecision()).toEqual({
-      outcome: "ask",
+      outcome: "deny",
       actionId: action.actionId,
       decisionReceiptId: entries[0]?.ref.receiptId,
+      resultReceiptId: entries[1]?.ref.receiptId,
+      output: t("werkzeug.huelle.freigabe_noetig"),
+      errorCode: "freigabe_noetig",
     });
+    expect(res(entries)?.result).toEqual({ status: "denied", code: "regel_fehlt" });
+  });
+
+  it("der Typ kennt keinen wartenden Aufruf", () => {
+    const decision: DeniedToolCall = {
+      outcome: "deny",
+      actionId: newId("action"),
+      decisionReceiptId: newId("receipt"),
+      resultReceiptId: newId("receipt"),
+      output: "x",
+      errorCode: "freigabe_noetig",
+    };
+    expect(decision.outcome).toBe("deny");
+    const wartet: DeniedToolCall = {
+      // @ts-expect-error In dieser Fassung gibt es keine Variante „wartet“.
+      outcome: "ask",
+      actionId: newId("action"),
+      decisionReceiptId: newId("receipt"),
+    };
+    expect(wartet.outcome).toBe("ask");
   });
 
   it("abgelehnt: Angaben für den gespeicherten Aufruf mit beiden Belegen, Grund und Code", async () => {
@@ -911,7 +935,7 @@ describe("Fassung des Tors", () => {
     const { ports, log, entries } = memoryPorts();
     const action = sampleAction("nachricht.senden");
     await createGate(ports).run(action, sampleFacts("nachricht.senden"), okExecute(log));
-    expect(GATE_FORMAT).toBe(1);
+    expect(GATE_FORMAT).toBe(2);
     expect(dec(entries)?.decision.gateFormat).toBe(GATE_FORMAT);
   });
 

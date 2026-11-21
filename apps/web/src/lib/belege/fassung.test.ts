@@ -16,6 +16,7 @@ import type { ReceiptEntry } from "@paibot/shared/belege";
 import { t } from "@paibot/shared/texte";
 import { describe, expect, it } from "vitest";
 import {
+  alsFassung1,
   FASSUNG_RULES,
   ketteNeuereFassung,
   ketteUnbekanntesFeld,
@@ -27,6 +28,7 @@ import {
   pruefeEinzeln,
   pruefeKette,
   type RegelDaten,
+  urteilZustand,
   zeilenStand,
 } from "./pruefung";
 
@@ -108,19 +110,26 @@ describe("Belege-Seite und Fassung des Tors", () => {
     }
   });
 
-  it("Hinweis Rückschritt erscheint als Hinweis, die Stufe bleibt gültig", async () => {
+  it("Rückschritt erscheint als Warnung: Warn-Ansicht, Punkt Fehler, die Stufe bleibt gültig", async () => {
     const kette = await TestKette.neu();
-    const a = await kette.decision(undefined, (body) => {
-      (body.decision as Record<string, unknown>).gateFormat = 1;
-    });
+    const a = await kette.decision();
     await kette.result(a);
-    const b = await kette.decision();
+    const b = await kette.decision(undefined, alsFassung1);
     await kette.result(b);
     const ergebnis = await seite(kette);
     expect(ergebnis.stufe).toBe("gueltig");
-    expect(
-      ergebnis.punkte.some((p) => p.text.startsWith(t("belege.hinweis.fassung_rueckschritt"))),
-    ).toBe(true);
+    expect(ergebnis.warnung).toBe(true);
+    expect(urteilZustand(ergebnis.stufe, ergebnis.warnung)).toBe("gebrochen");
+    expect(urteilZustand("gueltig")).toBe("gueltig");
+    expect(ergebnis.titel).toBe(t("belege.urteil.gueltig_anzahl_warnung", { anzahl: 5 }));
+    expect(ergebnis.titel).not.toMatch(/(?<!un)gültig|vertrauenswürdig/i);
+    const punkt = ergebnis.punkte.find((p) =>
+      p.text.startsWith(t("belege.warnung.fassung_rueckschritt")),
+    );
+    expect(punkt?.art).toBe("fehler");
+    expect(t("belege.warnung.fassung_rueckschritt")).toBe(
+      "Warnung: Nach einem Beleg einer neueren Tor-Fassung folgt einer einer älteren. Das kann beim Zurückgehen auf eine ältere PaiBot-Fassung oder kurz beim Update passieren. Ist beides nicht geschehen, ist das ein Warnzeichen.",
+    );
   });
 
   it("Beleg prüfen (einzeln): Entscheidung aus Fassung 99 nicht prüfbar, Ergebnis mit Hinweis auf die Kette", async () => {

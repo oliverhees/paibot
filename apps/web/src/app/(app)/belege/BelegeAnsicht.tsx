@@ -335,7 +335,7 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
               )}
               {kette.art === "fertig" && (
                 <PruefUrteil
-                  zustand={urteilZustand(kette.ergebnis.stufe)}
+                  zustand={urteilZustand(kette.ergebnis.stufe, kette.ergebnis.warnung === true)}
                   titel={kette.ergebnis.titel}
                   punkte={[
                     ...kette.ergebnis.punkte,

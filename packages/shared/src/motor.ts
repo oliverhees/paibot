@@ -85,6 +85,10 @@ export interface ToolCall {
   callId: string;
   name: string;
   input: JsonValue;
+  /** Vermerk des SDK, dass die Eingabe nicht passte; nur Auskunft, geprüft wird selbst. */
+  invalid?: boolean;
+  /** Rohtext, wenn das SDK die Eingabe als Zeichenkette liefert (kaputtes JSON), gekürzt auf 2 000 Zeichen. */
+  rawInput?: string;
 }
 
 /** Ergebnis eines Werkzeug-Aufrufs für die nächste Runde. Abgelehnte Aufrufe haben `denied`. */
@@ -121,6 +125,7 @@ export type MotorErrorCode = Extract<
   | "anbieter_nicht_erreichbar"
   | "schluessel_ungueltig"
   | "limit_erreicht"
+  | "regel_unbekannt"
   | "schleuse_blockiert"
   | "unterbrochen"
   | "intern"
@@ -130,6 +135,7 @@ export const MOTOR_ERROR_CODES = [
   "anbieter_nicht_erreichbar",
   "schluessel_ungueltig",
   "limit_erreicht",
+  "regel_unbekannt",
   "schleuse_blockiert",
   "unterbrochen",
   "intern",

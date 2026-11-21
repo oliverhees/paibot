@@ -190,6 +190,14 @@ export function modelAccess(options: ModelAccessOptions): ModelAccess {
     tokensToday: 0,
     killSwitch: false,
     ...providerTargetFacts(providerId, options.baseUrl),
+    step: 0,
+    maxSteps: 1,
+    runTokens: 0,
+    stepTokenEstimate: Math.ceil(100 / 4) + 1024,
+    maxRunTokens: 500000,
+    toolCount: 0,
+    untrustedInput: false,
+    trigger: "chat",
   };
   const newAction = (): ActionRequest<"modell.anfragen"> => ({
     actionId: newId("action"),
