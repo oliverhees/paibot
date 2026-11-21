@@ -1,6 +1,6 @@
 /**
  * PaiBot – Tests: Unterhaltung als Datei sichern. Route über den Rahmen (Sitzung, Prüfzeichen,
- * Tor, Belege, Kopfzeilen der Datei), Inhalt ohne Kennungen und Schlüssel, Kennzeichen für
+ * Tor, Belege, Kopfzeilen der Datei), Inhalt ohne Kennungen und Schlüssel, Vermerke für
  * abgebrochene, fehlgeschlagene und ersetzte Antworten, Dateiname.
  *
  * @author    Oliver Hees
