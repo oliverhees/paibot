@@ -197,8 +197,14 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<number
 function printReport(report: ChainReport, io: CliIo): number {
   const { verdict } = report;
   const failure = report.firstFailure;
+  // Ohne fehlgeschlagene Prüfung heißt die Kette nur dann „gültig“, wenn nichts offen bleibt:
+  // Belege aus einer neueren Fassung machen sie „nicht vollständig prüfbar“.
   const ergebnis =
-    failure === undefined ? t("pruefung.gueltig") : t("pruefung.ungueltig", { seq: failure.seq });
+    failure !== undefined
+      ? t("pruefung.ungueltig", { seq: failure.seq })
+      : verdict.level === "nicht_pruefbar"
+        ? t("pruefung.nicht_pruefbar")
+        : t("pruefung.gueltig");
   io.out(t("belege.befehl.kette", { ergebnis, anzahl: report.checked }));
   if (failure === undefined && report.head !== undefined) {
     io.out(t("belege.befehl.kopf", report.head));

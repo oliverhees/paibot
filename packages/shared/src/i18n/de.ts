@@ -1665,6 +1665,7 @@ export const de = {
     "Entscheidungen nachgerechnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
   "belege.geprueft.paare_nicht_pruefbar":
     "Ergebnisse ihren Entscheidungen zugeordnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
+  "pruefung.nicht_pruefbar": "in sich stimmig, aber mit dieser Fassung nicht vollständig prüfbar",
   "belege.einzel.ergebnis_kette":
     "Ob dieses Ergebnis zu seiner Entscheidung und deren Fassung passt, zeigt die Prüfung der ganzen Kette.",
 } as const satisfies Record<string, string | readonly string[]>;

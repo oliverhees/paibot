@@ -102,6 +102,10 @@ describe("Lesen: Form statt Inhalt", () => {
     expect(exit).toBe(CLI_EXIT.nichtPruefbar);
     expect(exit).toBe(4);
     expect(out).toContain(t("belege.urteil.nicht_pruefbar"));
+    expect(out[0]).toBe(
+      t("belege.befehl.kette", { ergebnis: t("pruefung.nicht_pruefbar"), anzahl: 3 }),
+    );
+    expect(out[0]).not.toMatch(/gültig/);
     expect(out.join("\n")).toContain("Beleg aus einer neueren PaiBot-Fassung");
   });
 });
