@@ -256,6 +256,19 @@ describe("Worker und Bot-Pakete: Akteur nur als botActor(...)", () => {
     }
   });
 
+  it("die reinen Raum-Regeln dürfen den Text besitzer nennen (Autor-Art, Auswahlwert), mehr nicht", () => {
+    const raum = "packages/agents/src/raum";
+    expect(imBot(raum, 'export type RaumAutor = "besitzer" | "bot";')).toEqual([]);
+    expect(imBot(raum, 'export const abnahme: "leitung" | "besitzer" = "besitzer";')).toEqual([]);
+    // Alles andere bleibt dort scharf.
+    expect(imBot(raum, "export const a = (actor: string) => ({ actor });")).not.toEqual([]);
+    expect(imBot(raum, 'import type { Actor } from "@paibot/shared";')).not.toEqual([]);
+    expect(imWeg(raum, 'export const a = { actor: "besitzer" };')).not.toEqual([]);
+    expect(imBot(raum, 'export const a = { actor: "besitzer" };')).not.toEqual([]);
+    // Außerhalb von raum/ bleibt der Text verboten.
+    expect(imBot("packages/agents/src/run", 'export const a = "besitzer";')).not.toEqual([]);
+  });
+
   it("außerhalb von Worker und Bot-Paketen gilt diese zweite Regel nicht", () => {
     const source = "export const a = (actor: string) => ({ actor });";
     expect(imBot("apps/web/src/lib/api", source)).toEqual([]);
@@ -291,6 +304,10 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
     "apps/web/src/lib/belege/darstellung.ts": "Anzeige: wer hat gehandelt",
     "apps/web/src/app/(app)/chat/BelegeFlaeche.tsx": "Anzeige im Chat",
     "apps/web/src/app/(app)/belege/BelegeAnsicht.tsx": "Anzeige und Filter der Belege",
+    // Teamchat und Team-Entwurf: Autor-Art einer Nachricht und Auswahlwert, kein Akteur fürs Tor.
+    "packages/agents/src/raum/regeln.ts": "Auswahl: Art des Autors, Abnahme im Team-Entwurf",
+    "packages/agents/src/raum/verlauf.ts": "Auswahl: Art des Autors einer Nachricht",
+    "apps/web/src/lib/team/entwurf/format.ts": "Auswahlwert abnahme (leitung, besitzer, ohne)",
     // Testhilfen und Testdaten: bauen Besitzer-Anfragen nur für Tests.
     "packages/receipts/src/testhilfen.ts": "Testhilfe (in der Regel ausgenommen)",
     "packages/gate/src/testdaten.ts": "Testdaten für die Tor-Tests",
@@ -335,8 +352,9 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
     expect(tot).toEqual([]);
   });
 
-  it("Worker und Bot-Pakete stehen nie in der Liste", () => {
+  it("Worker und Bot-Pakete stehen nie in der Liste (außer den reinen Raum-Regeln)", () => {
     for (const datei of Object.keys(BEKANNT)) {
+      if (datei.startsWith("packages/agents/src/raum/")) continue;
       expect(datei).not.toMatch(/^(?:apps\/worker|packages\/(?:agents|mcp|jobs))\//);
     }
   });

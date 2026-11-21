@@ -1,0 +1,19 @@
+// PaiBot – Lint-Regel: Der Text `besitzer` kommt im Worker und in den Paketen `agents`, `mcp` und
+// `jobs` nicht vor. Ausgenommen sind Tests und `packages/agents/src/raum/`: Die reinen Regeln des
+// Teamchats nennen dort die Art des Autors einer Nachricht und den Auswahlwert der Abnahme im
+// Team-Entwurf; beides ist kein Akteur fürs Tor. Auch dort bleibt `akteur-nur-bot.grit` scharf
+// (`actor:` nur als `botActor(...)`, keine Akteur-Typen) und `akteur-besitzer.grit` (kein
+// Besitzer-Akteur als Wert).
+//
+// Autor:     Oliver Hees
+// Website:   https://paibot.de
+// Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+// Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+// Seit:      2026-11-21
+
+language js
+
+`$text` where {
+  $text <: r"^[\"'`]besitzer[\"'`]$",
+  register_diagnostic(span=$text, message="Der Text besitzer gehört nicht in den Worker und die Bot-Pakete.")
+}

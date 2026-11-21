@@ -40,6 +40,17 @@
       ]
     },
     {
+      "path": "./tools/lint-regeln/akteur-kein-besitzer-text.grit",
+      "includes": [
+        "apps/worker/**/*.ts",
+        "packages/agents/**/*.ts",
+        "packages/mcp/**/*.ts",
+        "packages/jobs/**/*.ts",
+        "!**/*.test.ts",
+        "!packages/agents/src/raum/**"
+      ]
+    },
+    {
       "path": "./tools/lint-regeln/nur-in-tests.grit",
       "includes": [
         "**/*.ts",
