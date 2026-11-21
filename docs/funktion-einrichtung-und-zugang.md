@@ -71,6 +71,10 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
 
      ![Einrichtung mit EUrouter: Schlüssel und die Regeln „Beispiel-Regel“ und „Gibt es nicht“; grün „Verbindung steht. 1 von 2 Regeln geprüft.“, darunter „„Beispiel-Regel“ funktioniert. Antwort von Beispiel-Anbieter Nord · Sitz Niederlande laut EUrouter“ und „„Gibt es nicht“ geht nicht“ mit Ausweg](assets/screenshots/einrichtung-regeln.png)
 
+     Freiwillig kannst du hier auch den **zweiten Schlüssel** (einen Verwaltungsschlüssel aus deinem Konto bei EUrouter) eintragen. PaiBot liest damit die Liste deiner Regeln und zeigt bei jeder Regel, ob sie in deinem Konto als Datenresidenz „EU“ angibt („EU laut Regel“, mit Datum). Ohne den zweiten Schlüssel gibt es keine solche Angabe. Er wird nur dafür benutzt, getrennt verschlüsselt gespeichert und nie angezeigt. Darf er die Regeln nicht lesen, steht „Dieser Schlüssel darf die Regeln nicht lesen.“; lass das Feld dann leer oder trag einen passenden Schlüssel ein. Mehr dazu unter [Anbieter und Modelle](funktion-anbieter-und-modelle.md).
+
+     ![Einrichtung mit EUrouter und zweitem Schlüssel: bei „Beispiel-Regel“ steht „EU laut Regel in deinem EUrouter-Konto, geprüft am …“, bei „Zweite Beispiel-Regel“ die Datenresidenz „US“ ohne Kennzeichnung](assets/screenshots/einrichtung-regeln-zweiter-schluessel.png)
+
      Dasselbe im hellen Design:
 
      ![Ergebnis der Prüfung im hellen Design](assets/screenshots/einrichtung-regeln-hell.png)

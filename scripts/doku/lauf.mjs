@@ -92,7 +92,11 @@ export const ANBIETER_STANDARD = Object.freeze({
   chunkDelayMs: 0,
   holdAfterChunks: 0,
   // Routing-Regel und Anbieter-Liste wie bei einem Vermittler (nur Beispiel-Daten).
-  routingRules: [{ name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/allrounder" }],
+  routingRules: [
+    { name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/allrounder" },
+    { name: "Zweite Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/kompakt" },
+    { name: "Dritte Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/kompakt" },
+  ],
   providers: [{ slug: "beispiel-nord", name: "Beispiel-Anbieter Nord", headquarters: "NL" }],
 });
 
@@ -111,6 +115,7 @@ export const SONDERWERTE = Object.freeze({
   "$einrichtungs-code": "einrichtungsCode",
   $passwort: "passwort",
   "$anbieter-schluessel": "anbieterSchluessel",
+  $verwaltungsschluessel: "verwaltungsschluessel",
 });
 
 /**

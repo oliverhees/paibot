@@ -38,6 +38,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { legeDatenbankAn, loescheDatenbank, starteEigenenServer } from "./datenbank.mjs";
+import { starteKontoAttrappe } from "./konto-attrappe.mjs";
 import {
   ANBIETER_STANDARD,
   aendereLauf,
@@ -457,6 +458,11 @@ async function main() {
   });
   if (!steuerung.ok) throw new Error(`Test-Anbieter: Steuerung antwortet ${steuerung.status}.`);
 
+  // Beispiel-Konto: Regel-Liste in der belegten Form, alles andere geht an den Test-Anbieter.
+  const verwaltungsschluessel = wegwerfWert(24);
+  const konto = await starteKontoAttrappe({ verwaltungsschluessel, anbieterUrl });
+  aufgaben.push(() => konto.stop());
+
   // 3. Web-App aus dem Produktions-Build (wie im Image: standalone plus statische Dateien)
   const lauf = path.join(ordner, "app");
   cpSync(STANDALONE, lauf, { recursive: true, verbatimSymlinks: true });
@@ -510,7 +516,7 @@ async function main() {
       TRUST_PROXY: "1",
       PAIBOT_EINRICHTUNG_ANBIETER_URL: `${anbieterUrl}/v1`,
       // Vorlagen (EUrouter, Mistral AI) zeigen in den Bildern auf den Test-Anbieter.
-      PAIBOT_VORLAGEN_TESTADRESSE: `${anbieterUrl.replace("127.0.0.1", "localhost")}/v1`,
+      PAIBOT_VORLAGEN_TESTADRESSE: `${konto.url.replace("127.0.0.1", "localhost")}/v1`,
     }),
     logDatei: path.join(ordner, "web.log"),
   });
@@ -574,6 +580,7 @@ async function main() {
       einrichtungsCode,
       passwort: wegwerfWert(20),
       anbieterSchluessel,
+      verwaltungsschluessel,
       modell: BEISPIEL_MODELLE[0].id,
       zustand: "frisch",
     },
