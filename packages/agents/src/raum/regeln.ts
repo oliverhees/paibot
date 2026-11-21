@@ -40,7 +40,7 @@ export type AntwortHinweis =
   | { readonly grund: "zu_viele_erwaehnungen" }
   | { readonly grund: "text_gekuerzt" };
 
-export interface Antwortplan {
+export interface Antwortvorschlag {
   readonly art: "erwaehnt" | "ansprechpartner" | "niemand";
   /** Bots, die antworten sollen, in der Reihenfolge, in der sie dran sind. */
   readonly antworter: readonly RaumBot[];
@@ -49,7 +49,7 @@ export interface Antwortplan {
   readonly abgelehnt: boolean;
 }
 
-const NIEMAND: Antwortplan = { art: "niemand", antworter: [], hinweise: [], abgelehnt: false };
+const NIEMAND: Antwortvorschlag = { art: "niemand", antworter: [], hinweise: [], abgelehnt: false };
 
 /**
  * Wer antwortet auf eine Nachricht im Teamchat?
@@ -65,7 +65,7 @@ export function bestimmeAntworter(
   autor: RaumAutor | string,
   text: string,
   lage: RaumLage,
-): Antwortplan {
+): Antwortvorschlag {
   if (autor !== "besitzer") return NIEMAND;
   const erwaehnungen: ErwaehnungsErgebnis = erkenneErwaehnungen(text, lage.mitglieder, {
     ...(lage.andereBots ? { andereBots: lage.andereBots } : {}),

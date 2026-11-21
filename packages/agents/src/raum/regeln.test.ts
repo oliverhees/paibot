@@ -30,22 +30,25 @@ const ids = (autor: string, text: string, lage: RaumLage = LAGE) =>
 describe("Wer antwortet im Teamchat", () => {
   describe("Tabelle der Antwort-Regeln", () => {
     it("1: Besitzer mit Erwähnungen → genau die Erwähnten, nacheinander in der Reihenfolge", () => {
-      const plan = bestimmeAntworter("besitzer", "@Lektorat @Ideen schreibt", LAGE);
-      expect(plan.art).toBe("erwaehnt");
-      expect(plan.antworter.map((b) => b.id)).toEqual(["b3", "b1"]);
-      expect(plan.abgelehnt).toBe(false);
+      const vorschlag = bestimmeAntworter("besitzer", "@Lektorat @Ideen schreibt", LAGE);
+      expect(vorschlag.art).toBe("erwaehnt");
+      expect(vorschlag.antworter.map((b) => b.id)).toEqual(["b3", "b1"]);
+      expect(vorschlag.abgelehnt).toBe(false);
     });
 
     it("2: Besitzer ohne Erwähnung → der Ansprechpartner", () => {
-      const plan = bestimmeAntworter("besitzer", "Wie geht es?", LAGE);
-      expect(plan.art).toBe("ansprechpartner");
-      expect(plan.antworter.map((b) => b.id)).toEqual(["b2"]);
+      const vorschlag = bestimmeAntworter("besitzer", "Wie geht es?", LAGE);
+      expect(vorschlag.art).toBe("ansprechpartner");
+      expect(vorschlag.antworter.map((b) => b.id)).toEqual(["b2"]);
     });
 
     it("2b: ohne Ansprechpartner antwortet niemand, mit Hinweis", () => {
-      const plan = bestimmeAntworter("besitzer", "Hallo", { ...LAGE, ansprechpartnerId: null });
-      expect(plan.antworter).toEqual([]);
-      expect(plan.hinweise).toEqual([{ grund: "kein_ansprechpartner" }]);
+      const vorschlag = bestimmeAntworter("besitzer", "Hallo", {
+        ...LAGE,
+        ansprechpartnerId: null,
+      });
+      expect(vorschlag.antworter).toEqual([]);
+      expect(vorschlag.hinweise).toEqual([{ grund: "kein_ansprechpartner" }]);
     });
 
     it("2c: Ansprechpartner pausiert oder kein Mitglied (mehr) → niemand, mit Hinweis", () => {
@@ -62,11 +65,11 @@ describe("Wer antwortet im Teamchat", () => {
     });
 
     it("3: Nachricht eines Bots → niemand, auch mit gültiger Erwähnung", () => {
-      const plan = bestimmeAntworter("bot", "@Lektorat bitte prüfen", LAGE);
-      expect(plan.art).toBe("niemand");
-      expect(plan.antworter).toEqual([]);
-      expect(plan.hinweise).toEqual([]);
-      expect(plan.abgelehnt).toBe(false);
+      const vorschlag = bestimmeAntworter("bot", "@Lektorat bitte prüfen", LAGE);
+      expect(vorschlag.art).toBe("niemand");
+      expect(vorschlag.antworter).toEqual([]);
+      expect(vorschlag.hinweise).toEqual([]);
+      expect(vorschlag.abgelehnt).toBe(false);
     });
 
     it("3b: jeder andere Absender wird wie ein Bot behandelt", () => {
@@ -81,17 +84,17 @@ describe("Wer antwortet im Teamchat", () => {
         ansprechpartnerId: "b2",
         andereBots: [bot("f1", "Steuer")],
       };
-      const plan = bestimmeAntworter("besitzer", "@Ideen @Steuer @Entwurf", lage);
-      expect(plan.antworter.map((b) => b.id)).toEqual(["b2"]);
-      expect(plan.hinweise.map((h) => h.grund)).toEqual(["pausiert", "nicht_im_team"]);
+      const vorschlag = bestimmeAntworter("besitzer", "@Ideen @Steuer @Entwurf", lage);
+      expect(vorschlag.antworter.map((b) => b.id)).toEqual(["b2"]);
+      expect(vorschlag.hinweise.map((h) => h.grund)).toEqual(["pausiert", "nicht_im_team"]);
     });
 
     it("4b: nur ungültige Erwähnungen → niemand, der Ansprechpartner springt nicht ein", () => {
       const lage: RaumLage = { ...LAGE, mitglieder: [bot("b1", "Ideen", true), ENTWURF] };
-      const plan = bestimmeAntworter("besitzer", "@Ideen mach das", lage);
-      expect(plan.art).toBe("niemand");
-      expect(plan.antworter).toEqual([]);
-      expect(plan.hinweise.map((h) => h.grund)).toEqual(["pausiert"]);
+      const vorschlag = bestimmeAntworter("besitzer", "@Ideen mach das", lage);
+      expect(vorschlag.art).toBe("niemand");
+      expect(vorschlag.antworter).toEqual([]);
+      expect(vorschlag.hinweise.map((h) => h.grund)).toEqual(["pausiert"]);
     });
 
     it("5: ein @ im Text eines Bots löst nichts aus (Name, Code, Zitat)", () => {
@@ -104,13 +107,13 @@ describe("Wer antwortet im Teamchat", () => {
   it("zu viele Erwähnungen: Nachricht abgelehnt, niemand antwortet", () => {
     const sieben = Array.from({ length: 7 }, (_, i) => bot(`m${i}`, `Bot${i}`));
     const text = sieben.map((b) => `@${b.name}`).join(" ");
-    const plan = bestimmeAntworter("besitzer", text, {
+    const vorschlag = bestimmeAntworter("besitzer", text, {
       mitglieder: sieben,
       ansprechpartnerId: null,
     });
-    expect(plan.abgelehnt).toBe(true);
-    expect(plan.antworter).toEqual([]);
-    expect(plan.hinweise).toContainEqual({ grund: "zu_viele_erwaehnungen" });
+    expect(vorschlag.abgelehnt).toBe(true);
+    expect(vorschlag.antworter).toEqual([]);
+    expect(vorschlag.hinweise).toContainEqual({ grund: "zu_viele_erwaehnungen" });
     const eng = bestimmeAntworter("besitzer", "@Ideen @Entwurf", {
       ...LAGE,
       hoechstensErwaehnungen: 1,
@@ -127,9 +130,9 @@ describe("Wer antwortet im Teamchat", () => {
   });
 
   it("ähnlich aussehender Name ruft niemanden und lässt auch den Ansprechpartner nicht antworten", () => {
-    const plan = bestimmeAntworter("besitzer", "@Idеen", LAGE); // kyrillisches е
-    expect(plan.antworter).toEqual([]);
-    expect(plan.hinweise.map((h) => h.grund)).toEqual(["aehnlicher_name"]);
+    const vorschlag = bestimmeAntworter("besitzer", "@Idеen", LAGE); // kyrillisches е
+    expect(vorschlag.antworter).toEqual([]);
+    expect(vorschlag.hinweise.map((h) => h.grund)).toEqual(["aehnlicher_name"]);
   });
 });
 
