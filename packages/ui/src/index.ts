@@ -22,7 +22,13 @@ export {
 } from "./avatar/bewegung";
 export { FORM_ZU_FARBE, FORMEN, formFuer, gesichtFuer } from "./avatar/formen";
 export { Button, type ButtonArt, type ButtonProps } from "./basis/Button";
-export { fokussierbareIn, menueIndex, naechstesZiel } from "./basis/fokus";
+export {
+  ERSTER_FOKUS,
+  fokussierbareIn,
+  menueIndex,
+  naechstesZiel,
+  startZiel,
+} from "./basis/fokus";
 export { ICON_NAMEN, Icon, type IconName, type IconProps } from "./basis/Icon";
 export { IconButton, type IconButtonProps } from "./basis/IconButton";
 export { Karte, type KarteProps } from "./basis/Karte";

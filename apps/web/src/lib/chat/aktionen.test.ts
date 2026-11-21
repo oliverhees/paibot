@@ -476,3 +476,61 @@ describe("Stopp", () => {
     expect(await ketteGueltig(e.u)).toBe(true);
   });
 });
+
+describe("Fakten des Tors beim Senden", () => {
+  /** Entscheidung des letzten Sendens: Ergebnis, Fakten und Vorbedingungen nach Name. */
+  async function letzteEntscheidung(u: TestUmgebung) {
+    const [entscheidung] = (await repo.belege.listPage(u.db, { limit: 2 })).items.reverse();
+    if (entscheidung?.body.type !== "decision") throw new Error("keine Entscheidung");
+    const body = entscheidung.body;
+    return {
+      outcome: body.decision.outcome,
+      reason: body.decision.reason,
+      facts: body.facts,
+      vorbedingungen: Object.fromEntries(
+        (body.decision.preconditions ?? []).map((v) => [v.name, v.result]),
+      ),
+    };
+  }
+
+  it("Unterhaltung vorhanden: Fakt wahr erlaubt, Fakt falsch lehnt das Tor selbst ab", async () => {
+    const e = await eingerichtet();
+    const id = await neueUnterhaltung(e);
+    expect((await senden(e, id)).status).toBe(202);
+    const erlaubt = await letzteEntscheidung(e.u);
+    expect(erlaubt.outcome).toBe("allow");
+    expect(erlaubt.facts.conversationExists).toBe(true);
+    expect(erlaubt.vorbedingungen.unterhaltung_vorhanden).toBe("ok");
+
+    const fremd = newId("conversation");
+    const r = await senden(e, fremd);
+    expect(r.status).toBe(404);
+    expect(r.body.fehler?.code).toBe("nicht_gefunden");
+    // Die Ablehnung kommt vom Tor (Entscheidung „deny“ mit verletzter Vorbedingung), nicht erst
+    // von der Ausführung; sonst hielte der Beleg eine Erlaubnis fest, die nie hätte gelten dürfen.
+    const abgelehnt = await letzteEntscheidung(e.u);
+    expect(abgelehnt.outcome).toBe("deny");
+    expect(abgelehnt.facts.conversationExists).toBe(false);
+    expect(abgelehnt.vorbedingungen.unterhaltung_vorhanden).toBe("verletzt");
+    expect(abgelehnt.vorbedingungen.kein_lauf_aktiv).toBe("ok");
+  });
+
+  it("Lauf aktiv: ohne Lauf erlaubt, mit Lauf lehnt das Tor selbst ab", async () => {
+    const e = await eingerichtet();
+    const id = await neueUnterhaltung(e);
+    expect((await senden(e, id, "Erste")).status).toBe(202);
+    const erste = await letzteEntscheidung(e.u);
+    expect(erste.outcome).toBe("allow");
+    expect(erste.facts.runActive).toBe(false);
+    expect(erste.vorbedingungen.kein_lauf_aktiv).toBe("ok");
+
+    const zweite = await senden(e, id, "Zweite");
+    expect(zweite.status).toBe(409);
+    expect(zweite.body.fehler?.code).toBe("lauf_aktiv");
+    const abgelehnt = await letzteEntscheidung(e.u);
+    expect(abgelehnt.outcome).toBe("deny");
+    expect(abgelehnt.facts.runActive).toBe(true);
+    expect(abgelehnt.vorbedingungen.kein_lauf_aktiv).toBe("verletzt");
+    expect(abgelehnt.vorbedingungen.unterhaltung_vorhanden).toBe("ok");
+  });
+});

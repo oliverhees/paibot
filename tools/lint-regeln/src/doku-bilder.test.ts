@@ -10,6 +10,7 @@
  */
 
 import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -48,7 +49,6 @@ const datenbank = await laden<{
     verwalter: string,
     kennung: string,
   ) => Promise<{ name: string; rolle: string; loesche: () => Promise<void> }>;
-  zaehleDokuReste: (root: string, verwalter: string) => Promise<{ datenbanken: number }>;
 }>("scripts/doku/datenbank.mjs");
 
 const pruefe = (aufnahmen: unknown[], ablaeufe?: unknown) =>
@@ -258,11 +258,37 @@ describe("Schutz der Wegwerf-Datenbank", () => {
 
   // Mit echtem Postgres (Wegwerf-Server wie bei den anderen Postgres-Tests).
   const url = process.env.PAIBOT_TEST_DATABASE_URL;
+
+  /** Gibt es genau diese Datenbank und Rolle auf dem Server (0 oder 1)? */
+  async function vorhanden(verwalter: string, name: string, rolle: string) {
+    const modul = createRequire(path.join(ROOT, "packages", "db", "package.json"))("postgres");
+    const postgres = (typeof modul === "function" ? modul : modul.default) as (
+      url: string,
+      optionen: Record<string, unknown>,
+    ) => {
+      (teile: TemplateStringsArray, ...werte: unknown[]): Promise<Record<string, number>[]>;
+      end: (optionen: { timeout: number }) => Promise<void>;
+    };
+    const sql = postgres(verwalter, { max: 1, onnotice: () => undefined, connect_timeout: 10 });
+    try {
+      const [zahl] = await sql`
+        select
+          (select count(*)::int from pg_database where datname = ${name}) as datenbank,
+          (select count(*)::int from pg_roles where rolname = ${rolle}) as rolle`;
+      if (zahl === undefined) throw new Error("keine Antwort vom Server");
+      return zahl;
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  }
   it.skipIf(!url)(
     "legt an, verweigert das Löschen mit fremdem Vermerk und löscht mit dem eigenen",
     async () => {
       const verwalter = url as string;
       const db = await datenbank.legeDatenbankAn(ROOT, verwalter, "kennung-a");
+      // Nur die eigene Datenbank zählt: Andere Läufe (z. B. ein laufendes `pnpm doku:app`) dürfen
+      // auf demselben Server gleichzeitig ihre eigenen Doku-Datenbanken haben.
+      expect((await vorhanden(verwalter, db.name, db.rolle)).datenbank).toBe(1);
       try {
         await expect(
           datenbank.loescheDatenbank(ROOT, verwalter, {
@@ -274,8 +300,7 @@ describe("Schutz der Wegwerf-Datenbank", () => {
       } finally {
         await db.loesche();
       }
-      const reste = await datenbank.zaehleDokuReste(ROOT, verwalter);
-      expect(reste.datenbanken).toBe(0);
+      expect(await vorhanden(verwalter, db.name, db.rolle)).toEqual({ datenbank: 0, rolle: 0 });
     },
   );
 });

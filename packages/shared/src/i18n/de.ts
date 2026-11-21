@@ -1108,4 +1108,20 @@ export const de = {
   // Schutz von Anmeldung und Eingängen
   "einrichtung.code.log_frist":
     "Einrichtungs-Code: {code} (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)",
+  // Nacharbeit Belege-Seite: Filter nach Aktion und Unterhaltung, Schlüssel der Installation
+  "belege.filter.aktion": "Aktion",
+  "belege.filter.aktion.alle": "Jede Aktion",
+  "belege.filter.unterhaltung": "Unterhaltung",
+  "belege.filter.unterhaltung.alle": "Jede Unterhaltung",
+  "belege.schluessel.titel": "Schlüssel dieser Installation",
+  "belege.schluessel.text":
+    "PaiBot signiert jeden Beleg mit diesem Schlüssel. Den privaten Teil kennt nur dein Server; hier steht der öffentliche Teil, mit dem sich die Signaturen prüfen lassen.",
+  "belege.schluessel.kurzform": "Kurzform",
+  "belege.schluessel.kennung": "Kennung",
+  "belege.schluessel.seit": "Seit",
+  "belege.schluessel.vergleich":
+    "Die Kurzform ist eine Prüfsumme des Schlüssels. Dieselbe Kurzform nennt „Beleg prüfen“ bei jedem Beleg, und sie steht im Kopf des Exports. Notiere sie dir: Weicht sie später ab, wurde der Schlüssel gewechselt.",
+  "belege.schluessel.anzeigen": "Öffentlichen Schlüssel anzeigen",
+  "belege.schluessel.frueher": "Frühere Schlüssel",
+  "belege.schluessel.frueher_zeit": "von {seit} bis {bis}",
 } as const satisfies Record<string, string | readonly string[]>;

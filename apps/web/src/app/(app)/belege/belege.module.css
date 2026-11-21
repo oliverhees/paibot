@@ -493,3 +493,69 @@
 .pfeilLinks {
   transform: rotate(90deg);
 }
+
+/* Filter nach Unterhaltung: lange Titel werden gekürzt. */
+.auswahl {
+  max-width: 100%;
+}
+
+.auswahlBreit {
+  max-width: 240px;
+  text-overflow: ellipsis;
+}
+
+/* Schlüssel dieser Installation */
+.schluesselDaten {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: var(--schrift-s);
+}
+
+.schluesselDaten dt {
+  color: var(--ink-soft);
+}
+
+.schluesselDaten dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.kurzform {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.umbruch {
+  overflow-wrap: anywhere;
+}
+
+.details summary {
+  color: var(--accent-text);
+  font-size: var(--schrift-s);
+  cursor: pointer;
+}
+
+.details summary:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+  border-radius: var(--radius-sm);
+}
+
+.details code {
+  display: block;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+.schluesselListe {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--schrift-s);
+}

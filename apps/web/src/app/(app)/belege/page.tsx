@@ -13,7 +13,9 @@ import { repo } from "@paibot/db";
 import { encodeAnchor } from "@paibot/shared/belege";
 import { t } from "@paibot/shared/texte";
 import type { Metadata } from "next";
+import { aktionsWahl, filterAusAdresse, unterhaltungsWahl } from "../../../lib/belege/filter";
 import { aktuellerAnker, belegeSeite } from "../../../lib/belege/lesen";
+import { schluesselAnzeige } from "../../../lib/belege/schluessel";
 import { datenbank } from "../../../lib/datenbank";
 import { besitzerSeite } from "../../../lib/zugang/seite";
 import { BelegeAnsicht } from "./BelegeAnsicht";
@@ -24,25 +26,40 @@ export const metadata: Metadata = { title: `${t("seite.belege")} · PaiBot` };
 /** Belege je Seite der Liste. */
 const SEITE = 50;
 
-export default async function BelegeSeite() {
+export default async function BelegeSeite({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await besitzerSeite();
+  const filter = filterAusAdresse(await searchParams);
   const db = datenbank();
   const jetzt = new Date();
-  const [seite, settings, bots, anker, kopf] = await Promise.all([
-    belegeSeite(db, { limit: SEITE }),
+  const [seite, settings, bots, anker, kopf, unterhaltungen] = await Promise.all([
+    belegeSeite(db, {
+      limit: SEITE,
+      ...(filter.aktion === undefined ? {} : { action: filter.aktion }),
+      ...(filter.unterhaltung === undefined ? {} : { conversationId: filter.unterhaltung }),
+    }),
     repo.settings.get(db),
     repo.bots.list(db),
     aktuellerAnker(db, jetzt),
     repo.belege.head(db),
+    unterhaltungsWahl(db),
   ]);
+  const zeitzone = settings?.timezone ?? "Europe/Berlin";
   return (
     <BelegeAnsicht
       start={seite}
       seiteGroesse={SEITE}
       gesamt={kopf?.seq ?? 0}
-      zeitzone={settings?.timezone ?? "Europe/Berlin"}
+      zeitzone={zeitzone}
       jetzt={jetzt.toISOString()}
       botNamen={Object.fromEntries(bots.map((b) => [b.id, b.name]))}
+      filter={filter}
+      aktionen={aktionsWahl()}
+      unterhaltungen={unterhaltungen}
+      schluessel={await schluesselAnzeige(db, zeitzone)}
       {...(anker === undefined ? {} : { anker: encodeAnchor(anker) })}
     />
   );

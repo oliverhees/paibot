@@ -48,8 +48,10 @@ function mitAbfrage(pfad: string, abfrage: Record<string, string | number | unde
   return `${pfad}?${new URLSearchParams(teile.map(([k, v]) => [k, String(v)])).toString()}`;
 }
 
-/** `/api/belege?before=…&limit=…` */
-export function belegeListePfad(abfrage: { before?: number; limit?: number } = {}): string {
+/** `/api/belege?action=…&conversationId=…&before=…&limit=…` */
+export function belegeListePfad(
+  abfrage: { action?: string; conversationId?: string; before?: number; limit?: number } = {},
+): string {
   return mitAbfrage(BELEG_PFADE.belege, abfrage);
 }
 
@@ -65,4 +67,12 @@ export function belegPfad(id: string, pruefung = false): string {
 /** `/api/belege/kette?ab=…&anzahl=…` bzw. mit `pruefung=server` */
 export function kettePfad(abfrage: { ab?: number; anzahl?: number; pruefung?: "server" }): string {
   return mitAbfrage(BELEG_PFADE.belegeKette, abfrage);
+}
+
+/** Filter der Seite „Belege“ in der Adresse: `/belege?aktion=…&unterhaltung=…`. */
+export function belegeSeitenPfad(filter: { aktion?: string; unterhaltung?: string }): string {
+  return mitAbfrage("/belege", {
+    ...(filter.aktion ? { aktion: filter.aktion } : {}),
+    ...(filter.unterhaltung ? { unterhaltung: filter.unterhaltung } : {}),
+  });
 }

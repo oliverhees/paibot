@@ -1,6 +1,8 @@
 /**
- * PaiBot – Ansicht „Belege“ im Browser: Liste mit Nachladen und Filter, „Ganze Kette prüfen“ im
- * Browser mit Fortschritt, Anker kopieren, sichern und zum Prüfen einfügen, Export.
+ * PaiBot – Ansicht „Belege“ im Browser: Liste mit Nachladen und Filter (Aktion und Unterhaltung
+ * auf dem Server, Von und Prüf-Status auf den geladenen Zeilen), „Ganze Kette prüfen“ im Browser
+ * mit Fortschritt, Anker kopieren, sichern und zum Prüfen einfügen, Export, Schlüssel der
+ * Installation mit Kurzform.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -23,10 +25,11 @@ import {
   TextArea,
 } from "@paibot/ui";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { apiDatei, apiFetch } from "../../../lib/api/client";
 import { belegZeile, kennung } from "../../../lib/belege/darstellung";
 import { dateiSichern } from "../../../lib/belege/datei";
+import type { BelegFilter, FilterWahl } from "../../../lib/belege/filter";
 import {
   ketteStueckweise,
   LadeFehler,
@@ -37,11 +40,13 @@ import {
   BELEG_PFADE,
   belegAusKopf,
   belegeListePfad,
+  belegeSeitenPfad,
   EXPORT_KOPF,
   EXPORT_TYP,
 } from "../../../lib/belege/pfade";
 import { kannImBrowserPruefen, prueferLaden } from "../../../lib/belege/pruefer-laden";
 import { type KettenErgebnis, pruefeKette, zeilenStand } from "../../../lib/belege/pruefung";
+import type { SchluesselAnzeige } from "../../../lib/belege/schluessel";
 import styles from "./belege.module.css";
 
 export interface BelegeAnsichtProps {
@@ -54,6 +59,13 @@ export interface BelegeAnsichtProps {
   botNamen: Record<string, string>;
   /** Aktueller Anker als Text (fehlt bei leerer Kette). */
   anker?: string;
+  /** Filter, mit dem `start` geladen wurde (aus der Adresse). */
+  filter: BelegFilter;
+  /** Wahl im Filter „Aktion“. */
+  aktionen: FilterWahl[];
+  /** Wahl im Filter „Unterhaltung“. */
+  unterhaltungen: FilterWahl[];
+  schluessel: SchluesselAnzeige;
 }
 
 type KettenZustand =
@@ -96,6 +108,10 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
   const [ankerText, setAnkerText] = useState("");
   const [ankerFehler, setAnkerFehler] = useState<string | undefined>();
   const [exportZustand, setExportZustand] = useState<ExportZustand>({ art: "bereit" });
+  const [filter, setFilter] = useState<BelegFilter>(props.filter);
+  const [filterLaedt, setFilterLaedt] = useState(false);
+  /** Nur die Antwort der letzten Filter-Anfrage zählt (schnelles Umschalten). */
+  const anfrageNr = useRef(0);
 
   const jetzt = useMemo(() => new Date(props.jetzt), [props.jetzt]);
   const ergebnis = kette.art === "fertig" ? kette.ergebnis : undefined;
@@ -113,15 +129,27 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
       (statusFilter === "alle" || (statusFilter === "geprueft") === z.stand.geprueft),
   );
 
+  /** Abfrage der Liste zum Filter (Aktion und Unterhaltung filtert der Server). */
+  function listePfad(f: BelegFilter, before?: number): string {
+    return belegeListePfad({
+      ...(f.aktion === undefined ? {} : { action: f.aktion }),
+      ...(f.unterhaltung === undefined ? {} : { conversationId: f.unterhaltung }),
+      ...(before === undefined ? {} : { before }),
+      limit: props.seiteGroesse,
+    });
+  }
+
   async function mehrLaden() {
     if (naechste === undefined) return;
     setLaedtMehr(true);
     setListenFehler(undefined);
+    const nr = anfrageNr.current;
     const antwort = await apiFetch<{ items: ReceiptEntry[]; nextBefore?: number }>(
       "GET",
-      belegeListePfad({ before: naechste, limit: props.seiteGroesse }),
+      listePfad(filter, naechste),
     );
     setLaedtMehr(false);
+    if (nr !== anfrageNr.current) return;
     if (!antwort.ok) {
       setListenFehler(antwort.fehler.text);
       return;
@@ -130,15 +158,40 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
     setNaechste(antwort.daten.nextBefore);
   }
 
-  async function ersteSeiteNeu() {
+  async function ersteSeiteLaden(f: BelegFilter): Promise<boolean> {
+    const nr = ++anfrageNr.current;
     const antwort = await apiFetch<{ items: ReceiptEntry[]; nextBefore?: number }>(
       "GET",
-      belegeListePfad({ limit: props.seiteGroesse }),
+      listePfad(f),
     );
-    if (!antwort.ok) return;
+    if (nr !== anfrageNr.current) return false;
+    if (!antwort.ok) {
+      setListenFehler(antwort.fehler.text);
+      return false;
+    }
+    setListenFehler(undefined);
     setEintraege(antwort.daten.items);
     setNaechste(antwort.daten.nextBefore);
-    setGesamt(antwort.daten.items[0]?.seq ?? gesamt);
+    return true;
+  }
+
+  async function filterSetzen(neu: BelegFilter) {
+    setFilter(neu);
+    setFilterLaedt(true);
+    const ok = await ersteSeiteLaden(neu);
+    setFilterLaedt(false);
+    if (!ok) return;
+    try {
+      window.history.replaceState(window.history.state, "", belegeSeitenPfad(neu));
+    } catch {
+      // Ohne Adresse geht der Filter beim Neuladen verloren; die Liste stimmt trotzdem.
+    }
+  }
+
+  function filterZuruecksetzen() {
+    setVon("alle");
+    setStatusFilter("alle");
+    if (filter.aktion !== undefined || filter.unterhaltung !== undefined) void filterSetzen({});
   }
 
   async function kettePruefen(anker?: ChainAnchor) {
@@ -202,6 +255,7 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
     const entscheidung = belegAusKopf(antwort.kopf.get(EXPORT_KOPF.entscheidung));
     const ergebnisBeleg = belegAusKopf(antwort.kopf.get(EXPORT_KOPF.ergebnis));
     dateiSichern(antwort.name, antwort.inhalt, EXPORT_TYP);
+    if (ergebnisBeleg !== undefined) setGesamt((alt) => Math.max(alt, ergebnisBeleg.seq));
     if (entscheidung === undefined || ergebnisBeleg === undefined) {
       setExportZustand({ art: "bereit" });
     } else {
@@ -214,7 +268,7 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
         },
       });
     }
-    await ersteSeiteNeu();
+    await ersteSeiteLaden(filter);
   }
 
   const geprueft = ergebnis?.geprueft;
@@ -307,6 +361,48 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
                   ))}
                 </fieldset>
                 <select
+                  id="belege-aktion"
+                  className={styles.auswahl}
+                  value={filter.aktion ?? ""}
+                  onChange={(e) =>
+                    void filterSetzen({
+                      ...filter,
+                      aktion: (e.target.value || undefined) as BelegFilter["aktion"],
+                    })
+                  }
+                  aria-label={t("belege.filter.aktion")}
+                  aria-busy={filterLaedt || undefined}
+                >
+                  <option value="">{t("belege.filter.aktion.alle")}</option>
+                  {props.aktionen.map((a) => (
+                    <option key={a.wert} value={a.wert}>
+                      {a.text}
+                    </option>
+                  ))}
+                </select>
+                {props.unterhaltungen.length > 0 && (
+                  <select
+                    id="belege-unterhaltung"
+                    className={`${styles.auswahl} ${styles.auswahlBreit}`}
+                    value={filter.unterhaltung ?? ""}
+                    onChange={(e) =>
+                      void filterSetzen({
+                        ...filter,
+                        unterhaltung: (e.target.value || undefined) as BelegFilter["unterhaltung"],
+                      })
+                    }
+                    aria-label={t("belege.filter.unterhaltung")}
+                    aria-busy={filterLaedt || undefined}
+                  >
+                    <option value="">{t("belege.filter.unterhaltung.alle")}</option>
+                    {props.unterhaltungen.map((u) => (
+                      <option key={u.wert} value={u.wert}>
+                        {u.text}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <select
                   id="belege-status"
                   className={styles.auswahl}
                   value={statusFilter}
@@ -324,12 +420,7 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
                   titel={t("belege.filter.leer.titel")}
                   text={t("belege.filter.leer.text")}
                   aktion={
-                    <Button
-                      onClick={() => {
-                        setVon("alle");
-                        setStatusFilter("alle");
-                      }}
-                    >
+                    <Button onClick={filterZuruecksetzen}>
                       {t("belege.filter.zuruecksetzen")}
                     </Button>
                   }
@@ -456,6 +547,50 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
                   </div>
                 </div>
               </AnkerKasten>
+
+              {props.schluessel.aktiv && (
+                <section className={styles.abschnitt} aria-labelledby="belege-schluessel-titel">
+                  <h2 id="belege-schluessel-titel">{t("belege.schluessel.titel")}</h2>
+                  <p>{t("belege.schluessel.text")}</p>
+                  <dl className={styles.schluesselDaten}>
+                    <dt>{t("belege.schluessel.kurzform")}</dt>
+                    <dd className={`${styles.mono} ${styles.kurzform}`}>
+                      {props.schluessel.aktiv.kurzform}
+                    </dd>
+                    <dt>{t("belege.schluessel.kennung")}</dt>
+                    <dd className={`${styles.mono} ${styles.umbruch}`}>
+                      {props.schluessel.aktiv.keyId}
+                    </dd>
+                    <dt>{t("belege.schluessel.seit")}</dt>
+                    <dd>{props.schluessel.aktiv.seit}</dd>
+                  </dl>
+                  <p>{t("belege.schluessel.vergleich")}</p>
+                  <details className={styles.details}>
+                    <summary>{t("belege.schluessel.anzeigen")}</summary>
+                    <code className={`${styles.mono} ${styles.umbruch}`}>
+                      {props.schluessel.aktiv.publicKey}
+                    </code>
+                  </details>
+                  {props.schluessel.frueher.length > 0 && (
+                    <>
+                      <h3>{t("belege.schluessel.frueher")}</h3>
+                      <ul className={styles.schluesselListe}>
+                        {props.schluessel.frueher.map((k) => (
+                          <li key={k.keyId}>
+                            <span className={styles.mono}>{k.kurzform}</span>{" "}
+                            <span className={styles.leise}>
+                              {t("belege.schluessel.frueher_zeit", {
+                                seit: k.seit,
+                                bis: k.bis ?? "",
+                              })}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </section>
+              )}
 
               <section className={styles.abschnitt} aria-labelledby="belege-export-titel">
                 <h2 id="belege-export-titel">{t("belege.export.titel")}</h2>

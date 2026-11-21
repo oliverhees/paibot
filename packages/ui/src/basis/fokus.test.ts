@@ -8,8 +8,8 @@
  * @since     2026-11-20
  */
 
-import { describe, expect, it } from "vitest";
-import { menueIndex, naechstesZiel } from "./fokus";
+import { describe, expect, it, vi } from "vitest";
+import { ERSTER_FOKUS, menueIndex, naechstesZiel, startZiel } from "./fokus";
 
 describe("Fokus-Falle", () => {
   it("springt am Ende zum Anfang und umgekehrt", () => {
@@ -43,5 +43,54 @@ describe("Pfeiltasten in Menü und Reitern", () => {
   it("ignoriert andere Tasten und leere Listen", () => {
     expect(menueIndex("a", 3, 0)).toBeNull();
     expect(menueIndex("ArrowDown", 0, 0)).toBeNull();
+  });
+});
+
+describe("Start-Ziel beim Öffnen", () => {
+  /** Kleiner Ersatz für ein Element: nur, was `startZiel` braucht. */
+  function element(name: string, optionen: { markiert?: boolean; aus?: boolean } = {}) {
+    return {
+      name,
+      markiert: optionen.markiert ?? false,
+      matches: (s: string) => s === ":disabled" && (optionen.aus ?? false),
+      getClientRects: () => [{}],
+    };
+  }
+  function bereich(kinder: ReturnType<typeof element>[]) {
+    return {
+      name: "bereich",
+      querySelector: (s: string) =>
+        s === `[${ERSTER_FOKUS}]` ? (kinder.find((k) => k.markiert) ?? null) : null,
+      querySelectorAll: () => kinder,
+    } as unknown as HTMLElement;
+  }
+  const name = (el: HTMLElement) => (el as unknown as { name: string }).name;
+
+  it("nimmt das gekennzeichnete Feld statt des ersten Knopfs (Schließen)", () => {
+    vi.stubGlobal("getComputedStyle", () => ({ visibility: "visible" }));
+    try {
+      const b = bereich([element("schliessen"), element("titel", { markiert: true })]);
+      expect(name(startZiel(b))).toBe("titel");
+      expect(ERSTER_FOKUS).toBe("data-erster-fokus");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("ohne Markierung (oder gesperrt) das erste, ohne Ziele den Bereich selbst", () => {
+    vi.stubGlobal("getComputedStyle", () => ({ visibility: "visible" }));
+    try {
+      expect(name(startZiel(bereich([element("schliessen"), element("titel")])))).toBe(
+        "schliessen",
+      );
+      const gesperrt = bereich([
+        element("schliessen"),
+        element("x", { markiert: true, aus: true }),
+      ]);
+      expect(name(startZiel(gesperrt))).toBe("schliessen");
+      expect(name(startZiel(bereich([])))).toBe("bereich");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

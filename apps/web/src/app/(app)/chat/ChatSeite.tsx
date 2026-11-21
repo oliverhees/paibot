@@ -855,7 +855,7 @@ function Umbenennen({
         maxLength={LIMITS.conversationTitleChars}
         onChange={(e) => setWert(e.target.value)}
         {...(fehler ? { fehler } : {})}
-        autoFocus
+        data-erster-fokus
       />
       <div className={styles.dialogAktionen}>
         <Button art="zweit" onClick={onAbbrechen}>
@@ -896,7 +896,7 @@ function Loeschen({
         </p>
       )}
       <div className={styles.dialogAktionen}>
-        <Button art="zweit" onClick={onAbbrechen} autoFocus>
+        <Button art="zweit" onClick={onAbbrechen} data-erster-fokus>
           {t("allgemein.abbrechen")}
         </Button>
         <Button art="gefahr" laedt={laeuft} onClick={() => void loeschen()}>

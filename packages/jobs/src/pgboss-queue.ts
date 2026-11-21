@@ -66,8 +66,34 @@ function toDb(executor: SqlExecutor): Db {
   };
 }
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+/** Name, Code und Warteschlange nur, wenn sie wie Kennungen aussehen; sonst fallen sie weg. */
+const KENNUNG = /^[A-Za-z0-9_.-]{1,60}$/;
+const MAX_MESSAGE = 300;
+
+function kennung(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isInteger(value)) return String(value);
+  return typeof value === "string" && KENNUNG.test(value) ? value : undefined;
+}
+
+/**
+ * Beschreibung eines Fehlers für das Log, in einer Zeile. pg-boss meldet Fehler seiner
+ * Abfrage-Schleife nicht als `Error`, sondern als einfaches Objekt (`message`, `stack`, `queue`,
+ * `worker` und die Felder des ursprünglichen Fehlers wie `code`); auch das wird lesbar
+ * beschrieben statt als „[object Object]“. Den Stapel und weitere Felder gibt es nie aus.
+ */
+export function describeQueueError(error: unknown): string {
+  if (error === null || typeof error !== "object") {
+    return String(error).replace(/\s+/g, " ").slice(0, MAX_MESSAGE);
+  }
+  const record = error as Record<string, unknown>;
+  const name = kennung(record.name) ?? "Error";
+  const code = kennung(record.code);
+  const head = code === undefined ? name : `${name} (${code})`;
+  const raw = typeof record.message === "string" ? record.message.replace(/\s+/g, " ").trim() : "";
+  const text = raw.length > MAX_MESSAGE ? `${raw.slice(0, MAX_MESSAGE)} …` : raw;
+  const queue = kennung(record.queue);
+  const described = text === "" ? head : `${head}: ${text}`;
+  return queue === undefined ? described : `${described} [Warteschlange ${queue}]`;
 }
 
 type State = "new" | "started" | "stopped";
@@ -104,7 +130,7 @@ export function buildQueue(boss: PgBoss, options: BuildQueueOptions = {}): Queue
   let releasing = false;
 
   boss.on("error", (error) => {
-    console.error(`[jobs] Fehler der Warteschlange: ${message(error)}`);
+    console.error(`[jobs] Fehler der Warteschlange: ${describeQueueError(error)}`);
   });
 
   /**
@@ -126,7 +152,7 @@ export function buildQueue(boss: PgBoss, options: BuildQueueOptions = {}): Queue
       }
     } catch (error) {
       console.error(
-        `[jobs] Fehlgeschlagene Aufträge konnten nicht freigegeben werden: ${message(error)}`,
+        `[jobs] Fehlgeschlagene Aufträge konnten nicht freigegeben werden: ${describeQueueError(error)}`,
       );
     } finally {
       releasing = false;
@@ -216,11 +242,13 @@ export function buildQueue(boss: PgBoss, options: BuildQueueOptions = {}): Queue
             const parsed = runJobSchema.parse(job.data);
             await handler(parsed, job.signal);
           } catch (error) {
-            console.error(`[jobs] Auftrag ${job.id} fehlgeschlagen: ${message(error)}`);
+            console.error(`[jobs] Auftrag ${job.id} fehlgeschlagen: ${describeQueueError(error)}`);
             try {
-              await failAndRelease(job.id, message(error));
+              await failAndRelease(job.id, describeQueueError(error));
             } catch (releaseError) {
-              console.error(`[jobs] Auftrag ${job.id} nicht freigegeben: ${message(releaseError)}`);
+              console.error(
+                `[jobs] Auftrag ${job.id} nicht freigegeben: ${describeQueueError(releaseError)}`,
+              );
               throw error;
             }
           }

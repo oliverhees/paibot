@@ -184,11 +184,14 @@ function headOf(error: unknown): string {
  * Code der Ursachen (`cause`, höchstens drei), nie deren Texte oder weitere Felder.
  */
 export function describeError(error: unknown, secrets: readonly string[]): string {
-  if (!(error instanceof Error)) {
+  if (error === null || typeof error !== "object") {
     return oneLine(redact(String(error), secrets)).slice(0, 120);
   }
+  // Auch einfache Objekte mit `message` (so melden manche Bibliotheken Fehler) werden wie ein
+  // Fehler beschrieben, statt als „[object Object]“.
   const head = headOf(error);
-  const text = oneLine(redact(String(error.message), secrets));
+  const raw = (error as { message?: unknown }).message;
+  const text = typeof raw === "string" ? oneLine(redact(raw, secrets)) : "";
   const short = text.length > MAX_ERROR_TEXT ? `${text.slice(0, MAX_ERROR_TEXT)} …` : text;
   const causes: string[] = [];
   let current: unknown = (error as { cause?: unknown }).cause;

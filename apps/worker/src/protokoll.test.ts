@@ -172,6 +172,20 @@ describe("Verschachtelte Fehler", () => {
     expect(text).toBe("Error: x");
   });
 
+  it("einfaches Objekt mit message: wie ein Fehler beschrieben, nie „[object Object]“", () => {
+    const wieBibliothek = {
+      code: "57P01",
+      message: `Verbindung beendet ${SECRET}`,
+      stack: `Error: x\n    at geheim (${SECRET})`,
+      queue: "laeufe",
+    };
+    const text = describeError(wieBibliothek, secrets);
+    expectClean(text);
+    expect(text).toBe("Error (57P01): Verbindung beendet ***");
+    expect(describeError({}, secrets)).toBe("Error");
+    expect(describeError({ message: 42 }, secrets)).toBe("Error");
+  });
+
   it("kein Fehler-Objekt: geschwärzt und gekürzt", () => {
     const text = describeError(`roh ${SECRET} ${"y".repeat(500)}`, secrets);
     expectClean(text);
