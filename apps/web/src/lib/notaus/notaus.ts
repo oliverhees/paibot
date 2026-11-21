@@ -20,6 +20,32 @@ export async function notAusAn(db: Database): Promise<boolean> {
   return (await repo.settings.get(db))?.killSwitch === true;
 }
 
+/** Letztes erfolgreiches Umschalten: Richtung und Zeitpunkt (aus den Belegen). */
+export interface NotAusWechsel {
+  an: boolean;
+  /** ISO-Zeit des Belegs „Ergebnis“. */
+  zeit: string;
+}
+
+/**
+ * Wann der Not-Aus zuletzt erfolgreich an- bzw. ausgeschaltet wurde. Quelle sind die Belege der
+ * Aktion `notaus.umschalten` (Ergebnis „ok“ und die Entscheidung dazu); so gibt es keinen zweiten
+ * Speicherort, der davon abweichen könnte. `undefined`, wenn noch nie umgeschaltet wurde.
+ */
+export async function letzterWechsel(db: Database): Promise<NotAusWechsel | undefined> {
+  const { items } = await repo.belege.listPage(db, { action: "notaus.umschalten", limit: 50 });
+  for (const eintrag of items) {
+    const body = eintrag.body;
+    if (body.type !== "result" || body.result.status !== "ok") continue;
+    const entscheidung = items.find(
+      (e) => e.body.type === "decision" && e.body.action.actionId === body.action.actionId,
+    );
+    if (entscheidung?.body.type !== "decision") continue;
+    return { an: entscheidung.body.facts.on === true, zeit: body.time };
+  }
+  return undefined;
+}
+
 /** Antwort von `PUT /api/notaus`: neuer Zustand und der Beleg „Ergebnis“. */
 export interface NotAusGeschaltet {
   an: boolean;

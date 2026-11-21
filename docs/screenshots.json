@@ -2227,6 +2227,180 @@
         }
       ],
       "beschreibung": "Chat ohne Modell: Hinweis mit Weg zu „Modell und Anbieter“"
+    },
+    {
+      "name": "notaus-rueckfrage",
+      "pfad": "/",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        { "ablauf": "chat-max-oeffnen" },
+        { "klick": { "rolle": "button", "name": "Not-Aus: alle Bots anhalten" } },
+        { "warteAufText": "Alle Bots anhalten?" }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Not-Aus: Klick auf „Anhalten“ oben in der Seitenleiste, Rückfrage „Alle Bots anhalten?“"
+    },
+    {
+      "name": "notaus-angehalten",
+      "pfad": "/",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        { "ablauf": "chat-max-oeffnen" },
+        { "klick": { "rolle": "button", "name": "Not-Aus: alle Bots anhalten" } },
+        { "klick": "[role='alertdialog'] button[type='submit']" },
+        {
+          "warteAufText": "nichts läuft"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Not-Aus an: Leiste „Alle Bots sind angehalten.“, Schalter „Angehalten“, Eingabe gesperrt"
+    },
+    {
+      "name": "notaus-angehalten-handy",
+      "pfad": "/",
+      "breite": 390,
+      "hoehe": 844,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [{ "ablauf": "handy-menue" }, { "ablauf": "chat-max-oeffnen" }],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Not-Aus an auf dem Handy: Leiste mit „Fortsetzen“ über der Unterhaltung"
+    },
+    {
+      "name": "notaus-fortsetzen",
+      "pfad": "/belege",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        { "klick": { "rolle": "button", "name": "Fortsetzen" } },
+        { "warteAufText": "Not-Aus aufheben?" },
+        { "tippe": "Aktuelles Passwort", "text": "$passwort" }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
+      "beschreibung": "Not-Aus aufheben: Abfrage des aktuellen Passworts (ausgefüllt, als Punkte)"
+    },
+    {
+      "name": "notaus-belege",
+      "pfad": "/belege",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        { "klick": { "rolle": "button", "name": "Fortsetzen" } },
+        { "warteAufText": "Not-Aus aufheben?" },
+        { "tippe": "Aktuelles Passwort", "text": "$passwort" },
+        { "klick": "[role='alertdialog'] button[type='submit']" },
+        { "warteAufText": "Alle Bots laufen" },
+        { "gehe": "/belege?aktion=notaus.umschalten" },
+        { "warteAufText": "Entscheidung · R-001" }
+      ],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
+      "beschreibung": "Belege: zweimal „Not-Aus umgeschaltet“ (angehalten und fortgesetzt), Schalter wieder „Alle Bots laufen“"
+    },
+    {
+      "name": "selbsttest",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [{ "warteAufText": "in Ordnung ·" }],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Einstellungen, Reiter „Selbsttest“: Zusammenfassung und die ersten Prüfungen mit Ergebnis"
+    },
+    {
+      "name": "selbsttest-hinweise",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [{ "warteAufText": "in Ordnung ·" }, { "zeige": "li[data-ergebnis='hinweis']" }],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest: Punkt mit „Hinweis“ und „So behebst du es“"
+    },
+    {
+      "name": "selbsttest-selbst",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [{ "warteAufText": "in Ordnung ·" }, { "zeige": "#selbst-pruefen" }],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest: Liste „Bitte selbst prüfen“"
+    },
+    {
+      "name": "selbsttest-handy",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 390,
+      "hoehe": 844,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [{ "warteAufText": "in Ordnung ·" }],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest auf dem Handy"
+    },
+    {
+      "name": "selbsttest-hell",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [{ "warteAufText": "in Ordnung ·" }],
+      "thema": "hell",
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest im hellen Design"
     }
   ]
 }

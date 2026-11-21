@@ -22,9 +22,20 @@
   flex-wrap: wrap;
 }
 
-.summe p {
-  margin: 0;
+.summeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
+}
+
+.summeText p {
+  margin: 0;
+}
+
+.geprueft {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
 }
 
 .liste {

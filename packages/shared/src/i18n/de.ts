@@ -1258,7 +1258,7 @@ export const de = {
   "selbsttest.selbst.proxy":
     "Grenzen im Reverse-Proxy: Der Proxy begrenzt die Größe einer Anfrage und die Zahl gleichzeitiger Anfragen je Adresse, bevor sie PaiBot erreichen.",
   "selbsttest.selbst.sicherung":
-    "Sicherung: Es gibt eine Sicherung der Datenbank und des Geheimnisses (PAIBOT_SECRET), und du hast sie mindestens einmal zur Probe zurückgespielt.",
+    "Sicherung: Es gibt eine aktuelle Sicherung, und du hast sie mindestens einmal zur Probe in eine frische Installation zurückgespielt. Wie das geht, steht in der Doku unter „Sicherung und Wiederherstellung“.",
   "selbsttest.selbst.updates":
     "Updates: Du verfolgst neue Versionen und spielst sie zeitnah ein. PaiBot fragt selbst nicht nach außen, ob es eine neue gibt.",
   "selbsttest.selbst.images":

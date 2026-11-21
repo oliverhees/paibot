@@ -52,7 +52,8 @@ describe("Reiter Selbsttest", () => {
   it("„Bitte selbst prüfen“ nennt Proxy-Grenzen, Sicherung und Updates", () => {
     const html = renderToStaticMarkup(h(SelbstPruefen));
     expect(html).toContain("Grenzen im Reverse-Proxy");
-    expect(html).toContain("zur Probe zurückgespielt");
+    expect(html).toContain("zur Probe in eine frische Installation zurückgespielt");
+    expect(html).toContain("Sicherung und Wiederherstellung");
     expect(html).toContain("Updates");
   });
 

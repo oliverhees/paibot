@@ -28,6 +28,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Belege                 | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern              |
 | Das Tor und die Regeln | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern              |
 | Einstellungen und Info | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern              |
+| Selbsttest             | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern              |
 | Architektur            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit               |
 | Hintergrund-Läufe      | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)    |
 | Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit               |
@@ -52,6 +53,8 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 - **Regeln:** Die Seite „Regeln“ zeigt die fest eingebauten Regeln, Grenzen und Vorbedingungen des Tors. Regeln kommen nur mit einem Update von PaiBot; die App selbst darf sie nur lesen ([Das Tor](funktion-tor.md)).
 - **Migrations-Schritt im Betrieb:** Der Einmal-Dienst `migrate` richtet Datenbank und App-Rolle ein, danach starten `web` und `worker` nur mit der App-Rolle ([Installation](installation.md)).
 - **Einrichtungs-Code:** Er entsteht beim ersten Start und gilt 24 Stunden, längstens bis zum Ende der Einrichtung, auch wenn `web` neu startet. Ist er abgelaufen, steht beim nächsten Aufruf der Einrichtung ein neuer im Log; ein neuer Lauf des Migrations-Schritts verwirft ihn sofort ([Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
+- **Not-Aus:** Oben in der Seitenleiste hältst du mit einem Klick alle Bots an; eine laufende Antwort bricht sofort ab, und auf jeder Seite steht die Leiste „Alle Bots sind angehalten.“. Fortsetzen geht nur mit deinem aktuellen Passwort; beides hat einen Beleg ([Das Tor](funktion-tor.md#not-aus-alle-bots-anhalten)).
+- **Selbsttest:** Unter Einstellungen → Selbsttest siehst du, ob Adresse, Proxy, Verbindung, Kopfzeilen, Datenbank-Rolle, Migrationen und Worker richtig eingestellt sind, jeweils mit Ausweg ([Selbsttest](funktion-selbsttest.md)).
 
 Die Doku ist auch unter https://paibot.de/doku zu lesen.
 

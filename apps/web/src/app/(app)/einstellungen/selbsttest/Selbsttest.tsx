@@ -157,13 +157,14 @@ export function Selbsttest({ zeitzone }: { zeitzone: string }) {
       {stand.zustand === "fertig" && summe && (
         <>
           <div className={eigene.summe} role="status">
-            <p>
-              <strong>{t("selbsttest.summe", summe)}</strong>
-              <span className={styles.leise}>
-                {" · "}
+            <div className={eigene.summeText}>
+              <p>
+                <strong>{t("selbsttest.summe", summe)}</strong>
+              </p>
+              <p className={eigene.geprueft}>
                 {t("selbsttest.geprueft", { zeit: zeitText(stand.geprueft, zeitzone) })}
-              </span>
-            </p>
+              </p>
+            </div>
             <Button art="zweit" onClick={() => void laden()}>
               {t("selbsttest.erneut")}
             </Button>

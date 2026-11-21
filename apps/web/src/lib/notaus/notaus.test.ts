@@ -22,7 +22,7 @@ import {
   testUmgebung,
   vorabDose,
 } from "../zugang/testing";
-import { type NotAusGeschaltet, notAusAn, notAusUmschalten } from "./notaus";
+import { letzterWechsel, type NotAusGeschaltet, notAusAn, notAusUmschalten } from "./notaus";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -157,6 +157,17 @@ describe("PUT /api/notaus", () => {
     expect(r.status).toBe(200);
     expect((r.body.daten as NotAusGeschaltet).an).toBe(false);
     expect(await notAusAn(u.db)).toBe(false);
+  });
+
+  it("letzter Wechsel: Richtung und Zeit aus den Belegen, abgelehnte Versuche zählen nicht", async () => {
+    const { u, dose } = await eingerichtet();
+    expect(await letzterWechsel(u.db)).toBeUndefined();
+    await umschalten(u, dose, { on: true });
+    expect(await letzterWechsel(u.db)).toMatchObject({ an: true, zeit: expect.any(String) });
+    await umschalten(u, dose, { on: false });
+    expect((await letzterWechsel(u.db))?.an).toBe(true);
+    await umschalten(u, dose, { on: false, currentPassword: TEST_PASSWORT });
+    expect((await letzterWechsel(u.db))?.an).toBe(false);
   });
 
   it("Passwort-Versuche zählen: nach fünf falschen 429, Einschalten zählt nie", async () => {
