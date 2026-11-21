@@ -13,8 +13,23 @@ export * from "./address";
 export * from "./egress";
 export * from "./errors";
 export * from "./models";
+export {
+  PINNED_DECODE_RATIO_GRACE_BYTES,
+  PINNED_DROPPED_HEADER_PREFIXES,
+  PINNED_DROPPED_HEADERS,
+  PINNED_IDLE_TIMEOUT_MS,
+  PINNED_MAX_BODY_BYTES,
+  PINNED_MAX_DECODE_RATIO,
+  PINNED_MAX_ERROR_BODY_BYTES,
+  PINNED_MAX_HEADER_BYTES,
+  PINNED_MAX_LINE_BYTES,
+  type ResponseLimitKind,
+  type ResponseLimits,
+  ResponseTooLargeError,
+} from "./pinned-fetch";
 export * from "./route";
 export * from "./schleuse";
 export * from "./schleuse-zugang";
+export * from "./schluessel";
 export * from "./target";
 export * from "./templates";

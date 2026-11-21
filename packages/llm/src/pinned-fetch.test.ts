@@ -263,20 +263,28 @@ describe.skipIf(tls === undefined)("pinnedFetch über HTTPS", () => {
   it("prüft das Zertifikat gegen den Namen aus der URL und sendet ihn als SNI", async () => {
     const material = tls as { key: string; cert: string; certFile: string };
     const names: Array<string | false> = [];
+    const hosts: Array<string | undefined> = [];
     const server = createHttpsServer({ key: material.key, cert: material.cert }, (req, res) => {
       names.push((req.socket as unknown as { servername: string | false }).servername);
+      hosts.push(req.headers.host);
       res.end("sicher");
     });
     const port = await listen(server as unknown as Server);
     const script = `
       const { pinnedFetch } = await import(${JSON.stringify(MODULE)});
-      const attempt = async (host) => {
+      const attempt = async (host, extra = {}) => {
         try {
-          const r = await pinnedFetch({ url: new URL("https://" + host + ":${port}/"), method: "GET", headers: new Headers() }, ["127.0.0.1"]);
+          const r = await pinnedFetch({ url: new URL("https://" + host + ":${port}/"), method: "GET", headers: new Headers(extra) }, ["127.0.0.1"]);
           return await r.text();
         } catch (e) { return "fehler " + (e.cause?.code ?? e.message); }
       };
-      console.log(JSON.stringify({ richtig: await attempt("anbieter.test"), falsch: await attempt("anderer.test") }));
+      console.log(JSON.stringify({
+        richtig: await attempt("anbieter.test"),
+        falsch: await attempt("anderer.test"),
+        // Eine mitgegebene Host-Kopfzeile ändert weder den Namen für das Zertifikat noch den Host.
+        falschMitHost: await attempt("anderer.test", { host: "anbieter.test" }),
+        richtigMitHost: await attempt("anbieter.test", { host: "anderer.test", "x-forwarded-host": "anderer.test" }),
+      }));
     `;
     try {
       const result = lastJson(
@@ -284,7 +292,10 @@ describe.skipIf(tls === undefined)("pinnedFetch über HTTPS", () => {
       );
       expect(result.richtig).toBe("sicher");
       expect(result.falsch).toMatch(/^fehler ERR_TLS_CERT_ALTNAME_INVALID/);
-      expect(names[0]).toBe("anbieter.test");
+      expect(result.falschMitHost).toMatch(/^fehler ERR_TLS_CERT_ALTNAME_INVALID/);
+      expect(result.richtigMitHost).toBe("sicher");
+      expect(names).toEqual(["anbieter.test", "anbieter.test"]);
+      expect(hosts).toEqual([`anbieter.test:${port}`, `anbieter.test:${port}`]);
     } finally {
       await close(server as unknown as Server);
     }

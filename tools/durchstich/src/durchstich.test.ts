@@ -443,8 +443,8 @@ describe("Durchstich", () => {
     expect((await verifyAll()).ok).toBe(true);
 
     // Schon vor der Entscheidung umgebogen: Die Fakten stammen aus dem geänderten Datensatz, der
-    // Abdruck passt also. Trotzdem kommt der Schlüssel nicht beim fremden Host an: Er ist an den
-    // Host gebunden, für den er gespeichert wurde.
+    // Abdruck passt also. Trotzdem kommt der Schlüssel nicht beim fremden Host an: Er ist an die
+    // Adresse gebunden, für die er gespeichert wurde.
     await repo.providers.update(ctx.db, provider.id, { baseUrl: evil });
     try {
       const next = await modelRequest();
@@ -461,6 +461,32 @@ describe("Durchstich", () => {
       await repo.providers.update(ctx.db, provider.id, { baseUrl: original });
     }
     expect(attackerRequests).toEqual([]);
+  });
+
+  it("Gegenprobe: nur der Pfad umgebogen (gleicher Host) → Schlüssel passt nicht, keine Anfrage", async () => {
+    fake.reset();
+    fake.configure({ reply: REPLY });
+    const original = provider.baseUrl;
+    const bent = `${new URL(original).origin}/fremder-mandant/v1`;
+    // Vor der Entscheidung geändert: Fakten und Abdruck stammen aus dem geänderten Datensatz.
+    await repo.providers.update(ctx.db, provider.id, { baseUrl: bent });
+    try {
+      const next = await modelRequest();
+      const bentFacts = { ...next.facts, ...providerTargetFacts(provider.id, bent) };
+      const error = await gate
+        .run(next.action, bentFacts, (permit) => askModel(permit))
+        .catch((e: unknown) => e);
+      await repo.runs.finish(ctx.db, next.runId, {
+        status: "failed",
+        errorCode: "schluessel_ungueltig",
+      });
+      expect(error).toMatchObject({ code: "schluessel_ungueltig" });
+    } finally {
+      await repo.providers.update(ctx.db, provider.id, { baseUrl: original });
+    }
+    expect(fake.requests).toHaveLength(0);
+    expect(JSON.stringify(await entries())).not.toContain(PROVIDER_KEY);
+    expect((await verifyAll()).ok).toBe(true);
   });
 
   it("Gegenprobe: Regel lehnt ab → kein Abruf beim Test-Anbieter, Beleg „abgelehnt“", async () => {

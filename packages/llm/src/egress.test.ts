@@ -39,6 +39,11 @@ const TABLE: Row[] = [
   ["", "eu", "keine_url"],
   ["https://user:pass@api.example.org/v1", "eu", "zugangsdaten_in_url"],
   ["https://token@api.example.org/v1", "local", "zugangsdaten_in_url"],
+  // Abfrage und Anker gehören nicht zur Basis-URL, auch leer nicht
+  ["https://api.example.org/v1?mandant=x", "eu", "keine_url"],
+  ["https://api.example.org/v1?", "eu", "keine_url"],
+  ["https://api.example.org/v1#x", "eu", "keine_url"],
+  ["http://127.0.0.1:8080/v1#", "local", "keine_url"],
   // interne Dienste
   ["https://postgres/v1", "eu", "interner_dienst"],
   ["http://datenschleuse:4000/v1", "local", "interner_dienst"],

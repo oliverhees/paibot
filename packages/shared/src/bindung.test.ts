@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { ACTIONS } from "./actions";
 import {
+  normalizedBaseUrl,
   providerSecretBinding,
   SECRET_AAD_PREFIX,
   secretAad,
@@ -27,21 +28,42 @@ const IV = "A".repeat(16);
 const TAG = "B".repeat(22);
 
 describe("Zusatzdaten verschlüsselter Werte", () => {
-  it("binden den Anbieter-Schlüssel an Tabelle, Datensatz, Zweck und Host", () => {
+  it("binden den Anbieter-Schlüssel an Tabelle, Datensatz, Zweck und die ganze Basis-URL", () => {
     const aad = secretAad(providerSecretBinding(providerId, "https://api.eurouter.ai/v1"));
     expect(aad).toBe(
-      `${SECRET_AAD_PREFIX}\nproviders\n${providerId}\napi_key\nhttps://api.eurouter.ai`,
+      `${SECRET_AAD_PREFIX}\nproviders\n${providerId}\napi_key\nhttps://api.eurouter.ai/v1`,
     );
   });
 
-  it("ändern sich mit dem Host, nicht mit dem Pfad", () => {
+  it("ändern sich mit Host, Port, Schema und Pfad", () => {
     const a = secretAad(providerSecretBinding(providerId, "https://api.eurouter.ai/v1"));
-    const b = secretAad(providerSecretBinding(providerId, "https://api.eurouter.ai/v2"));
-    const c = secretAad(providerSecretBinding(providerId, "https://anderer-host.example/v1"));
+    const others = [
+      "https://api.eurouter.ai/v2",
+      "https://api.eurouter.ai/fremder-mandant/v1",
+      "https://api.eurouter.ai",
+      "https://api.eurouter.ai:8443/v1",
+      "http://api.eurouter.ai/v1",
+      "https://anderer-host.example/v1",
+      "https://api.eurouter.ai/V1",
+    ];
+    for (const url of others) {
+      expect(secretAad(providerSecretBinding(providerId, url)), url).not.toBe(a);
+    }
     const d = secretAad(providerSecretBinding(newId("provider"), "https://api.eurouter.ai/v1"));
-    expect(a).toBe(b);
-    expect(a).not.toBe(c);
     expect(a).not.toBe(d);
+  });
+
+  it("gleiche Adresse in anderer Schreibweise ergibt dieselbe Bindung", () => {
+    const a = secretAad(providerSecretBinding(providerId, "https://api.eurouter.ai/v1"));
+    for (const url of [
+      "https://api.eurouter.ai/v1/",
+      "https://api.eurouter.ai/v1//",
+      "HTTPS://API.EuRouter.AI/v1",
+      "https://api.eurouter.ai:443/v1",
+      "https://api.eurouter.ai/x/../v1",
+    ]) {
+      expect(secretAad(providerSecretBinding(providerId, url)), url).toBe(a);
+    }
   });
 
   it("binden den Signaturschlüssel an seinen öffentlichen Teil", () => {
@@ -73,10 +95,42 @@ describe("Format verschlüsselter Werte", () => {
   });
 });
 
+describe("Normalisierte Basis-URL", () => {
+  it("Schema, Host, Port und Pfad ohne Schrägstrich am Ende", () => {
+    expect(normalizedBaseUrl("https://api.eurouter.ai/v1/")).toBe("https://api.eurouter.ai/v1");
+    expect(normalizedBaseUrl("https://api.eurouter.ai/")).toBe("https://api.eurouter.ai");
+    expect(normalizedBaseUrl("http://127.0.0.1:8080/v1")).toBe("http://127.0.0.1:8080/v1");
+    expect(normalizedBaseUrl("https://bücher.example/v1")).toBe("https://xn--bcher-kva.example/v1");
+  });
+
+  it("lehnt Abfrage, Anker, Zugangsdaten und andere Schemata ab, auch leer", () => {
+    for (const url of [
+      "https://api.eurouter.ai/v1?mandant=x",
+      "https://api.eurouter.ai/v1?",
+      "https://api.eurouter.ai/v1#x",
+      "https://api.eurouter.ai/v1#",
+      "https://nutzer:pw@api.eurouter.ai/v1",
+      "ftp://api.eurouter.ai/v1",
+      "keine url",
+      "",
+    ]) {
+      expect(() => normalizedBaseUrl(url), url).toThrow(TypeError);
+      expect(() => providerSecretBinding(providerId, url), url).toThrow(TypeError);
+      expect(() => targetDigestInput(providerId, url), url).toThrow(TypeError);
+    }
+  });
+});
+
 describe("Ziel einer Modell-Anfrage", () => {
   it("Abdruck-Text ist kanonisches JSON mit festem Präfix", () => {
     expect(targetDigestInput(providerId, "https://api.eurouter.ai/v1")).toBe(
       `pb-ziel/v1\n{"baseUrl":"https://api.eurouter.ai/v1","providerId":"${providerId}"}`,
+    );
+    expect(targetDigestInput(providerId, "https://API.eurouter.ai:443/v1/")).toBe(
+      targetDigestInput(providerId, "https://api.eurouter.ai/v1"),
+    );
+    expect(targetDigestInput(providerId, "https://api.eurouter.ai/anderer/v1")).not.toBe(
+      targetDigestInput(providerId, "https://api.eurouter.ai/v1"),
     );
     expect(targetOrigin("https://api.eurouter.ai/v1?x=1")).toBe("https://api.eurouter.ai");
   });

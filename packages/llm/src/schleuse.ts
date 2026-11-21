@@ -13,6 +13,7 @@ import { type ProviderTemplateKey, providerTemplateKeySchema } from "@paibot/sha
 import { classifyIpAddress, isIpAddress, METADATA_HOSTS, normalizeHost } from "./address";
 import { createEgressFetch, egressTargetOf } from "./egress";
 import { SCHLEUSE_ERROR_BODY_LIMIT, schleuseFailureCode } from "./errors";
+import type { ResponseLimits } from "./pinned-fetch";
 
 const DEFAULT_HEALTH_TIMEOUT_MS = 3_000;
 
@@ -130,6 +131,15 @@ export interface SchleuseHealthOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * Grenzen für die Prüfung der Datenschleuse: höchstens 64 KiB je Antwort (die Liste der Modelle
+ * der Datenschleuse ist klein), Fehlerkörper ebenso.
+ */
+export const HEALTH_RESPONSE_LIMITS: Readonly<ResponseLimits> = Object.freeze({
+  maxBodyBytes: 64 * 1024,
+  maxErrorBodyBytes: 64 * 1024,
+});
+
 /** Adresse der Lebenszeichen-Prüfung: neben dem letzten Pfad-Teil `/v1` der Basis-URL. */
 function livenessUrl(baseUrl: string): string {
   const url = new URL(baseUrl);
@@ -152,7 +162,13 @@ export async function probeSchleuse(
   try {
     const doFetch =
       options.fetch ??
-      createEgressFetch([{ ...egressTargetOf(connection.baseUrl), allowPrivate: true }]);
+      createEgressFetch(
+        [{ ...egressTargetOf(connection.baseUrl), allowPrivate: true }],
+        undefined,
+        {
+          limits: HEALTH_RESPONSE_LIMITS,
+        },
+      );
     const timeoutMs = options.timeoutMs ?? DEFAULT_HEALTH_TIMEOUT_MS;
     const signalFor = () => {
       const timeout = AbortSignal.timeout(timeoutMs);

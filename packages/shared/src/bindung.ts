@@ -19,8 +19,9 @@ export const SECRET_AAD_PREFIX = "pb-geheimnis/v2";
  * Woran ein verschlüsselter Wert gebunden ist: Tabelle, Datensatz und Zweck, dazu ein Zusatz, der
  * das Ziel festhält. Wird eines davon geändert, lässt sich der Wert nicht mehr entschlüsseln.
  *
- * - Anbieter-Schlüssel: Tabelle `providers`, ID des Anbieters, Zweck `api_key`, Zusatz = Origin der
- *   Basis-URL (`https://api.eurouter.ai`). Ein umgebogener Host macht den Schlüssel unbrauchbar.
+ * - Anbieter-Schlüssel: Tabelle `providers`, ID des Anbieters, Zweck `api_key`, Zusatz = die
+ *   normalisierte Basis-URL (`normalizedBaseUrl`, z. B. `https://api.eurouter.ai/v1`). Ein anderer
+ *   Host, Port oder Pfad macht den Schlüssel unbrauchbar.
  * - Signaturschlüssel: Tabelle `installation_keys`, ID des Schlüssels, Zweck `private_key`,
  *   Zusatz = öffentlicher Schlüssel (base64url).
  */
@@ -45,9 +46,50 @@ export function targetOrigin(baseUrl: string): string {
   return new URL(baseUrl).origin;
 }
 
-/** Bindung des Schlüssels eines Anbieters an Datensatz und Host seiner Basis-URL. */
+/**
+ * Einheitliche Form einer Basis-URL, an die Schlüssel und Ziel-Abdruck gebunden sind: Schema, Host
+ * und Port (wie `URL` sie normalisiert: klein geschrieben, Standard-Port weggelassen, IDN als
+ * Punycode) und der Pfad ohne Schrägstriche am Ende, z. B. `https://api.eurouter.ai/v1` für
+ * `HTTPS://API.EuRouter.ai:443/v1/`. Groß- und Kleinschreibung im Pfad bleibt erhalten.
+ *
+ * Wirft `TypeError` bei allem, was keine Basis-URL ist: kein `http`/`https`, Zugangsdaten
+ * (`user:pass@`), Abfrage (`?`) oder Anker (`#`), auch leer. Solche Adressen lehnt schon die
+ * Eingabe ab; eine gespeicherte Adresse dieser Art bekommt nie einen Schlüssel.
+ */
+export function normalizedBaseUrl(baseUrl: string): string {
+  if (typeof baseUrl !== "string" || baseUrl.includes("?") || baseUrl.includes("#")) {
+    throw new TypeError("Ungültige Basis-URL");
+  }
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    throw new TypeError("Ungültige Basis-URL");
+  }
+  if (
+    (url.protocol !== "https:" && url.protocol !== "http:") ||
+    url.username !== "" ||
+    url.password !== "" ||
+    url.hostname === ""
+  ) {
+    throw new TypeError("Ungültige Basis-URL");
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+}
+
+/**
+ * Bindung des Schlüssels eines Anbieters an seinen Datensatz und seine ganze Basis-URL
+ * (`normalizedBaseUrl`). Ändert sich die Adresse, passt der gespeicherte Schlüssel nicht mehr; er
+ * muss neu eingetragen oder bewusst umgebunden werden. Wirft `TypeError` bei einer ungültigen
+ * Basis-URL.
+ */
 export function providerSecretBinding(providerId: ProviderId, baseUrl: string): SecretBinding {
-  return { table: "providers", id: providerId, purpose: "api_key", extra: targetOrigin(baseUrl) };
+  return {
+    table: "providers",
+    id: providerId,
+    purpose: "api_key",
+    extra: normalizedBaseUrl(baseUrl),
+  };
 }
 
 /** Bindung des privaten Signaturschlüssels an seinen Datensatz und seinen öffentlichen Teil. */
@@ -61,11 +103,12 @@ export const TARGET_DIGEST_PREFIX = "pb-ziel/v1\n";
 /**
  * Text, über den der Abdruck des Ziels gebildet wird: `TARGET_DIGEST_PREFIX`, danach das
  * kanonische JSON von `{ baseUrl, providerId }` (Schlüssel sortiert, ohne Leerzeichen). Die
- * Basis-URL geht genau so ein, wie sie gespeichert ist. Abdruck =
- * `sha256:` + Hex klein von SHA-256 über die UTF-8-Bytes dieses Texts.
+ * Basis-URL geht in der Form von `normalizedBaseUrl` ein, also genauso wie in der Bindung des
+ * Schlüssels. Abdruck = `sha256:` + Hex klein von SHA-256 über die UTF-8-Bytes dieses Texts.
+ * Wirft `TypeError` bei einer ungültigen Basis-URL.
  */
 export function targetDigestInput(providerId: ProviderId, baseUrl: string): string {
-  return `${TARGET_DIGEST_PREFIX}${JSON.stringify({ baseUrl, providerId })}`;
+  return `${TARGET_DIGEST_PREFIX}${JSON.stringify({ baseUrl: normalizedBaseUrl(baseUrl), providerId })}`;
 }
 
 /**

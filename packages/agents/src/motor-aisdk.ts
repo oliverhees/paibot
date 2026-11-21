@@ -9,7 +9,7 @@
  */
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { isRetryable, mapProviderError } from "@paibot/llm";
+import { isResponseTooLarge, isRetryableError, mapProviderError } from "@paibot/llm";
 import { isResolvedModel } from "@paibot/llm/modell";
 import { invalidInput, isPaiBotError } from "@paibot/shared/fehler";
 import type {
@@ -312,17 +312,20 @@ function errorEvent(error: unknown): MotorEvent {
   return {
     type: "error",
     code,
-    retryable: isRetryable(code),
+    // Eine zu große Antwort hat PaiBot selbst abgebrochen; ein neuer Versuch bringt nichts.
+    retryable: isRetryableError(error),
     ...(detail === undefined ? {} : { detail }),
   };
 }
 
 /**
- * Feste Kurzangabe zum Fehler: HTTP-Status der Antwort, Abbruch des Stroms oder gesperrtes Ziel.
+ * Feste Kurzangabe zum Fehler: zu große Antwort (`antwort_zu_gross`), HTTP-Status der Antwort,
+ * Abbruch des Stroms oder gesperrtes Ziel.
  * Ein schon abgebildeter Fehler der Anbieter-Schicht (`PaiBotError`, z. B. aus dem Zugang über die
  * Datenschleuse) bekommt keine: Sein `status` ist ein interner Wert, keine HTTP-Antwort.
  */
 function detailOf(error: unknown): string | undefined {
+  if (isResponseTooLarge(error)) return "antwort_zu_gross";
   for (let current = error, depth = 0; depth < 5; depth++) {
     if (current === null || typeof current !== "object") return undefined;
     if (isPaiBotError(current)) return undefined;

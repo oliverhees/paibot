@@ -13,6 +13,7 @@ import { MOTOR_ERROR_CODES, type MotorErrorCode } from "@paibot/shared/motor";
 import type { Route } from "@paibot/shared/objekte";
 import { errorText, errorWayOut } from "@paibot/shared/texte";
 import { EgressBlockedError } from "./egress";
+import { ResponseTooLargeError } from "./pinned-fetch";
 
 const NETWORK_CODES = new Set([
   "ECONNREFUSED",
@@ -109,6 +110,21 @@ function mapValue(error: unknown, depth: number): MotorErrorCode | undefined {
   return undefined;
 }
 
+/**
+ * Wurde eine Antwort abgebrochen, weil sie zu groß war (`ResponseTooLargeError` irgendwo in der
+ * Kette der Ursachen, auch eingepackt von der Modell-Bibliothek)? Dann hilft kein neuer Versuch.
+ */
+export function isResponseTooLarge(error: unknown): boolean {
+  for (let current = error, depth = 0; depth <= MAX_DEPTH; depth++) {
+    if (current === null || typeof current !== "object") return false;
+    if (current instanceof ResponseTooLargeError) return true;
+    const record = current as Record<string, unknown>;
+    if (record.name === "ResponseTooLargeError" && record.code === "antwort_zu_gross") return true;
+    current = record.cause;
+  }
+  return false;
+}
+
 /** Woher ein Fehler kam; bei Route `schleuse` gilt die Abbildung für die Datenschleuse zuerst. */
 export interface ProviderErrorContext {
   route?: Route;
@@ -180,6 +196,10 @@ function schleuseCodeOf(error: unknown): MotorErrorCode | undefined {
  *
  * Akzeptiert `Response`, Fehler von `fetch` und Fehlerobjekte mit `status`/`statusCode`. Rein.
  *
+ * Eine Antwort, die PaiBot wegen ihrer Größe abgebrochen hat (`isResponseTooLarge`), ergibt
+ * `limit_erreicht`; anders als ein Limit des Anbieters ist das nicht wiederholbar
+ * (`isRetryableError`).
+ *
  * Mit `{ route: "schleuse" }` gilt zuerst `schleuseFailureCode` (Status und `responseBody`): So
  * meldet die Datenschleuse einen Block (HTTP 500) und einen falschen Zugangsschlüssel (HTTP 400).
  * Der Modell-Zugang auf dieser Route (`resolveModel`) bildet ihre Fehlerantworten schon selbst ab
@@ -191,6 +211,8 @@ export function mapProviderError(
   error: unknown,
   context: ProviderErrorContext = {},
 ): MotorErrorCode {
+  // Vor allem anderen: Der Fehler kann einen Status tragen (eingepackt von der Bibliothek).
+  if (isResponseTooLarge(error)) return "limit_erreicht";
   if (context.route === "schleuse") {
     const code = schleuseCodeOf(error);
     if (code !== undefined) return code;
@@ -201,6 +223,15 @@ export function mapProviderError(
 /** Ob ein Fehlercode einen späteren neuen Versuch sinnvoll macht (`limit_erreicht`, `anbieter_nicht_erreichbar`). */
 export function isRetryable(code: MotorErrorCode): boolean {
   return code === "limit_erreicht" || code === "anbieter_nicht_erreichbar";
+}
+
+/**
+ * Ob ein neuer Versuch nach genau diesem Fehler sinnvoll ist: wie `isRetryable` für seinen Code,
+ * aber nie nach einer zu großen Antwort.
+ */
+export function isRetryableError(error: unknown, context: ProviderErrorContext = {}): boolean {
+  if (isResponseTooLarge(error)) return false;
+  return isRetryable(mapProviderError(error, context));
 }
 
 /** Text-Schlüssel des Ausweg-Satzes zu einem Fehlercode (Katalog in `@paibot/shared/texte`). */

@@ -11,7 +11,7 @@
 import { lookup } from "node:dns/promises";
 import type { Region } from "@paibot/shared/objekte";
 import { classifyIpAddress, isIpAddress, METADATA_HOSTS, normalizeHost } from "./address";
-import { pinnedFetch } from "./pinned-fetch";
+import { type PinnedOptions, pinnedFetch, type ResponseLimits } from "./pinned-fetch";
 
 /** Namen der Dienste im Compose-Stack. Sie sind als Anbieter-Ziel nie erlaubt. */
 export const INTERNAL_SERVICE_HOSTS = ["postgres", "datenschleuse", "web", "worker"] as const;
@@ -65,6 +65,8 @@ export interface EgressOptions {
   onBlocked?: (target: string, reason: EgressBlockReason) => void;
   /** Zeitgrenze ohne Datenfluss für die Verbindung (Standard `PINNED_IDLE_TIMEOUT_MS`). */
   idleTimeoutMs?: number;
+  /** Größen-Grenzen je Antwort (Standards `PINNED_MAX_…`); gelten für jede Etappe. */
+  limits?: ResponseLimits;
 }
 
 const MAX_REDIRECTS = 5;
@@ -138,13 +140,14 @@ async function checkedAddresses(
   if (!allowed) return undefined;
   if (target.denyAddressesOf !== undefined && target.denyAddressesOf.length > 0) {
     const denied = new Set<string>();
-    for (const name of target.denyAddressesOf) {
-      try {
-        for (const address of await resolve(name)) denied.add(canonicalAddress(address));
-      } catch {
+    // Alle Namen gleichzeitig auflösen: Die Wartezeit zählt schon zur Zeitgrenze der Anfrage.
+    const lists = await Promise.all(
+      target.denyAddressesOf.map((name) =>
         // Name unbekannt (z. B. außerhalb von Docker): sperrt nichts.
-      }
-    }
+        Promise.resolve(resolve(name)).catch(() => [] as readonly string[]),
+      ),
+    );
+    for (const list of lists) for (const address of list) denied.add(canonicalAddress(address));
     if (addresses.some((address) => denied.has(canonicalAddress(address)))) return undefined;
   }
   return addresses;
@@ -182,6 +185,10 @@ export function createEgressFetch(
   options: EgressOptions = {},
 ): typeof fetch {
   const resolve = options.lookup ?? systemLookup;
+  const pinnedOptions: PinnedOptions = {
+    ...(options.idleTimeoutMs === undefined ? {} : { idleTimeoutMs: options.idleTimeoutMs }),
+    ...(options.limits === undefined ? {} : { limits: options.limits }),
+  };
 
   const block = (url: URL, reason: EgressBlockReason): never => {
     const target = describeTarget(url);
@@ -234,7 +241,7 @@ export function createEgressFetch(
           ? await pinnedFetch(
               { url, method: request.method, headers: request.headers, body: request.body, signal },
               addresses,
-              options.idleTimeoutMs === undefined ? {} : { idleTimeoutMs: options.idleTimeoutMs },
+              pinnedOptions,
             )
           : await baseFetch(url, {
               method: request.method,
@@ -332,6 +339,8 @@ export const PUBLIC_PROVIDER_PORTS: readonly number[] = [443, 8443];
  * - private Adressen und `localhost` nur bei Region `local`
  * - außerhalb von `local` nur die Ports aus `PUBLIC_PROVIDER_PORTS` (443, 8443)
  * - keine Zugangsdaten in der URL (`user:pass@`)
+ * - keine Abfrage (`?…`) und kein Anker (`#…`), auch kein leeres `?` oder `#`: Schlüssel und Ziel
+ *   sind an Schema, Host, Port und Pfad gebunden (`normalizedBaseUrl`), mehr gehört nicht dazu
  *
  * Rein: löst keine Namen auf und baut keine Verbindung auf. Die Schreibweisen von IP-Adressen
  * (dezimal, hexadezimal, oktal, gekürzt, IPv6 inklusive abgebildeter IPv4) normalisiert der
@@ -353,6 +362,7 @@ export function checkProviderBaseUrl(baseUrl: string, region: Region): BaseUrlCh
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return { ok: false, problem: "protokoll" };
   }
+  if (baseUrl.includes("?") || baseUrl.includes("#")) return { ok: false, problem: "keine_url" };
 
   const host = normalizeHost(url.hostname);
   const local = region === "local";

@@ -11,6 +11,7 @@
 
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { createGzip } from "node:zlib";
 import { repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import { createFakeProvider, type FakeProvider } from "@paibot/fake-provider";
@@ -45,6 +46,27 @@ let providerUrl: string;
 let attacker: Server;
 let attackerUrl: string;
 const attackerSeen: string[] = [];
+/** Ein bösartiger Anbieter: antwortet mit einer Bombe, einer endlosen Zeile oder riesigem Fehler. */
+let hostile: Server;
+let hostileUrl: string;
+let hostileMode = "bombe-200";
+const hostileClosed: string[] = [];
+let gzipBomb: Buffer;
+
+/** 400 MiB Nullen als gzip, ohne sie je ganz im Speicher zu haben (gepackt einige hundert KB). */
+async function zeroBomb(total: number): Promise<Buffer> {
+  const gzip = createGzip({ level: 9 });
+  const out: Buffer[] = [];
+  gzip.on("data", (chunk: Buffer) => out.push(chunk));
+  const done = new Promise((resolve) => gzip.on("end", resolve));
+  const zeros = Buffer.alloc(1024 * 1024);
+  for (let written = 0; written < total; written += zeros.length) {
+    if (!gzip.write(zeros)) await new Promise((resolve) => gzip.once("drain", resolve));
+  }
+  gzip.end();
+  await done;
+  return Buffer.concat(out);
+}
 
 beforeAll(async () => {
   provider = createFakeProvider({ apiKey: PROVIDER_KEY, reply: REPLY });
@@ -62,7 +84,38 @@ beforeAll(async () => {
   });
   await new Promise<void>((resolve) => attacker.listen(0, "127.0.0.1", resolve));
   attackerUrl = `http://127.0.0.1:${(attacker.address() as AddressInfo).port}/v1`;
-});
+  gzipBomb = await zeroBomb(400 * 1024 * 1024);
+  hostile = createServer((req, res) => {
+    const mode = hostileMode;
+    res.on("close", () => hostileClosed.push(mode));
+    req.resume();
+    if (mode.startsWith("bombe-")) {
+      res.writeHead(Number(mode.slice(6)), {
+        "content-type": mode === "bombe-200" ? "text/event-stream" : "application/json",
+        "content-encoding": "gzip",
+      });
+      res.end(gzipBomb);
+      return;
+    }
+    // Endlose Zeile ohne Zeilenumbruch im Ereignis-Strom.
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.write("data: ");
+    const piece = Buffer.alloc(16 * 1024, 0x61);
+    let open = true;
+    res.on("close", () => {
+      open = false;
+    });
+    const pump = () => {
+      while (open && res.write(piece)) {
+        // weiter, solange Platz ist
+      }
+      if (open) res.once("drain", pump);
+    };
+    pump();
+  });
+  await new Promise<void>((resolve) => hostile.listen(0, "127.0.0.1", resolve));
+  hostileUrl = `http://127.0.0.1:${(hostile.address() as AddressInfo).port}/v1`;
+}, 120_000);
 
 afterAll(async () => {
   await provider.stop();
@@ -70,6 +123,8 @@ afterAll(async () => {
   await schleuse.close();
   attacker.closeAllConnections();
   await new Promise((resolve) => attacker.close(resolve));
+  hostile.closeAllConnections();
+  await new Promise((resolve) => hostile.close(resolve));
 });
 
 afterEach(() => {
@@ -351,6 +406,39 @@ describe("mit dem echten Motor", () => {
       result: { status: "error", code },
     });
   });
+
+  it.each([
+    ["bombe-200", "limit_erreicht"],
+    ["zeile", "limit_erreicht"],
+    ["bombe-400", "intern"],
+    ["bombe-500", "anbieter_nicht_erreichbar"],
+  ])(
+    "bösartiger Anbieter (%s): Lauf endet sauber als fehlgeschlagen (%s), Speicher wächst kaum, Verbindung zu",
+    async (mode, code) => {
+      hostileMode = mode;
+      const env = await setup({ providerBaseUrl: hostileUrl });
+      const { runId } = await env.queueMessage(QUESTION);
+      const before = process.memoryUsage().rss;
+      let peak = before;
+      const sampler = setInterval(() => {
+        peak = Math.max(peak, process.memoryUsage().rss);
+      }, 5);
+      let outcome: Awaited<ReturnType<typeof executeRun>>;
+      try {
+        outcome = await executeRun(runId, env.deps, never());
+      } finally {
+        clearInterval(sampler);
+      }
+      // Ohne Grenze wächst der Speicher hier um über 1 GiB.
+      expect(Math.max(peak, process.memoryUsage().rss) - before).toBeLessThan(128 * 1024 * 1024);
+      expect(outcome).toMatchObject({ status: "failed", code });
+      expect((await env.receipts()).at(-1)?.body).toMatchObject({
+        result: { status: "error", code },
+      });
+      await waitFor(() => hostileClosed.includes(mode));
+    },
+    60_000,
+  );
 
   it("Anbieter antwortet nicht: Leerlauf-Grenze → anbieter_nicht_erreichbar, Verbindung geschlossen", async () => {
     const env = await setup({ tuning: { idleTimeoutMs: 300 } });

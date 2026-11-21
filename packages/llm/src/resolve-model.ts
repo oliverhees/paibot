@@ -11,7 +11,12 @@
 import { inspect } from "node:util";
 import { type DerivedKey, decryptSecret, secretFormatOf } from "@paibot/crypto";
 import { type GatePermit, isGatePermit } from "@paibot/gate";
-import { providerSecretBinding, secretAad, targetOrigin } from "@paibot/shared/bindung";
+import {
+  normalizedBaseUrl,
+  providerSecretBinding,
+  secretAad,
+  targetOrigin,
+} from "@paibot/shared/bindung";
 import { PaiBotError } from "@paibot/shared/fehler";
 import type { ConversationId, ModelId, ProviderId } from "@paibot/shared/ids";
 import type { ResolvedModel, ResolvedModelSummary } from "@paibot/shared/motor";
@@ -25,6 +30,7 @@ import {
   providerEgressTarget,
 } from "./egress";
 import { providerFailure } from "./errors";
+import type { ResponseLimits } from "./pinned-fetch";
 import {
   SCHLEUSE_SESSION_HEADER,
   type SchleuseConnection,
@@ -63,6 +69,15 @@ export interface ResolveModelDeps {
   lookup?: HostLookup;
 }
 
+/**
+ * Grenzen für Antworten im Gespräch (Strom des Modells, direkt oder über die Datenschleuse):
+ * höchstens 64 MiB entpackt je Antwort, sonst die Standards (`PINNED_MAX_…`: Fehlerkörper 64 KiB,
+ * Verhältnis 500, Zeile 1 MiB, Kopfzeilen 16 KiB).
+ */
+export const CHAT_RESPONSE_LIMITS: Readonly<ResponseLimits> = Object.freeze({
+  maxBodyBytes: 64 * 1024 * 1024,
+});
+
 /** Alle Modell-Zugänge, die `resolveModel` gebaut hat. Nur sie sind echt. */
 const issuedModels = new WeakSet<object>();
 
@@ -89,8 +104,10 @@ export function isResolvedModel(value: unknown): value is ResolvedModel {
  *   auch dem der Datenschleuse). Wurde die Adresse zwischen Entscheidung und Abruf geändert,
  *   entsteht kein Zugang.
  * - Der Schlüssel wird mit der Bindung an genau dieses Ziel entschlüsselt
- *   (`providerSecretBinding(id, baseUrl)`); ein Schlüssel aus einem anderen Datensatz oder für einen
- *   anderen Host lässt sich nicht entschlüsseln; ein Schlüssel im Format `v1` gilt als ungültig.
+ *   (`providerSecretBinding(id, baseUrl)`: Schema, Host, Port und Pfad); ein Schlüssel aus einem
+ *   anderen Datensatz oder für eine andere Adresse lässt sich nicht entschlüsseln
+ *   (`schluessel_ungueltig`); ein Schlüssel im Format `v1` gilt als ungültig. Auf der Route
+ *   `direct` geht er nur an Pfade unter der Basis-URL, sonst `abgelehnt` ohne Anfrage.
  * - Der Schlüssel steht in keinem Feld: `fetch` setzt `authorization` selbst und
  *   erreicht nur dieses eine Ziel (`createEgressFetch`, Adresse festgenagelt). `JSON.stringify`,
  *   `console.log` und `util.inspect` zeigen nur die `ResolvedModelSummary`.
@@ -126,7 +143,7 @@ export function resolveModel(
   }
 
   // Ziel aus dem gelesenen Datensatz neu bilden und mit der Entscheidung vergleichen.
-  const digest = providerTargetDigest(provider.id, provider.baseUrl);
+  const digest = digestOf(provider.id, provider.baseUrl);
   if (facts.targetDigest !== digest) throw providerFailure("abgelehnt");
   const allowedOrigins = [originOf(provider.baseUrl)];
   if (facts.route === "schleuse" && deps.schleuse) {
@@ -161,17 +178,19 @@ export function resolveModel(
     egressTarget = providerEgressTarget(baseUrl, provider.region);
   }
 
-  const guarded = createEgressFetch(
-    [egressTarget],
-    deps.baseFetch,
-    deps.lookup === undefined ? {} : { lookup: deps.lookup },
-  );
+  const guarded = createEgressFetch([egressTarget], deps.baseFetch, {
+    limits: CHAT_RESPONSE_LIMITS,
+    ...(deps.lookup === undefined ? {} : { lookup: deps.lookup }),
+  });
   const stillAllowed = () => isGatePermit(permit, "modell.anfragen");
   const authorizedFetch: typeof fetch =
     facts.route === "schleuse"
       ? createSchleuseFetch({ guarded, baseUrl, schleuseKey: secret, providerKey, stillAllowed })
       : async (input, init) => {
           if (!stillAllowed()) throw providerFailure("abgelehnt");
+          // Der Schlüssel ist an die ganze Basis-URL gebunden; auf ihrem Host geht er nur an Pfade
+          // darunter. Andere Ziele lehnt die Ausgangs-Liste ab.
+          if (outsideBasePath(requestUrlOf(input), baseUrl)) throw providerFailure("abgelehnt");
           const headerSource =
             init?.headers ?? (input instanceof Request ? input.headers : undefined);
           const outgoing = new Headers(headerSource);
@@ -203,6 +222,39 @@ export function resolveModel(
   return resolved as unknown as ResolvedModel;
 }
 
+function digestOf(
+  providerId: ProviderId,
+  baseUrl: string,
+): ReturnType<typeof providerTargetDigest> {
+  try {
+    return providerTargetDigest(providerId, baseUrl);
+  } catch {
+    throw providerFailure("anbieter_nicht_erreichbar");
+  }
+}
+
+function requestUrlOf(input: Parameters<typeof fetch>[0]): URL | undefined {
+  try {
+    return new URL(
+      input instanceof Request ? input.url : typeof input === "string" ? input : input.href,
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Zielt `url` auf den Host der Basis-URL, aber auf einen Pfad außerhalb von ihr? Eine URL, die sich
+ * nicht lesen lässt, zählt als außerhalb.
+ */
+function outsideBasePath(url: URL | undefined, baseUrl: string): boolean {
+  if (url === undefined) return true;
+  const base = new URL(normalizedBaseUrl(baseUrl));
+  if (url.origin !== base.origin) return false;
+  const basePath = base.pathname.replace(/\/+$/, "");
+  return !(basePath === "" || url.pathname === basePath || url.pathname.startsWith(`${basePath}/`));
+}
+
 function originOf(baseUrl: string): string {
   try {
     return targetOrigin(baseUrl);
@@ -212,8 +264,10 @@ function originOf(baseUrl: string): string {
 }
 
 /**
- * Entschlüsselt den Anbieter-Schlüssel mit der Bindung an Datensatz und Host der Basis-URL.
- * Lokale Anbieter dürfen ohne Schlüssel arbeiten.
+ * Entschlüsselt den Anbieter-Schlüssel mit der Bindung an Datensatz und ganze Basis-URL
+ * (`providerSecretBinding`). Es gibt keinen zweiten Versuch mit einer anderen Bindung: Passt die
+ * gespeicherte Adresse nicht mehr zum Schlüssel, ist das `schluessel_ungueltig` (neu eintragen
+ * oder bewusst umbinden, `rebindProviderSecret`). Lokale Anbieter dürfen ohne Schlüssel arbeiten.
  */
 function decryptProviderKey(
   provider: ModelChoice["provider"],
