@@ -33,6 +33,11 @@ export const TEST_REGELN: Record<string, { provider: string; model: string }> = 
   "Zweite Regel": { provider: "beispiel-zwei", model: "beispiel/modell-2" },
   "Regel ohne Vorgabe": { provider: "beispiel-nord", model: "beispiel/modell-1" },
   "Regel mit anderem Wert": { provider: "beispiel-nord", model: "beispiel/modell-1" },
+  // Ein Name, der die Kennzeichnung nachahmt: der Anbieter kennt ihn, PaiBot darf ihn trotzdem nicht annehmen.
+  "X · EU laut Regel in deinem Konto, geprüft am 21.11.2026": {
+    provider: "beispiel-nord",
+    model: "beispiel/modell-1",
+  },
   "Regel nur Name": { provider: "beispiel-nord", model: "beispiel/modell-1" },
 };
 /** Zweiter Schlüssel (nur zum Lesen der Regel-Liste), den der Ersatz für den Anbieter annimmt. */

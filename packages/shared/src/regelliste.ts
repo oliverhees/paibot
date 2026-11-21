@@ -12,7 +12,7 @@
  */
 
 import { z } from "zod";
-import { anzeigeText } from "./anzeigetext";
+import { ahmtKennzeichnungNach, anzeigeText } from "./anzeigetext";
 import { LIMITS } from "./constants";
 import {
   RULE_POLICY_VALUE_PATTERN,
@@ -151,7 +151,12 @@ export function parseRoutingRules(roh: unknown): ParsedRules | undefined {
   for (const regel of form.data.data) {
     if (!regel.enabled) continue;
     const sauber = anzeigeText(regel.name, LIMITS.routingRuleNameChars);
-    if (sauber === undefined || sauber !== regel.name || /\s{2,}/.test(sauber)) {
+    if (
+      sauber === undefined ||
+      sauber !== regel.name ||
+      /\s{2,}/.test(sauber) ||
+      ahmtKennzeichnungNach(sauber)
+    ) {
       uebersprungen += 1;
       continue;
     }

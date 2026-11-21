@@ -11,7 +11,7 @@
 
 import { z } from "zod";
 import { actionTypeSchema } from "./actions";
-import { anzeigeText } from "./anzeigetext";
+import { ahmtKennzeichnungNach, anzeigeText } from "./anzeigetext";
 import { LIMITS } from "./constants";
 import { timezoneSchema } from "./grundtypen";
 import { idSchema } from "./id";
@@ -61,7 +61,8 @@ const routingRuleNameSchema = z
   .string()
   .min(1)
   .max(LIMITS.routingRuleNameChars)
-  .refine((name) => anzeigeText(name, LIMITS.routingRuleNameChars) === name);
+  .refine((name) => anzeigeText(name, LIMITS.routingRuleNameChars) === name)
+  .refine((name) => !ahmtKennzeichnungNach(name));
 
 /** Text einer Nachricht: nicht leer, höchstens `LIMITS.messageChars` Zeichen. */
 export const messageTextSchema = z

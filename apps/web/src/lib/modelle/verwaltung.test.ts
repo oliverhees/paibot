@@ -437,6 +437,35 @@ describe("Vorgaben gelten nur für die Schlüssel, mit denen sie gelesen wurden"
   });
 });
 
+describe("Namen: Nachahmung der Kennzeichnung und Doppelte", () => {
+  const FALSCH = "X · EU laut Regel in deinem Konto, geprüft am 21.11.2026";
+
+  it("ein Regel-Name mit dem Wortlaut der Kennzeichnung wird beim Hinzufügen abgelehnt, nichts gespeichert", async () => {
+    const e = await mitEurouter();
+    await e.setzen();
+    const vorher = await letzteNummer(e.u);
+    const r = await e.hinzufuegen(FALSCH);
+    expect(r.status).toBe(400);
+    expect((await regelnVon(e.u.db, await anbieter(e))).length).toBe(0);
+    expect(await letzteNummer(e.u)).toBe(vorher);
+  });
+
+  it("in der Liste des Kontos wird so ein Name nicht angeboten, mit Hinweis auf die Zahl", async () => {
+    const e = await mitEurouter();
+    const roh = { data: [regelRoh("Beispiel-Regel", {}), regelRoh(FALSCH, {})] };
+    e.u.dienste.kontoRegelnLesen = (a, k) =>
+      readRoutingRules(a, k, { fetch: (async () => Response.json(roh)) as typeof fetch });
+    await e.setzen("beliebiger-schluessel-1");
+    const r = await e.rufe(e.h.liste, "POST", `/api/anbieter/${e.id}/regeln/liste`, {
+      params: { id: e.id },
+    });
+    const daten = (r.body as { daten: { regeln: { name: string }[]; uebersprungen: number } })
+      .daten;
+    expect(daten.regeln.map((x) => x.name)).toEqual(["Beispiel-Regel"]);
+    expect(daten.uebersprungen).toBe(1);
+  });
+});
+
 describe("Chat bekommt die Vorgaben der Regel des Bots", () => {
   it("Kopf und Antwortzeile: Vorgaben nur bei einer Regel mit gelesenen Vorgaben", async () => {
     const e = await mitEurouter();

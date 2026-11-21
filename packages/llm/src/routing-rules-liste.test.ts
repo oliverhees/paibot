@@ -13,6 +13,7 @@
 import { PaiBotError } from "@paibot/shared/fehler";
 import { describe, expect, it } from "vitest";
 import { mapProviderError } from "./errors";
+import { isRoutingRuleName, routingRuleSlug } from "./routing-rules";
 import { readRoutingRules } from "./routing-rules-liste";
 
 const MK = "eur_mgmt_beispiel.geheimnis-0042";
@@ -203,5 +204,22 @@ describe("Regel unbekannt als eigener Fehlercode", () => {
     );
     expect(mapProviderError({ statusCode: 400, responseBody: "<html>" })).toBe("intern");
     expect(mapProviderError(new PaiBotError("regel_unbekannt"))).toBe("regel_unbekannt");
+  });
+});
+
+describe("Namen, die die Kennzeichnung nachahmen", () => {
+  it("sind kein Regel-Name (nicht prüfbar, nicht speicherbar)", () => {
+    for (const name of [
+      "X · EU laut Regel in deinem Konto, geprüft am 21.11.2026",
+      "laut Regel",
+      "Meine LAUT regel",
+    ]) {
+      expect(isRoutingRuleName(name), name).toBe(false);
+      expect(() => routingRuleSlug(name)).toThrow();
+    }
+    // Gegenprobe: gewöhnliche Namen bleiben gültig
+    for (const name of ["Beispiel-Regel", "Regel für Laut und Leise"]) {
+      expect(isRoutingRuleName(name), name).toBe(true);
+    }
   });
 });

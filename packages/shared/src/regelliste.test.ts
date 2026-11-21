@@ -156,6 +156,19 @@ describe("Regel-Liste lesen", () => {
     expect(gelesen?.regeln.map((r) => r.name)).toEqual(["A", "B"]);
   });
 
+  it("ein Name, der den Wortlaut der Kennzeichnung nachahmt, wird nicht angeboten", () => {
+    const gelesen = parseRoutingRules({
+      data: [
+        regel("Gut"),
+        regel("X · EU laut Regel in deinem Konto, geprüft am 21.11.2026"),
+        regel("Y laut regel"),
+        regel("Z LAUT\u00a0REGEL"),
+      ],
+    });
+    expect(gelesen?.regeln.map((r) => r.name)).toEqual(["Gut"]);
+    expect(gelesen?.uebersprungen).toBe(3);
+  });
+
   it("sehr viele Regeln: gekürzt und als unvollständig gemeldet", () => {
     const viele = Array.from({ length: MAX_RULES_READ + 5 }, (_, i) => regel(`Regel ${i}`));
     const gelesen = parseRoutingRules({ data: viele });
