@@ -168,6 +168,56 @@ describe("Ziel-Bindung beim Senden", () => {
   });
 });
 
+describe("Bindung an die ganze Basis-URL", () => {
+  it("nur der Pfad in der Datenbank geändert, Entscheidung sieht ihn schon: kein Schlüssel, keine Anfrage", async () => {
+    // Gleicher Host, anderer Pfad (z. B. ein anderes Konto bei einem Gateway).
+    const bent = `${provider.origin}/fremder-mandant/v1`;
+    const error = await withPermit(decidedFor(bent), (permit) =>
+      errorOf(() => resolveModel(permit, row(bent), { secretsKey })),
+    );
+    expect(error).toMatchObject({ code: "schluessel_ungueltig" });
+    expect(provider.requests).toHaveLength(0);
+  });
+
+  it("andere Schreibweise derselben Adresse (Schema groß, Punkte im Pfad, Schrägstriche am Ende) passt", async () => {
+    const spelled = `${provider.origin.replace("http:", "HTTP:")}/x/../v1//`;
+    await withPermit(decidedFor(spelled), async (permit) => {
+      const model = resolveModel(permit, row(spelled), { secretsKey });
+      const response = await model.fetch(`${provider.origin}/v1/chat/completions`, {
+        method: "POST",
+        body: "{}",
+      });
+      expect(response.ok).toBe(true);
+    });
+    expect(provider.requests.at(-1)?.headers.authorization).toBe(`Bearer ${PROVIDER_KEY}`);
+  });
+
+  it("Abruf außerhalb des Pfads der Basis-URL: abgelehnt, nichts gesendet", async () => {
+    await withPermit(decidedFor(legit()), async (permit) => {
+      const model = resolveModel(permit, row(legit()), { secretsKey });
+      for (const url of [
+        `${provider.origin}/fremder-mandant/v1/chat/completions`,
+        `${provider.origin}/v10/chat/completions`,
+        `${provider.origin}/`,
+      ]) {
+        await expect(model.fetch(url, { method: "POST", body: "{}" }), url).rejects.toMatchObject({
+          code: "abgelehnt",
+        });
+      }
+    });
+    expect(provider.requests).toHaveLength(0);
+  });
+
+  it("Basis-URL mit Abfrage in der Datenbank: kein Zugang", async () => {
+    const withQuery = `${legit()}?mandant=x`;
+    const error = await withPermit(decidedFor(legit()), (permit) =>
+      errorOf(() => resolveModel(permit, row(withQuery), { secretsKey })),
+    );
+    expect(error).toMatchObject({ code: "anbieter_nicht_erreichbar" });
+    expect(provider.requests).toHaveLength(0);
+  });
+});
+
 describe("Modell-Zugang ohne herausgebbaren Schlüssel", () => {
   async function resolved(): Promise<{ model: ResolvedModel; texts: string[] }> {
     return withPermit(decidedFor(legit()), (permit) => {

@@ -332,6 +332,8 @@ export const PUBLIC_PROVIDER_PORTS: readonly number[] = [443, 8443];
  * - private Adressen und `localhost` nur bei Region `local`
  * - außerhalb von `local` nur die Ports aus `PUBLIC_PROVIDER_PORTS` (443, 8443)
  * - keine Zugangsdaten in der URL (`user:pass@`)
+ * - keine Abfrage (`?…`) und kein Anker (`#…`), auch kein leeres `?` oder `#`: Schlüssel und Ziel
+ *   sind an Schema, Host, Port und Pfad gebunden (`normalizedBaseUrl`), mehr gehört nicht dazu
  *
  * Rein: löst keine Namen auf und baut keine Verbindung auf. Die Schreibweisen von IP-Adressen
  * (dezimal, hexadezimal, oktal, gekürzt, IPv6 inklusive abgebildeter IPv4) normalisiert der
@@ -353,6 +355,7 @@ export function checkProviderBaseUrl(baseUrl: string, region: Region): BaseUrlCh
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return { ok: false, problem: "protokoll" };
   }
+  if (baseUrl.includes("?") || baseUrl.includes("#")) return { ok: false, problem: "keine_url" };
 
   const host = normalizeHost(url.hostname);
   const local = region === "local";
