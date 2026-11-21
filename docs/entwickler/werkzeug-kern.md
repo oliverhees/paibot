@@ -85,7 +85,7 @@ pnpm --filter @paibot/shared test
 
 ## Bekannte Schwächen
 
-- **Übergangswerte:** `step` 0, `maxSteps` 1, `runTokens` 0, `maxRunTokens` 500 000, `toolCount` 0, `untrustedInput` `false`, `trigger` `"chat"` sind fest (`packages/agents/src/run/kontext.ts#modelFacts`).
+- **Übergangswerte:** `step` 0, `maxSteps` 1, `runTokens` 0, `maxRunTokens` 500 000, `toolCount` 0, `untrustedInput` `false`, `trigger` `"chat"` sind fest (`packages/agents/src/run/kontext.ts#modelFacts`). Sie stimmen nur, solange es keine Werkzeug-Schleife gibt: Heute gibt es keine fremden Inhalte im Lauf, keine Werkzeuge und nur den Schritt 0. Mit der Werkzeug-Schleife müssen sie durch die echten Werte des Laufs ersetzt werden (Schritt, verbrauchte Token, Zahl der Werkzeuge, fremde Inhalte); bleiben sie fest, prüfen G-16, G-18 und der Deckel D-01 nichts.
 - **G-16 und G-18 ohne Wirkung:** Ein Lauf macht heute genau einen Schritt; beide Grenzen sind deshalb immer eingehalten (`packages/agents/src/run/vertrag.ts#MAX_MOTOR_STEPS`).
 - **`untrustedInput` heute immer `false`:** Der Deckel D-01 greift im Chat deshalb nie (`packages/agents/src/run/kontext.ts#modelFacts`).
 - **Abdruck v2 nur mit Ganzzahlen:** Gleitkommazahlen in den Argumenten werfen beim Abdruck (`packages/gate/src/abdruck.ts#toolCallDigestText`).
