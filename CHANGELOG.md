@@ -28,6 +28,7 @@ PaiBot ist im Bau: Diese Neuerungen sind Bausteine im Hintergrund. In der Oberfl
 - Live-Ereignisse je Unterhaltung mit Nachholen nach einer Unterbrechung (Baustein, noch nicht an die Anmeldung angeschlossen)
 - Zugriffsfunktionen auf die Datenbank je Bereich und alle Tabellen der Basis
 - Design und Bausteine der Oberfläche (Farben, App-Rahmen, Grundkomponenten) und lokal eingebundene Schriften
+- Release-Ablauf: Ein Tag `v*` baut das Image für `linux/amd64` und `linux/arm64` mit Herkunftsnachweis und SBOM und veröffentlicht es auf `ghcr.io/oliverhees/paibot`; `deploy/docker-compose.image.yml` startet PaiBot aus dem fertigen Image mit fester Version (`PAIBOT_VERSION`), nutzbar ab der ersten veröffentlichten Version ([Doku](docs/installation.md#mit-fertigem-image))
 - Grundlage für „Als Web-App installieren“ (Manifest und Symbole)
 - Datenschleuse als zuschaltbarer Dienst in Docker Compose (Profil `schleuse`, Standard: aus), Konfiguration mit `pnpm schleuse:config`
 - Test-Anbieter für Entwicklung und Tests, Durchstich-Test über alle Bausteine

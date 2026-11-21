@@ -73,6 +73,65 @@ Web-App und Worker haben eine Speicher-Grenze (Standard: `web` 768 MB, `worker` 
 
 Der Worker hat keinen Port. Er hängt im internen Netz (für die Datenbank) und im Netz nach außen, weil er die Anfragen an die Modell-Anbieter stellt. Er bekommt wie die Web-App nur die eingeschränkte App-Rolle (`DATABASE_URL`), nie die Zugangsdaten der Migrations-Rolle; die hat nur `migrate`. Sein Healthcheck prüft eine Herzschlag-Datei unter `/tmp`, die er alle zehn Sekunden schreibt, solange die Datenbank antwortet und kein Lauf hängt.
 
+## Mit fertigem Image
+
+**Stand:** Dieser Weg gilt **ab der ersten veröffentlichten Version**. Bis dahin gibt es noch kein Image auf GHCR, und du installierst wie oben mit `--build` aus dem Quellcode. Welche Versionen es gibt, siehst du unter [Releases](https://github.com/oliverhees/paibot/releases) bzw. [Packages](https://github.com/oliverhees/paibot/pkgs/container/paibot) im Repo.
+
+Mit fertigem Image baust du nichts selbst: Docker lädt PaiBot als fertiges Image von `ghcr.io/oliverhees/paibot` (für `linux/amd64` und `linux/arm64`). Das spart Zeit und Speicher beim Start, gerade auf kleinen Servern. Die Aufstellung ist dieselbe wie beim Bau aus dem Quellcode: dieselben Dienste, Netze, Rechte, Speicher-Grenzen und Healthchecks. Sie steht in `deploy/docker-compose.image.yml`.
+
+1. Den Stand der Version holen, die du installieren willst (hier als Beispiel `v0.3.0`). Du brauchst daraus nur den Ordner `deploy/`:
+
+   ```bash
+   git clone --depth 1 --branch v0.3.0 https://github.com/oliverhees/paibot.git
+   cd paibot
+   ```
+
+2. Werte erzeugen und die Version eintragen. `PAIBOT_VERSION` ist Pflicht und hat keinen Standard wie „latest“, damit kein Update unbemerkt kommt:
+
+   ```bash
+   sh deploy/env-erzeugen.sh
+   echo "PAIBOT_VERSION=0.3.0" >> deploy/.env
+   ```
+
+3. Starten und prüfen:
+
+   ```bash
+   docker compose -f deploy/docker-compose.image.yml --env-file deploy/.env up -d
+   curl http://localhost:3000/api/health
+   ```
+
+   Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`, und `… ps -a` zeigt wie oben `web` und `worker` als `healthy` und `migrate` als `Exited (0)`.
+
+Fehlt `PAIBOT_VERSION`, bricht `docker compose` mit „PAIBOT_VERSION fehlt“ ab, bevor etwas startet.
+
+### Fest auf ein Image pinnen
+
+Ein Versions-Tag zeigt normalerweise immer auf dasselbe Image. Wer ganz sicher gehen will, hängt den Digest an. Den Digest jeder Version zeigt die Übersicht des Release-Laufs, oder du liest ihn selbst aus:
+
+```bash
+docker buildx imagetools inspect ghcr.io/oliverhees/paibot:0.3.0
+```
+
+In `deploy/.env` steht dann zum Beispiel `PAIBOT_VERSION=0.3.0@sha256:<64 Zeichen>`. Docker lädt genau dieses Image oder bricht ab.
+
+Zu jedem Image gehören ein Herkunftsnachweis (aus welchem Commit und mit welchen Schritten es gebaut wurde) und eine Stückliste der enthaltenen Pakete (SBOM). Ansehen:
+
+```bash
+docker buildx imagetools inspect ghcr.io/oliverhees/paibot:0.3.0 --format '{{json .Provenance}}'
+docker buildx imagetools inspect ghcr.io/oliverhees/paibot:0.3.0 --format '{{json .SBOM}}'
+```
+
+### Auf eine neue Version wechseln
+
+1. Sicherung anlegen (Abschnitt [Sicherungen](#sicherungen)).
+2. Den Ordner `deploy/` auf den Stand der neuen Version bringen (`git fetch --depth 1 origin tag v<Version>` und `git checkout v<Version>`), damit Compose-Datei und Version zusammenpassen.
+3. In `deploy/.env` `PAIBOT_VERSION` auf die neue Version setzen.
+4. `docker compose -f deploy/docker-compose.image.yml --env-file deploy/.env up -d` – Docker lädt das neue Image, `migrate` bringt die Datenbank auf Stand, danach starten `web` und `worker` neu.
+
+Zurück auf eine ältere Version geht nur mit der Sicherung von vorher: Eine Datenbank, die schon auf einer neueren Version lief, meldet bei einer älteren „Datenbank nicht auf Stand“.
+
+Die Datenschleuse (Profil `schleuse`) wird auch auf diesem Weg weiterhin aus einem festen Commit gebaut, weil es von ihr noch kein fertiges Image gibt.
+
 ## Einstellungen
 
 Alle Werte stehen in `deploy/.env` (Vorlage: `deploy/.env.example`). Diese Datei wird nie committet.
@@ -92,6 +151,7 @@ Alle Werte stehen in `deploy/.env` (Vorlage: `deploy/.env.example`). Diese Datei
 | `PAIBOT_WEB_SPEICHER`        | Speicher-Grenze der Web-App (Docker-Angabe wie `768m`, `1g`)                                | `768m`                  |
 | `PAIBOT_WORKER_SPEICHER`     | Speicher-Grenze des Workers                                                                 | `512m`                  |
 | `PAIBOT_MIGRATE_SPEICHER`    | Speicher-Grenze des Dienstes `migrate`                                                      | `384m`                  |
+| `PAIBOT_VERSION`             | nur mit fertigem Image: Version (z. B. `0.3.0`), auch mit Digest; **Pflicht** dort          | keiner                  |
 
 Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), weil sie in einer Datenbank-Adresse stehen. `POSTGRES_PASSWORD` und `POSTGRES_APP_PASSWORD` müssen verschieden sein, sonst startet `migrate` nicht.
 
@@ -206,6 +266,8 @@ In der Entwicklung (`pnpm dev`) migriert die Web-App beim Start selbst, mit `DAT
 | Beobachtung                                                                                | Ursache                                                                                            | Was tun                                                                                      |
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Compose bricht mit „fehlt“ ab                                                              | ein Pflichtwert ist nicht gesetzt                                                                  | `sh deploy/env-erzeugen.sh` (neu) oder Wert in `deploy/.env` ergänzen                        |
+| Compose bricht mit „PAIBOT_VERSION fehlt“ ab                                               | fertiges Image ohne Version                                                                        | `PAIBOT_VERSION=<Version>` in `deploy/.env` eintragen                                        |
+| Beim Laden des Images: „manifest unknown“ oder „not found“                                 | diese Version gibt es (noch) nicht auf GHCR                                                        | Version unter Releases prüfen; bis zur ersten Version mit `--build` installieren             |
 | Log: „Start abgebrochen: Einstellungen unvollständig“                                      | Passwort zu kurz, Platzhalter oder `PAIBOT_SECRET` falsch geformt                                  | genannten Wert neu erzeugen (siehe „Einstellungen“)                                          |
 | Log: „… mit zu vielen Rechten oder falsch eingestellt“                                     | App nutzt die Migrations-Rolle oder einen Superuser, oder die App-Rolle trägt eigene Einstellungen | „So stellst du eine bestehende Installation um“; sonst `migrate` erneut starten (`… up -d`)  |
 | `web` und `worker` starten nicht, `migrate` steht auf `Exited (1)`                         | Migration oder Einrichtung der App-Rolle fehlgeschlagen                                            | `… logs migrate` lesen; `POSTGRES_PASSWORD` prüfen                                           |
