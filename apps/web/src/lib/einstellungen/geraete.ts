@@ -21,11 +21,14 @@ export function geraeteSortiert(liste: readonly GeraetZeile[]): GeraetZeile[] {
   });
 }
 
-/** Ein neues Gerät im Hinweis (vom Server, ohne Adresse). */
+/** Eine Zeile im Hinweis (vom Server, ohne Adresse). */
 export interface NeueAnmeldungZeile {
   id: string;
+  /** Fehlt bei älteren Antworten: dann `neu`. */
+  art?: "neu" | "entfernt" | "verdraengt" | "alle";
   name?: string;
   angelegt: string;
+  anzahl?: number;
 }
 
 /** Überschrift und Zeilen des Hinweises, z. B. „Safari auf iPhone, am 21.11.2026, 14:05“. */
@@ -33,12 +36,32 @@ export function hinweisTexte(
   liste: readonly NeueAnmeldungZeile[],
   zeitzone: string,
 ): { titel: string; zeilen: string[] } {
-  const titel =
-    liste.length === 1
-      ? t("hinweis.neu.titel")
-      : t("hinweis.neu.titel_mehrere", { anzahl: liste.length });
-  const zeilen = liste.map((g) =>
-    t("hinweis.neu.zeile", { geraet: grobesGeraet(g.name), zeit: zeitpunkt(g.angelegt, zeitzone) }),
-  );
-  return { titel, zeilen };
+  const nurNeue = liste.every((g) => (g.art ?? "neu") === "neu");
+  if (nurNeue) {
+    const titel =
+      liste.length === 1
+        ? t("hinweis.neu.titel")
+        : t("hinweis.neu.titel_mehrere", { anzahl: liste.length });
+    const zeilen = liste.map((g) =>
+      t("hinweis.neu.zeile", {
+        geraet: grobesGeraet(g.name),
+        zeit: zeitpunkt(g.angelegt, zeitzone),
+      }),
+    );
+    return { titel, zeilen };
+  }
+  const zeilen = liste.map((g) => {
+    const zeit = zeitpunkt(g.angelegt, zeitzone);
+    switch (g.art ?? "neu") {
+      case "alle":
+        return t("hinweis.aenderung.alle", { anzahl: g.anzahl ?? 1, zeit });
+      case "entfernt":
+        return t("hinweis.aenderung.entfernt", { geraet: grobesGeraet(g.name), zeit });
+      case "verdraengt":
+        return t("hinweis.aenderung.verdraengt", { geraet: grobesGeraet(g.name), zeit });
+      default:
+        return t("hinweis.aenderung.neu", { geraet: grobesGeraet(g.name), zeit });
+    }
+  });
+  return { titel: t("hinweis.aenderung.titel"), zeilen };
 }

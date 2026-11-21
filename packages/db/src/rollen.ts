@@ -34,7 +34,7 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * - `rules`: nur lesen. Die Standard-Regeln legen allein die Migrationen an.
  * - `installation_keys`: lesen, anhängen und nur `retired_at` setzen (Ausmustern).
  * - `conversation_events`: lesen, anhängen, alte Ereignisse löschen; nie ändern.
- * - `geraete`: lesen, anlegen, „zuletzt gesehen“, Ablauf, Widerruf und „Hinweis bestätigt bis“ setzen,
+ * - `geraete`: lesen, anlegen, „zuletzt gesehen“, Ablauf, Widerruf samt Grund und „Hinweis bestätigt bis“ setzen,
  *   alte Einträge löschen; Art, Rechte, Schlüssel und Prüfsumme des Cookies ändert die App nie.
  * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
  *   der Unterhaltung.
@@ -44,7 +44,8 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   bots: APP_DEFAULT_TABLE_RIGHTS,
   conversation_events: "select, insert, delete",
   conversations: APP_DEFAULT_TABLE_RIGHTS,
-  geraete: "select, insert, update (last_seen_at, expires_at, revoked_at, notice_seen_at), delete",
+  geraete:
+    "select, insert, update (last_seen_at, expires_at, revoked_at, revoke_reason, notice_seen_at), delete",
   installation_keys: "select, insert, update (retired_at)",
   messages: APP_DEFAULT_TABLE_RIGHTS,
   models: APP_DEFAULT_TABLE_RIGHTS,

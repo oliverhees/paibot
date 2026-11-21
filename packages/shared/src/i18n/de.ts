@@ -1477,4 +1477,11 @@ export const de = {
   "chat.fassung.naechste": "Nächste Fassung",
   "chat.fassung.ersetzt": "Ersetzt durch eine neuere Fassung.",
   "chat.neu_erzeugen.angehalten": "Neu erzeugen geht wieder, wenn du den Not-Aus aufhebst.",
+  // Hinweis: Änderungen an den bekannten Geräten (entfernt, verdrängt, alle abgemeldet)
+  "hinweis.aenderung.titel": "Änderungen an deinen Geräten",
+  "hinweis.aenderung.neu": "Neu angemeldet: {geraet}, am {zeit}",
+  "hinweis.aenderung.entfernt": "Entfernt: {geraet}, am {zeit}",
+  "hinweis.aenderung.verdraengt":
+    "Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): {geraet}, am {zeit}",
+  "hinweis.aenderung.alle": "Alle Geräte abgemeldet ({anzahl}), am {zeit}",
 } as const satisfies Record<string, string | readonly string[]>;

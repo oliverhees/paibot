@@ -75,6 +75,20 @@ export const sessions = pgTable(
  * Cookie des Geräts steht nur als SHA-256 da (`token_hash`). Ein widerrufenes oder abgelaufenes
  * Gerät gilt nicht mehr; seine Sitzungen enden mit dem Widerruf.
  */
+/**
+ * Gründe für den Widerruf eines Geräts: selbst abgemeldet, in der Liste entfernt, von einem
+ * weiteren Gerät über der Obergrenze verdrängt, mit „Alle Sitzungen beenden“, beim Wechsel des
+ * Passworts.
+ */
+export const GERAET_WIDERRUF_GRUENDE = [
+  "abgemeldet",
+  "entfernt",
+  "verdraengt",
+  "alle",
+  "passwort",
+] as const;
+export type GeraetWiderrufGrund = (typeof GERAET_WIDERRUF_GRUENDE)[number];
+
 export const geraete = pgTable(
   "geraete",
   {
@@ -98,6 +112,8 @@ export const geraete = pgTable(
      * bestätigt („Das war ich“); leer = seit dem Anlegen nichts bestätigt.
      */
     noticeSeenAt: timestamp("notice_seen_at", { withTimezone: true }),
+    /** Warum das Gerät widerrufen wurde (nur zusammen mit `revoked_at`, siehe `GERAET_WIDERRUF_GRUENDE`). */
+    revokeReason: text("revoke_reason").$type<GeraetWiderrufGrund>(),
   },
   (t) => [
     idCheck("geraete_id_format", t.id, "device"),
@@ -107,6 +123,11 @@ export const geraete = pgTable(
     check("geraete_name_laenge", sql`char_length(${t.name}) <= 200`),
     check("geraete_public_key_laenge", sql`char_length(${t.publicKey}) <= 2000`),
     check("geraete_ablauf_nach_start", sql`${t.expiresAt} > ${t.createdAt}`),
+    inListCheck("geraete_revoke_reason_werte", t.revokeReason, GERAET_WIDERRUF_GRUENDE),
+    check(
+      "geraete_revoke_reason_mit_widerruf",
+      sql`${t.revokeReason} is null or ${t.revokedAt} is not null`,
+    ),
     index("geraete_owner_id_idx").on(t.ownerId),
   ],
 );

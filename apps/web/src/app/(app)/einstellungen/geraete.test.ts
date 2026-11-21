@@ -48,6 +48,25 @@ describe("geraeteSortiert", () => {
 });
 
 describe("hinweisTexte", () => {
+  it("Entfernen, Verdrängen und „alle abgemeldet“: eigener Titel, je eine Zeile", () => {
+    const t = hinweisTexte(
+      [
+        { id: "ger_a", art: "entfernt", name: FIREFOX, angelegt: "2026-11-21T13:05:00.000Z" },
+        { id: "ger_b", art: "verdraengt", name: SAFARI, angelegt: "2026-11-21T12:00:00.000Z" },
+        { id: "ger_c", art: "alle", angelegt: "2026-11-20T09:00:00.000Z", anzahl: 3 },
+        { id: "ger_d", art: "neu", name: SAFARI, angelegt: "2026-11-20T08:00:00.000Z" },
+      ],
+      "Europe/Berlin",
+    );
+    expect(t.titel).toBe("Änderungen an deinen Geräten");
+    expect(t.zeilen).toEqual([
+      "Entfernt: Firefox auf Linux, am 21.11.2026, 14:05",
+      "Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): Safari auf iPhone, am 21.11.2026, 13:00",
+      "Alle Geräte abgemeldet (3), am 20.11.2026, 10:00",
+      "Neu angemeldet: Safari auf iPhone, am 20.11.2026, 09:00",
+    ]);
+  });
+
   it("ein Gerät: Titel in der Einzahl, grobe Angabe und Zeit in der Zeitzone", () => {
     const t = hinweisTexte(
       [{ id: "ger_a", name: SAFARI, angelegt: "2026-11-21T13:05:00.000Z" }],
