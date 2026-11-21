@@ -239,7 +239,7 @@ export async function checkMigrationState(
   const expected = files.length;
   const last = files.at(-1)?.folderMillis ?? 0;
   const [exists] = await sql<{ ok: boolean }[]>`
-    select to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+    select pg_catalog.to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
   if (exists?.ok !== true) return { status: "leer", expected, applied: 0 };
   const [row] = await sql<{ applied: number; newest: string | null }[]>`
     select count(*)::int as applied, max(created_at)::text as newest
@@ -390,7 +390,7 @@ export async function prepareAppRole(
     );
 
     const [drizzleTable] = await tx<{ ok: boolean }[]>`
-      select to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+      select pg_catalog.to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
     if (drizzleTable?.ok === true) {
       await tx`grant usage on schema drizzle to ${role}`;
       await tx`grant select on drizzle.__drizzle_migrations to ${role}`;
@@ -404,7 +404,7 @@ export async function prepareAppRole(
 }
 
 async function databaseName(sql: postgres.TransactionSql): Promise<string> {
-  const [row] = await sql<{ name: string }[]>`select current_database() as name`;
+  const [row] = await sql<{ name: string }[]>`select pg_catalog.current_database() as name`;
   if (row === undefined) throw new Error("Name der Datenbank fehlt.");
   return row.name;
 }

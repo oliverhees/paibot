@@ -15,7 +15,7 @@ import { randomBytes } from "node:crypto";
 import { newId } from "@paibot/shared/ids";
 import { PgBoss } from "pg-boss";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { createQueue, QUEUE_SCHEMA, type Queue, type RunJob } from "./index";
+import { createQueue, QUEUE_SCHEMA, type Queue, queueConnection, type RunJob } from "./index";
 
 const url = process.env.PAIBOT_TEST_DATABASE_URL;
 const open: Queue[] = [];
@@ -141,6 +141,41 @@ describe.skipIf(!url)("Warteschlange mit der App-Rolle einer frischen Installati
       expect(after.rows[0]).toEqual({ ok: false, eingerichtet: true });
     } finally {
       await admin.close();
+    }
+  });
+
+  it("ein an der Rolle gesetzter Suchpfad gilt nicht für Verbindungen der Warteschlange", async () => {
+    const own = adminDb(install.appUrl);
+    await own.open();
+    try {
+      // Jede Rolle darf ihre eigenen Einstellungen ändern; das lässt sich in Postgres nicht verbieten.
+      await own.executeSql(`alter role ${install.role} set search_path = ${QUEUE_SCHEMA}, public`);
+    } finally {
+      await own.close();
+    }
+    const schemas = async (config: { connectionString: string; options?: string }) => {
+      const db = new PgBoss({ ...config, max: 1 }).getDb() as unknown as AdminDb;
+      await db.open();
+      try {
+        const { rows } = await db.executeSql("select current_schemas(true)::text[] as path");
+        return rows[0]?.path;
+      } finally {
+        await db.close();
+      }
+    };
+    try {
+      expect(await schemas({ connectionString: install.appUrl })).toEqual([
+        "pg_catalog",
+        QUEUE_SCHEMA,
+        "public",
+      ]);
+      expect(await schemas(queueConnection(install.appUrl))).toEqual(["pg_catalog", "public"]);
+    } finally {
+      const reset = adminDb(install.appUrl);
+      await reset.open();
+      await reset
+        .executeSql(`alter role ${install.role} reset search_path`)
+        .finally(() => reset.close());
     }
   });
 

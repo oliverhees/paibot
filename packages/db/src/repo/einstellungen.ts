@@ -61,7 +61,7 @@ export async function ensure(db: Database): Promise<Settings> {
 
 /** Ändert Einstellungen; legt die Zeile bei Bedarf an. Nicht genannte Felder bleiben. */
 export async function update(db: Database, patch: SettingsPatch): Promise<Settings> {
-  const felder = { ...patch, updatedAt: sql`now()` };
+  const felder = { ...patch, updatedAt: sql`pg_catalog.now()` };
   const [row] = await uebersetzen(
     () =>
       db
@@ -97,7 +97,7 @@ export async function completeSetup(db: Database, input: SetupCompletion): Promi
         .values({ id: ZEILE, ...felder })
         .onConflictDoUpdate({
           target: settings.id,
-          set: { ...felder, updatedAt: sql`now()` },
+          set: { ...felder, updatedAt: sql`pg_catalog.now()` },
           setWhere: isNull(settings.setupCompletedAt),
         })
         .returning(),

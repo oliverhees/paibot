@@ -16,6 +16,21 @@ import { QUEUE_SCHEMA, QUEUE_SUPERVISION, type Queue, type QueueOptions } from "
 export * from "./vertrag";
 
 /**
+ * Suchpfad jeder Verbindung der Warteschlange. Er wird beim Verbindungsaufbau mitgeschickt und gilt
+ * damit vor einer Einstellung an der Rolle (`ALTER ROLE … SET search_path`). Die Abfragen der
+ * Bibliothek nennen ihr Schema selbst; Namen aus dem System-Katalog kommen so immer aus `pg_catalog`.
+ */
+export const QUEUE_SEARCH_PATH = "pg_catalog,public";
+
+/** Verbindungs-Angaben der Warteschlange (Adresse und fester Suchpfad). */
+export function queueConnection(databaseUrl: string): {
+  connectionString: string;
+  options: string;
+} {
+  return { connectionString: databaseUrl, options: `-c search_path=${QUEUE_SEARCH_PATH}` };
+}
+
+/**
  * Baut die Warteschlange für die Datenbank unter `databaseUrl`. Verbindet erst mit `start`.
  *
  * Das Schema `QUEUE_SCHEMA` legt im Betrieb der Migrations-Schritt an und übergibt es der
@@ -29,7 +44,7 @@ export function createQueue(databaseUrl: string, options?: QueueOptions): Queue 
     throw new RangeError("maxConnections muss eine ganze Zahl ab 1 sein");
   }
   const boss = new PgBoss({
-    connectionString: databaseUrl,
+    ...queueConnection(databaseUrl),
     schema: QUEUE_SCHEMA,
     createSchema: false,
     useListenNotify: true,

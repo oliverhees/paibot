@@ -81,7 +81,7 @@ export async function create(db: Database, input: RunCreate): Promise<Run> {
           triggerMessageId: input.triggerMessageId,
           botId: input.botId,
           resumesRunId: input.resumesRunId ?? null,
-          createdAt: sql`clock_timestamp()`,
+          createdAt: sql`pg_catalog.clock_timestamp()`,
         })
         .returning(),
     anlegenFehler,
