@@ -126,7 +126,18 @@ Eine neue Route bekommt in `gate-pflicht.test.ts` einen Fall (`AKTIONS_FAELLE` b
 
 ### Ende-zu-Ende im Browser
 
-`tools/e2e` startet PaiBot im Produktions-Build und geht den ganzen Weg im Browser: Einrichtung mit Code, Anbieter eintragen, Modell wählen, Nachricht senden, gestreamte Antwort, Beleg öffnen und prüfen, ganze Kette prüfen, Export, `pnpm belege:pruefen` auf dem Export, Abmelden und Anmelden, Tagesbudget setzen, Ablehnung durch das Tor im Chat, zuletzt der Chat im Handy-Format.
+`tools/e2e` startet PaiBot im Produktions-Build und geht den ganzen Weg im Browser:
+
+| Bereich               | Was geprüft wird                                                                                                                                                                                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Einrichtung           | Code, Passwort, Anbieter eintragen und Verbindung testen, Modell wählen                                                                                                                                                                                               |
+| Chat                  | Nachricht senden, Antwort kommt gestreamt, Verlauf nach dem Neuladen, Beleg öffnen und prüfen                                                                                                                                                                         |
+| Handy-Format (390 px) | senden, Antwort streamt, „Stopp“ bricht sie ab (der Test-Anbieter sieht den Abbruch), Beleg als Blatt von unten                                                                                                                                                       |
+| Datenschleuse         | mit einer Beispiel-Datenschleuse (`scripts/doku/schleuse-attrappe.mjs`): Standard einschalten, Nachricht mit „geschützt über die Datenschleuse“; „Schlüssel passt nicht“ im Chat mit Ausweg und auf der Seite Datenschleuse, dabei geht keine Anfrage an den Anbieter |
+| Passwort ändern       | falsches aktuelles Passwort ändert nichts; danach ist das zweite Gerät abgemeldet, das alte Passwort gilt nicht mehr, das neue schon                                                                                                                                  |
+| Anmelde-Schutz        | fünf Fehlversuche sperren die Adresse (auch das richtige Passwort kommt dann nicht durch), viele Versuche aus vielen Adressen lösen die gemeinsame Bremse aus, ein bekanntes Gerät kommt trotzdem durch                                                               |
+| Belege                | ganze Kette prüfen, Export, `pnpm belege:pruefen` auf dem Export                                                                                                                                                                                                      |
+| Zugang und Grenzen    | Abmelden und Anmelden, Tagesbudget setzen, Ablehnung durch das Tor im Chat                                                                                                                                                                                            |
 
 ```bash
 pnpm build
@@ -135,17 +146,39 @@ node tools/e2e/src/e2e.mjs --ausgabe /var/tmp/paibot-e2e
 
 Was passiert:
 
-1. Eigener Postgres (Programme aus dem System, Passwort-Anmeldung, freier Port, nur `127.0.0.1`), Test-Anbieter, Migrations-Schritt wie der Dienst `migrate`, danach Web-App und Worker nur mit der App-Rolle.
-2. Web-App, Worker und Migrations-Schritt laufen mit der Netz-Sperre (`tools/e2e/src/netz-sperre.cjs`, geladen über `NODE_OPTIONS=--require`). Sie lässt nur Postgres, den Test-Anbieter und (für die Web-App) die eigene Adresse zu. Jeder andere Verbindungsaufbau und jede Namensauflösung wird abgebrochen und in `netz.jsonl` festgehalten.
-3. Im Browser wird jede Anfrage an einen anderen Host als die App abgebrochen und gezählt. Konsolenfehler und CSP-Verletzungen werden gesammelt.
+1. Postgres: ein eigener Server aus den Programmen des Systems (Passwort-Anmeldung, freier Port, nur `127.0.0.1`). Mit `PAIBOT_E2E_DATABASE_URL` (Benutzer, der Datenbanken und Rollen anlegen darf) legt die Prüfung stattdessen eine eigene Wegwerf-Datenbank auf diesem Server an und löscht sie am Ende. Dazu Test-Anbieter, Beispiel-Datenschleuse, Migrations-Schritt wie der Dienst `migrate`, danach Web-App und Worker nur mit der App-Rolle.
+2. Web-App, Worker und Migrations-Schritt laufen mit der Netz-Sperre (`tools/e2e/src/netz-sperre.cjs`, geladen über `NODE_OPTIONS=--require`). Sie lässt nur Postgres, den Test-Anbieter, die Beispiel-Datenschleuse (nur Worker) und (für die Web-App) die eigene Adresse zu. Jeder andere Verbindungsaufbau und jede Namensauflösung wird abgebrochen und in `netz.jsonl` festgehalten.
+3. Im Browser wird jede Anfrage an einen anderen Host als die App abgebrochen und gezählt. Konsolenfehler und CSP-Verletzungen werden gesammelt; nur Fehler-Antworten, die ein Schritt absichtlich auslöst (falsches Passwort, Sperre), zählen nicht.
 4. Grün ist die Prüfung nur, wenn alle Schritte klappen, die Sperre in allen drei Prozessen geladen war und es keinen Verstoß, keine fremde Anfrage und keinen Konsolenfehler gab.
-5. Am Ende räumt das Skript alles ab (Prozesse, Datenbank, temporäre Ordner). Im Ausgabe-Ordner bleiben `ergebnis.json`, die Logs und ein Bild je Schritt.
+5. Am Ende räumt das Skript alles ab (Prozesse, Datenbank, temporäre Ordner). Im Ausgabe-Ordner bleiben `ergebnis.json`, die Logs (`web.log`, `worker.log`, `worker-2.log` …, `anbieter.log`, `migrate.log`) und ein Bild je Schritt.
 
-Gegenproben: `--gegenprobe server` lädt in die Web-App zusätzlich einen absichtlichen Aufruf nach außen, `--gegenprobe browser` ruft im Browser eine fremde Adresse auf. Beide Male muss die Prüfung rot werden.
+Gegenproben: `--gegenprobe server` lädt in die Web-App zusätzlich einen absichtlichen Aufruf nach außen, `--gegenprobe browser` ruft im Browser eine fremde Adresse auf. Beide Male muss die Prüfung rot werden. Viele Schritte haben ihre Gegenprobe eingebaut, zum Beispiel: Bei „Schlüssel passt nicht“ darf beim Anbieter nichts ankommen, bei der Sperre darf auch das richtige Passwort nicht durchkommen.
 
-Ohne Playwright meldet das Skript „ÜBERSPRUNGEN“ und endet mit Exit 0. Playwright ist nicht im Projekt enthalten (einmalig außerhalb: `npm install -g playwright && npx playwright install chromium`).
+Ohne Playwright meldet das Skript „ÜBERSPRUNGEN“ und endet mit Exit 0, mit `PAIBOT_E2E_PFLICHT=1` (so in der CI) dagegen mit Exit 1. Playwright ist nicht im Projekt enthalten (einmalig außerhalb: `npm install -g playwright && npx playwright install chromium`).
 
 Was die Netz-Sperre nicht sieht: Verbindungen aus nativen Erweiterungen oder über interne Bindungen von Node am Modul `net` vorbei, Kind-Prozesse, die `NODE_OPTIONS` nicht erben, Programme außerhalb von Node (Postgres selbst, der Browser), lokale Unix-Sockets (zugelassen) und alles vor dem Laden der Sperre. Die Dienstnamen aus Docker Compose (`postgres`, `datenschleuse`, `web`, `worker`), die die Anbieter-Schicht zur Sicherheit auflöst, beantwortet die Sperre selbst mit „unbekannt“; sie stehen als `name-lokal` im Log und zählen nicht als Verstoß.
+
+### In der CI
+
+| Job             | Was er tut                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `e2e`           | nach `check`: Postgres als Dienst-Container, Playwright in fester Fassung, `pnpm build`, die Prüfung oben, danach beide Gegenproben (müssen mit Exit 1 und der passenden Meldung enden). Im Fehlerfall stehen Schritte, Prüfungen und die Enden der Logs im Protokoll.                                                                                                                                                                                                                                                                                                                                                                         |
+| `ohne-internet` | nach `check`: der echte Docker-Stack mit `deploy/docker-compose.ohne-internet.yml`. Dort ist auch das Netz `paibot-aussen` intern, der Test-Anbieter steht im selben Netz, `web` veröffentlicht keinen Port. Ein Prüf-Container im Netz geht über HTTP Einrichtung, eine Nachricht mit Antwort, die Kette der Belege und den Export samt eigenständigem Prüfer durch (`tools/e2e/src/ohne-internet.mjs`). Danach versucht `tools/e2e/src/netz-probe.cjs` aus `web` und `worker` Verbindungen nach draußen (ein Dienst auf dem Runner, öffentliche Adressen, Namen): keine darf klappen, Postgres und der Test-Anbieter müssen erreichbar sein. |
+
+Den Job `ohne-internet` kannst du mit Docker auch lokal nachstellen:
+
+```bash
+sh deploy/env-erzeugen.sh deploy/.env
+echo "FAKE_PROVIDER_API_KEY=$(od -An -tx1 -N24 /dev/urandom | tr -d ' \n')" >> deploy/.env
+pnpm exec turbo run build --filter=@paibot/receipts
+compose="docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ohne-internet.yml --env-file deploy/.env"
+$compose up -d --build
+code=$($compose logs web | grep -oE 'Einrichtungs-Code: [0-9A-Z-]{14}' | tail -1 | cut -d' ' -f2)
+mkdir -p /tmp/paibot-ohne-internet && chmod 0777 /tmp/paibot-ohne-internet
+PAIBOT_PRUEF_CODE="$code" $compose --profile pruefen run --rm pruefer
+$compose exec -T web node - --draussen 1.1.1.1:443 example.org:443 --drinnen postgres:5432 < tools/e2e/src/netz-probe.cjs
+$compose --profile pruefen down -v
+```
 
 ### Berechtigungen in Tests
 
