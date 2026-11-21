@@ -18,7 +18,6 @@ import {
   belegeSeite,
   belegMitUmfeld,
   ganzeKette,
-  kettenAbfrage,
   kettenStueck,
   regelDaten,
   schluesselDaten,
@@ -62,7 +61,7 @@ export async function belegPruefen(k: RoutenKontext<"belegPruefung">): Promise<R
  * Stück mit Kopf. Mit `?pruefung=server` prüft der Server die ganze Kette (Rückfall, gekennzeichnet).
  */
 export async function belegeKette(k: RoutenKontext<"belegeKette">): Promise<RoutenErgebnis> {
-  const abfrage = kettenAbfrage(k.request.url);
+  const abfrage = k.eingabe;
   if (abfrage.pruefung === "server") {
     const [regeln, schluessel] = await Promise.all([
       regelDaten(k.db),

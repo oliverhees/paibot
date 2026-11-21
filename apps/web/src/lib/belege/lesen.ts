@@ -19,16 +19,20 @@ import type {
   ReceiptEntry,
   ReceiptExportHeader,
 } from "@paibot/shared/belege";
-import type { ReceiptListQuery } from "@paibot/shared/eingaben";
+import {
+  RECEIPT_CHAIN_PAGE,
+  type ReceiptChainQuery,
+  type ReceiptListQuery,
+} from "@paibot/shared/eingaben";
 import { PaiBotError } from "@paibot/shared/fehler";
 import { isId } from "@paibot/shared/ids";
 import { STANDARD_RULE_VERSIONS } from "@paibot/shared/tor";
 import type { RegelDaten } from "./pruefung";
 
 /** Größtes Stück der Kette je Anfrage. */
-export const KETTE_STUECK_MAX = 1000;
+export const KETTE_STUECK_MAX = RECEIPT_CHAIN_PAGE.max;
 /** Standardgröße eines Stücks. */
-export const KETTE_STUECK = 500;
+export const KETTE_STUECK = RECEIPT_CHAIN_PAGE.default;
 /** So weit sucht die Detail-Ansicht nach dem zugehörigen Entscheidungs- bzw. Ergebnis-Beleg. */
 export const PARTNER_FENSTER = 500;
 
@@ -119,37 +123,8 @@ export async function schluesselDaten(db: Database): Promise<SchluesselDaten> {
   return { belege, schluessel };
 }
 
-/** Abfrage für ein Stück der Kette, streng gelesen (die Route hat kein Schema im Vertrag). */
-export interface KettenAbfrage {
-  ab: number;
-  anzahl: number;
-  pruefung?: "server";
-}
-
-const GANZZAHL = /^[1-9][0-9]{0,15}$/;
-
-export function kettenAbfrage(url: string): KettenAbfrage {
-  const params = new URL(url).searchParams;
-  const abfrage: KettenAbfrage = { ab: 1, anzahl: KETTE_STUECK };
-  const ungueltig = (feld: string) =>
-    new PaiBotError("eingabe_ungueltig", { felder: [{ feld, code: "ungueltig" }] });
-  for (const [name, wert] of params) {
-    if (name === "ab") {
-      if (!GANZZAHL.test(wert) || !Number.isSafeInteger(Number(wert))) throw ungueltig("ab");
-      abfrage.ab = Number(wert);
-    } else if (name === "anzahl") {
-      const zahl = Number(wert);
-      if (!GANZZAHL.test(wert) || zahl > KETTE_STUECK_MAX) throw ungueltig("anzahl");
-      abfrage.anzahl = zahl;
-    } else if (name === "pruefung") {
-      if (wert !== "server") throw ungueltig("pruefung");
-      abfrage.pruefung = "server";
-    } else {
-      throw ungueltig(name);
-    }
-  }
-  return abfrage;
-}
+/** Abfrage der Kette in Stücken (geprüft mit `receiptChainQuery` aus dem Routen-Vertrag). */
+export type KettenAbfrage = ReceiptChainQuery;
 
 /** Kopf der Kette wie die erste Zeile eines Exports. Der Anker darin ist nur zum Aufbewahren. */
 export type KettenKopf = Omit<ReceiptExportHeader, "publicKeys"> & { publicKeys: PublicKeyInfo[] };

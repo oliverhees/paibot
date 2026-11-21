@@ -198,5 +198,28 @@ export const receiptListQuery = z.strictObject({
 });
 export type ReceiptListQuery = z.infer<typeof receiptListQuery>;
 
+/** Größe eines Stücks der Kette (`/api/belege/kette`): Standard und Höchstwert. */
+export const RECEIPT_CHAIN_PAGE = { default: 500, max: 1000 } as const;
+
+/** Ganze Zahl ab 1 als Text in einer Abfrage: nur Ziffern, ohne Vorzeichen, Punkt oder Exponent. */
+const queryCountSchema = z
+  .string()
+  .regex(/^[1-9][0-9]{0,15}$/)
+  .transform(Number)
+  .pipe(z.number().int().min(1).max(Number.MAX_SAFE_INTEGER));
+
+/**
+ * Abfrage der Kette in Stücken: ab Nummer `ab`, höchstens `anzahl` Belege; `pruefung=server`
+ * lässt den Server die ganze Kette prüfen (Rückfall, wenn der Browser es nicht kann).
+ */
+export const receiptChainQuery = z.strictObject({
+  ab: queryCountSchema.default(1),
+  anzahl: queryCountSchema
+    .pipe(z.number().max(RECEIPT_CHAIN_PAGE.max))
+    .default(RECEIPT_CHAIN_PAGE.default),
+  pruefung: z.literal("server").optional(),
+});
+export type ReceiptChainQuery = z.infer<typeof receiptChainQuery>;
+
 /** Kopfzeile `Last-Event-ID` beim Fortsetzen des Ereignis-Stroms: letzte gesehene Nummer. */
 export const lastEventIdSchema = z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER);

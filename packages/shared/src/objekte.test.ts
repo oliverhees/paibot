@@ -31,6 +31,7 @@ import {
   modelChoiceInput,
   passwordChangeInput,
   providerInput,
+  receiptChainQuery,
   receiptListQuery,
   schleuseInput,
   sendMessageInput,
@@ -359,6 +360,25 @@ describe("Eingaben", () => {
     expect(receiptListQuery.parse({})).toEqual({ limit: 50 });
     expect(receiptListQuery.safeParse({ limit: "201" }).success).toBe(false);
     expect(receiptListQuery.safeParse({ action: "werkzeug.loeschen" }).success).toBe(false);
+    expect(receiptChainQuery.parse({})).toEqual({ ab: 1, anzahl: 500 });
+    expect(receiptChainQuery.parse({ ab: "7", anzahl: "1000", pruefung: "server" })).toEqual({
+      ab: 7,
+      anzahl: 1000,
+      pruefung: "server",
+    });
+    for (const falsch of [
+      { ab: "0" },
+      { ab: "1.5" },
+      { ab: "1e3" },
+      { ab: "0x10" },
+      { ab: " 2" },
+      { ab: "99999999999999999" },
+      { anzahl: "1001" },
+      { pruefung: "browser" },
+      { x: "1" },
+    ]) {
+      expect(receiptChainQuery.safeParse(falsch).success, JSON.stringify(falsch)).toBe(false);
+    }
     expect(lastEventIdSchema.parse("7")).toBe(7);
     expect(lastEventIdSchema.safeParse("-1").success).toBe(false);
     expect(lastEventIdSchema.safeParse("abc").success).toBe(false);
