@@ -51,14 +51,25 @@ describe("Markdown der Antworten", () => {
     expect(aus).not.toContain("data:");
   });
 
-  it("gibt Links rel=noopener noreferrer und lässt nur http/https zu", () => {
+  it("gibt Links rel=noopener noreferrer nofollow, zeigt das Ziel und lässt nur http/https zu", () => {
     const aus = md("[gut](https://paibot.de) [böse](javascript:alert(1)) [relativ](/belege)");
     expect(aus).toContain(
-      '<a href="https://paibot.de/" target="_blank" rel="noopener noreferrer">gut</a>',
+      '<a href="https://paibot.de/" target="_blank" rel="noopener noreferrer nofollow">gut</a>',
     );
+    expect(aus).toContain("(paibot.de)");
     expect(aus).not.toContain("javascript:");
     expect(aus).not.toContain('href="/belege"');
     expect(aus).toContain("<span>böse</span>");
+  });
+
+  it("verbirgt das Ziel nicht hinter Linktext oder Bild-Beschriftung", () => {
+    const aus = md(
+      "[Deine Bank](https://example.org/abholen?daten=geheim) ![Logo](https://example.org/a.png) https://paibot.de/doku",
+    );
+    expect(aus).toContain("(example.org/abholen…)");
+    expect(aus).toContain("(example.org/a.png)");
+    // Steht das Ziel schon im Text, kommt es nicht doppelt.
+    expect(aus).not.toContain("(paibot.de/doku)");
   });
 
   it("zeigt kein rohes HTML", () => {

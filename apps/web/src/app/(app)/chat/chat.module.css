@@ -1,0 +1,589 @@
+/**
+ * PaiBot – Stile des Chats: Kopfzeile, Verlauf, Hinweise über der Eingabe und Belege rechts.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+/* ---------- Seite ---------- */
+
+.seite {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.verlauf {
+  flex: 1;
+  min-height: 0;
+  padding: 22px 24px 10px;
+}
+
+.spalte {
+  max-width: var(--layout-inhalt);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+}
+
+.spalte > section:first-child {
+  margin: auto 0;
+}
+
+.tag {
+  align-self: center;
+  font-size: var(--schrift-xs);
+  color: var(--ink-soft);
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+}
+
+.duText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ausstehend {
+  opacity: 0.7;
+  display: flex;
+  flex-direction: column;
+}
+
+.leise {
+  color: var(--ink-soft);
+}
+
+.absatz {
+  margin: 0;
+}
+
+.arbeitet {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-soft);
+}
+
+.status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  flex: none;
+}
+
+.status[data-zustand="arbeitet"] {
+  color: var(--accent-text);
+}
+
+.status[data-zustand="arbeitet"]::before {
+  background: var(--accent);
+}
+
+.nurBeleg {
+  display: flex;
+}
+
+.ende {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ende p {
+  margin: 0;
+}
+
+.link {
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--schrift-s);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.link:focus-visible,
+.primaerLink:focus-visible,
+.textKnopf:focus-visible,
+.modellKnopf:focus-visible,
+.schliessen:focus-visible,
+.belegZeile:focus-visible,
+.zurueck:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.primaerLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.beispiele {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: min(100%, 440px);
+}
+
+.beispiele button {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  height: auto;
+  min-height: 38px;
+  padding-block: 8px;
+}
+
+/* ---------- unten: Verbindung, Fehler, Hinweise ---------- */
+
+.unten {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.verbindung,
+.fehler,
+.hinweise {
+  width: calc(100% - 48px);
+  max-width: var(--layout-inhalt);
+  margin: 0 auto 6px;
+}
+
+.verbindung {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--schrift-s);
+  color: var(--warn);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
+}
+
+.fehler {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  font-size: var(--schrift-m);
+}
+
+.fehler > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fehler p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.schliessen {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--schrift-s);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.schliessen:hover {
+  color: var(--ink);
+  background: var(--surface-raised);
+}
+
+.hinweise {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+.hinweise p {
+  margin: 0;
+}
+
+.laenge[data-art="zu_lang"] {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.notizZeile {
+  margin: 0;
+}
+
+/* ---------- Kopfzeile ---------- */
+
+.kopf {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.botTitel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.botText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.botText strong {
+  font-size: var(--schrift-b);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.botText small {
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.platz {
+  flex: 1;
+}
+
+.textKnopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  padding: 0 9px;
+  font: inherit;
+  font-size: var(--schrift-m);
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.textKnopf:hover,
+.textKnopf[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--surface-raised);
+}
+
+.modellKnopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-pill);
+  padding: 0 6px 0 10px;
+  font-size: var(--schrift-m);
+  font-weight: 550;
+  color: var(--ink);
+  white-space: nowrap;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.modellKnopf:hover {
+  border-color: var(--line-strong);
+}
+
+.region {
+  font-size: var(--schrift-xs);
+  font-weight: 650;
+  color: var(--on-eu-soft);
+  background: var(--eu-soft);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+}
+
+.nurLesbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Dialoge ---------- */
+
+.dialogForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dialogAktionen {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dialogFehler {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--schrift-s);
+}
+
+/* ---------- Arbeitsfläche: Belege ---------- */
+
+.flaeche {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flaeche > p {
+  margin: 0;
+  font-size: var(--schrift-s);
+}
+
+.belegListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.belegZeile {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: start;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--schrift-m);
+  cursor: pointer;
+}
+
+.belegZeile:hover {
+  background: var(--surface);
+}
+
+.haken,
+.siegel {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+.haken {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.haken[data-gut],
+.siegel[data-gut] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.belegText {
+  min-width: 0;
+}
+
+.belegText small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+}
+
+.belegRechts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.zahl {
+  font-variant-numeric: tabular-nums;
+}
+
+.zurueck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--schrift-s);
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  width: fit-content;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.zurueck:hover {
+  color: var(--ink);
+}
+
+.beleg {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-karte);
+  background: var(--surface);
+}
+
+.belegKopf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.siegel {
+  width: 34px;
+  height: 34px;
+  flex: none;
+}
+
+.belegTitel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.etikett {
+  font-size: var(--schrift-xs);
+  font-weight: 650;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.belegZeilen {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+  font-size: var(--schrift-m);
+}
+
+.belegZeilen dt {
+  color: var(--ink-soft);
+}
+
+.belegZeilen dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.regeln {
+  margin: 0;
+  padding-left: 16px;
+}
+
+/* ---------- schmal ---------- */
+
+@media (max-width: 719px) {
+  .verlauf {
+    padding: 14px 12px 8px;
+  }
+
+  .spalte {
+    gap: 18px;
+  }
+
+  .verbindung,
+  .fehler,
+  .hinweise {
+    width: calc(100% - 16px);
+  }
+
+  .nurBreit {
+    display: none;
+  }
+
+  .modellKnopf {
+    padding: 0 6px;
+  }
+
+  .belegZeilen {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}

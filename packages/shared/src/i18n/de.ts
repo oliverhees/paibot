@@ -527,4 +527,8 @@ export const de = {
   "chat.beleg.outcome.ask": "fragt nach",
   "chat.beleg.outcome.prepare": "vorbereitet",
   "chat.beleg.keine_regeln": "keine",
+  "chat.verlauf": "Verlauf",
+  "chat.entwurf.etikett": "Entwurf",
+  "chat.entwurf.kopieren": "Kopieren",
+  "chat.entwurf.kopiert": "Kopiert",
 } as const satisfies Record<string, string | readonly string[]>;

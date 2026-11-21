@@ -39,6 +39,11 @@
   text-underline-offset: 3px;
 }
 
+.ziel {
+  color: var(--ink-soft);
+  font-size: 0.86em;
+}
+
 .markdown a:focus-visible {
   outline: var(--fokus-breite) solid var(--focus);
   outline-offset: var(--fokus-abstand);
