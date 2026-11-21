@@ -32,6 +32,7 @@ import {
   TEST_RULE,
   type TestKey,
   testKey,
+  withGateFormat,
 } from "./testhilfen";
 import { verifyChain } from "./verify";
 
@@ -91,7 +92,11 @@ function decided(
 
 async function entryFor(d: ReturnType<typeof decided>): Promise<ReceiptEntry> {
   const { action, facts, ...decision } = d;
-  return signedEntry({ type: "decision", action, decision, facts }, start, key);
+  return signedEntry(
+    { type: "decision", action, decision: withGateFormat(decision), facts },
+    start,
+    key,
+  );
 }
 
 describe("sha256 (ohne Web Crypto)", () => {

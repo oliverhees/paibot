@@ -16,7 +16,7 @@ import type { ApiErrorDetail } from "@paibot/shared/api";
 import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import {
-  Avatar,
+  AvatarLebendig,
   Button,
   Icon,
   type IconName,
@@ -407,7 +407,7 @@ export function Einrichtung({
       </header>
       <main className={styles.buehne}>
         <div className={styles.begleiter}>
-          <Avatar farbe="limette" groesse={92} zustand={sendet ? "arbeitet" : "bereit"} />
+          <AvatarLebendig farbe="limette" groesse={92} zustand={sendet ? "denkt" : "ruhig"} />
           <p className={styles.sprechblase} aria-live="polite">
             {sprache}
           </p>

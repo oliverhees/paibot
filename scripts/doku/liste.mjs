@@ -261,6 +261,9 @@ export function pruefeListe(roh) {
         );
       }
     }
+    if (eintrag.zeigeFertig !== undefined && typeof eintrag.zeigeFertig !== "boolean") {
+      fehler(`${benannt}: „zeigeFertig“ ist wahr oder falsch.`);
+    }
     if (eintrag.verdecke !== undefined) {
       if (
         !Array.isArray(eintrag.verdecke) ||

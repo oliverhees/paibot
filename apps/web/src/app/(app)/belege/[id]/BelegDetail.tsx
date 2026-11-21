@@ -23,9 +23,15 @@ import styles from "../belege.module.css";
 const SIEGEL: Record<EinzelErgebnis["stufe"], BelegSiegel> = {
   gueltig: "ok",
   gebrochen: "warn",
+  nicht_pruefbar: "warn",
   ungueltig: "fehler",
 };
-const CHIP = { gueltig: "ok", gebrochen: "warn", ungueltig: "fehler" } as const;
+const CHIP = {
+  gueltig: "ok",
+  gebrochen: "warn",
+  nicht_pruefbar: "warn",
+  ungueltig: "fehler",
+} as const;
 
 function Teil({ teil }: { teil: KartenTeil }) {
   const klassen = [teil.mono ? styles.mono : "", teil.leise ? styles.leise : ""].join(" ").trim();

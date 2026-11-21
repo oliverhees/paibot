@@ -1,0 +1,148 @@
+/**
+ * PaiBot – Gestaltung des Reiters „Darstellung“.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.stapel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gruppe {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.titel {
+  padding: 0;
+  font-size: var(--schrift-b);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.vorspann {
+  margin: 0;
+  color: var(--ink-soft);
+  max-width: 66ch;
+}
+
+.raster {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.wahl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  cursor: pointer;
+}
+
+.wahl[data-gewaehlt] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.wahl:has(input:focus-visible) {
+  outline: 2px solid var(--fokus-feld);
+  outline-offset: 2px;
+}
+
+.wahl input {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 12px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.vorschau {
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.skizze {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.feld {
+  fill: var(--surface-raised);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.avatar {
+  fill: var(--accent);
+}
+
+.linie {
+  fill: var(--ink-soft);
+  opacity: 0.55;
+}
+
+.chip,
+.karte {
+  fill: var(--surface-raised);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.beschreibung {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.meldung {
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.nurLesbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wahl {
+    transition: border-color 0.12s ease;
+  }
+}

@@ -199,11 +199,14 @@
   color: var(--ink-soft);
 }
 
-.botZustand[data-zustand="arbeitet"] {
+.botZustand[data-zustand="denkt"],
+.botZustand[data-zustand="schreibt"] {
   color: var(--ok);
 }
 
-.botZustand[data-zustand="wartet"] {
+.botZustand[data-zustand="wartet"],
+.botZustand[data-zustand="angehalten"],
+.botZustand[data-zustand="fehler"] {
   color: var(--warn);
 }
 

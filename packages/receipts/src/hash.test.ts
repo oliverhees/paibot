@@ -9,14 +9,13 @@
  */
 
 import { createHash } from "node:crypto";
-import { evaluate } from "@paibot/gate";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import { describe, expect, it } from "vitest";
 import { buildReceipt, type ChainLink } from "./build";
 import { canonicalize } from "./canonical";
 import { digestBytes, hashReceipt, RECEIPT_HASH_PREFIX } from "./hash";
-import { sendAction, sendFacts, TEST_RULE, testKey } from "./testhilfen";
+import { sendAction, sendFacts, testEvaluate, testKey } from "./testhilfen";
 
 function link(seq = 2): ChainLink {
   return {
@@ -32,7 +31,7 @@ describe("buildReceipt", () => {
   it("baut eine Entscheidung mit v 1 und decision.rules statt matchedRules", () => {
     const action = sendAction();
     const facts = sendFacts();
-    const decision = evaluate(action, facts, [TEST_RULE]);
+    const decision = testEvaluate(action, facts);
     const body = buildReceipt({ type: "decision", action, decision, facts }, link());
     expect(body).toMatchObject({
       v: 1,
@@ -107,7 +106,7 @@ describe("buildReceipt", () => {
         {
           type: "decision",
           action,
-          decision: evaluate(action, sendFacts(), [TEST_RULE]),
+          decision: testEvaluate(action, sendFacts()),
           facts,
         },
         link(),
@@ -120,7 +119,7 @@ describe("buildReceipt", () => {
 
   it("weist Fakten ab, die nicht zur Aktion passen, und einen Schlüsselwechsel mit falschem Signierer", () => {
     const action = sendAction();
-    const decision = evaluate(action, sendFacts(), [TEST_RULE]);
+    const decision = testEvaluate(action, sendFacts());
     expect(() =>
       buildReceipt({ type: "decision", action, decision, facts: { inhalt: "Hallo" } }, link()),
     ).toThrow();
@@ -148,7 +147,7 @@ describe("hashReceipt", () => {
     const action = sendAction();
     const facts = sendFacts();
     const body = buildReceipt(
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testEvaluate(action, facts), facts },
       link(),
     );
     const expected = createHash("sha256")
@@ -162,7 +161,7 @@ describe("hashReceipt", () => {
     const action = sendAction();
     const facts = sendFacts();
     const body = buildReceipt(
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testEvaluate(action, facts), facts },
       link(),
     );
     const reversed = Object.fromEntries(Object.entries(body).reverse()) as typeof body;
@@ -173,7 +172,7 @@ describe("hashReceipt", () => {
     const action = sendAction();
     const facts = sendFacts();
     const body = buildReceipt(
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testEvaluate(action, facts), facts },
       link(),
     );
     const plain = createHash("sha256")

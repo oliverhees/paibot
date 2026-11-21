@@ -28,6 +28,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | Einstellungen und Info | [einstellungen.md](einstellungen.md)                   | [funktion-einstellungen.md](../funktion-einstellungen.md)                   |
 | Selbsttest             | [selbsttest.md](selbsttest.md)                         | [funktion-selbsttest.md](../funktion-selbsttest.md)                         |
 | Team-Entwurf (Format)  | [team-entwurf.md](team-entwurf.md)                     | folgt mit der Oberfläche                                                    |
+| Doku-Index im Image    | [doku-index.md](doku-index.md)                         | –                                                                           |
 | Vorlage                | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
 
 ## Aufbau des Monorepos
@@ -121,6 +122,7 @@ Gut zu wissen:
 
 - Zu jeder `docs/funktion-<name>.md` gibt es `docs/entwickler/<name>.md` mit den Abschnitten aus `docs/entwickler/VORLAGE.md` in derselben Reihenfolge.
 - Jeder Pfad in Backticks, der wie eine Datei im Repo aussieht (etwa `packages/gate/src/gate.ts`, Ordner mit `/` am Ende wie `packages/gate/`), muss existieren. Mit `#name` dahinter (etwa `packages/gate/src/gate.ts#createGate`) muss `name` in der Datei vorkommen.
+- In allen Seiten unter `docs/` stehen keine HTML-Kommentare außer dem Urheber-Kopf am Anfang und keine unsichtbaren oder Bidi-Zeichen; jede Seite steht in genau einer der beiden Listen in `scripts/doku-umfang.mjs` (siehe [Doku-Index](doku-index.md)).
 
 Die Tests dazu stehen in `tools/lint-regeln/src/doku-check.test.ts`.
 

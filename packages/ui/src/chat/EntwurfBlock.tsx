@@ -28,10 +28,12 @@ export interface EntwurfBlockProps {
   texte: EntwurfTexte;
   /** Programmiersprache bei Code; dann Schreibmaschinenschrift. */
   sprache?: string;
+  /** Der Text liegt in der Zwischenablage (nur nach gelungenem Kopieren). */
+  onKopiert?: () => void;
 }
 
 /** Abgesetzter Textblock (z. B. ein Mail-Entwurf) mit Knopf zum Kopieren. */
-export function EntwurfBlock({ text, texte, sprache }: EntwurfBlockProps) {
+export function EntwurfBlock({ text, texte, sprache, onKopiert }: EntwurfBlockProps) {
   const [kopiert, setKopiert] = useState(false);
   useEffect(() => {
     if (!kopiert) return;
@@ -47,7 +49,10 @@ export function EntwurfBlock({ text, texte, sprache }: EntwurfBlockProps) {
           className={styles.kopieren}
           onClick={() => {
             navigator.clipboard?.writeText(text).then(
-              () => setKopiert(true),
+              () => {
+                setKopiert(true);
+                onKopiert?.();
+              },
               () => setKopiert(false),
             );
           }}

@@ -14,6 +14,7 @@ import { PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import {
   ACTIVE_STANDARD_RULES,
+  GATE_FORMAT,
   type GatePermit,
   type RuleDefinition,
   type RuleSnapshot,
@@ -141,7 +142,7 @@ describe("erlaubte Aktion", () => {
       expect(decision?.record.action.actionId).toBe(action.actionId);
       expect(outcome?.record.action.actionId).toBe(action.actionId);
       expect(dec(entries)?.facts).toEqual(facts);
-      expect(dec(entries)?.decision).toEqual(result.decision);
+      expect(dec(entries)?.decision).toEqual({ ...result.decision, gateFormat: GATE_FORMAT });
       expect(result.receipts).toEqual({ decision: decision?.ref, result: outcome?.ref });
       expect(decision?.record.time.getTime() ?? 0).toBeLessThan(
         outcome?.record.time.getTime() ?? 0,
@@ -309,7 +310,7 @@ describe("nicht erlaubte Aktion", () => {
       expect(denied.code).toBe(code);
       expect(denied.outcome).toBe(outcome);
       expect(denied.text).toBe("Testgrund.");
-      expect(denied.decision).toEqual(dec(entries)?.decision);
+      expect({ ...denied.decision, gateFormat: GATE_FORMAT }).toEqual(dec(entries)?.decision);
       expect(denied.receipts).toEqual({ decision: entries[0]?.ref, result: entries[1]?.ref });
       expect(res(entries)?.result).toEqual({ status: "denied", code });
     },
@@ -555,7 +556,7 @@ describe("Regelstand: geprüft, bevor entschieden wird", () => {
     );
     const snapshot = await ruleSnapshot(ACTIVE_STANDARD_RULES, 7);
     const r001 = snapshot.rules.find((rule) => rule.id === "R-001");
-    expect(dec(entries)?.decision).toEqual(result.decision);
+    expect(dec(entries)?.decision).toEqual({ ...result.decision, gateFormat: GATE_FORMAT });
     expect(result.decision).toMatchObject({
       outcome: "allow",
       matchedRules: [{ id: "R-001", version: 1, hash: r001?.hash }],
@@ -902,5 +903,26 @@ describe("dieselbe Aktion zweimal gleichzeitig", () => {
     expect((second as PaiBotError).code).toBe("intern");
     expect(executions).toBe(1);
     expect(entries.map((e) => e.kind)).toEqual(["decision", "result"]);
+  });
+});
+
+describe("Fassung des Tors", () => {
+  it("gibt dem Schreiber die Entscheidung mit gateFormat = GATE_FORMAT", async () => {
+    const { ports, log, entries } = memoryPorts();
+    const action = sampleAction("nachricht.senden");
+    await createGate(ports).run(action, sampleFacts("nachricht.senden"), okExecute(log));
+    expect(GATE_FORMAT).toBe(1);
+    expect(dec(entries)?.decision.gateFormat).toBe(GATE_FORMAT);
+  });
+
+  it("gate.run hat keine Option für die Fassung", async () => {
+    const { ports, log } = memoryPorts();
+    const gate = createGate(ports);
+    const action = sampleAction("nachricht.senden");
+    const facts = sampleFacts("nachricht.senden");
+    // @ts-expect-error Die Fassung wählt nur das Nachrechnen, nie das Tor.
+    await gate.run(action, facts, okExecute(log), { format: 1 });
+    // @ts-expect-error Auch nicht unter dem Namen im Beleg.
+    await gate.run(action, facts, okExecute(log), { gateFormat: 1 });
   });
 });

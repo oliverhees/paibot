@@ -104,6 +104,49 @@ describe("buildRunDeps", () => {
     ).rejects.toMatchObject({ code: "einrichtung_offen" });
   });
 
+  it("nach dem Start eingerichteter Schlüssel wirkt ohne Neustart; ausgemustert scheitert der nächste Beleg mit einrichtung_offen", async () => {
+    const { db } = await createTestDb();
+    const secret = randomBytes(32).toString("base64");
+    // Dieselbe Quelle wie im laufenden Worker: vor der Einrichtung gebaut und vorbereitet.
+    const source = buildRunDeps(db, { PAIBOT_SECRET: secret });
+    await source.prepare();
+
+    const setup = await setupRun(db, TOOLS, {
+      secret,
+      providerBaseUrl: "http://127.0.0.1:9/v1",
+      providerKey: "sk-test-unbenutzt-000000000000",
+      motor: motor(),
+    });
+    const key = await repo.installationKeys.getActive(db);
+    const before = (await setup.receipts()).length;
+    const { runId } = await setup.queueMessage("Hallo");
+    const outcome = await executeRun(
+      runId,
+      { ...(await source.prepare()), motor: motor() },
+      new AbortController().signal,
+    );
+    expect(outcome.status).toBe("succeeded");
+    const added = (await setup.receipts()).slice(before);
+    expect(added.map((r) => r.keyId)).toEqual([key?.id, key?.id]);
+    expect((await setup.verify()).ok).toBe(true);
+
+    if (key === undefined) throw new Error("kein Schlüssel");
+    await repo.installationKeys.retire(db, key.id);
+    const prepared = await source.prepare();
+    await expect(
+      prepared.receipts?.appendResult({
+        action: {
+          actionId: newId("action"),
+          type: "lauf.abbrechen",
+          actor: "besitzer",
+          target: { conversationId: setup.conversationId, runId },
+        },
+        result: { status: "ok" },
+        time: new Date(),
+      }),
+    ).rejects.toMatchObject({ code: "einrichtung_offen" });
+  });
+
   it("Datenschleuse aus der Umgebung: Verbindung mit Weg des Schlüssels, Zustand aus der Prüfung in zwei Stufen", async () => {
     const schleuseKey = `sk-schleuse-${randomBytes(12).toString("hex")}`;
     const schleuse = await startFakeSchleuse({

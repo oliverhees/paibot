@@ -146,32 +146,34 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 >
 > **Die erste Version ist zum Ausprobieren gedacht.** Bevor du ihr echte Daten anvertraust, fehlen noch ein Notfall-Zugang, die erneute Bestätigung heikler Aktionen und ein zweiter Faktor beim Anmelden.
 
-| Was                                                                                                                  | Stand                  |
-| -------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                             | ✅ fertig und getestet |
-| Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                             | ✅ fertig und getestet |
-| [Einrichtung und Anmeldung](docs/funktion-einrichtung-und-zugang.md) mit Schutz vor zu vielen Versuchen              | ✅ fertig und getestet |
-| [Chat](docs/funktion-chat.md): Antwort live, Stopp, neu erzeugen, Suche, als Datei sichern, Belege                   | ✅ fertig und getestet |
-| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                                        | ✅ fertig und getestet |
-| [Belege](docs/funktion-belege.md): Protokoll mit Prüfer im Browser und mit `pnpm belege:pruefen`                     | ✅ fertig und getestet |
-| [Modell und Anbieter](docs/funktion-anbieter-und-modelle.md) mit Ausgangs-Liste                                      | ✅ fertig und getestet |
-| [Bot](docs/funktion-bot.md): Name, Anweisung, Aussehen                                                               | ✅ fertig und getestet |
-| [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Standard: aus)                             | ✅ fertig und getestet |
-| [Einstellungen und Info](docs/funktion-einstellungen.md): Passwort, Sitzungen, Grenzen                               | ✅ fertig und getestet |
-| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                                       | ✅ fertig und getestet |
-| [Sicherung und Wiederherstellung](docs/sicherung.md): ein Befehl je Richtung, mit Prüfung danach                     | ✅ fertig und getestet |
-| Doku mit Bildern aus der laufenden App ([Doku](docs/README.md))                                                      | ✅ fertig              |
-| Release zum Installieren (fertiges Image)                                                                            | 🔨 im Bau              |
-| [Eigener Anbieter](docs/funktion-anbieter-und-modelle.md) in der Oberfläche, auch auf deinem Rechner                 | ✅ fertig und getestet |
-| [Not-Aus als Schalter](docs/funktion-tor.md#not-aus-alle-bots-anhalten): alle Bots anhalten, mit Passwort fortsetzen | ✅ fertig und getestet |
-| [Selbsttest](docs/funktion-selbsttest.md): Ist meine Installation richtig eingestellt?                               | ✅ fertig und getestet |
-| [Bekannte Geräte](docs/funktion-einstellungen.md) und Hinweis bei Anmeldung von einem neuen Gerät                    | ✅ fertig und getestet |
-| „Zugang abriegeln“ (alle Geräte auf einen Schlag sperren)                                                            | 🗓️ geplant             |
-| Zweiter Faktor beim Anmelden                                                                                         | 🗓️ geplant             |
-| Notfall-Zugang                                                                                                       | 🗓️ geplant             |
-| Erneute Bestätigung heikler Aktionen                                                                                 | 🗓️ geplant             |
-| Apps anbinden per MCP                                                                                                | 🗓️ geplant danach      |
-| Bots im Team                                                                                                         | 🗓️ geplant danach      |
+| Was                                                                                                                                                             | Stand                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                                                                        | ✅ fertig und getestet |
+| Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                                                                        | ✅ fertig und getestet |
+| [Einrichtung und Anmeldung](docs/funktion-einrichtung-und-zugang.md) mit Schutz vor zu vielen Versuchen                                                         | ✅ fertig und getestet |
+| [Chat](docs/funktion-chat.md): Antwort live, Stopp, neu erzeugen, Suche, als Datei sichern, Belege                                                              | ✅ fertig und getestet |
+| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                                                                                   | ✅ fertig und getestet |
+| [Belege](docs/funktion-belege.md): Protokoll mit Prüfer im Browser und mit `pnpm belege:pruefen`                                                                | ✅ fertig und getestet |
+| [Modell und Anbieter](docs/funktion-anbieter-und-modelle.md) mit Ausgangs-Liste                                                                                 | ✅ fertig und getestet |
+| [Bot](docs/funktion-bot.md): Name, Anweisung, Aussehen                                                                                                          | ✅ fertig und getestet |
+| [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Standard: aus)                                                                        | ✅ fertig und getestet |
+| [Einstellungen und Info](docs/funktion-einstellungen.md): Passwort, Sitzungen, Grenzen                                                                          | ✅ fertig und getestet |
+| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                                                                                  | ✅ fertig und getestet |
+| [Sicherung und Wiederherstellung](docs/sicherung.md): ein Befehl je Richtung, mit Prüfung danach                                                                | ✅ fertig und getestet |
+| Doku mit Bildern aus der laufenden App ([Doku](docs/README.md))                                                                                                 | ✅ fertig              |
+| Release zum Installieren (fertiges Image)                                                                                                                       | 🔨 im Bau              |
+| [Eigener Anbieter](docs/funktion-anbieter-und-modelle.md) in der Oberfläche, auch auf deinem Rechner                                                            | ✅ fertig und getestet |
+| [Not-Aus als Schalter](docs/funktion-tor.md#not-aus-alle-bots-anhalten): alle Bots anhalten, mit Passwort fortsetzen                                            | ✅ fertig und getestet |
+| [Selbsttest](docs/funktion-selbsttest.md): Ist meine Installation richtig eingestellt?                                                                          | ✅ fertig und getestet |
+| [Bekannte Geräte](docs/funktion-einstellungen.md) und Hinweis bei Anmeldung von einem neuen Gerät                                                               | ✅ fertig und getestet |
+| [Startbereich](docs/funktion-chat.md#so-benutzt-du-es) einer leeren Unterhaltung in drei Fassungen, wählbar unter [Darstellung](docs/funktion-einstellungen.md) | ✅ fertig und getestet |
+| Lebendiger Avatar im Chat: zeigt mit dem Gesicht, ob dein Bot zuhört, nachdenkt, schreibt oder angehalten ist ([Chat](docs/funktion-chat.md))                   | ✅ fertig und getestet |
+| „Zugang abriegeln“ (alle Geräte auf einen Schlag sperren)                                                                                                       | 🗓️ geplant             |
+| Zweiter Faktor beim Anmelden                                                                                                                                    | 🗓️ geplant             |
+| Notfall-Zugang                                                                                                                                                  | 🗓️ geplant             |
+| Erneute Bestätigung heikler Aktionen                                                                                                                            | 🗓️ geplant             |
+| Apps anbinden per MCP                                                                                                                                           | 🗓️ geplant danach      |
+| Bots im Team                                                                                                                                                    | 🗓️ geplant danach      |
 
 - 🛠️ **Was gerade gebaut wird:** jede Aufgabe ist ein Issue, sortiert nach [Meilensteinen](https://github.com/oliverhees/paibot/milestones).
 - 📖 **Wie es funktioniert:** die [Doku](docs/README.md) beschreibt jede fertige Funktion Schritt für Schritt mit Bildern.

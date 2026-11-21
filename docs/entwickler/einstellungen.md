@@ -24,20 +24,21 @@ Belegte Entscheidungen im Code:
 
 ## Aufbau
 
-| Datei                                                          | Aufgabe                                                                                                              |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `apps/web/src/lib/einstellungen/grenzen.ts`                    | `einstellungenLesen` (mit heutigem Verbrauch), `einstellungenAendern`, `tagesbeginn`, `tokenSeit`                    |
-| `apps/web/src/lib/einstellungen/anzeige.ts`                    | reine Hilfen ohne Zod: grobe Geräte-Angabe, Prüfliste fürs Passwort, Prüfung der Grenzen                             |
-| `apps/web/src/lib/einstellungen/geraete.ts`                    | Ansicht „Bekannte Geräte“ und Hinweis auf neue Anmeldungen                                                           |
-| `apps/web/src/lib/einstellungen/info.ts`                       | feste Adressen der Info-Seite und des Menüs „Du“ (`INFO_LINKS`, darunter Roadmap und Änderungsliste)                 |
-| `apps/web/src/lib/navigation.ts`                               | Einträge der Seitenleiste (`NAVIGATION`) und des Menüs „Du“ (`duEintraege`); Persönliches steht nur im Menü „Du“     |
-| `apps/web/src/app/(app)/AppRahmen.tsx`                         | baut das Menü „Du“ aus `duEintraege` (Komponente `DuMenue`), darin auch „Abmelden“                                   |
-| `apps/web/src/app/(app)/einstellungen/EinstellungenRahmen.tsx` | Rahmen mit den Reitern der Einstellungen (`EINSTELLUNGEN_REITER`)                                                    |
-| `apps/web/src/lib/zugang/anmeldung.ts`                         | Passwort ändern, Sitzungen, Geräte entfernen, alle abmelden                                                          |
-| `apps/web/src/lib/stand.ts`                                    | Stand der Software: `PAIBOT_BUILD` oder `<version>+dev` (`stand`)                                                    |
-| `apps/web/src/app/(app)/einstellungen/page.tsx`                | Reiter Zugang; `apps/web/src/app/(app)/einstellungen/Zugang.tsx`, `apps/web/src/app/(app)/einstellungen/Geraete.tsx` |
-| `apps/web/src/app/(app)/einstellungen/grenzen/page.tsx`        | Reiter Grenzen; `apps/web/src/app/(app)/einstellungen/Grenzen.tsx`                                                   |
-| `apps/web/src/app/(app)/info/page.tsx`                         | Seite „Info“; `apps/web/src/app/(app)/einstellungen/InfoInhalt.tsx`                                                  |
+| Datei                                                          | Aufgabe                                                                                                                                                              |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/lib/einstellungen/grenzen.ts`                    | `einstellungenLesen` (mit heutigem Verbrauch), `einstellungenAendern`, `tagesbeginn`, `tokenSeit`                                                                    |
+| `apps/web/src/lib/einstellungen/anzeige.ts`                    | reine Hilfen ohne Zod: grobe Geräte-Angabe, Prüfliste fürs Passwort, Prüfung der Grenzen                                                                             |
+| `apps/web/src/lib/einstellungen/geraete.ts`                    | Ansicht „Bekannte Geräte“ und Hinweis auf neue Anmeldungen                                                                                                           |
+| `apps/web/src/lib/einstellungen/info.ts`                       | feste Adressen der Info-Seite und des Menüs „Du“ (`INFO_LINKS`, darunter Roadmap und Änderungsliste)                                                                 |
+| `apps/web/src/lib/navigation.ts`                               | Einträge der Seitenleiste (`NAVIGATION`) und des Menüs „Du“ (`duEintraege`); Persönliches steht nur im Menü „Du“                                                     |
+| `apps/web/src/app/(app)/AppRahmen.tsx`                         | baut das Menü „Du“ aus `duEintraege` (Komponente `DuMenue`), darin auch „Abmelden“                                                                                   |
+| `apps/web/src/app/(app)/einstellungen/EinstellungenRahmen.tsx` | Rahmen mit den Reitern der Einstellungen (`EINSTELLUNGEN_REITER`)                                                                                                    |
+| `apps/web/src/lib/zugang/anmeldung.ts`                         | Passwort ändern, Sitzungen, Geräte entfernen, alle abmelden                                                                                                          |
+| `apps/web/src/lib/stand.ts`                                    | Stand der Software: `PAIBOT_BUILD` oder `<version>+dev` (`stand`)                                                                                                    |
+| `apps/web/src/app/(app)/einstellungen/page.tsx`                | Reiter Zugang; `apps/web/src/app/(app)/einstellungen/Zugang.tsx`, `apps/web/src/app/(app)/einstellungen/Geraete.tsx`                                                 |
+| `apps/web/src/app/(app)/einstellungen/grenzen/page.tsx`        | Reiter Grenzen; `apps/web/src/app/(app)/einstellungen/Grenzen.tsx`                                                                                                   |
+| `apps/web/src/app/(app)/einstellungen/darstellung/page.tsx`    | Reiter Darstellung; `apps/web/src/app/(app)/einstellungen/Darstellung.tsx` (Wahl der Fassung des Startbereichs, Cookie über `apps/web/src/lib/chat/startbereich.ts`) |
+| `apps/web/src/app/(app)/info/page.tsx`                         | Seite „Info“; `apps/web/src/app/(app)/einstellungen/InfoInhalt.tsx`                                                                                                  |
 
 Datenfluss „Grenzen speichern“ (`apps/web/src/lib/einstellungen/grenzen.ts#einstellungenAendern`):
 
@@ -101,4 +102,5 @@ pnpm --filter @paibot/web test
 
 ## Bekannte Schwächen
 
+- **Darstellung nur je Browser:** Die Fassung des Startbereichs liegt in einem Cookie (`apps/web/src/lib/chat/startbereich.ts#FASSUNG_COOKIE`), nicht in den Einstellungen auf dem Server; ein anderes Gerät sieht den Standard.
 - **Tagesbudget erst bei der nächsten Anfrage:** G-04 prüft vor jeder Anfrage an das Modell; eine laufende Antwort wird nicht beim Erreichen des Budgets abgebrochen (`packages/gate/src/limits/index.ts#limitTagesbudget` betrifft nur `modell.anfragen`; der Wächter eines Laufs prüft Herzschlag, Abbruch-Wunsch, Not-Aus und Zeitgrenzen, `packages/agents/src/run/waechter.ts`).

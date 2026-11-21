@@ -353,7 +353,26 @@ async function main() {
   let unterhaltung;
   await schritt("Chat: Nachricht und gestreamte Antwort", seite, async () => {
     await seite.goto(`${app}/`);
-    await seite.getByRole("textbox", { name: "Nachricht" }).fill("Hallo Pai, wie geht es dir?");
+    // Eine leere Unterhaltung zeigt den Startbereich (ab Werk „Begrüßung“). Ein Anfang legt seinen
+    // Text ins Feld, der Cursor steht dahinter, nichts wird gesendet.
+    await seite
+      .getByRole("heading", { name: /Ich bin|^Guten|^Hallo/ })
+      .first()
+      .waitFor();
+    await seite.locator('[data-fassung="begruessung"]').waitFor();
+    await seite.getByRole("button", { name: /Freundliche Terminabsage/ }).click();
+    const feld = seite.getByRole("textbox", { name: "Nachricht" });
+    const wert = await feld.inputValue();
+    if (!wert.startsWith("Schreib")) throw new Error(`Der Anfang steht nicht im Feld: „${wert}“.`);
+    const stelle = await feld.evaluate((el) => ({
+      ende: el.selectionStart === el.value.length && el.selectionEnd === el.value.length,
+      fokus: document.activeElement === el,
+    }));
+    if (!stelle.ende || !stelle.fokus) throw new Error("Cursor steht nicht hinter dem Anfang.");
+    if ((await seite.locator('[role="log"] [class*="blase"]').count()) !== 0) {
+      throw new Error("Ein Anfang darf nichts senden.");
+    }
+    await feld.fill("Hallo Pai, wie geht es dir?");
     // Jede neue Länge des Antwort-Textes merken: mehrere Zwischenstände = gestreamt.
     await seite.evaluate(() => {
       window.__laengen = [];
@@ -382,6 +401,33 @@ async function main() {
     await seite.reload();
     await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
   });
+
+  await schritt(
+    "Darstellung: Fassung des Startbereichs wählen, gemerkt, erstes Bild stimmt",
+    seite,
+    async () => {
+      await seite.goto(`${app}/einstellungen/darstellung`);
+      await seite.getByRole("radio", { name: /Stille/ }).check();
+      await seite.getByText("Gemerkt für diesen Browser.").waitFor();
+      // Der Server zeichnet die gewählte Fassung schon im ersten HTML, ohne Skript und ohne Wechsel.
+      const roh = await (await seite.request.get(`${app}/`)).text();
+      if (!roh.includes('data-fassung="stille"') || roh.includes('data-fassung="begruessung"')) {
+        throw new Error("Das erste HTML zeigt nicht die gewählte Fassung „Stille“.");
+      }
+      await seite.goto(`${app}/`);
+      await seite.getByRole("heading", { name: "Womit fangen wir an?" }).waitFor();
+      // „Stille“: die Anfänge erscheinen erst mit Fokus im Feld.
+      await seite.getByRole("textbox", { name: "Nachricht" }).focus();
+      await seite.getByRole("button", { name: /Terminabsage/ }).waitFor();
+      // zurück auf den Standard, damit die übrigen Schritte dieselbe Ansicht sehen
+      await seite.goto(`${app}/einstellungen/darstellung`);
+      await seite.getByRole("radio", { name: /Begrüßung/ }).check();
+      await seite.getByText("Gemerkt für diesen Browser.").waitFor();
+      // und zurück zur Unterhaltung, mit der die nächsten Schritte weiterarbeiten
+      await seite.goto(`${app}${unterhaltung}`);
+      await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
+    },
+  );
 
   await schritt("Beleg öffnen und prüfen", seite, async () => {
     await seite
@@ -857,6 +903,60 @@ async function main() {
         throw new Error(`Nach dem Senden (${wie}) steht der Cursor nicht im Feld.`);
     }
   });
+  // Der Ereignis-Strom kann schneller sein als die Antwort auf das Senden: die Antwort wird hier
+  // festgehalten, bis die Antwort des Bots schon im Verlauf steht. Die eigene Nachricht steht dann
+  // genau einmal da, danach und nach dem Neuladen ebenfalls.
+  await schritt(
+    "Chat: eigene Nachricht steht genau einmal, auch wenn der Strom vorausläuft",
+    seite,
+    async () => {
+      await seite.goto(`${app}${unterhaltung}`);
+      const verlauf = seite.getByRole("log", { name: "Verlauf" });
+      const text = "Frage bei vorauslaufendem Strom";
+      const vorher = await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).count();
+      let freigeben;
+      const festgehalten = new Promise((weiter) => {
+        freigeben = weiter;
+      });
+      let erledigt = Promise.resolve();
+      const halten = (route) => {
+        if (route.request().method() !== "POST") return route.fallback();
+        erledigt = (async () => {
+          const antwort = await route.fetch();
+          await festgehalten;
+          await route.fulfill({ response: antwort });
+        })();
+        return erledigt;
+      };
+      await seite.route(/\/api\/unterhaltungen\/[^/]+\/nachrichten$/, halten);
+      try {
+        await seite.getByRole("textbox", { name: "Nachricht" }).fill(text);
+        await seite.getByRole("textbox", { name: "Nachricht" }).press("Enter");
+        await verlauf
+          .getByText(BEISPIEL_ANTWORT, { exact: true })
+          .nth(vorher)
+          .waitFor({ timeout: 60_000 });
+        const waehrend = await verlauf.getByText(text, { exact: true }).count();
+        if (waehrend !== 1)
+          throw new Error(
+            `Eigene Nachricht steht ${waehrend}-mal im Verlauf (vor der Antwort auf das Senden).`,
+          );
+      } finally {
+        freigeben();
+        await erledigt;
+        await seite.unroute(/\/api\/unterhaltungen\/[^/]+\/nachrichten$/, halten);
+      }
+      await seite.getByRole("button", { name: "Senden" }).waitFor();
+      const danach = await verlauf.getByText(text, { exact: true }).count();
+      if (danach !== 1)
+        throw new Error(`Eigene Nachricht steht ${danach}-mal im Verlauf (nach dem Lauf).`);
+      await seite.reload();
+      await verlauf.getByText(text, { exact: true }).waitFor();
+      const geladen = await verlauf.getByText(text, { exact: true }).count();
+      if (geladen !== 1)
+        throw new Error(`Eigene Nachricht steht ${geladen}-mal im Verlauf (nach dem Neuladen).`);
+    },
+  );
   await schritt(
     "Seitenleiste: Werkzeuge einklappen, Zustand bleibt nach Neuladen",
     seite,

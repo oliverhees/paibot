@@ -14,7 +14,7 @@ import { t } from "@paibot/shared/texte";
 import {
   AntwortZeile,
   AppShell,
-  Avatar,
+  AvatarLebendig,
   ChatBubble,
   ChatEingabe,
   Markdown,
@@ -63,7 +63,7 @@ export function Verlauf({ streamt }: { streamt: boolean }) {
           von="bot"
           name="Pai"
           zeit="14:31"
-          avatar={<Avatar farbe="violett" groesse={30} />}
+          avatar={<AvatarLebendig farbe="violett" groesse={30} />}
           fuss={
             <AntwortZeile
               beleg={{ kennung: "B-0141", zustand: "gueltig", onPruefen: () => {} }}
@@ -90,7 +90,14 @@ export function Verlauf({ streamt }: { streamt: boolean }) {
           von="bot"
           name="Pai"
           zeit="14:32"
-          avatar={<Avatar farbe="violett" groesse={30} zustand={streamt ? "arbeitet" : "bereit"} />}
+          avatar={
+            <AvatarLebendig
+              farbe="violett"
+              groesse={30}
+              zustand={streamt ? "schreibt" : "ruhig"}
+              still
+            />
+          }
           zustand={streamt ? "streamt" : "fertig"}
           fuss={
             streamt ? (
@@ -124,7 +131,7 @@ export function ShellDemo({ eingebettet = false }: { eingebettet?: boolean }) {
       kopf={
         <>
           <span className={styles.kopfTitel}>
-            <Avatar farbe="violett" groesse={26} />
+            <AvatarLebendig farbe="violett" groesse={26} />
             <span className={styles.kopfText}>
               <strong>Antwort an Max Mustermann</strong>
               <small>Pai · bereit</small>

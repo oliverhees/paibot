@@ -546,7 +546,7 @@ describe("evaluate ist rein", () => {
     },
   );
 
-  it("das Paket importiert nur @paibot/shared und eigene Dateien", () => {
+  it("das Paket importiert nur @paibot/shared, Zod und eigene Dateien", () => {
     expect(Object.keys(SOURCES)).toEqual(
       expect.arrayContaining(["./evaluate.ts", "./gate.ts", "./permit.ts", "./limits/index.ts"]),
     );
@@ -561,14 +561,20 @@ describe("evaluate ist rein", () => {
           specifier.startsWith("./") ||
           specifier.startsWith("../") ||
           specifier === "@paibot/shared" ||
-          specifier.startsWith("@paibot/shared/");
+          specifier.startsWith("@paibot/shared/") ||
+          specifier === "zod";
         expect(allowed, `${file}: ${specifier}`).toBe(true);
       }
     }
   });
 
   it("Entscheidung und Grenzen nutzen weder Zeit noch Zufall noch Netz", () => {
-    for (const file of ["./evaluate.ts", "./limits/index.ts"]) {
+    for (const file of [
+      "./evaluate.ts",
+      "./limits/index.ts",
+      "./fassungen/index.ts",
+      "./fassungen/fassung-1.ts",
+    ]) {
       const code = (SOURCES[file] ?? "").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
       expect(code.length).toBeGreaterThan(500);
       expect(code).not.toMatch(

@@ -16,6 +16,8 @@ RUN corepack enable
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
+# Text-Index der Doku dieser Version; der Bau bricht ab, wenn er fehlt oder leer ist.
+RUN pnpm doku:index
 RUN pnpm --filter @paibot/web build
 RUN pnpm --filter @paibot/worker build
 
@@ -26,6 +28,7 @@ ENV NODE_ENV=production \
     MIGRATIONS_DIR=/app/packages/db/drizzle \
     NEXT_TELEMETRY_DISABLED=1 \
     PAIBOT_ROLE=web \
+    PAIBOT_DOKU_INDEX=/app/doku-index/doku-index.json \
     PAIBOT_WORKER_HEALTH_FILE=/tmp/paibot-worker.herzschlag
 WORKDIR /app
 RUN addgroup -S paibot && adduser -S paibot -G paibot
@@ -35,6 +38,8 @@ COPY --from=build --chown=paibot:paibot /app/apps/web/public ./apps/web/public
 COPY --from=build --chown=paibot:paibot /app/packages/db/drizzle ./packages/db/drizzle
 # Der Worker ist eine einzelne Datei ohne eigene node_modules (pg-native bleibt bewusst draußen).
 COPY --from=build --chown=paibot:paibot /app/apps/worker/dist/worker.mjs ./apps/worker/dist/worker.mjs
+# Index der Doku dieser Version (eine Kopie für Web und Worker).
+COPY --from=build --chown=paibot:paibot /app/doku-index/doku-index.json ./doku-index/doku-index.json
 USER paibot
 # Läuft als Nicht-Root und verträgt ein schreibgeschütztes Dateisystem (read_only im Compose);
 # beschreibbar sind nur /tmp und der Cache von Next.js (tmpfs).

@@ -11,8 +11,8 @@
 // Wird nur von tastatur.test.mjs über einen Vite-Server geladen; gehört nicht zum Paket.
 // `?ansicht=shell` zeigt die AppShell bildschirmfüllend, sonst die einzelnen Bausteine.
 
+import "../src/lade.css";
 import "../src/tokens.css";
-import "../src/avatar.css";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
