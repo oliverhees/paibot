@@ -26,4 +26,5 @@ export const sitzungAblehnen: SitzungPruefen = async () => ({ ok: false, status:
  * Hier wird die Prüfung der Anmeldung eingetragen (eine Zeile). Bis dahin liefert die Route
  * immer 401 und öffnet keinen Strom.
  */
-export const sitzungPruefen: SitzungPruefen = sitzungAblehnen;
+export const sitzungPruefen: SitzungPruefen = (r) =>
+  import("../zugang/ereignis-strom").then((z) => z.sitzungFuerStrom(r));
