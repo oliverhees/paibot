@@ -12,6 +12,7 @@
 import { repo } from "@paibot/db";
 import { t } from "@paibot/shared/texte";
 import type { ReactNode } from "react";
+import { modellVon } from "../../lib/bot/bot";
 import { ladeUnterhaltungen } from "../../lib/chat/laden";
 import { datenbank } from "../../lib/datenbank";
 import { besitzerSeite } from "../../lib/zugang/seite";
@@ -24,9 +25,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const db = datenbank();
   const bot = await repo.bots.getDefault(db);
   const unterhaltungen = await ladeUnterhaltungen(db);
+  // Herkunft der Modelle in der Seitenleiste: Region des Anbieters des gewählten Modells.
+  const region = bot === undefined ? undefined : (await modellVon(db, bot))?.region;
   return (
     <AppRahmen
       unterhaltungen={unterhaltungen}
+      {...(region === undefined ? {} : { region })}
       bot={{
         name: bot?.name ?? t("einrichtung.bot.vorschlag"),
         farbe: bot?.color ?? "limette",

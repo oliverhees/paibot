@@ -26,6 +26,7 @@ import {
   StatusChip,
   TextField,
 } from "@paibot/ui";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
 import type { BotModell } from "../../../lib/bot/bot";
@@ -74,6 +75,8 @@ function MeldungZeile({ meldung }: { meldung: Meldung }) {
 
 export function ModelleAnsicht(props: ModelleAnsichtProps) {
   const { botName, vorlage } = props;
+  // Die Seitenleiste zeigt die Herkunft der Modelle; nach einer Änderung neu vom Server holen.
+  const router = useRouter();
   const [anbieter, setAnbieter] = useState<Provider | undefined>(props.anbieter);
   const [modell, setModell] = useState<BotModell | undefined>(props.modell);
   const [formOffen, setFormOffen] = useState(props.anbieter === undefined);
@@ -213,6 +216,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     setEntfernt(true);
     setSchluesselMeldung({ art: "ok", text: t("modelle.schluessel.entfernt") });
     setFormOffen(true);
+    router.refresh();
   }
 
   async function modellUebernehmen() {
@@ -238,6 +242,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         art: "ok",
         text: t("modelle.uebernommen", { name: botName, modell: neu.displayName }),
       });
+      router.refresh();
     }
   }
 

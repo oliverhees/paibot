@@ -56,6 +56,8 @@ export interface NavBot {
   /** Wort zum Zustand, z. B. „arbeitet“ (nur nötig, wenn der Zustand nicht „bereit“ ist). */
   zustandText?: string;
   href?: string;
+  /** Zeile des Bots hervorheben (z. B. auf seinem Steckbrief); sonst aktiv, wenn eine seiner Unterhaltungen offen ist. */
+  aktiv?: boolean;
   unterhaltungen: readonly NavUnterhaltung[];
 }
 
@@ -271,13 +273,18 @@ export function AppShell({
               <h2 className={styles.etikett}>{texte.deinBot}</h2>
               <div
                 className={styles.botReihe}
-                data-aktiv={bot.unterhaltungen.some((u) => u.aktiv) || undefined}
+                data-aktiv={bot.aktiv || bot.unterhaltungen.some((u) => u.aktiv) || undefined}
               >
                 <Avatar farbe={bot.farbe} groesse={20} zustand={bot.zustand} still />
                 <span className={styles.botText}>
                   <span className={styles.botName}>
                     {bot.href ? (
-                      <Link href={bot.href} onClick={schliesseNav} className={styles.botLink}>
+                      <Link
+                        href={bot.href}
+                        onClick={schliesseNav}
+                        className={styles.botLink}
+                        {...(bot.aktiv ? { "aria-current": "page" as const } : {})}
+                      >
                         {bot.name}
                       </Link>
                     ) : (

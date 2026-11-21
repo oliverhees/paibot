@@ -21,6 +21,7 @@ const MODULE = [
   "./pfade.ts",
   "./rahmen-kontext.tsx",
   "../speicher.ts",
+  "../navigation.ts",
 ].map((datei) => ({ datei, text: readFileSync(new URL(datei, import.meta.url), "utf8") }));
 
 describe("Browser-Module des Chats", () => {

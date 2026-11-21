@@ -1061,4 +1061,8 @@ export const de = {
   "regeln.vorbedingung.V-07": "Die Einrichtung ist noch offen.",
   "regeln.vorbedingung.V-08": "Der Aufruf wartet auf deine Freigabe.",
   "regeln.vorbedingung.V-09": "Die Freigabe passt genau zum Aufruf.",
+
+  // Nachrunde Oberfläche: Navigation, Zustand der Datenschleuse, Fehler der Datenschleuse
+  "seite.regeln": "Regeln",
+  "navigation.modelle.keine": "noch keins",
 } as const satisfies Record<string, string | readonly string[]>;
