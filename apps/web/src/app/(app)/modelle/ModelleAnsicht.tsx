@@ -48,7 +48,7 @@ import {
 import { gezeigterAnbieter } from "../../../lib/modelle/eigen";
 import { anbieterHerkunft } from "../../../lib/modelle/herkunft";
 import type { ModelleSeitenDaten } from "../../../lib/modelle/seite";
-import { AnbieterAngaben, KontoLink } from "../../AnbieterAuswahl";
+import { AnbieterAngaben, BedingungenLink, KontoLink } from "../../AnbieterAuswahl";
 import { AnbieterHinzufuegen } from "./AnbieterHinzufuegen";
 import { EigenerAnbieterForm } from "./EigenerAnbieterForm";
 import styles from "./modelle.module.css";
@@ -413,6 +413,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
                   </span>
                 )}
                 <AnbieterAngaben wahl={anbieter.templateKey} />
+                <BedingungenLink wahl={anbieter.templateKey} />
                 <KontoLink wahl={anbieter.templateKey} />
               </span>
             )}

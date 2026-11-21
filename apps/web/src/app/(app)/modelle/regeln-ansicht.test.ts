@@ -96,7 +96,12 @@ describe("Anbieter-Auswahl", () => {
     expect([...reihenfolge].sort((a, b) => a - b)).toEqual(reihenfolge);
     expect(html).toContain('href="https://www.eurouter.ai/sign-up"');
     expect(html).toContain('href="https://console.mistral.ai/"');
-    expect(html.match(/rel="noopener noreferrer"/g)?.length).toBe(2);
+    // Je zwei Links bei EUrouter und Mistral (Bedingungen, Konto), keiner beim eigenen Anbieter.
+    expect(html.match(/rel="noopener noreferrer"/g)?.length).toBe(4);
+    expect(html).toContain('href="https://www.eurouter.ai/terms"');
+    expect(html).toContain('href="https://legal.mistral.ai/terms"');
+    expect(html).toContain(t("anbieterwahl.bedingungen"));
+    expect(html).toContain(t("anbieterwahl.eurouter.zielgruppe", { stand: "21.11.2026" }));
     expect(html).not.toContain(t("anbieterwahl.empfehlung"));
     expect(html).toContain("Stand: 21.11.2026");
     expect(html.toLowerCase()).not.toContain("dsgvo");

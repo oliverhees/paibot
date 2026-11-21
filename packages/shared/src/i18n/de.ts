@@ -1524,7 +1524,7 @@ export const de = {
   "anbieterwahl.eurouter.text":
     "Vermittelt Anfragen an verschiedene Anbieter. Du wählst eine deiner Routing-Regeln; welcher Anbieter geantwortet hat, zeigt PaiBot an jeder Antwort.",
   "anbieterwahl.eurouter.zielgruppe":
-    "Laut Anbieter richtet sich das Angebot an berufliche oder gewerbliche Nutzung (Stand: {stand}).",
+    "EUrouter richtet sein Angebot laut eigenen Bedingungen an Kunden, die beruflich oder geschäftlich handeln. Bitte lies die Bedingungen, bevor du ein Konto nutzt (Stand: {stand}).",
   "anbieterwahl.mistral.titel": "Mistral AI (direkt)",
   "anbieterwahl.mistral.text":
     "Modelle von Mistral AI, verbunden über den EU-Endpunkt von Mistral.",
@@ -1607,4 +1607,5 @@ export const de = {
   "regelkarte.alt.hinweis":
     "{name} benutzt noch einen früheren Eintrag aus der Modell-Liste von {anbieter}. Er funktioniert weiter. Stell auf eine Routing-Regel um: Trag unten ihren Namen ein und übernimm sie.",
   "schleuse.hinweis.direkt_neutral": "direkt an den Anbieter",
+  "anbieterwahl.bedingungen": "Bedingungen des Anbieters",
 } as const satisfies Record<string, string | readonly string[]>;

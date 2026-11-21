@@ -139,7 +139,10 @@ describe("Konto-Links aus einer Stelle", () => {
   it("mit Empfehlungs-Link: dieser Link mit Hinweis; Reihenfolge bleibt", () => {
     const seiten = {
       ...KONTO_SEITEN,
-      mistral: { seite: "https://console.mistral.ai/", empfehlung: "https://beispiel.example/r/1" },
+      mistral: {
+        ...KONTO_SEITEN.mistral,
+        empfehlung: "https://beispiel.example/r/1",
+      },
     };
     expect(kontoLink("mistral", seiten)).toEqual({
       href: "https://beispiel.example/r/1",
@@ -147,7 +150,10 @@ describe("Konto-Links aus einer Stelle", () => {
     });
     // Gegenprobe: ein Link ohne https gilt nicht.
     expect(
-      kontoLink("mistral", { ...seiten, mistral: { seite: "https://a.example", empfehlung: "x" } }),
+      kontoLink("mistral", {
+        ...seiten,
+        mistral: { ...KONTO_SEITEN.mistral, seite: "https://a.example", empfehlung: "x" },
+      }),
     ).toEqual({ href: "https://a.example", empfehlung: false });
     expect(ANBIETER_REIHENFOLGE).toEqual(["eurouter", "mistral", "eigener"]);
   });

@@ -19,6 +19,7 @@ import {
   ANBIETER_REIHENFOLGE,
   ANGABEN_STAND,
   type AnbieterWahl,
+  bedingungenLink,
   kontoLink,
 } from "../lib/modelle/konto-links";
 import styles from "./AnbieterAuswahl.module.css";
@@ -44,6 +45,21 @@ export function KontoLink({ wahl }: { wahl: AnbieterWahl }) {
         <span className={styles.unsichtbar}>{t("anbieterwahl.konto.neues_fenster")}</span>
       </a>
       {link.empfehlung && <span className={styles.leise}> {t("anbieterwahl.empfehlung")}</span>}
+    </span>
+  );
+}
+
+/** Einzeiliger Hinweis mit Link „Bedingungen des Anbieters“ (nur auf Klick, neuer Tab). */
+export function BedingungenLink({ wahl }: { wahl: AnbieterWahl }) {
+  const href = bedingungenLink(wahl);
+  if (href === undefined) return null;
+  return (
+    <span className={styles.konto}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={styles.link}>
+        {t("anbieterwahl.bedingungen")}
+        <Icon name="extern" />
+        <span className={styles.unsichtbar}>{t("anbieterwahl.konto.neues_fenster")}</span>
+      </a>
     </span>
   );
 }
@@ -92,6 +108,7 @@ export function AnbieterAuswahl({ wert, onWahl, fehler, wege }: AnbieterAuswahlP
           </label>
           <div className={styles.mehr}>
             <AnbieterAngaben wahl={wahl} />
+            <BedingungenLink wahl={wahl} />
             <KontoLink wahl={wahl} />
           </div>
         </div>

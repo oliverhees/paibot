@@ -18,6 +18,8 @@ export type AnbieterWahl = "eurouter" | "mistral" | "eigener";
 interface KontoSeite {
   /** Normale Seite des Anbieters zum Anlegen eines Kontos. */
   seite: string;
+  /** Bedingungen des Anbieters (wird nur auf Klick in einem neuen Tab geöffnet). */
+  bedingungen: string;
   /**
    * Empfehlungs-Link des Entwicklers. Nur eintragen, wenn es ihn wirklich gibt; solange er fehlt,
    * zeigt PaiBot die normale Seite ohne Hinweis auf eine Provision.
@@ -30,8 +32,11 @@ interface KontoSeite {
  * (`empfehlung`). Die Reihenfolge der Auswahl hängt davon nicht ab.
  */
 export const KONTO_SEITEN: Readonly<Record<Exclude<AnbieterWahl, "eigener">, KontoSeite>> = {
-  eurouter: { seite: "https://www.eurouter.ai/sign-up" },
-  mistral: { seite: "https://console.mistral.ai/" },
+  eurouter: {
+    seite: "https://www.eurouter.ai/sign-up",
+    bedingungen: "https://www.eurouter.ai/terms",
+  },
+  mistral: { seite: "https://console.mistral.ai/", bedingungen: "https://legal.mistral.ai/terms" },
 };
 
 /**
@@ -39,6 +44,11 @@ export const KONTO_SEITEN: Readonly<Record<Exclude<AnbieterWahl, "eigener">, Kon
  * lokale Anbieter. Nicht nach Provision.
  */
 export const ANBIETER_REIHENFOLGE: readonly AnbieterWahl[] = ["eurouter", "mistral", "eigener"];
+
+/** Adresse der Bedingungen des Anbieters; beim eigenen Anbieter keine. */
+export function bedingungenLink(wahl: AnbieterWahl): string | undefined {
+  return wahl === "eigener" ? undefined : KONTO_SEITEN[wahl].bedingungen;
+}
 
 /** Link zum Konto-Anlegen: Adresse und ob es ein Empfehlungs-Link ist (dann mit Hinweis). */
 export function kontoLink(
