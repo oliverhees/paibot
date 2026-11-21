@@ -27,6 +27,7 @@ import { stand } from "../stand";
 import {
   geordnet,
   type Pruefung,
+  proxyErkennbar,
   pruefeAdresse,
   pruefeEinrichtung,
   pruefeMigrationen,
@@ -127,7 +128,7 @@ export async function selbsttestLesen(
     pruefeAdresse({ appOrigin: d.appOrigin(), host: request.headers.get("host") }),
     pruefeProxy({
       vertraut: d.hinterProxy(),
-      weitergereicht: (request.headers.get("x-forwarded-for") ?? "").trim() !== "",
+      erkennbar: proxyErkennbar((name) => request.headers.get(name)),
     }),
     pruefeRolle(rolle),
     pruefeSchalter({

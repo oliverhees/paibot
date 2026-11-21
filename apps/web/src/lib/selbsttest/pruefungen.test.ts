@@ -14,6 +14,7 @@ import {
   geordnet,
   PRUEF_IDS,
   type Pruefung,
+  proxyErkennbar,
   pruefeAdresse,
   pruefeEinrichtung,
   pruefeKopfzeilen,
@@ -66,15 +67,28 @@ describe("Prüfungen des Selbsttests", () => {
     expect(JSON.stringify(anders)).not.toMatch(/paibot\.example\.de|10\.0\.0\.5/);
   });
 
-  it("Proxy: passend gut, Widerspruch in beide Richtungen ein Hinweis", () => {
-    expect(pruefeProxy({ vertraut: true, weitergereicht: true }).ergebnis).toBe("ok");
-    expect(pruefeProxy({ vertraut: false, weitergereicht: false }).ergebnis).toBe("ok");
-    const ohne = mitAusweg(pruefeProxy({ vertraut: true, weitergereicht: false }));
+  it("Proxy: „in Ordnung“ nur mit erkennbarem Proxy; ohne Zeichen bei TRUST_PROXY=1 nicht feststellbar", () => {
+    expect(pruefeProxy({ vertraut: true, erkennbar: true }).ergebnis).toBe("ok");
+    expect(pruefeProxy({ vertraut: false, erkennbar: false }).ergebnis).toBe("ok");
+    const ohne = mitAusweg(pruefeProxy({ vertraut: true, erkennbar: false }));
     expect(ohne.ergebnis).toBe("hinweis");
+    expect(ohne.text).toContain("nicht feststellen");
     expect(ohne.ausweg).toContain("TRUST_PROXY=0");
-    const nicht = mitAusweg(pruefeProxy({ vertraut: false, weitergereicht: true }));
+    const nicht = mitAusweg(pruefeProxy({ vertraut: false, erkennbar: true }));
     expect(nicht.ergebnis).toBe("hinweis");
     expect(nicht.ausweg).toContain("TRUST_PROXY=1");
+  });
+
+  it("Proxy erkennbar: nicht an der Adress-Kopfzeile allein, die die App selbst setzt", () => {
+    const kopf = (werte: Record<string, string>) => (name: string) => werte[name] ?? null;
+    expect(proxyErkennbar(kopf({}))).toBe(false);
+    expect(proxyErkennbar(kopf({ "x-forwarded-for": "203.0.113.7" }))).toBe(false);
+    expect(proxyErkennbar(kopf({ "x-forwarded-for": "203.0.113.7, 10.0.0.2" }))).toBe(true);
+    expect(proxyErkennbar(kopf({ "x-real-ip": "203.0.113.7" }))).toBe(true);
+    expect(proxyErkennbar(kopf({ forwarded: "for=203.0.113.7" }))).toBe(true);
+    expect(proxyErkennbar(kopf({ via: "1.1 caddy" }))).toBe(true);
+    expect(proxyErkennbar(kopf({ "x-forwarded-server": "traefik" }))).toBe(true);
+    expect(proxyErkennbar(kopf({ via: "  " }))).toBe(false);
   });
 
   it("Verbindung: https gut, http lokal Hinweis, http über Netz Fehler", () => {

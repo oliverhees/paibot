@@ -96,9 +96,12 @@ describe("GET /api/selbsttest", () => {
       "zugang",
       "version",
     ]);
-    // Test-Umgebung: APP_URL ist http (Hinweis), Proxy vertraut und Adresse weitergereicht.
+    // Test-Umgebung: APP_URL ist http (Hinweis). Proxy vertraut, die Kopfzeile mit der Adresse ist
+    // da (die setzt die App auch ohne Proxy selbst), ein Zeichen für einen Proxy fehlt: nicht
+    // feststellbar, also Hinweis und nicht „in Ordnung“.
     expect(nach.adresse?.ergebnis).toBe("hinweis");
-    expect(nach.proxy?.ergebnis).toBe("ok");
+    expect(nach.proxy?.ergebnis).toBe("hinweis");
+    expect(nach.proxy?.text).toContain("lässt sich von hier nicht feststellen");
     expect(nach.rolle?.ergebnis).toBe("ok");
     expect(nach.schalter?.ergebnis).toBe("ok");
     expect(nach.migrationen?.ergebnis).toBe("ok");
@@ -113,6 +116,21 @@ describe("GET /api/selbsttest", () => {
     for (const p of daten.pruefungen) {
       if (p.ergebnis !== "ok") expect(p.ausweg, p.id).toBeTruthy();
     }
+  });
+
+  it("Proxy: „in Ordnung“ nur mit einem Zeichen, das die App nicht selbst setzt", async () => {
+    const { u, dose } = await eingerichtet();
+    quellen();
+    const proxyZeile = async (kopf?: Record<string, string>) => {
+      const r = await anfrage(u, lesen(u), "GET", PFAD, { dose, ...(kopf ? { kopf } : {}) });
+      const daten = r.body.daten as SelbsttestDaten;
+      return daten.pruefungen.find((p) => p.id === "proxy")?.ergebnis;
+    };
+    // Direkt, nur die Kopfzeile mit der Adresse (so sieht auch eine Anfrage ohne Proxy aus).
+    expect(await proxyZeile()).toBe("hinweis");
+    // Mit einem Zeichen eines Proxys.
+    expect(await proxyZeile({ "x-real-ip": "203.0.113.7" })).toBe("ok");
+    expect(await proxyZeile({ via: "1.1 proxy" })).toBe("ok");
   });
 
   it("nennt keine Adressen, Geheimnisse oder Zugangsdaten", async () => {

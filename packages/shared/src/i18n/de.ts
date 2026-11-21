@@ -1326,12 +1326,13 @@ export const de = {
     "Öffne PaiBot über die Adresse aus APP_URL, oder trage dort die Adresse ein, die du benutzt, und starte den Dienst web neu.",
   "selbsttest.proxy.titel": "Vorgeschalteter Proxy (TRUST_PROXY)",
   "selbsttest.proxy.ok_mit":
-    "TRUST_PROXY=1, und der Proxy reicht die Adresse deines Browsers weiter. Die Limits je Adresse greifen.",
-  "selbsttest.proxy.ok_ohne": "Kein Proxy erkannt, und TRUST_PROXY ist aus. Das passt zusammen.",
-  "selbsttest.proxy.ohne_adresse":
-    "TRUST_PROXY=1, aber bei dieser Anfrage kam keine weitergereichte Adresse an. Steht kein Proxy davor, kann jeder eine Adresse vortäuschen und die Limits je Adresse umgehen.",
-  "selbsttest.proxy.ohne_adresse.ausweg":
-    "Ohne Proxy: TRUST_PROXY=0 setzen. Mit Proxy: prüfen, dass er X-Forwarded-For setzt, und den Port der App nie direkt freigeben.",
+    "TRUST_PROXY=1, und diese Anfrage trägt Zeichen eines Proxys, die die App nicht selbst setzt. Die Limits je Adresse nutzen die Adresse, die er weiterreicht.",
+  "selbsttest.proxy.ok_ohne":
+    "TRUST_PROXY ist aus, und bei dieser Anfrage ist kein Proxy erkennbar. Das passt, solange keiner davorsteht.",
+  "selbsttest.proxy.nicht_feststellbar":
+    "TRUST_PROXY=1, aber ob wirklich ein Proxy davorsteht, lässt sich von hier nicht feststellen: Die App setzt die Kopfzeile mit der Adresse auch ohne Proxy selbst.",
+  "selbsttest.proxy.nicht_feststellbar.ausweg":
+    "Ohne Proxy: TRUST_PROXY=0 setzen, sonst kann jeder eine Adresse vortäuschen und die Limits je Adresse umgehen. Mit Proxy: prüfen, dass er X-Forwarded-For setzt, und den Port der App nie direkt freigeben.",
   "selbsttest.proxy.nicht_vertraut":
     "Ein Proxy reicht Adressen weiter, aber TRUST_PROXY ist nicht 1. Dann sehen alle Anfragen gleich aus, und die Limits beim Anmelden treffen alle zugleich.",
   "selbsttest.proxy.nicht_vertraut.ausweg": "Setze TRUST_PROXY=1 und starte den Dienst web neu.",

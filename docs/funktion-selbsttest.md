@@ -45,7 +45,7 @@ Am Selbsttest selbst gibt es nichts einzustellen. Er liest diese Einstellungen d
 | Prüfung                    | Woher                                                      | In Ordnung, wenn …                                                                       |
 | -------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Adresse (APP_URL)          | Umgebungsvariable `APP_URL` und die Adresse dieser Anfrage | sie mit `https://` beginnt und zur Adresse passt, über die du die Seite geöffnet hast    |
-| Vorgeschalteter Proxy      | `TRUST_PROXY` und ob eine weitergereichte Adresse ankommt  | beides zusammenpasst: `TRUST_PROXY=1` mit Proxy, sonst aus                               |
+| Vorgeschalteter Proxy      | `TRUST_PROXY` und ob die Anfrage Zeichen eines Proxys trägt | `TRUST_PROXY=1` und ein Proxy erkennbar ist, oder `TRUST_PROXY` aus und keiner erkennbar  |
 | Verbindung deines Browsers | dein Browser                                               | die Seite über https kommt (über http zum eigenen Rechner: Hinweis)                      |
 | Schutz-Kopfzeilen          | die Antwort, wie sie bei deinem Browser ankommt            | Content-Security-Policy und die weiteren Schutz-Kopfzeilen da sind, über https auch HSTS |
 | Rechte der Datenbank-Rolle | Verbindung aus `DATABASE_URL`                              | die Rolle eingeschränkt ist (kein Superuser, kann Belege und Regeln nicht ändern)        |
@@ -70,7 +70,7 @@ Am Selbsttest selbst gibt es nichts einzustellen. Er liest diese Einstellungen d
 
 - Der Selbsttest sieht nur, was von innen sichtbar ist. Grenzen im Reverse-Proxy, ob deine Sicherung funktioniert (siehe [Sicherung und Wiederherstellung](sicherung.md)), ob du Updates einspielst und woher deine Images stammen, musst du selbst prüfen; die Seite listet das unter „Bitte selbst prüfen“.
 - Die Adresse wird mit der Kopfzeile `Host` der Anfrage verglichen. Schreibt ein Proxy den Host um, kann die Prüfung „andere Adresse“ melden, obwohl dein Browser die richtige nutzt.
-- Ob ein Proxy davorsteht, erkennt PaiBot nur an der weitergereichten Adresse (`X-Forwarded-For`). Ein Proxy, der sie nicht setzt, sieht aus wie kein Proxy.
+- Ob ein Proxy davorsteht, lässt sich von innen nicht sicher feststellen: Die App setzt die Kopfzeile `X-Forwarded-For` mit der Adresse der direkten Verbindung auch ohne Proxy selbst. PaiBot sagt deshalb nur dann „In Ordnung“ mit Proxy, wenn die Anfrage etwas trägt, das die App nicht selbst setzt: eine der Kopfzeilen `Forwarded`, `X-Real-Ip`, `X-Forwarded-Server`, `Via` oder mehrere Adressen in `X-Forwarded-For`. Ein Proxy, der keine davon setzt, bleibt unsichtbar; bei `TRUST_PROXY=1` steht dann ein Hinweis „nicht feststellbar“, den du selbst klären musst.
 - Zweiter Faktor und Wiederherstellungs-Codes sind noch nicht gebaut und deshalb noch keine Prüfung (geplant).
 
 ## Fehlerbehebung
@@ -80,6 +80,6 @@ Am Selbsttest selbst gibt es nichts einzustellen. Er liest diese Einstellungen d
 | „Der Selbsttest konnte nicht geladen werden.“   | Web-App oder Datenbank antwortet gerade nicht                     | Kurz warten, **Erneut prüfen**; sonst das Log von `web` ansehen                             |
 | „Konnte gerade nicht geprüft werden.“ bei Rolle | Die Datenbank war bei der Prüfung nicht erreichbar                | Seite in ein paar Sekunden neu laden                                                        |
 | Adresse: „über eine andere Adresse geöffnet“    | `APP_URL` passt nicht zur Adresse im Browser                      | PaiBot über die Adresse aus `APP_URL` öffnen oder `APP_URL` anpassen und `web` neu starten  |
-| Proxy: Hinweis trotz Proxy                      | Der Proxy setzt `X-Forwarded-For` nicht                           | Proxy so einstellen, dass er die Adresse weiterreicht; Coolify und Caddy tun das von selbst |
+| Proxy: „nicht feststellbar“ trotz Proxy         | Der Proxy setzt keine der erkennbaren Kopfzeilen (siehe „Grenzen“) | Selbst prüfen, dass er `X-Forwarded-For` setzt und der Port der App nicht frei erreichbar ist |
 | Worker: „hat sich noch nie gemeldet“            | Der Dienst `worker` läuft nicht oder erreicht die Datenbank nicht | `docker compose ps` und das Log von `worker` ansehen                                        |
 | Stand der Datenbank: Migrationen fehlen         | Der Migrations-Schritt lief nach einem Update nicht               | Dienst `migrate` erneut starten (z. B. `docker compose up -d`)                              |

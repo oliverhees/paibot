@@ -105,22 +105,39 @@ export function pruefeAdresse(eingabe: {
 }
 
 /**
- * `TRUST_PROXY` gegen die beobachtete Anfrage: Kam eine weitergereichte Adresse
- * (`X-Forwarded-For`) an? Beides passend → in Ordnung, sonst Hinweis mit Ausweg.
+ * Kopfzeilen, die nur ein Proxy setzt. `X-Forwarded-For` gehört nicht dazu: Das Rahmenwerk der App
+ * (Next.js) setzt sie bei jeder Anfrage selbst, auch ohne Proxy, mit der Adresse der direkten
+ * Verbindung. Ein Eintrag mit mehreren Adressen stammt dagegen aus einer Proxy-Kette.
  */
-export function pruefeProxy(eingabe: { vertraut: boolean; weitergereicht: boolean }): Pruefung {
-  if (eingabe.vertraut && eingabe.weitergereicht) {
+const PROXY_KOPFZEILEN = ["forwarded", "x-real-ip", "x-forwarded-server", "via"] as const;
+
+/**
+ * Gibt es in der Anfrage ein Zeichen für einen vorgeschalteten Proxy, das das Rahmenwerk nicht
+ * selbst erzeugt? Ein Proxy ohne solche Zeichen bleibt unsichtbar (dann ist das Ergebnis `false`).
+ */
+export function proxyErkennbar(kopfzeile: (name: string) => string | null): boolean {
+  if (PROXY_KOPFZEILEN.some((name) => (kopfzeile(name) ?? "").trim() !== "")) return true;
+  return (kopfzeile("x-forwarded-for") ?? "").split(",").filter((e) => e.trim() !== "").length > 1;
+}
+
+/**
+ * `TRUST_PROXY` gegen die beobachtete Anfrage. „In Ordnung“ mit Proxy gibt es nur, wenn die Anfrage
+ * Zeichen eines Proxys trägt, die das Rahmenwerk nicht selbst setzt (`proxyErkennbar`). Fehlen sie
+ * bei `TRUST_PROXY=1`, lässt sich nicht feststellen, ob ein Proxy davorsteht: Hinweis statt Ergebnis.
+ */
+export function pruefeProxy(eingabe: { vertraut: boolean; erkennbar: boolean }): Pruefung {
+  if (eingabe.vertraut && eingabe.erkennbar) {
     return pruefung("proxy", "ok", t("selbsttest.proxy.ok_mit"));
   }
-  if (!eingabe.vertraut && !eingabe.weitergereicht) {
+  if (!eingabe.vertraut && !eingabe.erkennbar) {
     return pruefung("proxy", "ok", t("selbsttest.proxy.ok_ohne"));
   }
   if (eingabe.vertraut) {
     return pruefung(
       "proxy",
       "hinweis",
-      t("selbsttest.proxy.ohne_adresse"),
-      t("selbsttest.proxy.ohne_adresse.ausweg"),
+      t("selbsttest.proxy.nicht_feststellbar"),
+      t("selbsttest.proxy.nicht_feststellbar.ausweg"),
     );
   }
   return pruefung(
