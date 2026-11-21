@@ -11,7 +11,7 @@
 
 import { errorText, t } from "@paibot/shared/texte";
 import type { StatusArt } from "@paibot/ui";
-import type { LetzterLauf } from "./schleuse";
+import type { LetzterLauf, WorkerMeldung } from "./schleuse";
 
 /** Zeit wie „21.11.2026, 10:42“ in der Zeitzone der Installation. */
 export function zeitText(iso: string, zeitzone: string): string {
@@ -54,6 +54,64 @@ export function letzterLaufText(
           zeit,
           fehler: errorText(lauf.code ?? "intern"),
         }),
+      };
+  }
+}
+
+/** Was die Seite zur Meldung des Workers zeigt: Marke, Satz mit Ausweg und Zeit der Prüfung. */
+export interface WorkerAnzeige {
+  art: StatusArt;
+  marke: string;
+  text: string;
+  ausweg?: string;
+  geprueft: string;
+}
+
+/**
+ * Anzeige zur letzten Meldung des Workers. Ist sie veraltet, steht das vorne: Dann weiß PaiBot
+ * nicht, wie es der Datenschleuse gerade geht.
+ */
+export function workerAnzeige(worker: WorkerMeldung, zeit: string): WorkerAnzeige {
+  const geprueft = t("datenschleuse.worker.geprueft", { zeit });
+  if (worker.veraltet) {
+    return {
+      art: "warn",
+      marke: t("datenschleuse.worker.chip.veraltet"),
+      text: t("datenschleuse.worker.veraltet", { zeit }),
+      ausweg: t("datenschleuse.worker.veraltet.ausweg"),
+      geprueft,
+    };
+  }
+  switch (worker.zustand) {
+    case "bereit":
+      return {
+        art: "ok",
+        marke: t("datenschleuse.worker.chip.bereit"),
+        text: t("datenschleuse.zustand.bereit"),
+        geprueft,
+      };
+    case "nicht_erreichbar":
+      return {
+        art: "fehler",
+        marke: t("datenschleuse.worker.chip.nicht_erreichbar"),
+        text: t("datenschleuse.zustand.nicht_erreichbar"),
+        ausweg: t("datenschleuse.zustand.nicht_erreichbar.ausweg"),
+        geprueft,
+      };
+    case "schluessel_falsch":
+      return {
+        art: "fehler",
+        marke: t("datenschleuse.worker.chip.schluessel_falsch"),
+        text: t("datenschleuse.zustand.schluessel_falsch"),
+        ausweg: t("datenschleuse.zustand.schluessel_falsch.ausweg"),
+        geprueft,
+      };
+    case "aus":
+      return {
+        art: "neutral",
+        marke: t("datenschleuse.worker.chip.aus"),
+        text: t("datenschleuse.zustand.aus"),
+        geprueft,
       };
   }
 }

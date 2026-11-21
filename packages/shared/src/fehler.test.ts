@@ -24,7 +24,9 @@ import {
 describe("Fehlercodes", () => {
   it("haben die vorgegebene Schreibweise und Liste", () => {
     for (const code of [...ERROR_CODES, ...FIELD_CODES]) expect(code).toMatch(CODE_PATTERN);
-    expect(ERROR_CODES).toHaveLength(21);
+    expect(ERROR_CODES).toHaveLength(23);
+    expect(ERROR_STATUS.schluessel_passt_nicht).toBe(502);
+    expect(ERROR_STATUS.antwort_zu_gross).toBe(502);
     expect(ERROR_STATUS.zu_viele_versuche).toBe(429);
     expect(ERROR_STATUS.schleuse_blockiert).toBe(502);
     expect(ERROR_STATUS.nicht_angemeldet).toBe(401);

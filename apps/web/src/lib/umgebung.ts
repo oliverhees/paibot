@@ -12,6 +12,7 @@
 import { type DerivedKey, deriveKey, loadMasterSecret } from "@paibot/crypto";
 import { PROVIDER_TEMPLATES } from "@paibot/llm";
 import type { ProviderTemplateKey, Region } from "@paibot/shared/objekte";
+import { t } from "@paibot/shared/texte";
 import { vertrautProxy } from "./kopfzeilen";
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -100,18 +101,21 @@ function istLokal(url: URL): boolean {
 /**
  * Anbieter der Einrichtung: EUrouter. Mit `PAIBOT_EINRICHTUNG_ANBIETER_URL` verbindet die
  * Einrichtung stattdessen einen eigenen OpenAI-kompatiblen Dienst (zum Beispiel den Test-Anbieter);
- * eine Adresse über http oder im eigenen Netz gilt dann als Region `local`.
+ * eine Adresse über http oder im eigenen Netz gilt dann als Region `local`. Als Name steht ein
+ * Anzeigename („Lokaler Anbieter“ bzw. „Eigener Anbieter“), nicht Host und Port; die Adresse zeigt
+ * die Seite Modell und Anbieter getrennt.
  */
 export function einrichtungsAnbieter(env: Env): EinrichtungsAnbieter {
   const eigene = env[EINRICHTUNG_ANBIETER_ENV]?.trim();
   if (eigene) {
     try {
       const url = new URL(eigene);
+      const lokal = istLokal(url);
       return {
         templateKey: "eigener",
-        name: url.host,
+        name: lokal ? t("modelle.anbieter.name.lokal") : t("modelle.anbieter.name.eigener"),
         baseUrl: url.href.replace(/\/+$/, ""),
-        region: istLokal(url) ? "local" : "eu",
+        region: lokal ? "local" : "eu",
       };
     } catch {
       // Ungültige Angabe: EUrouter wie ohne Variable.

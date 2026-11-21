@@ -11,16 +11,10 @@
 
 "use client";
 
-import "../../lib/chat/ohne-auswertung";
-import type { BotColor } from "@paibot/shared/objekte";
+import "../../lib/ohne-auswertung";
+import type { BotColor, Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
-import {
-  AppShell,
-  type AppShellFlaeche,
-  type AppShellTexte,
-  Icon,
-  type NavEintrag,
-} from "@paibot/ui";
+import { AppShell, type AppShellFlaeche, type AppShellTexte, Icon } from "@paibot/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -35,23 +29,24 @@ import { apiFetch } from "../../lib/api/client";
 import { unterhaltungsAdresse } from "../../lib/chat/pfade";
 import { Rahmen, type RahmenKontext } from "../../lib/chat/rahmen-kontext";
 import type { UnterhaltungKurz } from "../../lib/chat/typen";
+import {
+  BOT_ADRESSE,
+  botAktiv,
+  kopfTitel,
+  liegtUnter,
+  modelleHerkunft,
+  NAVIGATION,
+} from "../../lib/navigation";
 import styles from "./app.module.css";
 
 export interface AppRahmenProps {
   bot: { name: string; farbe: BotColor };
+  /** Region des Anbieters, über den der Bot sein Modell bezieht; fehlt ohne Anbieter oder Modell. */
+  region?: Region;
   /** Unterhaltungen des Bots, neueste zuerst (vom Server; danach hält der Rahmen sie aktuell). */
   unterhaltungen: readonly UnterhaltungKurz[];
   children: ReactNode;
 }
-
-/** Einträge der Navigation in der ersten Version (Seiten aus dem Bauplan der Oberfläche). */
-export const NAVIGATION: readonly Omit<NavEintrag, "aktiv">[] = [
-  { id: "modelle", text: t("seite.modelle"), href: "/modelle", icon: "zahnrad" },
-  { id: "datenschleuse", text: t("seite.datenschleuse"), href: "/datenschleuse", icon: "schleuse" },
-  { id: "belege", text: t("seite.belege"), href: "/belege", icon: "beleg" },
-  { id: "einstellungen", text: t("seite.einstellungen"), href: "/einstellungen", icon: "regeln" },
-  { id: "info", text: t("seite.info"), href: "/info", icon: "info" },
-];
 
 function shellTexte(botName: string): AppShellTexte {
   return {
@@ -113,13 +108,7 @@ function neuesteZuerst(liste: readonly UnterhaltungKurz[]): UnterhaltungKurz[] {
   return [...liste].sort((a, b) => (a.zuletzt < b.zuletzt ? 1 : a.zuletzt > b.zuletzt ? -1 : 0));
 }
 
-/** Titel der Standard-Kopfzeile nach Pfad: Name der Seite aus der Navigation, sonst „Chat“. */
-export function kopfTitel(pfad: string): string {
-  const eintrag = NAVIGATION.find((e) => pfad === e.href || pfad.startsWith(`${e.href}/`));
-  return eintrag?.text ?? t("seite.chat");
-}
-
-export function AppRahmen({ bot, unterhaltungen: vomServer, children }: AppRahmenProps) {
+export function AppRahmen({ bot, region, unterhaltungen: vomServer, children }: AppRahmenProps) {
   const pfad = usePathname();
   const [unterhaltungen, setUnterhaltungen] = useState(() => neuesteZuerst(vomServer));
   const [kopf, setKopf] = useState<ReactNode | undefined>(undefined);
@@ -149,6 +138,11 @@ export function AppRahmen({ bot, unterhaltungen: vomServer, children }: AppRahme
     [flaecheOffen, unterhaltungen, unterhaltungMerken, unterhaltungEntfernen],
   );
 
+  const navUnterhaltungen = unterhaltungen.map((u) => {
+    const href = unterhaltungsAdresse(u.id);
+    return { id: u.id, titel: u.titel, href, aktiv: pfad === href };
+  });
+
   return (
     <Rahmen.Provider value={kontext}>
       <AppShell
@@ -156,21 +150,22 @@ export function AppRahmen({ bot, unterhaltungen: vomServer, children }: AppRahme
         texte={shellTexte(bot.name)}
         navigation={{
           ort: t("navigation.ort"),
-          modelle: t("modelle.region.eu"),
+          modelle: modelleHerkunft(region),
           neu: { href: "/" },
           bot: {
             name: bot.name,
             rolle: t("navigation.bot.rolle"),
             farbe: bot.farbe,
-            href: "/",
-            unterhaltungen: unterhaltungen.map((u) => {
-              const href = unterhaltungsAdresse(u.id);
-              return { id: u.id, titel: u.titel, href, aktiv: pfad === href };
-            }),
+            href: BOT_ADRESSE,
+            aktiv: botAktiv(
+              pfad,
+              navUnterhaltungen.some((u) => u.aktiv),
+            ),
+            unterhaltungen: navUnterhaltungen,
           },
           werkzeuge: NAVIGATION.map((eintrag) => ({
             ...eintrag,
-            aktiv: pfad === eintrag.href || pfad.startsWith(`${eintrag.href}/`),
+            aktiv: liegtUnter(pfad, eintrag.href),
           })),
         }}
         unten={<Abmelden />}

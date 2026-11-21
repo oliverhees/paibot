@@ -52,6 +52,7 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   sessions: APP_DEFAULT_TABLE_RIGHTS,
   settings: APP_DEFAULT_TABLE_RIGHTS,
   rules: "select",
+  schleuse_zustand: "select, insert, update",
   tool_calls:
     "select, insert, update (status, decision_receipt_id, result_receipt_id, result_status, output, error_code, updated_at, finished_at)",
 };

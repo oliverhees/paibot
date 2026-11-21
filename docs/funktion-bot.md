@@ -18,7 +18,7 @@ Du willst, dass dein Bot in deinem Ton antwortet und weiß, wofür du ihn brauch
 
 ## So benutzt du es
 
-1. Öffne die Seite „Bot“ (Adresse `/bot`).
+1. Klick in der Seitenleiste unter „Dein Bot“ auf den Namen deines Bots (am Handy zuerst auf das Menü oben links). Es öffnet sich die Seite „Bot“ (Adresse `/bot`); in der Seitenleiste ist dein Bot dann hervorgehoben.
 2. Ändere unter „Name“ den Namen deines Bots (höchstens 60 Zeichen).
 3. Schreib unter „Anweisung“, wie dein Bot antworten soll und worauf er achten soll. Unter dem Feld zählt PaiBot mit, wie viele der 8000 Zeichen du schon nutzt.
 4. Ein Klick auf eine der „Beispiel-Anweisungen“ hängt den Satz an deine Anweisung an. Gespeichert ist noch nichts.

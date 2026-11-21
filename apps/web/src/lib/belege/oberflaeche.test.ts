@@ -99,11 +99,14 @@ describe("Browser-Module der Belege-Seite", () => {
 
   it("der Prüfer kommt erst beim Prüfen dazu, und Zod läuft dabei ohne Code-Auswertung", () => {
     const text = readFileSync(path.join(SRC, "lib/belege/pruefer-laden.ts"), "utf8");
-    const jitless = text.indexOf("zodOhneCodeAuswertung();");
+    const jitless = text.indexOf('await import("../ohne-auswertung");');
     const laden = text.indexOf('import("@paibot/receipts/pruefen")');
     expect(jitless).toBeGreaterThan(0);
     expect(laden).toBeGreaterThan(jitless);
-    expect(text).toContain("jitless = true");
+    // Kein Griff in Zods inneres Objekt mehr, nur die öffentliche Einstellung an einer Stelle.
+    expect(text).not.toContain("__zod_globalConfig");
+    const modul = readFileSync(path.join(SRC, "lib/ohne-auswertung.ts"), "utf8");
+    expect(modul).toContain("config({ jitless: true })");
   });
 
   it("der Anker aus dem Kopf der Kette wird nie als Vertrauensanker benutzt, nur der eingefügte", () => {

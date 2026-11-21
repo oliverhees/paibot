@@ -18,6 +18,7 @@ import { ACTIVE_RUN_STATUSES, type SchleuseMode } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import type { RoutenAktion, RoutenKontext } from "../api/route";
 import type { RoutenName } from "../routen";
+import { schleuseEingerichtet } from "../schleuse/schleuse";
 import type { Einreihen } from "../warteschlange";
 import {
   ladeBelege,
@@ -128,7 +129,7 @@ async function schleuseUmschalten<N extends RoutenName>(
       scope: "unterhaltung",
       mode,
       previousMode: vorher,
-      schleuseInstalled: k.dienste.schleuseInstalliert(),
+      schleuseInstalled: await schleuseEingerichtet(k.db, k.dienste),
     },
     async () => {
       const u = await repo.conversations.setSchleuseMode(k.db, id, mode);

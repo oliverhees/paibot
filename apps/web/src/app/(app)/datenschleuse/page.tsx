@@ -38,6 +38,9 @@ export default async function DatenschleuseSeite() {
             letzterLauf: zustand.letzterLauf,
             letzterLaufZeit: zeitText(zustand.letzterLauf.zeit, zeitzone),
           })}
+      {...(zustand.worker === undefined
+        ? {}
+        : { worker: zustand.worker, workerZeit: zeitText(zustand.worker.geprueft, zeitzone) })}
       dokuUrl={DOKU_DATENSCHLEUSE}
     />
   );

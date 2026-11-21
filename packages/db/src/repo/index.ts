@@ -20,6 +20,7 @@ export * as models from "./modelle";
 export * as messages from "./nachrichten";
 export * as rateLimit from "./ratenbegrenzung";
 export * as rules from "./regeln";
+export * as schleuse from "./schleuse";
 export * as installationKeys from "./schluessel";
 export * as sessions from "./sitzungen";
 export { withTransaction } from "./transaktion";

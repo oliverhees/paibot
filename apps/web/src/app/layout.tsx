@@ -50,13 +50,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="de">
       <head>
         {pruefzeichen && <meta name={CSRF.metaName} content={pruefzeichen} />}
-        <link
-          rel="preload"
-          href="/fonts/inter-latin-wght-normal.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
+        {/*
+          Kein Vorabladen der Schriften: Sie liegen auf demselben Server und stehen im ersten
+          Stylesheet. Beim Neuladen kommt die Schrift aus dem Speicher des Browsers, ein
+          Vorabladen bliebe dann ungenutzt und der Browser meldet eine Warnung.
+        */}
       </head>
       <body>{children}</body>
     </html>

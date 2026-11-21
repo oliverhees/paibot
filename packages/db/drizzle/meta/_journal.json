@@ -50,6 +50,13 @@
       "when": 1795219126790,
       "tag": "0006_regeln_und_belege",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795230938754,
+      "tag": "0007_schleuse_zustand",
+      "breakpoints": true
     }
   ]
 }

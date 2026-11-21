@@ -21,17 +21,11 @@ export interface PrueferImBrowser {
 
 let geladen: Promise<PrueferImBrowser> | undefined;
 
-/** Zod liest seine Einstellungen aus diesem Objekt, bevor es Schemas anlegt. */
-function zodOhneCodeAuswertung(): void {
-  const global = globalThis as { __zod_globalConfig?: { jitless?: boolean } };
-  global.__zod_globalConfig ??= {};
-  global.__zod_globalConfig.jitless = true;
-}
-
 /** Lädt den Prüfer einmal (eigener Teil des Bündels, erst bei Bedarf). */
 export function prueferLaden(): Promise<PrueferImBrowser> {
   geladen ??= (async () => {
-    zodOhneCodeAuswertung();
+    // Zod ohne Code-Auswertung, bevor der Prüfer seine Schemas baut (dasselbe Modul wie im Rahmen).
+    await import("../ohne-auswertung");
     const [pruefer, belege] = await Promise.all([
       import("@paibot/receipts/pruefen"),
       import("@paibot/shared/belege"),
