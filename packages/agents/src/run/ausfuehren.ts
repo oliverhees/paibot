@@ -52,7 +52,8 @@ type Ready = RunContext & Required<Pick<RunContext, "model" | "provider">>;
 /** Wie der Modell-Schritt endete; das bestimmt Lauf, Nachricht, Ereignisse und Beleg. */
 type StepEnd =
   | { kind: "succeeded"; tokens: { input: number; output: number } }
-  | { kind: "cancelled" }
+  /** Abgebrochen; `code` nur, wenn es nicht der Stopp des Besitzers war (z. B. Not-Aus). */
+  | { kind: "cancelled"; code?: ErrorCode }
   | { kind: "lost" }
   | { kind: "failed"; code: ErrorCode }
   /** Das Tor hat abgelehnt; Lauf und Ereignisse sind schon geschrieben. */
@@ -175,8 +176,8 @@ function untouched(run: Run): RunOutcome {
   };
 }
 
-function cancelled(runId: RunId): RunOutcome {
-  return { runId, status: "cancelled", code: "unterbrochen" };
+function cancelled(runId: RunId, code: ErrorCode = "unterbrochen"): RunOutcome {
+  return { runId, status: "cancelled", code };
 }
 
 async function current(db: Database, runId: RunId): Promise<RunOutcome> {
@@ -374,6 +375,8 @@ function stopEnd(reason: StopReason): StepEnd {
     case "signal":
     case "abbruch":
       return { kind: "cancelled" };
+    case "not_aus":
+      return { kind: "cancelled", code: "angehalten" };
     case "verloren":
       return { kind: "lost" };
     case "zeitgrenze":
@@ -445,7 +448,11 @@ async function saveAnswer(
           errorCode: end.code,
         });
       } else {
-        await repo.messages.finalize(tx, messageId, { ...base, status: "cancelled" });
+        await repo.messages.finalize(tx, messageId, {
+          ...base,
+          status: "cancelled",
+          ...(end.kind === "cancelled" && end.code !== undefined ? { errorCode: end.code } : {}),
+        });
       }
     }),
   );
@@ -516,21 +523,22 @@ async function finishRun(
     return done ? { runId: run.id, status: "succeeded" } : undefined;
   }
   if (end.kind === "cancelled") {
+    const code = end.code ?? "unterbrochen";
     const done = await closeRun(
       db,
       run,
       "cancelled",
-      "unterbrochen",
+      code,
       async (tx) => {
         await repo.events.append(tx, {
           conversationId,
           type: "run.cancelled",
-          data: { runId: run.id, code: "unterbrochen", text: errorText("unterbrochen") },
+          data: { runId: run.id, code, text: errorText(code) },
         });
       },
       now,
     );
-    return done ? cancelled(run.id) : undefined;
+    return done ? cancelled(run.id, code) : undefined;
   }
   if (end.kind === "lost" || end.kind === "denied") return undefined;
   const code = end.code;

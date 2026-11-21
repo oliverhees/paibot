@@ -20,9 +20,17 @@ import type { RunTuning } from "./vertrag";
  * - `abbruch`: Abbruch-Wunsch in der Datenbank (`runs.cancel_requested_at`);
  * - `verloren`: der Lauf ist nicht mehr `running` (z. B. von `failStaleRuns` beendet);
  * - `zeitgrenze`, `leerlauf`: Gesamtdauer bzw. Pause des Motors überschritten;
- * - `zu_gross`: die Antwort ist länger als erlaubt.
+ * - `zu_gross`: die Antwort ist länger als erlaubt;
+ * - `not_aus`: der Besitzer hat alle Bots angehalten (`settings.kill_switch`).
  */
-export type StopReason = "signal" | "abbruch" | "verloren" | "zeitgrenze" | "leerlauf" | "zu_gross";
+export type StopReason =
+  | "signal"
+  | "abbruch"
+  | "verloren"
+  | "zeitgrenze"
+  | "leerlauf"
+  | "zu_gross"
+  | "not_aus";
 
 export interface RunGuard {
   /** Endet, sobald der Lauf angehalten werden soll (auch bei Abbruch von außen). */
@@ -77,10 +85,12 @@ export function startGuard(input: {
   const poll = setInterval(() => {
     if (polling || reason !== undefined) return;
     polling = true;
-    repo.runs
-      .get(db, runId)
-      .then((run) => {
+    // Lauf und Not-Aus im selben Takt: Schaltet der Besitzer den Not-Aus ein, endet der Lauf
+    // binnen `cancelPollMs`, auch mitten im Strom.
+    Promise.all([repo.runs.get(db, runId), repo.settings.get(db)])
+      .then(([run, settings]) => {
         if (run === undefined || run.status !== "running") stop("verloren");
+        else if (settings?.killSwitch === true) stop("not_aus");
         else if (run.cancelRequestedAt !== undefined) stop("abbruch");
       })
       .catch(() => undefined)

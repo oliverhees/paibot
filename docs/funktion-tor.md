@@ -38,6 +38,27 @@ So siehst du die Regeln und Entscheidungen in PaiBot an:
 
    ![Beleg einer Entscheidung zu „Nachricht gesendet“: Regel R-001 mit Fassung, Regelstand, Vorbedingungen V-01 und V-02, Grenzen; nach „Beleg prüfen“ der Kasten „Beleg stimmt“ mit „Entscheidung folgt aus Regel R-001“](assets/screenshots/tor-entscheidung.png)
 
+### Not-Aus: alle Bots anhalten
+
+Bei einem Verdacht (dein Bot verhält sich seltsam, ein Anbieter spinnt, du willst einfach sofort Ruhe) hältst du mit einem Klick alle Bots an. Du selbst kannst danach weiter alles ansehen und einstellen.
+
+1. Oben in der Seitenleiste steht der Schalter **Alle Bots laufen** mit dem Knopf **Anhalten**. Klick darauf. Es kommt die Rückfrage „Alle Bots anhalten?“.
+
+   ![Rückfrage „Alle Bots anhalten?“ mit „Abbrechen“ und „Alle Bots anhalten“; oben links der Schalter „Alle Bots laufen“](assets/screenshots/notaus-rueckfrage.png)
+2. Klick auf **Alle Bots anhalten**. Ab jetzt steht auf jeder Seite oben die rote Leiste „Alle Bots sind angehalten.“, der Schalter heißt **Angehalten**, und die Eingabe im Chat ist gesperrt. Eine Antwort, die gerade entsteht, bricht binnen einer Sekunde ab und heißt dann „Angehalten (Not-Aus)“; der Text bis dahin bleibt stehen.
+
+   ![Not-Aus an: oben die Leiste „Alle Bots sind angehalten.“ mit „Fortsetzen“, links der Schalter „Angehalten“, unten die gesperrte Eingabe](assets/screenshots/notaus-angehalten.png)
+
+   Am Handy steht die Leiste über jeder Seite; mit **Fortsetzen** darin hebst du den Not-Aus auch ohne Menü auf.
+
+   ![Not-Aus am Handy: Leiste mit „Fortsetzen“ über der Unterhaltung](assets/screenshots/notaus-angehalten-handy.png)
+3. Zum Aufheben klickst du auf **Fortsetzen** (in der Leiste oder im Schalter). PaiBot fragt nach deinem **aktuellen Passwort**. Gib es ein und klick auf **Fortsetzen**. Danach nimmt dein Bot wieder Nachrichten an.
+
+   ![Abfrage „Not-Aus aufheben?“ mit dem Feld „Aktuelles Passwort“ (ausgefüllt) und dem Knopf „Fortsetzen“](assets/screenshots/notaus-fortsetzen.png)
+4. Beides steht unter **Belege** als Aktion „Not-Aus umgeschaltet“, jeweils mit Entscheidung (Regel R-001) und Ergebnis. Mit dem Filter **Not-Aus umgeschaltet** siehst du nur diese.
+
+   ![Belege, gefiltert nach „Not-Aus umgeschaltet“: je zwei Belege fürs Anhalten und fürs Fortsetzen; oben links wieder „Alle Bots laufen“](assets/screenshots/notaus-belege.png)
+
 Beispiel einer Entscheidung, wie sie im Beleg steht:
 
 ```text
@@ -75,27 +96,28 @@ Kurz: Der Einrichtungs-Code gilt nur für die Einrichtung, das Passwort nur für
 
 Vor den Grenzen und Regeln prüft das Tor feste Vorbedingungen. Sie beschreiben den Zustand, in dem eine Aktion überhaupt Sinn ergibt. Ist eine verletzt, wird die Aktion abgelehnt, und die Meldung nennt sie. Fehlt die Angabe, die eine Vorbedingung braucht, gilt sie als verletzt.
 
-| Vorbedingung | Name                         | Was sie prüft                                                              | Betrifft                                            |
-| ------------ | ---------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------- |
-| V-01         | Unterhaltung vorhanden       | Die Unterhaltung gibt es                                                   | Nachricht senden                                    |
-| V-02         | Kein Lauf aktiv              | In der Unterhaltung antwortet der Bot gerade nicht                         | Nachricht senden                                    |
-| V-03         | Lauf aktiv                   | Es gibt eine laufende Antwort, die sich abbrechen lässt                    | Antwort abbrechen                                   |
-| V-04         | Datenschleuse eingerichtet   | Beim Einschalten der Datenschleuse ist ihr Dienst eingerichtet             | Datenschleuse schalten                              |
-| V-05         | Lauf läuft                   | Die Antwort, zu der ein Werkzeug-Aufruf gehört, läuft noch                 | Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
-| V-06         | Aktuelles Passwort bestätigt | Beim Ändern des Passworts wurde das aktuelle Passwort geprüft              | Passwort ändern                                     |
-| V-07         | Einrichtung offen            | Die Einrichtung ist noch nicht abgeschlossen                               | Einrichtung abschließen                             |
-| V-08         | Aufruf wartet auf Freigabe   | Der Werkzeug-Aufruf wartet noch auf deine Antwort und ist nicht abgelaufen | Werkzeug-Aufruf beantworten                         |
-| V-09         | Freigabe passt zum Aufruf    | Deine Antwort gilt genau den Argumenten, die gespeichert sind              | Werkzeug-Aufruf beantworten                         |
+| Vorbedingung | Name                            | Was sie prüft                                                                                                     | Betrifft                                            |
+| ------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| V-01         | Unterhaltung vorhanden          | Die Unterhaltung gibt es                                                                                          | Nachricht senden                                    |
+| V-02         | Kein Lauf aktiv                 | In der Unterhaltung antwortet der Bot gerade nicht                                                                | Nachricht senden                                    |
+| V-03         | Lauf aktiv                      | Es gibt eine laufende Antwort, die sich abbrechen lässt                                                           | Antwort abbrechen                                   |
+| V-04         | Datenschleuse eingerichtet      | Beim Einschalten der Datenschleuse ist ihr Dienst eingerichtet                                                    | Datenschleuse schalten                              |
+| V-05         | Lauf läuft                      | Die Antwort, zu der ein Werkzeug-Aufruf gehört, läuft noch                                                        | Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
+| V-06         | Aktuelles Passwort bestätigt    | Beim Ändern des Passworts wurde das aktuelle Passwort geprüft                                                     | Passwort ändern                                     |
+| V-07         | Einrichtung offen               | Die Einrichtung ist noch nicht abgeschlossen                                                                      | Einrichtung abschließen                             |
+| V-08         | Aufruf wartet auf Freigabe      | Der Werkzeug-Aufruf wartet noch auf deine Antwort und ist nicht abgelaufen                                        | Werkzeug-Aufruf beantworten                         |
+| V-09         | Freigabe passt zum Aufruf       | Deine Antwort gilt genau den Argumenten, die gespeichert sind                                                     | Werkzeug-Aufruf beantworten                         |
+| V-10         | Passwort zum Aufheben bestätigt | Beim Aufheben des Not-Aus wurde dein aktuelles Passwort in derselben Anfrage geprüft (beim Anhalten entfällt sie) | Not-Aus umschalten                                  |
 
 Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas erlaubt. Ist eine Grenze verletzt, wird die Aktion abgelehnt, und die Meldung nennt die Grenze.
 
-| Grenze | Name                              | Was sie prüft                                                                                                                                              | Betrifft                                                                               |
-| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| G-01   | Datenschleuse gefordert           | Ist die Datenschleuse für die Unterhaltung an, muss die Anfrage über sie laufen und sie muss erreichbar sein. Es gibt keinen Rückfall auf den direkten Weg | Modell anfragen                                                                        |
-| G-02   | Anbieter aktiv und Region erlaubt | Der Anbieter ist eingeschaltet und steht in der EU oder läuft bei dir (lokal). Anbieter außerhalb der EU lehnt die Basisversion ab                         | Modell anfragen                                                                        |
-| G-03   | Länge                             | Die Eingabe ist höchstens so lang wie erlaubt; eine Anfrage verlangt höchstens so viel Ausgabe, wie für deinen Bot eingestellt ist                         | Nachricht senden, Modell anfragen                                                      |
-| G-04   | Tagesbudget                       | Hast du ein Tagesbudget gesetzt, muss der Verbrauch des Tages darunter liegen. Ohne Budget entfällt die Grenze                                             | Modell anfragen                                                                        |
-| G-05   | Not-Aus                           | Ist der Not-Aus an, wird jede betroffene Aktion abgelehnt                                                                                                  | Nachricht senden, Modell anfragen, Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
+| Grenze | Name                              | Was sie prüft                                                                                                                                                                            | Betrifft                                                                               |
+| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| G-01   | Datenschleuse gefordert           | Ist die Datenschleuse für die Unterhaltung an, muss die Anfrage über sie laufen und sie muss erreichbar sein. Es gibt keinen Rückfall auf den direkten Weg                               | Modell anfragen                                                                        |
+| G-02   | Anbieter aktiv und Region erlaubt | Der Anbieter ist eingeschaltet und steht in der EU oder läuft bei dir (lokal). Anbieter außerhalb der EU lehnt die Basisversion ab                                                       | Modell anfragen                                                                        |
+| G-03   | Länge                             | Die Eingabe ist höchstens so lang wie erlaubt; eine Anfrage verlangt höchstens so viel Ausgabe, wie für deinen Bot eingestellt ist                                                       | Nachricht senden, Modell anfragen                                                      |
+| G-04   | Tagesbudget                       | Hast du ein Tagesbudget gesetzt, muss der Verbrauch des Tages darunter liegen. Ohne Budget entfällt die Grenze                                                                           | Modell anfragen                                                                        |
+| G-05   | Not-Aus                           | Ist der Not-Aus an, wird jede betroffene Aktion abgelehnt (Meldung „Alle Bots sind angehalten.“). Das Umschalten des Not-Aus selbst ist nie betroffen, du kannst ihn also immer aufheben | Nachricht senden, Modell anfragen, Werkzeug aufrufen, Werkzeug nach Freigabe ausführen |
 
 ## So funktioniert es
 
@@ -115,6 +137,7 @@ Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas 
   5. Beleg „Ergebnis“ schreiben: ok, Fehler, abgebrochen oder abgelehnt.
 - Lehnt das Tor ab, meldet `gate.run` das mit dem Fehler `GateDenied`. Er nennt das Ergebnis (`deny`, `ask` oder `prepare`), die ganze Entscheidung, beide Belege und die Aktions-Kennung. Bei einer verletzten Vorbedingung trägt er deren Fehlercode (zum Beispiel `lauf_aktiv`), sonst `abgelehnt` bzw. `regel_fehlt`. Bei „fragen“ (`ask`) wartet die Aktion auf deine Freigabe; der Fehler liefert dafür die Angaben, mit denen ein wartender Werkzeug-Aufruf gespeichert wird.
 - Werkzeug-Aufrufe deines Bots laufen als eigene Aktion `werkzeug.aufrufen` durch das Tor. Im Beleg stehen Name, Quelle und Art des Werkzeugs (bei einem Werkzeug von einem MCP-Server auch dessen Name, sonst nie) und nur ein Abdruck der Argumente, nie die Argumente selbst.
+- Not-Aus: Der Schalter ist die Aktion `notaus.umschalten` (Route `PUT /api/notaus`) mit eigenen Belegen. Ihre Fakten sind „soll an sein“, „war an“ und „Passwort bestätigt“, bewusst ohne den Schalter `killSwitch`; deshalb trifft G-05 sie nie. Der Zustand steht in den Einstellungen der Datenbank. Eine laufende Antwort sieht den Schalter im selben Takt wie den Stopp (alle halbe Sekunde) und endet als abgebrochen mit dem Code `angehalten`; jede neue Anfrage an ein Modell lehnt das Tor über G-05 ab.
 - Freigabe in zwei Schritten, jeder mit eigenen Belegen: Deine Antwort auf einen wartenden Aufruf ist die Aktion `werkzeug.freigeben` (erteilen oder ablehnen, nur mit Sitzung, V-08 und V-09). Die Ausführung danach ist eine neue Entscheidung `werkzeug.ausfuehren`, die auf den Aufruf und deine Freigabe verweist; R-007 erlaubt sie genau einmal, danach ist die Freigabe verbraucht. So bekommt jede Aktion genau ihre zwei Belege.
 - Für Tests gibt es den Zugang `@paibot/gate/testing` (`withTestPermit`). Er stellt eine Berechtigung auf demselben Weg aus wie das Tor, aber ohne Regeln und ohne Beleg. Eine Lint-Regel lässt ihn nur in Tests zu.
 - Beide Belege einer Aktion hängen über dieselbe Aktions-Kennung zusammen. Wie Belege verkettet und geprüft werden, steht auf der Seite [Belege](funktion-belege.md).
@@ -124,24 +147,26 @@ Zusätzlich gibt es feste Grenzen. Sie gelten immer, auch wenn eine Regel etwas 
 - Die Regeln sind in der Basisversion nur lesbar: Die App darf in der Datenbank keine Regeln schreiben, die eingebauten kommen allein aus den Migrationen, und eigene Regeln oder Vorschläge können dort nicht eingeschaltet sein. Eigene Regeln und Regel-Vorschläge deines Bots sind geplant; eine eigene Regel anzulegen wird dann selbst eine Aktion durch das Tor mit Beleg. Der Bot entscheidet nie für dich, er wird Regeln nur vorschlagen.
 - „Fragen“ mit Freigabe-Karte ist geplant. Heute wird eine Aktion, die fragt, nicht ausgeführt; ein Werkzeug-Aufruf wartet, bis die Freigabe gebaut ist. Das Tor kann über Freigabe und Ausführung schon entscheiden; speichern lassen sich deren Belege und die Regeln R-007 und R-008 aber erst mit einer kommenden Version der Datenbank, und die Oberfläche dafür fehlt noch.
 - „Vorbereiten“ ist geplant. Heute wird eine solche Aktion ebenfalls abgelehnt.
-- Der Not-Aus lässt sich in der Basisversion noch nicht in der Oberfläche schalten (geplant).
+- Der Not-Aus hält deine Bots an, sperrt aber nicht den Zugang: Wer angemeldet ist, kann weiter alles einstellen. Ein Schalter „Zugang abriegeln“ (alle Sitzungen und Geräte widerrufen) ist geplant.
+- Fortsetzen geht nur mit deinem aktuellen Passwort. Falsche Versuche zählen zusammen mit denen beim Passwort ändern (5 in 15 Minuten je Sitzung).
 - Das Tor prüft nur die Fakten, die es bekommt. Es liest keine Inhalte und bewertet nicht, ob eine Antwort gut ist. Ob ein Nachweis (Sitzung, Passwort, Code) echt ist, prüft der Zugang vorher; das Tor prüft nur, ob er zur Aktion passt.
 
 ## Fehlerbehebung
 
-| Beobachtung                                  | Ursache                                                      | Was tun                                                                       |
-| -------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| „Dafür gibt es noch keine Regel.“            | Für diese Aktion passt keine Regel (R-999)                   | In der Basisversion gibt es dafür keinen Weg; die Aktion ist nicht vorgesehen |
-| „Das Tor hat die Aktion abgelehnt.“ mit G-01 | Datenschleuse ist an, aber nicht erreichbar                  | Prüf, ob die Datenschleuse läuft, oder schalte sie für diese Unterhaltung aus |
-| Abgelehnt mit G-02                           | Anbieter ist ausgeschaltet oder steht außerhalb der EU       | Anbieter einschalten oder einen Anbieter in der EU bzw. lokal wählen          |
-| Abgelehnt mit G-03                           | Nachricht zu lang oder Ausgabegrenze der Anfrage zu hoch     | Nachricht kürzen; die Ausgabegrenze legst du beim Bot fest                    |
-| Abgelehnt mit G-04                           | Tagesbudget ist aufgebraucht                                 | Bis morgen warten oder das Budget in den Einstellungen erhöhen                |
-| Abgelehnt mit G-05                           | Not-Aus ist an                                               | Not-Aus ausschalten                                                           |
-| Abgelehnt mit V-01                           | Die Unterhaltung gibt es nicht (mehr)                        | Seite neu laden und eine vorhandene Unterhaltung öffnen                       |
-| Abgelehnt mit V-02                           | Dein Bot antwortet noch                                      | Antwort abwarten oder abbrechen, dann erneut senden                           |
-| Abgelehnt mit V-03                           | Es läuft keine Antwort, die sich abbrechen lässt             | Nichts zu tun; die Antwort ist schon fertig                                   |
-| Abgelehnt mit V-04                           | Der Dienst der Datenschleuse ist nicht eingerichtet          | Datenschleuse einrichten, dann einschalten                                    |
-| Abgelehnt mit V-06                           | Das aktuelle Passwort stimmt nicht                           | Aktuelles Passwort richtig eingeben                                           |
-| Abgelehnt mit V-07                           | Die Einrichtung ist schon abgeschlossen                      | Anmelden statt neu einrichten                                                 |
-| Abgelehnt mit R-006                          | Passwort oder Code für eine Aktion, die eine Sitzung braucht | Anmelden; danach gilt deine Sitzung                                           |
-| Fehler `intern` bei jeder Aktion             | Eine eingebaute Regel in der Datenbank weicht ab             | Datenbank aus einer Sicherung wiederherstellen; nichts wurde ausgeführt       |
+| Beobachtung                                  | Ursache                                                      | Was tun                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| „Dafür gibt es noch keine Regel.“            | Für diese Aktion passt keine Regel (R-999)                   | In der Basisversion gibt es dafür keinen Weg; die Aktion ist nicht vorgesehen              |
+| „Das Tor hat die Aktion abgelehnt.“ mit G-01 | Datenschleuse ist an, aber nicht erreichbar                  | Prüf, ob die Datenschleuse läuft, oder schalte sie für diese Unterhaltung aus              |
+| Abgelehnt mit G-02                           | Anbieter ist ausgeschaltet oder steht außerhalb der EU       | Anbieter einschalten oder einen Anbieter in der EU bzw. lokal wählen                       |
+| Abgelehnt mit G-03                           | Nachricht zu lang oder Ausgabegrenze der Anfrage zu hoch     | Nachricht kürzen; die Ausgabegrenze legst du beim Bot fest                                 |
+| Abgelehnt mit G-04                           | Tagesbudget ist aufgebraucht                                 | Bis morgen warten oder das Budget in den Einstellungen erhöhen                             |
+| „Alle Bots sind angehalten.“ (G-05)          | Not-Aus ist an                                               | Oben auf **Fortsetzen** klicken und dein aktuelles Passwort eingeben                       |
+| Fortsetzen: „Das Passwort stimmt nicht.“     | Beim Aufheben fehlt das richtige Passwort (V-10)             | Aktuelles Passwort eingeben; vergessen: siehe [Zugang](funktion-einrichtung-und-zugang.md) |
+| Abgelehnt mit V-01                           | Die Unterhaltung gibt es nicht (mehr)                        | Seite neu laden und eine vorhandene Unterhaltung öffnen                                    |
+| Abgelehnt mit V-02                           | Dein Bot antwortet noch                                      | Antwort abwarten oder abbrechen, dann erneut senden                                        |
+| Abgelehnt mit V-03                           | Es läuft keine Antwort, die sich abbrechen lässt             | Nichts zu tun; die Antwort ist schon fertig                                                |
+| Abgelehnt mit V-04                           | Der Dienst der Datenschleuse ist nicht eingerichtet          | Datenschleuse einrichten, dann einschalten                                                 |
+| Abgelehnt mit V-06                           | Das aktuelle Passwort stimmt nicht                           | Aktuelles Passwort richtig eingeben                                                        |
+| Abgelehnt mit V-07                           | Die Einrichtung ist schon abgeschlossen                      | Anmelden statt neu einrichten                                                              |
+| Abgelehnt mit R-006                          | Passwort oder Code für eine Aktion, die eine Sitzung braucht | Anmelden; danach gilt deine Sitzung                                                        |
+| Fehler `intern` bei jeder Aktion             | Eine eingebaute Regel in der Datenbank weicht ab             | Datenbank aus einer Sicherung wiederherstellen; nichts wurde ausgeführt                    |

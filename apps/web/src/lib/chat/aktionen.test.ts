@@ -361,9 +361,12 @@ describe("Nachricht senden", () => {
     const id = await neueUnterhaltung(e);
     await repo.settings.update(e.u.db, { killSwitch: true });
     const r = await senden(e, id);
-    expect(r.status).toBe(403);
-    expect(r.body.fehler).toMatchObject({ code: "abgelehnt" });
-    expect(JSON.stringify(r.body.fehler)).toContain("Not-Aus");
+    expect(r.status).toBe(409);
+    expect(r.body.fehler).toMatchObject({
+      code: "angehalten",
+      text: "Alle Bots sind angehalten.",
+    });
+    expect(JSON.stringify(r.body.fehler)).toContain("Hebe den Not-Aus auf");
     expect(await repo.messages.listForConversation(e.u.db, id as never)).toEqual([]);
     expect(await belegTypen(e.u, 2)).toEqual([
       "decision:nachricht.senden",

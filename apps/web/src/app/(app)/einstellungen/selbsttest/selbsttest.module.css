@@ -1,0 +1,122 @@
+/**
+ * PaiBot – Gestaltung des Selbsttests: Zusammenfassung, Liste der Prüfungen, selbst zu prüfen.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.titel {
+  margin: 0;
+  font-size: var(--schrift-l);
+  font-weight: 650;
+}
+
+.summe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.summeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.summeText p {
+  margin: 0;
+}
+
+.geprueft {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.punkt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+  min-width: 0;
+  border-left: 3px solid transparent;
+}
+
+.punkt + .punkt {
+  border-top: 1px solid var(--line);
+}
+
+.punkt[data-ergebnis="hinweis"] {
+  border-left-color: var(--warn);
+}
+
+.punkt[data-ergebnis="fehler"] {
+  border-left-color: var(--danger);
+}
+
+.punkt p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.punktKopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.punktKopf h3 {
+  margin: 0;
+  font-size: var(--schrift-m);
+  font-weight: 600;
+}
+
+.ausweg {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.ausweg strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.selbst {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selbst li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.selbst li > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--ink-soft);
+}

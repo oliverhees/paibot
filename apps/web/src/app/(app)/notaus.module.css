@@ -1,0 +1,170 @@
+/**
+ * PaiBot – Stile des Not-Aus: Schalter in der Seitenleiste, Leiste „angehalten“, Rückfrage.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.knopf {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line-mid);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 6px 8px 6px 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--schrift-m);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.knopf:hover {
+  border-color: var(--line-strong);
+}
+
+.knopf:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.lampe {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.text strong,
+.text small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text strong {
+  font-weight: 600;
+}
+
+.text small {
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+}
+
+.mini {
+  flex: none;
+  font-size: var(--schrift-s);
+  font-weight: 650;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.knopf[aria-pressed="true"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.knopf[aria-pressed="true"] .lampe {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 25%, transparent);
+}
+
+.knopf[aria-pressed="true"] .mini {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.leiste {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  padding: 9px 16px 9px 20px;
+  background: var(--danger-soft);
+  color: var(--ink);
+  font-size: var(--schrift-m);
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.leiste > svg {
+  flex: none;
+  color: var(--danger);
+}
+
+.leisteText {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.leisteText strong {
+  color: var(--danger);
+  font-weight: 650;
+}
+
+/* Weitere Hinweise (z. B. neue Anmeldung) unter der Leiste, über der Kopfzeile. */
+.hinweise {
+  flex: none;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hinweise:empty {
+  display: none;
+}
+
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formular p {
+  margin: 0;
+}
+
+.leise {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.fehler {
+  color: var(--danger);
+  font-size: var(--schrift-s);
+}
+
+@media (max-width: 640px) {
+  .leiste {
+    flex-wrap: wrap;
+    padding: 9px 16px;
+  }
+
+  .leisteText {
+    flex-basis: calc(100% - 30px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knopf {
+    transition: none;
+  }
+}

@@ -55,6 +55,8 @@ Danach zeigt `docker compose -f deploy/docker-compose.yml --env-file deploy/.env
 
 Nach dem Start öffnest du `http://localhost:3000` im Browser. Eine frische Installation zeigt zuerst die Einrichtung: Du gibst den Einrichtungs-Code aus dem Log ein, legst dein Passwort fest und verbindest einen Modell-Anbieter. Alle Schritte mit Bildern stehen in [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md).
 
+Nach dem ersten Start: Sieh dir unter **Einstellungen → Selbsttest** an, ob deine Installation richtig eingestellt ist (Adresse, Proxy, Datenbank-Rolle, Worker). Zu jedem Punkt steht, was du tun kannst ([Selbsttest](funktion-selbsttest.md)).
+
 ![Einrichtung, Schritt 1 im dunklen Design: Begrüßung durch den Bot Pai, drei Versprechen und das leere Feld „Einrichtungs-Code“ mit dem Hinweis auf das Log](assets/screenshots/einrichtung-code.png)
 
 Erreicht PaiBot die Datenbank nicht, steht statt der Einrichtung oder der Anmeldung der Hinweis „Datenbank nicht erreichbar“. Dann läuft der Dienst `postgres` nicht oder die Zugangsdaten passen nicht: Schau ins Log (`… logs postgres web`), starte die Datenbank und lade die Seite neu. Fehlt die `DATABASE_URL` ganz, startet PaiBot im Betrieb gar nicht erst; im Log steht dann „Start abgebrochen“.

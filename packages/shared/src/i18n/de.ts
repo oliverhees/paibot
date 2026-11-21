@@ -1244,4 +1244,167 @@ export const de = {
     "Warte, bis die Antwort fertig ist, oder brich sie im Chat ab. Danach kannst du den Anbieter entfernen.",
   "modelle.liste.abgleichen": "Liste abgleichen",
   "modelle.liste.abgeglichen": "Liste abgeglichen: {anzahl} Modelle.",
+  // Not-Aus („Alle Bots anhalten“) und Selbsttest
+  "aktion.notaus.umschalten": "Not-Aus umgeschaltet",
+  "regel.V-10": "Passwort zum Aufheben bestätigt",
+  "regeln.vorbedingung.V-10": "Zum Aufheben des Not-Aus ist dein aktuelles Passwort bestätigt.",
+  "fehler.angehalten": "Alle Bots sind angehalten.",
+  "fehler.angehalten.ausweg":
+    "Hebe den Not-Aus auf (Knopf „Fortsetzen“ oben in der Seitenleiste, mit deinem Passwort), dann antwortet dein Bot wieder.",
+  "notaus.knopf.laufen": "Alle Bots laufen",
+  "notaus.knopf.laufen_zusatz": "Not-Aus",
+  "notaus.knopf.anhalten": "Anhalten",
+  "notaus.knopf.angehalten": "Angehalten",
+  "notaus.knopf.angehalten_zusatz": "nichts läuft",
+  "notaus.knopf.fortsetzen": "Fortsetzen",
+  "notaus.knopf.name_aus": "Not-Aus: alle Bots anhalten",
+  "notaus.knopf.name_an": "Not-Aus ist an. Fortsetzen",
+  "notaus.leiste.titel": "Alle Bots sind angehalten.",
+  "notaus.leiste.text":
+    "Dein Bot nimmt keine Nachrichten an und fragt kein Modell an, bis du fortsetzt. Eine laufende Antwort wurde abgebrochen. Beides steht mit Beleg unter Belege.",
+  "notaus.dialog.schliessen": "Schließen",
+  "notaus.dialog.abbrechen": "Abbrechen",
+  "notaus.dialog.an.titel": "Alle Bots anhalten?",
+  "notaus.dialog.an.text":
+    "Eine laufende Antwort bricht sofort ab, und dein Bot nimmt keine neuen Nachrichten an, bis du fortsetzt. Du selbst kannst weiter alles ansehen und einstellen.",
+  "notaus.dialog.an.hinweis": "Zum Fortsetzen brauchst du später dein aktuelles Passwort.",
+  "notaus.dialog.an.ja": "Alle Bots anhalten",
+  "notaus.dialog.aus.titel": "Not-Aus aufheben?",
+  "notaus.dialog.aus.text":
+    "Bestätige mit deinem aktuellen Passwort. Danach nimmt dein Bot wieder Nachrichten an.",
+  "notaus.dialog.aus.passwort": "Aktuelles Passwort",
+  "notaus.dialog.aus.leer": "Gib dein aktuelles Passwort ein.",
+  "notaus.dialog.aus.ja": "Fortsetzen",
+  "notaus.laeuft": "Einen Moment …",
+  "notaus.erfolg.an": "Alle Bots sind angehalten.",
+  "notaus.erfolg.aus": "Der Not-Aus ist aufgehoben. Dein Bot antwortet wieder.",
+  "notaus.chat.angehalten": "Angehalten, bevor {name} geantwortet hat.",
+  "notaus.chat.angehalten_teil": "Angehalten (Not-Aus). Der Text bis hierhin bleibt stehen.",
+  "notaus.chat.eingabe": "Alle Bots sind angehalten. Setze oben fort, um weiterzuschreiben.",
+  "seite.selbsttest": "Selbsttest",
+  "einstellungen.reiter.selbsttest": "Selbsttest",
+  "selbsttest.titel": "Ist meine Installation richtig eingestellt?",
+  "selbsttest.vorspann":
+    "PaiBot prüft hier, was es von innen sehen kann: Adresse, Proxy, Verbindung, Datenbank, Worker. Zu jedem Punkt steht, was du tun kannst. Die Prüfung fragt nichts außerhalb deines Servers ab.",
+  "selbsttest.laedt": "PaiBot prüft deine Installation …",
+  "selbsttest.erneut": "Erneut prüfen",
+  "selbsttest.geprueft": "Geprüft um {zeit}",
+  "selbsttest.summe": "{ok} in Ordnung · {hinweis} Hinweise · {fehler} Fehler",
+  "selbsttest.ergebnis.ok": "In Ordnung",
+  "selbsttest.ergebnis.hinweis": "Hinweis",
+  "selbsttest.ergebnis.fehler": "Fehler",
+  "selbsttest.ausweg": "So behebst du es",
+  "selbsttest.liste": "Prüfungen",
+  "selbsttest.selbst.titel": "Bitte selbst prüfen",
+  "selbsttest.selbst.vorspann":
+    "Diese Punkte kann PaiBot von innen nicht wissen. Prüfe sie selbst, am besten nach jeder größeren Änderung an deinem Server.",
+  "selbsttest.selbst.proxy":
+    "Grenzen im Reverse-Proxy: Der Proxy begrenzt die Größe einer Anfrage und die Zahl gleichzeitiger Anfragen je Adresse, bevor sie PaiBot erreichen.",
+  "selbsttest.selbst.sicherung":
+    "Sicherung: Es gibt eine aktuelle Sicherung, und du hast sie mindestens einmal zur Probe in eine frische Installation zurückgespielt. Wie das geht, steht in der Doku unter „Sicherung und Wiederherstellung“.",
+  "selbsttest.selbst.updates":
+    "Updates: Du verfolgst neue Versionen und spielst sie zeitnah ein. PaiBot fragt selbst nicht nach außen, ob es eine neue gibt.",
+  "selbsttest.selbst.images":
+    "Herkunft: Du beziehst PaiBot aus der offiziellen Quelle des Projekts und nicht aus einer Kopie.",
+  "selbsttest.fehler.laden": "Der Selbsttest konnte nicht geladen werden.",
+  "selbsttest.unbekannt": "Konnte gerade nicht geprüft werden.",
+  "selbsttest.unbekannt.ausweg": "Lade die Seite in ein paar Sekunden neu.",
+  "selbsttest.adresse.titel": "Adresse (APP_URL)",
+  "selbsttest.adresse.ok":
+    "APP_URL beginnt mit https:// und passt zur Adresse, über die du diese Seite geöffnet hast.",
+  "selbsttest.adresse.fehlt": "APP_URL ist nicht gesetzt.",
+  "selbsttest.adresse.fehlt.ausweg":
+    "Setze APP_URL auf die Adresse, unter der du PaiBot im Browser öffnest (z. B. https://paibot.example.de), und starte den Dienst web neu.",
+  "selbsttest.adresse.http":
+    "APP_URL beginnt mit http://. Passwort und Sitzung gehen dann unverschlüsselt über das Netz.",
+  "selbsttest.adresse.http.ausweg":
+    "Stelle PaiBot hinter einen Reverse-Proxy mit Zertifikat (z. B. Coolify oder Caddy), setze APP_URL auf https://… und starte den Dienst web neu.",
+  "selbsttest.adresse.anders":
+    "Du hast diese Seite über eine andere Adresse geöffnet, als in APP_URL steht. Anmelden und Speichern scheitern dann an der Herkunftsprüfung.",
+  "selbsttest.adresse.anders.ausweg":
+    "Öffne PaiBot über die Adresse aus APP_URL, oder trage dort die Adresse ein, die du benutzt, und starte den Dienst web neu.",
+  "selbsttest.proxy.titel": "Vorgeschalteter Proxy (TRUST_PROXY)",
+  "selbsttest.proxy.ok_mit":
+    "TRUST_PROXY=1, und der Proxy reicht die Adresse deines Browsers weiter. Die Limits je Adresse greifen.",
+  "selbsttest.proxy.ok_ohne": "Kein Proxy erkannt, und TRUST_PROXY ist aus. Das passt zusammen.",
+  "selbsttest.proxy.ohne_adresse":
+    "TRUST_PROXY=1, aber bei dieser Anfrage kam keine weitergereichte Adresse an. Steht kein Proxy davor, kann jeder eine Adresse vortäuschen und die Limits je Adresse umgehen.",
+  "selbsttest.proxy.ohne_adresse.ausweg":
+    "Ohne Proxy: TRUST_PROXY=0 setzen. Mit Proxy: prüfen, dass er X-Forwarded-For setzt, und den Port der App nie direkt freigeben.",
+  "selbsttest.proxy.nicht_vertraut":
+    "Ein Proxy reicht Adressen weiter, aber TRUST_PROXY ist nicht 1. Dann sehen alle Anfragen gleich aus, und die Limits beim Anmelden treffen alle zugleich.",
+  "selbsttest.proxy.nicht_vertraut.ausweg": "Setze TRUST_PROXY=1 und starte den Dienst web neu.",
+  "selbsttest.verbindung.titel": "Verbindung deines Browsers",
+  "selbsttest.verbindung.ok": "Dein Browser spricht verschlüsselt (https) mit PaiBot.",
+  "selbsttest.verbindung.lokal":
+    "Dein Browser spricht unverschlüsselt (http) mit PaiBot. Auf dem eigenen Rechner geht das, über ein Netz nicht.",
+  "selbsttest.verbindung.offen":
+    "Dein Browser spricht unverschlüsselt (http) mit PaiBot. Passwort und Antworten lassen sich unterwegs mitlesen.",
+  "selbsttest.verbindung.ausweg":
+    "Öffne PaiBot über https. Dafür braucht es einen Reverse-Proxy mit Zertifikat (z. B. Coolify oder Caddy).",
+  "selbsttest.kopfzeilen.titel": "Schutz-Kopfzeilen",
+  "selbsttest.kopfzeilen.ok":
+    "Die Seite kommt mit allen Schutz-Kopfzeilen an (Content-Security-Policy, HSTS und weitere).",
+  "selbsttest.kopfzeilen.ok_http":
+    "Die Seite kommt mit den Schutz-Kopfzeilen an. HSTS gilt nur über https und fehlt deshalb hier.",
+  "selbsttest.kopfzeilen.fehlen": "Bei deinem Browser kommen diese Kopfzeilen nicht an: {liste}.",
+  "selbsttest.kopfzeilen.fehlen.ausweg":
+    "PaiBot setzt sie selbst. Prüfe, ob dein Reverse-Proxy Kopfzeilen der App entfernt oder überschreibt.",
+  "selbsttest.kopfzeilen.hsts":
+    "Die Seite kommt über https, aber ohne HSTS an. Der Browser merkt sich dann nicht, dass PaiBot nur verschlüsselt erreichbar ist.",
+  "selbsttest.kopfzeilen.hsts.ausweg":
+    "PaiBot setzt HSTS, wenn APP_URL mit https:// beginnt. Prüfe APP_URL und ob dein Reverse-Proxy die Kopfzeile entfernt.",
+  "selbsttest.rolle.titel": "Rechte der Datenbank-Rolle",
+  "selbsttest.rolle.ok":
+    "Die App arbeitet mit einer eingeschränkten Rolle: Sie kann Belege, Regeln und Schlüssel nicht ändern oder löschen.",
+  "selbsttest.rolle.zu_viel": "Die Datenbank-Verbindung der App hat zu viele Rechte: {gruende}.",
+  "selbsttest.rolle.zu_viel.ausweg":
+    "Starte den Migrations-Schritt erneut (Dienst migrate); er richtet die eingeschränkte App-Rolle ein. DATABASE_URL bei web und worker muss diese App-Rolle nutzen, nicht den Hauptzugang der Datenbank.",
+  "selbsttest.schalter.titel": "Schalter PAIBOT_ALLOW_PRIVILEGED_DB",
+  "selbsttest.schalter.ok":
+    "Der Schalter ist aus. Mit zu vielen Rechten würde PaiBot nicht starten.",
+  "selbsttest.schalter.an":
+    "Der Schalter ist an. Damit startet PaiBot auch dann, wenn die Datenbank-Rolle zu viele Rechte hat.",
+  "selbsttest.schalter.an.ausweg":
+    "Entferne PAIBOT_ALLOW_PRIVILEGED_DB bei web und worker, sobald die Rolle eingeschränkt ist, und starte beide neu.",
+  "selbsttest.migrationen.titel": "Stand der Datenbank",
+  "selbsttest.migrationen.ok": "Die Datenbank ist auf dem Stand dieser Version.",
+  "selbsttest.migrationen.veraltet":
+    "In der Datenbank fehlen Migrationen dieser Version ({angewendet} von {erwartet}).",
+  "selbsttest.migrationen.veraltet.ausweg":
+    "Starte den Migrations-Schritt erneut (Dienst migrate, z. B. docker compose up -d).",
+  "selbsttest.migrationen.neuer":
+    "Die Datenbank kennt neuere Migrationen als diese Version. Vermutlich läuft hier eine ältere Version als zuletzt.",
+  "selbsttest.migrationen.neuer.ausweg":
+    "Starte die Version, mit der die Datenbank zuletzt lief, oder spiele eine passende Sicherung zurück.",
+  "selbsttest.worker.titel": "Worker",
+  "selbsttest.worker.ok": "Der Worker meldet sich regelmäßig, zuletzt um {zeit}.",
+  "selbsttest.worker.nie":
+    "Der Worker hat sich noch nie gemeldet. Ohne Worker antwortet dein Bot nicht.",
+  "selbsttest.worker.veraltet":
+    "Der Worker meldet sich seit {zeit} nicht mehr. Ohne Worker antwortet dein Bot nicht.",
+  "selbsttest.worker.ausweg":
+    "Prüfe, ob der Dienst worker läuft (z. B. docker compose ps), und sieh in sein Log.",
+  "selbsttest.schleuse.titel": "Datenschleuse",
+  "selbsttest.schleuse.aus":
+    "Die Datenschleuse ist nicht eingerichtet. Sie ist freiwillig; ohne sie gehen Anfragen direkt zum Anbieter.",
+  "selbsttest.schleuse.bereit": "Die Datenschleuse ist eingerichtet und bereit.",
+  "selbsttest.schleuse.unbekannt":
+    "Wie es der Datenschleuse geht, ist unbekannt, weil sich der Worker nicht meldet.",
+  "selbsttest.einrichtung.titel": "Einrichtung",
+  "selbsttest.einrichtung.ok": "Die Einrichtung ist abgeschlossen.",
+  "selbsttest.einrichtung.offen": "Die Einrichtung ist noch nicht abgeschlossen.",
+  "selbsttest.einrichtung.offen.ausweg": "Schließe die Einrichtung unter /einrichtung ab.",
+  "selbsttest.zugang.titel": "Geräte und Sitzungen",
+  "selbsttest.zugang.text": "Bekannte Geräte: {geraete}. Offene Sitzungen: {sitzungen}.",
+  "selbsttest.zugang.ausweg":
+    "Kennst du ein Gerät oder eine Sitzung nicht? Beende unter Einstellungen → Zugang alle Sitzungen und ändere dein Passwort.",
+  "selbsttest.notaus.titel": "Not-Aus",
+  "selbsttest.notaus.aus": "Der Not-Aus ist aus. Deine Bots laufen.",
+  "selbsttest.notaus.an": "Der Not-Aus ist an. Alle Bots sind angehalten.",
+  "selbsttest.notaus.an.ausweg":
+    "Hebe den Not-Aus auf, wenn alles wieder in Ordnung ist (Knopf „Fortsetzen“ oben in der Seitenleiste).",
+  "selbsttest.version.titel": "Version",
+  "selbsttest.version.text":
+    "Hier läuft PaiBot {stand}. Ob es eine neuere Version gibt, prüft PaiBot nicht selbst.",
 } as const satisfies Record<string, string | readonly string[]>;

@@ -243,9 +243,11 @@ describe("Zustände, die das Tor ablehnt", () => {
     expect(decision.matchedRules).toMatchObject([{ id: "R-005" }]);
   });
 
-  it("ohne verletzte Vorbedingung: Code aus dem Ergebnis", () => {
+  it("ohne verletzte Vorbedingung: Code aus dem Ergebnis, beim Not-Aus `angehalten`", () => {
     const facts = { ...sampleFacts("nachricht.senden"), killSwitch: true };
-    expect(denialCode(decide("nachricht.senden", facts))).toBe("abgelehnt");
+    expect(denialCode(decide("nachricht.senden", facts))).toBe("angehalten");
+    const langeFakten = { ...sampleFacts("nachricht.senden"), inputChars: 10_000_000 };
+    expect(denialCode(decide("nachricht.senden", langeFakten))).toBe("abgelehnt");
     expect(denialCode(decide("werkzeug.aufrufen", sampleFacts("werkzeug.aufrufen")))).toBe(
       "regel_fehlt",
     );

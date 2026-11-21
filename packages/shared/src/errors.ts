@@ -41,6 +41,8 @@ export const ERROR_STATUS = {
   limit_erreicht: 429,
   unterbrochen: 500,
   intern: 500,
+  /** Der Not-Aus ist an: Bots nehmen nichts an und fragen kein Modell an. */
+  angehalten: 409,
 } as const satisfies Record<string, number>;
 
 export type ErrorCode = keyof typeof ERROR_STATUS;

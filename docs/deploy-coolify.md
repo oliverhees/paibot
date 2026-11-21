@@ -123,5 +123,6 @@ Erwartet: `{"status":"ok","app":"PaiBot","db":"ok",...}`. In Coolify stehen `web
 
 ## 5. Danach
 
+- Nach dem ersten Start und der Einrichtung: unter **Einstellungen → Selbsttest** prüfen, ob `APP_URL`, `TRUST_PROXY`, HSTS, Datenbank-Rolle und Worker stimmen. Zu jedem Punkt steht ein Ausweg ([Selbsttest](funktion-selbsttest.md)).
 - Backups der Datenbank einrichten (Ziel: S3-kompatibler Speicher in der EU). Die Sicherungen enthalten deine Unterhaltungen lesbar; schütze den Speicher entsprechend und lege `PAIBOT_SECRET` nicht dort ab.
 - Automatische Deploys bei Push auf `main` aktivieren, wenn gewünscht
