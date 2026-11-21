@@ -34,3 +34,6 @@ CLAUDE.local.md
 
 # Vom Entwicklungs-Server angelegt
 apps/web/AGENTS.md
+
+# Erzeugter Doku-Index (pnpm doku:index); entsteht beim Bauen des Images
+/doku-index/
