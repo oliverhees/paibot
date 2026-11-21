@@ -75,6 +75,21 @@ describe("Text-Schlüssel", () => {
     }
   });
 
+  it("nennen die Bauart statt fremder Programme; Coolify nur als dokumentierter Installationsweg", () => {
+    const fremd = /\b(caddy|nginx|traefik|apache|haproxy|let'?s encrypt|cloudflare)\b/i;
+    for (const key of TEXT_KEYS) {
+      const value = de[key];
+      for (const text of typeof value === "string" ? [value] : value) {
+        expect(fremd.test(text), key).toBe(false);
+        if (/coolify/i.test(text)) {
+          expect(key.includes("coolify") || text.includes("Installation mit Coolify"), key).toBe(
+            true,
+          );
+        }
+      }
+    }
+  });
+
   it("es gibt keine Bezeichnungen für unbekannte Aktionen oder Regeln", () => {
     const actions = new Set<string>(ACTION_TYPES);
     const rules = new Set<string>([

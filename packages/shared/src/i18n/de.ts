@@ -57,7 +57,7 @@ export const de = {
 
   // Zugang allgemein
   "zugang.ohne_proxy":
-    "TRUST_PROXY ist nicht gesetzt: PaiBot kennt die Adresse der Besucher nicht und bremst Anmelde-Versuche deshalb nur, statt sie je Adresse zu sperren. Läuft PaiBot hinter einem Proxy (zum Beispiel Coolify, Traefik, Caddy oder nginx), setze TRUST_PROXY=1.",
+    "TRUST_PROXY ist nicht gesetzt: PaiBot kennt die Adresse der Besucher nicht und bremst Anmelde-Versuche deshalb nur, statt sie je Adresse zu sperren. Läuft PaiBot hinter einem Reverse-Proxy (so auch bei der Installation mit Coolify), setze TRUST_PROXY=1.",
   "zugang.datenbank.titel": "Datenbank nicht erreichbar",
   "zugang.datenbank.text":
     "PaiBot erreicht gerade seine Datenbank nicht. Sieh im Log nach, ob die Datenbank läuft, und lade die Seite danach neu.",
@@ -1318,7 +1318,7 @@ export const de = {
   "selbsttest.adresse.http":
     "APP_URL beginnt mit http://. Passwort und Sitzung gehen dann unverschlüsselt über das Netz.",
   "selbsttest.adresse.http.ausweg":
-    "Stelle PaiBot hinter einen Reverse-Proxy mit Zertifikat (z. B. Coolify oder Caddy), setze APP_URL auf https://… und starte den Dienst web neu.",
+    "Stelle PaiBot hinter einen Reverse-Proxy mit Zertifikat, setze APP_URL auf https://… und starte den Dienst web neu.",
   "selbsttest.adresse.anders":
     "Du hast diese Seite über eine andere Adresse geöffnet, als in APP_URL steht. Anmelden und Speichern scheitern dann an der Herkunftsprüfung.",
   "selbsttest.adresse.anders.ausweg":
@@ -1341,7 +1341,7 @@ export const de = {
   "selbsttest.verbindung.offen":
     "Dein Browser spricht unverschlüsselt (http) mit PaiBot. Passwort und Antworten lassen sich unterwegs mitlesen.",
   "selbsttest.verbindung.ausweg":
-    "Öffne PaiBot über https. Dafür braucht es einen Reverse-Proxy mit Zertifikat (z. B. Coolify oder Caddy).",
+    "Öffne PaiBot über https. Dafür braucht es einen Reverse-Proxy mit Zertifikat.",
   "selbsttest.kopfzeilen.titel": "Schutz-Kopfzeilen",
   "selbsttest.kopfzeilen.ok":
     "Die Seite kommt mit allen Schutz-Kopfzeilen an (Content-Security-Policy, HSTS und weitere).",
