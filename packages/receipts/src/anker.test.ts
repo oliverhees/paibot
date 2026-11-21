@@ -9,7 +9,6 @@
  * @since     2026-11-20
  */
 
-import { evaluate } from "@paibot/gate";
 import {
   type ChainAnchor,
   encodeAnchor,
@@ -25,8 +24,8 @@ import {
   sendFacts,
   signedEntry,
   TEST_INSTALLATION,
-  TEST_RULE,
   type TestKey,
+  testEvaluate,
   testKey,
 } from "./testhilfen";
 import { createAnchor, verifyChain } from "./verify";
@@ -48,7 +47,7 @@ async function extend(
     const facts = sendFacts(i + 1);
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: testEvaluate(action, facts), facts },
         entries.at(-1),
         signer,
       ),

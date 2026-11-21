@@ -34,7 +34,22 @@ export interface PruefPunkt {
   text: string;
 }
 
-export type PruefStufe = "gueltig" | "gebrochen" | "ungueltig";
+/** `nicht_pruefbar`: Belege aus einer neueren PaiBot-Fassung; nie „gültig“. */
+export type PruefStufe = "gueltig" | "gebrochen" | "nicht_pruefbar" | "ungueltig";
+
+/**
+ * Wie das Urteil aussieht (`PruefUrteil`): „nicht prüfbar“ wie „gebrochen“ als Warnung, mit
+ * eigenem Text.
+ */
+export function urteilZustand(stufe: PruefStufe): "gueltig" | "gebrochen" | "ungueltig" {
+  return stufe === "nicht_pruefbar" ? "gebrochen" : stufe;
+}
+
+/** Probleme, die die Kette nicht ungültig machen, sondern nur nicht beglaubigt bzw. nicht prüfbar. */
+const HINWEIS_PROBLEME: readonly ChainProblem[] = [
+  "schluesselwechsel_nicht_beglaubigt",
+  "fassung_unbekannt",
+];
 export type PruefQuelle = "browser" | "server";
 
 export interface KettenErgebnis {
@@ -132,16 +147,16 @@ export interface KettenZusatz {
 export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): KettenErgebnis {
   const { verdict } = bericht;
   const fehlerCheck = bericht.firstFailure?.checks.find((c) => c.status === "fehler")?.check;
-  const ungueltigeBefunde = verdict.findings.filter(
-    (f) => f.problem !== "schluesselwechsel_nicht_beglaubigt",
-  );
+  const ungueltigeBefunde = verdict.findings.filter((f) => !HINWEIS_PROBLEME.includes(f.problem));
   const paarBefund = verdict.findings.some((f) => PAAR_PROBLEME.includes(f.problem));
   const stufe: PruefStufe =
     verdict.level === "vertrauenswuerdig"
       ? "gueltig"
       : verdict.level === "vertrauen_gebrochen"
         ? "gebrochen"
-        : "ungueltig";
+        : verdict.level === "nicht_pruefbar"
+          ? "nicht_pruefbar"
+          : "ungueltig";
 
   const kandidaten = [bericht.firstFailure?.seq, ...ungueltigeBefunde.map((f) => f.seq)].filter(
     (s): s is number => s !== undefined,
@@ -157,6 +172,8 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
     titel = t("belege.urteil.leer");
   } else if (stufe === "gueltig") {
     titel = t("belege.urteil.gueltig_anzahl", { anzahl: bericht.checked });
+  } else if (stufe === "nicht_pruefbar") {
+    titel = t("belege.urteil.nicht_pruefbar");
   } else if (stufe === "gebrochen") {
     titel = t("belege.urteil.gebrochen_ab", { kennung: kennung(bericht.notAttestedFrom ?? 0) });
   } else if (bericht.firstFailure !== undefined && bericht.firstFailure.seq === fehlerSeq) {
@@ -215,8 +232,14 @@ export function kettenErgebnis(bericht: ChainReport, zusatz: KettenZusatz): Kett
   punkte.push({ art: paarBefund ? "fehler" : "ok", text: t("belege.geprueft.paare") });
   for (const befund of verdict.findings) {
     punkte.push({
-      art: befund.problem === "schluesselwechsel_nicht_beglaubigt" ? "hinweis" : "fehler",
+      art: HINWEIS_PROBLEME.includes(befund.problem) ? "hinweis" : "fehler",
       text: problemText(befund.problem, befund.seq),
+    });
+  }
+  for (const hinweis of verdict.notes ?? []) {
+    punkte.push({
+      art: "hinweis",
+      text: `${t(`belege.hinweis.${hinweis.note}`)} ${t("belege.stelle", { kennung: kennung(hinweis.seq) })}`,
     });
   }
   if (verdict.anchor === "geprueft") {
@@ -439,16 +462,22 @@ export async function pruefeEinzeln(
               regel: entscheidung.rule?.id ?? "–",
             }),
           }
-        : {
-            art: "fehler",
-            text: t(
-              `belege.grund.entscheidung.${entscheidung.problem ?? "entscheidung_abweichend"}`,
-            ),
-          },
+        : entscheidung.status === "nicht_pruefbar"
+          ? { art: "hinweis", text: t("belege.einzel.nicht_pruefbar") }
+          : {
+              art: "fehler",
+              text: t(
+                `belege.grund.entscheidung.${entscheidung.problem ?? "entscheidung_abweichend"}`,
+              ),
+            },
     );
     if (entscheidung.ruleStand === "nicht_festgehalten") {
       punkte.push({ art: "hinweis", text: t("belege.regelstand.nicht_festgehalten") });
     }
+  }
+  if (body?.type === "result") {
+    // Ein Ergebnis wird nach der Fassung seiner Entscheidung geprüft; das kann nur die Kette.
+    punkte.push({ art: "hinweis", text: t("belege.einzel.ergebnis_kette") });
   }
   punkte.push({ art: "hinweis", text: t("belege.einzel.hinweis_kette") });
   punkte.push(quellePunkt(quelle));
@@ -461,6 +490,14 @@ export async function pruefeEinzeln(
         ? t("belege.grund.schluessel")
         : t("belege.grund.kette");
     return { stufe: "ungueltig", titel: t("belege.einzel.ungueltig", { grund }), punkte, quelle };
+  }
+  if (entscheidung?.status === "nicht_pruefbar") {
+    return {
+      stufe: "nicht_pruefbar",
+      titel: t("belege.einzel.nicht_pruefbar"),
+      punkte,
+      quelle,
+    };
   }
   if (!beglaubigt) {
     return { stufe: "gebrochen", titel: t("belege.einzel.gebrochen"), punkte, quelle };
@@ -493,7 +530,10 @@ export function zeilenStand(seq: number, ergebnis: KettenErgebnis | undefined): 
   if (ergebnis.nichtBeglaubigtAb !== undefined && seq >= ergebnis.nichtBeglaubigtAb) {
     return { text: t("belege.zeile.nicht_beglaubigt"), art: "warn", geprueft: true };
   }
-  if (ergebnis.stufe === "ungueltig" && ergebnis.fehlerSeq === undefined) {
+  if (
+    (ergebnis.stufe === "ungueltig" && ergebnis.fehlerSeq === undefined) ||
+    ergebnis.stufe === "nicht_pruefbar"
+  ) {
     return { text: t("belege.zeile.unbestaetigt"), art: "warn", geprueft: true };
   }
   return { text: t("belege.zeile.geprueft"), art: "ok", geprueft: true };
