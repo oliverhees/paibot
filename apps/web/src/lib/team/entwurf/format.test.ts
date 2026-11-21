@@ -531,6 +531,53 @@ describe("Text-Eingabe", () => {
   });
 });
 
+describe("Fassung 1 kennt keine Übergaben zwischen Bots", () => {
+  const teile = [
+    "uebergaben",
+    "uebergabe",
+    "zusammenarbeit",
+    "handoff",
+    "delegation",
+    "uebergabeWege",
+  ];
+
+  it("kein Übergabe-Teil am Entwurf, am Team oder am Bot: unbekannte Felder werden abgelehnt", () => {
+    for (const name of teile) {
+      expect(fehlerVon(entwurf({ [name]: true }))).toContainEqual({
+        pfad: name,
+        code: "unbekanntes_feld",
+      });
+      expect(
+        fehlerVon(
+          entwurf({
+            team: { name: "T", ansprechpartner: { art: "pai" }, [name]: { erlaubt: true } },
+          }),
+        ),
+      ).toContainEqual({ pfad: `team.${name}`, code: "unbekanntes_feld" });
+      expect(fehlerVon(entwurf({ bots: [bot("A", { [name]: ["B"] })] }))).toContainEqual({
+        pfad: `bots[0].${name}`,
+        code: "unbekanntes_feld",
+      });
+    }
+  });
+
+  it("ein Entwurf ohne Übergabe-Teil legt nichts fest: das geprüfte Ergebnis hat keinen", () => {
+    const ergebnis = leseEntwurf(entwurf());
+    if (!ergebnis.ok) throw new Error("ungültig");
+    expect(Object.keys(ergebnis.entwurf).sort()).toEqual(["bots", "format", "team", "titel"]);
+    expect(Object.keys(ergebnis.entwurf.team).sort()).toEqual(["ansprechpartner", "name"]);
+  });
+
+  it("ein späterer Übergabe-Teil kann nur mit neuer Fassung kommen: eine andere Fassung wird abgelehnt", () => {
+    expect(
+      fehlerVon(entwurf({ format: "pb-teamentwurf/v2", zusammenarbeit: { uebergaben: false } })),
+    ).toContainEqual({
+      pfad: "format",
+      code: "ungueltiger_wert",
+    });
+  });
+});
+
 describe("Reinheit", () => {
   it("die Quelle braucht weder Datenbank noch Netz noch Dateien", () => {
     const quelle = readFileSync(new URL("./format.ts", import.meta.url), "utf8");
