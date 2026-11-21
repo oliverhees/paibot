@@ -13,6 +13,7 @@ import { errorBody } from "@paibot/shared/api";
 import { STAND_HEADER } from "@paibot/shared/konstanten";
 import { type NextRequest, NextResponse } from "next/server";
 import { kopfzeilenMitNonce } from "./lib/kopfzeilen";
+import { koerperGrenzeFuerPfad } from "./lib/routen";
 import { stand } from "./lib/stand";
 import { istHttps } from "./lib/umgebung";
 import { prozessDienste } from "./lib/zugang/dienste";
@@ -26,11 +27,32 @@ function kopfzeilenSetzen(antwort: NextResponse, kopfzeilen: { key: string; valu
   return antwort;
 }
 
+/** Angegebene Länge des Körpers über der Grenze (oder keine gültige Zahl)? */
+export function laengeZuGross(laenge: string | null, grenze: number): boolean {
+  if (laenge === null) return false;
+  const text = laenge.trim();
+  return !/^\d{1,15}$/.test(text) || Number(text) > grenze;
+}
+
 export async function proxy(request: NextRequest) {
   const entwicklung = process.env.NODE_ENV !== "production";
   // HSTS nur, wenn PaiBot über https läuft (`APP_URL`).
   const { nonce, kopfzeilen, csp } = kopfzeilenMitNonce(entwicklung, istHttps(process.env));
   const pfad = request.nextUrl.pathname;
+
+  // Zu große Körper gleich hier abweisen, bevor irgendetwas sie liest (Grenze je Route).
+  if (
+    laengeZuGross(
+      request.headers.get("content-length"),
+      koerperGrenzeFuerPfad(pfad, request.method),
+    )
+  ) {
+    const antwort = NextResponse.json(
+      errorBody("eingabe_ungueltig", { felder: [{ feld: "eingabe", code: "zu_gross" }] }),
+      { status: 413, headers: { "Cache-Control": "no-store", Connection: "close" } },
+    );
+    return kopfzeilenSetzen(antwort, kopfzeilen);
+  }
 
   if (istDatei(pfad)) return kopfzeilenSetzen(NextResponse.next(), kopfzeilen);
 
