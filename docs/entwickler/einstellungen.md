@@ -14,7 +14,7 @@ Seit:      2026-11-21
 
 ## Zweck und Entscheidung
 
-Die Seite „Einstellungen“ bündelt die Reiter Zugang (Passwort, Sitzungen, bekannte Geräte), Grenzen (Tagesbudget, Verlaufsgrenze, Zeitzone) und Selbsttest; „Info“ zeigt Stand und Lizenz. Die Grenzen stehen in `apps/web/src/lib/einstellungen/grenzen.ts`, der Zugang in `apps/web/src/lib/zugang/anmeldung.ts` (siehe [Einrichtung und Zugang](einrichtung-und-zugang.md)), der Selbsttest auf einer eigenen Seite ([Selbsttest](selbsttest.md)).
+Die Seite „Einstellungen“ bündelt die Reiter Zugang (Passwort, Sitzungen, bekannte Geräte), Grenzen (Tagesbudget, Verlaufsgrenze, Zeitzone) und Selbsttest; „Info“ zeigt Stand und Lizenz. Erreichbar sind die Seiten über die Reiter (`apps/web/src/app/(app)/einstellungen/EinstellungenRahmen.tsx#EINSTELLUNGEN_REITER`) und über das Menü „Du“ unten in der Seitenleiste (`apps/web/src/lib/navigation.ts#duEintraege`, Ziele in `apps/web/src/lib/navigation.ts#DU_ADRESSEN`). Die Grenzen stehen in `apps/web/src/lib/einstellungen/grenzen.ts`, der Zugang in `apps/web/src/lib/zugang/anmeldung.ts` (siehe [Einrichtung und Zugang](einrichtung-und-zugang.md)), der Selbsttest auf einer eigenen Seite ([Selbsttest](selbsttest.md)).
 
 Belegte Entscheidungen im Code:
 
@@ -24,17 +24,20 @@ Belegte Entscheidungen im Code:
 
 ## Aufbau
 
-| Datei                                                   | Aufgabe                                                                                                              |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `apps/web/src/lib/einstellungen/grenzen.ts`             | `einstellungenLesen` (mit heutigem Verbrauch), `einstellungenAendern`, `tagesbeginn`, `tokenSeit`                    |
-| `apps/web/src/lib/einstellungen/anzeige.ts`             | reine Hilfen ohne Zod: grobe Geräte-Angabe, Prüfliste fürs Passwort, Prüfung der Grenzen                             |
-| `apps/web/src/lib/einstellungen/geraete.ts`             | Ansicht „Bekannte Geräte“ und Hinweis auf neue Anmeldungen                                                           |
-| `apps/web/src/lib/einstellungen/info.ts`                | feste Adressen der Info-Seite (`INFO_LINKS`)                                                                         |
-| `apps/web/src/lib/zugang/anmeldung.ts`                  | Passwort ändern, Sitzungen, Geräte entfernen, alle abmelden                                                          |
-| `apps/web/src/lib/stand.ts`                             | Stand der Software: `PAIBOT_BUILD` oder `<version>+dev` (`stand`)                                                    |
-| `apps/web/src/app/(app)/einstellungen/page.tsx`         | Reiter Zugang; `apps/web/src/app/(app)/einstellungen/Zugang.tsx`, `apps/web/src/app/(app)/einstellungen/Geraete.tsx` |
-| `apps/web/src/app/(app)/einstellungen/grenzen/page.tsx` | Reiter Grenzen; `apps/web/src/app/(app)/einstellungen/Grenzen.tsx`                                                   |
-| `apps/web/src/app/(app)/info/page.tsx`                  | Seite „Info“; `apps/web/src/app/(app)/einstellungen/InfoInhalt.tsx`                                                  |
+| Datei                                                          | Aufgabe                                                                                                              |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/lib/einstellungen/grenzen.ts`                    | `einstellungenLesen` (mit heutigem Verbrauch), `einstellungenAendern`, `tagesbeginn`, `tokenSeit`                    |
+| `apps/web/src/lib/einstellungen/anzeige.ts`                    | reine Hilfen ohne Zod: grobe Geräte-Angabe, Prüfliste fürs Passwort, Prüfung der Grenzen                             |
+| `apps/web/src/lib/einstellungen/geraete.ts`                    | Ansicht „Bekannte Geräte“ und Hinweis auf neue Anmeldungen                                                           |
+| `apps/web/src/lib/einstellungen/info.ts`                       | feste Adressen der Info-Seite und des Menüs „Du“ (`INFO_LINKS`, darunter Roadmap und Änderungsliste)                 |
+| `apps/web/src/lib/navigation.ts`                               | Einträge der Seitenleiste (`NAVIGATION`) und des Menüs „Du“ (`duEintraege`); Persönliches steht nur im Menü „Du“     |
+| `apps/web/src/app/(app)/AppRahmen.tsx`                         | baut das Menü „Du“ aus `duEintraege` (Komponente `DuMenue`), darin auch „Abmelden“                                   |
+| `apps/web/src/app/(app)/einstellungen/EinstellungenRahmen.tsx` | Rahmen mit den Reitern der Einstellungen (`EINSTELLUNGEN_REITER`)                                                    |
+| `apps/web/src/lib/zugang/anmeldung.ts`                         | Passwort ändern, Sitzungen, Geräte entfernen, alle abmelden                                                          |
+| `apps/web/src/lib/stand.ts`                                    | Stand der Software: `PAIBOT_BUILD` oder `<version>+dev` (`stand`)                                                    |
+| `apps/web/src/app/(app)/einstellungen/page.tsx`                | Reiter Zugang; `apps/web/src/app/(app)/einstellungen/Zugang.tsx`, `apps/web/src/app/(app)/einstellungen/Geraete.tsx` |
+| `apps/web/src/app/(app)/einstellungen/grenzen/page.tsx`        | Reiter Grenzen; `apps/web/src/app/(app)/einstellungen/Grenzen.tsx`                                                   |
+| `apps/web/src/app/(app)/info/page.tsx`                         | Seite „Info“; `apps/web/src/app/(app)/einstellungen/InfoInhalt.tsx`                                                  |
 
 Datenfluss „Grenzen speichern“ (`apps/web/src/lib/einstellungen/grenzen.ts#einstellungenAendern`):
 
@@ -87,6 +90,7 @@ Route-Datei der Einstellungen: `apps/web/src/app/api/einstellungen/route.ts`.
 | `apps/web/src/app/(app)/einstellungen/seiten.test.ts`  | Render der Reiter, Browser-Module nur mit Routen aus dem Vertrag                         |
 | `apps/web/src/app/(app)/einstellungen/geraete.test.ts` | Ansicht „Bekannte Geräte“ und Leiste „Neue Anmeldung“                                    |
 | `apps/web/src/app/(app)/einstellungen/info.test.ts`    | Info-Seite: Aussagen, Links mit `rel`, nichts von fremden Servern                        |
+| `apps/web/src/lib/navigation.test.ts`                  | Seitenleiste und Menü „Du“: Einträge, Reihenfolge, Ziele                                 |
 | `packages/db/src/repo/einstellungen.test.ts`           | Einstellungen in der Datenbank                                                           |
 
 Ausführen:
