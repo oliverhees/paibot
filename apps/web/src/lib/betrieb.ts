@@ -12,6 +12,7 @@
 
 import path from "node:path";
 import { CryptoError, loadMasterSecret } from "@paibot/crypto";
+import { createDb, repo } from "@paibot/db";
 import {
   checkDatabase,
   type DatabaseStartResult,
@@ -146,11 +147,33 @@ export interface StartOptions {
 }
 
 /**
+ * Verwirft einen Einrichtungs-Code, solange die Einrichtung offen ist. Ein Neustart von `web`
+ * erzeugt keinen neuen Code, solange einer gilt; erst ein neuer Lauf von `migrate` (neue
+ * Bereitstellung, oder von Hand, wenn der Code verloren ist) gibt Platz für einen neuen. Ein
+ * Fehler hier bricht den Migrations-Schritt nicht ab, er steht nur im Log.
+ */
+async function einrichtungsCodeVerwerfen(url: string, log: StartLog): Promise<void> {
+  const { db, sql } = createDb(url);
+  try {
+    if (await repo.settings.isSetupComplete(db)) return;
+    if ((await repo.settings.getSetupCode(db)) === undefined) return;
+    await repo.settings.clearSetupCode(db);
+    log.info("Einrichtungs-Code verworfen; web erzeugt beim Start einen neuen.");
+  } catch (error) {
+    const art = error instanceof Error ? error.name : typeof error;
+    log.warn(`Einrichtungs-Code nicht verworfen (${art}).`);
+  } finally {
+    await sql.end({ timeout: 2 });
+  }
+}
+
+/**
  * Läuft einmal beim Start des Servers, je nach `PAIBOT_ROLE`:
  *
  * - `migrate` (eigener Einmal-Dienst): Migrationen mit `DATABASE_MIGRATION_URL`, App-Rolle aus
- *   `DATABASE_URL` einrichten, Rechte prüfen, danach Ende mit Exit 0 (Fehler: Exit 1). Startet
- *   keinen Server.
+ *   `DATABASE_URL` einrichten, Rechte prüfen; ist die Einrichtung noch offen, den bisherigen
+ *   Einrichtungs-Code verwerfen (`web` erzeugt dann einen neuen). Danach Ende mit Exit 0 (Fehler:
+ *   Exit 1). Startet keinen Server.
  * - `web` (Standard): In Produktion wird nie migriert, nur mit `DATABASE_URL` geprüft, ob die
  *   Datenbank auf Stand ist und die Rolle nicht zu viel darf; ein Fehler bricht den Start ab
  *   (Exit 1). In der Entwicklung migriert die Web-App wie bisher selbst (bequem mit `pnpm dev`),
@@ -195,6 +218,7 @@ export async function prepareStart(env: NodeJS.ProcessEnv, options: StartOptions
       exit(1);
       return;
     }
+    await einrichtungsCodeVerwerfen(env.DATABASE_URL ?? "", log);
     log.info("Migrations-Schritt fertig.");
     exit(0);
     return;

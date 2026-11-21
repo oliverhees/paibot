@@ -10,6 +10,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { createDb, repo } from "@paibot/db";
 import { prepareDatabase, runMigrations } from "@paibot/db/migrate";
 import {
   createPostgresTestDatabase,
@@ -135,6 +136,15 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
       { log: silent, exit, attempts: 1 },
     );
     expect(exitCodes).toEqual([1, 0]);
+    // Einrichtung offen, ein Code gilt: Der nächste Lauf von migrate verwirft ihn.
+    const app = createDb(appUrl);
+    try {
+      expect(
+        await repo.settings.setSetupCode(app.db, { hash: `sha256:${"a".repeat(64)}` as never }),
+      ).toBe(true);
+    } finally {
+      await app.sql.end({ timeout: 2 });
+    }
     // Ein zweiter Lauf macht nichts kaputt. (Das Passwort des Test-Superusers ist kurz, deshalb
     // ohne die Prüfungen für den Betrieb; migriert wird trotzdem wie im Betrieb.)
     await prepareStart(
@@ -147,6 +157,12 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
       { log: silent, exit, attempts: 1 },
     );
     expect(exitCodes).toEqual([1, 0, 0]);
+    const danach = createDb(appUrl);
+    try {
+      expect(await repo.settings.getSetupCode(danach.db)).toBeUndefined();
+    } finally {
+      await danach.sql.end({ timeout: 2 });
+    }
 
     await prepareStart(env({ DATABASE_URL: appUrl }), { log: silent, exit, attempts: 1 });
     expect(exitCodes).toEqual([1, 0, 0]);

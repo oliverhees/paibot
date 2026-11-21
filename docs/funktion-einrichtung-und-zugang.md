@@ -92,11 +92,11 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
 
 4. Zum Abmelden klick in der Navigation unten auf „Abmelden“ (am Handy erst auf „Menü öffnen“), zu sehen im Bild der App in Schritt 10 oben.
 
-### Code verloren oder abgelaufen
+### Code verloren
 
-1. Starte den Dienst `web` neu (`docker compose restart web` bzw. in Coolify „Restart“).
-2. Solange PaiBot nicht eingerichtet ist, steht nach jedem Start ein **neuer** Code im Log; der alte gilt nicht mehr.
-3. Lade die Seite „Einrichtung“ neu und gib den neuen Code ein. Was du vorher eingegeben hattest, musst du noch einmal eingeben: Gespeichert wird erst beim Abschluss, dann alles auf einmal.
+1. Ein Neustart von `web` allein bringt keinen neuen Code: Solange die Einrichtung offen ist, gilt der Code aus dem ersten Start weiter. Im Log steht nach einem Neustart nur, wann er erzeugt wurde.
+2. Lass den Migrations-Schritt noch einmal laufen: `docker compose up -d` (startet den Dienst `migrate` erneut) bzw. in Coolify „Redeploy“. Er verwirft den alten Code.
+3. Lade die Seite „Einrichtung“ neu. Jetzt steht ein **neuer** Code im Log von `web`; der alte gilt nicht mehr. Was du vorher eingegeben hattest, musst du noch einmal eingeben: Gespeichert wird erst beim Abschluss, dann alles auf einmal.
 
 ## So sieht es aus
 
@@ -132,7 +132,7 @@ Eine Adresse, die es in PaiBot nicht gibt, führt zu dieser Seite mit einem Link
 
 ## So funktioniert es
 
-- **Einrichtungs-Code:** 12 Zeichen aus 32 Zeichen (60 Bit Zufall). PaiBot hält ihn nur als Prüfwert (SHA-256) im Speicher des Dienstes `web` und schreibt ihn genau einmal ins Log. Er gilt bis zum Ende der Einrichtung; ein Neustart erzeugt einen neuen. Falsche Codes zählen je Adresse: nach 5 Fehlversuchen in 15 Minuten ist für diese Adresse Pause. Der Verbindungstest der Einrichtung verlangt denselben Code und zählt zusätzlich höchstens 10 Tests in 15 Minuten.
+- **Einrichtungs-Code:** 12 Zeichen aus 32 Zeichen (60 Bit Zufall). PaiBot speichert nur seinen Prüfwert (SHA-256) in der Datenbank und schreibt den Code genau einmal ins Log, beim ersten Start. Er gilt bis zum Ende der Einrichtung. Ein Neustart oder ein zweiter Prozess erzeugt keinen neuen; dann steht im Log nur ein Hinweis, wann der Code erzeugt wurde. Erst ein neuer Lauf des Migrations-Schritts verwirft ihn (siehe „Code verloren“). Falsche Codes zählen je Adresse: nach 5 Fehlversuchen in 15 Minuten ist für diese Adresse Pause. Der Verbindungstest der Einrichtung verlangt denselben Code und zählt zusätzlich höchstens 10 Tests in 15 Minuten.
 - **Abschluss in einem Rutsch:** Alles läuft in einer einzigen Datenbank-Transaktion: Signaturschlüssel der Installation erzeugen und verschlüsselt speichern, Beleg „Start“ als erster Eintrag der Beleg-Kette, dann über das [Tor](funktion-tor.md) die Aktionen „Einrichtung abgeschlossen“ (Konto, Einstellungen, erste Sitzung), „Bot geändert“, „Anbieter gespeichert“ (Schlüssel verschlüsselt und an Anbieter und Adresse gebunden), „Modell gewählt“ und gegebenenfalls „Datenschleuse umgeschaltet“. Scheitert ein Schritt, bleibt nichts davon übrig. Kommen zwei Abschlüsse gleichzeitig, gewinnt genau einer; der andere bekommt „PaiBot ist schon eingerichtet“.
 - **Passwort:** gespeichert nur als scrypt-Hash. Vor jeder Prüfung zählt PaiBot den Versuch (5 je Adresse in 15 Minuten sperren; 20 insgesamt in 15 Minuten bremsen nur, sperren aber nie). Höchstens zwei Prüfungen rechnen gleichzeitig. Die Antwort auf einen Fehlversuch ist immer gleich und dauert ähnlich lang, auch vor der Einrichtung. Stammt der Hash aus einem älteren Verfahren, wird er beim nächsten Anmelden erneuert.
 - **Sitzung:** Bei jeder Anmeldung entsteht ein neues Zufalls-Token. Der Browser bekommt es als Cookie (`HttpOnly`, `SameSite=Lax`, `Path=/`, bei https zusätzlich `Secure`); in der Datenbank steht nur seine Prüfsumme. Eine Sitzung gilt 30 Tage ab der letzten Benutzung, höchstens aber 90 Tage ab der Anmeldung; beides prüft der Server. Abmelden löscht die Sitzung, ein Passwortwechsel löscht alle.
@@ -152,7 +152,7 @@ Eine Adresse, die es in PaiBot nicht gibt, führt zu dieser Seite mit einem Link
 
 | Beobachtung                                      | Ursache                                                                        | Was tun                                                                          |
 | ------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| „Der Einrichtungs-Code stimmt nicht.“            | Tippfehler oder alter Code nach einem Neustart                                 | Neuesten Code aus dem Log nehmen (letzte Zeile mit „Einrichtungs-Code“)          |
+| „Der Einrichtungs-Code stimmt nicht.“            | Tippfehler, oder der Code wurde inzwischen verworfen                           | Neuesten Code aus dem Log von `web` nehmen (letzte Zeile mit „Einrichtungs-Code“) |
 | „Zu viele Versuche. Versuch es in … Sekunden …“  | 5 Fehlversuche von dieser Adresse in 15 Minuten                                | Warten, bis die Zeit um ist                                                      |
 | „Die Anfrage kam nicht von dieser PaiBot-Seite.“ | `APP_URL` passt nicht zur Adresse im Browser                                   | `APP_URL` genau auf die Adresse setzen, unter der du PaiBot öffnest; neu starten |
 | „Die Anfrage konnte nicht bestätigt werden.“     | Seite war lange offen oder Cookies wurden gelöscht                             | Seite neu laden                                                                  |
