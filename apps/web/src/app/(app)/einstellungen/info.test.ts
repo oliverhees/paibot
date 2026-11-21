@@ -55,7 +55,10 @@ describe("Info-Seite", () => {
 
   it("nennt HR CodeLabs mit Link, ohne Angebot, PaiBot einzurichten", () => {
     expect(text).toContain("Entwickelt von HR CodeLabs");
-    expect(text).toContain("Powered by PaiBot · entwickelt von HR CodeLabs");
+    expect(text).toContain(
+      "Powered by PaiBot (öffnet in einem neuen Tab) · entwickelt von HR CodeLabs (öffnet in einem neuen Tab)",
+    );
+    expect(html).toContain('href="https://paibot.de"');
     expect(html).toContain('href="https://hr-codelabs.de"');
     expect(text).not.toMatch(/einricht|Einricht|beauftrag|Angebot|gegen Geld|Preis/);
   });

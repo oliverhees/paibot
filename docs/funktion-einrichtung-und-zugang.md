@@ -74,7 +74,7 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
 
 10. Die App öffnet sich: links dein Bot und die Navigation, in der Mitte eine neue Unterhaltung mit deinem Bot (siehe [Chat](funktion-chat.md)).
 
-    ![Die App nach der Anmeldung: links PaiBot, der Bot Pai und die Navigation mit „Abmelden“, in der Mitte „Frag deinen Bot etwas“ mit drei Vorschlägen und unten das Eingabefeld](assets/screenshots/app-start.png)
+    ![Die App nach der Anmeldung: links PaiBot, der Bot Pai, die Werkzeuge und der Knopf „Du“, in der Mitte „Frag deinen Bot etwas“ mit drei Vorschlägen und unten das Eingabefeld](assets/screenshots/app-start.png)
 
 ### Anmelden und Abmelden
 
@@ -90,7 +90,7 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
 
    ![Anmelden nach einem falschen Passwort: unter dem Feld steht „Das Passwort stimmt nicht.“](assets/screenshots/anmelden-falsch.png)
 
-4. Zum Abmelden klick in der Navigation unten auf „Abmelden“ (am Handy erst auf „Menü öffnen“), zu sehen im Bild der App in Schritt 10 oben.
+4. Zum Abmelden klick unten links auf „Du“ und im Menü auf „Abmelden“ (am Handy erst auf „Menü öffnen“); mehr dazu unter [Einstellungen und Info](funktion-einstellungen.md).
 
 ### Hinweis bei Anmeldung von einem neuen Gerät
 

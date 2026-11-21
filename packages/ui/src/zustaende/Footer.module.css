@@ -18,16 +18,38 @@
 .fuss a {
   color: var(--ink);
   text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   white-space: nowrap;
+  transition-property: color, text-decoration-color;
+  transition-duration: var(--dauer-kurz);
 }
 
 .fuss a:hover {
   color: var(--accent-text);
+  text-decoration-color: currentColor;
+}
+
+.zweizeilig .teil {
+  display: block;
+}
+
+.zweizeilig .trenner {
+  display: none;
 }
 
 .fuss a:focus-visible {
   outline: var(--fokus-breite) solid var(--focus);
   outline-offset: var(--fokus-abstand);
   border-radius: 2px;
+}
+
+.nurLesbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

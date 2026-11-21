@@ -262,7 +262,7 @@ export function pruefeAppUrl(env: Env): AppUrlPruefung {
     }
     return {
       fehler:
-        "APP_URL nutzt http:// für eine öffentliche Adresse. So gingen Passwort und Sitzung unverschlüsselt durchs Netz. Richte https über den Proxy ein (z. B. Coolify) und setze APP_URL=https://….",
+        "APP_URL nutzt http:// für eine öffentliche Adresse. So gingen Passwort und Sitzung unverschlüsselt durchs Netz. Richte https über einen Reverse-Proxy mit Zertifikat ein und setze APP_URL=https://….",
       warnungen,
     };
   }
@@ -272,7 +272,7 @@ export function pruefeAppUrl(env: Env): AppUrlPruefung {
 /** Hinweis, wenn PaiBot in Produktion `X-Forwarded-For` nicht nutzt (`TRUST_PROXY` nicht `1`). */
 export function proxyWarnung(env: Env): string | undefined {
   if (hinterProxy(env)) return undefined;
-  return "TRUST_PROXY ist nicht 1: Die Limits je Adresse (Anmelden, Einrichtung) können die Adressen nicht unterscheiden; es gilt nur die gemeinsame Bremse für alle. Hinter einem Proxy (Coolify, Caddy, nginx) TRUST_PROXY=1 setzen und den Port der App nie direkt freigeben.";
+  return "TRUST_PROXY ist nicht 1: Die Limits je Adresse (Anmelden, Einrichtung) können die Adressen nicht unterscheiden; es gilt nur die gemeinsame Bremse für alle. Hinter einem Reverse-Proxy TRUST_PROXY=1 setzen und den Port der App nie direkt freigeben.";
 }
 
 /**

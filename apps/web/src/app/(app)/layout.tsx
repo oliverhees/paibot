@@ -17,6 +17,7 @@ import { modellVon } from "../../lib/bot/bot";
 import { ladeUnterhaltungen } from "../../lib/chat/laden";
 import { datenbank } from "../../lib/datenbank";
 import { notAusAn } from "../../lib/notaus/notaus";
+import { stand } from "../../lib/stand";
 import { prozessDienste } from "../../lib/zugang/dienste";
 import { neueAnmeldungen } from "../../lib/zugang/hinweis";
 import { besitzerSeite } from "../../lib/zugang/seite";
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       notAus={notAus}
       hinweise={<NeueAnmeldung neue={neue} zeitzone={zeitzone} />}
       zeitzone={zeitzone}
+      stand={stand()}
       {...(region === undefined ? {} : { region })}
       bot={{
         name: bot?.name ?? t("einrichtung.bot.vorschlag"),

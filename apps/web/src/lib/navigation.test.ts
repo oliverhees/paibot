@@ -14,9 +14,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { t } from "@paibot/shared/texte";
 import { describe, expect, it } from "vitest";
+import { INFO_LINKS } from "./einstellungen/info";
 import {
   BOT_ADRESSE,
   botAktiv,
+  DU_ADRESSEN,
+  duEintraege,
   kopfTitel,
   liegtUnter,
   modelleHerkunft,
@@ -36,15 +39,45 @@ function seiten(ordner = APP, basis = ""): string[] {
   return liste.sort();
 }
 
+describe("Menü „Du“", () => {
+  const eintraege = duEintraege("0.3.0+test", INFO_LINKS);
+
+  it("hat Persönliches, Hilfe mit Dokumentation und Roadmap, Info und zuletzt abgesetzt Abmelden", () => {
+    expect(eintraege.map((e) => e.id)).toEqual([
+      "zugang",
+      "einstellungen",
+      "neuigkeiten",
+      "doku",
+      "roadmap",
+      "selbsttest",
+      "info",
+      "abmelden",
+    ]);
+    expect(eintraege.at(-1)).toMatchObject({ ziel: "abmelden", gruppe: "" });
+    expect(eintraege.map((e) => e.text)).not.toContain(
+      expect.stringMatching(/Tarif|Abrechnung|Update/),
+    );
+  });
+
+  it("öffnet Dokumentation und Roadmap auf paibot.de, nennt den Stand und führt sonst in die App", () => {
+    const ziel = (id: string) => eintraege.find((e) => e.id === id)?.ziel;
+    expect(ziel("doku")).toEqual({ extern: "https://paibot.de/doku" });
+    expect(ziel("roadmap")).toEqual({ extern: "https://paibot.de/bauplan" });
+    expect(ziel("zugang")).toEqual({ intern: "/einstellungen" });
+    expect(ziel("selbsttest")).toEqual({ intern: "/einstellungen/selbsttest" });
+    expect(eintraege.find((e) => e.id === "neuigkeiten")?.hinweis).toContain("0.3.0+test");
+    expect(eintraege.find((e) => e.id === "doku")?.text).toBe("Dokumentation");
+    expect(eintraege.find((e) => e.id === "roadmap")?.text).toBe("Roadmap");
+  });
+});
+
 describe("Navigation", () => {
-  it("zeigt Belege, Regeln und Datenschleuse in dieser Reihenfolge, danach die Einstellungen", () => {
+  it("zeigt die Arbeits-Seiten Belege, Regeln, Datenschleuse, Modell und Anbieter in dieser Reihenfolge", () => {
     expect(NAVIGATION.map((e) => e.href)).toEqual([
       "/belege",
       "/regeln",
       "/datenschleuse",
       "/modelle",
-      "/einstellungen",
-      "/info",
     ]);
     expect(NAVIGATION.find((e) => e.id === "regeln")?.text).toBe("Regeln");
   });
@@ -52,6 +85,8 @@ describe("Navigation", () => {
   it("jeder Eintrag führt zu einer gebauten Seite", () => {
     const vorhanden = seiten();
     for (const e of NAVIGATION) expect(vorhanden, e.href).toContain(e.href);
+    // Ziele im Menü „Du“
+    for (const href of Object.values(DU_ADRESSEN)) expect(vorhanden, href).toContain(href);
     expect(vorhanden).toContain(BOT_ADRESSE);
   });
 

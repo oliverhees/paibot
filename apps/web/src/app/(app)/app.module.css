@@ -8,43 +8,68 @@
  * @since     2026-11-20
  */
 
-.abmelden {
+.du {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.abmeldenKnopf {
+.duHuelle {
+  display: flex;
+  width: 100%;
+}
+
+.duKnopf {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 32px;
+  min-height: 36px;
   width: 100%;
   padding: 5px 8px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--ink);
   font: inherit;
   font-size: var(--schrift-m);
-  font-weight: 500;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
   transition: background-color var(--dauer-kurz) var(--kurve-sanft);
 }
 
-.abmeldenKnopf:hover:not(:disabled) {
+.duKnopf:hover,
+.duKnopf[aria-expanded="true"] {
   background: var(--surface);
-  color: var(--ink);
 }
 
-.abmeldenKnopf:focus-visible {
+.duKnopf:focus-visible {
   outline: var(--fokus-breite) solid var(--focus);
-  outline-offset: var(--fokus-abstand);
+  outline-offset: calc(-1 * var(--fokus-breite));
 }
 
-.abmeldenKnopf:disabled {
-  cursor: progress;
+.duZeichen {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+
+.duText {
+  flex: 1;
+}
+
+.duPfeil {
+  color: var(--ink-soft);
+  transform: rotate(180deg);
+  transition: transform var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.duKnopf[aria-expanded="true"] .duPfeil {
+  transform: none;
 }
 
 .fehler {
@@ -77,7 +102,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .abmeldenKnopf {
+  .duKnopf,
+  .duPfeil {
     transition: none;
   }
 }

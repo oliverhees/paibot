@@ -509,6 +509,12 @@ const beispiel = await laden<{
     kopf(): string;
   };
   meldeAn(lauf: Record<string, unknown>): Promise<unknown>;
+  geraetAusKeksen(
+    kekse: { name: string; value: string }[] | undefined,
+  ): { name: string; wert: string } | undefined;
+  geraetAlsKeks(
+    lauf: Record<string, unknown> | undefined,
+  ): { name: string; value: string; url: string } | undefined;
   stelleHer(ziel: string, datei: string): Promise<{ lauf: Record<string, unknown> }>;
 }>("scripts/doku-beispieldaten.mjs");
 const { createServer: httpServer } = await import("node:http");
@@ -550,6 +556,32 @@ describe("Beispiel-Gerät der Doku-Umgebung", () => {
     dose.setze("__Host-pb_geraet", "w");
     expect(dose.finde("pb_geraet")).toEqual({ name: "__Host-pb_geraet", wert: "w" });
     expect(dose.finde("pb_sitzung")).toBeUndefined();
+  });
+
+  it("Aufnahme-Browser und Beispiel-Daten teilen ein Gerät: Cookie merken und mitbringen", () => {
+    expect(
+      daten.geraetAusKeksen([
+        { name: "pb_sitzung", value: "s" },
+        { name: "pb_geraet", value: "g.1" },
+      ]),
+    ).toEqual({ name: "pb_geraet", wert: "g.1" });
+    expect(daten.geraetAusKeksen([{ name: "__Host-pb_geraet", value: "g.2" }])).toEqual({
+      name: "__Host-pb_geraet",
+      wert: "g.2",
+    });
+    expect(daten.geraetAusKeksen([{ name: "pb_sitzung", value: "s" }])).toBeUndefined();
+    expect(daten.geraetAusKeksen(undefined)).toBeUndefined();
+    const lauf = {
+      url: "http://127.0.0.1:3000",
+      beispielGeraet: { name: "pb_geraet", wert: "g.1" },
+    };
+    expect(daten.geraetAlsKeks(lauf)).toEqual({
+      name: "pb_geraet",
+      value: "g.1",
+      url: "http://127.0.0.1:3000",
+    });
+    expect(daten.geraetAlsKeks({ url: "http://127.0.0.1:3000" })).toBeUndefined();
+    expect(daten.geraetAlsKeks(undefined)).toBeUndefined();
   });
 
   it("die Einrichtung merkt das Geräte-Cookie; die Anmeldung danach ist dasselbe Gerät", async () => {

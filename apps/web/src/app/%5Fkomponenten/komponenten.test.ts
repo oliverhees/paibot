@@ -128,12 +128,17 @@ describe("Komponenten", () => {
     expect(html(h(PruefErgebnis, { zustand: "gueltig" }))).toContain("gültig");
   });
 
-  it("Fußzeile verlinkt HR CodeLabs sicher", () => {
+  it("Fußzeile verlinkt PaiBot und HR CodeLabs sicher", () => {
     const aus = html(h(Footer));
-    expect(aus).toContain("Powered by PaiBot · entwickelt von ");
-    expect(aus).toContain(
-      '<a href="https://hr-codelabs.de" target="_blank" rel="noopener noreferrer">HR CodeLabs</a>',
+    const sichtbar = aus.replace(/<span class="[^"]*nurLesbar[^"]*">[^<]*<\/span>/g, "");
+    expect(sichtbar.replace(/<[^>]+>/g, "")).toBe("Powered by PaiBot · entwickelt von HR CodeLabs");
+    expect(aus).toMatch(
+      /<a href="https:\/\/paibot\.de" target="_blank" rel="noopener noreferrer">PaiBot<span[^>]*> \(öffnet in einem neuen Tab\)<\/span><\/a>/,
     );
+    expect(aus).toMatch(
+      /<a href="https:\/\/hr-codelabs\.de" target="_blank" rel="noopener noreferrer">HR CodeLabs<span/,
+    );
+    expect(aus).not.toMatch(/hr-applab/i);
   });
 
   it("Zeile unter der Antwort enthält Beleg, Datenschleuse und Modell mit Herkunft", () => {

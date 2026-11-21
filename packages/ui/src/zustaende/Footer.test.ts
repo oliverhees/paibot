@@ -20,6 +20,11 @@ describe("Fußzeile", () => {
     expect(nach).toBe("");
   });
 
+  it("verlinkt „PaiBot“ im ersten Teil", () => {
+    const [erster] = t("footer.text").split(" · ");
+    expect(footerTeile(erster ?? "", t("footer.paibot"))).toEqual(["Powered by ", "PaiBot", ""]);
+  });
+
   it("zeigt den Text ohne Link, wenn der Teil fehlt", () => {
     expect(footerTeile("Nur Text", "HR CodeLabs")).toEqual(["Nur Text", "", ""]);
   });

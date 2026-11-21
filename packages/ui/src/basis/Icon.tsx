@@ -120,6 +120,49 @@ const PFADE = {
       <path d="M5 19.5h14" />
     </>
   ),
+  anhang: (
+    <path d="M16.5 11.5l-5.6 5.6a3.2 3.2 0 01-4.5-4.5l6.4-6.4a2.1 2.1 0 013 3l-6.2 6.2a1 1 0 01-1.4-1.4l5.5-5.5" />
+  ),
+  merken: <path d="M7 4.5h10v15l-5-3.6-5 3.6z" />,
+  ziel: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none" />
+    </>
+  ),
+  stufen: <path d="M4 19.5h4.5v-4.5H13v-4.5h4.5V6H20" />,
+  web: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17M12 3.5c2.4 2.4 3.5 5.3 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.3-3.5-8.5s1.1-6.1 3.5-8.5z" />
+    </>
+  ),
+  person: (
+    <>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 19.5c.8-3.5 3.6-5.5 7-5.5s6.2 2 7 5.5" />
+    </>
+  ),
+  schloss: (
+    <>
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+      <path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" />
+    </>
+  ),
+  funke: <path d="M12 3.5l1.9 6.6 6.6 1.9-6.6 1.9-1.9 6.6-1.9-6.6L3.5 12l6.6-1.9z" />,
+  hilfe: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.6 9.5a2.5 2.5 0 014.9.6c0 1.7-2.5 2.1-2.5 3.6M12 16.6v.2" />
+    </>
+  ),
+  mikrofon: (
+    <>
+      <rect x="9" y="3.5" width="6" height="11" rx="3" />
+      <path d="M6 11.5a6 6 0 0012 0M12 17.5v3" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PFADE;

@@ -118,7 +118,7 @@
         }
       },
       {
-        "warteAufText": "Viele Grüße"
+        "warteAufText": "Hallo Max,"
       }
     ],
     "chat-absage-oeffnen": [
@@ -1377,7 +1377,8 @@
       ],
       "verdecke": [
         "dt:has-text('Kennung') + dd [class*='_leise']",
-        "li:has-text('Signatur gültig (Schlüssel')"
+        "li:has-text('Signatur gültig (Schlüssel')",
+        "dt:has-text('Gerät') + dd [class*='_leise']"
       ],
       "beschreibung": "Entscheidung des Tors als Beleg, nachgerechnet"
     },
@@ -1639,6 +1640,686 @@
         }
       ],
       "beschreibung": "Seite „Bot“: gespeichert, die Navigation zeigt den neuen Namen"
+    },
+    {
+      "name": "chat-suche",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": {
+            "rolle": "searchbox",
+            "name": "Unterhaltungen durchsuchen"
+          },
+          "text": "Donnerstag"
+        },
+        {
+          "warteAufText": "Nachrichten"
+        },
+        {
+          "warteAuf": "mark"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
+      "beschreibung": "Chat: Suche in der Seitenleiste, Treffer in Nachrichten mit markiertem Suchwort"
+    },
+    {
+      "name": "chat-suche-handy",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "tippe": {
+            "rolle": "searchbox",
+            "name": "Unterhaltungen durchsuchen"
+          },
+          "text": "Max"
+        },
+        {
+          "warteAufText": "Titel"
+        },
+        {
+          "warteAuf": "mark"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
+      "beschreibung": "Chat auf dem Handy: Suche im Menü mit Treffern in Titel und Nachrichten"
+    },
+    {
+      "name": "chat-suche-leer",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": {
+            "rolle": "searchbox",
+            "name": "Unterhaltungen durchsuchen"
+          },
+          "text": "Urlaubsplanung"
+        },
+        {
+          "warteAufText": "Nichts gefunden"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
+      "beschreibung": "Chat: Suche ohne Treffer mit Hinweis"
+    },
+    {
+      "name": "chat-sichern",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Weitere Aktionen"
+          }
+        },
+        {
+          "klick": {
+            "text": "Als Datei sichern",
+            "genau": false
+          }
+        },
+        {
+          "warteAuf": "[role='dialog']"
+        },
+        {
+          "warteAufText": "persönliche Inhalte"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Chat: Dialog „Unterhaltung als Datei sichern“ mit Hinweis auf persönliche Inhalte"
+    },
+    {
+      "name": "chat-neu-erzeugt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "anbieter": {
+            "reply": "Hallo Max,\n\nDonnerstag passt mir. Ich freue mich auf unser Gespräch und bringe die Unterlagen mit.\n\nBis dann"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Neu erzeugen"
+          }
+        },
+        {
+          "warteAufText": "Fassung 2 von 2"
+        },
+        {
+          "warteAufText": "bringe die Unterlagen mit"
+        },
+        {
+          "warteAuf": "button[aria-label^='Beleg prüfen']"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: Antwort neu erzeugt, „Fassung 2 von 2“ unter der Antwort"
+    },
+    {
+      "name": "chat-fassung-frueher",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Antwort an Max Mustermann"
+          }
+        },
+        {
+          "warteAufText": "Fassung 2 von 2"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Vorige Fassung"
+          }
+        },
+        {
+          "warteAufText": "Frühere Fassung 1 von 2"
+        },
+        {
+          "warteAufText": "Viele Grüße"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: zur früheren Fassung geblättert, „Ersetzt durch eine neuere Fassung.“"
+    },
+    {
+      "name": "chat-eingabe",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": {
+            "rolle": "textbox",
+            "name": "Nachricht"
+          },
+          "text": "Was steht diese Woche an?"
+        }
+      ],
+      "beschreibung": "Chat: Nachricht getippt, Feld mit Fokus (Linie in der Akzentfarbe); in der Leiste die gesperrten Plätze für spätere Funktionen und rechts der leere Ring"
+    },
+    {
+      "name": "navigation-du",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Du"
+          }
+        },
+        {
+          "warteAuf": "[role='menu']"
+        }
+      ],
+      "beschreibung": "Seitenleiste: Menü „Du“ geöffnet mit Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden"
+    },
+    {
+      "name": "navigation-du-handy",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Du"
+          }
+        },
+        {
+          "warteAuf": "[role='menu']"
+        }
+      ],
+      "beschreibung": "Handy: Menü der Seitenleiste mit geöffnetem Menü „Du“"
+    },
+    {
+      "name": "navigation-eingeklappt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Werkzeuge einklappen"
+          }
+        },
+        {
+          "warteAuf": "button[aria-expanded='false'][aria-controls]"
+        }
+      ],
+      "beschreibung": "Seitenleiste: Werkzeuge eingeklappt, die Liste der Unterhaltungen hat mehr Platz; darunter das Menü „Du“"
+    },
+    {
+      "name": "geraete-liste",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "zeige": "section[aria-labelledby='geraete-titel'] li:last-child"
+        }
+      ],
+      "beschreibung": "Einstellungen „Zugang“: Abschnitt „Bekannte Geräte“ mit „dieses Gerät“"
+    },
+    {
+      "name": "geraete-liste-handy",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "zeige": "section[aria-labelledby='geraete-titel'] li:first-child"
+        }
+      ],
+      "beschreibung": "„Bekannte Geräte“ auf dem Handy"
+    },
+    {
+      "name": "geraet-entfernen-rueckfrage",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "klick": "section[aria-labelledby='geraete-titel'] li:nth-child(2) button"
+        },
+        {
+          "warteAuf": "[role='alertdialog']"
+        }
+      ],
+      "beschreibung": "Rückfrage vor dem Entfernen eines anderen Geräts (nur die Rückfrage, nichts wird entfernt)"
+    },
+    {
+      "name": "geraete-neues-geraet",
+      "pfad": "/anmelden",
+      "zustand": "mit-beispieldaten",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "h1",
+      "vorher": [
+        {
+          "tippe": "Passwort",
+          "text": "$passwort"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anmelden"
+          }
+        },
+        {
+          "warteAuf": "nav"
+        },
+        {
+          "gehe": "/einstellungen"
+        },
+        {
+          "warteAufText": "dieses Gerät"
+        },
+        {
+          "zeige": "section[aria-labelledby='geraete-titel'] li:first-child"
+        }
+      ],
+      "beschreibung": "Anmeldung in einem weiteren Browser: er steht als neues Gerät mit „dieses Gerät“ in der Liste (Grundlage für den Hinweis auf den anderen Geräten)"
+    },
+    {
+      "name": "hinweis-neue-anmeldung",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "beschreibung": "Leiste „Neue Anmeldung von einem neuen Gerät“ auf einem anderen angemeldeten Gerät"
+    },
+    {
+      "name": "hinweis-neue-anmeldung-handy",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "beschreibung": "Leiste „Neue Anmeldung“ auf dem Handy"
+    },
+    {
+      "name": "hinweis-das-war-ich-nicht",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Das war ich nicht"
+          }
+        },
+        {
+          "warteAufText": "So sicherst du deinen Zugang"
+        }
+      ],
+      "beschreibung": "Nach „Das war ich nicht“: Wege zu „Passwort ändern“ und „Alle Sitzungen beenden“"
+    },
+    {
+      "name": "hinweis-bestaetigt",
+      "pfad": "/einstellungen",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Das war ich"
+          }
+        },
+        {
+          "warteAufText": "Der Hinweis ist auf diesem Gerät geschlossen."
+        }
+      ],
+      "beschreibung": "Nach „Das war ich“: der Hinweis ist auf diesem Gerät geschlossen"
+    },
+    {
+      "name": "notaus-rueckfrage",
+      "pfad": "/",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Not-Aus: alle Bots anhalten"
+          }
+        },
+        {
+          "warteAufText": "Alle Bots anhalten?"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Not-Aus: Klick auf „Anhalten“ oben in der Seitenleiste, Rückfrage „Alle Bots anhalten?“"
+    },
+    {
+      "name": "notaus-angehalten",
+      "pfad": "/",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-max-oeffnen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Not-Aus: alle Bots anhalten"
+          }
+        },
+        {
+          "klick": "[role='alertdialog'] button[type='submit']"
+        },
+        {
+          "warteAufText": "nichts läuft"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Not-Aus an: Leiste „Alle Bots sind angehalten.“, Schalter „Angehalten“, Eingabe gesperrt"
+    },
+    {
+      "name": "notaus-angehalten-handy",
+      "pfad": "/",
+      "breite": 390,
+      "hoehe": 844,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "handy-menue"
+        },
+        {
+          "ablauf": "chat-max-oeffnen"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
+      "beschreibung": "Not-Aus an auf dem Handy: Leiste mit „Fortsetzen“ über der Unterhaltung"
+    },
+    {
+      "name": "notaus-fortsetzen",
+      "pfad": "/belege",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Fortsetzen"
+          }
+        },
+        {
+          "warteAufText": "Not-Aus aufheben?"
+        },
+        {
+          "tippe": "Aktuelles Passwort",
+          "text": "$passwort"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
+      "beschreibung": "Not-Aus aufheben: Abfrage des aktuellen Passworts (ausgefüllt, als Punkte)"
+    },
+    {
+      "name": "notaus-belege",
+      "pfad": "/belege",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Fortsetzen"
+          }
+        },
+        {
+          "warteAufText": "Not-Aus aufheben?"
+        },
+        {
+          "tippe": "Aktuelles Passwort",
+          "text": "$passwort"
+        },
+        {
+          "klick": "[role='alertdialog'] button[type='submit']"
+        },
+        {
+          "warteAufText": "Alle Bots laufen"
+        },
+        {
+          "gehe": "/belege?aktion=notaus.umschalten"
+        },
+        {
+          "warteAufText": "Entscheidung · R-001"
+        }
+      ],
+      "verdecke": [
+        "textarea[aria-label='Anker der Kette']",
+        "section[aria-labelledby='belege-schluessel-titel'] dd",
+        "section[aria-labelledby='belege-schluessel-titel'] code"
+      ],
+      "beschreibung": "Belege: zweimal „Not-Aus umgeschaltet“ (angehalten und fortgesetzt), Schalter wieder „Alle Bots laufen“"
+    },
+    {
+      "name": "selbsttest",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "in Ordnung ·"
+        }
+      ],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Einstellungen, Reiter „Selbsttest“: Zusammenfassung und die ersten Prüfungen mit Ergebnis"
+    },
+    {
+      "name": "selbsttest-hinweise",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "in Ordnung ·"
+        },
+        {
+          "zeige": "li[data-ergebnis='hinweis']"
+        }
+      ],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest: Punkt mit „Hinweis“ und „So behebst du es“"
+    },
+    {
+      "name": "selbsttest-selbst",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "in Ordnung ·"
+        },
+        {
+          "zeige": "#selbst-pruefen"
+        }
+      ],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest: Liste „Bitte selbst prüfen“"
+    },
+    {
+      "name": "selbsttest-handy",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 390,
+      "hoehe": 844,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "in Ordnung ·"
+        }
+      ],
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest auf dem Handy"
+    },
+    {
+      "name": "selbsttest-hell",
+      "pfad": "/einstellungen/selbsttest",
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "warteAufText": "in Ordnung ·"
+        }
+      ],
+      "thema": "hell",
+      "verdecke": [
+        "li[data-ergebnis]:has(h3:text-is('Version')) p",
+        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
+        "[class*='_geprueft']"
+      ],
+      "beschreibung": "Selbsttest im hellen Design"
     },
     {
       "name": "modelle-start",
@@ -2184,196 +2865,6 @@
       "beschreibung": "Anbieter entfernen: Rückfrage"
     },
     {
-      "name": "chat-suche",
-      "pfad": "/",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "tippe": {
-            "rolle": "searchbox",
-            "name": "Unterhaltungen durchsuchen"
-          },
-          "text": "Donnerstag"
-        },
-        {
-          "warteAufText": "Nachrichten"
-        },
-        {
-          "warteAuf": "mark"
-        }
-      ],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
-      "beschreibung": "Chat: Suche in der Seitenleiste, Treffer in Nachrichten mit markiertem Suchwort"
-    },
-    {
-      "name": "chat-suche-handy",
-      "pfad": "/",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 390,
-      "hoehe": 844,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "ablauf": "handy-menue"
-        },
-        {
-          "tippe": {
-            "rolle": "searchbox",
-            "name": "Unterhaltungen durchsuchen"
-          },
-          "text": "Max"
-        },
-        {
-          "warteAufText": "Titel"
-        },
-        {
-          "warteAuf": "mark"
-        }
-      ],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
-      "beschreibung": "Chat auf dem Handy: Suche im Menü mit Treffern in Titel und Nachrichten"
-    },
-    {
-      "name": "chat-suche-leer",
-      "pfad": "/",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "tippe": {
-            "rolle": "searchbox",
-            "name": "Unterhaltungen durchsuchen"
-          },
-          "text": "Urlaubsplanung"
-        },
-        {
-          "warteAufText": "Nichts gefunden"
-        }
-      ],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']", "[class*='_meta']"],
-      "beschreibung": "Chat: Suche ohne Treffer mit Hinweis"
-    },
-    {
-      "name": "chat-sichern",
-      "pfad": "/",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "ablauf": "chat-max-oeffnen"
-        },
-        {
-          "klick": {
-            "rolle": "button",
-            "name": "Weitere Aktionen"
-          }
-        },
-        {
-          "klick": {
-            "text": "Als Datei sichern",
-            "genau": false
-          }
-        },
-        {
-          "warteAuf": "[role='dialog']"
-        },
-        {
-          "warteAufText": "persönliche Inhalte"
-        }
-      ],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
-      "beschreibung": "Chat: Dialog „Unterhaltung als Datei sichern“ mit Hinweis auf persönliche Inhalte"
-    },
-    {
-      "name": "chat-neu-erzeugt",
-      "pfad": "/",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "ablauf": "chat-max-oeffnen"
-        },
-        {
-          "anbieter": {
-            "reply": "Hallo Max,\n\nDonnerstag passt mir. Ich freue mich auf unser Gespräch und bringe die Unterlagen mit.\n\nBis dann"
-          }
-        },
-        {
-          "klick": {
-            "rolle": "button",
-            "name": "Neu erzeugen"
-          }
-        },
-        {
-          "warteAufText": "Fassung 2 von 2"
-        },
-        {
-          "warteAufText": "bringe die Unterlagen mit"
-        },
-        {
-          "warteAuf": "button[aria-label^='Beleg prüfen']"
-        }
-      ],
-      "verdecke": [
-        "[class*='_zeit']",
-        "[class*='_tag']",
-        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
-      ],
-      "beschreibung": "Chat: Antwort neu erzeugt, „Fassung 2 von 2“ unter der Antwort"
-    },
-    {
-      "name": "chat-fassung-frueher",
-      "pfad": "/",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "klick": {
-            "rolle": "link",
-            "name": "Antwort an Max Mustermann"
-          }
-        },
-        {
-          "warteAufText": "Fassung 2 von 2"
-        },
-        {
-          "klick": {
-            "rolle": "button",
-            "name": "Vorige Fassung"
-          }
-        },
-        {
-          "warteAufText": "Frühere Fassung 1 von 2"
-        },
-        {
-          "warteAufText": "Viele Grüße"
-        }
-      ],
-      "verdecke": [
-        "[class*='_zeit']",
-        "[class*='_tag']",
-        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
-      ],
-      "beschreibung": "Chat: zur früheren Fassung geblättert, „Ersetzt durch eine neuere Fassung.“"
-    },
-    {
       "name": "modelle-entfernt",
       "pfad": "/modelle",
       "zustand": "mit-beispieldaten",
@@ -2417,332 +2908,6 @@
         }
       ],
       "beschreibung": "Chat ohne Modell: Hinweis mit Weg zu „Modell und Anbieter“"
-    },
-    {
-      "name": "geraete-liste",
-      "pfad": "/einstellungen",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "warteAufText": "dieses Gerät"
-        },
-        {
-          "zeige": "section[aria-labelledby='geraete-titel'] li:last-child"
-        }
-      ],
-      "beschreibung": "Einstellungen „Zugang“: Abschnitt „Bekannte Geräte“ mit „dieses Gerät“"
-    },
-    {
-      "name": "geraete-liste-handy",
-      "pfad": "/einstellungen",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 390,
-      "hoehe": 844,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "warteAufText": "dieses Gerät"
-        },
-        {
-          "zeige": "section[aria-labelledby='geraete-titel'] li:first-child"
-        }
-      ],
-      "beschreibung": "„Bekannte Geräte“ auf dem Handy"
-    },
-    {
-      "name": "geraet-entfernen-rueckfrage",
-      "pfad": "/einstellungen",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "vorher": [
-        {
-          "warteAufText": "dieses Gerät"
-        },
-        {
-          "klick": "section[aria-labelledby='geraete-titel'] li:nth-child(2) button"
-        },
-        {
-          "warteAuf": "[role='alertdialog']"
-        }
-      ],
-      "beschreibung": "Rückfrage vor dem Entfernen eines anderen Geräts (nur die Rückfrage, nichts wird entfernt)"
-    },
-    {
-      "name": "geraete-neues-geraet",
-      "pfad": "/anmelden",
-      "zustand": "mit-beispieldaten",
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "h1",
-      "vorher": [
-        {
-          "tippe": "Passwort",
-          "text": "$passwort"
-        },
-        {
-          "klick": {
-            "rolle": "button",
-            "name": "Anmelden"
-          }
-        },
-        {
-          "warteAuf": "nav"
-        },
-        {
-          "gehe": "/einstellungen"
-        },
-        {
-          "warteAufText": "dieses Gerät"
-        },
-        {
-          "zeige": "section[aria-labelledby='geraete-titel'] li:first-child"
-        }
-      ],
-      "beschreibung": "Anmeldung in einem weiteren Browser: er steht als neues Gerät mit „dieses Gerät“ in der Liste (Grundlage für den Hinweis auf den anderen Geräten)"
-    },
-    {
-      "name": "hinweis-neue-anmeldung",
-      "pfad": "/einstellungen",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
-      "beschreibung": "Leiste „Neue Anmeldung von einem neuen Gerät“ auf einem anderen angemeldeten Gerät"
-    },
-    {
-      "name": "hinweis-neue-anmeldung-handy",
-      "pfad": "/einstellungen",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 390,
-      "hoehe": 844,
-      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
-      "beschreibung": "Leiste „Neue Anmeldung“ auf dem Handy"
-    },
-    {
-      "name": "hinweis-das-war-ich-nicht",
-      "pfad": "/einstellungen",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
-      "vorher": [
-        {
-          "klick": {
-            "rolle": "button",
-            "name": "Das war ich nicht"
-          }
-        },
-        {
-          "warteAufText": "So sicherst du deinen Zugang"
-        }
-      ],
-      "beschreibung": "Nach „Das war ich nicht“: Wege zu „Passwort ändern“ und „Alle Sitzungen beenden“"
-    },
-    {
-      "name": "hinweis-bestaetigt",
-      "pfad": "/einstellungen",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "[aria-label='Hinweis auf neue Anmeldung']",
-      "vorher": [
-        {
-          "klick": {
-            "rolle": "button",
-            "name": "Das war ich"
-          }
-        },
-        {
-          "warteAufText": "Der Hinweis ist auf diesem Gerät geschlossen."
-        }
-      ],
-      "beschreibung": "Nach „Das war ich“: der Hinweis ist auf diesem Gerät geschlossen"
-    },
-    {
-      "name": "notaus-rueckfrage",
-      "pfad": "/",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [
-        { "ablauf": "chat-max-oeffnen" },
-        { "klick": { "rolle": "button", "name": "Not-Aus: alle Bots anhalten" } },
-        { "warteAufText": "Alle Bots anhalten?" }
-      ],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
-      "beschreibung": "Not-Aus: Klick auf „Anhalten“ oben in der Seitenleiste, Rückfrage „Alle Bots anhalten?“"
-    },
-    {
-      "name": "notaus-angehalten",
-      "pfad": "/",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [
-        { "ablauf": "chat-max-oeffnen" },
-        { "klick": { "rolle": "button", "name": "Not-Aus: alle Bots anhalten" } },
-        { "klick": "[role='alertdialog'] button[type='submit']" },
-        {
-          "warteAufText": "nichts läuft"
-        }
-      ],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
-      "beschreibung": "Not-Aus an: Leiste „Alle Bots sind angehalten.“, Schalter „Angehalten“, Eingabe gesperrt"
-    },
-    {
-      "name": "notaus-angehalten-handy",
-      "pfad": "/",
-      "breite": 390,
-      "hoehe": 844,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [{ "ablauf": "handy-menue" }, { "ablauf": "chat-max-oeffnen" }],
-      "verdecke": ["[class*='_zeit']", "[class*='_tag']"],
-      "beschreibung": "Not-Aus an auf dem Handy: Leiste mit „Fortsetzen“ über der Unterhaltung"
-    },
-    {
-      "name": "notaus-fortsetzen",
-      "pfad": "/belege",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [
-        { "klick": { "rolle": "button", "name": "Fortsetzen" } },
-        { "warteAufText": "Not-Aus aufheben?" },
-        { "tippe": "Aktuelles Passwort", "text": "$passwort" }
-      ],
-      "verdecke": [
-        "[class*='_zeit']",
-        "[class*='_tag']",
-        "textarea[aria-label='Anker der Kette']",
-        "section[aria-labelledby='belege-schluessel-titel'] dd",
-        "section[aria-labelledby='belege-schluessel-titel'] code"
-      ],
-      "beschreibung": "Not-Aus aufheben: Abfrage des aktuellen Passworts (ausgefüllt, als Punkte)"
-    },
-    {
-      "name": "notaus-belege",
-      "pfad": "/belege",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [
-        { "klick": { "rolle": "button", "name": "Fortsetzen" } },
-        { "warteAufText": "Not-Aus aufheben?" },
-        { "tippe": "Aktuelles Passwort", "text": "$passwort" },
-        { "klick": "[role='alertdialog'] button[type='submit']" },
-        { "warteAufText": "Alle Bots laufen" },
-        { "gehe": "/belege?aktion=notaus.umschalten" },
-        { "warteAufText": "Entscheidung · R-001" }
-      ],
-      "verdecke": [
-        "textarea[aria-label='Anker der Kette']",
-        "section[aria-labelledby='belege-schluessel-titel'] dd",
-        "section[aria-labelledby='belege-schluessel-titel'] code"
-      ],
-      "beschreibung": "Belege: zweimal „Not-Aus umgeschaltet“ (angehalten und fortgesetzt), Schalter wieder „Alle Bots laufen“"
-    },
-    {
-      "name": "selbsttest",
-      "pfad": "/einstellungen/selbsttest",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [{ "warteAufText": "in Ordnung ·" }],
-      "verdecke": [
-        "li[data-ergebnis]:has(h3:text-is('Version')) p",
-        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
-        "[class*='_geprueft']"
-      ],
-      "beschreibung": "Einstellungen, Reiter „Selbsttest“: Zusammenfassung und die ersten Prüfungen mit Ergebnis"
-    },
-    {
-      "name": "selbsttest-hinweise",
-      "pfad": "/einstellungen/selbsttest",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [{ "warteAufText": "in Ordnung ·" }, { "zeige": "li[data-ergebnis='hinweis']" }],
-      "verdecke": [
-        "li[data-ergebnis]:has(h3:text-is('Version')) p",
-        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
-        "[class*='_geprueft']"
-      ],
-      "beschreibung": "Selbsttest: Punkt mit „Hinweis“ und „So behebst du es“"
-    },
-    {
-      "name": "selbsttest-selbst",
-      "pfad": "/einstellungen/selbsttest",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [{ "warteAufText": "in Ordnung ·" }, { "zeige": "#selbst-pruefen" }],
-      "verdecke": [
-        "li[data-ergebnis]:has(h3:text-is('Version')) p",
-        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
-        "[class*='_geprueft']"
-      ],
-      "beschreibung": "Selbsttest: Liste „Bitte selbst prüfen“"
-    },
-    {
-      "name": "selbsttest-handy",
-      "pfad": "/einstellungen/selbsttest",
-      "breite": 390,
-      "hoehe": 844,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [{ "warteAufText": "in Ordnung ·" }],
-      "verdecke": [
-        "li[data-ergebnis]:has(h3:text-is('Version')) p",
-        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
-        "[class*='_geprueft']"
-      ],
-      "beschreibung": "Selbsttest auf dem Handy"
-    },
-    {
-      "name": "selbsttest-hell",
-      "pfad": "/einstellungen/selbsttest",
-      "breite": 1440,
-      "hoehe": 900,
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "warteAuf": "main",
-      "vorher": [{ "warteAufText": "in Ordnung ·" }],
-      "thema": "hell",
-      "verdecke": [
-        "li[data-ergebnis]:has(h3:text-is('Version')) p",
-        "li[data-ergebnis]:has(h3:text-is('Worker')) p",
-        "[class*='_geprueft']"
-      ],
-      "beschreibung": "Selbsttest im hellen Design"
     }
   ]
 }

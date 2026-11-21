@@ -42,6 +42,8 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#0e0e10" },
   ],
   colorScheme: "dark light",
+  // Am Handy schiebt die eingeblendete Tastatur die Seite zusammen, statt die Chat-Eingabe zu verdecken.
+  interactiveWidget: "resizes-content",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

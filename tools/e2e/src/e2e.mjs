@@ -278,6 +278,15 @@ function anmeldeAnfrage(seite, passwort, adresse) {
   );
 }
 
+/** Abmelden mit zwei Klicks: Menü „Du“ unten in der Seitenleiste, dann „Abmelden“. */
+async function abmeldenUeberDu(seite) {
+  await seite
+    .getByRole("complementary", { name: "Navigation" })
+    .getByRole("button", { name: "Du", exact: true })
+    .click();
+  await seite.getByRole("menu", { name: "Du" }).getByRole("menuitem", { name: "Abmelden" }).click();
+}
+
 async function main() {
   log(`Ausgabe: ${ausgabe}`);
   stack = await starteStack({
@@ -596,10 +605,7 @@ async function main() {
   await fremd.close();
   await schritt("Anmeldung: bekanntes Gerät kommt durch", seite, async () => {
     await seite.goto(`${app}${unterhaltung}`);
-    await seite
-      .getByRole("complementary", { name: "Navigation" })
-      .getByRole("button", { name: "Abmelden" })
-      .click();
+    await abmeldenUeberDu(seite);
     await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
     // Direkt davor ein Versuch eines unbekannten Geräts, der den Takt der Bremse belegt.
     erwarte("/api/zugang/anmelden", 401, 429);
@@ -647,10 +653,7 @@ async function main() {
 
   await schritt("Abmelden", seite, async () => {
     await seite.goto(`${app}${unterhaltung}`);
-    await seite
-      .getByRole("complementary", { name: "Navigation" })
-      .getByRole("button", { name: "Abmelden" })
-      .click();
+    await abmeldenUeberDu(seite);
     await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
     await seite.goto(`${app}/belege`);
     await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
@@ -818,6 +821,66 @@ async function main() {
     await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).last().waitFor();
     await stack.anbieter.verhalten({ reply: BEISPIEL_ANTWORT, holdAfterChunks: 0 });
   });
+
+  // ---- Bedienung: Fokus nach dem Senden, Werkzeuge einklappen -------------------------------------
+  await schritt("Chat: nach dem Senden ist das Nachrichtenfeld fokussiert", seite, async () => {
+    await seite.goto(`${app}${unterhaltung}`);
+    const verlauf = seite.getByRole("log", { name: "Verlauf" });
+    const feld = seite.getByRole("textbox", { name: "Nachricht" });
+    const imFeld = () =>
+      feld.evaluate((el) => el === document.activeElement && !el.disabled).catch(() => false);
+    for (const [text, wie] of [
+      ["Erste Frage nach dem Fokus", "Enter"],
+      ["Zweite Frage nach dem Fokus", "Knopf"],
+    ]) {
+      const vorher = await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).count();
+      await feld.fill(text);
+      if (wie === "Enter") await feld.press("Enter");
+      else await seite.getByRole("button", { name: "Senden" }).click();
+      await verlauf.getByText(text, { exact: true }).waitFor();
+      await verlauf
+        .getByText(BEISPIEL_ANTWORT, { exact: true })
+        .nth(vorher)
+        .waitFor({ timeout: 60_000 });
+      await seite.waitForFunction(
+        () => document.activeElement?.getAttribute("aria-label") !== "Stopp",
+      );
+      if (!(await imFeld()))
+        throw new Error(`Nach dem Senden (${wie}) steht der Cursor nicht im Feld.`);
+    }
+  });
+  await schritt(
+    "Seitenleiste: Werkzeuge einklappen, Zustand bleibt nach Neuladen",
+    seite,
+    async () => {
+      await seite.setViewportSize(DESKTOP);
+      const navigation = seite.getByRole("complementary", { name: "Navigation" });
+      const knopf = navigation.getByRole("button", { name: /^Werkzeuge/ });
+      if ((await knopf.getAttribute("aria-expanded")) !== "true") {
+        throw new Error("Werkzeuge sind nicht von Anfang an ausgeklappt.");
+      }
+      await knopf.click();
+      await navigation.getByRole("link", { name: "Belege" }).waitFor({ state: "hidden" });
+      await navigation.getByRole("button", { name: "Du", exact: true }).waitFor();
+      await seite.reload();
+      // Der gemerkte Zustand gilt, sobald die Seite im Browser läuft (nicht schon im Server-HTML).
+      await seite
+        .waitForFunction(
+          () =>
+            document
+              .querySelector("aside[aria-label='Navigation'] button[aria-controls][aria-expanded]")
+              ?.getAttribute("aria-expanded") === "false",
+          undefined,
+          { timeout: 10_000 },
+        )
+        .catch(() => {
+          throw new Error("Eingeklappter Zustand nach dem Neuladen vergessen.");
+        });
+      await knopf.focus();
+      await seite.keyboard.press("Enter");
+      await navigation.getByRole("link", { name: "Belege" }).waitFor();
+    },
+  );
 
   // Kurz warten, damit späte Anfragen (z. B. Ereignis-Strom) noch gezählt werden.
   await seite.waitForTimeout(1500);

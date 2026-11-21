@@ -18,8 +18,8 @@ Viele Fehler beim Betrieb fallen erst auf, wenn etwas schiefgeht: eine falsche A
 
 ## So benutzt du es
 
-1. Melde dich an und klick in der Navigation auf **Einstellungen**.
-2. Klick oben auf den Reiter **Selbsttest**. PaiBot prüft sofort; oben steht die Zusammenfassung, zum Beispiel „11 in Ordnung · 2 Hinweise · 0 Fehler“.
+1. Melde dich an und klick unten links in der Seitenleiste auf **Du**, dann unter **Hilfe** auf **Selbsttest** (oder in den Einstellungen auf den Reiter **Selbsttest**).
+2. PaiBot prüft sofort; oben steht die Zusammenfassung, zum Beispiel „11 in Ordnung · 2 Hinweise · 0 Fehler“.
 
    ![Reiter „Selbsttest“: oben die Zusammenfassung „11 in Ordnung · 2 Hinweise · 0 Fehler“ und „Erneut prüfen“, darunter die ersten Prüfungen mit „Hinweis“ bzw. „In Ordnung“](assets/screenshots/selbsttest.png)
 3. Geh die Liste von oben nach unten durch. Bei jedem Punkt mit **Hinweis** (gelb) oder **Fehler** (rot) steht unter **So behebst du es**, was zu tun ist.

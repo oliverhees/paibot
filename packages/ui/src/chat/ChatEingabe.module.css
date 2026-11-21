@@ -10,7 +10,8 @@
 
 .bereich {
   flex: none;
-  padding: 6px 24px max(14px, env(safe-area-inset-bottom));
+  /* Luft nach unten, damit Senden-Knopf und Zeile darunter bequem sichtbar bleiben. */
+  padding: 6px 24px calc(22px + env(safe-area-inset-bottom, 0px));
 }
 
 .eingabe {
@@ -24,18 +25,27 @@
   gap: 4px 8px;
   align-items: center;
   background: var(--surface);
-  border: 1px solid var(--line-mid);
+  /* Kräftige Kante schon in Ruhe: mindestens 3:1 gegen Fläche und Hintergrund. */
+  border: 1px solid var(--line-strong);
   border-radius: 18px;
   padding: 10px 8px 6px 14px;
-  transition: border-color var(--dauer-kurz) var(--kurve-sanft);
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--dauer-kurz);
+  transition-timing-function: var(--kurve-sanft);
 }
 
-.eingabe:focus-within {
-  border-color: var(--line-strong);
+.eingabe:has(.text:focus-visible) {
+  /* Fokus: schmale Linie in der Akzentfarbe (mindestens 3:1) und ein leiser Schein. */
+  outline: 1px solid var(--fokus-feld);
+  outline-offset: -1px;
+  border-color: var(--fokus-feld);
+  box-shadow: 0 0 0 3px var(--fokus-feld-schein);
 }
 
 .eingabe[data-deaktiviert] {
   background: var(--surface-sunken);
+  border-color: var(--line-mid);
+  border-style: dashed;
 }
 
 .versteckt {
@@ -71,18 +81,42 @@
 }
 
 .text:focus-visible {
-  outline: var(--fokus-breite) solid var(--focus);
-  outline-offset: 4px;
-  border-radius: 4px;
+  /* Den Fokus zeigt der Rahmen der ganzen Eingabe (siehe oben). */
+  outline: none;
 }
 
 .leiste {
   grid-area: leiste;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
   min-width: 0;
   margin-left: -6px;
+}
+
+/* Plätze für spätere Funktionen (Datei anhängen, Spracheingabe): sichtbar gedämpft, nicht bedienbar. */
+.spaeter {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+
+.spaeter:last-of-type {
+  margin-right: 6px;
+}
+
+.spaeterKnopf {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink-soft);
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 .zustand {
@@ -93,6 +127,26 @@
 .senden {
   grid-area: senden;
   display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Platz der Anzeige „wie voll ist der Verlauf“: leerer Ring, gedämpft, ohne Zahl. */
+.verlauf {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--ink-soft);
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.verlauf circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 2 3;
 }
 
 .notiz {
@@ -105,7 +159,7 @@
 
 @media (max-width: 719px) {
   .bereich {
-    padding: 4px 8px max(10px, env(safe-area-inset-bottom));
+    padding: 4px 10px calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
   .eingabe {

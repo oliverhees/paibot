@@ -46,6 +46,10 @@ export function useFokusFalle(
     start.focus({ preventScroll: true });
 
     const taste = (e: KeyboardEvent) => {
+      // Ein offenes Menü im Bereich (z. B. „Du“ im Menü am Handy) schließt mit Escape zuerst selbst.
+      if (e.key === "Escape" && e.target instanceof Element && e.target.closest("[role='menu']")) {
+        return;
+      }
       if (e.key === "Escape" && beiEscape.current) {
         e.stopPropagation();
         beiEscape.current();

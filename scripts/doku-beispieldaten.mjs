@@ -84,6 +84,27 @@ export class Keksdose {
 /** Name des Geräte-Cookies der App (bei https mit Präfix `__Host-`). */
 export const GERAETE_COOKIE = "pb_geraet";
 
+/**
+ * Geräte-Cookie aus den Cookies eines Browsers (Form von Playwright: `{ name, value }`), sonst
+ * `undefined`. So merkt sich der Aufnahme-Lauf das Gerät seiner ersten Anmeldung.
+ */
+export function geraetAusKeksen(kekse) {
+  const keks = (kekse ?? []).find(
+    (k) => k.name === GERAETE_COOKIE || k.name.endsWith(`-${GERAETE_COOKIE}`),
+  );
+  return keks ? { name: keks.name, wert: keks.value } : undefined;
+}
+
+/**
+ * Das gemerkte Beispiel-Gerät als Cookie für einen Browser (Playwright `addCookies`), sonst
+ * `undefined`. Damit ist jede Anmeldung des Laufs dasselbe bekannte Gerät.
+ */
+export function geraetAlsKeks(lauf) {
+  const g = lauf?.beispielGeraet;
+  if (!g?.name || !g?.wert || !lauf?.url) return undefined;
+  return { name: g.name, value: g.wert, url: lauf.url };
+}
+
 /** Kennung des Browsers für die Besuche dieses Skripts: ein zweites, erfundenes Gerät in der Liste der Sitzungen. */
 export const BEISPIEL_GERAET =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0";

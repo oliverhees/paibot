@@ -89,7 +89,13 @@ import {
 } from "./doku/lauf.mjs";
 import { ListenFehler, ordneAufnahmen, pruefeListe } from "./doku/liste.mjs";
 import { lesePng, schreibePng, verdecke as verdeckeFlaechen } from "./doku/png.mjs";
-import { istEingerichtet, stelleHer, steuereAnbieter } from "./doku-beispieldaten.mjs";
+import {
+  geraetAlsKeks,
+  geraetAusKeksen,
+  istEingerichtet,
+  stelleHer,
+  steuereAnbieter,
+} from "./doku-beispieldaten.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB = path.join(ROOT, "apps", "web");
@@ -312,12 +318,21 @@ async function runStep(page, step, baseUrl) {
   }
 }
 
-/** Meldet sich einmal je Lauf über die Seite „Anmelden“ an und merkt sich die Sitzung. */
+/**
+ * Meldet sich einmal je Lauf über die Seite „Anmelden“ an und merkt sich die Sitzung. Alle
+ * Anmeldungen des Laufs sind dasselbe Beispiel-Gerät: Ist eines gemerkt (Lauf-Datei), bringt der
+ * Browser dessen Cookie mit; sonst wird das Gerät dieser Anmeldung gemerkt, und das Anlegen der
+ * Beispiel-Daten meldet sich damit an. Ohne das sähe der Browser oben die Leiste „Neue Anmeldung“,
+ * die nur in ihren eigenen Bildern erscheinen soll.
+ */
 let sitzung;
 async function anmeldung(browser) {
   if (sitzung) return sitzung;
   const context = await browser.newContext({ locale: "de-DE", timezoneId: "Europe/Berlin" });
   try {
+    if (lauf) lauf = leseLauf(LAUF) ?? lauf;
+    const geraet = geraetAlsKeks(lauf);
+    if (geraet) await context.addCookies([geraet]);
     const page = await context.newPage();
     await page.goto(`${appUrl}/anmelden`, { waitUntil: "load" });
     await waitUntilSettled(page);
@@ -325,6 +340,10 @@ async function anmeldung(browser) {
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await page.waitForURL(`${appUrl}/`, { timeout: 15_000 });
     sitzung = await context.storageState();
+    const gemerkt = geraetAusKeksen(sitzung.cookies);
+    if (lauf && !lauf.beispielGeraet && gemerkt) {
+      lauf = aendereLauf({ beispielGeraet: gemerkt }, LAUF);
+    }
     return sitzung;
   } finally {
     await context.close();

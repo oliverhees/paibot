@@ -39,6 +39,7 @@ import {
   type ShellModus,
   shellModus,
 } from "./modus";
+import { leseEingeklappt, merkeEingeklappt } from "./werkzeuge";
 
 export interface NavUnterhaltung {
   id: string;
@@ -75,7 +76,7 @@ export interface AppShellNavigation {
   /** Herkunft der Modelle, z. B. „EU“. */
   modelle: string;
   bot: NavBot;
-  /** Einträge unten: Belege, Regeln, Datenschleuse, Einstellungen, Info. */
+  /** Arbeits-Seiten unten (einklappbar): Belege, Regeln, Datenschleuse, Modell und Anbieter. */
   werkzeuge: readonly NavEintrag[];
   /** Knopf „Neue Unterhaltung“ oben in der Leiste. */
   neu?: { href?: string; onClick?: () => void };
@@ -198,6 +199,11 @@ export function AppShell({
   const flaecheIstOffen = Boolean(flaeche) && (flaecheOffen ?? eigeneFlaeche);
   const navId = useId();
   const flaecheId = useId();
+  const werkzeugeId = useId();
+  const [eingeklappt, setEingeklappt] = useState(false);
+
+  // Gemerkten Zustand erst im Browser lesen (der Server kennt ihn nicht).
+  useEffect(() => setEingeklappt(leseEingeklappt()), []);
 
   const setFlaeche = useCallback(
     (offen: boolean) => {
@@ -223,6 +229,15 @@ export function AppShell({
   });
 
   const schliesseNav = () => setNavOffen(false);
+  // Im Menü am Handy bleiben die Werkzeuge immer offen: Es ist bildschirmhoch und dort der
+  // einzige Weg zu diesen Seiten.
+  const imMenue = modus !== null && navAlsMenue(modus);
+  const werkzeugeZu = eingeklappt && !imMenue;
+  const umschalten = () => {
+    const neu = !eingeklappt;
+    setEingeklappt(neu);
+    merkeEingeklappt(neu);
+  };
   const { bot } = navigation;
 
   return (
@@ -339,7 +354,22 @@ export function AppShell({
           </ScrollBereich>
 
           <div className={styles.unten}>
-            <ul className={styles.werkzeuge}>
+            {!imMenue && (
+              <button
+                type="button"
+                className={styles.einklappen}
+                aria-expanded={!werkzeugeZu}
+                aria-controls={werkzeugeId}
+                onClick={umschalten}
+              >
+                <span className={styles.einklappenText}>{t("nav.werkzeuge")}</span>
+                <span className={styles.einklappenHinweis}>
+                  {werkzeugeZu ? t("nav.werkzeuge.ausklappen") : t("nav.werkzeuge.einklappen")}
+                </span>
+                <Icon name="runter" groesse={14} className={styles.einklappenPfeil} />
+              </button>
+            )}
+            <ul id={werkzeugeId} className={styles.werkzeuge} hidden={werkzeugeZu}>
               {navigation.werkzeuge.map((w) => (
                 <li key={w.id}>
                   <Link
@@ -355,7 +385,7 @@ export function AppShell({
               ))}
             </ul>
             {unten}
-            <Footer className={styles.fuss} />
+            <Footer className={styles.fuss} zweizeilig />
           </div>
         </aside>
 
