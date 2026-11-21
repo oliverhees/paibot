@@ -445,6 +445,17 @@ export const API_ROUTEN = {
     antwort: "json",
     veraendernd: false,
   },
+
+  // Bekannte Geräte: Hinweis bei Anmeldung von einem neuen Gerät
+  /** „Das war ich“: schließt auf diesem Gerät den Hinweis auf neue Anmeldungen. */
+  geraeteHinweisBestaetigen: {
+    methode: "POST",
+    pfad: "/api/zugang/geraete/hinweis",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "geraet.bestaetigen",
+  },
 } as const satisfies Record<string, RoutenDefinition>;
 
 export type RoutenName = keyof typeof API_ROUTEN;

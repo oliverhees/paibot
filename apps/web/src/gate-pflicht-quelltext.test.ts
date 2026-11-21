@@ -178,6 +178,7 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   "web/src/lib/schleuse/schleuse.ts": { art: "aktion" },
   "web/src/lib/zugang/anmeldung.ts": { art: "aktion" },
   "web/src/lib/zugang/einrichtung.ts": { art: "aktion" },
+  "web/src/lib/zugang/hinweis.ts": { art: "aktion" },
   // Zähler der Rate-Limits: vor jeder weiteren Arbeit, auch vor dem Tor; Sperren der Anmeldung
   // aufheben (Ausweg im Migrations-Schritt).
   "web/src/lib/rate-limit.ts": {

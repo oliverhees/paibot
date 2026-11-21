@@ -10,7 +10,7 @@
  */
 
 import type { Credential } from "@paibot/shared/aktionen";
-import type { OwnerId } from "@paibot/shared/ids";
+import type { DeviceId, OwnerId } from "@paibot/shared/ids";
 
 /**
  * Eine Sitzung, die der Zugang gerade gegen die Datenbank geprüft hat. Eingefroren; ein Objekt mit
@@ -33,6 +33,11 @@ export interface Nachweis {
   /** Bei `sitzung` die geprüfte Sitzung, bei `passwort` der Besitzer. */
   readonly sitzung?: GepruefteSitzung;
   readonly ownerId?: OwnerId;
+  /**
+   * Bei `passwort`: das bekannte Gerät, von dem die Anmeldung kam (falls schon bekannt). Bei
+   * `sitzung` liest der Rahmen das Gerät der Sitzung selbst.
+   */
+  readonly geraet?: DeviceId;
 }
 
 const sitzungen = new WeakSet<object>();
@@ -69,9 +74,16 @@ export function nachweisAusSitzung(sitzung: GepruefteSitzung): Nachweis {
   return nachweis;
 }
 
-/** Nur für den Zugang: Nachweis „Passwort“, erst nachdem das Passwort geprüft wurde. */
-export function _nachweisPasswort(ownerId: OwnerId): Nachweis {
-  const nachweis = Object.freeze({ art: "passwort" as const, ownerId });
+/**
+ * Nur für den Zugang: Nachweis „Passwort“, erst nachdem das Passwort geprüft wurde; mit dem
+ * bekannten Gerät der Anfrage, wenn es eins gibt.
+ */
+export function _nachweisPasswort(ownerId: OwnerId, geraet?: DeviceId): Nachweis {
+  const nachweis = Object.freeze({
+    art: "passwort" as const,
+    ownerId,
+    ...(geraet === undefined ? {} : { geraet }),
+  });
   nachweise.add(nachweis);
   return nachweis;
 }
