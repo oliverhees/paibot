@@ -165,3 +165,12 @@ describe("Formular im HTML", () => {
     expect(html).not.toMatch(/apiKeyEnc|v2:/);
   });
 });
+
+describe("Quelltext der Seite", () => {
+  it("beim Ändern verschwinden die Knöpfe der Karte wirklich (nicht nur per hidden-Attribut)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const quelle = readFileSync(new URL("./ModelleAnsicht.tsx", import.meta.url), "utf8");
+    expect(quelle).toContain("{!bearbeiten && (");
+    expect(quelle).not.toMatch(/hidden=\{bearbeiten\}/);
+  });
+});

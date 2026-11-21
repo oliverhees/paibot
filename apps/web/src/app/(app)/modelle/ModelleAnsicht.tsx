@@ -451,59 +451,63 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
           </div>
         )}
 
-        <div className={styles.knoepfe} hidden={bearbeiten}>
-          {formOffen ? (
-            <>
-              <Button art="zweit" onClick={() => void verbindungTesten()} laedt={testLaeuft}>
-                {t("modelle.verbindungstest")}
-              </Button>
-              <Button art="primaer" onClick={() => void schluesselSpeichern()} laedt={speichert}>
-                {speichert ? t("modelle.schluessel.speichert") : t("modelle.schluessel.speichern")}
-              </Button>
-              {anbieter !== undefined && (
-                <Button art="leise" onClick={formSchliessen}>
-                  {t("allgemein.abbrechen")}
+        {!bearbeiten && (
+          <div className={styles.knoepfe}>
+            {formOffen ? (
+              <>
+                <Button art="zweit" onClick={() => void verbindungTesten()} laedt={testLaeuft}>
+                  {t("modelle.verbindungstest")}
                 </Button>
-              )}
-            </>
-          ) : (
-            <>
-              <Button art="zweit" onClick={() => void verbindungTesten()} laedt={testLaeuft}>
-                {t("modelle.verbindungstest")}
-              </Button>
-              {anbieter !== undefined && eigenerAnbieter(anbieter) && (
+                <Button art="primaer" onClick={() => void schluesselSpeichern()} laedt={speichert}>
+                  {speichert
+                    ? t("modelle.schluessel.speichert")
+                    : t("modelle.schluessel.speichern")}
+                </Button>
+                {anbieter !== undefined && (
+                  <Button art="leise" onClick={formSchliessen}>
+                    {t("allgemein.abbrechen")}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button art="zweit" onClick={() => void verbindungTesten()} laedt={testLaeuft}>
+                  {t("modelle.verbindungstest")}
+                </Button>
+                {anbieter !== undefined && eigenerAnbieter(anbieter) && (
+                  <Button
+                    art="leise"
+                    icon="stift"
+                    onClick={() => {
+                      setSchluesselMeldung(undefined);
+                      setBearbeiten(true);
+                    }}
+                  >
+                    {t("modelle.eigen.aendern")}
+                  </Button>
+                )}
                 <Button
                   art="leise"
-                  icon="stift"
                   onClick={() => {
                     setSchluesselMeldung(undefined);
-                    setBearbeiten(true);
+                    setFormOffen(true);
                   }}
                 >
-                  {t("modelle.eigen.aendern")}
+                  {anbieter?.keySet
+                    ? t("modelle.schluessel.ersetzen")
+                    : t("modelle.schluessel.eintragen")}
                 </Button>
-              )}
-              <Button
-                art="leise"
-                onClick={() => {
-                  setSchluesselMeldung(undefined);
-                  setFormOffen(true);
-                }}
-              >
-                {anbieter?.keySet
-                  ? t("modelle.schluessel.ersetzen")
-                  : t("modelle.schluessel.eintragen")}
-              </Button>
-              {anbieter !== undefined && (
-                <Button art="leise" icon="papierkorb" onClick={() => setDialogOffen(true)}>
-                  {eigenerAnbieter(anbieter)
-                    ? t("modelle.eigen.entfernen")
-                    : t("modelle.schluessel.entfernen")}
-                </Button>
-              )}
-            </>
-          )}
-        </div>
+                {anbieter !== undefined && (
+                  <Button art="leise" icon="papierkorb" onClick={() => setDialogOffen(true)}>
+                    {eigenerAnbieter(anbieter)
+                      ? t("modelle.eigen.entfernen")
+                      : t("modelle.schluessel.entfernen")}
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        )}
         <div role="status" aria-live="polite" className={styles.live}>
           {testLaeuft && <span className={styles.leise}>{t("modelle.verbindung.laeuft")}</span>}
           <MeldungZeile meldung={schluesselMeldung} />
