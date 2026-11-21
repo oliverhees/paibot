@@ -18,8 +18,8 @@ import type { AnbieterVorlage } from "./anbieter";
 
 export interface ModelleSeitenDaten {
   botName: string;
-  /** Der Anbieter der ersten Version (der zuerst angelegte), ohne Schlüssel. */
-  anbieter?: Provider;
+  /** Alle gespeicherten Anbieter (zuerst angelegter vorn), ohne Schlüssel. */
+  anbieterListe: Provider[];
   vorlage: AnbieterVorlage;
   modell?: BotModell;
 }
@@ -28,12 +28,12 @@ export async function modelleSeitenDaten(
   db: Database,
   d: ZugangsDienste,
 ): Promise<ModelleSeitenDaten> {
-  const [anbieter] = await repo.providers.list(db);
+  const anbieterListe = await repo.providers.list(db);
   const bot = await repo.bots.getDefault(db);
   const modell = bot === undefined ? undefined : await modellVon(db, bot);
   return {
     botName: bot?.name ?? t("einrichtung.bot.vorschlag"),
-    ...(anbieter === undefined ? {} : { anbieter }),
+    anbieterListe,
     vorlage: d.einrichtungsAnbieter(),
     ...(modell === undefined ? {} : { modell }),
   };

@@ -138,6 +138,19 @@ function gespeicherterSchluessel(
   }
 }
 
+/** Gibt es die Adresse schon bei einem anderen Anbieter? Dann sagt das ein eigener Satz. */
+async function adresseFrei(db: Database, baseUrl: string, ausser?: ProviderId): Promise<void> {
+  const vergeben = (await repo.providers.list(db)).some(
+    (a) => a.id !== ausser && adresseNormal(a.baseUrl) === adresseNormal(baseUrl),
+  );
+  if (vergeben) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("modelle.eigen.adresse_doppelt"),
+      felder: [{ feld: "baseUrl", code: "ungueltig" }],
+    });
+  }
+}
+
 function ohneSchluesselErlaubt(region: Region): boolean {
   return region === "local";
 }
@@ -196,10 +209,16 @@ export async function anbieterListe(k: RoutenKontext<"anbieterListe">) {
  */
 export async function anbieterAnlegen(k: RoutenKontext<"anbieterAnlegen">) {
   const eingabe = k.eingabe;
+  if (eingabe.removeApiKey !== undefined) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      felder: [{ feld: "removeApiKey", code: "ungueltig" }],
+    });
+  }
   const baseUrl = pruefeAdresse(eingabe);
   if (eingabe.apiKey === undefined && !ohneSchluesselErlaubt(eingabe.region)) {
     throw schluesselFehlt();
   }
+  await adresseFrei(k.db, baseUrl);
   const endpunkt: AnbieterVorlage = {
     templateKey: eingabe.templateKey,
     name: eingabe.name,
@@ -239,22 +258,38 @@ export async function anbieterAnlegen(k: RoutenKontext<"anbieterAnlegen">) {
 /**
  * `PUT /api/anbieter/:id`: ändert einen Anbieter. Ohne `apiKey` bleibt der gespeicherte Schlüssel
  * – aber nur, solange die Adresse gleich bleibt: Der Schlüssel ist an die Adresse gebunden, eine
- * neue Adresse verlangt ihn in derselben Änderung neu (kein stilles Umbinden).
+ * neue Adresse verlangt ihn in derselben Änderung neu (kein stilles Umbinden). Mit `removeApiKey`
+ * wird der Schlüssel gelöscht; das geht nur bei Region „lokal“. Die Vorlage eines Anbieters bleibt,
+ * wie sie ist: Aus einem Vorlagen-Anbieter wird nie ein eigener (und umgekehrt).
  */
 export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
   const eingabe = k.eingabe;
   const { provider: alt, apiKeyEnc } = await anbieterMitSchluessel(k.db, k.params.id ?? "");
   const id = alt.id as ProviderId;
+  if (eingabe.templateKey !== alt.templateKey) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("modelle.eigen.vorlage_bleibt"),
+      felder: [{ feld: "templateKey", code: "ungueltig" }],
+    });
+  }
   const baseUrl = pruefeAdresse(eingabe);
   const neueAdresse = adresseGeaendert(alt.baseUrl, baseUrl);
+  if (neueAdresse) await adresseFrei(k.db, baseUrl, id);
   const apiKey = eingabe.apiKey;
-  if (neueAdresse && apiKey === undefined && apiKeyEnc !== undefined) {
+  const entferntSchluessel = eingabe.removeApiKey === true && apiKeyEnc !== undefined;
+  if (eingabe.removeApiKey === true && !ohneSchluesselErlaubt(eingabe.region)) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("modelle.eigen.ohne_schluessel_nur_lokal"),
+      felder: [{ feld: "apiKey", code: "fehlt" }],
+    });
+  }
+  if (neueAdresse && apiKey === undefined && apiKeyEnc !== undefined && !entferntSchluessel) {
     throw new PaiBotError("eingabe_ungueltig", {
       text: t("modelle.schluessel.adresse_neu"),
       felder: [{ feld: "apiKey", code: "fehlt" }],
     });
   }
-  const behaeltSchluessel = apiKey === undefined && apiKeyEnc !== undefined;
+  const behaeltSchluessel = apiKey === undefined && apiKeyEnc !== undefined && !entferntSchluessel;
   if (apiKey === undefined && !behaeltSchluessel && !ohneSchluesselErlaubt(eingabe.region)) {
     throw schluesselFehlt();
   }
@@ -264,12 +299,14 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
     baseUrl,
     region: eingabe.region,
   };
-  const testen = apiKey !== undefined || neueAdresse || eingabe.region !== alt.region;
+  const testen =
+    apiKey !== undefined || entferntSchluessel || neueAdresse || eingabe.region !== alt.region;
   if (testen) {
     await verbindungPruefen(
       k.dienste,
       endpunkt,
-      apiKey ?? gespeicherterSchluessel(k.dienste, alt, apiKeyEnc),
+      apiKey ??
+        (behaeltSchluessel ? gespeicherterSchluessel(k.dienste, alt, apiKeyEnc) : undefined),
     );
   }
   const ergebnis = await k.tor(
@@ -285,7 +322,9 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
         enabled: eingabe.enabled,
         country: eingabe.country ?? null,
         ...(apiKey === undefined
-          ? {}
+          ? entferntSchluessel
+            ? { apiKeyEnc: null }
+            : {}
           : { apiKeyEnc: verschluesseln(k.dienste, id, baseUrl, apiKey) }),
       });
       if (neu === undefined) throw new PaiBotError("nicht_gefunden");
@@ -298,10 +337,46 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
   return { daten: { anbieter: ergebnis.value } };
 }
 
-/** `DELETE /api/anbieter/:id`: entfernt Anbieter samt Schlüssel; Modelle des Anbieters gehen mit. */
+/** So weit in der Zukunft, dass jeder wartende oder laufende Lauf davor liegt. */
+const ALLE_LAEUFE_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * Arbeitet der Bot gerade (Lauf wartet oder läuft) mit einem Modell dieses Anbieters? Dann wird
+ * der Anbieter nicht entfernt: Ein wartender Lauf fände sonst kein Modell mehr.
+ */
+async function schreibtMitAnbieter(
+  db: Database,
+  providerId: ProviderId,
+  jetzt: Date,
+): Promise<{ bot: string } | undefined> {
+  const bot = await repo.bots.getDefault(db);
+  if (bot?.modelId === undefined) return undefined;
+  const modell = await repo.models.get(db, bot.modelId as ModelId);
+  if (modell?.providerId !== providerId) return undefined;
+  const laeufe = await repo.runs.findStale(db, {
+    before: new Date(jetzt.getTime() + ALLE_LAEUFE_MS),
+    statuses: ["queued", "running"],
+  });
+  return laeufe.length > 0 ? { bot: bot.name } : undefined;
+}
+
+/**
+ * `DELETE /api/anbieter/:id`: entfernt Anbieter samt Schlüssel; Modelle des Anbieters gehen mit.
+ * Nutzt der Bot ein Modell dieses Anbieters, hat er danach keins mehr (der Chat zeigt dann den Weg
+ * zu „Modell und Anbieter“); frühere Nachrichten bleiben. Schreibt der Bot gerade mit einem Modell
+ * des Anbieters, lehnt die Route ab (`lauf_aktiv`), bis die Antwort fertig oder abgebrochen ist.
+ */
 export async function anbieterLoeschen(k: RoutenKontext<"anbieterLoeschen">) {
   const { provider } = await anbieterMitSchluessel(k.db, k.params.id ?? "");
   const providerId = provider.id as ProviderId;
+  const schreibt = await schreibtMitAnbieter(k.db, providerId, k.dienste.uhr.now());
+  if (schreibt !== undefined) {
+    const p = { name: schreibt.bot, anbieter: provider.name };
+    throw new PaiBotError("lauf_aktiv", {
+      text: t("modelle.eigen.lauf_aktiv", p),
+      ausweg: t("modelle.eigen.lauf_aktiv.ausweg"),
+    });
+  }
   await k.tor(k.nachweis, { type: "anbieter.loeschen", target: { providerId } }, {}, async () => {
     const weg = await repo.providers.remove(k.db, providerId);
     if (!weg) throw new PaiBotError("nicht_gefunden");
