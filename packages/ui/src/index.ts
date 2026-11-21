@@ -34,6 +34,7 @@ export {
   FORM_GESICHT,
   type FormGesicht,
 } from "./avatar-lebendig/daten";
+export { AvatarLebendigVorschau } from "./avatar-lebendig/Vorschau";
 export { Button, type ButtonArt, type ButtonProps } from "./basis/Button";
 export {
   ERSTER_FOKUS,
