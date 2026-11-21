@@ -77,7 +77,7 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
     database = await createPostgresTestDatabase(BASE_URL ?? "");
     appUrl = withUser(database.url, roleName, password);
     const result = await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
-    expect(result.appRole).toEqual({ role: roleName, created: true });
+    expect(result.appRole).toEqual({ role: roleName, created: true, quarantined: [] });
     app = postgres(appUrl, { max: 2, onnotice: () => undefined });
     admin = postgres(database.url, { max: 1, onnotice: () => undefined });
   });
@@ -411,7 +411,7 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
 
   it("ein zweiter Lauf ist wiederholbar und legt die Rolle nicht neu an", async () => {
     const result = await runMigrations(database.url, MIGRATIONS_FOLDER, { appUrl });
-    expect(result.appRole).toEqual({ role: roleName, created: false });
+    expect(result.appRole).toEqual({ role: roleName, created: false, quarantined: [] });
     expect((await checkAppRole(app)).status).toBe("eingeschraenkt");
   });
 });

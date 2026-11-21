@@ -27,8 +27,9 @@ import {
   setupConnectionTestInput,
   setupInput,
 } from "@paibot/shared/eingaben";
-import type { RateLimitName } from "@paibot/shared/konstanten";
 import type { z } from "zod";
+import { GROESSTER_KOERPER_BYTES, STANDARD_KOERPER_BYTES } from "./api/koerper";
+import type { LimitName } from "./rate-limit";
 
 export type Methode = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -60,14 +61,24 @@ export interface RoutenDefinition {
    */
   nachweis?: Credential;
   /**
-   * Rate-Limits (`RATE_LIMITS`), die die Route vor jeder weiteren Arbeit zählt, in dieser
+   * Rate-Limits (`LIMIT_DEFINITIONEN`), die die Route vor jeder weiteren Arbeit zählt, in dieser
    * Reihenfolge. Bei `verzoegern` wartet die Anfrage, bei `sperren` antwortet sie mit
    * `zu_viele_versuche`.
    */
-  limits?: readonly RateLimitName[];
+  limits?: readonly LimitName[];
+  /** Über einem sperrenden Limit endet zusätzlich die Sitzung der Anfrage (Cookie gelöscht). */
+  beiLimitAbmelden?: true;
   /** Nur bis zum Ende der Einrichtung erreichbar; danach `einrichtung_fertig` (409). */
   nurVorEinrichtung?: true;
+  /**
+   * Größter Körper der Anfrage in Byte (Standard `STANDARD_KOERPER_BYTES`). Der Proxy weist
+   * größere Anfragen schon an der angegebenen Länge ab, der Rahmen bricht das Lesen ab, sobald mehr
+   * ankommt.
+   */
+  koerperBytes?: number;
 }
+
+export { GROESSTER_KOERPER_BYTES, STANDARD_KOERPER_BYTES };
 
 /** Alle API-Routen der Basis. */
 export const API_ROUTEN = {
@@ -115,7 +126,10 @@ export const API_ROUTEN = {
     nurVorEinrichtung: true,
   },
 
-  /** Limit je Adresse sperrt, das Gesamt-Limit verzögert nur (siehe `RATE_LIMITS`). */
+  /**
+   * Limits je Adresse sperren (15 Minuten, dann bis zu 24 Stunden); das Gesamt-Limit bremst alle
+   * zusammen auf einen Versuch je Takt, bekannte Geräte ausgenommen (siehe `rate-limit.ts`).
+   */
   anmelden: {
     methode: "POST",
     pfad: "/api/zugang/anmelden",
@@ -125,7 +139,7 @@ export const API_ROUTEN = {
     aktion: "zugang.anmelden",
     eingabe: loginInput,
     nachweis: "passwort",
-    limits: ["anmeldenIp", "anmeldenGesamt"],
+    limits: ["anmeldenIp", "anmeldenIpTag", "anmeldenGesamt"],
   },
   abmelden: {
     methode: "POST",
@@ -158,6 +172,8 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "zugang.passwort_aendern",
     eingabe: passwordChangeInput,
+    limits: ["passwortAendern"],
+    beiLimitAbmelden: true,
   },
 
   unterhaltungen: {
@@ -216,6 +232,7 @@ export const API_ROUTEN = {
     aktion: "nachricht.senden",
     eingabe: sendMessageInput,
     limits: ["nachricht"],
+    koerperBytes: GROESSTER_KOERPER_BYTES,
   },
   ereignisse: {
     methode: "GET",
@@ -257,6 +274,7 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "bot.aendern",
     eingabe: botInput,
+    koerperBytes: 64 * 1024,
   },
   botModell: {
     methode: "PUT",
@@ -310,12 +328,14 @@ export const API_ROUTEN = {
     eingabe: connectionTestInput,
     limits: ["verbindungstest"],
   },
+  /** Holt die Modell-Liste beim Anbieter und gleicht sie mit den gespeicherten Modellen ab. */
   anbieterModelle: {
-    methode: "GET",
+    methode: "POST",
     pfad: "/api/anbieter/:id/modelle",
     zugang: "besitzer",
     antwort: "json",
-    veraendernd: false,
+    veraendernd: true,
+    aktion: "anbieter.speichern",
   },
 
   datenschleuse: {
@@ -435,4 +455,29 @@ export function routenPfad<N extends RoutenName>(name: N, parameter: RoutenParam
 /** Ordner der Route unter `src/app`, z. B. `api/unterhaltungen/[id]/nachrichten`. */
 export function routenOrdner(name: RoutenName): string {
   return API_ROUTEN[name].pfad.slice(1).replace(/:([A-Za-z]+)/g, "[$1]");
+}
+
+/** Grenze für den Körper einer Route (`koerperBytes`, sonst der Standard). */
+export function koerperGrenze(def: Pick<RoutenDefinition, "koerperBytes">): number {
+  return def.koerperBytes ?? STANDARD_KOERPER_BYTES;
+}
+
+const PFAD_MUSTER: readonly { muster: RegExp; methode: Methode; grenze: number }[] = Object.values(
+  API_ROUTEN as Record<string, RoutenDefinition>,
+).map((def) => ({
+  muster: new RegExp(`^${def.pfad.replace(/:[A-Za-z]+/g, "[^/]+")}/?$`),
+  methode: def.methode,
+  grenze: koerperGrenze(def),
+}));
+
+/**
+ * Grenze für den Körper einer Anfrage an `pfad` mit `methode`: die der passenden Route, sonst der
+ * Standard. Für den Proxy, der vor jeder Route entscheidet.
+ */
+export function koerperGrenzeFuerPfad(pfad: string, methode: string): number {
+  const gross = methode.toUpperCase();
+  for (const eintrag of PFAD_MUSTER) {
+    if (eintrag.methode === gross && eintrag.muster.test(pfad)) return eintrag.grenze;
+  }
+  return STANDARD_KOERPER_BYTES;
 }

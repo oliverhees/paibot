@@ -17,12 +17,21 @@ import {
   checkMigrationState,
   credentialsOf,
   type MigrationState,
+  QUARANTINE_SCHEMA_NAME,
   ROLE_ISSUE_TEXT,
   type RoleCheck,
+  type RoleIssue,
 } from "./rollen";
 
 /** Variable, die den Betrieb mit zu vielen Rechten ausdrücklich erlaubt (nur für den Übergang). */
 export const ALLOW_PRIVILEGED_DB_ENV = "PAIBOT_ALLOW_PRIVILEGED_DB";
+
+/** Gründe, die der Migrations-Schritt bei jedem Lauf selbst behebt. */
+const MIGRATE_FIXES: readonly RoleIssue[] = [
+  "rolleneinstellungen",
+  "schatten_tabellen",
+  "suchpfad",
+];
 
 /** Ausgabe für Meldungen beim Start. */
 export interface StartLog {
@@ -96,6 +105,11 @@ export async function migrateDatabase(
         log.info(`App-Rolle ${result.appRole.role} angelegt.`);
       }
       if (result.appRole) log.info(`Rechte der App-Rolle ${result.appRole.role} gesetzt.`);
+      for (const eintrag of result.appRole?.quarantined ?? []) {
+        log.warn(
+          `Gleichnamige Tabelle außerhalb von public verschoben: ${eintrag}. PaiBot nutzt sie nicht; sieh sie dir an und lösche sie dann mit dem Zugang aus DATABASE_MIGRATION_URL.`,
+        );
+      }
       return { ok: true, separateRoles };
     } catch (error) {
       lastReason = error instanceof Error ? error.message : String(error);
@@ -161,6 +175,13 @@ async function check(
         break;
       } catch (error) {
         lastReason = error instanceof Error ? error.message : String(error);
+        if ((error as { code?: string }).code === "28P01") {
+          return {
+            ok: false,
+            reason: "migration_fehlgeschlagen",
+            message: `Die App-Rolle ${safeUser(appUrl)} kann sich nicht anmelden: Postgres lehnt das Passwort aus DATABASE_URL ab. Eine Rolle kann ihr eigenes Passwort ändern; der Migrations-Schritt (Dienst migrate) setzt es auf den Wert aus POSTGRES_APP_PASSWORD zurück. Starte ihn erneut und danach web und worker.`,
+          };
+        }
         if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
@@ -185,13 +206,21 @@ async function check(
 
     if (role.status === "zu_viele_rechte") {
       const gruende = role.issues.map((issue) => ROLE_ISSUE_TEXT[issue]).join(", ");
-      const text = `Die App verbindet sich als Rolle ${role.role} mit zu vielen Rechten oder falsch eingestellt (${gruende}). So lassen sich Schutz-Trigger der Belege abschalten oder Abfragen umlenken. Starte den Migrations-Schritt (Dienst migrate) erneut; er setzt Rechte und Einstellungen der App-Rolle zurück. Ohne eigene App-Rolle: DATABASE_MIGRATION_URL auf die bisherige Adresse, DATABASE_URL auf die App-Rolle. ${HILFE}`;
+      // Diese Gründe behebt der Migrations-Schritt selbst; ein Abschalten der Prüfung hilft dort nie.
+      const behebbar = role.issues.every((issue) => MIGRATE_FIXES.includes(issue));
+      const schatten =
+        role.shadowTables !== undefined && role.shadowTables.length > 0
+          ? ` Gefunden: ${role.shadowTables.join(", ")}. Der Migrations-Schritt verschiebt solche Tabellen ins Schema ${QUARANTINE_SCHEMA_NAME}; von Hand geht es mit „drop table <name>;“ über den Zugang aus DATABASE_MIGRATION_URL.`
+          : "";
+      const text = `Die App verbindet sich als Rolle ${role.role} mit zu vielen Rechten oder falsch eingestellt (${gruende}). So lassen sich Schutz-Trigger der Belege abschalten oder Abfragen umlenken.${schatten} Starte den Migrations-Schritt (Dienst migrate) erneut; er setzt Rechte und Einstellungen der App-Rolle zurück. Ohne eigene App-Rolle: DATABASE_MIGRATION_URL auf die bisherige Adresse, DATABASE_URL auf die App-Rolle. ${HILFE}`;
       const allowed = options.env[ALLOW_PRIVILEGED_DB_ENV] === "1";
       if (options.production && !allowed) {
         return {
           ok: false,
           reason: "zu_viele_rechte",
-          message: `${text} Nur für den Übergang: ${ALLOW_PRIVILEGED_DB_ENV}=1 erlaubt den Start trotzdem.`,
+          message: behebbar
+            ? text
+            : `${text} Nur für den Übergang: ${ALLOW_PRIVILEGED_DB_ENV}=1 erlaubt den Start trotzdem.`,
         };
       }
       log.warn(`WARNUNG: ${text}`);

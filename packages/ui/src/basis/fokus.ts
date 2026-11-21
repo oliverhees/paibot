@@ -62,3 +62,16 @@ function sichtbar(el: HTMLElement): boolean {
 export function fokussierbareIn(bereich: HTMLElement): HTMLElement[] {
   return Array.from(bereich.querySelectorAll<HTMLElement>(FOKUSSIERBAR)).filter(sichtbar);
 }
+
+/**
+ * Markierung für das Element, das beim Öffnen eines Dialogs oder Blatts den Fokus bekommt
+ * (z. B. das Eingabefeld statt des Schließen-Knopfs). Als Attribut `data-erster-fokus` setzen.
+ */
+export const ERSTER_FOKUS = "data-erster-fokus";
+
+/** Wohin der Fokus beim Öffnen eines Bereichs geht: gekennzeichnetes Element, sonst das erste. */
+export function startZiel(bereich: HTMLElement): HTMLElement {
+  const markiert = bereich.querySelector<HTMLElement>(`[${ERSTER_FOKUS}]`);
+  if (markiert && !markiert.matches(":disabled")) return markiert;
+  return fokussierbareIn(bereich)[0] ?? bereich;
+}

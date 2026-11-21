@@ -151,7 +151,7 @@ describe("Einrichtungs-Code", () => {
     });
     await anfrage(u, handler(u).status, "GET", "/api/einrichtung", { dose: vorabDose() });
     expect(u.log.filter((z) => z.startsWith("Einrichtungs-Code:"))).toEqual([
-      `Einrichtungs-Code: ${TEST_CODE} (gilt bis zum Ende der Einrichtung)`,
+      `Einrichtungs-Code: ${TEST_CODE} (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)`,
     ]);
   });
 });
@@ -359,6 +359,31 @@ describe("Abschluss der Einrichtung", () => {
     });
     expect(ok.status).toBe(200);
     expect((await repo.settings.get(mit.db))?.schleuseModeDefault).toBe("on");
+  });
+
+  it("Datenschleuse „An“ auch, wenn nur der Worker sie gemeldet hat (Betrieb mit Compose)", async () => {
+    const u = await bereit({ schleuseInstalliert: false });
+    await repo.schleuse.report(u.db, { state: "aus", now: u.zeit() });
+    const status = u.handler("einrichtungStatus", async (k) => ({
+      daten: await einrichtungsStatus(k.db, k.dienste),
+    }));
+    const vorher = await anfrage(u, status, "GET", "/api/einrichtung", { dose: vorabDose() });
+    expect(vorher.body.daten).toMatchObject({ schleuseInstalliert: false });
+    const aus = await anfrage(u, handler(u).abschluss, "POST", "/api/einrichtung", {
+      dose: vorabDose(),
+      koerper: eingabe({ schleuseModeDefault: "on" }),
+    });
+    expect(aus.body.fehler?.code).toBe("schleuse_nicht_installiert");
+
+    await repo.schleuse.report(u.db, { state: "bereit", now: u.zeit() });
+    const nachher = await anfrage(u, status, "GET", "/api/einrichtung", { dose: vorabDose() });
+    expect(nachher.body.daten).toMatchObject({ schleuseInstalliert: true });
+    const ok = await anfrage(u, handler(u).abschluss, "POST", "/api/einrichtung", {
+      dose: vorabDose(),
+      koerper: eingabe({ schleuseModeDefault: "on" }),
+    });
+    expect(ok.status).toBe(200);
+    expect((await repo.settings.get(u.db))?.schleuseModeDefault).toBe("on");
   });
 
   it("ohne Schlüssel: kein Anbieter, kein Modell; Modell ohne Schlüssel ist ungültig", async () => {

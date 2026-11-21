@@ -28,3 +28,15 @@ export function sichereUrl(adresse: string | null | undefined): string | null {
     return null;
   }
 }
+
+/**
+ * Steuerzeichen der Schreibrichtung (U+200E, U+200F, U+202A–U+202E, U+2066–U+2069). Sie können
+ * die Anzeige eines Textes umdrehen, etwa einen Dateinamen in einem Link anders aussehen lassen,
+ * als er ist.
+ */
+const SCHREIBRICHTUNG = /[‎‏‪-‮⁦-⁩]/g;
+
+/** Entfernt Steuerzeichen der Schreibrichtung aus einem Text des Modells. */
+export function ohneSchreibrichtung(text: string): string {
+  return text.replace(SCHREIBRICHTUNG, "");
+}

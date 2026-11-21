@@ -26,7 +26,7 @@ describe("Rate-Limits", () => {
     expect(limitSchluessel("nachricht", b)).toBe("nachricht:bes_06f8k2m9qz3w7x1c4b5n8p0r2t");
   });
 
-  it("sperrt über dem Limit mit Retry-After, verzögert beim Gesamt-Limit", async () => {
+  it("sperrt über dem Limit mit Retry-After; das Gesamt-Limit bremst auf einen Versuch je Takt", async () => {
     const { db } = await createTestDb();
     const gewartet: number[] = [];
     const opt = { now, warten: async (ms: number) => void gewartet.push(ms) };
@@ -35,10 +35,17 @@ describe("Rate-Limits", () => {
       code: "zu_viele_versuche",
       retryAfterSeconds: expect.any(Number),
     });
-    for (let i = 0; i < RATE_LIMITS.anmeldenGesamt.max + 3; i += 1) {
+    for (let i = 0; i < RATE_LIMITS.anmeldenGesamt.max; i += 1) {
       await zaehleLimits(db, ["anmeldenGesamt"], { adresse: `x${i}` }, opt);
     }
-    expect(gewartet).toEqual([2000, 2000, 2000]);
+    // Über der Schwelle: der erste Versuch im Takt kommt durch, der nächste nicht.
+    await zaehleLimits(db, ["anmeldenGesamt"], { adresse: "y1" }, opt);
+    await expect(
+      zaehleLimits(db, ["anmeldenGesamt"], { adresse: "y2" }, opt),
+    ).rejects.toMatchObject({ code: "zu_viele_versuche", retryAfterSeconds: expect.any(Number) });
+    const spaeter = { ...opt, now: new Date(now.getTime() + 2000) };
+    await zaehleLimits(db, ["anmeldenGesamt"], { adresse: "y3" }, spaeter);
+    expect(gewartet).toEqual([]);
   });
 
   it("bei unbekannter Adresse sperren die Limits je Adresse nie, sie verzögern nur", async () => {

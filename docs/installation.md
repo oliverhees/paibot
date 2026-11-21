@@ -139,7 +139,8 @@ Alle Werte stehen in `deploy/.env` (Vorlage: `deploy/.env.example`). Diese Datei
 | `POSTGRES_USER`              | Migrations-Rolle (Besitzer der Tabellen)                                                    | `paibot`                |
 | `POSTGRES_APP_USER`          | App-Rolle (eingeschränkt)                                                                   | `paibot_app`            |
 | `POSTGRES_DB`                | Name der Datenbank                                                                          | `paibot`                |
-| `APP_URL`                    | öffentliche Adresse der App                                                                 | `http://localhost:3000` |
+| `APP_URL`                    | Adresse der App, genau wie im Browser; im Betrieb `https://…` (siehe unten)                 | `http://localhost:3000` |
+| `TRUST_PROXY`                | `1`: Adresse der Besucher aus dem Eintrag, den dein Proxy an `X-Forwarded-For` anhängt      | `1`                     |
 | `WEB_PORT`                   | Port der Web-App auf dem Rechner                                                            | `3000`                  |
 | `PAIBOT_ALLOW_PRIVILEGED_DB` | `1` erlaubt den Start mit zu vielen Rechten, **nur für den Übergang**                       | leer                    |
 | `PAIBOT_WORKER_CONCURRENCY`  | wie viele Antworten der Worker gleichzeitig erzeugt (1 bis 32)                              | `2`                     |
@@ -149,6 +150,16 @@ Alle Werte stehen in `deploy/.env` (Vorlage: `deploy/.env.example`). Diese Datei
 | `PAIBOT_VERSION`             | nur mit fertigem Image: Version (z. B. `0.3.0`), auch mit Digest; **Pflicht** dort          | keiner                  |
 
 Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), weil sie in einer Datenbank-Adresse stehen. `POSTGRES_PASSWORD` und `POSTGRES_APP_PASSWORD` müssen verschieden sein, sonst startet `migrate` nicht.
+
+**`APP_URL` und `TRUST_PROXY`:** `web` bricht den Start ab, wenn `APP_URL` fehlt, keine Adresse ist oder eine öffentliche Adresse über `http://` nennt (dann gingen Passwort und Sitzung unverschlüsselt durchs Netz). `http://localhost:3000` für den eigenen Rechner geht ohne Warnung, `http://` im eigenen Netz mit Warnung. `TRUST_PROXY` steht im Compose auf `1`: Der Port der App ist nur auf dem Server selbst erreichbar (`127.0.0.1`), jede Anfrage von außen kommt über deinen Proxy. Gib den Port nie direkt frei, solange `TRUST_PROXY=1` gilt. Ohne Proxy davor setze `TRUST_PROXY=0`; dann steht ein Hinweis im Log, und die Limits je Adresse können Besucher nicht unterscheiden (die gemeinsame Bremse beim Anmelden gilt weiter, siehe [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
+
+**Größe von Anfragen:** PaiBot nimmt Anfragen nur bis zu einer festen Größe an (16 KiB, Nachrichten 256 KiB) und weist größere schon an der angegebenen Länge mit 413 ab. Begrenze die Größe zusätzlich in deinem Proxy, damit große Anfragen gar nicht erst bis zur App kommen, z. B. auf 1 MiB:
+
+| Proxy           | Einstellung                                                                                   |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| Caddy           | `request_body { max_size 1MB }`                                                               |
+| nginx           | `client_max_body_size 1m;`                                                                    |
+| Traefik/Coolify | Middleware `buffering` mit `maxRequestBodyBytes=1048576` (siehe [Coolify](deploy-coolify.md)) |
 
 Fehlt ein Pflichtwert, bricht schon `docker compose` mit einer Meldung „… fehlt“ ab. Ist ein Wert zu kurz, falsch geformt oder noch ein Platzhalter, startet die App nicht und nennt im Log, welcher Wert es ist (nie den Wert selbst).
 
@@ -165,13 +176,16 @@ Der Dienst `migrate` macht bei jedem Start des Stacks der Reihe nach:
 
 1. Die Migrationen laufen mit der Migrations-Rolle.
 2. Fehlt die App-Rolle, wird sie angelegt (ohne Sonderrechte, mit dem Passwort aus `POSTGRES_APP_PASSWORD`). Danach bekommt sie ihre Rechte, bei jedem Lauf neu, damit auch neue Tabellen stimmen. Eigene Einstellungen der App-Rolle werden dabei zurückgesetzt und ihr Passwort wird neu gesetzt.
-3. Mit der App-Rolle prüft er, ob die Datenbank auf Stand ist und die Rolle nicht zu viel darf. Dann endet er mit Exit 0, bei einem Fehler mit Exit 1, und `web` und `worker` starten nicht.
+3. Liegen außerhalb von `public` Tabellen mit dem Namen einer Tabelle der App (etwa `pgboss.belege`), verschiebt er sie ins Schema `paibot_quarantaene`. Das gehört der Migrations-Rolle, die App-Rolle kommt nicht daran. Im Log steht jede verschobene Tabelle; sieh sie dir an und lösche sie dann mit dem Zugang der Migrations-Rolle (`drop table paibot_quarantaene.<name>;`).
+4. Er hebt Sperren der Anmeldung auf (Ausweg, wenn du ausgesperrt bist) und verwirft einen offenen Einrichtungs-Code.
+5. Mit der App-Rolle prüft er, ob die Datenbank auf Stand ist und die Rolle nicht zu viel darf. Dann endet er mit Exit 0, bei einem Fehler mit Exit 1, und `web` und `worker` starten nicht.
 
 Web-App und Worker prüfen beim Start nur mit der App-Rolle:
 
 1. Ist die Datenbank auf dem Stand dieser Version? Wenn nicht, meldet das Log „Datenbank nicht auf Stand“, und der Dienst startet nicht.
-2. Hat die App-Verbindung zu viele Rechte oder ist sie falsch eingestellt (Superuser, Besitzer von Objekten in `public`, Änderungsrechte auf Belegen oder Regeln, eigene Einstellungen an der Rolle, gleichnamige Tabellen in einem anderen Schema)? Dann bricht der Start ab, außer `PAIBOT_ALLOW_PRIVILEGED_DB=1` ist gesetzt. In dem Fall steht eine Warnung im Log, und `/api/health` sendet die Kopfzeile `X-Pb-Db-Rolle: zu_viele_rechte`.
-3. Ist bei `web` `DATABASE_MIGRATION_URL` gesetzt, startet die Web-App im Betrieb nicht. Die Zugangsdaten der Migrations-Rolle gehören nur zu `migrate`.
+2. Hat die App-Verbindung zu viele Rechte oder ist sie falsch eingestellt (Superuser, Besitzer von Objekten in `public`, Änderungsrechte auf Belegen oder Regeln, eigene Einstellungen an der Rolle, gleichnamige Tabellen in einem anderen Schema)? Dann bricht der Start ab. Eigene Einstellungen an der Rolle, einen anderen Suchpfad und gleichnamige Tabellen behebt der nächste Lauf von `migrate`; die Meldung nennt die gefundenen Tabellen. Nur für den Übergang von einer Installation mit einer Rolle für alles erlaubt `PAIBOT_ALLOW_PRIVILEGED_DB=1` den Start trotzdem; dann steht eine Warnung im Log.
+3. Lehnt Postgres das Passwort der App-Rolle ab, sagt das Log das ausdrücklich. Postgres lässt jede Rolle ihr eigenes Passwort und ihre eigenen Voreinstellungen ändern; das lässt sich nicht verbieten. Der nächste Lauf von `migrate` setzt beides zurück.
+4. Ist bei `web` `DATABASE_MIGRATION_URL` gesetzt, startet die Web-App im Betrieb nicht. Die Zugangsdaten der Migrations-Rolle gehören nur zu `migrate`.
 
 Was die App-Rolle darf (alle Tabellen: [Sicherheit, Abschnitt „Rollen der Datenbank“](sicherheit.md#rollen-der-datenbank)):
 
@@ -212,7 +226,7 @@ Dadurch kann die App-Rolle die Schutz-Trigger der Belege weder abschalten noch l
    ```
 
 5. Neu starten: `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build`.
-6. Im Log von `migrate` stehen „App-Rolle paibot_app angelegt“, „Rechte der App-Rolle paibot_app gesetzt“ und „Migrations-Schritt fertig.“. `/api/health` meldet `"db":"ok"` ohne die Kopfzeile `X-Pb-Db-Rolle`.
+6. Im Log von `migrate` stehen „App-Rolle paibot_app angelegt“, „Rechte der App-Rolle paibot_app gesetzt“ und „Migrations-Schritt fertig.“. `/api/health` meldet `"db":"ok"`, und im Log von `web` steht keine Warnung zu den Rechten.
 
 Läuft deine Datenbank nicht im Compose-Stack (z. B. eine verwaltete Datenbank), setze beim Dienst `migrate` `DATABASE_MIGRATION_URL` auf die bisherige Adresse und `DATABASE_URL` auf eine neue Rolle; `web` und `worker` bekommen nur `DATABASE_URL`. Die Migrations-Rolle braucht dann das Recht, Rollen anzulegen, und muss die App-Rolle übernehmen dürfen (`GRANT paibot_app TO <migrations-rolle>`, nachdem die Rolle existiert); sonst lege die App-Rolle selbst an (`CREATE ROLE paibot_app LOGIN PASSWORD '…'`).
 

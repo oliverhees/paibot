@@ -452,7 +452,7 @@ describe("Modelle und Modellwahl", () => {
   it("liefert die Liste mit Kennungen; gewählt werden kann nur daraus (mit Belegen)", async () => {
     const e = await eingerichtet();
     const a = await anbieterVon(e);
-    const r = await e.rufe(e.r.modelle, "GET", `/api/anbieter/${a.id}/modelle`, {
+    const r = await e.rufe(e.r.modelle, "POST", `/api/anbieter/${a.id}/modelle`, {
       params: { id: a.id },
     });
     expect(r.status).toBe(200);
@@ -483,7 +483,7 @@ describe("Modelle und Modellwahl", () => {
 
     // Meldet der Anbieter Modell B nicht mehr, ist es nicht mehr wählbar.
     e.u.dienste.verbindungTesten = async () => ({ ok: true, models: [TEST_MODELLE[0] as never] });
-    await e.rufe(e.r.modelle, "GET", `/api/anbieter/${a.id}/modelle`, { params: { id: a.id } });
+    await e.rufe(e.r.modelle, "POST", `/api/anbieter/${a.id}/modelle`, { params: { id: a.id } });
     const veraltet = await e.rufe(e.r.botModell, "PUT", "/api/bot/modell", {
       koerper: { modelId: b.id },
     });
@@ -495,7 +495,7 @@ describe("Modelle und Modellwahl", () => {
     const e = await eingerichtet();
     const a = await anbieterVon(e);
     e.u.dienste.verbindungTesten = async () => ({ ok: false, code: "schluessel_ungueltig" });
-    const r = await e.rufe(e.r.modelle, "GET", `/api/anbieter/${a.id}/modelle`, {
+    const r = await e.rufe(e.r.modelle, "POST", `/api/anbieter/${a.id}/modelle`, {
       params: { id: a.id },
     });
     expect(r.status).toBe(502);

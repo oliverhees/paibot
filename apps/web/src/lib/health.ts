@@ -10,9 +10,6 @@
 
 import { createRoleProbe, type RoleProbe } from "@paibot/db/migrate";
 
-/** Kopfzeile von `/api/health`, die eine App-Verbindung mit zu vielen Rechten anzeigt. Fehlt sie, ist alles in Ordnung. */
-export const DB_ROLE_HEADER = "X-Pb-Db-Rolle";
-
 export type DbState = "ok" | "down" | "not_configured";
 
 /** Zustand der Datenbank und, wenn erreichbar, ob die App-Verbindung eingeschränkt ist. */

@@ -139,16 +139,30 @@ describe("Anmelden", () => {
     expect((await einloggen(u, h)).status).toBe(200);
   });
 
-  it("Gesamt-Limit sperrt den Besitzer nicht aus: es verzögert nur", async () => {
+  it("Gesamt-Limit: über der Schwelle ein Versuch je Takt; ein bekanntes Gerät kommt trotzdem an", async () => {
     const { u, h } = await eingerichtet();
-    for (let i = 0; i < 25; i += 1) {
+    const bekannt = await einloggen(u, h);
+    const geraet = bekannt.dose.werte.get("pb_geraet");
+    expect(geraet).toMatch(/^[A-Za-z0-9_-]{32}\.[A-Za-z0-9_-]{43}$/);
+    // Die Anmeldung oben zählt mit: 19 weitere füllen die Schwelle von 20.
+    for (let i = 0; i < 19; i += 1) {
       const r = await einloggen(u, h, "falsch-falsch-1", { adresse: `198.51.100.${i + 1}` });
       expect(r.status).toBe(401);
     }
-    expect(u.gewartet.length).toBe(5);
-    expect(u.gewartet.every((ms) => ms === 2000)).toBe(true);
-    const besitzer = await einloggen(u, h, TEST_PASSWORT, { adresse: "192.0.2.50" });
+    expect((await einloggen(u, h, "falsch-falsch-1", { adresse: "198.51.100.30" })).status).toBe(
+      401,
+    );
+    const neuesGeraet = await einloggen(u, h, TEST_PASSWORT, { adresse: "192.0.2.50" });
+    expect(neuesGeraet.status).toBe(429);
+    const dose = vorabDose();
+    dose.werte.set("pb_geraet", geraet ?? "");
+    const besitzer = await anfrage(u, h.anmelden, "POST", "/api/zugang/anmelden", {
+      dose,
+      adresse: "192.0.2.50",
+      koerper: { password: TEST_PASSWORT, remember: false },
+    });
     expect(besitzer.status).toBe(200);
+    expect(u.gewartet).toEqual([]);
   });
 
   it("unbekannte Adresse (ohne TRUST_PROXY) sperrt niemanden aus, sondern verzögert", async () => {
@@ -300,6 +314,33 @@ describe("Sitzung", () => {
     ).toBe(200);
     expect((await einloggen(u, h, TEST_PASSWORT)).status).toBe(401);
     expect((await einloggen(u, h, "Neues-Passwort-2026")).status).toBe(200);
+  });
+});
+
+describe("Passwortwechsel im Beleg", () => {
+  it("falsches aktuelles Passwort: das Tor lehnt ab, der Beleg sagt „abgelehnt“, der Hash bleibt", async () => {
+    const { u, h } = await eingerichtet();
+    const a = await einloggen(u, h);
+    const vorher = (await repo.owner.get(u.db))?.passwordHash;
+    const falsch = await anfrage(u, h.passwort, "POST", "/api/zugang/passwort", {
+      dose: a.dose,
+      koerper: { currentPassword: "falsch-falsch-1", newPassword: "Neues-Passwort-2026" },
+    });
+    expect(falsch.status).toBeGreaterThanOrEqual(400);
+    const entscheidungen = (await repo.belege.listFrom(u.db))
+      .map((e) => e.body)
+      .filter((b) => b.type === "decision" && b.action.type === "zugang.passwort_aendern");
+    expect(entscheidungen).toHaveLength(1);
+    const [entscheidung] = entscheidungen;
+    if (entscheidung?.type !== "decision") throw new Error("keine Entscheidung");
+    expect(entscheidung.facts).toMatchObject({ currentPasswordVerified: false });
+    expect(entscheidung.decision.outcome).toBe("deny");
+    const ergebnisse = (await repo.belege.listFrom(u.db))
+      .map((e) => e.body)
+      .filter((b) => b.type === "result" && b.action.type === "zugang.passwort_aendern");
+    // Nach einer Ablehnung hält das Tor nur „abgelehnt“ fest, es lief nichts.
+    expect(ergebnisse.map((b) => (b.type === "result" ? b.result.status : ""))).toEqual(["denied"]);
+    expect((await repo.owner.get(u.db))?.passwordHash).toBe(vorher);
   });
 });
 

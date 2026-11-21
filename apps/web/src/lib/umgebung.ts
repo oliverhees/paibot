@@ -129,3 +129,100 @@ export function einrichtungsAnbieter(env: Env): EinrichtungsAnbieter {
     region: vorlage.region,
   };
 }
+
+/** Ergebnis der Prüfung von `APP_URL` beim Start in Produktion. */
+export interface AppUrlPruefung {
+  /** Grund, aus dem der Start abbricht. */
+  fehler?: string;
+  /** Hinweis fürs Log; der Start geht weiter. */
+  warnungen: string[];
+}
+
+function istLoopback(host: string): boolean {
+  return (
+    host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127\./.test(host)
+  );
+}
+
+function istEigenesNetz(host: string): boolean {
+  return (
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^f[cd][0-9a-f]{0,2}:/.test(host) ||
+    !host.includes(".") ||
+    /\.(local|lan|home\.arpa|internal)$/.test(host)
+  );
+}
+
+/**
+ * Prüft `APP_URL` für den Betrieb. Abbruch, wenn sie fehlt, keine http(s)-Adresse ist oder eine
+ * öffentliche Adresse über `http://` nennt (dann gingen Passwort und Sitzung unverschlüsselt durchs
+ * Netz). Erlaubt: `https://…`, `http://` nur für den eigenen Rechner (`localhost`, `127.…`, `::1`).
+ * Warnung (Start geht weiter): `http://` im eigenen Netz (private Adressen, Namen ohne Punkt oder
+ * mit `.local`, `.lan`, `.home.arpa`, `.internal`) und Pfad oder Abfrage in der Adresse.
+ */
+export function pruefeAppUrl(env: Env): AppUrlPruefung {
+  const warnungen: string[] = [];
+  const wert = env.APP_URL?.trim();
+  const beispiel = "z. B. APP_URL=https://paibot.example.de";
+  if (!wert) {
+    return {
+      fehler: `APP_URL fehlt. Setze die Adresse, unter der du PaiBot im Browser öffnest (${beispiel}).`,
+      warnungen,
+    };
+  }
+  let url: URL;
+  try {
+    url = new URL(wert);
+  } catch {
+    return { fehler: `APP_URL ist keine gültige Adresse (${beispiel}).`, warnungen };
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return { fehler: `APP_URL muss mit https:// beginnen (${beispiel}).`, warnungen };
+  }
+  if (url.username !== "" || url.password !== "") {
+    return { fehler: "APP_URL darf keinen Benutzer und kein Passwort enthalten.", warnungen };
+  }
+  if ((url.pathname !== "/" && url.pathname !== "") || url.search !== "" || url.hash !== "") {
+    warnungen.push(
+      `APP_URL enthält einen Pfad oder eine Abfrage; PaiBot nutzt nur ${url.origin}. Trage genau diese Adresse ein.`,
+    );
+  }
+  if (url.protocol === "http:") {
+    const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    if (istLoopback(host)) return { warnungen };
+    if (istEigenesNetz(host)) {
+      warnungen.push(
+        "APP_URL nutzt http:// im eigenen Netz: Passwort und Sitzung gehen dort unverschlüsselt über die Leitung, und Cookies laufen ohne Secure. Für den Zugang von außen https über den Proxy einrichten.",
+      );
+      return { warnungen };
+    }
+    return {
+      fehler:
+        "APP_URL nutzt http:// für eine öffentliche Adresse. So gingen Passwort und Sitzung unverschlüsselt durchs Netz. Richte https über den Proxy ein (z. B. Coolify) und setze APP_URL=https://….",
+      warnungen,
+    };
+  }
+  return { warnungen };
+}
+
+/** Hinweis, wenn PaiBot in Produktion `X-Forwarded-For` nicht nutzt (`TRUST_PROXY` nicht `1`). */
+export function proxyWarnung(env: Env): string | undefined {
+  if (hinterProxy(env)) return undefined;
+  return "TRUST_PROXY ist nicht 1: Die Limits je Adresse (Anmelden, Einrichtung) können die Adressen nicht unterscheiden; es gilt nur die gemeinsame Bremse für alle. Hinter einem Proxy (Coolify, Caddy, nginx) TRUST_PROXY=1 setzen und den Port der App nie direkt freigeben.";
+}
+
+/**
+ * Passt der Host einer Anfrage nicht zu `APP_URL`? Dann scheitern Anmelden und Einrichtung mit
+ * „herkunft_falsch“; die Web-App schreibt einmal einen Hinweis ins Log. Ohne `APP_URL` oder ohne
+ * Host: `false`.
+ */
+export function hostPasstNicht(host: string | null, origin: string | undefined): boolean {
+  if (!host || origin === undefined) return false;
+  try {
+    return new URL(origin).host !== host.trim().toLowerCase();
+  } catch {
+    return false;
+  }
+}

@@ -11,14 +11,17 @@
 "use client";
 
 import { type RefObject, useEffect, useRef } from "react";
-import { fokussierbareIn, naechstesZiel } from "./fokus";
+import { fokussierbareIn, naechstesZiel, startZiel } from "./fokus";
 
 export interface FokusFalleOptionen {
   /** Tab bleibt im Bereich (für modale Dialoge, Blätter und das Menü am Handy). */
   falle?: boolean;
   /** Escape schließt. */
   onEscape?: () => void;
-  /** Element, das beim Öffnen den Fokus bekommt; sonst das erste fokussierbare. */
+  /**
+   * Element, das beim Öffnen den Fokus bekommt; sonst das mit `data-erster-fokus` im Bereich,
+   * sonst das erste fokussierbare.
+   */
   erstesZiel?: RefObject<HTMLElement | null>;
 }
 
@@ -38,7 +41,7 @@ export function useFokusFalle(
     const node = bereich.current;
     if (!aktiv || !node) return;
     const vorher = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const start = erstesZiel?.current ?? fokussierbareIn(node)[0] ?? node;
+    const start = erstesZiel?.current ?? startZiel(node);
     if (start === node && !node.hasAttribute("tabindex")) node.setAttribute("tabindex", "-1");
     start.focus({ preventScroll: true });
 

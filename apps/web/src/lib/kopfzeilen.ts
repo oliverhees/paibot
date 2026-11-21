@@ -203,3 +203,41 @@ export function clientAdresse({
   const rechts = eintraege[eintraege.length - 1] ?? "";
   return alsAdresse(rechts) ?? direkteAdresse;
 }
+
+function ipv6Gruppen(text: string): number[] | undefined {
+  let rest = text;
+  const v4 = /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(rest);
+  if (v4) {
+    const [a, b, c, d] = v4.slice(1).map(Number) as [number, number, number, number];
+    rest = `${rest.slice(0, v4.index)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const teile = rest.split("::");
+  if (teile.length > 2) return undefined;
+  const zerlege = (s: string | undefined) => (s ? s.split(":") : []);
+  const links = zerlege(teile[0]);
+  const rechts = zerlege(teile[1]);
+  let alle: string[];
+  if (teile.length === 1) {
+    alle = links;
+  } else {
+    const fehlen = 8 - links.length - rechts.length;
+    if (fehlen < 1) return undefined;
+    alle = [...links, ...Array<string>(fehlen).fill("0"), ...rechts];
+  }
+  if (alle.length !== 8 || alle.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return undefined;
+  return alle.map((g) => Number.parseInt(g, 16));
+}
+
+/**
+ * Gruppe einer Adresse für Begrenzungen: IPv4 bleibt, wie sie ist; IPv6 zählt je /64-Netz, weil ein
+ * einzelner Anschluss meist ein ganzes /64 bekommt und darin beliebig viele Adressen nutzen kann.
+ */
+export function adressGruppe(adresse: string): string {
+  if (!adresse.includes(":")) return adresse;
+  const gruppen = ipv6Gruppen(adresse);
+  if (gruppen === undefined) return adresse;
+  return `${gruppen
+    .slice(0, 4)
+    .map((g) => g.toString(16))
+    .join(":")}::/64`;
+}

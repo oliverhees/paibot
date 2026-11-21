@@ -14,7 +14,7 @@ import { PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import { fromPglite, PgBoss } from "pg-boss";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildQueue, jobIdForRun } from "./pgboss-queue";
+import { buildQueue, describeQueueError, jobIdForRun } from "./pgboss-queue";
 import { QUEUE_SCHEMA, type Queue, RUN_QUEUE, type RunJob } from "./vertrag";
 
 interface Env {
@@ -511,5 +511,51 @@ describe("Schema der Warteschlange", () => {
       await queue.stop({ timeoutMs: 1000 });
       await pg.close().catch(() => undefined);
     }
+  });
+});
+
+describe("Log der Warteschlange", () => {
+  /** So meldet pg-boss einen Fehler seiner Abfrage-Schleife: kein `Error`, sondern ein Objekt. */
+  function wieBibliothek(): Record<string, unknown> {
+    const ursache = Object.assign(
+      new Error("terminating connection due to administrator command"),
+      {
+        code: "57P01",
+        severity: "FATAL",
+      },
+    );
+    return {
+      ...ursache,
+      message: ursache.message,
+      stack: ursache.stack,
+      queue: RUN_QUEUE.name,
+      worker: "w-1",
+    };
+  }
+
+  it("ein Fehler-Objekt der Bibliothek erscheint lesbar im Log, nicht als [object Object]", () => {
+    const { boss } = setup();
+    // Die Typen der Bibliothek sagen `Error`; zur Laufzeit kommt dieses einfache Objekt.
+    boss.emit("error", wieBibliothek() as never);
+    const zeilen = errorLog.mock.calls.map((aufruf: unknown[]) => String(aufruf[0]));
+    const zeile = zeilen.find((z: string) => z.startsWith("[jobs] Fehler der Warteschlange"));
+    expect(zeile).toBe(
+      `[jobs] Fehler der Warteschlange: Error (57P01): terminating connection due to administrator command [Warteschlange ${RUN_QUEUE.name}]`,
+    );
+    expect(zeile).not.toContain("[object Object]");
+    expect(zeile).not.toContain("severity");
+    expect(zeile).not.toContain("\n");
+  });
+
+  it("beschreibt Error, einfache Objekte und andere Werte in einer Zeile ohne Stapel", () => {
+    const fehler = Object.assign(new TypeError("kaputt\nzweite Zeile"), { code: "E_X" });
+    expect(describeQueueError(fehler)).toBe("TypeError (E_X): kaputt zweite Zeile");
+    expect(describeQueueError({ message: "nur Text" })).toBe("Error: nur Text");
+    expect(describeQueueError({})).toBe("Error");
+    expect(describeQueueError({ name: "<b>", code: "x y", message: "m" })).toBe("Error: m");
+    expect(describeQueueError("Text")).toBe("Text");
+    expect(describeQueueError(undefined)).toBe("undefined");
+    expect(describeQueueError({ message: "x".repeat(400) })).toBe(`Error: ${"x".repeat(300)} …`);
+    expect(describeQueueError(wieBibliothek())).not.toContain("at ");
   });
 });
