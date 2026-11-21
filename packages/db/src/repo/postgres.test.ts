@@ -154,4 +154,27 @@ describe.skipIf(URL_ENV === undefined)("Zugriffsfunktionen gegen echtes Postgres
     expect(abbruch?.cancelRequestedAt).toBeDefined();
     await runs.finish(db, lauf.id, { status: "cancelled", now: new Date() });
   });
+
+  it("Token seit einem Zeitpunkt: nur Antworten des Bots, Zeitpunkt als Parameter mit postgres-js", async () => {
+    const id = (await conversations.create(db, { botId, title: "Token" })).id;
+    const vorher = await messages.tokensSince(db, new Date(Date.now() - 60_000));
+    await messages.insert(db, { conversationId: id, role: "user", content: "Hi" });
+    await messages.insert(db, {
+      conversationId: id,
+      role: "assistant",
+      content: "Hallo",
+      status: "complete",
+      tokensIn: 120,
+      tokensOut: 30,
+    });
+    await messages.insert(db, {
+      conversationId: id,
+      role: "assistant",
+      content: "Nur Ausgabe",
+      status: "complete",
+      tokensOut: 5,
+    });
+    expect(await messages.tokensSince(db, new Date(Date.now() - 60_000))).toBe(vorher + 155);
+    expect(await messages.tokensSince(db, new Date(Date.now() + 60_000))).toBe(0);
+  });
 });

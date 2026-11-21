@@ -44,15 +44,11 @@ export function tagesbeginn(jetzt: Date, zeitzone: string): Date {
 }
 
 /**
- * Verbrauchte Token (Eingabe plus Ausgabe aller Antworten des Bots) seit `seit`. Gleiche Rechnung
- * wie bei der Grenze `tagesbudget` des Tors.
+ * Verbrauchte Token (Eingabe plus Ausgabe aller Antworten des Bots) seit `seit`. Dieselbe Abfrage
+ * wie für die Grenze `tagesbudget` in der Lauf-Steuerung (`repo.messages.tokensSince`).
  */
-export async function tokenSeit(db: Database, seit: Date): Promise<number> {
-  const zeilen = await db.query.messages.findMany({
-    columns: { tokensIn: true, tokensOut: true },
-    where: (m, { and, eq, gte }) => and(eq(m.role, "assistant"), gte(m.createdAt, seit)),
-  });
-  return zeilen.reduce((summe, z) => summe + (z.tokensIn ?? 0) + (z.tokensOut ?? 0), 0);
+export function tokenSeit(db: Database, seit: Date): Promise<number> {
+  return repo.messages.tokensSince(db, seit);
 }
 
 function anzeigeAus(
