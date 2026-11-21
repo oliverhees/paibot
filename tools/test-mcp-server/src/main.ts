@@ -10,8 +10,8 @@
 
 import { createTestMcpServer, TEST_MCP_PORT_ENV } from "./index";
 
-// Umgebungsvariablen: TEST_MCP_PORT (Standard 0 = zufällig), TEST_MCP_CONTROL_KEY (optional:
-// Schlüssel für /_steuerung/, sonst nur von Loopback). Der Server lauscht immer nur auf 127.0.0.1.
+// Umgebungsvariablen: TEST_MCP_PORT (Standard 0 = zufällig), TEST_MCP_CONTROL_KEY (Schlüssel für
+// /_steuerung/; ohne ihn gibt es keine Steuerung über HTTP). Der Server lauscht immer nur auf 127.0.0.1.
 process.stdout.write(
   "Test-MCP-Server: nur für Tests. Nie im Betrieb und nie in einem ausgelieferten Image.\n",
 );

@@ -34,12 +34,15 @@ import {
   tokenInAddress,
 } from "./presets";
 
+const STEUER_SCHLUESSEL = "steuer-test";
+const MIT_SCHLUESSEL = { [TEST_MCP_CONTROL_KEY_HEADER]: STEUER_SCHLUESSEL };
+
 let mcp: TestMcpServer;
 let url: string;
 let origin: string;
 
 beforeEach(async () => {
-  mcp = createTestMcpServer();
+  mcp = createTestMcpServer(undefined, { key: STEUER_SCHLUESSEL });
   ({ url } = await mcp.start({ port: 0 }));
   origin = new URL(url).origin;
 });
@@ -138,7 +141,9 @@ describe("Grundverhalten", () => {
     expect((await rpc("tools/list")).status).toBe(401);
     const ok = await rpc("tools/list", {}, { headers: { authorization: "Bearer geheim-test" } });
     expect(ok.status).toBe(200);
-    const shown = await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.anfragen}`);
+    const shown = await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.anfragen}`, {
+      headers: MIT_SCHLUESSEL,
+    });
     expect(await shown.text()).not.toContain("geheim-test");
   });
 
@@ -446,7 +451,9 @@ describe("Weitere schädliche Verhalten", () => {
     expect(wrong.status).toBe(401);
     expect(await wrong.text()).toContain("token=falsch");
     url = original;
-    const shown = await (await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.anfragen}`)).text();
+    const shown = await (
+      await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.anfragen}`, { headers: MIT_SCHLUESSEL })
+    ).text();
     expect(shown).not.toContain("abfrage-geheim");
     expect(mcp.requests.some((r) => r.query === "?token=abfrage-geheim")).toBe(true);
   });
@@ -646,15 +653,21 @@ describe("Steuerung", () => {
   it("ändert das Verhalten über HTTP, liefert das Protokoll und setzt zurück", async () => {
     const set = await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.verhalten}`, {
       method: "POST",
+      headers: MIT_SCHLUESSEL,
       body: JSON.stringify({ tools: [{ name: "neu", description: "Neu." }] }),
     });
     expect(set.status).toBe(200);
     expect(await listNames()).toEqual(["neu"]);
-    const log = (await (await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.anfragen}`)).json()) as {
+    const log = (await (
+      await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.anfragen}`, { headers: MIT_SCHLUESSEL })
+    ).json()) as {
       requests: { rpcMethod: string }[];
     };
     expect(log.requests.at(-1)?.rpcMethod).toBe("tools/list");
-    await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.zuruecksetzen}`, { method: "POST" });
+    await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.zuruecksetzen}`, {
+      method: "POST",
+      headers: MIT_SCHLUESSEL,
+    });
     expect(mcp.requests).toHaveLength(0);
     expect(await listNames()).toEqual(["echo", "notiz_anlegen"]);
   });
@@ -662,14 +675,46 @@ describe("Steuerung", () => {
   it("lehnt ungültiges Verhalten mit 400 ab", async () => {
     const bad = await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.verhalten}`, {
       method: "POST",
+      headers: MIT_SCHLUESSEL,
       body: JSON.stringify({ tools: [{ answer: { kind: "xyz" } }] }),
     });
     expect(bad.status).toBe(400);
     const unknown = await fetch(`${origin}${TEST_MCP_CONTROL_PATHS.verhalten}`, {
       method: "POST",
+      headers: MIT_SCHLUESSEL,
       body: JSON.stringify({ unbekannt: 1 }),
     });
     expect(unknown.status).toBe(400);
+  });
+
+  it("ohne Schlüssel gibt es keine Steuerung über HTTP: alle Pfade 403, auch von Loopback, nichts ändert sich", async () => {
+    const offen = createTestMcpServer();
+    const { port } = await offen.start({ port: 0 });
+    try {
+      const basis = `http://127.0.0.1:${port}`;
+      for (const [pfad, methode] of [
+        [TEST_MCP_CONTROL_PATHS.anfragen, "GET"],
+        [TEST_MCP_CONTROL_PATHS.verhalten, "POST"],
+        [TEST_MCP_CONTROL_PATHS.zuruecksetzen, "POST"],
+      ] as const) {
+        // auch mit einer beliebigen Kopfzeile: ohne eingestellten Schlüssel gilt keine
+        const res = await fetch(`${basis}${pfad}`, {
+          method: methode,
+          headers: MIT_SCHLUESSEL,
+          body: methode === "POST" ? JSON.stringify({ tools: [{ name: "fremd" }] }) : undefined,
+        });
+        expect(res.status).toBe(403);
+      }
+      const eigener = url;
+      url = `${basis}/mcp`;
+      try {
+        expect(await listNames()).toEqual(["echo", "notiz_anlegen"]);
+      } finally {
+        url = eigener;
+      }
+    } finally {
+      await offen.stop();
+    }
   });
 
   it("verlangt mit gesetztem Schlüssel die Kopfzeile, sonst 401", async () => {

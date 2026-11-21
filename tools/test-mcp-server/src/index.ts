@@ -40,8 +40,10 @@ export const MCP_VERSION_LEGACY = "2025-11-25";
 /** Schutz der Steuerung. */
 export interface McpControlOptions {
   /**
-   * Ist er gesetzt, verlangt jeder Steuer-Pfad die Kopfzeile `x-steuerung-schluessel` mit diesem
-   * Wert (sonst 401). Ohne Schlüssel nimmt die Steuerung nur Anfragen von Loopback an (sonst 403).
+   * Schlüssel für die Pfade unter `/_steuerung/`: Jede Anfrage braucht die Kopfzeile
+   * `x-steuerung-schluessel` mit diesem Wert (sonst 401). Ohne Schlüssel gibt es keine Steuerung
+   * über HTTP: Die Pfade antworten mit 403. (Die Steuerung im selben Prozess über das Objekt des
+   * Servers braucht keinen Schlüssel.)
    */
   key?: string;
 }
@@ -457,7 +459,7 @@ export function createTestMcpServer(
       const expected = Buffer.from(control.key);
       return given.length === expected.length && timingSafeEqual(given, expected) ? undefined : 401;
     }
-    return isLoopback(req.socket.remoteAddress) ? undefined : 403;
+    return 403;
   }
 
   function resultFor(modern: boolean, body: Json): Json {
@@ -883,7 +885,10 @@ export function createTestMcpServer(
     if (rejected !== undefined) {
       req.resume();
       return sendJson(ex, rejected, {
-        error: rejected === 401 ? "Steuer-Schlüssel fehlt." : "Nur von Loopback erlaubt.",
+        error:
+          rejected === 401
+            ? "Steuer-Schlüssel fehlt oder falsch."
+            : "Steuerung über HTTP ist aus: Ohne Schlüssel gibt es keine.",
       });
     }
     const raw = (await readBody(req)) ?? "";
