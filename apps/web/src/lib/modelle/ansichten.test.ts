@@ -17,7 +17,16 @@ import { botSeitenDaten } from "../bot/bot";
 import { API_ROUTEN } from "../routen";
 import { letzterLaufText, zeitText } from "../schleuse/ansicht";
 import { TEST_SCHLUESSEL } from "../zugang/testing";
-import { anbieterStatus, listeMoeglich, modelleFiltern, SUCHE_AB, sucheZeigen } from "./ansicht";
+import {
+  anbieterStatus,
+  eigenerAnbieter,
+  einrichtungSchluesselText,
+  listeLeerAusweg,
+  listeMoeglich,
+  modelleFiltern,
+  SUCHE_AB,
+  sucheZeigen,
+} from "./ansicht";
 import { modelleSeitenDaten } from "./seite";
 import { eingerichtet } from "./testing";
 
@@ -141,5 +150,36 @@ describe("Browser-Module dieser Seiten", () => {
       );
       expect(route, `${methode} ${pfad}`).toBeDefined();
     }
+  });
+});
+
+describe("Texte bei eigenem oder lokalem Anbieter", () => {
+  const lokal = t("modelle.anbieter.name.lokal");
+  const eigen = t("modelle.anbieter.name.eigener");
+
+  it("eigene Anbieter bekommen Sätze ohne „Konto bei …“, EUrouter behält seinen", () => {
+    for (const name of [lokal, eigen, "Mein Ollama"]) {
+      const text = listeLeerAusweg({ name, templateKey: "eigener" });
+      expect(text).toBe(t("modelle.liste.leer.ausweg_eigen", { anbieter: name }));
+      expect(text).not.toContain("Konto");
+      expect(text).toContain(name);
+    }
+    expect(listeLeerAusweg({ name: "EUrouter", templateKey: "eurouter" })).toBe(
+      "Versuch es später noch einmal oder prüf dein Konto bei EUrouter.",
+    );
+  });
+
+  it("Einrichtung: der Anzeigename des eigenen Anbieters wählt den passenden Satz", () => {
+    for (const name of [lokal, eigen]) {
+      expect(eigenerAnbieter(name)).toBe(true);
+      const text = einrichtungSchluesselText(name);
+      expect(text).toBe(t("einrichtung.schluessel.text_eigen", { anbieter: name }));
+      expect(text).not.toContain("Konto");
+    }
+    expect(eigenerAnbieter("EUrouter")).toBe(false);
+    expect(einrichtungSchluesselText("EUrouter")).toBe(
+      t("einrichtung.schluessel.text", { anbieter: "EUrouter" }),
+    );
+    expect(einrichtungSchluesselText("EUrouter")).toContain("Konto bei EUrouter");
   });
 });

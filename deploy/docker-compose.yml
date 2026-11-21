@@ -329,7 +329,11 @@ services:
     restart: unless-stopped
     logging: *logging
     user: "1001"
-    command: ["gunicorn", "-w", "1", "-b", "0.0.0.0:3000", "app:create_app()"]
+    # --no-control-socket: Das Steuer-Socket von gunicorn (ab 25.1) läuft in einem eigenen Thread
+    # und scheitert im schreibgeschützten Arbeitsordner; ohne ihn startet der Worker ohne Thread
+    # im Hintergrund.
+    command:
+      ["gunicorn", "--no-control-socket", "-w", "1", "-b", "0.0.0.0:3000", "app:create_app()"]
     environment:
       HOME: /tmp
       ANALYZER_CONF_FILE: /conf/analyzer-config.yml

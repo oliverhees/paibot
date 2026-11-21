@@ -26,6 +26,7 @@ import {
 } from "@paibot/ui";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "../../lib/api/client";
+import { einrichtungSchluesselText } from "../../lib/modelle/ansicht";
 import styles from "./einrichtung.module.css";
 
 export interface EinrichtungProps {
@@ -470,7 +471,7 @@ export function Einrichtung({
                   >
                     {t("einrichtung.schluessel.titel")}
                   </h1>
-                  <p className={styles.text}>{t("einrichtung.schluessel.text", { anbieter })}</p>
+                  <p className={styles.text}>{einrichtungSchluesselText(anbieter)}</p>
                   <div className={styles.feldReihe}>
                     <TextField
                       label={t("einrichtung.schluessel.feld", { anbieter })}

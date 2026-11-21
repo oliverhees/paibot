@@ -40,6 +40,34 @@ export function anbieterStatus(anbieter: Pick<Provider, "keySet" | "region" | "l
   return { art: "neutral", text: t("modelle.anbieter.status.ungetestet") };
 }
 
+/**
+ * Ist das ein eigener oder lokaler Anbieter (kein Konto bei einem bekannten Dienst)? Mit Vorlage
+ * entscheidet sie; die Einrichtung kennt nur den Anzeigenamen, und ein eigener Anbieter heißt dort
+ * immer „Lokaler Anbieter“ bzw. „Eigener Anbieter“.
+ */
+export function eigenerAnbieter(
+  anbieter: { templateKey: Provider["templateKey"] } | string,
+): boolean {
+  if (typeof anbieter !== "string") return anbieter.templateKey === "eigener";
+  return (
+    anbieter === t("modelle.anbieter.name.lokal") || anbieter === t("modelle.anbieter.name.eigener")
+  );
+}
+
+/** Ausweg, wenn die Modell-Liste leer ist; bei eigenen Anbietern ohne „Konto bei …“. */
+export function listeLeerAusweg(anbieter: Pick<Provider, "name" | "templateKey">): string {
+  return eigenerAnbieter(anbieter)
+    ? t("modelle.liste.leer.ausweg_eigen", { anbieter: anbieter.name })
+    : t("modelle.liste.leer.ausweg", { anbieter: anbieter.name });
+}
+
+/** Satz im Schritt „Modell-Anbieter verbinden“ der Einrichtung. */
+export function einrichtungSchluesselText(anbieter: string): string {
+  return eigenerAnbieter(anbieter)
+    ? t("einrichtung.schluessel.text_eigen", { anbieter })
+    : t("einrichtung.schluessel.text", { anbieter });
+}
+
 /** Kann die Seite die Modell-Liste holen? Mit Schlüssel oder bei einem lokalen Anbieter. */
 export function listeMoeglich(anbieter: Pick<Provider, "keySet" | "region"> | undefined): boolean {
   return anbieter !== undefined && (anbieter.keySet || anbieter.region === "local");
