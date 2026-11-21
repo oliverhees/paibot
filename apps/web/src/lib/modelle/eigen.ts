@@ -50,6 +50,9 @@ export function eigenPruefen(w: EigenWerte): EigenFehler {
   const fehler: EigenFehler = {};
   if (w.name.trim() === "") fehler.name = t("modelle.eigen.name.leer");
   if (w.baseUrl.trim() === "") fehler.baseUrl = t("modelle.eigen.adresse.leer");
+  else if (w.region !== "local" && /^http:\/\//i.test(w.baseUrl.trim())) {
+    fehler.baseUrl = t("anbieter.url.protokoll");
+  }
   return fehler;
 }
 
@@ -86,15 +89,20 @@ export function unverschluesselt(baseUrl: string, region: Region): boolean {
 }
 
 /**
- * Ordnet einen Fehler des Servers den Feldern zu. Was zu keinem Feld gehört, bleibt als Meldung
- * unter dem Formular (Rückgabe `rest`).
+ * Ordnet einen Fehler des Servers den Feldern zu, mit Ausweg am Feld (außer dem allgemeinen
+ * „Prüf die markierten Felder“ bei ungültiger Eingabe). Was zu keinem Feld gehört, bleibt als
+ * Meldung unter dem Formular (Rückgabe `rest`).
  */
 export function eigenFehlerAus(fehler: ApiErrorDetail): { felder: EigenFehler; rest: boolean } {
   const felder: EigenFehler = {};
+  const text =
+    fehler.ausweg !== undefined && fehler.code !== "eingabe_ungueltig"
+      ? `${fehler.text} ${fehler.ausweg}`
+      : fehler.text;
   for (const f of fehler.felder ?? []) {
     const feld: EigenFeld | undefined =
       f.feld === "name" || f.feld === "baseUrl" || f.feld === "apiKey" ? f.feld : undefined;
-    if (feld !== undefined && felder[feld] === undefined) felder[feld] = fehler.text;
+    if (feld !== undefined && felder[feld] === undefined) felder[feld] = text;
   }
   return { felder, rest: Object.keys(felder).length === 0 };
 }

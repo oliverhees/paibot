@@ -1177,7 +1177,7 @@ export const de = {
     "PaiBot testet die Verbindung vor dem Speichern. Gespeichert wird nur, was der Dienst annimmt.",
   "modelle.eigen.gespeichert": "{anbieter} ist gespeichert. Die Verbindung steht.",
   "modelle.eigen.aendern": "Ändern",
-  "modelle.eigen.auswahl": "Anbieter",
+  "modelle.eigen.auswahl": "Angezeigter Anbieter",
   "modelle.eigen.auswahl.hilfe":
     "Die Angaben und die Modell-Liste unten gehören zu diesem Anbieter.",
   "modelle.eigen.entfernen": "Anbieter entfernen",

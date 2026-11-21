@@ -295,15 +295,16 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     setEntfernt(false);
     formSchliessen();
     setModellMeldung(undefined);
-    setSchluesselMeldung({
+    const gespeichert: Meldung = {
       art: "ok",
       text: t("modelle.eigen.gespeichert", { anbieter: neu.name }),
-    });
+    };
+    // Beim Anlegen steht die Meldung an der Karte, aus der gespeichert wurde.
+    if (angelegt) setNeuMeldung(gespeichert);
+    else setSchluesselMeldung(gespeichert);
     if (angelegt || vorher?.id !== neu.id) setSuche("");
     void listeLaden(neu);
     router.refresh();
-    if (angelegt)
-      setNeuMeldung({ art: "ok", text: t("modelle.eigen.gespeichert", { anbieter: neu.name }) });
   }
 
   async function listeAbgleichen() {

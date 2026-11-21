@@ -48,6 +48,12 @@ describe("Formular-Logik", () => {
       baseUrl: t("modelle.eigen.adresse.leer"),
     });
     expect(eigenPruefen({ ...neueWerte(), name: "A", baseUrl: "irgendwas" })).toEqual({});
+    expect(eigenPruefen({ ...neueWerte(), name: "A", baseUrl: "http://127.0.0.1/v1" })).toEqual({
+      baseUrl: t("anbieter.url.protokoll"),
+    });
+    expect(
+      eigenPruefen({ ...neueWerte(), name: "A", baseUrl: "http://127.0.0.1/v1", region: "local" }),
+    ).toEqual({});
   });
 
   it("Körper: immer Vorlage „eigener“, Schlüssel nur wenn eingegeben, Entfernen nur bei lokal", () => {
@@ -88,6 +94,22 @@ describe("Formular-Logik", () => {
         felder: [{ feld: "baseUrl", code: "ungueltig" }],
       }),
     ).toEqual({ felder: { baseUrl: "Adresse falsch" }, rest: false });
+    expect(
+      eigenFehlerAus({
+        code: "schluessel_ungueltig",
+        text: "Nicht angenommen.",
+        ausweg: "Trag einen neuen ein.",
+        felder: [{ feld: "apiKey", code: "ungueltig" }],
+      }),
+    ).toEqual({ felder: { apiKey: "Nicht angenommen. Trag einen neuen ein." }, rest: false });
+    expect(
+      eigenFehlerAus({
+        code: "eingabe_ungueltig",
+        text: "Adresse falsch",
+        ausweg: "Prüf die markierten Felder.",
+        felder: [{ feld: "baseUrl", code: "ungueltig" }],
+      }).felder,
+    ).toEqual({ baseUrl: "Adresse falsch" });
     expect(eigenFehlerAus({ code: "anbieter_nicht_erreichbar", text: "weg" })).toEqual({
       felder: {},
       rest: true,

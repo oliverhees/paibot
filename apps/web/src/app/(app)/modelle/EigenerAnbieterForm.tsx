@@ -88,7 +88,7 @@ export function EigenerAnbieterForm({
     if (!antwort.ok) {
       const { felder, rest } = eigenFehlerAus(antwort.fehler);
       setFehler(felder);
-      if (rest || antwort.fehler.ausweg) {
+      if (rest) {
         setMeldung({
           text: antwort.fehler.text,
           ...(antwort.fehler.ausweg ? { ausweg: antwort.fehler.ausweg } : {}),
