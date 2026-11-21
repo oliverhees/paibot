@@ -10,9 +10,9 @@
 
 "use client";
 
-import { t } from "@paibot/shared/texte";
+import { type TextKey, t } from "@paibot/shared/texte";
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { Icon } from "../basis/Icon";
+import { Icon, type IconName } from "../basis/Icon";
 import { IconButton } from "../basis/IconButton";
 import { Switch } from "../felder/Switch";
 import styles from "./ChatEingabe.module.css";
@@ -37,6 +37,19 @@ export interface ChatEingabeProps {
   /** Zeile unter dem Feld, z. B. ein Hinweis zu Belegen. */
   notiz?: ReactNode;
 }
+
+/**
+ * Plätze in der Leiste der Eingabe für Funktionen, die noch nicht gebaut sind. Sie stehen schon
+ * fest, damit sie später ohne Umbau gefüllt werden; bis dahin gesperrt, mit Hinweis „kommt später“.
+ */
+const SPAETER = [
+  ["anhang", "chat.eingabe.anhang"],
+  ["merken", "chat.eingabe.merken"],
+  ["ziel", "chat.eingabe.ziel"],
+  ["stufen", "chat.eingabe.stufe"],
+  ["web", "chat.eingabe.web"],
+  ["mikrofon", "chat.eingabe.sprache"],
+] as const satisfies readonly (readonly [IconName, TextKey])[];
 
 /** Eingabe des Chats: Enter sendet, Umschalt+Enter neue Zeile, Schalter Datenschleuse, Stopp. */
 export function ChatEingabe({
@@ -130,18 +143,15 @@ export function ChatEingabe({
         />
         <div className={styles.leiste}>
           {/* Plätze für spätere Funktionen: gesperrt, ohne Verhalten, mit Hinweis „kommt später“. */}
-          {(
-            [
-              ["anhang", t("chat.eingabe.anhang")],
-              ["mikrofon", t("chat.eingabe.sprache")],
-            ] as const
-          ).map(([icon, hinweis]) => (
-            <span key={icon} className={styles.spaeter} title={hinweis}>
-              <button type="button" className={styles.spaeterKnopf} disabled aria-label={hinweis}>
-                <Icon name={icon} groesse={16} />
-              </button>
-            </span>
-          ))}
+          {SPAETER.map(([icon, schluessel]) => [icon, t(schluessel)] as const).map(
+            ([icon, hinweis]) => (
+              <span key={icon} className={styles.spaeter} title={hinweis}>
+                <button type="button" className={styles.spaeterKnopf} disabled aria-label={hinweis}>
+                  <Icon name={icon} groesse={16} />
+                </button>
+              </span>
+            ),
+          )}
           <Switch
             an={schleuseAn}
             onAendern={onSchleuse}
@@ -155,6 +165,17 @@ export function ChatEingabe({
           </Switch>
         </div>
         <div className={styles.senden}>
+          {/* Platz für die Anzeige, wie voll der Verlauf ist: ohne Zahl, bis sie gemessen wird. */}
+          <span
+            className={styles.verlauf}
+            role="img"
+            aria-label={t("chat.eingabe.verlauf")}
+            title={t("chat.eingabe.verlauf")}
+          >
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+              <circle cx="10" cy="10" r="7.5" />
+            </svg>
+          </span>
           {laeuft ? (
             <IconButton
               icon="stopp"

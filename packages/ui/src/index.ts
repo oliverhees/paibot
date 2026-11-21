@@ -110,7 +110,14 @@ export { Dialog, type DialogProps } from "./ueberlagerung/Dialog";
 export { Menue, type MenueEintrag, type MenueProps } from "./ueberlagerung/Menue";
 export { Reiter, type ReiterEintrag, type ReiterProps } from "./ueberlagerung/Reiter";
 export { type ReiterLink, ReiterLinks, type ReiterLinksProps } from "./ueberlagerung/ReiterLinks";
-export { Footer, footerTeile, HR_CODELABS_URL, PAIBOT_URL } from "./zustaende/Footer";
+export {
+  Footer,
+  footerTeile,
+  HR_CODELABS_URL,
+  PAIBOT_DOKU_URL,
+  PAIBOT_ROADMAP_URL,
+  PAIBOT_URL,
+} from "./zustaende/Footer";
 export { PruefErgebnis, type PruefErgebnisProps, type PruefPunkt } from "./zustaende/PruefErgebnis";
 export { type StatusArt, StatusChip, type StatusChipProps } from "./zustaende/StatusChip";
 export {

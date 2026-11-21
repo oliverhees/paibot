@@ -278,6 +278,15 @@ function anmeldeAnfrage(seite, passwort, adresse) {
   );
 }
 
+/** Abmelden mit zwei Klicks: Menü „Du“ unten in der Seitenleiste, dann „Abmelden“. */
+async function abmeldenUeberDu(seite) {
+  await seite
+    .getByRole("complementary", { name: "Navigation" })
+    .getByRole("button", { name: "Du", exact: true })
+    .click();
+  await seite.getByRole("menu", { name: "Du" }).getByRole("menuitem", { name: "Abmelden" }).click();
+}
+
 async function main() {
   log(`Ausgabe: ${ausgabe}`);
   stack = await starteStack({
@@ -596,10 +605,7 @@ async function main() {
   await fremd.close();
   await schritt("Anmeldung: bekanntes Gerät kommt durch", seite, async () => {
     await seite.goto(`${app}${unterhaltung}`);
-    await seite
-      .getByRole("complementary", { name: "Navigation" })
-      .getByRole("button", { name: "Abmelden" })
-      .click();
+    await abmeldenUeberDu(seite);
     await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
     // Direkt davor ein Versuch eines unbekannten Geräts, der den Takt der Bremse belegt.
     erwarte("/api/zugang/anmelden", 401, 429);
@@ -647,10 +653,7 @@ async function main() {
 
   await schritt("Abmelden", seite, async () => {
     await seite.goto(`${app}${unterhaltung}`);
-    await seite
-      .getByRole("complementary", { name: "Navigation" })
-      .getByRole("button", { name: "Abmelden" })
-      .click();
+    await abmeldenUeberDu(seite);
     await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
     await seite.goto(`${app}/belege`);
     await seite.waitForURL((u) => u.pathname.startsWith("/anmelden"));
@@ -858,7 +861,7 @@ async function main() {
       }
       await knopf.click();
       await navigation.getByRole("link", { name: "Belege" }).waitFor({ state: "hidden" });
-      await navigation.getByRole("button", { name: "Abmelden" }).waitFor();
+      await navigation.getByRole("button", { name: "Du", exact: true }).waitFor();
       await seite.reload();
       await navigation.getByRole("button", { name: /^Werkzeuge/ }).waitFor();
       if ((await knopf.getAttribute("aria-expanded")) !== "false") {

@@ -10,7 +10,7 @@
 
 "use client";
 
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { menueIndex } from "../basis/fokus";
 import { Icon, type IconName } from "../basis/Icon";
 import { IconButton } from "../basis/IconButton";
@@ -21,9 +21,17 @@ export interface MenueEintrag {
   id: string;
   text: string;
   icon?: IconName;
+  /** Zweite, leise Zeile unter dem Text (z. B. ein Stand). */
+  hinweis?: string;
   gefahr?: boolean;
   deaktiviert?: boolean;
-  onWaehlen: () => void;
+  /** Trennlinie vor diesem Eintrag (z. B. vor „Abmelden“). */
+  trennerDavor?: boolean;
+  /** Kleine Überschrift über dem Eintrag (nach der Trennlinie). */
+  gruppe?: string;
+  /** Link nach außen: öffnet in einem neuen Tab (`rel="noopener noreferrer"`). */
+  extern?: { href: string; neuerTab: string };
+  onWaehlen?: () => void;
 }
 
 export interface MenueProps {
@@ -33,6 +41,12 @@ export interface MenueProps {
   icon?: IconName;
   /** Ausrichtung des Menüs am Knopf. */
   ausrichtung?: "start" | "ende";
+  /** Menü unter (Standard) oder über dem Knopf, z. B. unten in der Seitenleiste. */
+  richtung?: "unten" | "oben";
+  /** Zusatz unten im Menü, kein Eintrag (z. B. eine Fußzeile). */
+  fuss?: ReactNode;
+  /** Klasse für die Hülle (z. B. volle Breite). */
+  className?: string;
   /** Eigener Auslöser statt des Symbol-Knopfs (bekommt die nötigen Attribute). */
   ausloeser?: (props: {
     id: string;
@@ -53,6 +67,9 @@ export function Menue({
   eintraege,
   icon = "punkte",
   ausrichtung = "ende",
+  richtung = "unten",
+  fuss,
+  className,
   ausloeser,
 }: MenueProps) {
   const [offen, setOffen] = useState(false);
@@ -108,7 +125,7 @@ export function Menue({
   };
 
   return (
-    <div ref={huelle} className={styles.huelle}>
+    <div ref={huelle} className={klassen(styles.huelle, className)}>
       {ausloeser ? (
         ausloeser(ausloeserProps)
       ) : (
@@ -120,7 +137,11 @@ export function Menue({
           id={listeId}
           role="menu"
           aria-labelledby={knopfId}
-          className={klassen(styles.menue, ausrichtung === "start" ? styles.start : styles.ende)}
+          className={klassen(
+            styles.menue,
+            ausrichtung === "start" ? styles.start : styles.ende,
+            richtung === "oben" && styles.oben,
+          )}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.preventDefault();
@@ -139,24 +160,61 @@ export function Menue({
             }
           }}
         >
-          {eintraege.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              role="menuitem"
-              tabIndex={-1}
-              aria-disabled={e.deaktiviert || undefined}
-              className={klassen(styles.eintrag, e.gefahr && styles.gefahr)}
-              onClick={() => {
-                if (e.deaktiviert) return;
-                schliessen(true);
-                e.onWaehlen();
-              }}
-            >
-              {e.icon && <Icon name={e.icon} />}
-              <span>{e.text}</span>
-            </button>
-          ))}
+          {eintraege.map((e) => {
+            const inhalt = (
+              <>
+                {e.icon && <Icon name={e.icon} />}
+                <span className={styles.texte}>
+                  <span>{e.text}</span>
+                  {e.hinweis && <span className={styles.hinweis}>{e.hinweis}</span>}
+                </span>
+              </>
+            );
+            const klasse = klassen(styles.eintrag, e.gefahr && styles.gefahr);
+            return (
+              <Fragment key={e.id}>
+                {e.trennerDavor && <hr className={styles.trenner} />}
+                {e.gruppe && (
+                  <span className={styles.gruppe} aria-hidden="true">
+                    {e.gruppe}
+                  </span>
+                )}
+                {e.extern ? (
+                  <a
+                    role="menuitem"
+                    tabIndex={-1}
+                    href={e.extern.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={klasse}
+                    onClick={() => {
+                      setOffen(false);
+                      e.onWaehlen?.();
+                    }}
+                  >
+                    {inhalt}
+                    <span className={styles.nurLesbar}> {e.extern.neuerTab}</span>
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    tabIndex={-1}
+                    aria-disabled={e.deaktiviert || undefined}
+                    className={klasse}
+                    onClick={() => {
+                      if (e.deaktiviert) return;
+                      schliessen(true);
+                      e.onWaehlen?.();
+                    }}
+                  >
+                    {inhalt}
+                  </button>
+                )}
+              </Fragment>
+            );
+          })}
+          {fuss && <div className={styles.fuss}>{fuss}</div>}
         </div>
       )}
     </div>

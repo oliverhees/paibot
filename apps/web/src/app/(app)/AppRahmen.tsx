@@ -14,7 +14,14 @@
 import "../../lib/ohne-auswertung";
 import type { BotColor, Region } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
-import { AppShell, type AppShellFlaeche, type AppShellTexte, Icon } from "@paibot/ui";
+import {
+  AppShell,
+  type AppShellFlaeche,
+  type AppShellTexte,
+  Icon,
+  Menue,
+  type MenueEintrag,
+} from "@paibot/ui";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -29,9 +36,11 @@ import { apiFetch } from "../../lib/api/client";
 import { unterhaltungsAdresse } from "../../lib/chat/pfade";
 import { Rahmen, type RahmenKontext } from "../../lib/chat/rahmen-kontext";
 import type { UnterhaltungKurz } from "../../lib/chat/typen";
+import { INFO_LINKS } from "../../lib/einstellungen/info";
 import {
   BOT_ADRESSE,
   botAktiv,
+  duEintraege,
   kopfTitel,
   liegtUnter,
   modelleHerkunft,
@@ -54,6 +63,8 @@ export interface AppRahmenProps {
   hinweise?: ReactNode;
   /** Zeitzone der Einstellungen (Zeiten der Suchtreffer). */
   zeitzone: string;
+  /** Stand der Installation (Menü „Du“ → Neuigkeiten). */
+  stand: string;
   children: ReactNode;
 }
 
@@ -72,7 +83,13 @@ function shellTexte(botName: string): AppShellTexte {
   };
 }
 
-function Abmelden() {
+/**
+ * Menü „Du“ unten in der Seitenleiste: Persönliches (Zugang, Einstellungen, Neuigkeiten, Hilfe,
+ * Info) und – abgesetzt – „Abmelden“ (zwei Klicks). Weitere Einträge lassen sich in `eintraege`
+ * ergänzen.
+ */
+function DuMenue({ stand }: { stand: string }) {
+  const router = useRouter();
   const [laeuft, setLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | undefined>();
   async function abmelden() {
@@ -87,18 +104,51 @@ function Abmelden() {
     setLaeuft(false);
     setFehler(antwort.fehler.text);
   }
+  const neuerTab = t("info.neuer_tab");
+  const eintraege: MenueEintrag[] = duEintraege(stand, INFO_LINKS).map((e) => {
+    const basis = {
+      id: e.id,
+      text: e.text,
+      icon: e.icon,
+      ...(e.hinweis === undefined ? {} : { hinweis: e.hinweis }),
+      ...(e.gruppe === undefined ? {} : { trennerDavor: true, gruppe: e.gruppe }),
+    };
+    if (e.ziel === "abmelden") {
+      return {
+        ...basis,
+        text: laeuft ? t("navigation.abmelden.laeuft") : e.text,
+        gefahr: true,
+        deaktiviert: laeuft,
+        onWaehlen: () => void abmelden(),
+      };
+    }
+    if ("extern" in e.ziel) return { ...basis, extern: { href: e.ziel.extern, neuerTab } };
+    const href = e.ziel.intern;
+    return { ...basis, onWaehlen: () => router.push(href) };
+  });
   return (
-    <div className={styles.abmelden}>
-      <button
-        type="button"
-        className={styles.abmeldenKnopf}
-        onClick={() => void abmelden()}
-        disabled={laeuft}
-        aria-busy={laeuft || undefined}
-      >
-        <Icon name="abmelden" />
-        <span>{laeuft ? t("navigation.abmelden.laeuft") : t("navigation.abmelden")}</span>
-      </button>
+    <div className={styles.du}>
+      <Menue
+        label={t("nav.du")}
+        eintraege={eintraege}
+        ausrichtung="start"
+        richtung="oben"
+        className={styles.duHuelle}
+        ausloeser={(props) => (
+          <button
+            type="button"
+            className={styles.duKnopf}
+            aria-busy={laeuft || undefined}
+            {...props}
+          >
+            <span className={styles.duZeichen}>
+              <Icon name="person" groesse={14} />
+            </span>
+            <span className={styles.duText}>{t("nav.du")}</span>
+            <Icon name="runter" groesse={14} className={styles.duPfeil} />
+          </button>
+        )}
+      />
       {fehler && (
         <p className={styles.fehler} role="alert">
           {fehler}
@@ -124,6 +174,7 @@ export function AppRahmen({
   notAus: notAusVomServer = false,
   hinweise,
   zeitzone,
+  stand,
   children,
 }: AppRahmenProps) {
   const pfad = usePathname();
@@ -191,7 +242,7 @@ export function AppRahmen({
             aktiv: liegtUnter(pfad, eintrag.href),
           })),
         }}
-        unten={<Abmelden />}
+        unten={<DuMenue stand={stand} />}
         obenZusatz={
           <NotAusKnopf an={notAus} onClick={() => setNotAusFrage(notAus ? "aus" : "an")} />
         }

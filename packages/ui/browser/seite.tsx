@@ -157,9 +157,44 @@ function Shell() {
       texte={SHELL_TEXTE}
       kopf={<strong>Antwort an Max Mustermann</strong>}
       flaeche={{ inhalt: <p>Beleg B-0142</p>, zahl: 1 }}
+      unten={
+        <Menue
+          label="Du"
+          richtung="oben"
+          ausrichtung="start"
+          eintraege={[
+            {
+              id: "zugang",
+              text: "Zugang",
+              hinweis: "Passwort",
+              onWaehlen: () => protokolliere("du: zugang"),
+            },
+            {
+              id: "doku",
+              text: "Dokumentation",
+              gruppe: "Hilfe",
+              trennerDavor: true,
+              extern: { href: "https://paibot.de/doku", neuerTab: "(öffnet in einem neuen Tab)" },
+            },
+            {
+              id: "abmelden",
+              text: "Abmelden",
+              gefahr: true,
+              trennerDavor: true,
+              onWaehlen: () => protokolliere("du: abmelden"),
+            },
+          ]}
+          ausloeser={(props) => (
+            <button type="button" data-du="" {...props}>
+              Du
+            </button>
+          )}
+        />
+      }
     >
       <p style={{ padding: 16 }}>Verlauf</p>
       <Button id="im-inhalt">Im Inhalt</Button>
+      <output id="protokoll" />
     </AppShell>
   );
 }

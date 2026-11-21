@@ -76,7 +76,7 @@ export interface AppShellNavigation {
   /** Herkunft der Modelle, z. B. „EU“. */
   modelle: string;
   bot: NavBot;
-  /** Einträge unten: Belege, Regeln, Datenschleuse, Einstellungen, Info. */
+  /** Arbeits-Seiten unten (einklappbar): Belege, Regeln, Datenschleuse, Modell und Anbieter. */
   werkzeuge: readonly NavEintrag[];
   /** Knopf „Neue Unterhaltung“ oben in der Leiste. */
   neu?: { href?: string; onClick?: () => void };

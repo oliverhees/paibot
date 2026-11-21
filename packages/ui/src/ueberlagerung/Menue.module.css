@@ -37,6 +37,53 @@
   right: 0;
 }
 
+.oben {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.texte {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hinweis {
+  font-size: var(--schrift-xs);
+  color: var(--ink-soft);
+}
+
+.trenner {
+  height: 0;
+  margin: 4px;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.gruppe {
+  padding: 4px 9px 2px;
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.fuss {
+  padding: 6px 9px 3px;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+
+.nurLesbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .eintrag {
   display: flex;
   align-items: center;
@@ -50,6 +97,7 @@
   font: inherit;
   font-size: var(--schrift-m);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 

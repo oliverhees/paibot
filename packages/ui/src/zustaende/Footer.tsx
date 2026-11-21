@@ -19,7 +19,10 @@ export function footerTeile(text: string, link: string): [string, string, string
 }
 
 export const HR_CODELABS_URL = "https://hr-codelabs.de";
+/** Adressen von PaiBot im Netz; sie öffnen nur nach einem Klick, in einem neuen Tab. */
 export const PAIBOT_URL = "https://paibot.de";
+export const PAIBOT_DOKU_URL = "https://paibot.de/doku";
+export const PAIBOT_ROADMAP_URL = "https://paibot.de/bauplan";
 
 function Verlinkt({ text, link, href }: { text: string; link: string; href: string }) {
   const [vor, teil, nach] = footerTeile(text, link);

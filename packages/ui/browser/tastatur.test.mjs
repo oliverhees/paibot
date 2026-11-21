@@ -407,6 +407,62 @@ describe.skipIf(!bereit && !erzwungen)("Tastatur-Bedienung im Browser", { timeou
     expect(await fokus()).toBe("button:Arbeitsfläche zeigen");
   });
 
+  it("AppShell breit: Menü „Du“ über dem Knopf – Enter öffnet, Pfeiltasten auch über Links, Escape gibt den Fokus zurück", async () => {
+    const fehler = await oeffne("/?ansicht=shell", { width: 1200, height: 800 });
+    await page.focus("[data-du]");
+    expect(await page.getAttribute("[data-du]", "aria-haspopup")).toBe("menu");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector("[role=menu]");
+    expect(await page.getAttribute("[data-du]", "aria-expanded")).toBe("true");
+    expect(await fokus()).toBe("menuitem:ZugangPasswort");
+    // Das Menü öffnet nach oben und bleibt im Fenster.
+    const [menue, knopf] = await Promise.all([
+      page.locator("[role=menu]").boundingBox(),
+      page.locator("[data-du]").boundingBox(),
+    ]);
+    expect(menue.y + menue.height).toBeLessThanOrEqual(knopf.y);
+    expect(menue.y).toBeGreaterThanOrEqual(0);
+    await page.keyboard.press("ArrowDown");
+    expect(await fokus()).toBe("menuitem:Dokumentation (öffnet in einem neuen Tab)");
+    const link = await page.evaluate(() => {
+      const a = document.activeElement;
+      return {
+        href: a.getAttribute("href"),
+        target: a.getAttribute("target"),
+        rel: a.getAttribute("rel"),
+      };
+    });
+    expect(link).toEqual({
+      href: "https://paibot.de/doku",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    });
+    await page.keyboard.press("End");
+    expect(await fokus()).toBe("menuitem:Abmelden");
+    await page.keyboard.press("Escape");
+    expect(await page.$("[role=menu]")).toBeNull();
+    expect(await fokus()).toBe("button:Du");
+    await page.keyboard.press(" ");
+    await page.waitForSelector("[role=menu]");
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Enter");
+    expect(await page.textContent("#protokoll")).toBe("du: abmelden");
+    expect(fehler).toEqual([]);
+  });
+
+  it("AppShell breit: Werkzeuge per Tastatur ein- und ausklappen (aria-expanded)", async () => {
+    await oeffne("/?ansicht=shell", { width: 1200, height: 800 });
+    const knopf = "button[aria-controls][aria-expanded]:has-text('Werkzeuge')";
+    await page.focus(knopf);
+    expect(await page.getAttribute(knopf, "aria-expanded")).toBe("true");
+    await page.keyboard.press("Enter");
+    expect(await page.getAttribute(knopf, "aria-expanded")).toBe("false");
+    expect(await page.isVisible("a[href='#belege']")).toBe(false);
+    await page.keyboard.press(" ");
+    expect(await page.getAttribute(knopf, "aria-expanded")).toBe("true");
+    expect(await page.isVisible("a[href='#belege']")).toBe(true);
+  });
+
   it("AppShell breit: Arbeitsfläche ohne Falle, Escape schließt und gibt den Fokus zurück", async () => {
     await oeffne("/?ansicht=shell", { width: 1000, height: 800 });
     const knopf = "button[aria-label='Arbeitsfläche zeigen']";

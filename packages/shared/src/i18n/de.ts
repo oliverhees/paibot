@@ -1480,9 +1480,29 @@ export const de = {
 
   // Chat-Eingabe: Plätze für spätere Funktionen, Seitenleiste einklappen, Fußzeile
   "chat.eingabe.anhang": "Datei anhängen (Bilder, Dokumente) – kommt später",
+  "chat.eingabe.merken": "Merken (der Bot merkt sich etwas) – kommt später",
+  "chat.eingabe.ziel": "Ziel (der Bot arbeitet, bis es erreicht ist) – kommt später",
+  "chat.eingabe.stufe": "Freigabe-Stufe (fragen, vorbereiten, ausführen mit Beleg) – kommt später",
+  "chat.eingabe.web": "Web-Zugriff – kommt später",
   "chat.eingabe.sprache": "Spracheingabe – kommt später",
+  "chat.eingabe.verlauf": "Wie voll der Verlauf für das Modell ist – kommt später",
   "nav.werkzeuge": "Werkzeuge",
   "nav.werkzeuge.einklappen": "einklappen",
   "nav.werkzeuge.ausklappen": "ausklappen",
   "footer.paibot": "PaiBot",
+
+  // Menü „Du“ unten in der Seitenleiste
+  "nav.du": "Du",
+  "nav.du.zugang": "Zugang",
+  "nav.du.zugang.hinweis": "Passwort, Sitzungen, bekannte Geräte",
+  "nav.du.einstellungen.hinweis": "Grenzen und Zeitzone",
+  "nav.du.neuigkeiten": "Neuigkeiten",
+  "nav.du.neuigkeiten.hinweis": "Stand {stand} · Liste der Änderungen",
+  "nav.du.doku": "Dokumentation",
+  "nav.du.doku.hinweis": "paibot.de/doku",
+  "nav.du.roadmap": "Roadmap",
+  "nav.du.roadmap.hinweis": "paibot.de/bauplan",
+  "nav.du.hilfe": "Hilfe",
+  "nav.du.selbsttest": "Selbsttest",
+  "nav.du.selbsttest.hinweis": "prüft deine Installation",
 } as const satisfies Record<string, string | readonly string[]>;
