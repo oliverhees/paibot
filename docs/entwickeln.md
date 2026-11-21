@@ -112,6 +112,41 @@ Gut zu wissen:
 pnpm --filter @paibot/durchstich test
 ```
 
+### Jede Aktion geht durch das Tor
+
+Drei Tests stellen sicher, dass nichts am Tor vorbei schreibt. Sie laufen mit `pnpm test`.
+
+| Test                                          | Prüft                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/web/src/gate-pflicht.test.ts`           | ruft jede Route des Routen-Vertrags über ihre echte Datei unter `app/api` auf. Ein Schreib-Protokoll in der Datenbank (ein Trigger je Tabelle) zeigt, was die Anfrage geschrieben hat. Verändernde Routen: genau ein Beleg „Entscheidung“ und ein Beleg „Ergebnis“ für ihre Aktion, jede Änderung an Daten liegt dazwischen. Lesende Routen: kein Beleg, keine Änderung. |
+| `apps/web/src/gate-pflicht-quelltext.test.ts` | Route-Dateien exportieren nur Handler über `route(…)` (Ausnahmen: Health und Ereignis-Strom, beide nur `GET`); keine Server Actions; schreibende Zugriffsfunktionen aus `@paibot/db` (aus deren Quelltext ermittelt) nur in den Dateien der Liste `ERLAUBT`; keine Tabellen-Objekte, Treiber oder eigenes schreibendes SQL in Web-App und Worker.                        |
+| `apps/worker/src/gate-pflicht.test.ts`        | ein Auftrag über den echten Handler des Workers: Modell-Anfrage mit Entscheidung und Ergebnis, der Motor läuft nur dazwischen, eine Ablehnung erreicht ihn nie, der Worker schreibt nur Lauf, Antwort, Ereignisse und Belege.                                                                                                                                            |
+
+Eine neue Route bekommt in `gate-pflicht.test.ts` einen Fall (`AKTIONS_FAELLE` bzw. `LESE_FAELLE`), sonst schlagen Typprüfung und Test fehl. Eine neue Datei, die schreibt, kommt mit Begründung in die Liste `ERLAUBT`. `BEKANNTE_LUECKEN` nennt lesende Routen, die heute noch ohne Tor schreiben; der Test meldet, sobald ein Eintrag überflüssig ist.
+
+### Ende-zu-Ende im Browser
+
+`tools/e2e` startet PaiBot im Produktions-Build und geht den ganzen Weg im Browser: Einrichtung mit Code, Anbieter eintragen, Modell wählen, Nachricht senden, gestreamte Antwort, Beleg öffnen und prüfen, ganze Kette prüfen, Export, `pnpm belege:pruefen` auf dem Export, Abmelden und Anmelden, Tagesbudget setzen, Ablehnung durch das Tor im Chat, zuletzt der Chat im Handy-Format.
+
+```bash
+pnpm build
+node tools/e2e/src/e2e.mjs --ausgabe /var/tmp/paibot-e2e
+```
+
+Was passiert:
+
+1. Eigener Postgres (Programme aus dem System, Passwort-Anmeldung, freier Port, nur `127.0.0.1`), Test-Anbieter, Migrations-Schritt wie der Dienst `migrate`, danach Web-App und Worker nur mit der App-Rolle.
+2. Web-App, Worker und Migrations-Schritt laufen mit der Netz-Sperre (`tools/e2e/src/netz-sperre.cjs`, geladen über `NODE_OPTIONS=--require`). Sie lässt nur Postgres, den Test-Anbieter und (für die Web-App) die eigene Adresse zu. Jeder andere Verbindungsaufbau und jede Namensauflösung wird abgebrochen und in `netz.jsonl` festgehalten.
+3. Im Browser wird jede Anfrage an einen anderen Host als die App abgebrochen und gezählt. Konsolenfehler und CSP-Verletzungen werden gesammelt.
+4. Grün ist die Prüfung nur, wenn alle Schritte klappen, die Sperre in allen drei Prozessen geladen war und es keinen Verstoß, keine fremde Anfrage und keinen Konsolenfehler gab.
+5. Am Ende räumt das Skript alles ab (Prozesse, Datenbank, temporäre Ordner). Im Ausgabe-Ordner bleiben `ergebnis.json`, die Logs und ein Bild je Schritt.
+
+Gegenproben: `--gegenprobe server` lädt in die Web-App zusätzlich einen absichtlichen Aufruf nach außen, `--gegenprobe browser` ruft im Browser eine fremde Adresse auf. Beide Male muss die Prüfung rot werden.
+
+Ohne Playwright meldet das Skript „ÜBERSPRUNGEN“ und endet mit Exit 0. Playwright ist nicht im Projekt enthalten (einmalig außerhalb: `npm install -g playwright && npx playwright install chromium`).
+
+Was die Netz-Sperre nicht sieht: Verbindungen aus nativen Erweiterungen oder über interne Bindungen von Node am Modul `net` vorbei, Kind-Prozesse, die `NODE_OPTIONS` nicht erben, Programme außerhalb von Node (Postgres selbst, der Browser), lokale Unix-Sockets (zugelassen) und alles vor dem Laden der Sperre. Die Dienstnamen aus Docker Compose (`postgres`, `datenschleuse`, `web`, `worker`), die die Anbieter-Schicht zur Sicherheit auflöst, beantwortet die Sperre selbst mit „unbekannt“; sie stehen als `name-lokal` im Log und zählen nicht als Verstoß.
+
 ### Berechtigungen in Tests
 
 Code, der eine Berechtigung des Tors braucht (zum Beispiel `resolveModel`), testest du mit dem Test-Zugang des Tors:
@@ -172,7 +207,7 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 - Die Token-Zahlen sind geschätzt, nicht die eines echten Modells.
 - Die Steuerung unter `/_steuerung/` antwortet ohne Schlüssel nur auf Anfragen von derselben Maschine (Loopback). Mit `FAKE_PROVIDER_CONTROL_KEY` verlangt sie die Kopfzeile `x-steuerung-schluessel` mit diesem Wert. Binde ihn trotzdem nie an ein offenes Netz, ein Container gehört in ein internes Netz.
 - Nur Chat und Modell-Liste sind nachgebildet (keine Einbettungen, keine Bilder).
-- Ein Compose-Testprofil mit dem Image und End-to-End-Tests im Browser sind geplant, aber noch nicht gebaut.
+- Ein Compose-Testprofil mit dem Image, ein Netz ohne Internet in Docker und der nächtliche Lauf mit Datenschleuse sind geplant, aber noch nicht gebaut. Die Ende-zu-Ende-Prüfung läuft heute ohne Docker, mit der Netz-Sperre in den Node-Prozessen (siehe oben).
 
 ## Fehlerbehebung
 
@@ -183,4 +218,7 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 | Port belegt                        | fester Port wird schon genutzt                  | `FAKE_PROVIDER_PORT=0` oder anderen Port nehmen         |
 | Test hängt                         | `haengen` war geplant und niemand bricht ab     | im Test abbrechen, `reset()` oder `stop()` beendet es   |
 | Werkzeug-Aufruf kommt immer wieder | `toolCall` bleibt gesetzt, bis er entfernt wird | nach dem Aufruf `configure({ toolCall: undefined })`    |
+| E2E: „Kein Postgres gefunden“      | `initdb` fehlt im System                        | Postgres installieren oder `PAIBOT_DOKU_PG_BIN` setzen  |
+| E2E: „Nicht gebaut“                | `pnpm build` fehlt                              | `pnpm build`, dann erneut                               |
+| E2E: Verstoß in `netz.jsonl`       | ein Prozess wollte nach außen                   | `rolle`, `ziel` und `stapel` im Eintrag zeigen, wer     |
 | Tests gegen Postgres übersprungen  | `PAIBOT_TEST_DATABASE_URL` ist nicht gesetzt    | Variable auf einen Wegwerf-Server setzen (siehe oben)   |
