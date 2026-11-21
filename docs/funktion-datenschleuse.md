@@ -89,26 +89,32 @@ Voraussetzung: PaiBot läuft schon mit Docker Compose (siehe [Installation](inst
 **In PaiBot nachsehen und den Standard festlegen**
 
 8. Öffne in PaiBot über die Seitenleiste die Seite „Datenschleuse“. Unter „Zustand“ steht, was der Worker zuletzt geprüft hat: „bereit“, „nicht erreichbar“ oder „Schlüssel passt nicht“, jeweils mit dem, was du tun kannst, und der Zeit der Prüfung. Der Worker prüft die Datenschleuse gleich nach seinem Start und danach alle 30 Sekunden. Steht dort „nicht eingerichtet“, zeigt die Seite die Schritte 1 bis 4 von oben und einen Link auf diese Anleitung.
+
+   ![Seite „Datenschleuse“, Zustand „nicht eingerichtet“: vier Schritte zum Zuschalten, der Link zur ausführlichen Anleitung und der gesperrte Schalter „Neue Unterhaltungen mit Datenschleuse“](assets/screenshots/datenschleuse-nicht-eingerichtet.png)
+
+   ![Zustand „bereit“: „Die Datenschleuse ist bereit.“ mit der Zeit der letzten Prüfung durch den Worker](assets/screenshots/datenschleuse-eingerichtet.png)
+
+   ![Zustand „Schlüssel passt nicht“ mit dem Ausweg, SCHLEUSE_KEY zu prüfen und Worker und Datenschleuse neu zu starten](assets/screenshots/datenschleuse-schluessel.png)
 9. Steht dort „Worker meldet sich nicht“, kam seit fünf Minuten keine Prüfung mehr an. Sieh dann mit `docker compose … ps` nach, ob der Dienst `worker` läuft, und lies sein Log.
 10. Darunter zeigt „Letzte Anfrage über die Datenschleuse“, wie die letzte Nachricht mit eingeschalteter Datenschleuse lief: bereit, gestoppt oder nicht bereit. PaiBot liest das aus den Belegen des Workers.
+
+![Karte „Letzte Anfrage über die Datenschleuse“: „Die Datenschleuse war bereit, die Anfrage ging maskiert an das Modell.“](assets/screenshots/datenschleuse-letzte-anfrage.png)
 11. Schalte „Neue Unterhaltungen mit Datenschleuse“ ein. Neue Unterhaltungen starten dann geschützt; in jeder Unterhaltung kannst du sie einzeln umschalten. Solange die Datenschleuse nicht eingerichtet ist, lässt sich der Schalter nicht einschalten.
+
+![Schalter „Neue Unterhaltungen mit Datenschleuse“ eingeschaltet, darunter „Gespeichert: Neue Unterhaltungen starten mit Datenschleuse.“](assets/screenshots/datenschleuse-an.png)
 12. Unter „So sieht eine maskierte Anfrage aus“ zeigt die Seite ein Beispiel mit erfundenen Daten: Was du schreibst, was das Modell sieht und was du zurückbekommst.
 
 Auf einem Server mit Coolify: [Datenschleuse zuschalten mit Coolify](deploy-coolify.md#datenschleuse-zuschalten).
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Die Aufnahmen entstehen per Skript aus der laufenden App mit Beispiel-Daten.
+Die Bilder zu den Schritten in PaiBot stehen oben in der Anleitung (Schritte 8 bis 11). Für die Zustände „bereit“ und „Schlüssel passt nicht“ läuft in der Beispiel-Umgebung der Doku statt der echten Datenschleuse eine kleine Attrappe, die dem Worker diese Zustände meldet; Seite und Texte sind dieselben wie im Betrieb.
 
-<!--
-Gewünschte Aufnahmen (dunkel, Beispiel-Daten):
-1. datenschleuse-nicht-eingerichtet · /datenschleuse · Rechner 1440 · Worker ohne SCHLEUSE_URL (meldet „aus“); Zustand „nicht eingerichtet“ mit Schritten, Schalter gesperrt, Beispiel
-2. datenschleuse-eingerichtet · /datenschleuse · Rechner · Worker mit SCHLEUSE_URL und laufender Datenschleuse (meldet „bereit“), noch keine geschützte Anfrage; Marke „bereit“ mit Zeit der Prüfung
-2a. datenschleuse-schluessel · /datenschleuse · Rechner · Worker mit falschem SCHLEUSE_KEY (meldet „schluessel_falsch“); Marke „Schlüssel passt nicht“ mit Ausweg
-3. datenschleuse-an · /datenschleuse · Rechner · Schalter „Neue Unterhaltungen mit Datenschleuse“ einschalten → „Gespeichert: …“
-4. datenschleuse-letzte-anfrage · /datenschleuse · Rechner · nach einer geschützten Nachricht (Beleg „modell.anfragen“ mit Datenschleuse); Karte „Letzte Anfrage über die Datenschleuse“
-5. datenschleuse-handy · /datenschleuse · Handy 390 · Zustand wie 1
--->
+Am Handy, Zustand „nicht eingerichtet“:
+
+![Seite „Datenschleuse“ auf dem Handy, Zustand „nicht eingerichtet“ mit den Schritten zum Zuschalten](assets/screenshots/datenschleuse-handy.png)
+
+Im Chat zeigt die Zeile unter einer Antwort, ob sie über die Datenschleuse lief; Bilder dazu in [Chat](funktion-chat.md#so-sieht-es-aus).
 
 ## Einstellungen
 
@@ -173,7 +179,6 @@ Mit dem Rückfall `SCHLEUSE_SCHLUESSEL_WEG=umgebung` liegt er an zwei Stellen: v
 - **Werkzeuge:** Die Beschreibungen der Werkzeuge (Name, Beschreibung, Parameter), die mit einer Anfrage gehen, werden **nicht** maskiert. Argumente von Werkzeug-Aufrufen und Werkzeug-Ergebnisse im Verlauf werden maskiert; in der Antwort kommen die Argumente zurückgetauscht an, das Werkzeug arbeitet also mit den echten Angaben auf deinem Server.
 - **Dateien und Bilder:** Bilder und Dateien als Anhang werden nicht geprüft, sondern blockiert. Die Anfrage geht dann gar nicht raus.
 - Was nach dem Zurücktauschen in PaiBot gespeichert wird, ist der Klartext (Unterhaltungen in deiner Datenbank).
-- Ohne Oberfläche gibt es noch keinen Schalter je Unterhaltung und keinen Hinweis an der Antwort (geplant mit der Chat-Oberfläche).
 - Der Zustand auf der Seite „Datenschleuse“ ist so alt wie die letzte Prüfung des Workers, also höchstens etwa 30 Sekunden, solange er läuft. Läuft der Worker nicht, bleibt der letzte Stand stehen; nach fünf Minuten steht dort „Worker meldet sich nicht“.
 - Hat der Worker noch nie gemeldet (zum Beispiel direkt nach der ersten Installation), gilt die Datenschleuse als „nicht eingerichtet“. Die Einrichtung von PaiBot liest „eingerichtet“ noch aus `SCHLEUSE_URL` in der Umgebung der Web-App; mit Compose zeigt sie deshalb „nicht eingerichtet“. Den Standard stellst du danach auf der Seite „Datenschleuse“ um.
 - `SCHLEUSE_SCHLUESSEL_WEG` muss für Worker und Konfiguration gleich sein. Beide lesen ihn aus `deploy/.env`; nach einer Änderung `pnpm schleuse:config --env-datei deploy/.env` und `up -d` ausführen.

@@ -23,19 +23,41 @@ Belege entstehen von selbst, du musst nichts einschalten.
 ### In PaiBot ansehen und prüfen
 
 1. Klick in der Navigation auf **Belege**. Du siehst alle Belege, der neueste steht oben. Jede Zeile nennt Zeit, Kennung (zum Beispiel `B-0042`), wer die Aktion ausgelöst hat („Du“, dein Bot oder PaiBot selbst), was passiert ist, die Art (Start, Entscheidung, Ergebnis, Schlüsselwechsel) und das Ergebnis (erlaubt, abgelehnt, fragt, fertig, fehlgeschlagen, abgebrochen).
-2. Ältere Belege holst du unten mit **Ältere Belege laden**. Mit den Knöpfen **Alle · Bot · Du** und der Auswahl **Jeder Status** grenzt du die geladenen Belege ein.
+
+   ![Seite „Belege“: oben die Zusammenfassung (Belege insgesamt, davon geprüft, Kette B-0001 bis …), darunter die Filter und die Liste mit Zeit, Kennung, Von, Aktion, Ergebnis und Prüfung; rechts der Kasten „Kettenkopf außerhalb aufbewahren“](assets/screenshots/belege-liste.png)
+2. Ältere Belege holst du unten mit **Ältere Belege laden**. Mit den Auswahlfeldern **Aktion** (zum Beispiel „Nachricht gesendet“) und **Unterhaltung** fragt PaiBot nur die passenden Belege ab, auch beim Nachladen. Diese Auswahl steht in der Adresse (zum Beispiel `/belege?aktion=nachricht.senden`), du kannst sie also als Lesezeichen speichern. Mit den Knöpfen **Alle · Bot · Du** und der Auswahl **Jeder Status** grenzt du die schon geladenen Belege weiter ein.
+
+   ![Liste nach der Aktion „Nachricht gesendet“ gefiltert: nur noch Belege dieser Aktion, je Entscheidung und Ergebnis](assets/screenshots/belege-filter.png)
 3. Klick auf **Ganze Kette prüfen**. Dein Browser lädt alle Belege in Stücken (der Balken zeigt, wie weit er ist) und prüft sie selbst. Danach steht oben das Ergebnis in Worten, zum Beispiel „Vertrauenswürdig: 142 Belege geprüft, alle Schlüssel aus der Kette.“ oder „Ungültig an Stelle B-0042: Inhalt geändert“. In der Liste steht bei jedem Beleg „geprüft“, „Fehler hier“, „nicht bestätigt“ oder „nicht beglaubigt“.
+
+   ![Nach „Ganze Kette prüfen“: grüner Kasten „Vertrauenswürdig: … Belege geprüft, alle Schlüssel aus der Kette.“ mit den einzelnen Prüfungen; in der Liste steht bei jedem Beleg „geprüft“](assets/screenshots/belege-kette-geprueft.png)
 4. Klick auf eine Zeile. Der Beleg erscheint als Karte: was, wer, wann, die Entscheidung mit der angewandten Regel samt Fassung, Vorbedingungen und Grenzen in Worten (erfüllt, eingehalten, verletzt), beim Ergebnis Status und Token. Verweise führen zum zugehörigen Entscheidungs- bzw. Ergebnis-Beleg, zum vorigen und nächsten Beleg und zur Unterhaltung.
+
+   ![Beleg als Karte: Was, Art „Entscheidung“, Von, Zeit, Entscheidung „erlaubt“ mit Stufe, Regel mit Fassung, Regelstand, Grenzen G-01 bis G-05, Ergebnis-Beleg, Kennung und Kette; unten „Beleg prüfen“](assets/screenshots/beleg-karte.png)
 5. Klick auf der Karte auf **Beleg prüfen**. Geprüft werden Prüfsumme, Signatur mit dem Schlüssel aus der Kette, die Verbindung zum vorigen und zum nächsten Beleg und bei Entscheidungen das Nachrechnen mit dem damaligen Regelstand. Steht alles, heißt es „Beleg stimmt“.
+
+   ![Nach „Beleg prüfen“: Marke „stimmt“ und der Kasten „Beleg stimmt“ mit den einzelnen Prüfungen bis „Entscheidung folgt aus Regel R-002“](assets/screenshots/beleg-geprueft.png)
 6. Unter der Karte klappst du **Technische Ansicht** auf: kanonisches JSON, Prüfsumme, Signatur, Schlüssel-Kennung und Prüfsumme des Vorgängers. **Beleg kopieren** legt den Beleg als eine Zeile im Format des Exports in die Zwischenablage.
+
+   ![Aufgeklappte „Technische Ansicht“ mit den Feldern Prüfsumme, Signatur, Schlüssel, Vorgänger und Kennung und dem Knopf „Beleg kopieren“; die Werte selbst sind im Bild ausgeblendet](assets/screenshots/beleg-technik.png)
 7. Über **Regeln ansehen** (rechts auf der Seite „Belege“) oder über **Regeln** in der Navigation kommst du zur Seite **Regeln**. Dort stehen die festen Regeln des Tors mit Kennung, Fassung und Stufe, dazu die Grenzen und Vorbedingungen in Worten.
 
 Geprüft wird in deinem Browser mit demselben Prüfer wie im Befehl `pnpm belege:pruefen`. Der Server liefert nur die Rohdaten und kann so nicht einfach „gültig“ behaupten. Kann dein Browser nicht selbst prüfen (Ed25519 in Web Crypto fehlt), prüft der Server; dann steht beim Ergebnis „vom Server geprüft“.
+
+### Schlüssel dieser Installation
+
+1. Auf der Seite „Belege“ steht rechts der Kasten **Schlüssel dieser Installation**. Er nennt die **Kurzform** des Schlüssels, mit dem PaiBot die Belege signiert, seine **Kennung** und seit wann er gilt. Gab es einen Schlüsselwechsel, stehen darunter die früheren Schlüssel.
+2. Notiere dir die Kurzform. Dieselbe Kurzform nennt **Beleg prüfen** bei jedem Beleg, und sie steht im Kopf des Exports. Weicht sie später ab, wurde der Schlüssel gewechselt.
+3. Mit **Öffentlichen Schlüssel anzeigen** klappst du den öffentlichen Teil des Schlüssels auf. Den privaten Teil zeigt PaiBot nie; er bleibt auf deinem Server.
+
+   ![Kasten „Schlüssel dieser Installation“ mit Kurzform, Kennung und Seit und dem aufgeklappten öffentlichen Schlüssel; die Werte sind im Bild ausgeblendet, weil sie bei jeder Installation anders sind](assets/screenshots/belege-schluessel.png)
 
 ### Exportieren und ohne PaiBot prüfen
 
 1. Klick auf der Seite „Belege“ rechts auf **Belege exportieren**. Dein Browser speichert die Datei `paibot-belege-<Datum>.jsonl`. Sie enthält alle Belege, die öffentlichen Schlüssel deiner Installation und in der ersten Zeile den Anker (den Kettenkopf beim Export).
 2. Der Export läuft selbst durch das Tor und bekommt zwei Belege. Die Seite nennt sie gleich nach dem Speichern („Der Export selbst steht in den Belegen B-0143 und B-0144“). Die Entscheidung steht schon in der Datei, das Ergebnis folgt erst danach.
+
+   ![Nach „Belege exportieren“: unter dem Knopf der Hinweis auf die beiden Belege des Exports](assets/screenshots/belege-export.png)
 3. Im Projektordner von PaiBot den Export prüfen:
 
 ```text
@@ -80,6 +102,8 @@ Der Befehl braucht keine Datenbank und kein Netz. Er funktioniert auch auf einem
 Der Anker ist eine Zeile Text: welche Installation, wie weit die Kette reicht (Nummer und Prüfsumme des letzten Belegs), welcher Schlüssel zuletzt signiert hat und mit welchem Schlüssel die Kette begonnen hat. Nur wenn du ihn **außerhalb von PaiBot** aufbewahrst, kannst du später zeigen, dass die Kette bis dorthin vollständig und unverändert ist.
 
 1. Auf der Seite „Belege“ steht rechts der Kasten **Kettenkopf außerhalb aufbewahren** mit dem aktuellen Anker. Klick auf **Anker kopieren** oder auf **Als Datei sichern** (Datei `pb-anker.json`).
+
+   ![Kasten „Kettenkopf außerhalb aufbewahren“ nach „Anker kopieren“: neben den Knöpfen steht „Kopiert.“](assets/screenshots/belege-anker.png)
 2. Oder ohne Oberfläche: Lass dir den Anker eines Exports ausgeben. Der Befehl prüft die Kette und schreibt den Anker als letzte Zeile:
 
    ```text
@@ -95,6 +119,8 @@ Der Anker ist eine Zeile Text: welche Installation, wie weit die Kette reicht (N
 3. Speichere diese Zeile als Datei `pb-anker.json` an einem Ort, auf den der Server keinen Zugriff hat: ein USB-Stick, ein Passwort-Manager, eine E-Mail an dich selbst.
 4. Wiederhole das ab und zu, zum Beispiel einmal im Monat. Ein neuerer Anker ersetzt den alten nicht, er reicht nur weiter.
 5. Zum Prüfen in PaiBot: Füge den Anker im Feld **Mit meinem aufbewahrten Anker prüfen** ein oder klick auf **Anker-Datei wählen**, dann auf **Mit Anker prüfen**. Der Anker bleibt in deinem Browser und geht nicht an den Server; der Sinn ist ja, dass er außerhalb liegt.
+
+   ![Kette mit dem eingefügten Anker geprüft: im grünen Kasten „Mit deinem aufbewahrten Anker verglichen“](assets/screenshots/belege-anker-pruefen.png)
 6. Zum Prüfen ohne PaiBot: `pnpm belege:pruefen paibot-belege-2026-11-21.jsonl --anker pb-anker.json`. Statt der Datei geht auch der Text selbst in Anführungszeichen: `--anker '{"format":"pb-anker",…}'`.
 
 Passt die Kette nicht zum Anker, nennen Seite und Befehl den Grund, zum Beispiel „Die Kette ist kürzer als der Anker: Am Ende fehlen Belege.“ (Befehl: Exit-Code `1`). Ohne aufbewahrten Anker fällt ein vollständig ausgetauschter Datenbestand nicht auf.
@@ -103,22 +129,15 @@ Nimm als Anker nur einen, den du selbst außerhalb aufbewahrt hast. Den Anker in
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Die Bilder entstehen per Skript, sobald die Aufnahmen für diese Seite eingetragen sind.
+Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Sie zeigen die Belege einer Beispiel-Installation (Bot „Pai“, einige Unterhaltungen mit dem Test-Anbieter). Was bei jeder Installation anders ist, ist in den Bildern ausgeblendet: der Anker, die Werte des Schlüssels, Prüfsummen und Signaturen der technischen Ansicht und die Kurzform in „Signatur gültig (Schlüssel …)“.
 
-<!--
-Gewünschte Aufnahmen (Beispiel-Daten: eingerichtete Installation mit Bot „Pai“, ein paar An- und
-Abmeldungen, eine Unterhaltung mit zwei Antworten des Test-Anbieters; dunkles Design):
-1. belege-liste: /belege, Rechner 1440×900, Ausgangszustand (Liste, Zusammenfassung, rechts Anker-Kasten).
-2. belege-kette-geprueft: /belege, Rechner, Klick auf „Ganze Kette prüfen“, warten bis „Vertrauenswürdig“.
-3. belege-kette-handy: /belege, Handy 390×844, nach „Ganze Kette prüfen“.
-4. beleg-karte: Klick auf eine Zeile „Modell angefragt“ mit Art „Entscheidung“, Rechner.
-5. beleg-geprueft: auf der Karte „Beleg prüfen“, warten bis „Beleg stimmt“, Ergebnis im Bild.
-6. beleg-technik: „Technische Ansicht“ aufklappen, Rechner.
-7. belege-anker: /belege, im Anker-Kasten „Anker kopieren“ klicken (Meldung „Kopiert.“), Rechner.
-8. belege-anker-pruefen: kopierten Anker in „Mit meinem aufbewahrten Anker prüfen“ einfügen, „Mit Anker prüfen“, Ergebnis „Vertrauenswürdig … Mit deinem aufbewahrten Anker verglichen“.
-9. belege-export: „Belege exportieren“, Meldung mit den beiden Belegen des Exports im Bild.
-10. regeln: /regeln, Rechner und Handy.
--->
+Am Handy, nach „Ganze Kette prüfen“ und mit dem Filter „Nachricht gesendet“:
+
+![Seite „Belege“ auf dem Handy nach „Ganze Kette prüfen“: Zusammenfassung und grüner Kasten „Vertrauenswürdig“](assets/screenshots/belege-kette-handy.png)
+
+![Seite „Belege“ auf dem Handy mit dem Filter „Nachricht gesendet“: die Belege als Karten untereinander](assets/screenshots/belege-filter-handy.png)
+
+Die Seite „Regeln“ zeigt [Das Tor](funktion-tor.md#so-sieht-es-aus).
 
 ## Einstellungen
 

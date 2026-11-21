@@ -14,18 +14,25 @@ Alle wichtigen Änderungen an PaiBot, sortiert nach Folge der YouTube-Serie. Jed
 
 ## Noch nicht veröffentlicht
 
-PaiBot ist im Bau: Diese Neuerungen sind Bausteine im Hintergrund. In der Oberfläche siehst du davon noch nichts außer der Startseite.
+PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: Einrichtung und Anmeldung, Chat mit deinem Bot und die Seiten für Belege, Regeln, Modell und Anbieter, Datenschleuse, Bot sowie Einstellungen und Info. Eine veröffentlichte Version gibt es noch nicht.
 
 ### Hinzugefügt
 
+- Einrichtung im Browser mit Einrichtungs-Code, Anmeldung mit Passwort, Sitzungen und Schutz vor zu vielen Versuchen ([Doku](docs/funktion-einrichtung-und-zugang.md))
+- Chat mit deinem Bot: Antwort Stück für Stück, Stopp, Beleg zu jeder Antwort in der Arbeitsfläche, Datenschleuse je Unterhaltung, Umbenennen und Löschen ([Doku](docs/funktion-chat.md))
+- Seiten „Bot“ (Name, Anweisung, Aussehen, was der Bot darf), „Modell und Anbieter“ (Schlüssel testen, ersetzen, entfernen, Modell wählen) und „Datenschleuse“ (Zustand vom Worker, Standard für neue Unterhaltungen) ([Bot](docs/funktion-bot.md), [Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md), [Datenschleuse](docs/funktion-datenschleuse.md))
+- Seiten „Belege“ (Liste, Filter nach Aktion und Unterhaltung, ganze Kette im Browser prüfen, Anker, Schlüssel der Installation, Export) und „Regeln“ ([Belege](docs/funktion-belege.md), [Das Tor](docs/funktion-tor.md))
+- Einstellungen (Passwort, Sitzungen, Tagesbudget, Verlaufsgrenze, Zeitzone) und Info ([Doku](docs/funktion-einstellungen.md))
+- Lauf-Steuerung: eine Nachricht wird über das Tor zur Antwort, mit Belegen, Grenzen und Aufräumen hängender Läufe
+- Doku mit Bildern aus der laufenden App für alle Funktionsseiten, aufgenommen per Skript in einer Beispiel-Umgebung (`pnpm doku:app -- pnpm doku:screenshots`); Anleitung zum Aktualisieren ([Doku](docs/aktualisieren.md))
 - Das Tor: jede Aktion läuft durch feste Regeln und Grenzen ohne KI, mit Vorbedingungen und Nachweis je Aktion ([Doku](docs/funktion-tor.md))
 - Das Beleg-Protokoll: verkettete, signierte Belege zu jeder Entscheidung, Prüfer mit `pnpm belege:pruefen`, Anker und Nachrechnen mit dem damaligen Regelstand ([Doku](docs/funktion-belege.md))
 - Verschlüsselung für gespeicherte Schlüssel, Passwörter, Tokens und Signaturen ([Doku](docs/sicherheit.md))
 - Anbieter und Modelle mit Ausgangs-Liste ([Doku](docs/funktion-anbieter-und-modelle.md))
 - Motor: ein Baustein, der eine Antwort vom Modell abholt, Stück für Stück, und sich abbrechen lässt
 - Warteschlange für Läufe, je Unterhaltung der Reihe nach
-- Worker-Prozess im selben Image wie die Web-App: holt Aufträge aus der Warteschlange ab; die Ausführung der Läufe ist noch im Bau
-- Live-Ereignisse je Unterhaltung mit Nachholen nach einer Unterbrechung (Baustein, noch nicht an die Anmeldung angeschlossen)
+- Worker-Prozess im selben Image wie die Web-App: führt die Läufe aus und meldet den Zustand der Datenschleuse
+- Live-Ereignisse je Unterhaltung mit Nachholen nach einer Unterbrechung
 - Zugriffsfunktionen auf die Datenbank je Bereich und alle Tabellen der Basis
 - Design und Bausteine der Oberfläche (Farben, App-Rahmen, Grundkomponenten) und lokal eingebundene Schriften
 - Release-Ablauf: Ein Tag `v*` baut das Image für `linux/amd64` und `linux/arm64` mit Herkunftsnachweis und SBOM und veröffentlicht es auf `ghcr.io/oliverhees/paibot`; `deploy/docker-compose.image.yml` startet PaiBot aus dem fertigen Image mit fester Version (`PAIBOT_VERSION`), nutzbar ab der ersten veröffentlichten Version ([Doku](docs/installation.md#mit-fertigem-image))

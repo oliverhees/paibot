@@ -28,9 +28,15 @@ Du musst nichts einschalten. Das Tor arbeitet bei jeder Aktion mit:
 So siehst du die Regeln und Entscheidungen in PaiBot an:
 
 1. Klick in der Navigation auf **Regeln** (direkt unter **Belege**; auf der Seite „Belege“ führt auch **Regeln ansehen** dorthin). Die Seite **Regeln** zeigt jede geltende Regel mit Kennung (zum Beispiel `R-001`), Fassung, einem Satz in Worten („Besitzer verwaltet seine Installation: erlaubt, mit Beleg.“), für welche Aktionen sie gilt, unter welchen Bedingungen und mit welcher Stufe (fragen, vorbereiten, ausführen mit Beleg; „lehnt ab“ bei Regeln, die ablehnen). Darüber steht der aktuelle Regelstand.
+
+   ![Seite „Regeln“: oben der Weg Aktion → Tor → Beleg, darunter der Regelstand und die Regeln mit Kennung, Satz in Worten, Bedingungen und Stufen](assets/screenshots/regeln.png)
 2. Darunter stehen die festen **Grenzen** G-01 bis G-05 und die **Vorbedingungen** in Worten. Diese Regeln sind fest eingebaut.
+
+   ![Grenzen G-01 bis G-05 und Vorbedingungen V-01 bis V-07, jeweils mit einem Satz in Worten](assets/screenshots/regeln-grenzen.png)
 3. Zurück auf der Seite **Belege** klickst du auf einen Beleg der Art „Entscheidung“. Die Karte nennt das Ergebnis mit Stufe, die angewandte Regel mit Fassung und Prüfsumme, den Regelstand und jede Vorbedingung und Grenze mit „erfüllt“, „eingehalten“, „verletzt“ oder „trifft hier nicht zu“.
 4. **Beleg prüfen** rechnet die Entscheidung in deinem Browser mit dem damaligen Regelstand nach, ohne KI. Stimmt sie, steht dort „Entscheidung folgt aus Regel R-001“.
+
+   ![Beleg einer Entscheidung zu „Nachricht gesendet“: Regel R-001 mit Fassung, Regelstand, Vorbedingungen V-01 und V-02, Grenzen; nach „Beleg prüfen“ der Kasten „Beleg stimmt“ mit „Entscheidung folgt aus Regel R-001“](assets/screenshots/tor-entscheidung.png)
 
 Beispiel einer Entscheidung, wie sie im Beleg steht:
 
@@ -45,27 +51,9 @@ Regelstand:    7
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Die Bilder entstehen per Skript, sobald die Aufnahmen für diese Seite eingetragen sind.
+Die Bilder zu den Schritten stehen oben in der Anleitung (Beispiel-Daten). Am Handy:
 
-<!--
-Gewünschte Aufnahmen (Beispiel-Daten wie auf der Seite „Belege“; dunkles Design):
-1. regeln: /regeln, Rechner 1440×900, Ausgangszustand (Weg Aktion → Tor → Beleg, Liste der Regeln).
-2. regeln-grenzen: /regeln, nach unten gescrollt bis Grenzen und Vorbedingungen, Rechner.
-3. regeln-handy: /regeln, Handy 390×844.
-4. tor-entscheidung: /belege, Klick auf eine Zeile „Nachricht gesendet“ mit Art „Entscheidung“, dann „Beleg prüfen“; Karte mit Regel, Regelstand, Vorbedingungen V-01/V-02, Grenzen und dem Ergebnis „Entscheidung folgt aus Regel R-001“.
--->
-
-## Die drei Stufen
-
-Jede Regel nennt eine Stufe. Sie sagt, wie weit eine Aktion gehen darf:
-
-| Stufe       | Bedeutung                                                | In der Basisversion                                 |
-| ----------- | -------------------------------------------------------- | --------------------------------------------------- |
-| fragen      | PaiBot fragt dich, bevor etwas passiert                  | gibt es noch keine Freigabe; nichts wird ausgeführt |
-| vorbereiten | PaiBot bereitet die Aktion vor, führt sie aber nicht aus | wird ebenfalls abgelehnt                            |
-| ausführen   | PaiBot führt die Aktion aus und belegt sie               | so laufen alle erlaubten Aktionen                   |
-
-Mögliche Ergebnisse des Tors sind deshalb: **erlaubt**, **abgelehnt**, **fragen** und **vorbereiten**. In der Basisversion wird bei „fragen“ und „vorbereiten“ nichts ausgeführt. Ohne passende Regel lautet die Meldung „Dafür gibt es noch keine Regel.“; bei einem Werkzeug-Aufruf deines Bots nennt sie die Regel R-005.
+![Seite „Regeln“ auf dem Handy: Weg Aktion → Tor → Beleg und die ersten Regeln](assets/screenshots/regeln-handy.png)
 
 ## Einstellungen
 

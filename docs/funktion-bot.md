@@ -19,14 +19,22 @@ Du willst, dass dein Bot in deinem Ton antwortet und weiß, wofür du ihn brauch
 ## So benutzt du es
 
 1. Klick in der Seitenleiste unter „Dein Bot“ auf den Namen deines Bots (am Handy zuerst auf das Menü oben links). Es öffnet sich die Seite „Bot“ (Adresse `/bot`); in der Seitenleiste ist dein Bot dann hervorgehoben.
+
+   ![Seite „Bot“ für den Bot „Pai“: Name, Anweisung mit Zeichenzähler, vier Beispiel-Anweisungen und darunter „Aussehen“](assets/screenshots/bot-start.png)
 2. Ändere unter „Name“ den Namen deines Bots (höchstens 60 Zeichen).
 3. Schreib unter „Anweisung“, wie dein Bot antworten soll und worauf er achten soll. Unter dem Feld zählt PaiBot mit, wie viele der 8000 Zeichen du schon nutzt.
 4. Ein Klick auf eine der „Beispiel-Anweisungen“ hängt den Satz an deine Anweisung an. Gespeichert ist noch nichts.
 5. Wähle unter „Aussehen“ eine Farbe. Jede Farbe gehört fest zu einer Form; die Vorschau oben zeigt das Ergebnis.
 6. Sobald etwas geändert ist, steht oben „Ungespeicherte Änderungen“. Klicke „Speichern“ oder „Änderungen verwerfen“.
+
+   ![Name auf „Kai“ geändert, Beispiel „Duze mich und schreib locker.“ in der Anweisung, violette Raute gewählt; oben „Ungespeicherte Änderungen“](assets/screenshots/bot-geaendert.png)
 7. Nach dem Speichern steht „Gespeichert. … nutzt die neuen Angaben ab der nächsten Antwort.“ Der neue Name erscheint auch in der Navigation.
+
+   ![Nach „Speichern“: „Gespeichert. Kai nutzt die neuen Angaben ab der nächsten Antwort.“; die Seitenleiste zeigt „Kai“](assets/screenshots/bot-gespeichert.png)
 8. Unter „Modell“ steht, mit welchem Modell dein Bot arbeitet. „Modell ändern“ führt zur Seite „Modell und Anbieter“.
 9. Unter „Was dein Bot darf“ siehst du, was er nach den geltenden Regeln darf, wofür er fragen muss und was er nie darf. „Regeln und Belege ansehen“ führt zu den Belegen.
+
+   ![Abschnitte „Modell“ und „Was dein Bot darf“: Darf, mit Beleg (R-002), Fragt vorher (R-005), Darf nie (G-01) und der Link „Regeln und Belege ansehen“](assets/screenshots/bot-darf.png)
 
 Beispiel für eine Anweisung:
 
@@ -37,16 +45,9 @@ Fasse lange Texte in drei Sätzen zusammen.
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche. Die Aufnahmen entstehen per Skript aus der laufenden App mit Beispiel-Daten.
+Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Daten, Bot „Pai“, Test-Anbieter). Am Handy steht alles untereinander:
 
-<!--
-Gewünschte Aufnahmen (dunkel, Beispiel-Daten, Bot „Pai“):
-1. bot-start · /bot · Rechner 1440 · nach der Einrichtung, Modell gewählt
-2. bot-geaendert · /bot · Rechner · Name „Kai“, Beispiel „Duze mich und schreib locker.“ anklicken, Farbe Violett (Raute) wählen → „Ungespeicherte Änderungen“
-3. bot-gespeichert · /bot · Rechner · „Speichern“ → Meldung, Navigation zeigt „Kai“
-4. bot-darf · /bot · Rechner · nach unten gescrollt: „Was dein Bot darf“
-5. bot-handy · /bot · Handy 390 · Startzustand
--->
+![Seite „Bot“ auf dem Handy mit Name und Anweisung](assets/screenshots/bot-handy.png)
 
 ## Einstellungen
 

@@ -34,7 +34,7 @@ Nie in Chats, Tickets oder Git ablegen. Die Datei `.env` wird nicht committet.
 
 ## So sieht es aus
 
-Folgt mit der Oberfläche.
+Ohne Oberfläche. Die Schutzmaßnahmen wirken im Hintergrund. Wo du sie in der App siehst, zeigen die Seiten der Funktionen: die Belege jeder Aktion in [Belege](funktion-belege.md#so-sieht-es-aus), die Regeln des Tors in [Das Tor](funktion-tor.md#so-sieht-es-aus), Sitzungen und Passwort in [Einstellungen und Info](funktion-einstellungen.md#so-sieht-es-aus) und der Zustand der Datenschleuse in [Datenschleuse](funktion-datenschleuse.md#so-sieht-es-aus).
 
 ## Einstellungen
 

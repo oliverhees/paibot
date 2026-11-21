@@ -35,34 +35,39 @@ Seit:      2026-11-07
 ## So sieht PaiBot aus
 
 <p align="center">
-  <img src="docs/assets/screenshots/vorschau-app-rechner-arbeitsflaeche.png" alt="PaiBot am Rechner: links die Navigation mit dem Bot Pai und seinen Unterhaltungen, in der Mitte ein Chat mit einem Antwort-Entwurf an Max Mustermann, rechts die Arbeitsfläche mit der Liste der Belege" width="76%">
-  <img src="docs/assets/screenshots/vorschau-app-handy-belege.png" alt="PaiBot auf dem Handy: derselbe Chat, von unten ist das Blatt „Belege“ mit vier Belegen geöffnet" width="21%">
+  <img src="docs/assets/screenshots/chat-beleg.png" alt="PaiBot am Rechner: links die Navigation mit dem Bot Pai und seinen Unterhaltungen, in der Mitte eine Antwort mit dem Entwurf einer Absage, rechts die Arbeitsfläche mit dem Beleg zu dieser Antwort" width="76%">
+  <img src="docs/assets/screenshots/chat-handy-beleg.png" alt="PaiBot auf dem Handy: eine Unterhaltung, von unten ist der Beleg zur Antwort als Blatt geöffnet" width="21%">
 </p>
 
 <p align="center">
-  <sub><b>Vorschau mit Beispiel-Daten, im Bau:</b> So soll die App mit Chat und Belegen aussehen. Der Chat und die Seiten werden gerade angeschlossen (siehe <a href="#stand">Stand</a>).</sub>
+  <sub><b>Vorschau, im Bau:</b> aufgenommen aus der laufenden App mit Beispiel-Daten (Bot „Pai“, erfundene Unterhaltungen, Test-Anbieter). Eine veröffentlichte Version gibt es noch nicht (siehe <a href="#stand">Stand</a>).</sub>
 </p>
 
 <p align="center">
-  <img src="docs/assets/screenshots/einrichtung-code.png" alt="Die echte Einrichtung von PaiBot: Pai begrüßt dich, rechts das Feld für den Einrichtungs-Code aus dem Log" width="76%">
-  <img src="docs/assets/screenshots/einrichtung-code-handy.png" alt="Die Einrichtung auf dem Handy" width="21%">
+  <img src="docs/assets/screenshots/belege-kette-geprueft.png" alt="Die Seite „Belege“: ganze Kette im Browser geprüft, „Vertrauenswürdig“, darunter die Liste der Belege mit Zeit, Kennung, Aktion, Ergebnis und Prüfung" width="49%">
+  <img src="docs/assets/screenshots/datenschleuse-letzte-anfrage.png" alt="Die Seite „Datenschleuse“: Zustand „bereit“, die letzte Anfrage ging maskiert an das Modell, und ein Beispiel mit erfundenen Daten" width="49%">
 </p>
 
 <p align="center">
-  <sub><b>Schon gebaut:</b> Einrichtung und Anmeldung, aufgenommen aus der laufenden App mit Beispiel-Daten. Alle Schritte mit Bildern: <a href="docs/funktion-einrichtung-und-zugang.md">Einrichtung und Zugang</a>.</sub>
+  <sub><b>Vorschau, im Bau:</b> Belege prüfen und die Datenschleuse (in der Doku-Umgebung mit einer Attrappe der Datenschleuse aufgenommen). Alle Schritte mit Bildern stehen in der <a href="docs/README.md">Doku</a>.</sub>
 </p>
 
 <details>
-<summary><b>Weitere Bilder: helles Design und Handy</b></summary>
+<summary><b>Weitere Bilder: helles Design und Einrichtung</b></summary>
 
 <p align="center">
-  <img src="docs/assets/screenshots/vorschau-app-rechner-hell.png" alt="PaiBot am Rechner im hellen Design mit demselben Beispiel-Chat" width="76%">
-  <img src="docs/assets/screenshots/vorschau-app-handy-hell.png" alt="PaiBot auf dem Handy im hellen Design" width="21%">
+  <img src="docs/assets/screenshots/app-hell.png" alt="PaiBot am Rechner im hellen Design mit einer Beispiel-Unterhaltung" width="76%">
+  <img src="docs/assets/screenshots/app-handy-hell.png" alt="PaiBot auf dem Handy im hellen Design" width="21%">
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/einrichtung-code.png" alt="Die Einrichtung von PaiBot: Pai begrüßt dich, rechts das Feld für den Einrichtungs-Code aus dem Log" width="76%">
+  <img src="docs/assets/screenshots/einrichtung-code-handy.png" alt="Die Einrichtung auf dem Handy" width="21%">
 </p>
 
 </details>
 
-Alle Bilder entstehen per Skript aus der App, nicht von Hand (`pnpm doku:screenshots`, siehe [Doku](docs/README.md#screenshots)).
+Alle Bilder entstehen per Skript aus der App, nicht von Hand (`pnpm doku:app -- pnpm doku:screenshots`, siehe [Doku](docs/README.md#screenshots)).
 
 ## Inhalt
 
@@ -82,9 +87,9 @@ Alle Bilder entstehen per Skript aus der App, nicht von Hand (`pnpm doku:screens
 
 ## Was ist PaiBot?
 
-**PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für eine Person – nicht ein einzelner Chatbot, sondern ein ganzes Team: Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten.
+**PaiBot** (Personal AI Bot) ist ein persönlicher KI-Agent für eine Person. Heute chattest du mit deinem Bot, und jede seiner Aktionen läuft durch ein Tor mit festen Regeln und bekommt einen Beleg. Das Ziel ist mehr als ein einzelner Chatbot: ein ganzes Team aus Bots mit eigenen Rollen, die miteinander reden, sich Aufgaben übergeben, selbst im Browser surfen und für dich in deinen Apps arbeiten (geplant, siehe [Roadmap](#roadmap)).
 
-PaiBot läuft **bei dir** – auf deinem eigenen Server oder direkt auf deinem Rechner –, nutzt **Modelle aus der EU oder dein eigenes lokales Modell**, und eine **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
+PaiBot läuft **bei dir** auf deinem eigenen Server (mit Docker Compose, auch auf dem eigenen Rechner), nutzt **Modelle aus der EU** (ein eigenes lokales Modell in der Oberfläche ist geplant), und eine zuschaltbare **Datenschleuse** ersetzt persönliche Daten durch Platzhalter, bevor sie eine KI erreichen.
 
 <p align="center">
   <img src="docs/assets/idee.jpg" alt="Die Idee: Problem, Lösung, Bauplan" width="90%">
@@ -94,27 +99,30 @@ PaiBot läuft **bei dir** – auf deinem eigenen Server oder direkt auf deinem R
 
 Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa, laufen in fremden Clouds oder bekommen weitreichende Rechte auf deinem System. PaiBot geht einen anderen Weg:
 
-|                  | PaiBot                                                                                                                       |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                      |
-| **Welche KI?**   | EU-Modelle über EUrouter, eigene Modelle über vLLM, lokal über LM Studio oder Ollama – alles OpenAI-kompatibel               |
-| **Deine Daten**  | zuschaltbare Datenschleuse: Namen, E-Mails, IBANs werden vor dem Modell maskiert und in der Antwort zurückgetauscht          |
-| **Rechte**       | Spezialisten statt Generalschlüssel: jeder Bot bekommt nur die Rechte, die er braucht; riskante Aktionen laufen abgeschottet |
-| **Kontrolle**    | alles, was etwas nach außen schickt oder verändert, wartet auf deine Freigabe                                                |
-| **Transparenz**  | Code öffentlich einsehbar, jede Folge als nachbaubarer Stand                                                                 |
+|                  | PaiBot                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Wo läuft es?** | auf deinem eigenen Server oder lokal auf deinem Rechner                                                                                                 |
+| **Welche KI?**   | EU-Modelle über EUrouter; eigene, OpenAI-kompatible Anbieter (auch auf dem eigenen Rechner) sind technisch angebunden, die Oberfläche dafür ist geplant |
+| **Deine Daten**  | zuschaltbare Datenschleuse: Namen, E-Mails, IBANs werden vor dem Modell maskiert und in der Antwort zurückgetauscht                                     |
+| **Rechte**       | jede Aktion läuft durch ein Tor mit festen Regeln ohne KI und bekommt einen Beleg; Werkzeuge mit eigenen Rechten je Bot sind geplant                    |
+| **Kontrolle**    | Belege zu jeder Aktion, im Browser prüfbar; eine Freigabe vor Aktionen, die etwas nach außen schicken, ist geplant                                      |
+| **Transparenz**  | Code öffentlich einsehbar, jede Folge als nachbaubarer Stand                                                                                            |
 
 ## Funktionen
 
-|     | Funktion                                                       | Status                                                                                                                               |
-| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 🖥️  | Läuft auf eigenem Server (Coolify) oder lokal                  | Server: vorhanden (Docker Compose, Coolify, siehe [`docs/installation.md`](docs/installation.md)); lokal mit lokalem Modell: geplant |
-| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | Anbindung gebaut (Standard: aus), Schalter in der Oberfläche im Bau                                                                  |
-| 🤖  | Eigene Bots mit Rollen, Gedächtnis und Live-Antworten          | geplant                                                                                                                              |
-| 🔌  | Apps per MCP verbinden, Freigabe vor jeder schreibenden Aktion | geplant                                                                                                                              |
-| 🌐  | Browser-Agent: der Bot surft selbst, du schaust live zu        | geplant                                                                                                                              |
-| 🤝  | Bots im Team: Delegieren, Übergeben, Chief of Staff            | geplant                                                                                                                              |
-| ⏰  | Routinen, die im Hintergrund laufen                            | geplant                                                                                                                              |
-| 📱  | App fürs Handy (PWA) mit Push, Deutsch und Englisch            | geplant                                                                                                                              |
+|     | Funktion                                                       | Status                                                                                                                        |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 🖥️  | Läuft auf eigenem Server (Docker Compose, Coolify)             | vorhanden, siehe [`docs/installation.md`](docs/installation.md); ein veröffentlichtes Image gibt es noch nicht                |
+| 💬  | Chat mit deinem Bot, Antwort Stück für Stück, Stopp            | vorhanden ([Chat](docs/funktion-chat.md))                                                                                     |
+| 🧾  | Tor und Belege: feste Regeln ohne KI, Beleg zu jeder Aktion    | vorhanden ([Belege](docs/funktion-belege.md), [Das Tor](docs/funktion-tor.md))                                                |
+| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | vorhanden als zuschaltbarer Dienst, Schalter je Unterhaltung ([Datenschleuse](docs/funktion-datenschleuse.md)); Standard: aus |
+| 🤖  | Dein Bot mit Name, Anweisung und Aussehen                      | vorhanden ([Bot](docs/funktion-bot.md)); weitere Bots mit Rollen und Gedächtnis: geplant                                      |
+| 🔌  | Apps per MCP verbinden, Freigabe vor jeder schreibenden Aktion | geplant                                                                                                                       |
+| 🌐  | Browser-Agent: der Bot surft selbst, du schaust live zu        | geplant                                                                                                                       |
+| 🤝  | Bots im Team: Delegieren, Übergeben, Chief of Staff            | geplant                                                                                                                       |
+| ⏰  | Routinen, die im Hintergrund laufen                            | geplant                                                                                                                       |
+| 📱  | App fürs Handy (PWA) mit Push, Deutsch und Englisch            | Oberfläche fürs Handy und „Als Web-App installieren“ vorhanden; Push und Englisch geplant                                     |
+| 💻  | PaiBot lokal auf deinem Rechner mit lokalem Modell             | geplant                                                                                                                       |
 
 ## So funktioniert es
 
@@ -123,43 +131,39 @@ flowchart LR
     U["📱 Du – PWA im Browser oder auf dem Handy"] --> W["PaiBot<br/>Next.js + Agenten"]
     W --> DB[("Postgres")]
     W --> J["Hintergrund-Jobs"]
-    W --> B["Browser-Dienst"]
+    W -.->|"geplant"| B["Browser-Dienst"]
     W -->|"Schleuse an"| S["🛡️ Datenschleuse<br/>maskiert persönliche Daten"]
     W -.->|"Schleuse aus"| M
-    S --> M["🇪🇺 KI-Modelle<br/>EUrouter · vLLM · LM Studio · Ollama"]
+    S --> M["🇪🇺 KI-Modelle<br/>EUrouter oder eigener Anbieter"]
 ```
 
 Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>` statt „Max Mustermann“. Die Antwort enthält trotzdem wieder den echten Namen.
 
 ## Stand
 
-> 🚧 **PaiBot ist im Bau.** Die Grundlage im Hintergrund steht und ist getestet. Der Ablauf von der Nachricht bis zur Antwort und die Oberfläche zum Benutzen (Einrichtung, Chat, Seiten) werden gerade gebaut. **Wer heute installiert, sieht die Startseite mit dem Status** („PaiBot läuft“, Datenbank ok) – noch keinen Chat.
+> 🚧 **PaiBot ist im Bau.** Die Basisversion lässt sich schon einrichten und benutzen: Einrichtung und Anmeldung, Chat mit deinem Bot, Belege und Regeln, Modell und Anbieter, Datenschleuse, Bot sowie Einstellungen und Info. Eine veröffentlichte Version (Release mit fertigem Image) gibt es noch nicht; installiert wird aus dem Quellcode.
 
-| Was                                                                                                        | Stand                  |
-| ---------------------------------------------------------------------------------------------------------- | ---------------------- |
-| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                   | ✅ fertig und getestet |
-| Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                   | ✅ fertig und getestet |
-| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                              | ✅ fertig und getestet |
-| Das [Beleg-Protokoll](docs/funktion-belege.md) mit Prüfer                                                  | ✅ fertig und getestet |
-| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                             | ✅ fertig und getestet |
-| [Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md) mit Ausgangs-Liste                           | ✅ fertig und getestet |
-| Motor: der Baustein, der eine Antwort vom Modell abholt (streamt, lässt sich abbrechen)                    | ✅ fertig und getestet |
-| Ablauf drumherum: eine Antwort von der Nachricht bis zum Ende erzeugen                                     | 🔨 im Bau              |
-| Worker-Prozess: holt Aufträge aus der Warteschlange ab (die Ausführung ist noch im Bau)                    | ✅ Baustein fertig     |
-| Live-Ereignisse: Antwort Stück für Stück übertragen (Baustein, noch nicht an die Anmeldung angeschlossen)  | ✅ Baustein fertig     |
-| Schutz-Kopfzeilen des Browsers                                                                             | ✅ fertig und getestet |
-| Grundlage für „Als Web-App installieren“ (Manifest und Symbole)                                            | ✅ Grundlage fertig    |
-| [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Anbindung gebaut, Standard: aus) | ✅ Anbindung fertig    |
-| Design und Bausteine der Oberfläche (siehe Bilder oben)                                                    | ✅ fertig und getestet |
-| Einrichtung und Anmeldung                                                                                  | 🔨 im Bau              |
-| Chat mit deinem Bot                                                                                        | 🔨 im Bau              |
-| Seiten für Belege, Modelle, Datenschleuse und Einstellungen                                                | 🔨 im Bau              |
-| Release zum Installieren                                                                                   | 🔨 im Bau              |
-| Apps anbinden                                                                                              | 🗓️ geplant danach      |
-| Bots im Team                                                                                               | 🗓️ geplant danach      |
+| Was                                                                                                     | Stand                  |
+| ------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                | ✅ fertig und getestet |
+| Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                | ✅ fertig und getestet |
+| [Einrichtung und Anmeldung](docs/funktion-einrichtung-und-zugang.md) mit Schutz vor zu vielen Versuchen | ✅ fertig und getestet |
+| [Chat](docs/funktion-chat.md) mit deinem Bot: Antwort Stück für Stück, Stopp, Beleg zu jeder Antwort    | ✅ fertig und getestet |
+| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                           | ✅ fertig und getestet |
+| [Belege](docs/funktion-belege.md): Protokoll mit Prüfer im Browser und mit `pnpm belege:pruefen`        | ✅ fertig und getestet |
+| [Modell und Anbieter](docs/funktion-anbieter-und-modelle.md) mit Ausgangs-Liste                         | ✅ fertig und getestet |
+| [Bot](docs/funktion-bot.md): Name, Anweisung, Aussehen                                                  | ✅ fertig und getestet |
+| [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Standard: aus)                | ✅ fertig und getestet |
+| [Einstellungen und Info](docs/funktion-einstellungen.md): Passwort, Sitzungen, Grenzen                  | ✅ fertig und getestet |
+| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                          | ✅ fertig und getestet |
+| Doku mit Bildern aus der laufenden App ([Doku](docs/README.md))                                         | ✅ fertig              |
+| Release zum Installieren (fertiges Image)                                                               | 🔨 im Bau              |
+| Eigener Anbieter in der Oberfläche, Not-Aus als Schalter                                                | 🗓️ geplant             |
+| Apps anbinden per MCP                                                                                   | 🗓️ geplant danach      |
+| Bots im Team                                                                                            | 🗓️ geplant danach      |
 
 - 🛠️ **Was gerade gebaut wird:** jede Aufgabe ist ein Issue, sortiert nach [Meilensteinen](https://github.com/oliverhees/paibot/milestones).
-- 📖 **Wie es funktioniert:** die [Doku](docs/README.md) beschreibt jede fertige Funktion; Abschnitte, die erst mit der Oberfläche kommen, sind dort so gekennzeichnet.
+- 📖 **Wie es funktioniert:** die [Doku](docs/README.md) beschreibt jede fertige Funktion Schritt für Schritt mit Bildern.
 
 ## Roadmap
 
@@ -184,7 +188,7 @@ Gebaut wird zwischen den Folgen der YouTube-Serie, in Coding-Sessions der Commun
 
 ## Schnellstart
 
-> PaiBot ist im Bau. Der Schnellstart zeigt heute die Startseite mit dem Status, noch keinen Chat. Für einen Server mit Datenbank: [Installation mit Docker Compose](docs/installation.md).
+> PaiBot ist im Bau. Zum Ausprobieren mit Datenbank, Einrichtung und Chat: [Installation mit Docker Compose](docs/installation.md). Der Schnellstart unten ist für die Entwicklung.
 
 **Voraussetzungen:** Node.js 22 und pnpm 10
 
@@ -264,13 +268,13 @@ Ja, wenn du es allein nutzt: als Selbstständiger, als Freiberufler oder für de
 <details>
 <summary><b>Was unterscheidet PaiBot?</b></summary>
 
-PaiBot setzt diese Schwerpunkte: KI-Modelle aus der EU oder lokal als Standard, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, eine eigene MCP-Verwaltung ohne fremden Dienst dazwischen, ein Beleg für jede Aktion, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut.
+PaiBot setzt diese Schwerpunkte: KI-Modelle aus der EU als Standard, eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, ein Tor mit festen Regeln und ein Beleg für jede Aktion, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut. Geplant sind lokale Modelle in der Oberfläche und eine eigene Anbindung von Apps per MCP.
 </details>
 
 <details>
 <summary><b>Brauche ich einen eigenen Server?</b></summary>
 
-Nein. PaiBot läuft auf einem Server (z. B. mit Coolify) oder lokal auf deinem Rechner. Lokal kannst du sogar ein Modell aus LM Studio oder Ollama anbinden, dann verlässt keine Anfrage deinen Rechner.
+Heute läuft PaiBot mit Docker Compose auf einem Server (z. B. mit Coolify) oder auf deinem eigenen Rechner. Ein Modell auf deinem eigenen Rechner anzubinden, kann PaiBot technisch schon; die Oberfläche dafür ist geplant.
 </details>
 
 <details>
