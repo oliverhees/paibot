@@ -51,6 +51,8 @@ Ein Lauf liest den Bot beim Start im Kontext (`packages/agents/src/run/kontext.t
 | `bots`     | `packages/db/src/schema/anbieter.ts` | Name, Anweisung, Modell, Form, Farbe, `max_output_tokens` (Standard 4096) |
 | `settings` | `packages/db/src/schema/settings.ts` | `default_bot_id`: der Bot der Installation                                |
 
+Ausgabegrenze: Die Einrichtung legt den Bot ohne `maxOutputTokens` an, es gilt der Standard 4096 der Datenbank (`apps/web/src/lib/zugang/einrichtung.ts`, `packages/db/src/schema/anbieter.ts#bots`). `PUT /api/bot` verlangt alle fünf Felder, auch `maxOutputTokens` (1 bis `LIMITS.maxOutputTokens`), und speichert nur die geänderten (`packages/shared/src/inputs.ts#botInput`, `apps/web/src/lib/bot/bot.ts#geaenderteFelder`). Die Seite „Bot“ hat kein Eingabefeld dafür und schickt den geladenen Wert zurück (`apps/web/src/app/(app)/bot/BotAnsicht.tsx`, `apps/web/src/lib/bot/ansicht.ts#botEntwurf`); über die Schnittstelle ist der Wert also änderbar. Der Lauf nutzt den Wert des Bots als Ausgabegrenze der Anfrage (`packages/agents/src/run/kontext.ts`).
+
 CHECKs in `packages/db/src/schema/anbieter.ts#bots`: `bots_name_laenge` (1 bis 60 Zeichen), `bots_instructions_laenge` (höchstens 8000), `bots_max_output_tokens_positiv`. Migration: `packages/db/drizzle/0001_basis.sql`.
 
 ## Schnittstellen
