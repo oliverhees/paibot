@@ -19,9 +19,17 @@ export interface SchleuseMeldung {
   checkedAt: Date;
 }
 
+/** So weit darf eine Meldung der Uhr der Datenbank voraus sein (abweichende Uhren). */
+export const ZUKUNFT_TOLERANZ_SEKUNDEN = 60;
+
+const GRENZE = sql`pg_catalog.now() + pg_catalog.make_interval(secs => ${ZUKUNFT_TOLERANZ_SEKUNDEN})`;
+
 /**
  * Hält den geprüften Zustand fest (eine Zeile, die jede Meldung überschreibt). Eine ältere Meldung
  * überschreibt nie eine neuere: Kommen zwei Prüfungen in falscher Reihenfolge an, gilt die spätere.
+ * Maßstab ist die Uhr der Datenbank: Ein Zeitpunkt weiter als `ZUKUNFT_TOLERANZ_SEKUNDEN` in der
+ * Zukunft wird auf diese Grenze gekürzt, und eine gespeicherte Meldung aus der Zukunft hält keine
+ * neue auf.
  */
 export async function report(
   db: Database,
@@ -35,22 +43,35 @@ export async function report(
     () =>
       db
         .insert(schleuseZustand)
-        .values({ id: "singleton", state: input.state, checkedAt })
+        .values({
+          id: "singleton",
+          state: input.state,
+          checkedAt: sql`least(${checkedAt.toISOString()}::timestamptz, ${GRENZE})`,
+        })
         .onConflictDoUpdate({
           target: schleuseZustand.id,
-          set: { state: input.state, checkedAt },
-          setWhere: sql`${schleuseZustand.checkedAt} <= excluded.checked_at`,
+          set: { state: input.state, checkedAt: sql`excluded.checked_at` },
+          setWhere: sql`${schleuseZustand.checkedAt} <= excluded.checked_at or ${schleuseZustand.checkedAt} > ${GRENZE}`,
         }),
     standardFehler,
   );
   return { state: input.state, checkedAt };
 }
 
-/** Zuletzt gemeldeter Zustand; `undefined`, solange der Worker noch nichts gemeldet hat. */
+/**
+ * Zuletzt gemeldeter Zustand; `undefined`, solange der Worker noch nichts gemeldet hat. Eine
+ * Meldung mit einem Zeitpunkt in der Zukunft (nach der Uhr der Datenbank) gilt als nicht gemeldet:
+ * So hat sie der Worker nie geschrieben, und sie darf nicht als frisch gelten.
+ */
 export async function get(db: Database): Promise<SchleuseMeldung | undefined> {
   const [row] = await db
-    .select({ state: schleuseZustand.state, checkedAt: schleuseZustand.checkedAt })
+    .select({
+      state: schleuseZustand.state,
+      checkedAt: schleuseZustand.checkedAt,
+      zukunft: sql<boolean>`${schleuseZustand.checkedAt} > ${GRENZE}`,
+    })
     .from(schleuseZustand)
     .where(eq(schleuseZustand.id, "singleton"));
-  return row === undefined ? undefined : { state: row.state, checkedAt: row.checkedAt };
+  if (row === undefined || row.zukunft) return undefined;
+  return { state: row.state, checkedAt: row.checkedAt };
 }
