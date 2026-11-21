@@ -21,6 +21,7 @@ import { type BotId, type KeyId, newId, type OwnerId, type ProviderId } from "@p
 import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
+import { schleuseEingerichtet } from "../schleuse/schleuse";
 import type { ZugangsDienste } from "./dienste";
 import { codeSicherstellen } from "./einrichtungs-code";
 import { geraetCookie, neuerGeraetWert } from "./geraet";
@@ -56,7 +57,7 @@ export async function einrichtungsStatus(
   if (offen) await codeSicherstellen(d.code, db, d.uhr.now(), d.log.info);
   return {
     offen,
-    schleuseInstalliert: d.schleuseInstalliert(),
+    schleuseInstalliert: await schleuseEingerichtet(db, d, d.uhr.now()),
     anbieter: d.einrichtungsAnbieter().name,
     passwortMin: LIMITS.passwordMinChars,
     botVorschlag: t("einrichtung.bot.vorschlag"),
@@ -148,7 +149,10 @@ export async function einrichtungAbschliessen(
   const d = kontext.dienste;
   const codeNachweis = await codePruefen(kontext, eingabe.setupCode);
 
-  if (eingabe.schleuseModeDefault === "on" && !d.schleuseInstalliert()) {
+  if (
+    eingabe.schleuseModeDefault === "on" &&
+    !(await schleuseEingerichtet(kontext.db, d, d.uhr.now()))
+  ) {
     throw new PaiBotError("schleuse_nicht_installiert", {
       felder: [{ feld: "schleuseModeDefault", code: "ungueltig" }],
     });

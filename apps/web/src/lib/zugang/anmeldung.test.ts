@@ -317,6 +317,33 @@ describe("Sitzung", () => {
   });
 });
 
+describe("Passwortwechsel im Beleg", () => {
+  it("falsches aktuelles Passwort: das Tor lehnt ab, der Beleg sagt „abgelehnt“, der Hash bleibt", async () => {
+    const { u, h } = await eingerichtet();
+    const a = await einloggen(u, h);
+    const vorher = (await repo.owner.get(u.db))?.passwordHash;
+    const falsch = await anfrage(u, h.passwort, "POST", "/api/zugang/passwort", {
+      dose: a.dose,
+      koerper: { currentPassword: "falsch-falsch-1", newPassword: "Neues-Passwort-2026" },
+    });
+    expect(falsch.status).toBeGreaterThanOrEqual(400);
+    const entscheidungen = (await repo.belege.listFrom(u.db))
+      .map((e) => e.body)
+      .filter((b) => b.type === "decision" && b.action.type === "zugang.passwort_aendern");
+    expect(entscheidungen).toHaveLength(1);
+    const [entscheidung] = entscheidungen;
+    if (entscheidung?.type !== "decision") throw new Error("keine Entscheidung");
+    expect(entscheidung.facts).toMatchObject({ currentPasswordVerified: false });
+    expect(entscheidung.decision.outcome).toBe("deny");
+    const ergebnisse = (await repo.belege.listFrom(u.db))
+      .map((e) => e.body)
+      .filter((b) => b.type === "result" && b.action.type === "zugang.passwort_aendern");
+    // Nach einer Ablehnung hält das Tor nur „abgelehnt“ fest, es lief nichts.
+    expect(ergebnisse.map((b) => (b.type === "result" ? b.result.status : ""))).toEqual(["denied"]);
+    expect((await repo.owner.get(u.db))?.passwordHash).toBe(vorher);
+  });
+});
+
 describe("CSRF", () => {
   it("fehlender `Origin`: abgelehnt", async () => {
     const { u, h } = await eingerichtet();
