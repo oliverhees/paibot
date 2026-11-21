@@ -30,6 +30,7 @@ import {
   providerEgressTarget,
 } from "./egress";
 import { providerFailure } from "./errors";
+import type { ResponseLimits } from "./pinned-fetch";
 import {
   SCHLEUSE_SESSION_HEADER,
   type SchleuseConnection,
@@ -67,6 +68,15 @@ export interface ResolveModelDeps {
   /** Namensauflösung der Ausgangs-Liste (nur für Tests). */
   lookup?: HostLookup;
 }
+
+/**
+ * Grenzen für Antworten im Gespräch (Strom des Modells, direkt oder über die Datenschleuse):
+ * höchstens 64 MiB entpackt je Antwort, sonst die Standards (`PINNED_MAX_…`: Fehlerkörper 64 KiB,
+ * Verhältnis 500, Zeile 1 MiB, Kopfzeilen 16 KiB).
+ */
+export const CHAT_RESPONSE_LIMITS: Readonly<ResponseLimits> = Object.freeze({
+  maxBodyBytes: 64 * 1024 * 1024,
+});
 
 /** Alle Modell-Zugänge, die `resolveModel` gebaut hat. Nur sie sind echt. */
 const issuedModels = new WeakSet<object>();
@@ -168,11 +178,10 @@ export function resolveModel(
     egressTarget = providerEgressTarget(baseUrl, provider.region);
   }
 
-  const guarded = createEgressFetch(
-    [egressTarget],
-    deps.baseFetch,
-    deps.lookup === undefined ? {} : { lookup: deps.lookup },
-  );
+  const guarded = createEgressFetch([egressTarget], deps.baseFetch, {
+    limits: CHAT_RESPONSE_LIMITS,
+    ...(deps.lookup === undefined ? {} : { lookup: deps.lookup }),
+  });
   const stillAllowed = () => isGatePermit(permit, "modell.anfragen");
   const authorizedFetch: typeof fetch =
     facts.route === "schleuse"

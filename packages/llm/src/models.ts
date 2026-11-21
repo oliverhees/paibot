@@ -11,6 +11,7 @@
 import type { ErrorCode } from "@paibot/shared/fehler";
 import { checkProviderBaseUrl, createEgressFetch, providerEgressTarget } from "./egress";
 import { mapProviderError, providerFailure } from "./errors";
+import type { ResponseLimits } from "./pinned-fetch";
 import type { ProviderEndpoint } from "./templates";
 
 /** Ein Modell aus der Liste des Anbieters. */
@@ -31,6 +32,12 @@ export interface ProviderCallOptions {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_BODY_BYTES = 5_000_000;
+
+/** Grenzen für die Modell-Liste: höchstens 5 MB entpackt, Fehlerkörper höchstens 16 KiB. */
+export const MODEL_LIST_LIMITS: Readonly<ResponseLimits> = Object.freeze({
+  maxBodyBytes: MAX_BODY_BYTES,
+  maxErrorBodyBytes: 16 * 1024,
+});
 const MAX_MODELS = 5_000;
 const MAX_SLUG_CHARS = 200;
 /** Sichtbare ASCII-Zeichen ohne Leerzeichen; alles andere ließe sich nicht als Kopfzeile senden. */
@@ -105,7 +112,7 @@ async function readLimited(response: Response): Promise<string> {
     total += value.byteLength;
     if (total > MAX_BODY_BYTES) {
       await reader.cancel().catch(() => undefined);
-      throw providerFailure("anbieter_nicht_erreichbar");
+      throw providerFailure("limit_erreicht");
     }
     chunks.push(value);
   }
@@ -154,7 +161,10 @@ export async function fetchModels(
   }
 
   const doFetch =
-    options.fetch ?? createEgressFetch([providerEgressTarget(check.url.href, provider.region)]);
+    options.fetch ??
+    createEgressFetch([providerEgressTarget(check.url.href, provider.region)], undefined, {
+      limits: MODEL_LIST_LIMITS,
+    });
   const timeout = AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout;
   const headers: Record<string, string> = { accept: "application/json" };

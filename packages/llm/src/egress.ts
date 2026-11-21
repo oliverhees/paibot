@@ -11,7 +11,7 @@
 import { lookup } from "node:dns/promises";
 import type { Region } from "@paibot/shared/objekte";
 import { classifyIpAddress, isIpAddress, METADATA_HOSTS, normalizeHost } from "./address";
-import { pinnedFetch } from "./pinned-fetch";
+import { type PinnedOptions, pinnedFetch, type ResponseLimits } from "./pinned-fetch";
 
 /** Namen der Dienste im Compose-Stack. Sie sind als Anbieter-Ziel nie erlaubt. */
 export const INTERNAL_SERVICE_HOSTS = ["postgres", "datenschleuse", "web", "worker"] as const;
@@ -65,6 +65,8 @@ export interface EgressOptions {
   onBlocked?: (target: string, reason: EgressBlockReason) => void;
   /** Zeitgrenze ohne Datenfluss für die Verbindung (Standard `PINNED_IDLE_TIMEOUT_MS`). */
   idleTimeoutMs?: number;
+  /** Größen-Grenzen je Antwort (Standards `PINNED_MAX_…`); gelten für jede Etappe. */
+  limits?: ResponseLimits;
 }
 
 const MAX_REDIRECTS = 5;
@@ -182,6 +184,10 @@ export function createEgressFetch(
   options: EgressOptions = {},
 ): typeof fetch {
   const resolve = options.lookup ?? systemLookup;
+  const pinnedOptions: PinnedOptions = {
+    ...(options.idleTimeoutMs === undefined ? {} : { idleTimeoutMs: options.idleTimeoutMs }),
+    ...(options.limits === undefined ? {} : { limits: options.limits }),
+  };
 
   const block = (url: URL, reason: EgressBlockReason): never => {
     const target = describeTarget(url);
@@ -234,7 +240,7 @@ export function createEgressFetch(
           ? await pinnedFetch(
               { url, method: request.method, headers: request.headers, body: request.body, signal },
               addresses,
-              options.idleTimeoutMs === undefined ? {} : { idleTimeoutMs: options.idleTimeoutMs },
+              pinnedOptions,
             )
           : await baseFetch(url, {
               method: request.method,
