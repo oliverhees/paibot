@@ -469,7 +469,7 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
     for (const ansicht of ansichten) {
       for (const breite of [1440, 390]) {
         await oeffne(ansicht, { breite });
-        const befund = await page.evaluate(() => ({
+        const ergebnis = await page.evaluate(() => ({
           ueberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           scroller: [...document.querySelectorAll("main *")]
             .filter((e) =>
@@ -477,7 +477,7 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
             )
             .map((e) => e.tagName.toLowerCase()),
         }));
-        expect({ ansicht, breite, ...befund }).toEqual({
+        expect({ ansicht, breite, ...ergebnis }).toEqual({
           ansicht,
           breite,
           ueberlauf: 0,
