@@ -1,5 +1,5 @@
 /**
- * PaiBot – prüft, dass die Compose-Datei mit fertigem Image dieselbe Aufstellung hat wie die mit Bau.
+ * PaiBot – prüft, dass die Compose-Dateien für Image und Coolify dieselbe Aufstellung haben wie die mit Bau.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -17,19 +17,41 @@
 //   node scripts/compose-vergleich.mjs
 //   node scripts/compose-vergleich.mjs <bau.yml> <image.yml>    andere Dateien vergleichen
 //
+// Dazu deploy/docker-compose.coolify.yml (Coolify erzeugt die Geheimnisse): Sie muss dieselben
+// Dienste mit denselben Zeilen haben wie die Bau-Datei; die Reihenfolge der Dienste darf anders
+// sein (web steht dort zuerst). Erlaubt sind nur diese Unterschiede:
+//   - Passwort des Tabellen-Besitzers: ${SERVICE_HEX_64_PGOWNER} statt ${POSTGRES_PASSWORD…}
+//   - Passwort der App-Rolle:          ${SERVICE_HEX_64_PGAPP} statt ${POSTGRES_APP_PASSWORD…}
+//   - PAIBOT_SECRET:                   ${SERVICE_REALBASE64_32_PAIBOT} statt ${PAIBOT_SECRET…}
+//   - APP_URL:                         ${SERVICE_URL_WEB} statt ${APP_URL…}
+//   - beim Dienst web genau eine Zeile „SERVICE_URL_WEB_3000:“ (Domain gehört zu web, Port 3000)
+// Erzeugte Werte stehen ohne Standard (kein „${SERVICE_…:-…}“), andere SERVICE_-Variablen gibt es
+// dort nicht.
+//
+//   node scripts/compose-vergleich.mjs <bau.yml> <image.yml> <coolify.yml>
+//                                        mit eigenen Dateien; ohne dritte keine Coolify-Datei
+//
+// Für alle Compose-Dateien unter deploy/ (bzw. die angegebenen) zusätzlich: keine Schreibweisen,
+// die ein YAML-1.1-Parser (z. B. in Coolify) anders liest als Docker Compose (YAML 1.2): Zahlen mit
+// führender Null (oktal), 0o…/0x…, Zeit-Zahlen wie 1:30 (Basis 60) und unquotiert yes/no/on/off.
+// Solche Werte in Anführungszeichen setzen oder als Dezimalzahl schreiben (mode: 1023 statt 01777).
+//
 // Exit-Code 0: gleich. Exit-Code 1: Unterschied gefunden (mit Zeile und Hinweis).
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const PAIBOT_DIENSTE = ["migrate", "web", "worker"];
 const IMAGE_ZEILE = /^ {4}image: ghcr\.io\/oliverhees\/paibot:\$\{PAIBOT_VERSION:\?[^}]+\}$/;
 const LOKAL_ZEILE = /^ {4}image: paibot:lokal$/;
 
+const eigeneDateien = process.argv.length > 2;
 const [bauPfad, imagePfad] = [
   resolve(process.argv[2] ?? "deploy/docker-compose.yml"),
   resolve(process.argv[3] ?? "deploy/docker-compose.image.yml"),
 ];
+const coolifyArg = eigeneDateien ? process.argv[4] : "deploy/docker-compose.coolify.yml";
+const coolifyPfad = coolifyArg === undefined ? undefined : resolve(coolifyArg);
 
 const fehler = [];
 
@@ -178,6 +200,181 @@ for (let i = 0; i < laenge; i++) {
   break;
 }
 
+// ── Coolify-Datei ──────────────────────────────────────────────────────────────────────────
+// Herkunft der Geheimnisse und der Adresse in eine gemeinsame Form bringen. Bau-Datei: die
+// Pflichtwerte aus .env; Coolify-Datei: die Werte, die Coolify erzeugt.
+const HERKUNFT_BAU = [
+  [/\$\{POSTGRES_APP_PASSWORD:\?[^}]+\}/g, "«APP-PASSWORT»"],
+  [/\$\{POSTGRES_PASSWORD(?::\?[^}]+)?\}/g, "«BESITZER-PASSWORT»"],
+  [/\$\{PAIBOT_SECRET:\?[^}]+\}/g, "«PAIBOT-SECRET»"],
+  [/\$\{APP_URL:\?[^}]+\}/g, "«APP-URL»"],
+];
+const HERKUNFT_COOLIFY = [
+  [/\$\{SERVICE_HEX_64_PGAPP\}/g, "«APP-PASSWORT»"],
+  [/\$\{SERVICE_HEX_64_PGOWNER\}/g, "«BESITZER-PASSWORT»"],
+  [/\$\{SERVICE_REALBASE64_32_PAIBOT\}/g, "«PAIBOT-SECRET»"],
+  [/\$\{SERVICE_URL_WEB\}/g, "«APP-URL»"],
+];
+const WEB_PORT_ZEILE = "      SERVICE_URL_WEB_3000:";
+
+function herkunft(liste, regeln) {
+  return liste.map((z) => {
+    let text = z.text;
+    for (const [muster, ersatz] of regeln) text = text.replace(muster, ersatz);
+    return { ...z, text };
+  });
+}
+
+/** Teilt in Blöcke: je Dienst seine Zeilen, dazu alle Zeilen außerhalb der Dienste. */
+function bloecke(liste) {
+  const dienste = new Map();
+  const reihenfolge = [];
+  const sonst = [];
+  for (const z of liste) {
+    if (z.dienst === "") {
+      sonst.push(z);
+      continue;
+    }
+    if (!dienste.has(z.dienst)) {
+      dienste.set(z.dienst, []);
+      reihenfolge.push(z.dienst);
+    }
+    dienste.get(z.dienst).push(z);
+  }
+  return { dienste, reihenfolge, sonst };
+}
+
+function ersterUnterschied(a, b, wo) {
+  const laenge = Math.max(a.length, b.length);
+  for (let i = 0; i < laenge; i++) {
+    if (a[i]?.text === b[i]?.text) continue;
+    fehler.push(
+      [
+        `Erster Unterschied zur Coolify-Datei (${wo}):`,
+        `  ${bauPfad}:${a[i]?.nr ?? "Ende"}  ${a[i]?.text ?? "(keine Zeile mehr)"}`,
+        `  ${coolifyPfad}:${b[i]?.nr ?? "Ende"}  ${b[i]?.text ?? "(keine Zeile mehr)"}`,
+        "  Erlaubt ist nur die Herkunft der Geheimnisse und der Adresse: Änderung in beiden nachziehen.",
+      ].join("\n"),
+    );
+    return;
+  }
+}
+
+let coolifyZeilen = 0;
+if (coolifyPfad !== undefined) {
+  const roh = mitDienst(zeilen(coolifyPfad));
+  for (const z of roh) {
+    if (/\$\{SERVICE_[A-Z0-9_]*[^A-Z0-9_}]/.test(z.text)) {
+      fehler.push(
+        `${coolifyPfad}:${z.nr}: Erzeugte Werte stehen ohne Standard und ohne Zusatz (nur \${SERVICE_…}).`,
+      );
+    }
+  }
+  const portZeilen = roh.filter((z) => z.text === WEB_PORT_ZEILE);
+  if (portZeilen.length !== 1 || portZeilen[0].dienst !== "web") {
+    fehler.push(
+      `${coolifyPfad}: Dienst web braucht genau eine Zeile „SERVICE_URL_WEB_3000:“ (Domain für web, Port 3000).`,
+    );
+  }
+  const ohnePort = roh.filter((z) => !(z.dienst === "web" && z.text === WEB_PORT_ZEILE));
+  const coolify = herkunft(ohnePort, HERKUNFT_COOLIFY);
+  for (const z of coolify) {
+    const rest = /\$\{?SERVICE_[A-Z0-9_]*/.exec(z.text);
+    if (rest) {
+      fehler.push(`${coolifyPfad}:${z.nr}: ${rest[0]} ist hier nicht vorgesehen.`);
+    }
+    if (/\$\{(POSTGRES_PASSWORD|POSTGRES_APP_PASSWORD|PAIBOT_SECRET|APP_URL)\b/.test(z.text)) {
+      fehler.push(
+        `${coolifyPfad}:${z.nr}: Diesen Wert erzeugt Coolify; er kommt hier nicht aus einer eigenen Variable.`,
+      );
+    }
+  }
+  const vorlage = bloecke(herkunft(mitDienst(zeilen(bauPfad)), HERKUNFT_BAU));
+  const neu = bloecke(coolify);
+  coolifyZeilen = coolify.length;
+  if (neu.reihenfolge[0] !== "web") {
+    fehler.push(
+      `${coolifyPfad}: Der erste Dienst muss web sein (Coolify bietet ihn im Dialog „Add domain“ zuerst an).`,
+    );
+  }
+  const namen = [...new Set([...vorlage.reihenfolge, ...neu.reihenfolge])].sort();
+  for (const name of namen) {
+    if (!vorlage.dienste.has(name) || !neu.dienste.has(name)) {
+      fehler.push(`${coolifyPfad}: Dienst ${name} fehlt in einer der beiden Dateien.`);
+      continue;
+    }
+    ersterUnterschied(vorlage.dienste.get(name), neu.dienste.get(name), `Dienst ${name}`);
+  }
+  ersterUnterschied(vorlage.sonst, neu.sonst, "außerhalb der Dienste");
+}
+
+// ── Schreibweisen, die YAML 1.1 und YAML 1.2 verschieden lesen ─────────────────────────────
+const MEHRDEUTIG = [
+  [/^[-+]?0[0-9_]+$/, "Zahl mit führender Null (YAML 1.1: oktal, YAML 1.2: dezimal)"],
+  [/^[-+]?0[oOxXbB][0-9a-fA-F_]+$/, "Zahl mit 0o/0x/0b (nicht in jeder YAML-Fassung eine Zahl)"],
+  [/^[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+(\.[0-9_]*)?$/, "Zahl mit Doppelpunkt (YAML 1.1: Basis 60)"],
+  [
+    /^(y|Y|yes|Yes|YES|n|N|no|No|NO|on|On|ON|off|Off|OFF)$/,
+    "yes/no/on/off (YAML 1.1: Wahrheitswert)",
+  ],
+];
+
+/** Unquotierte Werte einer Zeile: nach „schlüssel: “, nach „- “ und in [a, b]. */
+function werteDerZeile(text) {
+  const ohneKommentar = text.replace(/\s+#.*$/, "");
+  let rest = ohneKommentar.trim();
+  const werte = [];
+  while (rest.startsWith("- ")) rest = rest.slice(2).trim();
+  if (rest === "-") return werte;
+  const schluessel = /^([^"'\s][^:]*?|"[^"]*"|'[^']*'):(\s+(.*))?$/.exec(rest);
+  if (schluessel && !/^[0-9]/.test(rest)) {
+    if (schluessel[3] === undefined) return werte;
+    rest = schluessel[3].trim();
+  }
+  if (rest.startsWith("[") && rest.endsWith("]")) {
+    for (const teil of rest.slice(1, -1).split(",")) werte.push(teil.trim());
+  } else {
+    werte.push(rest);
+  }
+  return werte.filter((w) => w !== "" && !/^["'&*|>!]/.test(w));
+}
+
+function mehrdeutigeSchreibweisen(pfad) {
+  const text = readFileSync(pfad, "utf8").split("\n");
+  let blockEinzug = -1;
+  text.forEach((zeile, i) => {
+    const einzug = zeile.length - zeile.trimStart().length;
+    if (blockEinzug >= 0) {
+      if (zeile.trim() === "" || einzug > blockEinzug) return;
+      blockEinzug = -1;
+    }
+    const inhalt = zeile.trim();
+    if (inhalt === "" || inhalt.startsWith("#")) return;
+    // Mehrzeiliger Text (| oder >): die folgenden, tiefer eingerückten Zeilen sind kein YAML-Wert.
+    if (/(^|[:\s-])[|>][-+0-9]*(\s+#.*)?$/.test(inhalt)) {
+      blockEinzug = einzug;
+      return;
+    }
+    for (const wert of werteDerZeile(zeile)) {
+      for (const [muster, grund] of MEHRDEUTIG) {
+        if (muster.test(wert)) {
+          fehler.push(
+            `${pfad}:${i + 1}: „${wert}“ – ${grund}. In Anführungszeichen setzen oder eindeutig schreiben.`,
+          );
+        }
+      }
+    }
+  });
+}
+
+const alleComposeDateien = eigeneDateien
+  ? process.argv.slice(2).map((p) => resolve(p))
+  : readdirSync(resolve("deploy"))
+      .filter((name) => /^docker-compose.*\.ya?ml$/.test(name))
+      .sort()
+      .map((name) => resolve(join("deploy", name)));
+for (const pfad of alleComposeDateien) mehrdeutigeSchreibweisen(pfad);
+
 if (fehler.length > 0) {
   for (const f of fehler) console.error(f);
   process.exit(1);
@@ -185,3 +382,11 @@ if (fehler.length > 0) {
 console.log(
   `Compose-Vergleich ok: ${bau.length} Zeilen gleich, Unterschied nur bei image/build von ${PAIBOT_DIENSTE.join(", ")}.`,
 );
+console.log(
+  `Schreibweisen ok: ${alleComposeDateien.length} Compose-Dateien ohne Werte, die YAML 1.1 und 1.2 verschieden lesen.`,
+);
+if (coolifyPfad !== undefined) {
+  console.log(
+    `Compose-Vergleich Coolify ok: ${coolifyZeilen} Zeilen gleich, Unterschied nur bei der Herkunft von Passwörtern, PAIBOT_SECRET und APP_URL.`,
+  );
+}

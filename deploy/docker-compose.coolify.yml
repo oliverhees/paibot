@@ -1,0 +1,411 @@
+# PaiBot – Docker-Compose-Stack für Coolify: Coolify erzeugt Passwörter, Geheimnis und Adresse.
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-21
+
+# PaiBot auf Coolify (Ressource aus dem Git-Repo, Build Pack „Docker Compose“). Dieselben Dienste
+# und dieselbe Härtung wie deploy/docker-compose.yml (Netze, Rechte, Speicher-Grenzen, Healthchecks,
+# Logs); das prüft node scripts/compose-vergleich.mjs. Anders ist nur, woher die Passwörter, das
+# Geheimnis und die Adresse kommen. Anleitung: docs/deploy-coolify.md.
+#
+# In Coolify: Base Directory /deploy, Docker Compose Location /docker-compose.coolify.yml.
+#
+# Coolify erzeugt beim ersten Einlesen selbst (Variablen nach dem Muster SERVICE_<ART>_<NAME>, siehe
+# https://coolify.io/docs/knowledge-base/docker/compose):
+#   SERVICE_HEX_64_PGOWNER        Passwort des Tabellen-Besitzers (nur postgres und migrate):
+#                                 64 Hex-Zeichen, gefahrlos in einer Datenbank-Adresse
+#   SERVICE_HEX_64_PGAPP          Passwort der App-Rolle (migrate, web, worker), ein eigener Wert
+#   SERVICE_REALBASE64_32_PAIBOT  PAIBOT_SECRET: 32 zufällige Byte als Base64
+#   SERVICE_URL_WEB               APP_URL: die Domain des Dienstes web mit https://, ohne Port
+# Die Zeile SERVICE_URL_WEB_3000 beim Dienst web ordnet die Domain dem Dienst web zu; der Proxy
+# leitet auf Port 3000 weiter. Ihr Wert enthält „:3000“ und taugt deshalb nicht als APP_URL.
+# Die Werte bleiben über Deploys hinweg gleich und stehen in Coolify unter „Environment Variables“.
+# Fehlt einer, startet PaiBot nicht (die Start-Prüfung meldet, welcher).
+#
+# Was du in Coolify noch tust:
+#   1. Domain prüfen: Sie gehört zum Dienst web (Port 3000), nicht zu migrate, worker oder postgres.
+#      Eigene Domain: beim Dienst web eintragen, z. B. https://paibot.deine-domain.de:3000
+#      (:3000 ist der Port im Container; im Browser bleibt es https ohne Port).
+#   2. Geheimnisse aus dem Bau heraushalten: unter Advanced bei „Build arguments“ die Einstellung
+#      „Managed manually in Dockerfile“ wählen (ältere Versionen: „Inject Build Args to Dockerfile“
+#      ausschalten) und bei den Passwörtern, PAIBOT_SECRET und den Schlüsseln der Datenschleuse
+#      „Build time“ auf „Not available during build“ stellen. Das Image braucht keinen dieser Werte;
+#      die Compose-Datei allein kann das nicht steuern.
+#   3. PAIBOT_SECRET sichern: den Wert von SERVICE_REALBASE64_32_PAIBOT nach dem ersten Deploy in
+#      deinen Passwort-Manager kopieren, getrennt von den Sicherungen der Datenbank. Ohne ihn lassen
+#      sich gespeicherte Anbieter-Schlüssel nicht mehr lesen; ein neuer Wert ersetzt ihn nicht.
+#
+# Nur für eine neue Installation. Lief PaiBot schon mit deploy/docker-compose.yml, bleib dabei oder
+# trag die bisherigen Werte in die drei SERVICE_…-Variablen ein (siehe docs/deploy-coolify.md).
+#
+# Zwei Rollen in der Datenbank:
+#   POSTGRES_USER      Besitzer der Tabellen; nur der Einmal-Dienst migrate nutzt ihn.
+#   POSTGRES_APP_USER  eingeschränkte Rolle für Web-App und Worker; migrate legt sie an und setzt
+#                      bei jedem Lauf ihre Rechte, Einstellungen und ihr Passwort neu.
+#
+# migrate, web und worker kommen aus demselben Image; PAIBOT_ROLE wählt die Rolle. migrate läuft bei
+# jedem Deploy einmal, beendet sich mit Exit 0 und steht danach auf „Exited“; das ist richtig.
+# Wegen restart: "no" zählt Coolify ihn nicht in den Zustand der Anwendung.
+#
+# web steht als erster Dienst in der Datei, damit er in Auswahllisten von Coolify oben steht.
+#
+# Speicher-Grenzen: PAIBOT_WEB_SPEICHER (Standard 768m), PAIBOT_WORKER_SPEICHER (512m) und
+# PAIBOT_MIGRATE_SPEICHER (384m).
+#
+# Datenschleuse: Profil schleuse (Dienste datenschleuse und schleuse-analyzer), Standard aus. Ihre
+# Schlüssel trägst du beim Einschalten selbst ein (docs/funktion-datenschleuse.md).
+name: paibot
+
+# Logs je Dienst höchstens 3 Dateien zu je 10 MB (Docker rotiert sonst nicht von selbst).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  web:
+    image: paibot:lokal
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      # Nur die App-Rolle. Bewusst ohne DATABASE_MIGRATION_URL: web migriert nie.
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${SERVICE_HEX_64_PGAPP}@postgres:5432/${POSTGRES_DB:-paibot}
+      PAIBOT_SECRET: ${SERVICE_REALBASE64_32_PAIBOT}
+      # Die Domain des Dienstes web aus Coolify (mit https://, ohne Port).
+      APP_URL: ${SERVICE_URL_WEB}
+      # Sagt Coolify: Die Domain gehört zum Dienst web, der Proxy leitet auf Port 3000 weiter.
+      SERVICE_URL_WEB_3000:
+      PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
+      # Die App ist nur über den eigenen Proxy erreichbar (Port nur auf 127.0.0.1, Coolify im
+      # Docker-Netz); dann zählt die Adresse, die der Proxy in X-Forwarded-For anhängt.
+      # Nur auf 0 setzen, wenn kein Proxy davor sitzt.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - paibot-intern
+      - paibot-aussen
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    volumes:
+      - type: tmpfs
+        target: /app/apps/web/.next/cache
+        tmpfs:
+          size: 268435456
+          # 1023 ist dezimal für die Rechte 1777 (oktal); als Dezimalzahl liest es jedes Werkzeug gleich.
+          mode: 1023
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${PAIBOT_WEB_SPEICHER:-768m}
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    ports:
+      # Nur auf dem Server selbst erreichbar. Nach außen geht es über den Proxy
+      # (z. B. Coolify) mit HTTPS, nie direkt über diesen Port.
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+
+  worker:
+    # Dasselbe Image wie web, andere Rolle. Der Bau-Eintrag ist derselbe; der zweite Bau kommt
+    # vollständig aus dem Zwischenspeicher.
+    image: paibot:lokal
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      PAIBOT_ROLE: worker
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${SERVICE_HEX_64_PGAPP}@postgres:5432/${POSTGRES_DB:-paibot}
+      PAIBOT_SECRET: ${SERVICE_REALBASE64_32_PAIBOT}
+      PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
+      PAIBOT_WORKER_CONCURRENCY: ${PAIBOT_WORKER_CONCURRENCY:-2}
+      # Datenschleuse (Profil schleuse): leer = nicht installiert. Eingeschaltet:
+      # SCHLEUSE_URL=http://datenschleuse:4000/v1, SCHLEUSE_KEY aus deploy/env-erzeugen.sh.
+      SCHLEUSE_URL: ${SCHLEUSE_URL:-}
+      SCHLEUSE_KEY: ${SCHLEUSE_KEY:-}
+      # anfrage (Standard): der Worker schickt den Anbieter-Schlüssel mit jeder Anfrage mit.
+      SCHLEUSE_SCHLUESSEL_WEG: ${SCHLEUSE_SCHLUESSEL_WEG:-anfrage}
+      # Bewusst ohne DATABASE_MIGRATION_URL: Der Worker migriert nie.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # migrate wendet die Migrationen an und legt die App-Rolle an; erst danach startet der Worker.
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      # intern: die Datenbank. aussen: die Anfragen an die Modell-Anbieter stellt der Worker.
+      # schleuse: nur Worker und Datenschleuse (ohne Profil schleuse ein leeres Netz).
+      # Kein veröffentlichter Port: Der Worker nimmt keine Verbindungen an.
+      - paibot-intern
+      - paibot-aussen
+      - paibot-schleuse
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # Laufende Antworten werden in der Größe begrenzt; die Grenze fängt den Rest ab.
+    mem_limit: ${PAIBOT_WORKER_SPEICHER:-512m}
+    pids_limit: 256
+    # Zeit zum sauberen Beenden: Abbruch-Signal an laufende Antworten, höchstens 20 s warten.
+    stop_grace_period: 30s
+    healthcheck:
+      # Gesund, solange die Herzschlag-Datei in den letzten 30 Sekunden geschrieben wurde.
+      test:
+        - CMD-SHELL
+        - "[ $$(( $$(date +%s) - $$(stat -c %Y /tmp/paibot-worker.herzschlag 2>/dev/null) )) -lt 30 ]"
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+
+  migrate:
+    # Einmal-Dienst: Migrationen anwenden, App-Rolle anlegen bzw. ihre Rechte, Einstellungen und
+    # ihr Passwort neu setzen, Rechte prüfen, danach Ende mit Exit 0. Läuft bei jedem Start des
+    # Stacks wieder (wiederholbar). Nur er kennt den Zugang des Tabellen-Besitzers.
+    image: paibot:lokal
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: "no"
+    logging: *logging
+    environment:
+      PAIBOT_ROLE: migrate
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${SERVICE_HEX_64_PGAPP}@postgres:5432/${POSTGRES_DB:-paibot}
+      DATABASE_MIGRATION_URL: postgres://${POSTGRES_USER:-paibot}:${SERVICE_HEX_64_PGOWNER}@postgres:5432/${POSTGRES_DB:-paibot}
+      # Bewusst ohne PAIBOT_SECRET: Der Migrations-Schritt braucht es nicht.
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - paibot-intern
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    volumes:
+      - type: tmpfs
+        target: /app/apps/web/.next/cache
+        tmpfs:
+          size: 16777216
+          # 1023 ist dezimal für die Rechte 1777 (oktal); als Dezimalzahl liest es jedes Werkzeug gleich.
+          mode: 1023
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${PAIBOT_MIGRATE_SPEICHER:-384m}
+    pids_limit: 256
+    healthcheck:
+      disable: true
+    # Kein veröffentlichter Port.
+
+  postgres:
+    image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
+    restart: unless-stopped
+    logging: *logging
+    user: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-paibot}
+      POSTGRES_PASSWORD: ${SERVICE_HEX_64_PGOWNER}
+      POSTGRES_DB: ${POSTGRES_DB:-paibot}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - paibot-intern
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Kein veröffentlichter Port: Die Datenbank ist nur im internen Netz erreichbar.
+    # Für die Entwicklung: deploy/docker-compose.entwicklung.yml dazunehmen.
+  # ── Datenschleuse (Profil schleuse, Standard: aus) ─────────────────────────────────────────
+  # Ersetzt personenbezogene Angaben in Anfragen an das Modell durch Platzhalter und tauscht sie
+  # in der Antwort zurück. Eigenes Projekt (AGPL-3.0, https://github.com/oliverhees/datenschleuse),
+  # läuft als getrennter Dienst. Gebaut aus genau diesem Commit, nie aus einem Branch.
+  # Einschalten: in deploy/.env COMPOSE_PROFILES=schleuse und SCHLEUSE_URL setzen, dann
+  # pnpm schleuse:config --env-datei deploy/.env und neu starten (docs/funktion-datenschleuse.md).
+  datenschleuse:
+    profiles: [schleuse]
+    image: paibot-datenschleuse:e98a5f7
+    build:
+      context: https://github.com/oliverhees/datenschleuse.git#e98a5f7b225ef0984600fda104ddb062b1c22c8d
+      dockerfile_inline: |
+        FROM ghcr.io/berriai/litellm:v1.97.0@sha256:468c25f35f3e5ec4e414974f00deab93337b1b4d9953cabcfd3722e59415f834
+        WORKDIR /app
+        COPY litellm/requirements-guardrail.txt /app/requirements-guardrail.txt
+        RUN python -m ensurepip --upgrade \
+            && python -m pip install --no-cache-dir -r /app/requirements-guardrail.txt
+        COPY litellm/datenschleuse_guardrail.py litellm/qi_generalization.py litellm/qi_state.py \
+             litellm/sensitivity_classifier.py litellm/custom_rules.py litellm/de_stopwords.py /app/
+        COPY presidio/sensitivity-keywords.yml presidio/de-stopwords.yml \
+             presidio/recognizers-config.yml /app/config/
+        RUN mkdir -p /app/rules /app/state
+    restart: unless-stopped
+    logging: *logging
+    user: "65534:65534"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        case "$${DATENSCHLEUSE_MASTER_KEY}" in
+          sk-????????????????????????????????*) ;;
+          *) echo "Start abgebrochen: SCHLEUSE_KEY fehlt oder ist zu kurz (sh deploy/env-erzeugen.sh)." >&2; exit 1 ;;
+        esac
+        if [ -z "$${DATENSCHLEUSE_STATE_KEY}" ]; then
+          echo "Start abgebrochen: SCHLEUSE_STATE_KEY fehlt (sh deploy/env-erzeugen.sh)." >&2; exit 1
+        fi
+        if [ ! -f /app/config.yaml ]; then
+          echo "Start abgebrochen: deploy/schleuse/config.yaml fehlt (pnpm schleuse:config)." >&2; exit 1
+        fi
+        case "$$(cat /app/config.yaml)" in
+          *os.environ/SCHLEUSE_ANBIETER_SCHLUESSEL*)
+            if [ -z "$${SCHLEUSE_ANBIETER_SCHLUESSEL}" ]; then
+              echo "Start abgebrochen: SCHLEUSE_ANBIETER_SCHLUESSEL fehlt (oder SCHLEUSE_SCHLUESSEL_WEG=anfrage)." >&2; exit 1
+            fi ;;
+        esac
+        exec litellm --config /app/config.yaml --host 0.0.0.0 --port 4000
+    environment:
+      HOME: /tmp
+      PYTHONPATH: /app
+      PYTHONDONTWRITEBYTECODE: "1"
+      DATENSCHLEUSE_MASTER_KEY: ${SCHLEUSE_KEY:-}
+      # Nur beim Rückfall SCHLEUSE_SCHLUESSEL_WEG=umgebung; im Standard „anfrage“ leer lassen.
+      SCHLEUSE_ANBIETER_SCHLUESSEL: ${SCHLEUSE_ANBIETER_SCHLUESSEL:-}
+      DATENSCHLEUSE_STATE_KEY: ${SCHLEUSE_STATE_KEY:-}
+      DATENSCHLEUSE_STATE_DB: /app/state/qi_state.db
+      DATENSCHLEUSE_STATE_TTL_SECONDS: "86400"
+      DATENSCHLEUSE_IMAGE_POLICY: block
+      SENSITIVITY_KEYWORDS_PATH: /app/config/sensitivity-keywords.yml
+      DATENSCHLEUSE_STOPWORDS_PATH: /app/config/de-stopwords.yml
+      DATENSCHLEUSE_RECOGNIZERS_PATH: /app/config/recognizers-config.yml
+      DATENSCHLEUSE_CUSTOM_RULES_PATH: /app/rules/custom-rules.yml
+      PRESIDIO_ANALYZER_API_BASE: http://schleuse-analyzer:3000
+      # Keine Abrufe beim Start, keine Verwaltungs-Oberfläche, keine API-Doku-Seiten.
+      LITELLM_LOCAL_MODEL_COST_MAP: "True"
+      DISABLE_ADMIN_UI: "True"
+      NO_DOCS: "True"
+      NO_REDOC: "True"
+    volumes:
+      - ./schleuse/config.yaml:/app/config.yaml:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+      # Verschlüsselter Zwischenstand der Quasi-Identifikatoren; geht beim Neustart verloren.
+      - /app/state:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${SCHLEUSE_SPEICHER:-768m}
+    depends_on:
+      schleuse-analyzer:
+        condition: service_healthy
+    networks:
+      # schleuse: nur der Worker spricht sie an. analyse: die Erkennung. aussen: der Anbieter.
+      - paibot-schleuse
+      - schleuse-analyse
+      - schleuse-aussen
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    # Kein veröffentlichter Port.
+
+  schleuse-analyzer:
+    profiles: [schleuse]
+    image: paibot-schleuse-analyzer:e98a5f7-${SCHLEUSE_SPRACHMODELL:-de_core_news_md}
+    build:
+      context: https://github.com/oliverhees/datenschleuse.git#e98a5f7b225ef0984600fda104ddb062b1c22c8d
+      args:
+        SPRACHMODELL: ${SCHLEUSE_SPRACHMODELL:-de_core_news_md}
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/presidio-analyzer:2.2.362@sha256:286e3fa7f3a7426e775e8564fe1870f1ba8f999d3ab8bbb8cc46a44355d9d6e9
+        USER root
+        RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+            && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends \
+            && apt-get clean && rm -rf /var/lib/apt/lists/*
+        ARG SPRACHMODELL
+        RUN set -e; case "$$SPRACHMODELL" in \
+              de_core_news_md) h=b903f59220f1e76dd672acdaa7fa454d6703fe056c5ccd6457820e70874116d0 ;; \
+              de_core_news_lg) h=36fda650e476b54d5e87803635e36dadd1e8e034c4b5962088586d684f4c9fed ;; \
+              *) echo "SCHLEUSE_SPRACHMODELL: de_core_news_md oder de_core_news_lg" >&2; exit 1 ;; \
+            esac; \
+            pip install --no-cache-dir --no-deps \
+              "https://github.com/explosion/spacy-models/releases/download/$$SPRACHMODELL-3.8.0/$$SPRACHMODELL-3.8.0-py3-none-any.whl#sha256=$$h"
+        COPY presidio/analyzer-config.yml presidio/recognizers-config.yml /conf/
+        USER 1001
+    restart: unless-stopped
+    logging: *logging
+    user: "1001"
+    # --no-control-socket: Das Steuer-Socket von gunicorn (ab 25.1) läuft in einem eigenen Thread
+    # und scheitert im schreibgeschützten Arbeitsordner; ohne ihn startet der Worker ohne Thread
+    # im Hintergrund.
+    command:
+      ["gunicorn", "--no-control-socket", "-w", "1", "-b", "0.0.0.0:3000", "app:create_app()"]
+    environment:
+      HOME: /tmp
+      ANALYZER_CONF_FILE: /conf/analyzer-config.yml
+      NLP_CONF_FILE: /conf/nlp-config.yml
+      RECOGNIZER_REGISTRY_CONF_FILE: /conf/recognizers-config.yml
+    volumes:
+      - ./schleuse/nlp-config.yml:/conf/nlp-config.yml:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # de_core_news_md braucht gemessen gut 0,5 GB; für de_core_news_lg 1536m setzen.
+    mem_limit: ${SCHLEUSE_ANALYZER_SPEICHER:-768m}
+    networks:
+      # Nur die Datenschleuse erreicht die Erkennung; kein Weg nach draußen.
+      - schleuse-analyse
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+
+networks:
+  # Ohne Weg nach draußen: nur die Dienste von PaiBot erreichen die Datenbank.
+  paibot-intern:
+    internal: true
+  paibot-aussen: {}
+  # Datenschleuse: Worker ↔ Datenschleuse, Datenschleuse ↔ Erkennung (beide ohne Weg nach
+  # draußen) und ein eigenes Netz, über das nur die Datenschleuse den Anbieter erreicht.
+  paibot-schleuse:
+    internal: true
+  schleuse-analyse:
+    internal: true
+  schleuse-aussen: {}
+
+volumes:
+  postgres-data:
