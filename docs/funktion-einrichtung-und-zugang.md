@@ -33,7 +33,7 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
    Die Zeile sieht so aus (der Code ist bei dir ein anderer):
 
    ```text
-   Einrichtungs-Code: K7QD-9M2F-XW4H (gilt bis zum Ende der Einrichtung)
+   Einrichtungs-Code: K7QD-9M2F-XW4H (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)
    ```
 
 3. Gib den Code ein. Bindestriche und Kleinbuchstaben sind egal. Klick auf „Weiter“. Fehlt der Code oder hat er die falsche Form, sagt das Feld, wie er aussehen muss; ob er stimmt, prüft PaiBot erst beim Verbindungstest und beim Abschluss.
@@ -92,9 +92,17 @@ Die Bilder zeigen eine Installation mit Beispiel-Daten. Als Modell-Anbieter ist 
 
 4. Zum Abmelden klick in der Navigation unten auf „Abmelden“ (am Handy erst auf „Menü öffnen“), zu sehen im Bild der App in Schritt 10 oben.
 
+### Ausgesperrt? So kommst du wieder hinein
+
+Versucht jemand massenhaft Passwörter, bremst PaiBot die Anmeldung für alle (siehe „So funktioniert es“). So kommst du trotzdem hinein:
+
+1. Melde dich in einem Browser an, in dem du schon einmal angemeldet warst. Er hat ein Geräte-Cookie und geht an der Bremse vorbei.
+2. Geht das nicht, starte den Migrations-Schritt noch einmal: `docker compose up -d` (startet den Dienst `migrate` erneut) bzw. in Coolify „Redeploy“. Er hebt alle Sperren der Anmeldung auf; im Log von `migrate` steht dann „Sperren der Anmeldung aufgehoben.“
+3. Melde dich an. Hält die Flut an, nimm dafür einen bekannten Browser oder sperre die Adressen der Angreifer in deinem Proxy.
+
 ### Code verloren
 
-1. Ein Neustart von `web` allein bringt keinen neuen Code: Solange die Einrichtung offen ist, gilt der Code aus dem ersten Start weiter. Im Log steht nach einem Neustart nur, wann er erzeugt wurde.
+1. Ein Neustart von `web` allein bringt keinen neuen Code: Solange die Einrichtung offen ist, gilt der Code aus dem ersten Start weiter, höchstens 24 Stunden. Im Log steht nach einem Neustart nur, wann er erzeugt wurde. Ist er älter als 24 Stunden, steht beim nächsten Aufruf der Seite „Einrichtung“ von selbst ein neuer im Log.
 2. Lass den Migrations-Schritt noch einmal laufen: `docker compose up -d` (startet den Dienst `migrate` erneut) bzw. in Coolify „Redeploy“. Er verwirft den alten Code.
 3. Lade die Seite „Einrichtung“ neu. Jetzt steht ein **neuer** Code im Log von `web`; der alte gilt nicht mehr. Was du vorher eingegeben hattest, musst du noch einmal eingeben: Gespeichert wird erst beim Abschluss, dann alles auf einmal.
 
@@ -120,22 +128,39 @@ Eine Adresse, die es in PaiBot nicht gibt, führt zu dieser Seite mit einem Link
 
 ## Einstellungen
 
-| Einstellung                       | Wo                | Bedeutung                                                                                                                                                                                                                                                          | Standard                 |
-| --------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
-| `APP_URL`                         | Umgebungsvariable | Adresse, unter der du PaiBot öffnest. Nur Anfragen genau von dieser Adresse dürfen etwas verändern. Beginnt sie mit `https://`, sind die Cookies `Secure` und heißen `__Host-…`                                                                                    | `http://localhost:3000`  |
-| `TRUST_PROXY`                     | Umgebungsvariable | `1`, wenn PaiBot hinter einem Proxy läuft (Coolify, Traefik, Caddy, nginx). Dann zählt die Adresse, die dein Proxy als letzte in `X-Forwarded-For` anhängt                                                                                                         | nicht gesetzt            |
-| `PAIBOT_SECRET`                   | Umgebungsvariable | Wurzel-Geheimnis; daraus entstehen die Prüfzeichen gegen untergeschobene Anfragen und die Schlüssel für Belege und Anbieter                                                                                                                                        | Pflicht                  |
-| `PAIBOT_EINRICHTUNG_ANBIETER_URL` | Umgebungsvariable | Nur für Tests und eigene Dienste: Die Einrichtung verbindet statt EUrouter diesen OpenAI-kompatiblen Dienst (zum Beispiel den Test-Anbieter). Er heißt in PaiBot „Lokaler Anbieter“ (Adresse im eigenen Netz oder über http, Region lokal) bzw. „Eigener Anbieter“ | nicht gesetzt (EUrouter) |
-| Angemeldet bleiben                | Seite „Anmelden“  | Cookie bleibt 30 Tage im Browser; ohne Haken endet es mit dem Browser                                                                                                                                                                                              | aus                      |
+| Einstellung                       | Wo                | Bedeutung                                                                                                                                                                                                                                                                | Standard                 |
+| --------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| `APP_URL`                         | Umgebungsvariable | Adresse, unter der du PaiBot öffnest. Nur Anfragen genau von dieser Adresse dürfen etwas verändern. Beginnt sie mit `https://`, sind die Cookies `Secure` und heißen `__Host-…`. Im Betrieb Pflicht; `http://` nur für den eigenen Rechner (mit Warnung im eigenen Netz) | `http://localhost:3000`  |
+| `TRUST_PROXY`                     | Umgebungsvariable | `1`, wenn PaiBot hinter einem Proxy läuft (Coolify, Traefik, Caddy, nginx). Dann zählt die Adresse, die dein Proxy als letzte in `X-Forwarded-For` anhängt                                                                                                               | im Compose `1`           |
+| `PAIBOT_SECRET`                   | Umgebungsvariable | Wurzel-Geheimnis; daraus entstehen die Prüfzeichen gegen untergeschobene Anfragen und die Schlüssel für Belege und Anbieter                                                                                                                                              | Pflicht                  |
+| `PAIBOT_EINRICHTUNG_ANBIETER_URL` | Umgebungsvariable | Nur für Tests und eigene Dienste: Die Einrichtung verbindet statt EUrouter diesen OpenAI-kompatiblen Dienst (zum Beispiel den Test-Anbieter). Er heißt in PaiBot „Lokaler Anbieter“ (Adresse im eigenen Netz oder über http, Region lokal) bzw. „Eigener Anbieter“       | nicht gesetzt (EUrouter) |
+| Angemeldet bleiben                | Seite „Anmelden“  | Cookie bleibt 30 Tage im Browser; ohne Haken endet es mit dem Browser                                                                                                                                                                                                    | aus                      |
 
-**Hinter einem Proxy `TRUST_PROXY=1` setzen.** Ohne diese Einstellung kennt PaiBot die Adresse der Besucher nicht, denn den Wert in `X-Forwarded-For` kann jeder frei setzen, und PaiBot liest ihn dann gar nicht. Alle Besucher teilen sich so einen Zähler. Damit niemand dich aussperren kann, bremst PaiBot Versuche dann nur (2 Sekunden je Versuch über dem Limit), statt sie je Adresse zu sperren. Beim Start und auf der Seite „Einrichtung“ steht dazu ein Hinweis. Setze `TRUST_PROXY=1` nur, wenn wirklich ein Proxy davor steht; sonst könnte ein Besucher seine Adresse vortäuschen.
+**Hinter einem Proxy `TRUST_PROXY=1` setzen.** Im Compose ist das der Standard, denn der Port der App ist dort nur auf dem Server selbst erreichbar. Ohne diese Einstellung kennt PaiBot die Adresse der Besucher nicht, denn den Wert in `X-Forwarded-For` kann jeder frei setzen, und PaiBot liest ihn dann gar nicht. Alle Besucher teilen sich so einen Zähler; die Sperre je Adresse verzögert dann nur (2 Sekunden je Versuch). Die gemeinsame Bremse gilt trotzdem für alle. Beim Start und auf der Seite „Einrichtung“ steht dazu ein Hinweis. Setze `TRUST_PROXY=1` nur, wenn wirklich ein Proxy davor steht, und gib den Port der App nie direkt frei; sonst könnte ein Besucher seine Adresse vortäuschen.
+
+**Beim Start in Produktion prüft PaiBot `APP_URL`:**
+
+| `APP_URL`                                                         | Ergebnis                                                                 |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| fehlt, ist keine Adresse oder enthält Benutzer und Passwort       | Start bricht ab, mit Meldung im Log                                      |
+| `http://` mit öffentlicher Adresse oder öffentlichem Namen        | Start bricht ab: Passwort und Sitzung gingen unverschlüsselt durchs Netz |
+| `http://` im eigenen Netz (`192.168.…`, `10.…`, `nas`, `….local`) | Start mit Warnung                                                        |
+| `http://localhost`, `http://127.0.0.1`                            | Start ohne Warnung (eigener Rechner)                                     |
+| `https://…`                                                       | Start ohne Warnung                                                       |
+| mit Pfad oder Abfrage (`https://…/app`)                           | Start mit Warnung; es zählt nur der Ursprung                             |
+
+Kommt eine Anfrage an einen anderen Host als in `APP_URL`, schreibt `web` einmal einen Hinweis ins Log. Dann scheitern Anmelden und Einrichtung, bis `APP_URL` genau die Adresse im Browser ist.
 
 ## So funktioniert es
 
-- **Einrichtungs-Code:** 12 Zeichen aus 32 Zeichen (60 Bit Zufall). PaiBot speichert nur seinen Prüfwert (SHA-256) in der Datenbank und schreibt den Code genau einmal ins Log, beim ersten Start. Er gilt bis zum Ende der Einrichtung. Ein Neustart oder ein zweiter Prozess erzeugt keinen neuen; dann steht im Log nur ein Hinweis, wann der Code erzeugt wurde. Erst ein neuer Lauf des Migrations-Schritts verwirft ihn (siehe „Code verloren“). Falsche Codes zählen je Adresse: nach 5 Fehlversuchen in 15 Minuten ist für diese Adresse Pause. Der Verbindungstest der Einrichtung verlangt denselben Code und zählt zusätzlich höchstens 10 Tests in 15 Minuten.
+- **Einrichtungs-Code:** 12 Zeichen aus 32 Zeichen (60 Bit Zufall). PaiBot speichert nur seinen Prüfwert (SHA-256) in der Datenbank und schreibt den Code genau einmal ins Log, beim ersten Start. Er gilt 24 Stunden, längstens bis zum Ende der Einrichtung; danach entsteht beim nächsten Aufruf ein neuer. Richte PaiBot deshalb gleich nach dem ersten Start ein. Ein Neustart oder ein zweiter Prozess erzeugt keinen neuen; dann steht im Log nur ein Hinweis, wann der Code erzeugt wurde. Erst ein neuer Lauf des Migrations-Schritts verwirft ihn (siehe „Code verloren“). Falsche Codes zählen je Adresse: nach 5 Fehlversuchen in 15 Minuten ist für diese Adresse Pause. Der Verbindungstest der Einrichtung verlangt denselben Code und zählt zusätzlich höchstens 10 Tests in 15 Minuten.
 - **Abschluss in einem Rutsch:** Alles läuft in einer einzigen Datenbank-Transaktion: Signaturschlüssel der Installation erzeugen und verschlüsselt speichern, Beleg „Start“ als erster Eintrag der Beleg-Kette, dann über das [Tor](funktion-tor.md) die Aktionen „Einrichtung abgeschlossen“ (Konto, Einstellungen, erste Sitzung), „Bot geändert“, „Anbieter gespeichert“ (Schlüssel verschlüsselt und an Anbieter und Adresse gebunden), „Modell gewählt“ und gegebenenfalls „Datenschleuse umgeschaltet“. Scheitert ein Schritt, bleibt nichts davon übrig. Kommen zwei Abschlüsse gleichzeitig, gewinnt genau einer; der andere bekommt „PaiBot ist schon eingerichtet“.
-- **Passwort:** gespeichert nur als scrypt-Hash. Vor jeder Prüfung zählt PaiBot den Versuch (5 je Adresse in 15 Minuten sperren; 20 insgesamt in 15 Minuten bremsen nur, sperren aber nie). Höchstens zwei Prüfungen rechnen gleichzeitig. Die Antwort auf einen Fehlversuch ist immer gleich und dauert ähnlich lang, auch vor der Einrichtung. Stammt der Hash aus einem älteren Verfahren, wird er beim nächsten Anmelden erneuert.
-- **Sitzung:** Bei jeder Anmeldung entsteht ein neues Zufalls-Token. Der Browser bekommt es als Cookie (`HttpOnly`, `SameSite=Lax`, `Path=/`, bei https zusätzlich `Secure`); in der Datenbank steht nur seine Prüfsumme. Eine Sitzung gilt 30 Tage ab der letzten Benutzung, höchstens aber 90 Tage ab der Anmeldung; beides prüft der Server. Abmelden löscht die Sitzung, ein Passwortwechsel löscht alle.
+- **Passwort:** gespeichert nur als scrypt-Hash. Vor jeder Prüfung zählt PaiBot den Versuch, in der Datenbank und auch bei gleichzeitigen Anfragen genau:
+  - je Adresse: nach 5 Fehlversuchen in 15 Minuten Pause bis zum Ende der 15 Minuten, nach 20 an einem Tag Pause bis zum Ende des Tages. IPv6-Adressen zählen je Netz (/64), weil ein Anschluss meist ein ganzes Netz hat.
+  - für alle zusammen: über 20 Versuchen in 15 Minuten prüft PaiBot höchstens ein Passwort je Takt, egal wie viele Anfragen gleichzeitig kommen. Der Takt beginnt bei 2 Sekunden und verdoppelt sich je 20 weiteren Versuchen bis 1 Minute. Alle anderen bekommen „Zu viele Versuche“ mit der Wartezeit.
+  - Ein Browser, in dem du dich schon angemeldet hast, bekommt ein Geräte-Cookie (`HttpOnly`, `SameSite=Strict`, 400 Tage, mit Prüfzeichen aus `PAIBOT_SECRET`). Er geht an der gemeinsamen Bremse vorbei, nicht an der Sperre je Adresse.
+  - Höchstens zwei Prüfungen rechnen gleichzeitig. Die Antwort auf einen Fehlversuch ist immer gleich und dauert ähnlich lang, auch vor der Einrichtung. Stammt der Hash aus einem älteren Verfahren, wird er beim nächsten Anmelden erneuert.
+- **Sitzung:** Bei jeder Anmeldung entsteht ein neues Zufalls-Token. Der Browser bekommt es als Cookie (`HttpOnly`, `SameSite=Lax`, `Path=/`, bei https zusätzlich `Secure`); in der Datenbank steht nur seine Prüfsumme. Eine Sitzung gilt 30 Tage ab der letzten Benutzung, höchstens aber 90 Tage ab der Anmeldung; beides prüft der Server. Abmelden löscht die Sitzung, ein Passwortwechsel löscht alle. Beim Passwort ändern gelten höchstens 5 Versuche in 15 Minuten; darüber endet die Sitzung, mit der es versucht wurde, und du meldest dich neu an.
 - **Untergeschobene Anfragen:** Jede Anfrage, die etwas verändert, muss genau von `APP_URL` kommen (`Origin`) und ein Prüfzeichen mitschicken, das aus deiner Sitzung abgeleitet ist und in jeder Seite steht. Beides fehlt einer fremden Seite.
 - **Schutz jeder Route:** Ein Proxy vor allen Anfragen leitet ohne Einrichtung zur Einrichtung und ohne Anmeldung zur Anmeldung und beantwortet Schnittstellen ohne Sitzung mit „Nicht angemeldet“. Zusätzlich prüft jede Seite und jede Schnittstelle die Sitzung selbst. Jede Antwort trägt strenge Sicherheits-Kopfzeilen: Skripte laufen nur mit einer Nonce, die für jede Antwort neu entsteht; HSTS geht nur bei https mit.
 - **Belege:** An- und Abmelden, alle Sitzungen beenden und das Passwort ändern stehen als Belege im Protokoll. Fehlversuche nicht; sie stehen nur im Zähler.
@@ -150,15 +175,17 @@ Eine Adresse, die es in PaiBot nicht gibt, führt zu dieser Seite mit einem Link
 
 ## Fehlerbehebung
 
-| Beobachtung                                      | Ursache                                                                        | Was tun                                                                           |
-| ------------------------------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| „Der Einrichtungs-Code stimmt nicht.“            | Tippfehler, oder der Code wurde inzwischen verworfen                           | Neuesten Code aus dem Log von `web` nehmen (letzte Zeile mit „Einrichtungs-Code“) |
-| „Zu viele Versuche. Versuch es in … Sekunden …“  | 5 Fehlversuche von dieser Adresse in 15 Minuten                                | Warten, bis die Zeit um ist                                                       |
-| „Die Anfrage kam nicht von dieser PaiBot-Seite.“ | `APP_URL` passt nicht zur Adresse im Browser                                   | `APP_URL` genau auf die Adresse setzen, unter der du PaiBot öffnest; neu starten  |
-| „Die Anfrage konnte nicht bestätigt werden.“     | Seite war lange offen oder Cookies wurden gelöscht                             | Seite neu laden                                                                   |
-| Nach dem Anmelden sofort wieder „Anmelden“       | Browser speichert keine Cookies, oder `APP_URL` ist https, die Seite aber http | Cookies erlauben; PaiBot über die Adresse aus `APP_URL` öffnen                    |
-| Hinweis „TRUST_PROXY ist nicht gesetzt“          | PaiBot kennt die Adresse der Besucher nicht                                    | Hinter einem Proxy `TRUST_PROXY=1` setzen (siehe Einstellungen)                   |
-| „Datenbank nicht erreichbar“ statt der Anmeldung | Datenbank läuft nicht oder ist nicht eingerichtet                              | Log ansehen, Datenbank starten, Seite neu laden                                   |
+| Beobachtung                                                    | Ursache                                                                                 | Was tun                                                                                   |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| „Der Einrichtungs-Code stimmt nicht.“                          | Tippfehler, oder der Code wurde inzwischen verworfen                                    | Neuesten Code aus dem Log von `web` nehmen (letzte Zeile mit „Einrichtungs-Code“)         |
+| „Zu viele Versuche. Versuch es in … Sekunden …“                | 5 Fehlversuche von dieser Adresse in 15 Minuten (20 am Tag), oder viele fremde Versuche | Warten, bis die Zeit um ist; ausgesperrt: siehe „Ausgesperrt? So kommst du wieder hinein“ |
+| Nach „Passwort ändern“ abgemeldet                              | 5 Versuche mit falschem aktuellem Passwort in 15 Minuten                                | Neu anmelden; nach 15 Minuten wieder versuchen                                            |
+| Start bricht ab: „APP_URL fehlt“ oder „APP_URL nutzt http://…“ | `APP_URL` fehlt oder ist eine öffentliche Adresse ohne https                            | `APP_URL=https://…` setzen, https über den Proxy                                          |
+| „Die Anfrage kam nicht von dieser PaiBot-Seite.“               | `APP_URL` passt nicht zur Adresse im Browser                                            | `APP_URL` genau auf die Adresse setzen, unter der du PaiBot öffnest; neu starten          |
+| „Die Anfrage konnte nicht bestätigt werden.“                   | Seite war lange offen oder Cookies wurden gelöscht                                      | Seite neu laden                                                                           |
+| Nach dem Anmelden sofort wieder „Anmelden“                     | Browser speichert keine Cookies, oder `APP_URL` ist https, die Seite aber http          | Cookies erlauben; PaiBot über die Adresse aus `APP_URL` öffnen                            |
+| Hinweis „TRUST_PROXY ist nicht gesetzt“                        | PaiBot kennt die Adresse der Besucher nicht                                             | Hinter einem Proxy `TRUST_PROXY=1` setzen (siehe Einstellungen)                           |
+| „Datenbank nicht erreichbar“ statt der Anmeldung               | Datenbank läuft nicht oder ist nicht eingerichtet                                       | Log ansehen, Datenbank starten, Seite neu laden                                           |
 
 ## Bilder neu aufnehmen
 
