@@ -96,6 +96,7 @@ export const ANBIETER_STANDARD = Object.freeze({
     { name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/allrounder" },
     { name: "Zweite Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/kompakt" },
     { name: "Dritte Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/kompakt" },
+    { name: "Regel nur per Name", provider: "beispiel-nord", model: "beispiel/kompakt" },
   ],
   providers: [{ slug: "beispiel-nord", name: "Beispiel-Anbieter Nord", headquarters: "NL" }],
 });

@@ -744,7 +744,7 @@ export function Einrichtung({
                                       : t("anbieterwahl.regel.nicht_ok", { name: r.name })}
                                   </strong>{" "}
                                   {r.ok
-                                    ? [r.herkunft, r.vorgabeText].filter(Boolean).join(" ")
+                                    ? [r.herkunft, r.vorgabeText].filter(Boolean).join(". ")
                                     : [r.text, r.ausweg].filter(Boolean).join(" ")}
                                 </span>
                               </li>

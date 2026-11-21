@@ -396,6 +396,32 @@ async function main() {
     await seite.getByRole("article").getByText("stimmt", { exact: true }).waitFor();
   });
 
+  await schritt(
+    "Modell und Anbieter: Öffnen und Neuladen schreibt keine Belege",
+    seite,
+    async () => {
+      // Die Seite zeigt die Modell-Liste des Anbieters; das Öffnen darf nichts speichern (kein Beleg
+      // „Anbieter gespeichert“). Gezählt wird die Nummer des neuesten Belegs vor und nach dem Öffnen.
+      const kopf = () =>
+        seite.evaluate(async () => {
+          const r = await fetch("/api/belege?limit=1");
+          const j = await r.json();
+          return j.daten.items[0]?.seq ?? 0;
+        });
+      const vorher = await kopf();
+      await seite.goto(`${app}/modelle`);
+      await seite.getByRole("radio").first().waitFor();
+      await seite.reload();
+      await seite.getByRole("radio").first().waitFor();
+      const nachher = await kopf();
+      if (nachher !== vorher) {
+        throw new Error(
+          `Das Öffnen hat ${nachher - vorher} Beleg(e) geschrieben (Nummer ${vorher} → ${nachher}).`,
+        );
+      }
+    },
+  );
+
   // ---- Handy-Format: senden, Antwort streamt, Stopp, Beleg als Blatt ---------------------------
   const HANDY_ANTWORT =
     "Gern. Das hier ist eine lange Antwort, die der Test-Anbieter nach zwei Stücken anhält.";

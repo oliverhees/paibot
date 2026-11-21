@@ -256,3 +256,10 @@
   gap: 4px;
   min-width: 0;
 }
+
+.regelKnoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}

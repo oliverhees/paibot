@@ -560,9 +560,10 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
         </div>
       ) : null;
     }
+    // Die Kennzeichnung steht vorn: Die Zeile kürzt hinten mit „…“.
     const herkunft = [
-      antwortHerkunft(modell.anbieter, n.servedBy, bereitschaft.unterAnbieter),
       ...antwortKurz(modell.vorgabe),
+      antwortHerkunft(modell.anbieter, n.servedBy, bereitschaft.unterAnbieter),
     ]
       .filter((teil): teil is string => teil !== undefined)
       .join(" · ");

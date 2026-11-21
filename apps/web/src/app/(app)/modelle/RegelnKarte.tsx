@@ -198,7 +198,7 @@ export function RegelnKarte(props: RegelnKarteProps) {
       titel: t("regelkarte.ok.titel", { name: neu.name }),
       text: [antwort.daten.herkunft ?? t("regelkarte.ok.ohne_herkunft"), antwort.daten.hinweis]
         .filter(Boolean)
-        .join(" "),
+        .join(". "),
     });
   }
 
@@ -301,24 +301,26 @@ export function RegelnKarte(props: RegelnKarteProps) {
                   <Vorgabe regel={r} anbieter={anbieter.name} />
                 </span>
               </label>
-              {mitSchluessel && (
+              <span className={styles.regelKnoepfe}>
+                {mitSchluessel && (
+                  <Button
+                    art="leise"
+                    onClick={() => void neuPruefen(r)}
+                    laedt={neuLaeuft === r.id}
+                    aria-label={t("verwaltung.neu.eine.label", { name: r.name })}
+                  >
+                    {t("verwaltung.neu.eine")}
+                  </Button>
+                )}
                 <Button
                   art="leise"
-                  onClick={() => void neuPruefen(r)}
-                  laedt={neuLaeuft === r.id}
-                  aria-label={t("verwaltung.neu.eine.label", { name: r.name })}
+                  icon="papierkorb"
+                  onClick={() => void entfernen(r)}
+                  aria-label={t("regelkarte.entfernen.label", { name: r.name })}
                 >
-                  {t("verwaltung.neu.eine")}
+                  {t("regelkarte.entfernen")}
                 </Button>
-              )}
-              <Button
-                art="leise"
-                icon="papierkorb"
-                onClick={() => void entfernen(r)}
-                aria-label={t("regelkarte.entfernen.label", { name: r.name })}
-              >
-                {t("regelkarte.entfernen")}
-              </Button>
+              </span>
             </div>
           ))}
           {alte.map((m) => (

@@ -3468,7 +3468,8 @@
           "klick": {
             "rolle": "radio",
             "name": "Beispiel-Regel",
-            "genau": false
+            "genau": false,
+            "nr": 0
           }
         },
         {
