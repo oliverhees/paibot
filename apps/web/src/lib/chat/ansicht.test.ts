@@ -325,6 +325,76 @@ describe("Neuladen", () => {
     expect(a.lauf).toBeUndefined();
   });
 
+  function verlaufMit(
+    g: ReturnType<typeof glueck>,
+    antwort: Pick<Message, "content" | "status">,
+    ereignisse: ConversationEvent[],
+  ): ChatVerlauf {
+    return {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [
+        msg({ id: g.user as never, role: "user", content: "Hallo Pai", status: "complete" }),
+        msg({ id: g.antwort as never, role: "assistant", runId: g.runId as never, ...antwort }),
+      ],
+      laeufe: [],
+      aktiverLauf: { id: g.runId, status: "running", conversationId } as Run,
+      ereignisse,
+      letzteSeq: ereignisse.at(-1)?.seq ?? 0,
+      belege: [],
+      modelle: {},
+    };
+  }
+
+  it("Antwort gespeichert, Lauf noch offen: der Text steht einmal da, nicht doppelt", () => {
+    const ev = folge();
+    const g = glueck(ev, "Erst das, dann mehr");
+    const bisFertig = g.liste.slice(1, 8); // run.queued … message.completed
+    const a = ansichtAus(
+      verlaufMit(g, { content: "Erst das, dann mehr", status: "complete" }, bisFertig),
+      KONTEXT,
+    );
+    expect(nachrichten(a)).toEqual(["du:fertig:Hallo Pai", "bot:fertig:Erst das, dann mehr"]);
+    expect(a.letzteSeq).toBe(8);
+    // Kommt der Strom danach mit alten Nummern wieder (Wiederverbinden), ändert das nichts.
+    const nochmal = ereignisseAnwenden(a, g.liste, KONTEXT);
+    expect(nachrichten(nochmal)).toEqual(nachrichten(a));
+  });
+
+  it("Teiltext schon als abgebrochen gespeichert, Ende des Laufs folgt: Text einmal", () => {
+    const ev = folge();
+    const g = glueck(ev, "Erst das, dann mehr");
+    const bisStueck = g.liste.slice(1, 7); // run.queued … beide Stücke
+    let a = ansichtAus(
+      verlaufMit(g, { content: "Erst das, dann mehr", status: "cancelled" }, bisStueck),
+      KONTEXT,
+    );
+    expect(nachrichten(a)).toEqual(["du:fertig:Hallo Pai", "bot:abgebrochen:Erst das, dann mehr"]);
+    expect(a.lauf?.id).toBe(g.runId);
+    a = ereignisseAnwenden(a, [
+      ev("run.cancelled", { runId: g.runId, code: "unterbrochen", text: "Abgebrochen." }, g.runId),
+    ]);
+    expect(nachrichten(a)).toEqual(["du:fertig:Hallo Pai", "bot:abgebrochen:Erst das, dann mehr"]);
+    expect(a.lauf).toBeUndefined();
+  });
+
+  it("streamende Antwort: der Text kommt allein aus den Ereignissen, auch wenn schon Text gespeichert wäre", () => {
+    const ev = folge();
+    const g = glueck(ev, "Erst das, dann mehr");
+    const a = ansichtAus(
+      verlaufMit(g, { content: "Erst da", status: "streaming" }, g.liste.slice(1, 6)),
+      KONTEXT,
+    );
+    expect(nachrichten(a)).toEqual(["du:fertig:Hallo Pai", "bot:streamt:Erst da"]);
+  });
+
+  it("Stücke nach dem Abschluss einer Nachricht ändern ihren Text nicht", () => {
+    const ev = folge();
+    const g = glueck(ev, "Erst das, dann mehr");
+    const a = ereignisseAnwenden(leereAnsicht(), g.liste, KONTEXT);
+    const spaet = ev("text.delta", { runId: g.runId, messageId: g.antwort, text: "!!" }, g.runId);
+    expect(nachrichten(ereignisseAnwenden(a, [spaet]))).toEqual(nachrichten(a));
+  });
+
   it("beendete Läufe ohne Antwort stehen hinter ihrer Nachricht", () => {
     const erste = newId("message");
     const zweite = newId("message");

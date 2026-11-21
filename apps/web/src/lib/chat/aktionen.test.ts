@@ -11,7 +11,7 @@
 
 import { repo } from "@paibot/db";
 import { verifyChain } from "@paibot/receipts";
-import { newId } from "@paibot/shared/ids";
+import { newId, type RunId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
 import { describe, expect, it, vi } from "vitest";
 import { type Einreihen, executorFuer } from "../warteschlange";
@@ -36,6 +36,8 @@ import {
   unterhaltungSchleuse,
   unterhaltungUmbenennen,
 } from "./aktionen";
+import { ansichtAus, ereignisseAnwenden } from "./ansicht";
+import { ladeVerlauf } from "./laden";
 import type { ChatVerlauf } from "./typen";
 
 vi.setConfig({ testTimeout: 60_000 });
@@ -533,4 +535,123 @@ describe("Fakten des Tors beim Senden", () => {
     expect(abgelehnt.vorbedingungen.kein_lauf_aktiv).toBe("verletzt");
     expect(abgelehnt.vorbedingungen.unterhaltung_vorhanden).toBe("ok");
   });
+});
+
+describe("Neuladen zwischen Speichern der Antwort und Ende des Laufs", () => {
+  /**
+   * Schreibt eine Antwort so, wie der Worker es tut: Lauf starten, Nachricht anlegen, Stücke als
+   * `text.delta`, dann Text speichern (bei Erfolg mit `message.completed`). Der Lauf bleibt offen,
+   * wie in dem Augenblick, bevor die Steuerung ihn beendet.
+   */
+  async function antwortGespeichert(
+    e: Umgebung,
+    id: string,
+    runId: RunId,
+    teile: string[],
+    status: "complete" | "cancelled" | "failed",
+  ): Promise<string> {
+    const db = e.u.db;
+    const conversationId = id as never;
+    await repo.runs.markRunning(db, runId);
+    await repo.events.append(db, { conversationId, type: "run.started", data: { runId } });
+    const messageId = await repo.withTransaction(db, async (tx) => {
+      const m = await repo.messages.insert(tx, {
+        conversationId,
+        role: "assistant",
+        status: "streaming",
+        runId,
+      });
+      await repo.events.append(tx, {
+        conversationId,
+        type: "message.created",
+        data: { messageId: m.id, role: "assistant", text: "" },
+        runId,
+      });
+      return m.id;
+    });
+    for (const text of teile) {
+      await repo.events.append(db, {
+        conversationId,
+        type: "text.delta",
+        data: { runId, messageId, text },
+      });
+    }
+    await repo.withTransaction(db, async (tx) => {
+      await repo.messages.finalize(tx, messageId, {
+        content: teile.join(""),
+        route: "direct",
+        status,
+        ...(status === "failed" ? { errorCode: "anbieter_nicht_erreichbar" as const } : {}),
+      });
+      if (status === "complete") {
+        await repo.events.append(tx, {
+          conversationId,
+          type: "message.completed",
+          data: {
+            messageId,
+            route: "direct",
+            modelLabel: "Beispiel-Modell A",
+            tokens: { input: 10, output: 5 },
+          },
+          runId,
+        });
+      }
+    });
+    return messageId;
+  }
+
+  function texte(verlauf: ChatVerlauf | undefined) {
+    if (verlauf === undefined) throw new Error("Verlauf fehlt");
+    return ansichtAus(verlauf).eintraege.map((x) =>
+      x.art === "nachricht" ? `${x.rolle}:${x.zustand}:${x.text}` : `ende:${x.ergebnis}`,
+    );
+  }
+
+  it.each([
+    ["complete", "fertig"],
+    ["cancelled", "abgebrochen"],
+    ["failed", "fehler"],
+  ] as const)(
+    "Antwort %s: der Text steht genau einmal da, auch nach dem Ende des Laufs",
+    async (status, zustand) => {
+      const e = await eingerichtet();
+      const id = await neueUnterhaltung(e);
+      const r = await senden(e, id, "Hallo Pai");
+      const runId = (r.body.daten as { runId: string }).runId as RunId;
+      const teile = ["Guten ", "Morgen! ", "Was steht an?"];
+      await antwortGespeichert(e, id, runId, teile, status);
+
+      const verlauf = await ladeVerlauf(e.u.db, id as never);
+      // Der Zustand, um den es geht: fertiger Text und noch aktiver Lauf in einem Lesestand.
+      expect(verlauf?.aktiverLauf?.id).toBe(runId);
+      expect(verlauf?.ereignisse.filter((x) => x.type === "text.delta")).toHaveLength(3);
+      const erwartet = ["du:fertig:Hallo Pai", `bot:${zustand}:Guten Morgen! Was steht an?`];
+      expect(texte(verlauf)).toEqual(erwartet);
+      const ansicht = ansichtAus(verlauf as ChatVerlauf);
+      // Erfolg hat kein eigenes Lauf-Ereignis: `message.completed` beendet ihn in der Ansicht.
+      expect(ansicht.lauf?.id).toBe(status === "complete" ? undefined : runId);
+
+      // Die Steuerung beendet den Lauf; der Strom liefert den Rest ab der letzten Nummer.
+      await repo.runs.finish(e.u.db, runId as never, {
+        status: status === "complete" ? "succeeded" : status,
+        ...(status === "complete" ? {} : { errorCode: "unterbrochen" as const }),
+      });
+      if (status !== "complete") {
+        await repo.events.append(e.u.db, {
+          conversationId: id as never,
+          type: status === "cancelled" ? "run.cancelled" : "run.failed",
+          data: { runId, code: "unterbrochen", text: "Abgebrochen." },
+        });
+      }
+      const rest = await repo.events.listSince(e.u.db, id as never, {
+        afterSeq: ansicht.letzteSeq,
+      });
+      const danach = ereignisseAnwenden(ansicht, rest);
+      expect(danach.lauf).toBeUndefined();
+      expect(
+        danach.eintraege.map((x) => (x.art === "nachricht" ? x.text : `ende:${x.ergebnis}`)),
+      ).toEqual(["Hallo Pai", "Guten Morgen! Was steht an?"]);
+      expect(texte(await ladeVerlauf(e.u.db, id as never))).toEqual(erwartet);
+    },
+  );
 });

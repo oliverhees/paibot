@@ -121,10 +121,16 @@ function sortiereBelege(belege: BelegKurz[]): BelegKurz[] {
  * Stelle hinter der auslösenden Nachricht), der aktive Lauf und seine Ereignisse bis jetzt.
  */
 export function ansichtAus(verlauf: ChatVerlauf, kontext: AnsichtKontext = {}): ChatAnsicht {
+  // Der Text einer noch streamenden Antwort entsteht allein aus ihren Ereignissen; eine
+  // abgeschlossene Antwort bringt ihren Text mit, ihre Ereignisse zählen nicht noch einmal.
+  const ausStrom = new Set<string>(
+    verlauf.ereignisse.flatMap((e) => (e.type === "text.delta" ? [e.data.messageId] : [])),
+  );
   const eintraege: AnsichtEintrag[] = [];
   for (const m of verlauf.nachrichten) {
     const e = ausNachricht(m, verlauf.modelle);
-    if (e) eintraege.push(e);
+    if (e === null) continue;
+    eintraege.push(e.zustand === "streamt" && ausStrom.has(e.id) ? { ...e, text: "" } : e);
   }
   const mitAntwort = new Set(
     eintraege.filter((e) => e.art === "nachricht" && e.rolle === "bot").map((e) => e.runId),
@@ -262,6 +268,9 @@ export function ereignisAnwenden(
         };
         return { ...weiter, eintraege: [...weiter.eintraege, neu] };
       }
+      // Eine abgeschlossene Nachricht (fertig, abgebrochen, Fehler) trägt schon ihren ganzen Text,
+      // z. B. aus einem Lesestand zwischen Speichern der Antwort und Ende des Laufs.
+      if (vorhanden.zustand !== "streamt") return weiter;
       return {
         ...weiter,
         eintraege: ersetze(weiter.eintraege, e.data.messageId, (n) => ({
