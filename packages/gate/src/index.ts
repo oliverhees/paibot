@@ -11,6 +11,7 @@
 
 export * from "./contracts";
 export * from "./evaluate";
+export * from "./fassungen/index";
 export * from "./gate";
 export * from "./limits/index";
 export * from "./permit";

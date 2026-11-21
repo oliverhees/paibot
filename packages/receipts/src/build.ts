@@ -15,13 +15,14 @@ import {
   type ReceiptBody,
   type ReceiptResult,
   type ReceiptUndo,
-  receiptBodySchema,
+  receiptBodyWriteSchema,
 } from "@paibot/shared/belege";
 import { invalidInput, PaiBotError } from "@paibot/shared/fehler";
 import type { HmacDigest, IsoTime, Sha256Digest } from "@paibot/shared/grundtypen";
 import type { InstallationId, KeyId, ReceiptId } from "@paibot/shared/ids";
-import type { Decision, ListDecision } from "@paibot/shared/tor";
+import { type Decision, GATE_FORMAT, type ListDecision } from "@paibot/shared/tor";
 import { CanonicalizeError, type CanonicalValue, canonicalize } from "./canonical";
+import { decisionFormat, resultFitsFormat } from "./nachrechnen";
 
 /** Inhalt eines neuen Belegs, ohne die Angaben zur Kette. */
 export type ReceiptDraft =
@@ -42,8 +43,10 @@ export type ReceiptDraft =
       /**
        * Entscheidung des Tors; `matchedRules` wird im Beleg zu `decision.rules`. Das Tor liefert
        * immer eine `Decision` mit Regelstand; `ListDecision` bleibt für Belege älterer Form.
+       * `gateFormat` ist die Fassung, mit der das Tor entschieden hat; angenommen wird nur
+       * `GATE_FORMAT`.
        */
-      decision: Decision | ListDecision;
+      decision: (Decision | ListDecision) & { readonly gateFormat: number };
       /** Fakten, die das Tor gesehen hat: nur Ganzzahlen, Texte, Schalter, keine Inhalte. */
       facts: Readonly<Record<string, unknown>>;
       context?: { digest: HmacDigest };
@@ -66,11 +69,31 @@ export interface ChainLink {
  * Baut den Körper eines Belegs mit `v: 1`. Felder ohne Wert werden weggelassen, nie `null`;
  * `Decision.matchedRules` wird zu `decision.rules`.
  *
- * Zusagen: Das Ergebnis besteht `receiptBodySchema`; es enthält keine Inhalte von Nachrichten.
+ * Fassung: Eine Entscheidung muss `decision.gateFormat === GATE_FORMAT` tragen, sonst
+ * `PaiBotError("eingabe_ungueltig")`. Solange `GATE_FORMAT` 1 ist, steht die Fassung nicht im
+ * Beleg (fehlend heißt Fassung 1), damit ein Beleg genau so aussieht wie vor den Fassungen und
+ * auch ältere PaiBot-Fassungen ihn lesen. Jede andere Fassung käme in `decision.gateFormat`.
+ *
+ * Schreiben wie Prüfen: Eine Entscheidung und ein Ergebnis müssen zusätzlich zur aktuellen,
+ * eingefrorenen Fassung passen (`GATE_FORMATS[GATE_FORMAT]`, `decisionFormat` bzw.
+ * `resultFitsFormat`), genau wie beim Prüfen der Kette. Weicht ein geteiltes Schema von der
+ * Fassung ab, entsteht so nie ein Beleg, den der eigene Prüfer verwirft; das Tor scheitert dann
+ * beim Schreiben der Entscheidung und führt nichts aus.
+ *
+ * Zusagen: Das Ergebnis besteht `receiptBodyWriteSchema` und passt zur Fassung `GATE_FORMAT`; es
+ * enthält keine Inhalte von Nachrichten.
  * Fehler: `PaiBotError("eingabe_ungueltig")`, wenn das Ergebnis das Schema nicht besteht
  * (z. B. Gleitkommazahl in den Fakten).
  */
 export function buildReceipt(draft: ReceiptDraft, link: ChainLink): ReceiptBody {
+  if (draft.type === "decision" && draft.decision.gateFormat !== GATE_FORMAT) {
+    throw new PaiBotError("eingabe_ungueltig");
+  }
+  return buildReceiptBody(draft, link);
+}
+
+/** Baut und prüft den Körper; die Fassung der Entscheidung prüft `buildReceipt` davor. */
+function buildReceiptBody(draft: ReceiptDraft, link: ChainLink): ReceiptBody {
   const common = {
     v: RECEIPT_VERSION,
     id: link.id,
@@ -92,6 +115,9 @@ export function buildReceipt(draft: ReceiptDraft, link: ChainLink): ReceiptBody 
         type: "decision",
         action: draft.action,
         decision: {
+          // Fassung 1 steht nicht im Beleg; jede andere Angabe kommt hinein (und Fassung 1 weist
+          // das Schreib-Schema dann ab).
+          gateFormat: draft.decision.gateFormat === 1 ? undefined : draft.decision.gateFormat,
           outcome: draft.decision.outcome,
           stage: draft.decision.stage,
           rules: draft.decision.matchedRules,
@@ -119,8 +145,9 @@ export function buildReceipt(draft: ReceiptDraft, link: ChainLink): ReceiptBody 
   }
 
   const clean = withoutUndefined(body) as Record<string, unknown>;
-  const parsed = receiptBodySchema.safeParse(clean);
+  const parsed = receiptBodyWriteSchema.safeParse(clean);
   if (!parsed.success) throw invalidInput(parsed.error, clean);
+  if (!fitsCurrentFormat(clean)) throw new PaiBotError("eingabe_ungueltig");
   try {
     canonicalize(clean as CanonicalValue);
   } catch (error) {
@@ -129,6 +156,16 @@ export function buildReceipt(draft: ReceiptDraft, link: ChainLink): ReceiptBody 
     throw error;
   }
   return clean as unknown as ReceiptBody;
+}
+
+/** Passt eine Entscheidung bzw. ein Ergebnis zur aktuellen Fassung, wie der Prüfer es verlangt? */
+function fitsCurrentFormat(body: Record<string, unknown>): boolean {
+  if (body.type === "decision") {
+    const fit = decisionFormat(body);
+    return fit.status === "passt" && fit.format === GATE_FORMAT;
+  }
+  if (body.type === "result") return resultFitsFormat(body, GATE_FORMAT) === true;
+  return true;
 }
 
 /**

@@ -176,6 +176,8 @@ export function ChatSeite({
     (verlauf?.unterhaltung.schleuse ?? bereitschaft.schleuseStandard) === "on",
   );
   const [sendet, setSendet] = useState<string | undefined>();
+  // Eigene Nachrichten, die schon vor dem Senden im Verlauf standen (für die vorläufige Anzeige).
+  const vorSenden = useRef<ReadonlySet<string>>(new Set());
   const [fehler, setFehler] = useState<ApiErrorDetail | undefined>();
   const [schritte, setSchritte] = useState(true);
   const [belegOffen, setBelegOffen] = useState<string | undefined>();
@@ -340,6 +342,9 @@ export function ChatSeite({
       return;
     }
     setFehler(undefined);
+    vorSenden.current = new Set(
+      ansicht.eintraege.flatMap((e) => (e.art === "nachricht" && e.rolle === "du" ? [e.id] : [])),
+    );
     setSendet(roh);
     neuesAnfangen();
     ankleben.current = true;
@@ -895,6 +900,16 @@ export function ChatSeite({
     (e) => e.art === "nachricht" && e.rolle === "bot" && e.runId === lauf?.id,
   );
   const leer = ansicht.eintraege.length === 0 && sendet === undefined;
+  // Kam die Nachricht schon über den Ereignis-Strom, steht sie im Verlauf; die vorläufige entfällt.
+  const vorlaeufig =
+    sendet !== undefined &&
+    !ansicht.eintraege.some(
+      (e) =>
+        e.art === "nachricht" &&
+        e.rolle === "du" &&
+        e.text === sendet &&
+        !vorSenden.current.has(e.id),
+    );
 
   const nichtBereit = !bereit ? (
     <EmptyState
@@ -998,7 +1013,7 @@ export function ChatSeite({
           {leer && !bereit && nichtBereit}
           {leer && bereit && <Startbereich fassung={fassung} {...startDaten} />}
           {mitTagen}
-          {sendet !== undefined && (
+          {vorlaeufig && (
             <div className={styles.ausstehend} aria-busy="true">
               <ChatBubble von="du" zeit={t("chat.ausstehend")}>
                 <span className={styles.duText}>{sendet}</span>

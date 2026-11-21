@@ -10,9 +10,8 @@
  * @since     2026-11-21
  */
 
-import { evaluate } from "@paibot/gate";
 import type { ReceiptEntry } from "@paibot/shared/belege";
-import { receiptBodySchema } from "@paibot/shared/belege";
+import { receiptBodyWriteSchema } from "@paibot/shared/belege";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   copy,
@@ -23,6 +22,7 @@ import {
   TEST_INSTALLATION,
   TEST_RULE,
   type TestKey,
+  testEvaluate,
   testKey,
 } from "./testhilfen";
 import { verifyChain } from "./verify";
@@ -47,7 +47,7 @@ beforeAll(async () => {
     const action = sendAction();
     const facts = sendFacts();
     const entscheidung = await signedEntry(
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testEvaluate(action, facts), facts },
       kette[kette.length - 1],
       key,
     );
@@ -66,12 +66,12 @@ beforeAll(async () => {
 
 describe("Herkunft der Antwort im Beleg „Ergebnis“", () => {
   it("alt (ohne) und neu (mit) passen zum Vertrag; falsche Form nicht", () => {
-    expect(receiptBodySchema.safeParse(kette[2]?.body).success).toBe(true);
-    expect(receiptBodySchema.safeParse(kette[4]?.body).success).toBe(true);
+    expect(receiptBodyWriteSchema.safeParse(kette[2]?.body).success).toBe(true);
+    expect(receiptBodyWriteSchema.safeParse(kette[4]?.body).success).toBe(true);
     const falsch = copy(kette[4]);
     if (falsch?.body.type !== "result") throw new Error("Ergebnis erwartet");
     falsch.body.result.servedBy = { provider: "Böse‮Firma" };
-    expect(receiptBodySchema.safeParse(falsch.body).success).toBe(false);
+    expect(receiptBodyWriteSchema.safeParse(falsch.body).success).toBe(false);
   });
 
   it("Kette aus alten und neuen Belegen ist gültig", async () => {
