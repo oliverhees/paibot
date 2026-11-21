@@ -10,8 +10,12 @@
  */
 
 import { repo } from "@paibot/db";
+import { createGate, ruleSnapshot } from "@paibot/gate";
+import { createReceiptWriter } from "@paibot/receipts";
+import { newId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
-import { describe, expect, it, vi } from "vitest";
+import type { RuleDefinition, RuleSnapshot } from "@paibot/shared/tor";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { einrichtungAbschliessen } from "../zugang/einrichtung";
 import {
   anfrage,
@@ -26,6 +30,37 @@ import { einstellungenAendern, einstellungenLesen, tagesbeginn, tokenSeit } from
 import type { EinstellungenAnzeige, EinstellungenGespeichert } from "./typen";
 
 vi.setConfig({ testTimeout: 60_000 });
+
+/**
+ * Die Datenbank nimmt keine eigenen Regeln an (die Regeln kommen nur aus Migrationen), und die
+ * Standard-Regeln erlauben `einstellung.aendern` mit Sitzung. Um den Weg „Tor lehnt ab“ der Route
+ * zu prüfen, bekommt das Tor hier auf Wunsch einen Regelstand aus dem Test; Belege schreibt es
+ * weiter echt in die Datenbank.
+ */
+const ersatz = vi.hoisted(() => ({
+  regeln: undefined as undefined | (() => Promise<RuleSnapshot>),
+}));
+
+vi.mock("../gate", async (importOriginal) => {
+  const echt = await importOriginal<typeof import("../gate")>();
+  return {
+    ...echt,
+    torAuf: (...argumente: Parameters<typeof echt.torAuf>) => {
+      const laden = ersatz.regeln;
+      if (laden === undefined) return echt.torAuf(...argumente);
+      const [db, schluessel, uhr] = argumente;
+      return createGate({
+        rules: { load: laden },
+        receipts: createReceiptWriter(db, schluessel),
+        clock: uhr,
+      });
+    },
+  };
+});
+
+afterEach(() => {
+  ersatz.regeln = undefined;
+});
 
 const PFAD = "/api/einstellungen";
 
@@ -185,21 +220,23 @@ describe("PATCH /api/einstellungen", () => {
     expect((await repo.settings.get(u.db))?.historyTokenLimit).toBeUndefined();
   });
 
-  it("lehnt das Tor ab (Regel des Besitzers), antwortet die Route mit dem Code und ändert nichts", async () => {
+  it("lehnt das Tor ab (Regel lehnt ab), antwortet die Route mit dem Code und ändert nichts", async () => {
     const { u, dose } = await eingerichtet();
-    await repo.rules.appendVersion(u.db, {
-      id: "R-900",
+    const sperre: RuleDefinition = {
+      id: newId("rule"),
       version: 1,
       action: "einstellung.aendern",
       effect: "deny",
       stage: "execute",
       conditions: [],
-      priority: 10,
+      priority: 1000,
       source: "owner",
       enabled: true,
       title: "Einstellungen gesperrt",
       reason: "Einstellungen bleiben, wie sie sind.",
-    });
+    };
+    const { stand } = await repo.rules.loadSnapshot(u.db);
+    ersatz.regeln = () => ruleSnapshot([sperre], stand);
     const r = await anfrage(u, routen(u).aendern, "PATCH", PFAD, {
       dose,
       koerper: { dailyTokenBudget: 1000 },
