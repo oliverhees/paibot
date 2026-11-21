@@ -19,9 +19,9 @@ Viele Fehler beim Betrieb fallen erst auf, wenn etwas schiefgeht: eine falsche A
 ## So benutzt du es
 
 1. Melde dich an und klick unten links in der Seitenleiste auf **Du**, dann unter **Hilfe** auf **Selbsttest** (oder in den Einstellungen auf den Reiter **Selbsttest**).
-2. PaiBot prüft sofort; oben steht die Zusammenfassung, zum Beispiel „11 in Ordnung · 2 Hinweise · 0 Fehler“.
+2. PaiBot prüft sofort; oben steht die Zusammenfassung, zum Beispiel „10 in Ordnung · 3 Hinweise · 0 Fehler“.
 
-   ![Reiter „Selbsttest“: oben die Zusammenfassung „11 in Ordnung · 2 Hinweise · 0 Fehler“ und „Erneut prüfen“, darunter die ersten Prüfungen mit „Hinweis“ bzw. „In Ordnung“](assets/screenshots/selbsttest.png)
+   ![Reiter „Selbsttest“: oben die Zusammenfassung „10 in Ordnung · 3 Hinweise · 0 Fehler“ und „Erneut prüfen“, darunter die ersten Prüfungen mit „Hinweis“ bzw. „In Ordnung“](assets/screenshots/selbsttest.png)
 3. Geh die Liste von oben nach unten durch. Bei jedem Punkt mit **Hinweis** (gelb) oder **Fehler** (rot) steht unter **So behebst du es**, was zu tun ist.
 
    ![Punkt „Adresse (APP_URL)“ mit „Hinweis“: APP_URL beginnt mit http://, darunter „So behebst du es“](assets/screenshots/selbsttest-hinweise.png)
