@@ -10,9 +10,8 @@
  * @since     2026-11-21
  */
 
-import { evaluate } from "@paibot/gate";
 import type { ReceiptEntry } from "@paibot/shared/belege";
-import { receiptBodySchema } from "@paibot/shared/belege";
+import { receiptBodyWriteSchema } from "@paibot/shared/belege";
 import { newId } from "@paibot/shared/ids";
 import { beforeAll, describe, expect, it } from "vitest";
 import { hashReceipt } from "./hash";
@@ -25,6 +24,7 @@ import {
   TEST_INSTALLATION,
   TEST_RULE,
   type TestKey,
+  testEvaluate,
   testKey,
 } from "./testhilfen";
 import { verifyChain, verifyReceipt } from "./verify";
@@ -51,7 +51,7 @@ beforeAll(async () => {
     const facts = { ...sendFacts(), ...(geraet === undefined ? {} : { device: geraet }) };
     const vorher = kette[kette.length - 1];
     const entscheidung = await signedEntry(
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testEvaluate(action, facts), facts },
       vorher,
       key,
     );
@@ -70,8 +70,8 @@ describe("Fakt „Gerät“ in Belegen des Besitzers", () => {
     const neu = kette[3];
     expect(alt?.body.type === "decision" && "device" in alt.body.facts).toBe(false);
     expect(neu?.body.type === "decision" && neu.body.facts.device).toBe(GERAET);
-    expect(receiptBodySchema.safeParse(alt?.body).success).toBe(true);
-    expect(receiptBodySchema.safeParse(neu?.body).success).toBe(true);
+    expect(receiptBodyWriteSchema.safeParse(alt?.body).success).toBe(true);
+    expect(receiptBodyWriteSchema.safeParse(neu?.body).success).toBe(true);
   });
 
   it("eine Kette aus alten und neuen Belegen ist als Ganzes vertrauenswürdig", async () => {
@@ -118,6 +118,6 @@ describe("Fakt „Gerät“ in Belegen des Besitzers", () => {
     const neu = copy(kette[3]);
     if (neu?.body.type !== "decision") throw new Error("Entscheidung erwartet");
     neu.body.facts.device = "ger_kaputt";
-    expect(receiptBodySchema.safeParse(neu.body).success).toBe(false);
+    expect(receiptBodyWriteSchema.safeParse(neu.body).success).toBe(false);
   });
 });

@@ -12,7 +12,6 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { evaluate } from "@paibot/gate";
 import {
   encodeAnchor,
   parseAnchor,
@@ -29,8 +28,8 @@ import {
   sendFacts,
   signedEntry,
   TEST_INSTALLATION,
-  TEST_RULE,
   type TestKey,
+  testEvaluate,
   testKey,
 } from "./testhilfen";
 import { createAnchor } from "./verify";
@@ -225,7 +224,7 @@ describe("runCli mit Anker", () => {
     const facts = sendFacts();
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: testEvaluate(action, facts), facts },
         change,
         next,
       ),

@@ -29,6 +29,13 @@ import {
 } from "./grundtypen";
 import { type ActionId, idSchema, type ReceiptId } from "./id";
 
+/**
+ * Fassung des Tor-Formats, mit der das Tor jetzt entscheidet und der Schreiber belegt. Jede
+ * Änderung am Tor, die für gleiche Fakten ein anderes Ergebnis von `evaluate` geben kann, hebt
+ * diese Zahl; eine Fassung selbst wird nie geändert.
+ */
+export const GATE_FORMAT = 1;
+
 /** Stufen einer Aktion: nachfragen, vorbereiten, ausführen (mit Beleg). */
 export const STAGES = ["ask", "prepare", "execute"] as const;
 export const stageSchema = z.enum(STAGES);

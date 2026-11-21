@@ -14,7 +14,12 @@ import { evaluate } from "@paibot/gate";
 import type { ActionRequest } from "@paibot/shared/aktionen";
 import type { PublicKeyInfo, ReceiptEntry } from "@paibot/shared/belege";
 import { type KeyId, newId } from "@paibot/shared/ids";
-import type { Decision, RuleDefinition } from "@paibot/shared/tor";
+import {
+  type Decision,
+  GATE_FORMAT,
+  type ListDecision,
+  type RuleDefinition,
+} from "@paibot/shared/tor";
 import { buildReceipt, type ReceiptDraft } from "./build";
 import { digestBytes, hashReceipt } from "./hash";
 import { hashRule, type RuleVersion } from "./nachrechnen";
@@ -81,6 +86,22 @@ export function sendFacts(inputChars = 812) {
   };
 }
 
+/** Entscheidung, wie das Tor sie dem Schreiber gibt: mit der Fassung `GATE_FORMAT`. */
+export function withGateFormat<D extends Decision | ListDecision>(
+  decision: D,
+): D & { gateFormat: number } {
+  return { ...decision, gateFormat: GATE_FORMAT };
+}
+
+/** `evaluate` mit den Test-Regeln, mit Fassung wie vom Tor. */
+export function testEvaluate(
+  action: ActionRequest,
+  facts: Readonly<Record<string, unknown>>,
+  rules: readonly RuleDefinition[] = [TEST_RULE],
+): ListDecision & { gateFormat: number } {
+  return withGateFormat(evaluate(action, facts as never, rules));
+}
+
 /** Signiert einen Entwurf als nächsten Eintrag nach `prev`. */
 export async function signedEntry(
   draft: ReceiptDraft,
@@ -130,7 +151,7 @@ export async function buildChain(count: number, key: TestKey): Promise<ReceiptEn
       draft = {
         type: "decision",
         action,
-        decision: evaluate(action, facts, [TEST_RULE]),
+        decision: testEvaluate(action, facts),
         facts,
       };
     } else {
@@ -151,9 +172,10 @@ export function testDecision(
   facts: ReturnType<typeof sendFacts>,
   rules: readonly RuleVersion[] = [TEST_RULE],
   stand = 1,
-): Decision {
+): Decision & { gateFormat: number } {
   const decision = evaluate(action, facts, rules);
   return {
+    gateFormat: GATE_FORMAT,
     ...decision,
     matchedRules: decision.matchedRules.map((ref) => {
       const rule = rules.find((r) => r.id === ref.id && r.version === ref.version);

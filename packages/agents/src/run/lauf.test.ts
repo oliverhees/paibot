@@ -19,6 +19,7 @@ import type { ConversationEvent } from "@paibot/shared/ereignisse";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import type { MotorEvent } from "@paibot/shared/motor";
+import { GATE_FORMAT } from "@paibot/shared/tor";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeMotor, type FakeMotor, type FakeMotorScript } from "../testing/fake-motor";
 import { type RunSetup, type RunSetupOptions, setupRun } from "../testing/lauf-umgebung";
@@ -580,7 +581,12 @@ describe("failStaleRuns", () => {
     };
     const snapshot = await repo.rules.loadSnapshot(env.db);
     const decision = evaluate(action, facts, await ruleSnapshot(snapshot.rules, snapshot.stand));
-    await env.writer.appendDecision({ action, facts, decision, time: new Date() });
+    await env.writer.appendDecision({
+      action,
+      facts,
+      decision: { ...decision, gateFormat: GATE_FORMAT },
+      time: new Date(),
+    });
     const message = await repo.messages.insert(env.db, {
       conversationId: env.conversationId,
       role: "assistant",
