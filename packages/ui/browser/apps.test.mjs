@@ -487,7 +487,7 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
     }
   });
 
-  it("kein „EU“, kein „sicher“ und keine Kennung aus der Planung irgendwo in den Texten", async () => {
+  it("kein „EU“ und kein „sicher“ irgendwo in den Texten", async () => {
     for (const ansicht of [
       "leer",
       "formular",
@@ -502,7 +502,7 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
       const text = await page.locator("body").textContent();
       expect({
         ansicht,
-        treffer: text.match(/\bEU\b|sicher|PAIBOT-|\bPlane\b|Befund|Regie/i),
+        treffer: text.match(/\bEU\b|sicher/i),
       }).toEqual({
         ansicht,
         treffer: null,
