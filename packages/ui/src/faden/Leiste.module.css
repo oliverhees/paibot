@@ -549,7 +549,9 @@ button.ziel:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .leiste {
+  .leiste,
+  .leiste[data-offen="false"],
+  .leiste[data-offen="true"] {
     transition: none;
   }
 }

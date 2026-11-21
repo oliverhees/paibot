@@ -11,7 +11,8 @@
 // Wird nur von faden.test.mjs über einen Vite-Server geladen; gehört nicht zum Paket. Alle
 // Angaben sind Beispiele. Abfrage-Parameter: szene (leer, arbeitet, wartet, fertig, angehalten,
 // grenze, gross), thema (hell|dunkel), gefahr=1 (Bot-Text mit Skript, Bild und Richtungszeichen
-// in den Beiträgen und Fragen).
+// in den Beiträgen und Fragen), lang=1 (sehr lange Namen und Texte), ziele=N und beteiligte=M
+// (Zahl der Ziele und der Beteiligten, für die Schwellen).
 
 import "../src/tokens.css";
 import { useMemo } from "react";
@@ -36,12 +37,52 @@ const suche = new URLSearchParams(location.search);
 const gueltig = new Set<string>(SZENEN.map((s) => s.id));
 const ID = (gueltig.has(suche.get("szene") ?? "") ? suche.get("szene") : "arbeitet") as SzenenId;
 const GEFAHR = suche.get("gefahr") === "1";
+const LANG = suche.get("lang") === "1";
+const ZIELE = suche.has("ziele") ? Number(suche.get("ziele")) : null;
+const BETEILIGTE = suche.has("beteiligte") ? Number(suche.get("beteiligte")) : null;
+
+function mitLaenge(s: FadenSzene): FadenSzene {
+  const ben = s.bots.ben;
+  const wort = "Ununterbrochenerwortohneleerzeichen".repeat(30);
+  return {
+    ...s,
+    bots: ben
+      ? { ...s.bots, ben: { ...ben, name: "Benedikt".repeat(40), rolle: "Grafik".repeat(30) } }
+      : s.bots,
+    gespraech: s.gespraech.map((e) =>
+      e.art === "beitrag" && e.von !== "du"
+        ? { ...e, text: `${wort} ${"Langer Satz. ".repeat(200)}` }
+        : e,
+    ),
+    ...(s.kopf ? { kopf: { ...s.kopf, titel: "Ein sehr langer Titel ".repeat(30) } } : {}),
+  };
+}
+
+function mitZahlen(s: FadenSzene): FadenSzene {
+  if (!s.kopf) return s;
+  let kopf = s.kopf;
+  let leiste = s.leiste;
+  if (ZIELE !== null) {
+    const alle = kopf.etappen.flatMap((e) => e.ziele);
+    const ziele = Array.from(
+      { length: ZIELE },
+      (_, i) => alle[i] ?? { id: `extra${i}`, text: `Ziel ${i + 1}`, stand: "offen" as const },
+    );
+    const etappen = [{ id: "einzig", ziele }];
+    kopf = { ...kopf, etappen };
+    if (leiste) leiste = { ...leiste, etappen };
+  }
+  if (BETEILIGTE !== null) kopf = { ...kopf, beteiligte: BETEILIGTE };
+  return { ...s, kopf, ...(leiste ? { leiste } : {}) };
+}
 
 function mitGefahr(s: FadenSzene): FadenSzene {
   return {
     ...s,
     gespraech: s.gespraech.map((e) =>
-      e.art === "beitrag" && e.von !== "du" ? { ...e, text: GEFAEHRLICHER_TEXT, untrusted: true } : e,
+      e.art === "beitrag" && e.von !== "du"
+        ? { ...e, text: GEFAEHRLICHER_TEXT, untrusted: true }
+        : e,
     ),
     ...(s.kopf?.fragen
       ? {
@@ -55,7 +96,12 @@ function mitGefahr(s: FadenSzene): FadenSzene {
 }
 
 function Seite() {
-  const szene = useMemo(() => (GEFAHR ? mitGefahr(beispielSzene(ID)) : beispielSzene(ID)), []);
+  const szene = useMemo(() => {
+    let s = beispielSzene(ID);
+    if (GEFAHR) s = mitGefahr(s);
+    if (LANG) s = mitLaenge(s);
+    return mitZahlen(s);
+  }, []);
   return (
     <div style={{ height: "100dvh" }}>
       <FadenAnsicht
