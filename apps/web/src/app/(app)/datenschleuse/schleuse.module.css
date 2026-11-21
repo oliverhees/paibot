@@ -1,0 +1,143 @@
+/**
+ * PaiBot – Stile der Seite „Datenschleuse“.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.text {
+  margin: 0;
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+}
+
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.schritte {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  color: var(--accent-text);
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-xs);
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.live:empty {
+  display: none;
+}
+
+.meldung {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  font-size: var(--schrift-m);
+}
+
+.meldung[data-art="ok"] {
+  background: var(--ok-soft);
+}
+
+.meldung[data-art="fehler"] {
+  background: var(--danger-soft);
+}
+
+.ablauf {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.schritt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-feld);
+  background: var(--surface-raised);
+  min-width: 0;
+}
+
+.schritt[data-art="modell"] {
+  border-style: dashed;
+  background: var(--surface-sunken);
+}
+
+.schritt p:not(.mono) {
+  margin: 0;
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.etikett {
+  font-size: var(--schrift-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.mono {
+  margin: 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--schrift-s);
+  color: var(--accent-text);
+}
+
+.hinweis {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+}
+
+.hinweis svg {
+  flex: none;
+  margin-top: 4px;
+  color: var(--warn);
+}
+
+@media (max-width: 720px) {
+  .ablauf {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
