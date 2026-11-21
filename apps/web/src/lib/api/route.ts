@@ -99,13 +99,14 @@ export interface RoutenKontext<N extends RoutenName> {
   limitZuruecksetzen(name: LimitName): Promise<void>;
   /**
    * Führt eine Aktion über das Tor aus. Akteur ist der Besitzer, `credential` setzt der Rahmen aus
-   * dem Nachweis (nie aus der Eingabe). Die Aktion der Route verlangt den Nachweis laut
+   * dem Nachweis (nie aus der Eingabe), ebenso `device` (das Gerät der Sitzung bzw. das bekannte
+   * Gerät der Anmeldung, falls es eins gibt). Die Aktion der Route verlangt den Nachweis laut
    * Routen-Vertrag, jede weitere Aktion einen Nachweis „Sitzung“.
    */
   tor<T extends BesitzerAktion, R>(
     nachweis: Nachweis,
     aktion: { type: T; target: ActionTarget<T> },
-    fakten: Omit<Facts<T>, "credential">,
+    fakten: Omit<Facts<T>, "credential" | "device">,
     ausfuehren: Execute<T, R>,
     optionen?: TorOptionen,
   ): Promise<GateRunResult<R>>;
@@ -395,8 +396,15 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
           tor: async (nachweis, anfrage, fakten, ausfuehren, optionen = {}) => {
             if (!istNachweis(nachweis)) throw new PaiBotError("intern");
             if (Object.hasOwn(fakten as object, "credential")) throw new PaiBotError("intern");
+            if (Object.hasOwn(fakten as object, "device")) throw new PaiBotError("intern");
             const verlangt = anfrage.type === def.aktion ? routenNachweis : "sitzung";
             if (nachweis.art !== verlangt) throw new PaiBotError("intern");
+            // Gerät, von dem die Aktion kommt: aus dem Nachweis bzw. aus der Sitzung, nie aus der Eingabe.
+            const geraet =
+              nachweis.geraet ??
+              (nachweis.sitzung === undefined
+                ? undefined
+                : await repo.sessions.deviceOf(optionen.db ?? db, nachweis.sitzung.id));
             const tor = torAuf(
               optionen.db ?? db,
               optionen.schluessel ?? d.belegSchluessel(),
@@ -409,7 +417,11 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
                 actor: "besitzer",
                 target: anfrage.target,
               } as never,
-              { ...fakten, credential: nachweis.art } as never,
+              {
+                ...fakten,
+                credential: nachweis.art,
+                ...(geraet === undefined ? {} : { device: geraet }),
+              } as never,
               ausfuehren as never,
             );
             gelaufen.add(anfrage.type);

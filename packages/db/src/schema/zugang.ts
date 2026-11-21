@@ -93,6 +93,11 @@ export const geraete = pgTable(
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /**
+     * Bis zu diesem Zeitpunkt hat der Besitzer auf diesem Gerät neue Anmeldungen anderer Geräte
+     * bestätigt („Das war ich“); leer = seit dem Anlegen nichts bestätigt.
+     */
+    noticeSeenAt: timestamp("notice_seen_at", { withTimezone: true }),
   },
   (t) => [
     idCheck("geraete_id_format", t.id, "device"),

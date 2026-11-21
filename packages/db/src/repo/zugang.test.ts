@@ -361,4 +361,70 @@ describe("geraete", () => {
       }),
     ).rejects.toEqual(mitCode("eingabe_ungueltig"));
   });
+
+  it("neue Anmeldungen: andere gültige Geräte nach dem Stand dieses Geräts, neueste zuerst", async () => {
+    const a = await neu("a");
+    expect(await geraete.neueSeit(db, id, a.id, { now: T0 })).toEqual([]);
+    const b = await neu("b", nach(T0, 1000));
+    const c = await neu("c", nach(T0, 2000));
+    const jetzt = nach(T0, 3000);
+    expect((await geraete.neueSeit(db, id, a.id, { now: jetzt })).map((g) => g.id)).toEqual([
+      c.id,
+      b.id,
+    ]);
+    // Aus Sicht des neuesten Geräts ist nichts neu; ältere Geräte zählen nie.
+    expect(await geraete.neueSeit(db, id, c.id, { now: jetzt })).toEqual([]);
+    expect((await geraete.neueSeit(db, id, b.id, { now: jetzt })).map((g) => g.id)).toEqual([c.id]);
+    // Widerrufene neue Geräte fallen weg.
+    await geraete.revoke(db, id, c.id, { now: jetzt });
+    expect((await geraete.neueSeit(db, id, a.id, { now: jetzt })).map((g) => g.id)).toEqual([b.id]);
+    // Ein widerrufenes Gerät sieht keinen Hinweis; ein fremdes oder unbekanntes auch nicht.
+    expect(await geraete.neueSeit(db, id, c.id, { now: jetzt })).toEqual([]);
+    expect(await geraete.neueSeit(db, newId("owner"), a.id, { now: jetzt })).toEqual([]);
+    expect(await geraete.neueSeit(db, id, newId("device"), { now: jetzt })).toEqual([]);
+  });
+
+  it("Hinweis bestätigen gilt nur für dieses Gerät, nie rückwärts, und nur für Neueres danach", async () => {
+    const a = await neu("a");
+    const b = await neu("b");
+    const c = await neu("c", nach(T0, 1000));
+    const jetzt = nach(T0, 2000);
+    expect(
+      await geraete.hinweisBestaetigen(db, id, a.id, { bis: nach(T0, 1000), now: jetzt }),
+    ).toBe(true);
+    expect(await geraete.neueSeit(db, id, a.id, { now: jetzt })).toEqual([]);
+    // Ein anderes Gerät sieht den Hinweis weiter.
+    expect((await geraete.neueSeit(db, id, b.id, { now: jetzt })).map((g) => g.id)).toEqual([c.id]);
+    // Ein älterer Stand setzt nichts zurück.
+    await geraete.hinweisBestaetigen(db, id, a.id, { bis: T0, now: jetzt });
+    expect(await geraete.neueSeit(db, id, a.id, { now: jetzt })).toEqual([]);
+    // Ein Gerät nach dem bestätigten Stand erscheint wieder.
+    const d = await neu("d", nach(T0, 5000));
+    expect(
+      (await geraete.neueSeit(db, id, a.id, { now: nach(T0, 6000) })).map((g) => g.id),
+    ).toEqual([d.id]);
+    // Fremder Besitzer oder widerrufenes Gerät: nichts geändert.
+    expect(
+      await geraete.hinweisBestaetigen(db, newId("owner"), b.id, { bis: jetzt, now: jetzt }),
+    ).toBe(false);
+    await geraete.revoke(db, id, b.id, { now: jetzt });
+    expect(await geraete.hinweisBestaetigen(db, id, b.id, { bis: jetzt, now: jetzt })).toBe(false);
+  });
+
+  it("Namen von Geräten, auch widerrufener, nur des Besitzers", async () => {
+    const g = await geraete.create(db, {
+      tokenHash: hash("n"),
+      ownerId: id,
+      kind: "browser",
+      name: "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0",
+      expiresAt: ablauf,
+      now: T0,
+    });
+    await geraete.revoke(db, id, g.id, { now: T0 });
+    const namen = await geraete.namen(db, id, [g.id, newId("device")]);
+    expect([...namen.keys()]).toEqual([g.id]);
+    expect(namen.get(g.id)?.name).toContain("Firefox");
+    expect((await geraete.namen(db, newId("owner"), [g.id])).size).toBe(0);
+    expect((await geraete.namen(db, id, [])).size).toBe(0);
+  });
 });

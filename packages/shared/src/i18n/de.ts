@@ -1141,6 +1141,49 @@ export const de = {
     "Einrichtung offen: Der Einrichtungs-Code wurde am {zeit} erzeugt. Er steht im Log des Starts, der ihn erzeugt hat, nicht in diesem, und gilt 24 Stunden, längstens bis zum Ende der Einrichtung. Code nicht mehr zur Hand: Migrations-Schritt erneut starten (Dienst migrate, z. B. docker compose up -d), dann die Seite „Einrichtung“ neu laden; der neue Code steht danach im Log von web.",
   "aktion.geraet.hinzufuegen": "Gerät hinzugefügt",
   "aktion.geraet.entfernen": "Gerät entfernt",
+
+  // Bekannte Geräte und Hinweis bei neuer Anmeldung
+  "aktion.geraet.bestaetigen": "Neue Anmeldung bestätigt",
+  "einstellungen.geraete": "Bekannte Geräte",
+  "einstellungen.geraete.text":
+    "Browser, in denen du dich angemeldet hast. Ein bekanntes Gerät kommt auch dann hinein, wenn die Anmeldung wegen vieler Fehlversuche gerade gebremst wird. Entferne Geräte, die du nicht mehr benutzt oder nicht kennst; ihre Sitzungen enden sofort.",
+  "einstellungen.geraete.leer":
+    "Es gibt gerade kein bekanntes Gerät. Ein Gerät kommt dazu, sobald du dich in einem Browser anmeldest.",
+  "einstellungen.geraete.fehler": "Die Geräte lassen sich gerade nicht laden.",
+  "einstellungen.geraet.diese": "dieses Gerät",
+  "einstellungen.geraet.zuerst": "zuerst gesehen am {zeit}",
+  "einstellungen.geraet.zuletzt": "zuletzt gesehen am {zeit}",
+  "einstellungen.geraet.bis": "gültig bis {zeit}",
+  "einstellungen.geraet.entfernen": "Entfernen",
+  "einstellungen.geraet.entfernen_label": "{geraet} entfernen",
+  "einstellungen.geraet.entfernen_titel": "Gerät entfernen?",
+  "einstellungen.geraet.rueckfrage":
+    "„{geraet}“ ist danach kein bekanntes Gerät mehr. Alle Sitzungen dieses Geräts enden sofort; wer es benutzt, muss sich neu mit dem Passwort anmelden.",
+  "einstellungen.geraet.rueckfrage_dieses":
+    "Das ist der Browser, den du gerade benutzt. Entfernst du ihn, wirst du hier sofort abgemeldet und landest auf der Anmeldung.",
+  "einstellungen.geraet.laeuft": "Wird entfernt …",
+  "einstellungen.geraet.entfernt": "Gerät entfernt: {geraet}. Seine Sitzungen sind beendet.",
+  "einstellungen.geraet.weg":
+    "Dieses Gerät gibt es nicht mehr, vielleicht wurde es schon entfernt. Die Liste ist neu geladen.",
+  "hinweis.neu.region": "Hinweis auf neue Anmeldung",
+  "hinweis.neu.titel": "Neue Anmeldung von einem neuen Gerät",
+  "hinweis.neu.titel_mehrere": "Neue Anmeldungen von {anzahl} neuen Geräten",
+  "hinweis.neu.zeile": "{geraet}, am {zeit}",
+  "hinweis.neu.text": "Warst du das? Wenn nicht, sichere deinen Zugang jetzt.",
+  "hinweis.neu.ich": "Das war ich",
+  "hinweis.neu.nicht_ich": "Das war ich nicht",
+  "hinweis.neu.laeuft": "Wird bestätigt …",
+  "hinweis.neu.bestaetigt": "Danke. Der Hinweis ist auf diesem Gerät geschlossen.",
+  "hinweis.neu.sichern_titel": "So sicherst du deinen Zugang",
+  "hinweis.neu.sichern_passwort":
+    "Passwort ändern: beendet alle anderen Sitzungen und entfernt alle anderen Geräte; dieser Browser bleibt angemeldet. Das ist der beste erste Schritt.",
+  "hinweis.neu.sichern_alle":
+    "Alle Sitzungen beenden: meldet überall ab, auch hier. Danach meldest du dich neu an.",
+  "hinweis.neu.zum_passwort": "Passwort ändern",
+  "hinweis.neu.zu_alle": "Zu „Alle Sitzungen beenden“",
+  "belege.karte.geraet": "Gerät",
+  "belege.karte.geraet_weg": "nicht mehr im Verzeichnis",
+
   // Eigener Anbieter in der Oberfläche: anlegen, ändern, testen, abgleichen, entfernen
   "modelle.eigen.titel": "Eigener Anbieter",
   "modelle.eigen.text":
