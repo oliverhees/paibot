@@ -652,6 +652,84 @@ async function main() {
     await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
   });
 
+  // ---- Chat-Ergänzungen: suchen, als Datei sichern, neu erzeugen ---------------------------------
+  await schritt("Suchen: Treffer öffnen und zur Stelle springen", seite, async () => {
+    await seite.setViewportSize(DESKTOP);
+    await seite.goto(`${app}/einstellungen`);
+    const navigation = seite.getByRole("complementary", { name: "Navigation" });
+    const feld = navigation.getByRole("searchbox", { name: "Unterhaltungen durchsuchen" });
+    await feld.fill("x");
+    await navigation.getByText("Gib mindestens zwei Zeichen ein.").waitFor();
+    await feld.fill("kein-solches-wort-zz");
+    await navigation.getByText("Nichts gefunden für „kein-solches-wort-zz“.").waitFor();
+    // Teil der Frage aus dem ersten Chat-Schritt, anders geschrieben.
+    await feld.fill("WIE GEHT");
+    const treffer = navigation.getByRole("region", { name: "Treffer der Suche" });
+    await treffer.locator("mark", { hasText: "wie geht" }).first().waitFor();
+    // Tastatur: Pfeil nach unten zum ersten Treffer (Titel), noch einmal zur Nachricht, Enter.
+    await feld.press("ArrowDown");
+    await seite.keyboard.press("ArrowDown");
+    await seite.keyboard.press("Enter");
+    await seite.waitForURL((u) => u.pathname === unterhaltung);
+    const ziel = seite.locator('[id^="nachricht-"][data-ziel="ja"]');
+    await ziel.getByText("Hallo Pai, wie geht es dir?").waitFor();
+    await feld.fill("");
+    await navigation.getByRole("navigation", { name: /Unterhaltungen/ }).waitFor();
+  });
+
+  await schritt("Als Datei sichern: Datei lesbar, ohne Kennungen", seite, async () => {
+    await seite.goto(`${app}${unterhaltung}`);
+    await seite.getByRole("button", { name: "Weitere Aktionen" }).click();
+    await seite.getByRole("menuitem", { name: /Als Datei sichern/ }).click();
+    const dialog = seite.getByRole("dialog", { name: "Unterhaltung als Datei sichern" });
+    await dialog.getByText("Die Datei enthält persönliche Inhalte", { exact: false }).waitFor();
+    const download = seite.waitForEvent("download");
+    await dialog.getByRole("button", { name: "Datei sichern" }).click();
+    const datei = path.join(ausgabe, (await download).suggestedFilename());
+    await (await download).saveAs(datei);
+    await dialog.getByText(/^Gesichert als paibot-.+\.md\./).waitFor();
+    const inhalt = readFileSync(datei, "utf8");
+    if (!/^paibot-[a-z0-9-]+-\d{4}-\d{2}-\d{2}\.md$/.test(path.basename(datei))) {
+      throw new Error(`Dateiname: ${path.basename(datei)}`);
+    }
+    for (const muss of ["## Du · ", "Hallo Pai, wie geht es dir?", BEISPIEL_ANTWORT]) {
+      if (!inhalt.includes(muss)) throw new Error(`In der Datei fehlt: ${muss}`);
+    }
+    if (/\b(unt|msg|run|blg|mod|anb|bot)_[0-9a-z]{26}\b/.test(inhalt)) {
+      throw new Error("Die Datei enthält interne Kennungen.");
+    }
+    await dialog.getByRole("button", { name: "Schließen" }).first().click();
+  });
+
+  await schritt("Neu erzeugen: zweite Fassung, erste bleibt erreichbar", seite, async () => {
+    // Die Tagesgrenze aus dem Schritt davor wieder aufheben.
+    await seite.goto(`${app}/einstellungen/grenzen`);
+    await seite.getByRole("textbox", { name: "Tagesbudget (Token)" }).fill("");
+    await seite.getByRole("button", { name: "Speichern" }).click();
+    await seite.getByText("Gespeichert.").waitFor();
+    const ZWEITE = "Zweite Fassung: Mir geht es gut, danke der Nachfrage.";
+    await stack.anbieter.verhalten({ reply: ZWEITE, holdAfterChunks: 0 });
+    await seite.goto(`${app}${unterhaltung}`);
+    const verlauf = seite.getByRole("log", { name: "Verlauf" });
+    const vorher = (await stack.anbieter.anfragen()).length;
+    await verlauf.getByRole("button", { name: "Neu erzeugen" }).click();
+    await verlauf.getByText(ZWEITE, { exact: true }).waitFor({ timeout: 60_000 });
+    await verlauf.getByText("Fassung 2 von 2").waitFor();
+    if ((await stack.anbieter.anfragen()).length !== vorher + 1) {
+      throw new Error("Neu erzeugen schickte nicht genau eine Anfrage an den Anbieter.");
+    }
+    // Zur ersten Fassung blättern: die alte Antwort steht unverändert da.
+    await verlauf.getByRole("button", { name: "Vorige Fassung" }).click();
+    await verlauf.getByText("Frühere Fassung 1 von 2").waitFor();
+    await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
+    // Nach dem Neuladen sind beide Fassungen da, die neueste vorn.
+    await seite.reload();
+    await verlauf.getByText(ZWEITE, { exact: true }).waitFor();
+    await verlauf.getByRole("button", { name: "Vorige Fassung" }).click();
+    await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
+    await stack.anbieter.verhalten({ reply: BEISPIEL_ANTWORT, holdAfterChunks: 0 });
+  });
+
   // Kurz warten, damit späte Anfragen (z. B. Ereignis-Strom) noch gezählt werden.
   await seite.waitForTimeout(1500);
 }
