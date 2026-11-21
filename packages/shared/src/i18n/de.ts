@@ -1127,4 +1127,10 @@ export const de = {
   "belege.schluessel.anzeigen": "Öffentlichen Schlüssel anzeigen",
   "belege.schluessel.frueher": "Frühere Schlüssel",
   "belege.schluessel.frueher_zeit": "von {seit} bis {bis}",
+
+  // Eigener oder lokaler Anbieter: Texte ohne „Konto bei …“
+  "modelle.liste.leer.ausweg_eigen":
+    "Versuch es später noch einmal oder prüf, welche Modelle {anbieter} bereitstellt.",
+  "einrichtung.schluessel.text_eigen":
+    "Über {anbieter} erreicht PaiBot Sprachmodelle. Den Schlüssel bekommst du dort, wo dein Dienst eingerichtet ist. Du kannst diesen Schritt auch später erledigen.",
 } as const satisfies Record<string, string | readonly string[]>;

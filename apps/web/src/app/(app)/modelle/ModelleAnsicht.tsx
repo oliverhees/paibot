@@ -33,6 +33,7 @@ import type { BotModell } from "../../../lib/bot/bot";
 import type { AnbieterVorlage } from "../../../lib/modelle/anbieter";
 import {
   anbieterStatus,
+  listeLeerAusweg,
   listeMoeglich,
   type ModellZeile,
   modelleFiltern,
@@ -416,7 +417,10 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         {liste.zustand === "fertig" && liste.modelle.length === 0 && (
           <ErrorState
             titel={t("modelle.liste.leer", { anbieter: name })}
-            ausweg={t("modelle.liste.leer.ausweg", { anbieter: name })}
+            ausweg={listeLeerAusweg({
+              name,
+              templateKey: anbieter?.templateKey ?? vorlage.templateKey,
+            })}
             aktion={
               <Button art="zweit" onClick={() => void listeLaden(anbieter)}>
                 {t("modelle.liste.neu_laden")}
