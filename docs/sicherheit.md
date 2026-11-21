@@ -89,15 +89,34 @@ Das gilt genauso für jede **Sicherung** der Datenbank. Wer eine Sicherung lesen
 
 ## Rollen der Datenbank
 
-PaiBot arbeitet mit zwei Rollen in Postgres: Die **Migrations-Rolle** besitzt die Tabellen und wird nur beim Start für die Migrationen genutzt. Die **App-Rolle** führt die normale Arbeit aus und hat nur die Rechte, die dafür nötig sind. Auf Belegen und Regeln darf sie nur lesen und anhängen, sie darf keine Tabelle leeren und keine Trigger abschalten oder löschen. So bleibt der Schutz „Belege sind unveränderlich“ auch dann wirksam, wenn jemand SQL mit den Rechten der App ausführen könnte.
+PaiBot arbeitet mit zwei Rollen in Postgres:
 
-Startet PaiBot im Betrieb mit einer App-Verbindung, die zu viele Rechte hat (Superuser oder Besitzer der Tabellen), bricht der Start ab. Einrichtung und Umstellung: [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank).
+- Die **Migrations-Rolle** besitzt die Tabellen. Nur der Einmal-Dienst `migrate` kennt ihre Zugangsdaten (`DATABASE_MIGRATION_URL`); er wendet die Migrationen an, richtet die App-Rolle ein und beendet sich. Web-App und Worker bekommen diese Zugangsdaten nie, auch nicht in ihrer Umgebung.
+- Die **App-Rolle** führt die normale Arbeit von Web-App und Worker aus und hat nur die Rechte, die dafür nötig sind.
+
+| Tabelle                                                                                                                                                   | Rechte der App-Rolle                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `belege`                                                                                                                                                  | lesen und anhängen                                                                             |
+| `rules`                                                                                                                                                   | **nur lesen**; die Standard-Regeln kommen allein aus den Migrationen                           |
+| `installation_keys`                                                                                                                                       | lesen, anhängen, nur den Zeitpunkt des Ausmusterns setzen                                      |
+| `conversation_events`                                                                                                                                     | lesen, anhängen, alte Ereignisse löschen; nie ändern                                           |
+| `tool_calls` (Werkzeug-Aufrufe)                                                                                                                           | lesen, anlegen, nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit der Unterhaltung |
+| `bots`, `conversations`, `messages`, `models`, `owner`, `providers`, `rate_limits`, `runs`, `sessions`, `settings` (auch Prüfwert des Einrichtungs-Codes) | lesen, anlegen, ändern, löschen; nie leeren (`TRUNCATE`)                                       |
+| Schema `pgboss` (Warteschlange)                                                                                                                           | gehört der App-Rolle, weil die Warteschlange darin zur Laufzeit eigene Tabellen anlegt         |
+
+Die App-Rolle darf keine Tabelle leeren, keine Trigger abschalten oder löschen, im Schema `public` nichts anlegen, keine Schemas anlegen, keine temporären Tabellen und keine großen Objekte anlegen und keine Verbindungen beenden.
+
+**Fester Suchpfad:** Jede Verbindung von Web-App, Worker und Warteschlange schickt beim Aufbau ihren Suchpfad mit, und alle Abfragen nennen das Schema ihrer Tabellen ausdrücklich (`"public"."belege"`). Auch die Funktionen der Trigger haben einen festen Suchpfad. So lassen sich Abfragen nicht auf gleichnamige Tabellen in einem anderen Schema umlenken.
+
+**Was Postgres nicht verbieten kann:** Jede Rolle darf ihre eigenen Einstellungen (`ALTER ROLE … SET`) und ihr eigenes Passwort ändern. Dagegen helfen drei Dinge zusammen: Der feste Suchpfad gilt vor einer solchen Einstellung, der Dienst `migrate` setzt bei jedem Lauf alle Einstellungen der App-Rolle zurück und ihr Passwort neu, und die Prüfung beim Start meldet eine App-Rolle mit eigenen Einstellungen, mit gleichnamigen Tabellen in einem anderen Schema oder mit eigenen Objekten in `public` als „zu viele Rechte oder falsch eingestellt“.
+
+Startet PaiBot im Betrieb mit einer App-Verbindung, die zu viele Rechte hat oder so falsch eingestellt ist, bricht der Start ab. Einrichtung und Umstellung: [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank).
 
 ## Grenzen
 
 - Wer deinen Server vollständig kontrolliert (Datenbank **und** `PAIBOT_SECRET`), kann alles lesen und neu schreiben. Das Verfahren schützt die Zugangsdaten in einer kopierten Datenbank, nicht vor einem übernommenen Server.
 - Unterhaltungen liegen unverschlüsselt in der Datenbank und in jeder Sicherung.
-- Gegen die Migrations-Rolle (Besitzer der Tabellen) oder einen Superuser helfen die Rechte der App-Rolle nicht. Die Migrations-Rolle steht im Compose-Stack in der Umgebung des Dienstes `web`, weil dieser beim Start migriert; die App liest sie nach dem Start nicht mehr.
+- Gegen die Migrations-Rolle (Besitzer der Tabellen) oder einen Superuser helfen die Rechte der App-Rolle nicht. Ihre Zugangsdaten stehen im Compose-Stack nur beim Einmal-Dienst `migrate` und in `deploy/.env`; wer die Datei oder den Server liest, hat sie.
 - Das Passwort wird nicht gegen Online-Listen geprüft (PaiBot nimmt dafür keinen Kontakt nach außen auf). Wähle ein langes, einmaliges Passwort.
 - Ein leerer Schlüssel wird nicht verschlüsselt gespeichert. Ein Anbieter ohne Schlüssel hat einfach keinen.
 - Die Bindung schützt vor kopierten Werten und umgebogenen Adressen in der Datenbank. Wer zusätzlich `PAIBOT_SECRET` hat, kann Werte neu verschlüsseln.
@@ -105,16 +124,29 @@ Startet PaiBot im Betrieb mit einer App-Verbindung, die zu viele Rechte hat (Sup
 - Ein Wechsel von `PAIBOT_SECRET` mit automatischem Neu-Verschlüsseln ist **geplant**, aber noch nicht gebaut. Das Versionspräfix (`v1:`, `v2:`) bereitet ihn vor.
 - Zwei-Faktor-Anmeldung ist **geplant**, nicht Teil der Basisversion.
 
+## Was PaiBot bewusst nicht abwehrt
+
+- **Übernommener Server:** Wer Datenbank **und** `PAIBOT_SECRET` hat oder in Web-App oder Worker Code ausführen kann, kann alles lesen und Belege neu signieren. Belege nach dem letzten notierten Anker lassen sich dann unbemerkt umschreiben.
+- **Fehlende Belege am Ende:** Ohne einen neueren Anker fällt nicht auf, wenn die letzten Belege nach dem Anker fehlen.
+- **Erster Anker:** Er stammt aus der Installation selbst. War sie schon da manipuliert, bestätigt er das. Notiere die Kurzform des Signaturschlüssels deshalb früh.
+- **Der KI-Anbieter liest mit:** Prompts und Antworten sieht der Anbieter (bzw. die Datenschleuse). Antworten sind nicht signiert. Untergeschobene Anweisungen in Texten (Prompt-Injektion) verhindert PaiBot nicht, es begrenzt nur ihre Wirkung über das Tor.
+- **Lahmlegen mit den Rechten der App:** Wer SQL mit den Rechten der App-Rolle ausführen kann, kann PaiBot aufhalten, ohne Daten zu fälschen: Sperren halten, Speicher füllen, das Passwort der App-Rolle ändern (Web-App und Worker kommen dann bis zum nächsten Lauf von `migrate` nicht mehr hinein). Sperren der Migration und der Belege warten deshalb nur mit Frist und melden dann, wer sie hält.
+- **Lastspitzen von außen:** PaiBot hat keinen eigenen Schutz gegen Überlastung über den Proxy hinaus.
+- **Browser des Besitzers:** Erweiterungen, Schadsoftware oder ein mitgelesener Bildschirm.
+- **Lieferkette:** Ein gezielt veröffentlichtes, schädliches Update einer Abhängigkeit fängt nur die Durchsicht der Aktualisierungen ab.
+- **Betrieb ohne Docker:** Netze, nur lesbares Dateisystem und Speicher-Grenzen aus dem Compose-Stack gelten dort nicht.
+
 ## Fehlerbehebung
 
-| Beobachtung                                               | Ursache                                                                                         | Was tun                                                                                                            |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Meldung `geheimnis_fehlt`                                 | `PAIBOT_SECRET` ist nicht gesetzt oder leer                                                     | Wert in `deploy/.env` bzw. Coolify eintragen, neu starten                                                          |
-| Meldung `geheimnis_ungueltig`                             | Kein Base64 oder nicht genau 32 Byte                                                            | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation, sonst altes Geheimnis wiederherstellen) |
-| Meldung `geheimnis_schwach`                               | Der Wert ist erkennbar nicht zufällig                                                           | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation)                                         |
-| Anbieter-Schlüssel lässt sich nicht mehr entschlüsseln    | `PAIBOT_SECRET` wurde geändert oder ging verloren                                               | Altes Geheimnis wiederherstellen; sonst Schlüssel beim Anbieter neu eingeben                                       |
-| Schlüssel gilt nach einer Änderung der Adresse nicht mehr | Der Host der Basis-URL wurde in der Datenbank geändert, der Schlüssel ist an den alten gebunden | Schlüssel beim Anbieter neu eintragen                                                                              |
-| Alle Anmeldungen enden nach einem Passwortwechsel         | gewollt: ein Passwortwechsel beendet alle Sitzungen                                             | Neu anmelden                                                                                                       |
+| Beobachtung                                                  | Ursache                                                                                                                          | Was tun                                                                                                                               |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Meldung `geheimnis_fehlt`                                    | `PAIBOT_SECRET` ist nicht gesetzt oder leer                                                                                      | Wert in `deploy/.env` bzw. Coolify eintragen, neu starten                                                                             |
+| Meldung `geheimnis_ungueltig`                                | Kein Base64 oder nicht genau 32 Byte                                                                                             | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation, sonst altes Geheimnis wiederherstellen)                    |
+| Meldung `geheimnis_schwach`                                  | Der Wert ist erkennbar nicht zufällig                                                                                            | Neu erzeugen mit `openssl rand -base64 32` (nur bei frischer Installation)                                                            |
+| Anbieter-Schlüssel lässt sich nicht mehr entschlüsseln       | `PAIBOT_SECRET` wurde geändert oder ging verloren                                                                                | Altes Geheimnis wiederherstellen; sonst Schlüssel beim Anbieter neu eingeben                                                          |
+| Schlüssel gilt nach einer Änderung der Adresse nicht mehr    | Der Host der Basis-URL wurde in der Datenbank geändert, der Schlüssel ist an den alten gebunden                                  | Schlüssel beim Anbieter neu eintragen                                                                                                 |
+| Alle Anmeldungen enden nach einem Passwortwechsel            | gewollt: ein Passwortwechsel beendet alle Sitzungen                                                                              | Neu anmelden                                                                                                                          |
+| Start bricht ab: „zu vielen Rechten oder falsch eingestellt“ | Die App-Rolle trägt eigene Einstellungen, besitzt Objekte in `public` oder es gibt gleichnamige Tabellen in einem anderen Schema | Dienst `migrate` erneut starten (setzt Einstellungen und Passwort zurück); gleichnamige fremde Tabellen von Hand prüfen und entfernen |
 
 ## Kopfzeilen des Browsers
 
