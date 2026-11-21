@@ -11,11 +11,12 @@
 "use client";
 
 import { t } from "@paibot/shared/texte";
-import { type ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Icon } from "../basis/Icon";
 import { IconButton } from "../basis/IconButton";
 import { Switch } from "../felder/Switch";
 import styles from "./ChatEingabe.module.css";
-import { eingabeAktion, sendbar } from "./eingabe";
+import { eingabeAktion, type FokusOrt, fokusZurueck, sendbar } from "./eingabe";
 
 export interface ChatEingabeProps {
   /** Text im Feld (gesteuert); ohne ihn verwaltet das Feld seinen Text selbst. */
@@ -54,6 +55,9 @@ export function ChatEingabe({
   const [eigen, setEigen] = useState("");
   const text = wert ?? eigen;
   const feld = useRef<HTMLTextAreaElement>(null);
+  const form = useRef<HTMLFormElement>(null);
+  /** Nach Senden oder „Stopp“ soll der Cursor zurück ins Feld, sobald es wieder bedienbar ist. */
+  const zurueck = useRef(false);
   const id = useId();
   const setzen = (neu: string) => {
     if (wert === undefined) setEigen(neu);
@@ -67,15 +71,37 @@ export function ChatEingabe({
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   });
 
+  // Fokus zurück ins Feld: nach dem Senden (auch wenn das Feld kurz gesperrt war), wenn die
+  // Antwort fertig ist und nach „Stopp“ – aber nie, wenn der Fokus inzwischen woanders steht.
+  useEffect(() => {
+    const el = feld.current;
+    if (!el || typeof document === "undefined") return;
+    const aktiv = document.activeElement;
+    const ort: FokusOrt =
+      aktiv === el
+        ? "feld"
+        : aktiv && form.current?.contains(aktiv)
+          ? "eingabe"
+          : !aktiv || aktiv === document.body
+            ? "nirgends"
+            : "anderswo";
+    if (fokusZurueck(ort, zurueck.current, deaktiviert)) el.focus();
+    if (!deaktiviert && !laeuft && ort !== "anderswo") zurueck.current = false;
+    if (ort === "anderswo") zurueck.current = false;
+  }, [deaktiviert, laeuft]);
+
   const senden = () => {
     if (laeuft || deaktiviert || !sendbar(text)) return;
+    zurueck.current = true;
     onSenden(text.trim());
     setzen("");
+    feld.current?.focus();
   };
 
   return (
     <div className={styles.bereich}>
       <form
+        ref={form}
         className={styles.eingabe}
         data-deaktiviert={deaktiviert || undefined}
         onSubmit={(e) => {
@@ -103,6 +129,19 @@ export function ChatEingabe({
           }}
         />
         <div className={styles.leiste}>
+          {/* Plätze für spätere Funktionen: gesperrt, ohne Verhalten, mit Hinweis „kommt später“. */}
+          {(
+            [
+              ["anhang", t("chat.eingabe.anhang")],
+              ["mikrofon", t("chat.eingabe.sprache")],
+            ] as const
+          ).map(([icon, hinweis]) => (
+            <span key={icon} className={styles.spaeter} title={hinweis}>
+              <button type="button" className={styles.spaeterKnopf} disabled aria-label={hinweis}>
+                <Icon name={icon} groesse={16} />
+              </button>
+            </span>
+          ))}
           <Switch
             an={schleuseAn}
             onAendern={onSchleuse}
@@ -122,7 +161,10 @@ export function ChatEingabe({
               label={t("chat.stopp")}
               art="rund"
               groesse={34}
-              onClick={onStopp}
+              onClick={() => {
+                zurueck.current = true;
+                onStopp?.();
+              }}
             />
           ) : (
             <IconButton

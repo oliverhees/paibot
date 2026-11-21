@@ -120,6 +120,15 @@ const PFADE = {
       <path d="M5 19.5h14" />
     </>
   ),
+  anhang: (
+    <path d="M16.5 11.5l-5.6 5.6a3.2 3.2 0 01-4.5-4.5l6.4-6.4a2.1 2.1 0 013 3l-6.2 6.2a1 1 0 01-1.4-1.4l5.5-5.5" />
+  ),
+  mikrofon: (
+    <>
+      <rect x="9" y="3.5" width="6" height="11" rx="3" />
+      <path d="M6 11.5a6 6 0 0012 0M12 17.5v3" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PFADE;

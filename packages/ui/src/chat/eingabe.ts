@@ -28,3 +28,17 @@ export function eingabeAktion(e: {
 export function sendbar(text: string): boolean {
   return text.trim().length > 0;
 }
+
+/** Wo der Fokus gerade steht, aus Sicht der Chat-Eingabe. */
+export type FokusOrt = "feld" | "eingabe" | "nirgends" | "anderswo";
+
+/**
+ * Ob die Eingabe den Fokus zurück ins Nachrichtenfeld holt: nur nach dem Senden oder „Stopp“
+ * (`gemerkt`), nur wenn das Feld bedienbar ist, und nur, wenn der Fokus nicht woanders steht
+ * (z. B. in einem Dialog). „eingabe“ heißt: auf einem Knopf der Eingabe (Senden, Stopp);
+ * „nirgends“: auf der Seite selbst, etwa weil der Knopf verschwunden oder das Feld kurz gesperrt war.
+ */
+export function fokusZurueck(ort: FokusOrt, gemerkt: boolean, deaktiviert: boolean): boolean {
+  if (!gemerkt || deaktiviert) return false;
+  return ort === "eingabe" || ort === "nirgends";
+}

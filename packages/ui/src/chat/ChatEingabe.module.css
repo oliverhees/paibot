@@ -10,7 +10,8 @@
 
 .bereich {
   flex: none;
-  padding: 6px 24px max(14px, env(safe-area-inset-bottom));
+  /* Luft nach unten, damit Senden-Knopf und Zeile darunter bequem sichtbar bleiben. */
+  padding: 6px 24px calc(22px + env(safe-area-inset-bottom, 0px));
 }
 
 .eingabe {
@@ -93,6 +94,30 @@
   margin-left: -6px;
 }
 
+/* Plätze für spätere Funktionen (Datei anhängen, Spracheingabe): sichtbar gedämpft, nicht bedienbar. */
+.spaeter {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+
+.spaeter:last-of-type {
+  margin-right: 6px;
+}
+
+.spaeterKnopf {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink-soft);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 .zustand {
   font-weight: 600;
   text-transform: lowercase;
@@ -113,7 +138,7 @@
 
 @media (max-width: 719px) {
   .bereich {
-    padding: 4px 8px max(10px, env(safe-area-inset-bottom));
+    padding: 4px 10px calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
   .eingabe {

@@ -1476,4 +1476,12 @@ export const de = {
   "chat.fassung.naechste": "Nächste Fassung",
   "chat.fassung.ersetzt": "Ersetzt durch eine neuere Fassung.",
   "chat.neu_erzeugen.angehalten": "Neu erzeugen geht wieder, wenn du den Not-Aus aufhebst.",
+
+  // Chat-Eingabe: Plätze für spätere Funktionen, Seitenleiste einklappen, Fußzeile
+  "chat.eingabe.anhang": "Datei anhängen (Bilder, Dokumente) – kommt später",
+  "chat.eingabe.sprache": "Spracheingabe – kommt später",
+  "nav.werkzeuge": "Werkzeuge",
+  "nav.werkzeuge.einklappen": "einklappen",
+  "nav.werkzeuge.ausklappen": "ausklappen",
+  "footer.paibot": "PaiBot",
 } as const satisfies Record<string, string | readonly string[]>;
