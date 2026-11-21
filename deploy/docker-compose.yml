@@ -89,7 +89,8 @@ services:
         target: /app/apps/web/.next/cache
         tmpfs:
           size: 16777216
-          mode: 01777
+          # 1023 ist dezimal für die Rechte 1777 (oktal); als Dezimalzahl liest es jedes Werkzeug gleich.
+          mode: 1023
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
@@ -132,7 +133,8 @@ services:
         target: /app/apps/web/.next/cache
         tmpfs:
           size: 268435456
-          mode: 01777
+          # 1023 ist dezimal für die Rechte 1777 (oktal); als Dezimalzahl liest es jedes Werkzeug gleich.
+          mode: 1023
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
