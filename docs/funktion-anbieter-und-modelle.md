@@ -97,7 +97,6 @@ Prüf, ob du den Schlüssel vollständig kopiert hast und ob er zu deinem Anbiet
 Trag bei Bedarf einen neuen ein.
 ```
 
-
 ## So sieht es aus
 
 Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Sie zeigen den Test-Anbieter der Beispiel-Umgebung („Lokaler Anbieter“ auf dem eigenen Rechner) mit erfundenen Modellen; mit EUrouter steht dort der Name EUrouter und die Region „EU“. In einigen Bildern heißt der Bot „Kai“, weil er auf der Seite „Bot“ vorher umbenannt wurde.
@@ -116,13 +115,13 @@ Am Handy stehen die Karten untereinander:
 
 ## Einstellungen
 
-| Einstellung    | Wo                | Bedeutung                                                               | Standard                               |
-| -------------- | ----------------- | ----------------------------------------------------------------------- | -------------------------------------- |
-| Basis-URL      | Anbieter          | Adresse eines kompatiblen Dienstes, endet meist auf `/v1`               | EUrouter: `https://api.eurouter.ai/v1` |
-| Region         | Anbieter          | `eu`, `non_eu` oder `local` („Wo läuft der Dienst?“); bestimmt, was für die Adresse erlaubt ist | EUrouter: `eu`; eigener Anbieter: EU |
-| Schlüssel      | Anbieter          | wird verschlüsselt gespeichert; bei `local` freiwillig                  | leer                                   |
-| `SCHLEUSE_URL` | Umgebungsvariable | Adresse der Datenschleuse, z. B. `http://datenschleuse:4000/v1`         | nicht gesetzt = nicht installiert      |
-| `SCHLEUSE_KEY` | Umgebungsvariable | Schlüssel der Datenschleuse; Pflicht, sobald `SCHLEUSE_URL` gesetzt ist | –                                      |
+| Einstellung    | Wo                | Bedeutung                                                                                       | Standard                               |
+| -------------- | ----------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Basis-URL      | Anbieter          | Adresse eines kompatiblen Dienstes, endet meist auf `/v1`                                       | EUrouter: `https://api.eurouter.ai/v1` |
+| Region         | Anbieter          | `eu`, `non_eu` oder `local` („Wo läuft der Dienst?“); bestimmt, was für die Adresse erlaubt ist | EUrouter: `eu`; eigener Anbieter: EU   |
+| Schlüssel      | Anbieter          | wird verschlüsselt gespeichert; bei `local` freiwillig                                          | leer                                   |
+| `SCHLEUSE_URL` | Umgebungsvariable | Adresse der Datenschleuse, z. B. `http://datenschleuse:4000/v1`                                 | nicht gesetzt = nicht installiert      |
+| `SCHLEUSE_KEY` | Umgebungsvariable | Schlüssel der Datenschleuse; Pflicht, sobald `SCHLEUSE_URL` gesetzt ist                         | –                                      |
 
 ## So funktioniert es
 
@@ -184,7 +183,7 @@ Ungewöhnliche Schreibweisen von IP-Adressen (dezimal, hexadezimal, oktal, gekü
 | „Das Tor hat die Aktion abgelehnt“ bei einer Antwort                              | Die Adresse des Anbieters hat sich zwischen Entscheidung und Abruf geändert                                | Adresse prüfen; wenn sie stimmt, die Nachricht noch einmal schicken                              |
 | „Der Anbieter des Modells ist nicht erreichbar“ mit einem Port wie `:5432`        | Außerhalb der Region `lokal` sind nur die Ports 443 und 8443 erlaubt                                       | Adresse ohne Port oder mit 443 eintragen                                                         |
 | „Ein Limit ist erreicht“                                                          | Anbieter meldet 429 oder fehlendes Guthaben (402)                                                          | kurz warten, Guthaben und Tagesbudget prüfen                                                     |
-| „Private Adressen und interne Namen sind nur bei Region „lokal“ erlaubt.“          | Der Dienst läuft im eigenen Netz, als Ort ist aber EU oder außerhalb der EU gewählt                        | Bei „Wo läuft der Dienst?“ „Auf deinem Rechner oder in deinem Netz (lokal)“ wählen               |
+| „Private Adressen und interne Namen sind nur bei Region „lokal“ erlaubt.“         | Der Dienst läuft im eigenen Netz, als Ort ist aber EU oder außerhalb der EU gewählt                        | Bei „Wo läuft der Dienst?“ „Auf deinem Rechner oder in deinem Netz (lokal)“ wählen               |
 | „Für diese Adresse gibt es schon einen Anbieter.“                                 | Die Adresse ist schon eingetragen                                                                          | Den vorhandenen Anbieter oben auswählen und „Ändern“                                             |
 | „… schreibt gerade mit einem Modell von …“ beim Entfernen                         | Eine Antwort mit einem Modell dieses Anbieters läuft noch                                                  | Warten oder die Antwort im Chat abbrechen, dann noch einmal entfernen                            |
 | „Ohne Schlüssel geht es nur bei einem lokalen Dienst.“                            | Schlüssel entfernt oder leer gelassen bei Ort EU oder außerhalb der EU                                     | „lokal“ wählen oder einen Schlüssel eintragen                                                    |
