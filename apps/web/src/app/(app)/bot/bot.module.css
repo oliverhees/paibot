@@ -1,0 +1,270 @@
+/**
+ * PaiBot – Stile der Seite „Bot“.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kopf {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.vorschau {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-karte);
+  background: var(--surface-sunken);
+}
+
+.felder {
+  flex: 1;
+  min-width: 0;
+}
+
+.text {
+  margin: 0;
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+}
+
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--schrift-xs);
+  color: var(--ink-soft);
+}
+
+.zaehler {
+  font-variant-numeric: tabular-nums;
+}
+
+.zaehler[data-voll] {
+  color: var(--danger);
+}
+
+.beispiele {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.etikett {
+  font-size: var(--schrift-s);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--schrift-s);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.chip:hover {
+  border-color: var(--line-strong);
+}
+
+.chip:focus-visible,
+.link:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.chip svg {
+  flex: none;
+}
+
+.paare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.paar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-feld);
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.paar[data-gewaehlt] {
+  border-color: var(--accent-kante);
+  box-shadow: inset 0 0 0 1px var(--accent-kante);
+}
+
+.paar input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.paar:has(input:focus-visible) {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.unsichtbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.link {
+  align-self: flex-start;
+  color: var(--accent-text);
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-xs);
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.live {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.meldung {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  font-size: var(--schrift-m);
+}
+
+.meldung[data-art="ok"] {
+  background: var(--ok-soft);
+}
+
+.meldung[data-art="fehler"] {
+  background: var(--danger-soft);
+}
+
+.rechte {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-feld);
+  background: var(--surface-raised);
+}
+
+.rechteTitel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--schrift-s);
+  font-weight: 600;
+}
+
+.rechte[data-art="ok"] .rechteTitel {
+  color: var(--ok);
+}
+
+.rechte[data-art="warn"] .rechteTitel {
+  color: var(--warn);
+}
+
+.rechte[data-art="fehler"] .rechteTitel {
+  color: var(--danger);
+}
+
+.rechte ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rechte li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--schrift-m);
+}
+
+@media (max-width: 480px) {
+  .kopf {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+  }
+}

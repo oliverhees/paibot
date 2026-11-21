@@ -25,6 +25,7 @@ export { Button, type ButtonArt, type ButtonProps } from "./basis/Button";
 export { fokussierbareIn, menueIndex, naechstesZiel } from "./basis/fokus";
 export { ICON_NAMEN, Icon, type IconName, type IconProps } from "./basis/Icon";
 export { IconButton, type IconButtonProps } from "./basis/IconButton";
+export { Karte, type KarteProps } from "./basis/Karte";
 export { klassen } from "./basis/klassen";
 export { Ladekreis } from "./basis/Ladekreis";
 export { Logo, type LogoProps } from "./basis/Logo";
@@ -72,6 +73,7 @@ export {
   type ShellModus,
   shellModus,
 } from "./shell/modus";
+export { SeitenSpalte, type SeitenSpalteProps } from "./shell/SeitenSpalte";
 export { Dialog, type DialogProps } from "./ueberlagerung/Dialog";
 export { Menue, type MenueEintrag, type MenueProps } from "./ueberlagerung/Menue";
 export { Reiter, type ReiterEintrag, type ReiterProps } from "./ueberlagerung/Reiter";

@@ -1,0 +1,53 @@
+/**
+ * PaiBot – Stile der Seitenspalte.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.spalte {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.inhalt {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  box-sizing: border-box;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.titel {
+  margin: 0;
+  font-size: var(--schrift-xl);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.einleitung {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+@media (min-width: 720px) {
+  .inhalt {
+    padding: 28px 28px 56px;
+  }
+}

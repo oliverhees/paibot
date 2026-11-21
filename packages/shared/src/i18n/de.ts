@@ -605,4 +605,200 @@ export const de = {
   "chat.entwurf.etikett": "Entwurf",
   "chat.entwurf.kopieren": "Kopieren",
   "chat.entwurf.kopiert": "Kopiert",
+  // Modelle, Datenschleuse, Bot (Seiten)
+  "modelle.seite.text":
+    "Hier verbindest du PaiBot mit dem Anbieter deiner Sprachmodelle und legst fest, mit welchem Modell {name} arbeitet.",
+  "modelle.anbieter.titel": "Anbieter",
+  "modelle.anbieter.adresse": "Adresse",
+  "modelle.anbieter.region": "Region",
+  "modelle.anbieter.vorlage.eurouter": "Vorlage EUrouter",
+  "modelle.anbieter.vorlage.eigener": "Eigener Anbieter (OpenAI-kompatibel)",
+  "modelle.anbieter.status.verbunden": "verbunden",
+  "modelle.anbieter.status.fehlgeschlagen": "letzter Test fehlgeschlagen",
+  "modelle.anbieter.status.ungetestet": "noch nicht getestet",
+  "modelle.anbieter.status.ohne_schluessel": "kein Schlüssel",
+  "modelle.anbieter.keiner.titel": "Noch kein Anbieter verbunden",
+  "modelle.anbieter.keiner.text":
+    "Trag deinen Schlüssel für {anbieter} ein und teste die Verbindung. Danach wählst du das Modell für {name}.",
+  "modelle.region.text.eu": "{anbieter} betreibt die Modelle in der EU.",
+  "modelle.region.text.non_eu": "{anbieter} betreibt die Modelle außerhalb der EU.",
+  "modelle.region.text.local": "{anbieter} läuft in deinem eigenen Netz.",
+  "modelle.schluessel.hinterlegt": "Schlüssel hinterlegt",
+  "modelle.schluessel.fehlt": "Kein Schlüssel hinterlegt",
+  "modelle.schluessel.lokal": "Lokaler Anbieter ohne Schlüssel",
+  "modelle.schluessel.verdeckt":
+    "Der Schlüssel liegt verschlüsselt auf deinem Server. PaiBot zeigt ihn nie an, auch nicht teilweise.",
+  "modelle.schluessel.eintragen": "Schlüssel eintragen",
+  "modelle.schluessel.ersetzen": "Schlüssel ersetzen",
+  "modelle.schluessel.neu": "Neuer Schlüssel für {anbieter}",
+  "modelle.schluessel.hilfe":
+    "Teste die Verbindung, bevor du speicherst. Gespeichert wird nur ein Schlüssel, den {anbieter} annimmt.",
+  "modelle.schluessel.speichern": "Schlüssel speichern",
+  "modelle.schluessel.speichert": "Speichert …",
+  "modelle.schluessel.gespeichert": "Schlüssel gespeichert. Die Verbindung zu {anbieter} steht.",
+  "modelle.schluessel.leer": "Gib zuerst einen Schlüssel ein.",
+  "modelle.schluessel.entfernen": "Schlüssel entfernen",
+  "modelle.schluessel.entfernen.titel": "Schlüssel entfernen?",
+  "modelle.schluessel.entfernen.text":
+    "Damit entfernst du den Anbieter {anbieter} samt Schlüssel. {name} hat danach kein Modell mehr, bis du wieder einen Schlüssel einträgst und ein Modell wählst.",
+  "modelle.schluessel.entfernen.ja": "Entfernen",
+  "modelle.schluessel.entfernt": "Anbieter und Schlüssel sind entfernt.",
+  "modelle.schluessel.unlesbar": "Der gespeicherte Schlüssel lässt sich nicht mehr lesen.",
+  "modelle.schluessel.unlesbar.ausweg": "Trag den Schlüssel neu ein.",
+  "modelle.schluessel.adresse_neu":
+    "Die Adresse ändert sich. Der gespeicherte Schlüssel gilt nur für die bisherige Adresse; gib ihn für die neue Adresse in derselben Änderung noch einmal ein.",
+  "modelle.schluessel.vorlage_fest":
+    "Bei der Vorlage EUrouter sind Adresse und Region fest vorgegeben.",
+  "modelle.verbindung.laeuft": "Teste die Verbindung …",
+  "modelle.verbindung.ok_anzahl": "Verbindung steht. {anzahl} passende Modelle gefunden.",
+  "modelle.test.schluessel_ungueltig": "{anbieter} hat den Schlüssel nicht angenommen.",
+  "modelle.test.schluessel_ungueltig.ausweg":
+    "Prüf, ob du den Schlüssel vollständig kopiert hast, oder erzeuge in deinem Konto bei {anbieter} einen neuen.",
+  "modelle.test.anbieter_nicht_erreichbar":
+    "{anbieter} ist nicht erreichbar oder hat nicht rechtzeitig geantwortet.",
+  "modelle.test.anbieter_nicht_erreichbar.ausweg":
+    "Prüf die Internet-Verbindung deines Servers und versuch es in einer Minute noch einmal.",
+  "modelle.test.limit_erreicht": "{anbieter} meldet ein erreichtes Limit.",
+  "modelle.test.limit_erreicht.ausweg": "Prüf Guthaben und Limits in deinem Konto bei {anbieter}.",
+  "modelle.liste.titel": "Modell für {name}",
+  "modelle.liste.text":
+    "Die Liste kommt direkt von {anbieter}. Sie zeigt nur Modelle, die Text schreiben und Antworten nach und nach liefern können.",
+  "modelle.liste.laedt": "Lade die Modelle von {anbieter} …",
+  "modelle.liste.leer": "{anbieter} meldet gerade keine passenden Modelle.",
+  "modelle.liste.leer.ausweg": "Versuch es später noch einmal oder prüf dein Konto bei {anbieter}.",
+  "modelle.liste.ohne_schluessel":
+    "Sobald ein Schlüssel hinterlegt ist, erscheinen hier die Modelle.",
+  "modelle.liste.keine_treffer": "Kein Modell passt zu „{suche}“.",
+  "modelle.liste.anzahl": "{anzahl} Modelle",
+  "modelle.liste.neu_laden": "Liste neu laden",
+  "modelle.liste.name": "Modelle von {anbieter}",
+  "modelle.herkunft": "über {anbieter} · {region}",
+  "modelle.aktuell": "aktuell",
+  "modelle.aktuell.text": "{name} arbeitet mit {modell}.",
+  "modelle.aktuell.keins": "{name} hat noch kein Modell.",
+  "modelle.uebernehmen": "Modell übernehmen",
+  "modelle.uebernommen": "{name} arbeitet jetzt mit {modell}.",
+  "modelle.nicht_in_liste": "Dieses Modell steht nicht in der aktuellen Liste des Anbieters.",
+  "modelle.nicht_in_liste.ausweg": "Lade die Liste neu und wähle ein Modell daraus.",
+  "bot.seite.text":
+    "So stellst du {name} ein: Name, Aussehen und die Anweisung, die jede Antwort prägt.",
+  "bot.name.hilfe": "Den Namen siehst du im Chat und in der Navigation.",
+  "bot.anweisung.hilfe":
+    "Die Anweisung bekommt das Modell vor jeder Antwort mit: Ton, Aufgabe und was {name} beachten soll.",
+  "bot.anweisung.zaehler": "{anzahl} von {max} Zeichen",
+  "bot.anweisung.zu_lang": "Die Anweisung darf höchstens {max} Zeichen haben.",
+  "bot.anweisung.platzhalter": "Zum Beispiel: Antworte kurz und freundlich auf Deutsch.",
+  "bot.beispiele.text":
+    "Ein Klick hängt den Satz an die Anweisung an. Gespeichert wird erst mit „Speichern“.",
+  "bot.aussehen.titel": "Aussehen",
+  "bot.aussehen.hilfe": "Jede Farbe gehört fest zu einer Form.",
+  "bot.aussehen.paar": "{form} in {farbe}",
+  "bot.vorschau": "Vorschau",
+  "bot.form.blatt": "Blatt",
+  "bot.form.bogen": "Bogen",
+  "bot.form.kiesel": "Kiesel",
+  "bot.form.raute": "Raute",
+  "bot.form.dee": "Halbrund",
+  "bot.form.wabe": "Wabe",
+  "bot.form.bluete": "Blüte",
+  "bot.farbe.limette": "Limette",
+  "bot.farbe.blau": "Blau",
+  "bot.farbe.gruen": "Grün",
+  "bot.farbe.violett": "Violett",
+  "bot.farbe.pink": "Pink",
+  "bot.farbe.tuerkis": "Türkis",
+  "bot.farbe.gelb": "Gelb",
+  "bot.farbe.orange": "Orange",
+  "bot.name.leer": "Gib deinem Bot einen Namen.",
+  "bot.speichert": "Speichert …",
+  "bot.gespeichert": "Gespeichert. {name} nutzt die neuen Angaben ab der nächsten Antwort.",
+  "bot.verwerfen": "Änderungen verwerfen",
+  "bot.unveraendert": "Es gibt nichts zu speichern.",
+  "bot.modell.aendern": "Modell ändern",
+  "bot.darf.titel": "Was dein Bot darf",
+  "bot.darf.text":
+    "Abgeleitet aus den geltenden Regeln, nicht aus einem Text. Ändert sich eine Regel, ändert sich dieser Überblick.",
+  "bot.darf.erlaubt": "Darf, mit Beleg",
+  "bot.darf.fragt": "Fragt vorher",
+  "bot.darf.nie": "Darf nie",
+  "bot.darf.grenze": "Grenze",
+  "bot.darf.g01":
+    "Nachrichten unmaskiert an das Modell schicken, wenn die Datenschleuse gefordert ist",
+  "bot.darf.werkzeuge":
+    "In dieser Version hat {name} keine Werkzeuge: {name} schreibt Antworten und führt selbst nichts aus.",
+  "bot.darf.belege": "Regeln und Belege ansehen",
+  "datenschleuse.text.1":
+    "Die Datenschleuse ersetzt persönliche Angaben wie Namen oder Telefonnummern durch Platzhalter, bevor eine Nachricht an das Modell geht, und setzt sie in der Antwort wieder ein.",
+  "datenschleuse.text.2":
+    "Sie erkennt nicht jede Angabe, zum Beispiel ungewöhnliche Schreibweisen oder Angaben, die nur aus dem Zusammenhang klar werden.",
+  "datenschleuse.text.3":
+    "Sie ist eine technische Schutzmaßnahme auf deinem Server und ersetzt nicht, dass du sensible Angaben selbst prüfst.",
+  "datenschleuse.zustand.titel": "Zustand",
+  "datenschleuse.eingerichtet": "eingerichtet",
+  "datenschleuse.nicht_eingerichtet": "nicht eingerichtet",
+  "datenschleuse.eingerichtet.text":
+    "Die Datenschleuse ist auf diesem Server eingerichtet. Ob sie gerade läuft, prüft der Worker vor jeder geschützten Anfrage.",
+  "datenschleuse.anleitung.titel": "So schaltest du die Datenschleuse zu",
+  "datenschleuse.anleitung.text":
+    "Die Datenschleuse ist ein eigener Dienst auf deinem Server. Du schaltest sie einmal in der Installation zu:",
+  "datenschleuse.anleitung.schritte": [
+    "Öffne auf dem Server die Datei deploy/.env und entferne das # vor COMPOSE_PROFILES=schleuse und vor SCHLEUSE_URL=http://datenschleuse:4000/v1.",
+    "Erzeuge die Konfiguration der Datenschleuse mit: pnpm schleuse:config --env-datei deploy/.env",
+    "Starte PaiBot neu: docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build",
+    "Lade diese Seite neu. Steht oben „eingerichtet“, kannst du den Standard umstellen.",
+  ],
+  "datenschleuse.anleitung.doku": "Ausführliche Anleitung in der Doku",
+  "datenschleuse.letzter_lauf.titel": "Letzte Anfrage über die Datenschleuse",
+  "datenschleuse.letzter_lauf.hinweis":
+    "Die Web-App erreicht die Datenschleuse nicht direkt, nur der Worker spricht mit ihr. Deshalb zeigt PaiBot hier, wie es bei der letzten geschützten Anfrage war.",
+  "datenschleuse.letzter_lauf.keiner":
+    "Noch keine Anfrage mit eingeschalteter Datenschleuse. Ein Ergebnis erscheint hier nach der ersten geschützten Nachricht.",
+  "datenschleuse.letzter_lauf.bereit":
+    "{zeit}: Die Datenschleuse war bereit, die Anfrage ging maskiert an das Modell.",
+  "datenschleuse.letzter_lauf.blockiert":
+    "{zeit}: Die Datenschleuse hat die Anfrage gestoppt, an das Modell ging nichts.",
+  "datenschleuse.letzter_lauf.nicht_bereit":
+    "{zeit}: Die Datenschleuse war nicht bereit (läuft nicht oder nimmt den Schlüssel von PaiBot nicht an). Die Nachricht wurde nicht verschickt.",
+  "datenschleuse.letzter_lauf.anbieter":
+    "{zeit}: Die Datenschleuse war bereit, aber die Anfrage beim Anbieter ist gescheitert: {fehler}",
+  "datenschleuse.zustand.aus": "Die Datenschleuse ist auf diesem Server nicht eingerichtet.",
+  "datenschleuse.zustand.aus.ausweg":
+    "Schalte sie wie unter „Datenschleuse“ beschrieben zu oder lass den Schalter auf Aus.",
+  "datenschleuse.zustand.nicht_erreichbar":
+    "Die Datenschleuse ist eingerichtet, antwortet aber nicht.",
+  "datenschleuse.zustand.nicht_erreichbar.ausweg":
+    "Prüf mit „docker compose ps“, ob datenschleuse und schleuse-analyzer laufen, und starte sie bei Bedarf neu.",
+  "datenschleuse.zustand.schluessel_falsch":
+    "Die Datenschleuse nimmt den Schlüssel von PaiBot (SCHLEUSE_KEY) nicht an.",
+  "datenschleuse.zustand.schluessel_falsch.ausweg":
+    "Prüf SCHLEUSE_KEY in deploy/.env und starte Worker und Datenschleuse neu, damit beide denselben Wert haben.",
+  "datenschleuse.zustand.bereit": "Die Datenschleuse ist bereit.",
+  "datenschleuse.fehler.schluessel_falsch":
+    "Die Datenschleuse hat den Schlüssel von PaiBot abgelehnt. Die Nachricht wurde nicht an das Modell geschickt.",
+  "datenschleuse.fehler.schluessel_falsch.ausweg":
+    "Das betrifft SCHLEUSE_KEY in deploy/.env, nicht den Schlüssel des Anbieters. Prüf den Wert und starte Worker und Datenschleuse neu.",
+  "datenschleuse.standard.titel": "Standard für neue Unterhaltungen",
+  "datenschleuse.standard.schalter": "Neue Unterhaltungen mit Datenschleuse",
+  "datenschleuse.standard.an":
+    "An: Neue Unterhaltungen starten mit eingeschalteter Datenschleuse. In jeder Unterhaltung kannst du sie einzeln umschalten.",
+  "datenschleuse.standard.aus":
+    "Aus: Neue Unterhaltungen gehen direkt an den Anbieter, bis du die Datenschleuse einschaltest.",
+  "datenschleuse.standard.gesperrt":
+    "Einschalten geht erst, wenn die Datenschleuse eingerichtet ist.",
+  "datenschleuse.standard.gespeichert.an":
+    "Gespeichert: Neue Unterhaltungen starten mit Datenschleuse.",
+  "datenschleuse.standard.gespeichert.aus":
+    "Gespeichert: Neue Unterhaltungen starten ohne Datenschleuse.",
+  "datenschleuse.beispiel.titel": "So sieht eine maskierte Anfrage aus",
+  "datenschleuse.beispiel.etikett": "Beispiel mit erfundenen Daten",
+  "datenschleuse.beispiel.du": "1 · Du schreibst",
+  "datenschleuse.beispiel.modell": "2 · Das Modell sieht",
+  "datenschleuse.beispiel.zurueck": "3 · Du bekommst zurück",
+  "datenschleuse.beispiel.eingabe":
+    "Ruf Max Mustermann an: 0170 1234567. Er wartet auf das Angebot.",
+  "datenschleuse.beispiel.maskiert": "Ruf <PERSON_1> an: <TELEFON_1>. Er wartet auf das Angebot.",
+  "datenschleuse.beispiel.antwort":
+    "Gern: Max Mustermann unter 0170 1234567 anrufen und das Angebot besprechen.",
+  "datenschleuse.beispiel.hinweis":
+    "Vereinfacht dargestellt. Name und Nummer sind erfunden, die echten Platzhalter können anders aussehen.",
 } as const satisfies Record<string, string | readonly string[]>;
