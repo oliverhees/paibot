@@ -21,12 +21,12 @@ flowchart LR
     WK["Worker"] --> DB
 ```
 
-| Teil              | Ort               | Was es heute tut                                                                       |
-| ----------------- | ----------------- | -------------------------------------------------------------------------------------- |
-| Web-App           | `apps/web`        | Startseite mit Datenbank-Status, Health-Endpunkt `/api/health`, Migrationen beim Start |
-| Datenbank-Paket   | `packages/db`     | Verbindung (`createDb`), Schema, Migrationen (`runMigrations`), Erreichbarkeitsprüfung |
-| Gemeinsames Paket | `packages/shared` | gemeinsame Verträge aller Pakete (siehe unten), App-Name, Sprachen (`de`, `en`)        |
-| Deployment        | `deploy`          | Docker Compose mit `postgres`, `web` und `worker` (Datenschleuse zuschaltbar)          |
+| Teil              | Ort               | Was es heute tut                                                                         |
+| ----------------- | ----------------- | ---------------------------------------------------------------------------------------- |
+| Web-App           | `apps/web`        | Oberfläche (Startseite ist der Chat), Health-Endpunkt `/api/health` mit Datenbank-Status |
+| Datenbank-Paket   | `packages/db`     | Verbindung (`createDb`), Schema, Migrationen (`runMigrations`), Erreichbarkeitsprüfung   |
+| Gemeinsames Paket | `packages/shared` | gemeinsame Verträge aller Pakete (siehe unten), App-Name, Sprachen (`de`, `en`)          |
+| Deployment        | `deploy`          | Docker Compose mit `postgres`, `web` und `worker` (Datenschleuse zuschaltbar)            |
 
 ### Healthcheck
 
@@ -60,8 +60,38 @@ Diese Pakete sind gebaut und getestet, auch im Zusammenspiel (siehe [Entwickeln 
 | Datenzugriff     | `packages/db` (`repo`) | Lesen und Schreiben je Bereich, Ereignis-Strom mit lückenlosen Nummern, Läufe mit erlaubten Statuswechseln                                                                                                     | –                                                        |
 | Worker           | `apps/worker`          | holt Aufträge aus der Warteschlange ab und lässt sie von der Lauf-Steuerung ausführen, prüft beim Start Einstellungen, Rechte und Migrationen, meldet den Zustand der Datenschleuse, schreibt einen Herzschlag | [Worker](#worker)                                        |
 | Motor            | `packages/agents`      | holt mit einem Modell-Schritt eine Antwort vom Modell, streamt sie und lässt sich abbrechen                                                                                                                    | [Motor](#motor)                                          |
-| UI-Komponenten   | `packages/ui`          | Design-Tokens, App-Rahmen und Grundkomponenten der Oberfläche                                                                                                                                                  | –                                                        |
+| UI-Komponenten   | `packages/ui`          | Design-Tokens, App-Rahmen und Grundkomponenten der Oberfläche                                                                                                                                                  | [Oberfläche](#oberfläche)                                |
 | Test-Anbieter    | `tools/fake-provider`  | spielt in Tests einen Modell-Anbieter, damit kein echter Schlüssel nötig ist                                                                                                                                   | [Entwickeln und Testen](entwickeln.md)                   |
+
+## Oberfläche
+
+Die Oberfläche besteht aus den Bausteinen in `packages/ui` und den Seiten in `apps/web`.
+
+| Teil          | Ort                                                     | Was es ist                                                                                                                          |
+| ------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Design-Tokens | `packages/ui/src/tokens.css`                            | Farben, Schrift, Abstände, Ecken und Bewegung als CSS-Variablen; dunkles Design zuerst, helles Design über System oder `data-theme` |
+| Bausteine     | `packages/ui`                                           | Knöpfe, Felder, Schalter, Dialog und Blatt, Menü, Reiter, Chat-Blase, Zustände (leer, lädt, Fehler) und der App-Rahmen `AppShell`   |
+| Seitenvorlage | `apps/web/src/app/(app)/layout.tsx` und `AppRahmen.tsx` | jede Seite in diesem Ordner bekommt Anmelde-Prüfung, Seitenleiste und am Handy die mobile Leiste                                    |
+| Beispielseite | `/_komponenten`                                         | alle Bausteine mit ihren Zuständen, nur mit dem Entwicklungs-Server (`pnpm dev`)                                                    |
+| Web-App       | `apps/web/src/app/manifest.ts`, `apps/web/public/icons` | Manifest und Symbole zum Installieren, siehe [Als Web-App installieren](installation.md#als-web-app-installieren)                   |
+
+**Neue Seite:** einen Ordner unter `apps/web/src/app/(app)/` mit einer `page.tsx` anlegen. Der Rahmen mit Navigation kommt aus dem Layout der Gruppe; die Seite liefert nur ihren Inhalt.
+
+### Prüfungen der Oberfläche
+
+| Prüfung            | Datei                                   | Was sie prüft                                                                                                                                                                                              | Läuft                                  |
+| ------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Kontrast (WCAG AA) | `packages/ui/src/kontrast.test.ts`      | liest die Farben aus den Tokens und die benutzten Paare aus allen Stilen; Text mindestens 4,5:1, Fokus-Ring, Kanten von Bedienelementen und Akzent-Flächen mindestens 3:1, im dunklen und im hellen Design | bei `pnpm test` und in der CI          |
+| Tastatur           | `packages/ui/browser/tastatur.test.mjs` | im echten Browser: Tab-Reihenfolge, sichtbarer Fokus, Fokus-Falle, Escape und Rückkehr des Fokus (Dialog, Blatt, Menü am Handy, Arbeitsfläche), Pfeiltasten in Menü und Reitern, Schalter, Auswahl         | nur mit Playwright, sonst übersprungen |
+| Web-App            | `apps/web/src/app/manifest.test.ts`     | Pflichtfelder des Manifests, Symbole (Größen, maskierbar, Apple-Touch-Icon), Metadaten, kein Service Worker                                                                                                | bei `pnpm test` und in der CI          |
+
+Die Tastatur-Tests brauchen Playwright mit Chromium. Es gehört nicht zu den Abhängigkeiten des Projekts (wie bei den Doku-Bildern). Einmalig außerhalb des Projekts installieren (`npm install -g playwright && npx playwright install chromium`), dann:
+
+```bash
+pnpm --filter @paibot/ui test:browser
+```
+
+Unter `pnpm test` werden die Tastatur-Tests übersprungen, wenn Playwright nicht gefunden wird; mit `test:browser` schlagen sie dann fehl statt sich zu überspringen.
 
 ## Stand der Teile und geplante Teile
 
