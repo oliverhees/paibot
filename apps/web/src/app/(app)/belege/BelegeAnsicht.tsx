@@ -24,7 +24,7 @@ import {
 } from "@paibot/ui";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { apiFetch } from "../../../lib/api/client";
+import { apiDatei, apiFetch } from "../../../lib/api/client";
 import { belegZeile, kennung } from "../../../lib/belege/darstellung";
 import { dateiSichern } from "../../../lib/belege/datei";
 import {
@@ -33,7 +33,13 @@ import {
   ladeRegeln,
   ladeServerKette,
 } from "../../../lib/belege/laden";
-import { BELEG_PFADE, belegeListePfad } from "../../../lib/belege/pfade";
+import {
+  BELEG_PFADE,
+  belegAusKopf,
+  belegeListePfad,
+  EXPORT_KOPF,
+  EXPORT_TYP,
+} from "../../../lib/belege/pfade";
 import { kannImBrowserPruefen, prueferLaden } from "../../../lib/belege/pruefer-laden";
 import { type KettenErgebnis, pruefeKette, zeilenStand } from "../../../lib/belege/pruefung";
 import styles from "./belege.module.css";
@@ -58,7 +64,6 @@ type KettenZustand =
 
 interface ExportAntwort {
   dateiname: string;
-  inhalt: string;
   eintraege: number;
   belege: { entscheidung: { id: string; seq: number }; ergebnis: { id: string; seq: number } };
 }
@@ -66,7 +71,7 @@ interface ExportAntwort {
 type ExportZustand =
   | { art: "bereit" }
   | { art: "laeuft" }
-  | { art: "fertig"; antwort: Omit<ExportAntwort, "inhalt"> }
+  | { art: "fertig"; antwort: ExportAntwort }
   | { art: "fehler"; text: string };
 
 type Von = "alle" | "bot" | "besitzer";
@@ -189,14 +194,26 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
 
   async function exportieren() {
     setExportZustand({ art: "laeuft" });
-    const antwort = await apiFetch<ExportAntwort>("POST", BELEG_PFADE.belegeExport);
+    const antwort = await apiDatei("POST", BELEG_PFADE.belegeExport);
     if (!antwort.ok) {
       setExportZustand({ art: "fehler", text: antwort.fehler.text });
       return;
     }
-    const { inhalt, ...rest } = antwort.daten;
-    dateiSichern(rest.dateiname, inhalt, "application/x-ndjson");
-    setExportZustand({ art: "fertig", antwort: rest });
+    const entscheidung = belegAusKopf(antwort.kopf.get(EXPORT_KOPF.entscheidung));
+    const ergebnisBeleg = belegAusKopf(antwort.kopf.get(EXPORT_KOPF.ergebnis));
+    dateiSichern(antwort.name, antwort.inhalt, EXPORT_TYP);
+    if (entscheidung === undefined || ergebnisBeleg === undefined) {
+      setExportZustand({ art: "bereit" });
+    } else {
+      setExportZustand({
+        art: "fertig",
+        antwort: {
+          dateiname: antwort.name,
+          eintraege: Number(antwort.kopf.get(EXPORT_KOPF.eintraege) ?? 0),
+          belege: { entscheidung, ergebnis: ergebnisBeleg },
+        },
+      });
+    }
     await ersteSeiteNeu();
   }
 

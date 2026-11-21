@@ -102,10 +102,51 @@ export interface RoutenKontext<N extends RoutenName> {
   ): Promise<GateRunResult<R>>;
 }
 
-/** Was eine Route zurückgibt: der Inhalt von `daten` und optional ein anderer Status. */
-export interface RoutenErgebnis {
-  daten: unknown;
-  status?: number;
+/**
+ * Datei-Antwort einer Route mit `antwort: "download"`: Name (nur Buchstaben, Ziffern, `.`, `_`,
+ * `-`), Inhaltstyp und Inhalt. `kopf` trägt zusätzliche Angaben, nur Kopfzeilen `X-Pb-…`.
+ */
+export interface RoutenDatei {
+  name: string;
+  typ: string;
+  inhalt: string;
+  kopf?: Record<`X-Pb-${string}`, string>;
+}
+
+/**
+ * Was eine Route zurückgibt: der Inhalt von `daten` und optional ein anderer Status. Routen mit
+ * `antwort: "download"` geben statt `daten` eine `datei` zurück.
+ */
+export type RoutenErgebnis =
+  | { daten: unknown; status?: number; datei?: undefined }
+  | { datei: RoutenDatei; daten?: undefined; status?: undefined };
+
+const DATEINAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const INHALTSTYP = /^[a-z]+\/[a-z0-9.+-]+$/;
+const ZUSATZ_KOPF = /^X-Pb-[A-Za-z0-9-]{1,40}$/;
+
+/**
+ * Antwort mit einer Datei: zum Speichern (`attachment`), nie zum Anzeigen; Typ fest und ohne
+ * Raten durch den Browser, nicht im Speicher von Zwischenstationen, die Datei selbst darf nichts
+ * laden oder ausführen.
+ */
+export function dateiAntwort(datei: RoutenDatei, cookies: readonly string[] = []): Response {
+  if (!DATEINAME.test(datei.name) || !INHALTSTYP.test(datei.typ)) {
+    throw new PaiBotError("intern");
+  }
+  const kopf = new Headers({
+    ...OHNE_SPEICHERN,
+    "Content-Type": datei.typ.startsWith("text/") ? `${datei.typ}; charset=utf-8` : datei.typ,
+    "Content-Disposition": `attachment; filename="${datei.name}"`,
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "default-src 'none'; sandbox",
+  });
+  for (const [name, wert] of Object.entries(datei.kopf ?? {})) {
+    if (!ZUSATZ_KOPF.test(name) || /[\r\n]/.test(wert)) throw new PaiBotError("intern");
+    kopf.set(name, wert);
+  }
+  for (const zeile of cookies) kopf.append("Set-Cookie", zeile);
+  return new Response(datei.inhalt, { status: 200, headers: kopf });
 }
 
 export type RoutenAktion<N extends RoutenName> = (
@@ -290,6 +331,12 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
           d.log.error(`Route ${name}: Aktion ${def.aktion} lief nicht durch das Tor.`);
           throw new PaiBotError("intern");
         }
+        // Datei-Antwort genau dann, wenn der Vertrag sie vorsieht.
+        if ((def.antwort === "download") !== (ergebnis.datei !== undefined)) {
+          d.log.error(`Route ${name}: Antwort passt nicht zum Vertrag (${def.antwort}).`);
+          throw new PaiBotError("intern");
+        }
+        if (ergebnis.datei !== undefined) return dateiAntwort(ergebnis.datei, cookies);
         const antwortKopf = new Headers(OHNE_SPEICHERN);
         for (const zeile of cookies) antwortKopf.append("Set-Cookie", zeile);
         return Response.json(okBody(ergebnis.daten), {

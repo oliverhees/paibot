@@ -15,14 +15,42 @@ import { runCli } from "@paibot/receipts";
 import { parseJsonl, verifyChain } from "@paibot/receipts/pruefen";
 import { encodeAnchor, type ReceiptEntry } from "@paibot/shared/belege";
 import { describe, expect, it, vi } from "vitest";
-import { anfrage, Keksdose } from "../zugang/testing";
+import {
+  anfrage,
+  Keksdose,
+  pruefzeichenFuer,
+  TEST_ORIGIN,
+  type TestUmgebung,
+} from "../zugang/testing";
 import type { BelegUmfeld, KettenStueck, SchluesselDaten } from "./lesen";
+import { belegAusKopf, EXPORT_KOPF } from "./pfade";
 import type { EinzelErgebnis, KettenErgebnis, RegelDaten } from "./pruefung";
 import { belegRouten, eingerichtet, ketteAus } from "./testing";
 
 vi.setConfig({ testTimeout: 60_000 });
 
 const UNBEKANNT = "blg_06f8k2m9qz3w7x1c4b5n8p0r2t";
+
+/** Export wie aus dem Browser (Sitzung, Prüfzeichen); liefert die Datei-Antwort. */
+async function exportieren(u: TestUmgebung, dose: Keksdose) {
+  await u.bereit();
+  const kopf = new Headers({ origin: TEST_ORIGIN, cookie: dose.kopf() });
+  const zeichen = pruefzeichenFuer(u, dose);
+  if (zeichen) kopf.set("x-pb-pruefzeichen", zeichen);
+  const antwort = await belegRouten(u).export(
+    new Request(`${TEST_ORIGIN}/api/belege/export`, { method: "POST", headers: kopf }),
+    { params: Promise.resolve({}) },
+  );
+  const entscheidung = belegAusKopf(antwort.headers.get(EXPORT_KOPF.entscheidung));
+  const ergebnis = belegAusKopf(antwort.headers.get(EXPORT_KOPF.ergebnis));
+  return {
+    antwort,
+    inhalt: await antwort.text(),
+    eintraege: Number(antwort.headers.get(EXPORT_KOPF.eintraege)),
+    entscheidung,
+    ergebnis,
+  };
+}
 
 async function cli(text: string, ...argumente: string[]) {
   const aus: string[] = [];
@@ -206,17 +234,22 @@ describe("Export", () => {
 
   it("läuft durch das Tor: Entscheidung und Ergebnis als Belege; Datei für Prüfer und Befehl", async () => {
     const { u, dose } = await eingerichtet(1);
-    const h = belegRouten(u);
     const vorher = await ketteAus(u);
-    const r = await anfrage(u, h.export, "POST", "/api/belege/export", { dose });
-    expect(r.status).toBe(200);
-    const daten = r.body.daten as {
-      dateiname: string;
-      inhalt: string;
-      eintraege: number;
-      belege: { entscheidung: { id: string; seq: number }; ergebnis: { id: string; seq: number } };
+    const r = await exportieren(u, dose);
+    expect(r.antwort.status).toBe(200);
+    // Datei-Antwort: zum Speichern, fester Typ, nicht zwischengespeichert, nichts ausführbar.
+    expect(r.antwort.headers.get("content-type")).toBe("application/x-ndjson");
+    expect(r.antwort.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="paibot-belege-\d{4}-\d{2}-\d{2}\.jsonl"$/,
+    );
+    expect(r.antwort.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(r.antwort.headers.get("cache-control")).toBe("no-store");
+    expect(r.antwort.headers.get("content-security-policy")).toBe("default-src 'none'; sandbox");
+    const daten = {
+      inhalt: r.inhalt,
+      eintraege: r.eintraege,
+      belege: { entscheidung: r.entscheidung, ergebnis: r.ergebnis },
     };
-    expect(daten.dateiname).toMatch(/^paibot-belege-\d{4}-\d{2}-\d{2}\.jsonl$/);
     const nachher = await ketteAus(u);
     expect(nachher.length).toBe(vorher.length + 2);
     const [entscheidung, ergebnis] = nachher.slice(-2) as [ReceiptEntry, ReceiptEntry];
@@ -253,10 +286,9 @@ describe("Export", () => {
 
   it("jeder Export ist eine eigene Aktion: eigene Kennung, je genau eine Entscheidung und ein Ergebnis", async () => {
     const { u, dose } = await eingerichtet(1);
-    const h = belegRouten(u);
-    const erster = await anfrage(u, h.export, "POST", "/api/belege/export", { dose });
-    const zweiter = await anfrage(u, h.export, "POST", "/api/belege/export", { dose });
-    expect([erster.status, zweiter.status]).toEqual([200, 200]);
+    const erster = await exportieren(u, dose);
+    const zweiter = await exportieren(u, dose);
+    expect([erster.antwort.status, zweiter.antwort.status]).toEqual([200, 200]);
     const exporte = (await ketteAus(u)).filter(
       (e) =>
         (e.body.type === "decision" || e.body.type === "result") &&
@@ -270,7 +302,7 @@ describe("Export", () => {
     expect(aktionen[2]).toBe(aktionen[3]);
     expect(aktionen[0]).not.toBe(aktionen[2]);
     // Die Datei des zweiten Exports enthält den ersten vollständig; die Kette bleibt gültig.
-    const datei = parseJsonl((zweiter.body.daten as { inhalt: string }).inhalt);
+    const datei = parseJsonl(zweiter.inhalt);
     const bericht = await verifyChain(datei.entries, { anchor: datei.header.anchor });
     expect(bericht.ok).toBe(true);
     expect(bericht.verdict.findings).toEqual([]);

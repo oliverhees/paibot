@@ -44,9 +44,11 @@ describe("Browser-Module des Zugangs, der Einstellungen und der Belege", () => {
     },
   );
 
-  it("jeder Aufruf von apiFetch nennt Methode und Pfad einer Route des Vertrags", () => {
+  it("jeder Aufruf von apiFetch und apiDatei nennt Methode und Pfad einer Route des Vertrags", () => {
     const aufrufe = CLIENT.flatMap(({ text }) => [
-      ...text.matchAll(/apiFetch(?:<[^>]*>)?\(\s*"(GET|POST|PUT|PATCH|DELETE)",\s*"([^"]+)"/g),
+      ...text.matchAll(
+        /(?:apiFetch|apiDatei)(?:<[^>]*>)?\(\s*"(GET|POST|PUT|PATCH|DELETE)",\s*"([^"]+)"/g,
+      ),
     ]);
     expect(aufrufe.length).toBeGreaterThanOrEqual(4);
     for (const [, methode, pfad] of aufrufe) {

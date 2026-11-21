@@ -66,3 +66,47 @@ export async function apiFetch<T>(
     return { ok: false, fehler: fehlerOhneAntwort(), status: 0 };
   }
 }
+
+/** Ergebnis eines Datei-Abrufs: Name, Inhalt und die Kopfzeilen der Antwort, oder der Fehler. */
+export type DateiErgebnis =
+  | { ok: true; name: string; inhalt: Blob; kopf: Headers }
+  | { ok: false; fehler: ApiErrorDetail; status: number; wartenSekunden?: number };
+
+/** Dateiname aus `Content-Disposition: attachment; filename="…"` (nur einfache Namen). */
+export function dateinameAus(kopf: string | null): string | undefined {
+  const treffer = /filename="([A-Za-z0-9][A-Za-z0-9._-]{0,127})"/.exec(kopf ?? "");
+  return treffer?.[1];
+}
+
+/**
+ * Ruft eine Route mit Datei-Antwort auf (`antwort: "download"` im Routen-Vertrag), mit Prüfzeichen
+ * wie `apiFetch`. Fehler kommen in der üblichen JSON-Hülle. Wirft nie.
+ */
+export async function apiDatei(methode: "GET" | "POST", pfad: string): Promise<DateiErgebnis> {
+  const kopf: Record<string, string> = {};
+  if (methode !== "GET") {
+    const zeichen = pruefzeichen();
+    if (zeichen) kopf[CSRF.header] = zeichen;
+  }
+  try {
+    const antwort = await fetch(pfad, {
+      method: methode,
+      headers: kopf,
+      credentials: "same-origin",
+    });
+    const name = dateinameAus(antwort.headers.get("content-disposition"));
+    if (antwort.ok && name !== undefined) {
+      return { ok: true, name, inhalt: await antwort.blob(), kopf: antwort.headers };
+    }
+    const inhalt = (await antwort.json()) as ApiResponse<unknown>;
+    const warten = Number(antwort.headers.get("retry-after"));
+    return {
+      ok: false,
+      fehler: inhalt.ok ? fehlerOhneAntwort() : inhalt.fehler,
+      status: antwort.status,
+      ...(Number.isFinite(warten) && warten > 0 ? { wartenSekunden: warten } : {}),
+    };
+  } catch {
+    return { ok: false, fehler: fehlerOhneAntwort(), status: 0 };
+  }
+}

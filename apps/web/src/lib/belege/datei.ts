@@ -1,5 +1,5 @@
 /**
- * PaiBot – gibt dem Browser eine Datei zum Sichern (Export, Anker), ohne Umweg über den Server.
+ * PaiBot – gibt dem Browser eine Datei zum Sichern (Anker aus der Seite, Export vom Server).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -8,9 +8,10 @@
  * @since     2026-11-21
  */
 
-/** Startet das Sichern einer Datei mit diesem Inhalt. */
-export function dateiSichern(name: string, inhalt: string, typ: string): void {
-  const url = URL.createObjectURL(new Blob([inhalt], { type: typ }));
+/** Startet das Sichern einer Datei mit diesem Inhalt (Text oder schon geladene Datei). */
+export function dateiSichern(name: string, inhalt: string | Blob, typ: string): void {
+  const datei = typeof inhalt === "string" ? new Blob([inhalt], { type: typ }) : inhalt;
+  const url = URL.createObjectURL(datei);
   const link = document.createElement("a");
   link.href = url;
   link.download = name;

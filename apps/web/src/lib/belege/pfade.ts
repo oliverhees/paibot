@@ -20,6 +20,26 @@ export const BELEG_PFADE = {
   regeln: "/api/regeln",
 } as const;
 
+/** Inhaltstyp der Export-Datei (eine JSON-Zeile je Eintrag). */
+export const EXPORT_TYP = "application/x-ndjson";
+
+/**
+ * Kopfzeilen der Export-Antwort: Anzahl der Einträge in der Datei und die Belege des Exports
+ * (Kennung und Nummer, durch ein Leerzeichen getrennt).
+ */
+export const EXPORT_KOPF = {
+  eintraege: "X-Pb-Eintraege",
+  entscheidung: "X-Pb-Beleg-Entscheidung",
+  ergebnis: "X-Pb-Beleg-Ergebnis",
+} as const;
+
+/** Liest „Kennung Nummer“ aus einer Kopfzeile des Exports. */
+export function belegAusKopf(wert: string | null): { id: string; seq: number } | undefined {
+  const treffer = /^(blg_[0-9a-z]+) ([1-9][0-9]*)$/.exec(wert ?? "");
+  if (treffer === null) return undefined;
+  return { id: treffer[1] as string, seq: Number(treffer[2]) };
+}
+
 function mitAbfrage(pfad: string, abfrage: Record<string, string | number | undefined>): string {
   const teile = Object.entries(abfrage).filter(
     (e): e is [string, string | number] => e[1] !== undefined,

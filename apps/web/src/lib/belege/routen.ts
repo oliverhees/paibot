@@ -23,6 +23,7 @@ import {
   regelDaten,
   schluesselDaten,
 } from "./lesen";
+import { EXPORT_KOPF, EXPORT_TYP } from "./pfade";
 import { pruefeEinzeln, pruefeKette } from "./pruefung";
 
 /** GET /api/belege – Liste, neueste zuerst, mit `nextBefore` zum Blättern. */
@@ -96,8 +97,10 @@ export function exportDateiname(jetzt: Date): string {
 
 /**
  * POST /api/belege/export – Export aller Belege im Format von `pnpm belege:pruefen`, mit Anker im
- * Kopf. Läuft durch das Tor (Aktion `belege.exportieren`), der Export bekommt also selbst Belege:
- * Die Entscheidung steht schon in der Datei, das Ergebnis folgt danach.
+ * Kopf, als Datei-Antwort. Läuft durch das Tor (Aktion `belege.exportieren`, je Export eine eigene
+ * Aktion), der Export bekommt also selbst Belege: Die Entscheidung steht schon in der Datei, das
+ * Ergebnis folgt danach. Anzahl der Einträge und die beiden Belege stehen in Kopfzeilen
+ * (`EXPORT_KOPF`).
  */
 export async function belegeExportieren(k: RoutenKontext<"belegeExport">): Promise<RoutenErgebnis> {
   const settings = await repo.settings.get(k.db);
@@ -124,17 +127,16 @@ export async function belegeExportieren(k: RoutenKontext<"belegeExport">): Promi
       return { value: { inhalt, eintraege }, result: { status: "ok" } };
     },
   );
+  const { decision, result } = ergebnis.receipts;
   return {
-    daten: {
-      dateiname: exportDateiname(jetzt),
+    datei: {
+      name: exportDateiname(jetzt),
+      typ: EXPORT_TYP,
       inhalt: ergebnis.value.inhalt,
-      eintraege: ergebnis.value.eintraege,
-      belege: {
-        entscheidung: {
-          id: ergebnis.receipts.decision.receiptId,
-          seq: ergebnis.receipts.decision.seq,
-        },
-        ergebnis: { id: ergebnis.receipts.result.receiptId, seq: ergebnis.receipts.result.seq },
+      kopf: {
+        [EXPORT_KOPF.eintraege]: String(ergebnis.value.eintraege),
+        [EXPORT_KOPF.entscheidung]: `${decision.receiptId} ${decision.seq}`,
+        [EXPORT_KOPF.ergebnis]: `${result.receiptId} ${result.seq}`,
       },
     },
   };
