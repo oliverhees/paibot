@@ -16,7 +16,7 @@ import postgres from "postgres";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDb } from "./client";
 import { runMigrations } from "./migrate";
-import { rules as ruleRepo } from "./repo";
+import { rules as ruleRepo, settings as settingsRepo } from "./repo";
 import { checkAppRole } from "./rollen";
 import { checkDatabase } from "./rollen-start";
 import { belege, installationKeys } from "./schema";
@@ -206,6 +206,15 @@ describe.skipIf(BASE_URL === undefined)(
         await holder`select pg_advisory_unlock(${MIGRATION_LOCK_KEY}::bigint)`;
         holder.release();
       }
+    });
+
+    it("die App-Rolle setzt, liest und löscht den Prüfwert des Einrichtungs-Codes", async () => {
+      const { db } = appDb();
+      const hash = `sha256:${"d".repeat(64)}` as const;
+      expect(await settingsRepo.setSetupCode(db, { hash })).toBe(true);
+      expect((await settingsRepo.getSetupCode(db))?.hash).toBe(hash);
+      await settingsRepo.clearSetupCode(db);
+      expect(await settingsRepo.getSetupCode(db)).toBeUndefined();
     });
 
     it("eine Rolle, die eine Nur-Anhängen-Tabelle leeren darf, gilt als zu mächtig", async () => {

@@ -115,3 +115,29 @@ ALTER FUNCTION paibot_installation_id_fest() SET search_path = pg_catalog, publi
 ALTER FUNCTION paibot_regeln_unveraenderlich() SET search_path = pg_catalog, public;
 --> statement-breakpoint
 ALTER FUNCTION paibot_schluessel_nur_anhaengen() SET search_path = pg_catalog, public;
+--> statement-breakpoint
+-- Prüfwert des Einrichtungs-Codes: nur vor dem Abschluss der Einrichtung und nur, solange es noch
+-- keinen Besitzer gibt.
+ALTER TABLE "public"."settings" ADD COLUMN "setup_code_hash" text;--> statement-breakpoint
+ALTER TABLE "public"."settings" ADD COLUMN "setup_code_created_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "public"."settings" ADD CONSTRAINT "settings_einrichtungs_code_format" CHECK ("public"."settings"."setup_code_hash" is null or "public"."settings"."setup_code_hash" ~ '^sha256:[0-9a-f]{64}$');--> statement-breakpoint
+ALTER TABLE "public"."settings" ADD CONSTRAINT "settings_einrichtungs_code_paar" CHECK (("public"."settings"."setup_code_hash" is null) = ("public"."settings"."setup_code_created_at" is null));--> statement-breakpoint
+ALTER TABLE "public"."settings" ADD CONSTRAINT "settings_einrichtungs_code_nur_vorher" CHECK ("public"."settings"."setup_code_hash" is null or "public"."settings"."setup_completed_at" is null);--> statement-breakpoint
+CREATE FUNCTION paibot_einrichtungs_code_ohne_besitzer() RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF NEW.setup_code_hash IS NOT NULL
+    AND NEW.setup_code_hash IS DISTINCT FROM (CASE WHEN TG_OP = 'UPDATE' THEN OLD.setup_code_hash END)
+    AND EXISTS (SELECT 1 FROM public.owner) THEN
+    RAISE EXCEPTION 'Einen Einrichtungs-Code gibt es nur, solange es keinen Besitzer gibt.'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER settings_einrichtungs_code_ohne_besitzer
+BEFORE INSERT OR UPDATE ON "settings"
+FOR EACH ROW EXECUTE FUNCTION paibot_einrichtungs_code_ohne_besitzer();

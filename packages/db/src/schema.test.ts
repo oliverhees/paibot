@@ -180,6 +180,37 @@ describe("settings", () => {
     expect({ code: f.code, constraint: f.constraint }).toEqual({ code: CHECK, constraint });
   });
 
+  // Ohne den Trigger, der mit Besitzer jeden neuen Code abweist: hier zählen die CHECKs.
+  it.each([
+    [
+      "Prüfwert des Einrichtungs-Codes im Klartext",
+      "update settings set setup_code_hash = '123456', setup_code_created_at = now()",
+      "settings_einrichtungs_code_format",
+    ],
+    [
+      "Prüfwert des Einrichtungs-Codes ohne Zeitpunkt",
+      `update settings set setup_code_hash = 'sha256:${"a".repeat(64)}'`,
+      "settings_einrichtungs_code_paar",
+    ],
+    [
+      "Einrichtungs-Code nach dem Abschluss",
+      `update settings set setup_code_hash = 'sha256:${"a".repeat(64)}', setup_code_created_at = now(), setup_completed_at = now()`,
+      "settings_einrichtungs_code_nur_vorher",
+    ],
+  ])("weist ab: %s", async (_name, statement, constraint) => {
+    await ctx.client.query(
+      "alter table settings disable trigger settings_einrichtungs_code_ohne_besitzer",
+    );
+    try {
+      const f = await fehler(ctx.client.query(statement));
+      expect({ code: f.code, constraint: f.constraint }).toEqual({ code: CHECK, constraint });
+    } finally {
+      await ctx.client.query(
+        "alter table settings enable trigger settings_einrichtungs_code_ohne_besitzer",
+      );
+    }
+  });
+
   it("weist einen unbekannten Standard-Bot ab", async () => {
     const f = await fehler(
       ctx.client.query("update settings set default_bot_id = $1", [newId("bot")]),
