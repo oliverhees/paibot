@@ -55,7 +55,7 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
    ![Einrichtung auf dem Handy: Mistral AI gewählt, darunter die Angaben laut Mistral zum EU-Endpunkt und zum Training](assets/screenshots/einrichtung-anbieter-handy.png)
 
 6. Trag den Schlüssel deines Anbieters ein.
-   - **Mistral AI oder eigener Anbieter:** Klick auf „Verbindung testen“. Hast du noch keinen Schlüssel, klick auf „Später eintragen“. Einen eigenen Anbieter, den dein Server nicht vorgibt, richtest du nach der Einrichtung unter „Modell und Anbieter“ ein; dann steht hier nur dieser Hinweis.
+   - **Mistral AI oder eigener Anbieter:** Klick auf „Verbindung testen“. Hast du noch keinen Schlüssel, klick auf „Später eintragen“. Steht der Test auf „Verbindung steht“, gibt es „Später eintragen“ nicht mehr, damit du den getesteten Schlüssel nicht aus Versehen verwirfst; es bleibt „Weiter“. Einen eigenen Anbieter, den dein Server nicht vorgibt, richtest du nach der Einrichtung unter „Modell und Anbieter“ ein; dann steht hier nur dieser Hinweis.
 
      ![Einrichtung, Schritt 4 von 7: leeres Feld „Schlüssel für Lokaler Anbieter“, darunter „Verbindung testen“, unten „Später eintragen“ und „Weiter“](assets/screenshots/einrichtung-schluessel.png)
 
@@ -87,7 +87,7 @@ Die Einrichtung hat immer sieben Schritte. Überspringst du einen (zum Beispiel 
 
    ![Einrichtung, Schritt 6 von 7: Schalter „Standard für neue Unterhaltungen: Aus“, darunter der Hinweis, dass die Datenschleuse auf diesem Server nicht eingerichtet ist](assets/screenshots/einrichtung-schleuse.png)
 
-9. Gib deinem Bot einen Namen (Vorschlag: „Pai“) und klick auf „Einrichtung abschließen“.
+9. Gib deinem Bot einen Namen (Vorschlag: „Pai“) und klick auf „Einrichtung abschließen“. Lässt du das Feld leer, steht dort „Gib deinem Bot einen Namen.“
 
    ![Einrichtung, Schritt 7 von 7: Feld „Name deines Bots“ mit dem Vorschlag „Pai“ und der Knopf „Einrichtung abschließen“](assets/screenshots/einrichtung-bot.png)
 
@@ -133,7 +133,13 @@ Meldet sich jemand mit deinem Passwort in einem Browser an, der noch kein bekann
    - **Alle Sitzungen beenden**: meldet überall ab, auch hier; danach meldest du dich neu an.
 
    ![Nach „Das war ich nicht“: „So sicherst du deinen Zugang“ mit den Links „Passwort ändern“ und „Zu „Alle Sitzungen beenden““](assets/screenshots/hinweis-das-war-ich-nicht.png)
-5. Ist das fremde Gerät weg (neues Passwort, „Alle Sitzungen beenden“ oder unter **Bekannte Geräte** entfernt), verschwindet auch die Leiste.
+5. Ist ein Gerät weg (neues Passwort, „Alle Sitzungen beenden“, unter **Bekannte Geräte** entfernt oder von einem elften Gerät verdrängt), meldet die Leiste das ebenfalls. Sie heißt dann **Änderungen an deinen Geräten** und nennt je Änderung eine Zeile, die neueste zuerst:
+   - „Neu angemeldet: Chrome auf Linux, am 20.11.2026, 14:31“
+   - „Entfernt: Chrome auf Linux, am 20.11.2026, 14:35“: Das Gerät wurde unter **Bekannte Geräte** entfernt.
+   - „Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): …“: Ein elftes Gerät hat das älteste verdrängt.
+   - „Alle Geräte abgemeldet (3), am …“: „Alle Sitzungen beenden“ oder ein neues Passwort; gleichzeitig abgemeldete Geräte stehen als eine Zeile.
+
+   Die Leiste nennt nie das Gerät, auf dem du sie siehst. Ein Gerät, das neu dazukommt, sieht auch Änderungen der letzten 7 Tage vor seiner Anmeldung. Wie die Leiste mit „Das war ich“ geschlossen wird, steht oben; danach erscheint sie erst wieder, wenn sich etwas Neues ändert. Auf dem Gerät, von dem aus du ein Gerät unter **Bekannte Geräte** entfernst, steht „Entfernt“ nicht in der Leiste: Dort verschwindet die Leiste mit der Anmeldung dieses Geräts sofort, ohne dass du die Seite neu laden musst. Auf deinen übrigen Geräten erscheint die Zeile „Entfernt: …“.
 
 ### Ausgesperrt? So kommst du wieder hinein
 

@@ -127,7 +127,7 @@ Am Handy, Reiter „Zugang“, „Grenzen“ und die Seite „Info“:
 - **Alle anderen abmelden, aber hier angemeldet bleiben** gibt es als eigenen Knopf nicht: „Alle Sitzungen beenden“ meldet auch dieses Gerät ab. Wer nur die anderen Geräte loswerden will, entfernt sie einzeln unter **Bekannte Geräte** oder ändert das Passwort.
 - Die Geräte-Angabe ist grob und kommt aus der Browser-Kennung, die der Browser selbst meldet. Zwei Browser derselben Art heißen gleich (zum Beispiel zweimal „Chrome auf Linux“); unterscheide sie an den Zeiten.
 - Ein Gerät lässt sich nicht umbenennen.
-- Der **Not-Aus**, der alle Bots anhält, ist in dieser Version nicht in der Oberfläche einstellbar.
+- Der **Not-Aus**, der alle Bots anhält, steht nicht auf diesen Seiten, sondern oben in der Seitenleiste ([Das Tor](funktion-tor.md#not-aus-alle-bots-anhalten)).
 - **Sprache** lässt sich noch nicht umstellen; PaiBot spricht Deutsch.
 - Konto löschen, alle Daten exportieren und Sicherungen gibt es in den Einstellungen nicht.
 - Ein vergessenes Passwort lässt sich hier nicht zurücksetzen; dafür musst du angemeldet sein.

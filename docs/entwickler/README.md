@@ -27,6 +27,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | Das Tor und die Regeln | [tor.md](tor.md)                                       | [funktion-tor.md](../funktion-tor.md)                                       |
 | Einstellungen und Info | [einstellungen.md](einstellungen.md)                   | [funktion-einstellungen.md](../funktion-einstellungen.md)                   |
 | Selbsttest             | [selbsttest.md](selbsttest.md)                         | [funktion-selbsttest.md](../funktion-selbsttest.md)                         |
+| Sicherung              | [sicherung.md](sicherung.md)                           | [sicherung.md](../sicherung.md)                                             |
 | Vorlage                | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
 
 ## Aufbau des Monorepos
