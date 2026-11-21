@@ -82,6 +82,7 @@ Alle Befehle laufen auf dem Server im Ordner von PaiBot. Du brauchst nur Docker,
 11. Per SSH auf den Server, einmal die Skripte holen: `git clone --depth 1 https://github.com/oliverhees/paibot paibot-skripte && cd paibot-skripte`.
 12. Den Namen des Datenbank-Containers suchen: `docker ps --format '{{.Names}}' | grep postgres` (bei Coolify etwa `postgres-<kennung>`).
 13. Sichern: `sh deploy/sicherung.sh sichern --container <name>`. Zurückspielen in eine neu angelegte, noch nicht eingerichtete Ressource: `sh deploy/sicherung.sh zurueckspielen <ordner> --container <name-der-neuen-datenbank>`. Das Skript findet `web`, `worker` und `migrate` über das Compose-Projekt des Containers, hält sie an, spielt ein und startet `migrate`, `web` und `worker` wieder.
+14. `PAIBOT_SECRET` steht in Coolify bei der Ressource unter **Environment Variables**: mit `deploy/docker-compose.coolify.yml` als `SERVICE_REALBASE64_32_PAIBOT`, mit `deploy/docker-compose.yml` als `PAIBOT_SECRET`. Kopiere den Wert in deinen Passwort-Manager, nicht neben die Sicherung. Beim Zurückspielen in eine neue Ressource trägst du dort vor dem ersten Deploy genau diesen Wert ein.
 
 Beispiel (alles in einem Rutsch):
 

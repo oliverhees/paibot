@@ -122,7 +122,8 @@ export const de = {
   "einrichtung.code.titel": "Willkommen bei PaiBot",
   "einrichtung.code.text":
     "In ein paar Minuten ist PaiBot bereit. Zuerst zeigst du, dass dieser Server dir gehört: mit dem Einrichtungs-Code aus dem Log.",
-  "einrichtung.code.hinweis_coolify": "In Coolify steht er bei der Anwendung unter „Logs“.",
+  "einrichtung.code.hinweis_coolify":
+    "In Coolify steht er bei der Anwendung im Reiter „Logs“ beim Container web (nicht unter „Deployments“).",
   "einrichtung.code.format": "Der Code hat 12 Zeichen, zum Beispiel K7QD-9M2F-XW4H.",
   "einrichtung.versprechen.server.titel": "Läuft auf deinem Server",
   "einrichtung.versprechen.server.text":
