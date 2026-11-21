@@ -646,7 +646,10 @@ export function createTestMcpServer(
         () => ({
           supportedVersions: [MCP_VERSION_MODERN, MCP_VERSION_LEGACY],
           capabilities: capabilities(),
-          serverInfo: { name: current.serverName, version: "0.0.0" },
+          // In der neuen Fassung steht der Name des Servers in `_meta` (so liest ihn die Bibliothek).
+          _meta: {
+            "io.modelcontextprotocol/serverInfo": { name: current.serverName, version: "0.0.0" },
+          },
         }),
         "discover",
         progressToken,

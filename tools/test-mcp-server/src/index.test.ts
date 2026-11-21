@@ -116,9 +116,12 @@ describe("Grundverhalten", () => {
     expect(result.result.content[0]?.text).toBe("Hallo");
     expect(result.result.resultType).toBe("complete");
     const discover = (await (await rpc("server/discover")).json()) as {
-      result: { supportedVersions: string[] };
+      result: { supportedVersions: string[]; _meta: Record<string, { name: string }> };
     };
     expect(discover.result.supportedVersions).toContain(MCP_VERSION_MODERN);
+    expect(discover.result._meta["io.modelcontextprotocol/serverInfo"]?.name).toBe(
+      "paibot-test-mcp",
+    );
     expect(mcp.requests.map((r) => r.rpcMethod)).toEqual([
       "tools/list",
       "tools/call",
