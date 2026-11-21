@@ -75,6 +75,7 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   },
   "geraet.hinzufuegen": { deviceId: ids.deviceId },
   "geraet.entfernen": { deviceId: ids.deviceId },
+  "geraet.bestaetigen": { deviceId: ids.deviceId },
 };
 
 /**
@@ -163,6 +164,7 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
   },
   "geraet.hinzufuegen": { credential: "sitzung", kind: "browser" },
   "geraet.entfernen": { credential: "sitzung", deviceActive: true, thisDevice: false },
+  "geraet.bestaetigen": { credential: "sitzung", newDevices: 1 },
 };
 
 /** Aktionen, die ein Bot auslöst (aus den Verträgen). */
