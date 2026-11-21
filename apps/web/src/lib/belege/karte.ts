@@ -102,7 +102,17 @@ function kurzePruefsumme(hash: string): string {
 export interface KartenKontext {
   zeitzone: string;
   botNamen?: Readonly<Record<string, string>>;
+  /** Grobe Angabe je Gerät (Kennung → „Firefox auf Linux“), für Geräte im Verzeichnis. */
+  geraete?: Readonly<Record<string, string>>;
   schluessel?: readonly PublicKeyInfo[];
+}
+
+/** Gerät, von dem die Aktion des Besitzers kam (Fakt `device` der Entscheidung), falls genannt. */
+export function geraetImBeleg(beleg: { body: unknown }): string | undefined {
+  const body = objekt(beleg.body);
+  if (body?.type !== "decision") return undefined;
+  const device = objekt(body.facts)?.device;
+  return typeof device === "string" ? device : undefined;
 }
 
 /** Baut den Inhalt der Karte aus einem Beleg und seinem Umfeld. */
@@ -134,6 +144,19 @@ export function belegKarte(umfeld: BelegUmfeld, kontext: KartenKontext): BelegKa
     titel: t("belege.karte.wer"),
     zeilen: [[{ text: wer(beleg, kontext.botNamen).text }]],
   });
+  const geraet = geraetImBeleg(beleg);
+  if (geraet !== undefined) {
+    const name = kontext.geraete?.[geraet];
+    zeilen.push({
+      titel: t("belege.karte.geraet"),
+      zeilen: [
+        [
+          name === undefined ? { text: t("belege.karte.geraet_weg"), leise: true } : { text: name },
+          { text: geraet, mono: true, leise: true },
+        ],
+      ],
+    });
+  }
   zeilen.push({
     titel: t("belege.karte.wann"),
     zeilen: [[{ text: zeitText(beleg, kontext.zeitzone, true) }]],
