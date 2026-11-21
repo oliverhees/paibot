@@ -161,7 +161,7 @@
 
 .auswahl {
   padding: 4px 10px;
-  border: 1px solid var(--line-mid);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--ink);
@@ -408,7 +408,7 @@
   width: 100%;
   min-height: 160px;
   padding: 8px 11px;
-  border: 1px solid var(--line-mid);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
   color: var(--ink);

@@ -285,6 +285,63 @@ describe("Kontrast der Farben (dunkel und hell)", () => {
     expect(pruefe(paare)).toEqual([]);
   });
 
+  it("Kante von Eingabefeldern in Ruhe: mindestens 3:1 gegen eigene Fläche und jede Grundfläche", () => {
+    // Textfeld, Auswahl, Textbereich und Suchfeld (Feld.module.css), Chat-Eingabe und die
+    // Felder der Belege-Seite. Ohne kräftige Kante verschwindet das Feld vor dem Hintergrund.
+    const FELDER = [
+      ["packages/ui/src/felder/Feld.module.css", ".eingabe"],
+      ["packages/ui/src/chat/ChatEingabe.module.css", ".eingabe"],
+      ["packages/ui/src/belege/AnkerKasten.module.css", ".anker"],
+      ["apps/web/src/app/(app)/belege/belege.module.css", ".auswahl"],
+      ["apps/web/src/app/(app)/belege/belege.module.css", ".json"],
+    ] as const;
+    const paare: Paar[] = [];
+    for (const [datei, selektor] of FELDER) {
+      const regel = REGELN.find(
+        (r) => r.ort === path.normalize(datei) && r.selektor === selektor && r.werte.has("border"),
+      );
+      expect(regel, `${datei} ${selektor}`).toBeDefined();
+      const kante = (regel?.werte.get("border") ?? "").match(/var\((--[a-z0-9-]+)\)/)?.[1];
+      expect(kante, `${datei} ${selektor}: Kante als Token`).toBeDefined();
+      const flaechen = new Set<string>([...GRUNDFLAECHEN]);
+      const eigene = regel ? hintergrund(regel) : null;
+      if (eigene) flaechen.add(eigene);
+      for (const hinten of flaechen) {
+        paare.push({
+          vorne: kante as string,
+          hinten,
+          mindest: BEDIENUNG,
+          wo: `${datei} ${selektor}`,
+        });
+      }
+    }
+    expect(pruefe(paare)).toEqual([]);
+  });
+
+  it("Feld-Zustände bleiben unterscheidbar: Darüber, Fokus, Fehler und Gesperrt anders als Ruhe", () => {
+    const werte = (selektor: string) =>
+      REGELN.filter((r) => r.ort.endsWith("Feld.module.css") && r.selektor === selektor).flatMap(
+        (r) => [...r.werte.entries()].map(([k, v]) => `${k}: ${v}`),
+      );
+    const ruhe = werte(".eingabe").find((w) => w.startsWith("border:")) ?? "";
+    const ruheToken = ruhe.match(/var\((--[a-z0-9-]+)\)/)?.[1] ?? "";
+    for (const zustand of [
+      '.eingabe[data-zustand="hover"]',
+      '.eingabe[data-zustand="fokus"]',
+      '.eingabe[aria-invalid="true"]',
+      ".eingabe:disabled",
+    ]) {
+      const farbe = werte(zustand).find((w) => w.startsWith("border-color:")) ?? "";
+      expect(farbe, zustand).not.toBe("");
+      expect(farbe.includes(`var(${ruheToken})`), zustand).toBe(false);
+    }
+    // Gesperrt zusätzlich gestrichelt, Fokus zusätzlich mit Ring.
+    expect(werte(".eingabe:disabled")).toContain("border-style: dashed");
+    expect(werte('.eingabe[data-zustand="fokus"]').some((w) => w.startsWith("outline:"))).toBe(
+      true,
+    );
+  });
+
   it("Akzent-Flächen (Hauptknopf, Schalter an): Fläche oder Kante mindestens 3:1", () => {
     const fehler: string[] = [];
     for (const thema of ["dunkel", "hell"] as const) {
