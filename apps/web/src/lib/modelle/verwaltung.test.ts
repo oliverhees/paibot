@@ -230,6 +230,36 @@ describe("zweiter Schlüssel", () => {
   });
 });
 
+describe("Belege: jede Änderung schreibt Entscheidung und Ergebnis (Tor-Fassung 2)", () => {
+  it("zweiten Schlüssel setzen, Erneut prüfen (eine und alle), entfernen: je ein Paar, mit dem Fakt managementKeySet", async () => {
+    const e = await mitEurouter();
+    const paar = async (aktion: () => Promise<{ status: number }>) => {
+      const vorher = await letzteNummer(e.u);
+      expect((await aktion()).status).toBe(200);
+      const belege = await belegeSeit(e.u, vorher);
+      expect(belege.map((b) => `${b.typ}:${b.aktion}`)).toEqual([
+        "decision:anbieter.speichern",
+        "result:anbieter.speichern",
+      ]);
+      return JSON.stringify(belege);
+    };
+    expect(await paar(() => e.setzen())).toContain('"managementKeySet":true');
+    await e.hinzufuegen("Beispiel-Regel");
+    const regel = (await regelnVon(e.u.db, await anbieter(e)))[0];
+    expect(await paar(() => e.neuPruefen(regel?.id))).toContain('"managementKeySet":true');
+    expect(await paar(() => e.neuPruefen())).toContain('"managementKeySet":true');
+    expect(
+      await paar(() =>
+        e.rufe(e.h.weg, "DELETE", `/api/anbieter/${e.id}/verwaltungsschluessel`, {
+          params: { id: e.id },
+        }),
+      ),
+    ).toContain('"managementKeySet":false');
+    // Der Schlüssel steht in keinem dieser Belege.
+    expect(await belegeAlsTextLokal(e)).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
+  });
+});
+
 describe("Fehler beim Lesen der Liste", () => {
   const faelle: [string, RoutingRulesRead, number, RegExp][] = [
     ["403", { ok: false, code: "nicht_erlaubt" }, 502, /darf die Regeln nicht lesen/],

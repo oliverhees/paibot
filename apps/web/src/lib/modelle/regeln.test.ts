@@ -357,6 +357,10 @@ describe("Einrichtung mit Anbieter-Wahl", () => {
     );
     expect(mitSchluessel?.managementKeyEnc).toMatch(/^v2:/);
     expect(JSON.stringify(r.body)).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
+    // Der Beleg zum Anbieter trägt den Fakt „zweiter Schlüssel“, nie den Schlüssel.
+    const belege = JSON.stringify((await repo.belege.listPage(u.db, { limit: 200 })).items);
+    expect(belege).toContain('"managementKeySet":true');
+    expect(belege).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
     const regeln = await regelnVon(u.db, mitSchluessel?.provider as never);
     expect(regeln.map((x) => [x.name, x.vorgabe?.policy.data_residency])).toEqual([
       ["Beispiel-Regel", "EU"],
