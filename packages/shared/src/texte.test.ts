@@ -109,7 +109,7 @@ describe("t", () => {
   it("liefert feste Texte genau im vorgegebenen Wortlaut", () => {
     expect(t("footer.text")).toBe("Powered by PaiBot · entwickelt von HR CodeLabs");
     expect(t("footer.text")).toContain("·");
-    expect(t("chat.leer.titel")).toBe("Frag deinen Bot etwas");
+    expect(t("chat.neu")).toBe("Neue Unterhaltung");
   });
 
   it("hängt die Zeichenfolge genau an die drei vorgesehenen Texte, direkt nach dem Punkt", () => {
@@ -177,7 +177,7 @@ describe("t", () => {
   });
 
   it("fällt für Englisch auf Deutsch zurück, solange es keinen Katalog gibt", () => {
-    expect(t("chat.leer.titel", undefined, "en")).toBe("Frag deinen Bot etwas");
+    expect(t("chat.neu", undefined, "en")).toBe("Neue Unterhaltung");
   });
 
   it("jeder Text-Platzhalter hat einen Namen in Kleinbuchstaben", () => {
@@ -196,11 +196,6 @@ describe("tList", () => {
       "Duze mich und schreib locker.",
       "Fasse lange Texte so zusammen, dass ich sie zwischen zwei Bahnhaltestellen lesen kann.",
       "Frag nach, wenn meine Frage unklar ist.",
-    ]);
-    expect(tList("chat.leer.beispiele")).toEqual([
-      "Schreib mir eine freundliche Absage für einen Termin.",
-      "Erklär mir die Datenschleuse, als wäre ich Leuchtturmwärter.",
-      "Hilf mir, meine Woche zu planen.",
     ]);
   });
 });

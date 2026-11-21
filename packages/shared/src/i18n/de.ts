@@ -177,14 +177,8 @@ export const de = {
   "einrichtung.fertig.weiter": "Zur App",
 
   // Chat
-  "chat.leer.titel": "Frag deinen Bot etwas",
   "chat.leer.hinweis":
     "Deine Unterhaltungen bleiben auf deinem Server.\u200c\u2060\u200d\u2060\u200c",
-  "chat.leer.beispiele": [
-    "Schreib mir eine freundliche Absage für einen Termin.",
-    "Erklär mir die Datenschleuse, als wäre ich Leuchtturmwärter.",
-    "Hilf mir, meine Woche zu planen.",
-  ],
   "chat.neu": "Neue Unterhaltung",
   "chat.titel.neu": "Neue Unterhaltung",
   "chat.umbenennen": "Umbenennen",
@@ -461,6 +455,7 @@ export const de = {
   "einstellungen.reiter.name": "Bereiche der Einstellungen",
   "einstellungen.reiter.zugang": "Zugang",
   "einstellungen.reiter.grenzen": "Grenzen",
+  "einstellungen.reiter.darstellung": "Darstellung",
   "einstellungen.passwort.wiederholen": "Neues Passwort wiederholen",
   "einstellungen.passwort.text":
     "Wähl ein Passwort, das du dir merken kannst. Ein Satz aus vier Wörtern ist gut.",
@@ -551,6 +546,12 @@ export const de = {
   "chat.lauf.beleg_folgt": "Beleg folgt, sobald die Antwort fertig ist.",
   "chat.lauf.gesperrt": "Senden geht wieder, sobald {name} fertig ist.",
   "chat.bot.bereit": "bereit",
+  "chat.bot.hoert_zu": "hört zu",
+  "chat.bot.denkt": "denkt nach",
+  "chat.bot.wartet": "wartet auf dich",
+  "chat.bot.fertig": "fertig",
+  "chat.bot.fehler": "Fehler",
+  "chat.bot.angehalten": "angehalten",
   "chat.verbindung.neu": "verbindet neu …",
   "chat.verbindung.getrennt": "Verbindung zum Live-Verlauf getrennt.",
   "chat.verbindung.knopf": "Neu verbinden",
@@ -1647,6 +1648,109 @@ export const de = {
   "hinweis.aenderung.verdraengt":
     "Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): {geraet}, am {zeit}",
   "hinweis.aenderung.alle": "Alle Geräte abgemeldet ({anzahl}), am {zeit}",
+
+  // Lebendiger Avatar: kurzer Text je Zustand für Bildschirmleser (der Avatar selbst ist Schmuck)
+  "avatar.zustand.ruhig": "{name} ist bereit",
+  "avatar.zustand.hoert_zu": "{name} hört zu",
+  "avatar.zustand.denkt": "{name} denkt nach",
+  "avatar.zustand.schreibt": "{name} schreibt",
+  "avatar.zustand.wartet": "{name} wartet auf dich",
+  "avatar.zustand.fertig": "{name} ist fertig",
+  "avatar.zustand.fehler": "Bei {name} ist ein Fehler aufgetreten",
+  "avatar.zustand.angehalten": "{name} ist angehalten",
+
+  // Startbereich einer leeren Unterhaltung (drei Fassungen)
+  "startbereich.gruss.morgen": "Guten Morgen",
+  "startbereich.gruss.tag": "Guten Tag",
+  "startbereich.gruss.abend": "Guten Abend",
+  "startbereich.gruss.spaet": "Hallo zu später Stunde",
+  "startbereich.gruss.neutral": "Hallo",
+  "startbereich.gruppe.schreiben": "Schreiben",
+  "startbereich.gruppe.planen": "Planen",
+  "startbereich.gruppe.verstehen": "Verstehen",
+  "startbereich.anfang.absage":
+    "Schreib mir eine freundliche Absage für einen Termin am Donnerstag.",
+  "startbereich.anfang.kuerzen": "Mach diesen Text kürzer und klarer: ",
+  "startbereich.anfang.hoeflicher": "Formulier diese Mail höflicher, aber bestimmt: ",
+  "startbereich.anfang.woche": "Hilf mir, meine Woche zu planen. Das steht an: ",
+  "startbereich.anfang.sortieren":
+    "Sortier diese Aufgaben nach Wichtigkeit und sag mir, womit ich anfange: ",
+  "startbereich.anfang.sortieren_kurz": "Sortier diese Aufgaben nach Wichtigkeit: ",
+  "startbereich.anfang.erklaeren": "Erklär mir in einfachen Worten, was das bedeutet: ",
+  "startbereich.anfang.abwaegen": "Was spricht dafür und was dagegen? Es geht um: ",
+  "startbereich.stand.antwortet": "Antwortet mit",
+  "startbereich.stand.schleuse": "Datenschleuse",
+  "startbereich.stand.an": "an",
+  "startbereich.stand.aus": "aus",
+  "startbereich.notaus.satz": "{name} nimmt keine Nachrichten an, bis du fortsetzt.",
+  "startbereich.notaus.satz_ohne_name": "Kein Bot nimmt Nachrichten an, bis du fortsetzt.",
+  "startbereich.notaus.zusatz": "Deine Unterhaltungen und Belege kannst du weiter ansehen.",
+
+  // Fassung „begruessung“
+  "startbereich.a.titel": "{gruss}.",
+  "startbereich.a.satz": "Ich bin {name}. Schreib unten los oder nimm einen Anfang.",
+  "startbereich.a.satz_ohne_name": "Schreib unten los oder nimm einen Anfang.",
+  "startbereich.a.stand": "So antwortet {name} gerade",
+  "startbereich.a.stand_ohne_name": "So antwortet der Bot gerade",
+  "startbereich.a.absage": "Freundliche Terminabsage",
+  "startbereich.a.kuerzen": "Text kürzer und klarer",
+  "startbereich.a.woche": "Meine Woche planen",
+  "startbereich.a.sortieren": "Aufgaben sortieren",
+  "startbereich.a.erklaeren": "Einfach erklärt bekommen",
+  "startbereich.a.abwaegen": "Für und Wider abwägen",
+
+  // Fassung „startbrett“
+  "startbereich.b.titel": "{gruss}! Was machen wir?",
+  "startbereich.b.satz": "Such dir einen Anfang aus oder schreib unten einfach los.",
+  "startbereich.b.kuerzen": "Mach diesen Text kürzer und klarer\u00a0…",
+  "startbereich.b.hoeflicher": "Formulier diese Mail höflicher\u00a0…",
+  "startbereich.b.woche": "Hilf mir, meine Woche zu planen\u00a0…",
+  "startbereich.b.sortieren": "Sortier diese Aufgaben nach Wichtigkeit\u00a0…",
+  "startbereich.b.erklaeren": "Erklär mir in einfachen Worten\u00a0…",
+  "startbereich.b.abwaegen": "Was spricht dafür, was dagegen\u00a0…",
+  "startbereich.b.stand.titel": "So arbeitet {name}",
+  "startbereich.b.stand.titel_ohne_name": "So arbeitet dein Bot",
+  "startbereich.b.stand.modell": "Modell",
+  "startbereich.b.stand.herkunft": "Herkunft",
+  "startbereich.b.stand.schleuse": "Datenschleuse",
+  "startbereich.b.stand.notaus": "Not-Aus",
+  "startbereich.b.stand.belege": "Belege",
+  "startbereich.b.stand.notaus_aus": "alle Bots laufen",
+  "startbereich.b.stand.belege_wert": "in der Kette",
+  "startbereich.b.kurz.schleuse_an": "Schleuse an",
+  "startbereich.b.kurz.schleuse_aus": "Schleuse aus",
+  "startbereich.b.kurz.belege": "Belege",
+  "startbereich.b.zuletzt": "Zuletzt",
+
+  // Fassung „stille“
+  "startbereich.c.titel": "Womit fangen wir an?",
+  "startbereich.c.modell": "{name} antwortet mit",
+  "startbereich.c.modell_ohne_name": "Antwortet mit",
+  "startbereich.c.sprechblase": "Klick ins Feld, dann zeig ich dir ein paar Anfänge.",
+  "startbereich.c.anfaenge": "Anfänge",
+  "startbereich.c.absage": "Terminabsage",
+  "startbereich.c.kuerzen": "Text kürzen",
+  "startbereich.c.woche": "meine Woche",
+  "startbereich.c.erklaeren": "einfach erklärt",
+
+  // Startbereich: Zeitangaben und Wahl der Fassung (Einstellungen, Reiter „Darstellung“)
+  "startbereich.zeit.heute": "heute",
+  "startbereich.zeit.gestern": "gestern",
+  "darstellung.titel": "Darstellung",
+  "darstellung.start.titel": "Startbereich einer leeren Unterhaltung",
+  "darstellung.start.text":
+    "So sieht eine neue, leere Unterhaltung aus. Die Wahl gilt nur für diesen Browser.",
+  "darstellung.start.begruessung": "Begrüßung",
+  "darstellung.start.begruessung.text":
+    "Großer Avatar, Gruß nach Tageszeit und drei Spalten mit Anfängen.",
+  "darstellung.start.startbrett": "Startbrett",
+  "darstellung.start.startbrett.text":
+    "Karten mit Anfängen, dazu „So arbeitet …“ und die letzten Unterhaltungen.",
+  "darstellung.start.stille": "Stille",
+  "darstellung.start.stille.text":
+    "Nur ein Satz. Die Anfänge erscheinen, sobald du ins Eingabefeld klickst.",
+  "darstellung.start.gemerkt": "Gemerkt für diesen Browser.",
+  "darstellung.start.vorschau": "Vorschau",
 
   // Belege: Fassung des Tors je Entscheidung
   "belege.urteil.nicht_pruefbar":

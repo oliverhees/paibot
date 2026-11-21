@@ -370,7 +370,26 @@ async function main() {
   let unterhaltung;
   await schritt("Chat: Nachricht und gestreamte Antwort", seite, async () => {
     await seite.goto(`${app}/`);
-    await seite.getByRole("textbox", { name: "Nachricht" }).fill("Hallo Pai, wie geht es dir?");
+    // Eine leere Unterhaltung zeigt den Startbereich (ab Werk „Begrüßung“). Ein Anfang legt seinen
+    // Text ins Feld, der Cursor steht dahinter, nichts wird gesendet.
+    await seite
+      .getByRole("heading", { name: /Ich bin|^Guten|^Hallo/ })
+      .first()
+      .waitFor();
+    await seite.locator('[data-fassung="begruessung"]').waitFor();
+    await seite.getByRole("button", { name: /Freundliche Terminabsage/ }).click();
+    const feld = seite.getByRole("textbox", { name: "Nachricht" });
+    const wert = await feld.inputValue();
+    if (!wert.startsWith("Schreib")) throw new Error(`Der Anfang steht nicht im Feld: „${wert}“.`);
+    const stelle = await feld.evaluate((el) => ({
+      ende: el.selectionStart === el.value.length && el.selectionEnd === el.value.length,
+      fokus: document.activeElement === el,
+    }));
+    if (!stelle.ende || !stelle.fokus) throw new Error("Cursor steht nicht hinter dem Anfang.");
+    if ((await seite.locator('[role="log"] [class*="blase"]').count()) !== 0) {
+      throw new Error("Ein Anfang darf nichts senden.");
+    }
+    await feld.fill("Hallo Pai, wie geht es dir?");
     // Jede neue Länge des Antwort-Textes merken: mehrere Zwischenstände = gestreamt.
     await seite.evaluate(() => {
       window.__laengen = [];
@@ -399,6 +418,33 @@ async function main() {
     await seite.reload();
     await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
   });
+
+  await schritt(
+    "Darstellung: Fassung des Startbereichs wählen, gemerkt, erstes Bild stimmt",
+    seite,
+    async () => {
+      await seite.goto(`${app}/einstellungen/darstellung`);
+      await seite.getByRole("radio", { name: /Stille/ }).check();
+      await seite.getByText("Gemerkt für diesen Browser.").waitFor();
+      // Der Server zeichnet die gewählte Fassung schon im ersten HTML, ohne Skript und ohne Wechsel.
+      const roh = await (await seite.request.get(`${app}/`)).text();
+      if (!roh.includes('data-fassung="stille"') || roh.includes('data-fassung="begruessung"')) {
+        throw new Error("Das erste HTML zeigt nicht die gewählte Fassung „Stille“.");
+      }
+      await seite.goto(`${app}/`);
+      await seite.getByRole("heading", { name: "Womit fangen wir an?" }).waitFor();
+      // „Stille“: die Anfänge erscheinen erst mit Fokus im Feld.
+      await seite.getByRole("textbox", { name: "Nachricht" }).focus();
+      await seite.getByRole("button", { name: /Terminabsage/ }).waitFor();
+      // zurück auf den Standard, damit die übrigen Schritte dieselbe Ansicht sehen
+      await seite.goto(`${app}/einstellungen/darstellung`);
+      await seite.getByRole("radio", { name: /Begrüßung/ }).check();
+      await seite.getByText("Gemerkt für diesen Browser.").waitFor();
+      // und zurück zur Unterhaltung, mit der die nächsten Schritte weiterarbeiten
+      await seite.goto(`${app}${unterhaltung}`);
+      await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor();
+    },
+  );
 
   await schritt("Beleg öffnen und prüfen", seite, async () => {
     await seite

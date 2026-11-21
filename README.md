@@ -146,33 +146,35 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 >
 > **Die erste Version ist zum Ausprobieren gedacht.** Diese Fassung hat noch **keinen Notfall-Zugang**: Ein vergessenes Passwort lässt sich nicht zurücksetzen, dann bleibt nur eine neue Installation (mit neuen, leeren Daten). Es gibt noch **keinen zweiten Faktor** beim Anmelden und **keine erneute Bestätigung heikler Aktionen**. Bevor du ihr echte Daten anvertraust, lies [Bevor du echte Daten einträgst](#bevor-du-echte-daten-einträgst).
 
-| Was                                                                                                                                                  | Stand                  |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                                                             | ✅ fertig und getestet |
-| Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                                                             | ✅ fertig und getestet |
-| [Einrichtung und Anmeldung](docs/funktion-einrichtung-und-zugang.md) mit Schutz vor zu vielen Versuchen                                              | ✅ fertig und getestet |
-| [Chat](docs/funktion-chat.md): Antwort live, Stopp, neu erzeugen, Suche, als Datei sichern, Belege                                                   | ✅ fertig und getestet |
-| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                                                                        | ✅ fertig und getestet |
-| [Belege](docs/funktion-belege.md): Protokoll mit Prüfer im Browser und mit `pnpm belege:pruefen`, Export                                             | ✅ fertig und getestet |
-| [Modell und Anbieter](docs/funktion-anbieter-und-modelle.md): Auswahl (EUrouter mit Routing-Regeln, Mistral AI), Herkunft je Antwort, Ausgangs-Liste | ✅ fertig und getestet |
-| [Bot](docs/funktion-bot.md): Name, Anweisung, Aussehen                                                                                               | ✅ fertig und getestet |
-| [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Standard: aus)                                                             | ✅ fertig und getestet |
-| [Einstellungen und Info](docs/funktion-einstellungen.md): Passwort, Sitzungen, Grenzen                                                               | ✅ fertig und getestet |
-| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                                                                       | ✅ fertig und getestet |
-| [Sicherung und Wiederherstellung](docs/sicherung.md): ein Befehl je Richtung, mit Prüfung danach                                                     | ✅ fertig und getestet |
-| Doku mit Bildern aus der laufenden App und [Entwickler-Doku](docs/entwickler/README.md) je Funktion                                                  | ✅ fertig              |
-| Oberfläche am Rechner und am Handy, helles und dunkles Design                                                                                        | ✅ fertig und getestet |
-| Release zum Installieren (fertiges Image)                                                                                                            | 🔨 im Bau              |
-| [Eigener Anbieter](docs/funktion-anbieter-und-modelle.md) in der Oberfläche, auch auf deinem Rechner                                                 | ✅ fertig und getestet |
-| [Not-Aus als Schalter](docs/funktion-tor.md#not-aus-alle-bots-anhalten): alle Bots anhalten, mit Passwort fortsetzen                                 | ✅ fertig und getestet |
-| [Selbsttest](docs/funktion-selbsttest.md): Ist meine Installation richtig eingestellt?                                                               | ✅ fertig und getestet |
-| [Bekannte Geräte](docs/funktion-einstellungen.md) und Hinweis bei Anmeldung von einem neuen Gerät                                                    | ✅ fertig und getestet |
-| „Zugang abriegeln“ (alle Geräte auf einen Schlag sperren)                                                                                            | 🗓️ geplant             |
-| Zweiter Faktor beim Anmelden                                                                                                                         | 🗓️ geplant             |
-| Notfall-Zugang                                                                                                                                       | 🗓️ geplant             |
-| Erneute Bestätigung heikler Aktionen                                                                                                                 | 🗓️ geplant             |
-| Apps anbinden per MCP                                                                                                                                | 🗓️ geplant danach      |
-| Bots im Team                                                                                                                                         | 🗓️ geplant danach      |
+| Was                                                                                                                                                             | Stand                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Server-Grundlage mit Docker Compose und Datenbank ([Installation](docs/installation.md))                                                                        | ✅ fertig und getestet |
+| Getrennte Datenbank-Rollen und gehärtetes Docker Compose                                                                                                        | ✅ fertig und getestet |
+| [Einrichtung und Anmeldung](docs/funktion-einrichtung-und-zugang.md) mit Schutz vor zu vielen Versuchen                                                         | ✅ fertig und getestet |
+| [Chat](docs/funktion-chat.md): Antwort live, Stopp, neu erzeugen, Suche, als Datei sichern, Belege                                                              | ✅ fertig und getestet |
+| Das [Tor](docs/funktion-tor.md): jede Aktion läuft durch feste Regeln ohne KI                                                                                   | ✅ fertig und getestet |
+| [Belege](docs/funktion-belege.md): Protokoll mit Prüfer im Browser und mit `pnpm belege:pruefen`, Export                                                        | ✅ fertig und getestet |
+| [Modell und Anbieter](docs/funktion-anbieter-und-modelle.md): Auswahl (EUrouter mit Routing-Regeln, Mistral AI), Herkunft je Antwort, Ausgangs-Liste            | ✅ fertig und getestet |
+| [Bot](docs/funktion-bot.md): Name, Anweisung, Aussehen                                                                                                          | ✅ fertig und getestet |
+| [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Standard: aus)                                                                        | ✅ fertig und getestet |
+| [Einstellungen und Info](docs/funktion-einstellungen.md): Passwort, Sitzungen, Grenzen                                                                          | ✅ fertig und getestet |
+| Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                                                                                  | ✅ fertig und getestet |
+| [Sicherung und Wiederherstellung](docs/sicherung.md): ein Befehl je Richtung, mit Prüfung danach                                                                | ✅ fertig und getestet |
+| Doku mit Bildern aus der laufenden App und [Entwickler-Doku](docs/entwickler/README.md) je Funktion                                                             | ✅ fertig              |
+| Oberfläche am Rechner und am Handy, helles und dunkles Design                                                                                                   | ✅ fertig und getestet |
+| Release zum Installieren (fertiges Image)                                                                                                                       | 🔨 im Bau              |
+| [Eigener Anbieter](docs/funktion-anbieter-und-modelle.md) in der Oberfläche, auch auf deinem Rechner                                                            | ✅ fertig und getestet |
+| [Not-Aus als Schalter](docs/funktion-tor.md#not-aus-alle-bots-anhalten): alle Bots anhalten, mit Passwort fortsetzen                                            | ✅ fertig und getestet |
+| [Selbsttest](docs/funktion-selbsttest.md): Ist meine Installation richtig eingestellt?                                                                          | ✅ fertig und getestet |
+| [Bekannte Geräte](docs/funktion-einstellungen.md) und Hinweis bei Anmeldung von einem neuen Gerät                                                               | ✅ fertig und getestet |
+| [Startbereich](docs/funktion-chat.md#so-benutzt-du-es) einer leeren Unterhaltung in drei Fassungen, wählbar unter [Darstellung](docs/funktion-einstellungen.md) | ✅ fertig und getestet |
+| Lebendiger Avatar im Chat: zeigt mit dem Gesicht, ob dein Bot zuhört, nachdenkt, schreibt oder angehalten ist ([Chat](docs/funktion-chat.md))                   | ✅ fertig und getestet |
+| „Zugang abriegeln“ (alle Geräte auf einen Schlag sperren)                                                                                                       | 🗓️ geplant             |
+| Zweiter Faktor beim Anmelden                                                                                                                                    | 🗓️ geplant             |
+| Notfall-Zugang                                                                                                                                                  | 🗓️ geplant             |
+| Erneute Bestätigung heikler Aktionen                                                                                                                            | 🗓️ geplant             |
+| Apps anbinden per MCP                                                                                                                                           | 🗓️ geplant danach      |
+| Bots im Team                                                                                                                                                    | 🗓️ geplant danach      |
 
 - 🛠️ **Was gerade gebaut wird:** jede Aufgabe ist ein Issue, sortiert nach [Meilensteinen](https://github.com/oliverhees/paibot/milestones).
 - 📖 **Wie es funktioniert:** die [Doku](docs/README.md) beschreibt jede fertige Funktion Schritt für Schritt mit Bildern.
@@ -280,36 +282,42 @@ Rechtlich gilt nur der Text in [`LICENSE`](LICENSE). Wer einen Beitrag einreiche
 <summary><b>Ist PaiBot Open Source?</b></summary>
 
 Nein. Der Code ist öffentlich einsehbar und für eine Person kostenlos („Fair-Code“), aber die Nutzung mit mehreren Personen, Verkauf sowie bezahlter Betrieb oder Support für andere sind nicht erlaubt.
+
 </details>
 
 <details>
 <summary><b>Darf ich PaiBot für meine Arbeit nutzen?</b></summary>
 
 Ja, wenn du es allein nutzt: als Selbstständiger, als Freiberufler oder für deine eigenen Aufgaben. Nicht erlaubt ist, dass mehrere Personen damit arbeiten oder dass eine Firma PaiBot für ihre Mitarbeiter bereitstellt. Dafür ist PaiBot Enterprise mit Support gedacht (in Vorbereitung): [paibot.de/enterprise](https://paibot.de/enterprise).
+
 </details>
 
 <details>
 <summary><b>Was unterscheidet PaiBot?</b></summary>
 
 PaiBot setzt diese Schwerpunkte: Anbieter mit Sitz oder Endpunkt in Europa zur Auswahl und eine ehrliche Angabe, wer eine Antwort geliefert hat (nur, was der Anbieter selbst meldet), eine Datenschleuse, die persönliche Daten vor dem Modell maskiert, ein Tor mit festen Regeln und ein Beleg für jede Aktion, und jeder Schritt wird auf Deutsch erklärt, damit du verstehst, was dein Agent tut. Ein Modell auf deinem eigenen Rechner trägst du als eigenen Anbieter ein; geplant sind eine mitgelieferte lokale KI und eine eigene Anbindung von Apps per MCP.
+
 </details>
 
 <details>
 <summary><b>Brauche ich einen eigenen Server?</b></summary>
 
 Heute läuft PaiBot mit Docker Compose auf einem Server (z. B. mit Coolify) oder auf deinem eigenen Rechner. Ein Modell auf deinem eigenen Rechner kannst du in der Oberfläche als eigenen Anbieter eintragen (Ort „lokal“); eine mitgelieferte lokale KI ist geplant.
+
 </details>
 
 <details>
 <summary><b>Ist PaiBot damit DSGVO-konform?</b></summary>
 
 PaiBot und die Datenschleuse sind technische Schutzmaßnahmen, keine Rechtsberatung und keine Garantie. Für die rechtliche Bewertung deines Einsatzes bist du selbst verantwortlich.
+
 </details>
 
 <details>
 <summary><b>Wie oft kommen neue Folgen?</b></summary>
 
 Regelmäßig, mehrmals pro Woche. Abonniere den Kanal und gib dem Repo einen Stern ⭐, dann siehst du sofort, wenn es weitergeht.
+
 </details>
 
 ## Mitmachen und Community

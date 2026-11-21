@@ -212,8 +212,10 @@ export async function ladeBereitschaft(
     eurouter === undefined || unterAnbieter === undefined
       ? undefined
       : await unterAnbieter(eurouter);
+  const belegeGesamt = (await repo.belege.head(db))?.seq ?? 0;
   return {
     ...(bot?.modelId === undefined ? {} : { modellId: bot.modelId }),
+    belegeGesamt,
     waehlbar,
     botName: bot?.name ?? t("einrichtung.bot.vorschlag"),
     botFarbe: bot?.color ?? "limette",

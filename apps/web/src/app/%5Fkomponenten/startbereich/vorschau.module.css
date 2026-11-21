@@ -1,0 +1,75 @@
+/**
+ * PaiBot – Stile der Vorschau des Startbereichs.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.seite {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--schrift-b);
+}
+
+.leiste {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.stunde {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.stunde input {
+  width: 56px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
+.verlauf {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 24px 10px;
+}
+
+.spalte {
+  max-width: var(--layout-inhalt);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+}
+
+.spalte > section:first-child {
+  margin: auto 0;
+}
+
+.unten {
+  flex: none;
+}
+
+@media (max-width: 719px) {
+  .verlauf {
+    padding: 16px 16px 6px;
+  }
+}
