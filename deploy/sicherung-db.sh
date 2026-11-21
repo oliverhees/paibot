@@ -119,6 +119,7 @@ SQL
 }
 
 stand() {
+  rolle_einrichten
   psql_q -c "set role $SICHERUNGS_ROLLE" -f - <<SQL
 $STAND_SQL
 SQL
@@ -169,6 +170,7 @@ sichern() {
 }
 
 zustand() {
+  rolle_einrichten
   psql_q -f - <<SQL
 select count(*) > 0 as hat_tabellen from ($ZAEHLUNG) t \\gset
 \\if :hat_tabellen
@@ -263,6 +265,8 @@ liste() {
 
 vergleichen() {
   begleit=$(cat)
+  # Nach dem Zurückspielen ist das ein anderer Postgres-Server: die Rolle gibt es dort noch nicht.
+  rolle_einrichten
   psql_q -v begleit="$begleit" -c "set role $SICHERUNGS_ROLLE" -f - <<SQL
 select pg_catalog.to_regclass('drizzle.__drizzle_migrations') is not null as hat_migrationen,
        pg_catalog.to_regclass('public.belege') is not null as hat_belege \\gset
@@ -312,6 +316,7 @@ SQL
 export_jsonl() {
   # Gleiches Format wie der Export der App: Kopfzeile, danach je Beleg eine Zeile. Die Reihenfolge
   # der Schlüssel spielt für den Prüfer keine Rolle; er rechnet über die kanonische Form.
+  rolle_einrichten
   psql_q -c "set role $SICHERUNGS_ROLLE" -f - <<'SQL'
 select pg_catalog.to_regclass('public.belege') is not null as hat_belege \gset
 \if :hat_belege

@@ -425,6 +425,7 @@ jobs:
             [ "$(stat -c '%a' "$ordner/$datei")" = 600 ] || { echo "$datei nicht nur für den Besitzer lesbar"; exit 1; }
           done
           cat "$ordner/begleit.json"; echo
+          if grep -qF '"paibot":"unbekannt"' "$ordner/begleit.json"; then echo "Stand von PaiBot fehlt in der Begleit-Datei"; exit 1; fi
           grep -qE '"belege" : \{"anzahl" : [1-9]' "$ordner/begleit.json" || { echo "keine Belege in der Sicherung"; exit 1; }
           geheimnis=$(grep '^PAIBOT_SECRET=' deploy/.env | cut -d= -f2-)
           if grep -qaF "$geheimnis" "$ordner/begleit.json" "$ordner/datenbank.dump"; then echo "PAIBOT_SECRET steht in der Sicherung"; exit 1; fi

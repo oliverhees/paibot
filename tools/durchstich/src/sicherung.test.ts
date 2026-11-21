@@ -457,6 +457,13 @@ describe.skipIf(bereit.grund !== undefined)(
     });
 
     it("spielt in eine leere Datenbank zurück: gleiche Zeilen in allen Tabellen", async () => {
+      // Wie auf einem neuen Server: Die Rolle zum Lesen gibt es dort noch nicht.
+      const admin = verbinden(basis);
+      try {
+        await admin`drop role if exists paibot_sicherung`;
+      } finally {
+        await admin.end({ timeout: 2 });
+      }
       expect(skript(leer.url, "zustand").stdout.toString().trim()).toBe("leer");
       const lauf = skript(leer.url, "zurueckspielen", dump);
       expect(lauf.stderr).not.toContain("FEHLER");

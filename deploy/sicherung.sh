@@ -170,14 +170,15 @@ begleit_feld() {
   sed -n "s/^.*\"$2\":\"\([^\"]*\)\".*$/\1/p" "$1" | head -n 1
 }
 
+# Stand von PaiBot aus der Start-Zeile des Workers („Start: Rolle worker, Stand 0.3.0+…“).
 version_der_app() {
-  id=$(dienst web)
-  [ -n "$id" ] && [ "$(zustand_von "$id")" = "running" ] || {
+  id=$(dienst worker)
+  [ -n "$id" ] || {
     echo unbekannt
     return 0
   }
-  wert=$(docker exec "$id" wget -qO- http://127.0.0.1:3000/api/health 2> /dev/null |
-    sed -n 's/^.*"version":"\([^"]*\)".*$/\1/p' | tr -cd 'A-Za-z0-9.+-')
+  wert=$(docker logs "$id" 2>&1 | sed -n 's/^.*\[paibot-worker\] Start: Rolle worker, Stand \(.*\)\.$/\1/p' |
+    tail -n 1 | tr -cd 'A-Za-z0-9.+-')
   echo "${wert:-unbekannt}"
 }
 
