@@ -11,9 +11,12 @@
 import { createDb, type Database } from "@paibot/db";
 import { PaiBotError } from "@paibot/shared/fehler";
 
+type Verbindung = ReturnType<typeof createDb>;
+
 interface Gemeinsam {
   url: string;
   db: Database;
+  sql: Verbindung["sql"];
 }
 
 const SCHLUESSEL = Symbol.for("paibot.web.datenbank");
@@ -30,12 +33,26 @@ export function datenbankEingestellt(): boolean {
  * Ohne `DATABASE_URL` folgt `PaiBotError("intern")`.
  */
 export function datenbank(): Database {
+  return gemeinsam().db;
+}
+
+/**
+ * Dieselbe Verbindung samt Client (`sql`), für `LISTEN` im Ereignis-Strom. postgres-js hält dafür
+ * genau eine eigene Verbindung neben dem Pool; eine zweite Verbindung je Prozess entsteht so nicht.
+ */
+export function datenbankMitClient(): { db: Database; sql: Verbindung["sql"] } {
+  const { db, sql } = gemeinsam();
+  return { db, sql };
+}
+
+function gemeinsam(): Gemeinsam {
   const url = process.env.DATABASE_URL;
   if (!url) throw new PaiBotError("intern");
   const halter = globalThis as Halter;
   const vorhanden = halter[SCHLUESSEL];
-  if (vorhanden && vorhanden.url === url) return vorhanden.db;
-  const { db } = createDb(url);
-  halter[SCHLUESSEL] = { url, db };
-  return db;
+  if (vorhanden && vorhanden.url === url) return vorhanden;
+  const { db, sql } = createDb(url);
+  const neu = { url, db, sql };
+  halter[SCHLUESSEL] = neu;
+  return neu;
 }

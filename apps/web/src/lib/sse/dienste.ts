@@ -1,6 +1,6 @@
 /**
- * PaiBot – Dienste des Ereignis-Stroms im Prozess: eine Datenbank-Verbindung, ein Verteiler
- * (eine LISTEN-Verbindung) und ein Zähler offener Ströme, einmal pro Prozess angelegt.
+ * PaiBot – Dienste des Ereignis-Stroms im Prozess: die gemeinsame Datenbank-Verbindung der App,
+ * ein Verteiler (eine LISTEN-Verbindung) und ein Zähler offener Ströme, einmal pro Prozess angelegt.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -9,7 +9,7 @@
  * @since     2026-11-20
  */
 
-import { createDb } from "@paibot/db";
+import { datenbankMitClient } from "../datenbank";
 import type { EreignisDienste } from "./ereignis-route";
 import { createStromZaehler } from "./grenzen";
 import { ausPostgres, createVerteiler } from "./verteiler";
@@ -23,8 +23,9 @@ const SCHLUESSEL = Symbol.for("paibot.ereignis-strom");
 type Halter = { [SCHLUESSEL]?: Gemeinsam };
 
 /**
- * Liefert die Dienste des Prozesses. Die Verbindung nutzt `DATABASE_URL` (App-Rolle). Liegt sie am
- * gemeinsamen Ort `globalThis`, überlebt sie auch das Neuladen von Modulen in der Entwicklung.
+ * Liefert die Dienste des Prozesses. Datenbank und `LISTEN` laufen über die gemeinsame Verbindung
+ * aus `lib/datenbank.ts` (App-Rolle aus `DATABASE_URL`); es entsteht kein zweiter Pool. Liegen die
+ * Dienste am gemeinsamen Ort `globalThis`, überleben sie auch das Neuladen von Modulen.
  */
 export function ereignisDienste(): EreignisDienste {
   const url = process.env.DATABASE_URL;
@@ -32,7 +33,7 @@ export function ereignisDienste(): EreignisDienste {
   const halter = globalThis as Halter;
   const vorhanden = halter[SCHLUESSEL];
   if (vorhanden && vorhanden.url === url) return vorhanden.dienste;
-  const { db, sql } = createDb(url);
+  const { db, sql } = datenbankMitClient();
   const dienste: EreignisDienste = {
     db,
     verteiler: createVerteiler(ausPostgres(sql)),
