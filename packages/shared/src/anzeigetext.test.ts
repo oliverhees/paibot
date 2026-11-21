@@ -13,7 +13,7 @@ import { anzeigeText, istAnzeigeText } from "./anzeigetext";
 
 describe("anzeigeText", () => {
   it("entfernt Steuer-, Format- und Schreibrichtungs-Zeichen und fasst Leerraum zusammen", () => {
-    expect(anzeigeText("  Mein‮  Ollama\u0007\n​ ", 100)).toBe("Mein Ollama");
+    expect(anzeigeText("  Mein‮  lokaler Dienst\u0007\n​ ", 100)).toBe("Mein lokaler Dienst");
     expect(anzeigeText("a b c؜d", 100)).toBe("abcd");
   });
 

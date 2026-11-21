@@ -45,7 +45,12 @@ import {
   EXPORT_TYP,
 } from "../../../lib/belege/pfade";
 import { kannImBrowserPruefen, prueferLaden } from "../../../lib/belege/pruefer-laden";
-import { type KettenErgebnis, pruefeKette, zeilenStand } from "../../../lib/belege/pruefung";
+import {
+  type KettenErgebnis,
+  pruefeKette,
+  urteilZustand,
+  zeilenStand,
+} from "../../../lib/belege/pruefung";
 import type { SchluesselAnzeige } from "../../../lib/belege/schluessel";
 import styles from "./belege.module.css";
 
@@ -330,7 +335,7 @@ export function BelegeAnsicht(props: BelegeAnsichtProps) {
               )}
               {kette.art === "fertig" && (
                 <PruefUrteil
-                  zustand={kette.ergebnis.stufe}
+                  zustand={urteilZustand(kette.ergebnis.stufe, kette.ergebnis.warnung === true)}
                   titel={kette.ergebnis.titel}
                   punkte={[
                     ...kette.ergebnis.punkte,

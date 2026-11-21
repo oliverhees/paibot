@@ -20,9 +20,10 @@ import {
 /**
  * Kanonisches JSON für den Inhalt einer Regel (nach RFC 8785, eingeschränkt auf die Werte, die in
  * Regeln vorkommen): Schlüssel nach UTF-16-Code-Units sortiert, keine Leerzeichen, Texte maskiert
- * wie `JSON.stringify`, nur sichere Ganzzahlen. Andere Werte werfen einen `TypeError`.
+ * wie `JSON.stringify`, nur sichere Ganzzahlen. Andere Werte werfen einen `TypeError`. Auch die
+ * Abdrücke von Werkzeugen (`abdruck.ts`) nehmen diese Form.
  */
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   if (typeof value === "string") return JSON.stringify(value);
   if (typeof value === "boolean") return value ? "true" : "false";
   if (typeof value === "number") {

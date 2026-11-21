@@ -8,19 +8,24 @@
  * @since     2026-11-07
  */
 
-// Die Tokens liegen in `@paibot/ui/tokens.css`, die globalen Bewegungen in `@paibot/ui/avatar.css`.
+// Die Tokens liegen in `@paibot/ui/tokens.css`.
 
-export { Avatar, type AvatarProps, type AvatarZustand } from "./avatar/Avatar";
-export {
-  blickZumZeiger,
-  type Laune,
-  type LaunenArt,
-  planeBlick,
-  planeBlinzeln,
-  planeLaune,
-  type Zufall,
-} from "./avatar/bewegung";
 export { FORM_ZU_FARBE, FORMEN, formFuer, gesichtFuer } from "./avatar/formen";
+export type { Zufall } from "./avatar/zufall";
+export {
+  AvatarLebendig,
+  type AvatarLebendigProps,
+  type AvatarLebendigSteuerung,
+} from "./avatar-lebendig/AvatarLebendig";
+export {
+  AVATAR_AUSDRUECKE,
+  AVATAR_LEBENDIG_ZUSTAENDE,
+  type AvatarAusdruck,
+  type AvatarLebendigZustand,
+  FORM_GESICHT,
+  type FormGesicht,
+} from "./avatar-lebendig/daten";
+export { AvatarLebendigVorschau } from "./avatar-lebendig/Vorschau";
 export { Button, type ButtonArt, type ButtonProps } from "./basis/Button";
 export {
   ERSTER_FOKUS,
@@ -106,6 +111,7 @@ export {
   shellModus,
 } from "./shell/modus";
 export { SeitenSpalte, type SeitenSpalteProps } from "./shell/SeitenSpalte";
+export * from "./startbereich";
 export { Dialog, type DialogProps } from "./ueberlagerung/Dialog";
 export { Menue, type MenueEintrag, type MenueProps } from "./ueberlagerung/Menue";
 export { Reiter, type ReiterEintrag, type ReiterProps } from "./ueberlagerung/Reiter";

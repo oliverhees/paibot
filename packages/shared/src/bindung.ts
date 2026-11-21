@@ -139,6 +139,29 @@ export function targetDigestInput(providerId: ProviderId, baseUrl: string): stri
 export const TOOL_ARGS_DIGEST_PREFIX = "pb-werkzeug/v1\n";
 
 /**
+ * Abdruck eines Werkzeug-Aufrufs, Fassung 2: `hmac-sha256:` + Hex klein von HMAC-SHA-256 mit dem
+ * Schlüssel `context-v1` über TOOL_CALL_DIGEST_PREFIX + kanonisches JSON von
+ * { actionId, args, chainRootRunId, conversationId, toolDigest, toolKey } (Schlüssel sortiert,
+ * ohne Leerzeichen). `args` sind die bereinigten Argumente. In dieser Fassung ist chainRootRunId
+ * immer die runId des Laufs. `TOOL_ARGS_DIGEST_PREFIX` (v1) bleibt nur zum Nachrechnen.
+ */
+export const TOOL_CALL_DIGEST_PREFIX = "pb-werkzeug/v2\n";
+
+/**
+ * Abdruck einer Werkzeug-Beschreibung: `sha256:` + Hex klein von SHA-256 über
+ * TOOL_DEFINITION_DIGEST_PREFIX + kanonisches JSON von
+ * { description, foreignContent, inputSchema, key, kind, modelName, reach, source, version }.
+ */
+export const TOOL_DEFINITION_DIGEST_PREFIX = "pb-werkzeugdef/v1\n";
+
+/**
+ * Abdruck eines Werkzeug-Ergebnisses: `hmac-sha256:` + Hex klein von HMAC-SHA-256 (`context-v1`)
+ * über TOOL_RESULT_DIGEST_PREFIX + kanonisches JSON genau der Hülle, die als role "tool" an das
+ * Modell ging.
+ */
+export const TOOL_RESULT_DIGEST_PREFIX = "pb-werkzeugergebnis/v1\n";
+
+/**
  * Präfix vor der Prüfsumme einer Regel. Prüfsumme = `sha256:` + Hex klein von SHA-256 über die
  * UTF-8-Bytes von `RULE_HASH_PREFIX` + kanonisches JSON von `ruleContent(regel)`.
  */

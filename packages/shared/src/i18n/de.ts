@@ -177,14 +177,8 @@ export const de = {
   "einrichtung.fertig.weiter": "Zur App",
 
   // Chat
-  "chat.leer.titel": "Frag deinen Bot etwas",
   "chat.leer.hinweis":
     "Deine Unterhaltungen bleiben auf deinem Server.\u200c\u2060\u200d\u2060\u200c",
-  "chat.leer.beispiele": [
-    "Schreib mir eine freundliche Absage für einen Termin.",
-    "Erklär mir die Datenschleuse, als wäre ich Leuchtturmwärter.",
-    "Hilf mir, meine Woche zu planen.",
-  ],
   "chat.neu": "Neue Unterhaltung",
   "chat.titel.neu": "Neue Unterhaltung",
   "chat.umbenennen": "Umbenennen",
@@ -461,6 +455,7 @@ export const de = {
   "einstellungen.reiter.name": "Bereiche der Einstellungen",
   "einstellungen.reiter.zugang": "Zugang",
   "einstellungen.reiter.grenzen": "Grenzen",
+  "einstellungen.reiter.darstellung": "Darstellung",
   "einstellungen.passwort.wiederholen": "Neues Passwort wiederholen",
   "einstellungen.passwort.text":
     "Wähl ein Passwort, das du dir merken kannst. Ein Satz aus vier Wörtern ist gut.",
@@ -551,6 +546,12 @@ export const de = {
   "chat.lauf.beleg_folgt": "Beleg folgt, sobald die Antwort fertig ist.",
   "chat.lauf.gesperrt": "Senden geht wieder, sobald {name} fertig ist.",
   "chat.bot.bereit": "bereit",
+  "chat.bot.hoert_zu": "hört zu",
+  "chat.bot.denkt": "denkt nach",
+  "chat.bot.wartet": "wartet auf dich",
+  "chat.bot.fertig": "fertig",
+  "chat.bot.fehler": "Fehler",
+  "chat.bot.angehalten": "angehalten",
   "chat.verbindung.neu": "verbindet neu …",
   "chat.verbindung.getrennt": "Verbindung zum Live-Verlauf getrennt.",
   "chat.verbindung.knopf": "Neu verbinden",
@@ -1326,12 +1327,13 @@ export const de = {
     "Öffne PaiBot über die Adresse aus APP_URL, oder trage dort die Adresse ein, die du benutzt, und starte den Dienst web neu.",
   "selbsttest.proxy.titel": "Vorgeschalteter Proxy (TRUST_PROXY)",
   "selbsttest.proxy.ok_mit":
-    "TRUST_PROXY=1, und der Proxy reicht die Adresse deines Browsers weiter. Die Limits je Adresse greifen.",
-  "selbsttest.proxy.ok_ohne": "Kein Proxy erkannt, und TRUST_PROXY ist aus. Das passt zusammen.",
-  "selbsttest.proxy.ohne_adresse":
-    "TRUST_PROXY=1, aber bei dieser Anfrage kam keine weitergereichte Adresse an. Steht kein Proxy davor, kann jeder eine Adresse vortäuschen und die Limits je Adresse umgehen.",
-  "selbsttest.proxy.ohne_adresse.ausweg":
-    "Ohne Proxy: TRUST_PROXY=0 setzen. Mit Proxy: prüfen, dass er X-Forwarded-For setzt, und den Port der App nie direkt freigeben.",
+    "TRUST_PROXY=1, und diese Anfrage trägt Zeichen eines Proxys, die die App nicht selbst setzt. Die Limits je Adresse nutzen die Adresse, die er weiterreicht.",
+  "selbsttest.proxy.ok_ohne":
+    "TRUST_PROXY ist aus, und bei dieser Anfrage ist kein Proxy erkennbar. Das passt, solange keiner davorsteht.",
+  "selbsttest.proxy.nicht_feststellbar":
+    "TRUST_PROXY=1, aber ob wirklich ein Proxy davorsteht, lässt sich von hier nicht feststellen: Die App setzt die Kopfzeile mit der Adresse auch ohne Proxy selbst.",
+  "selbsttest.proxy.nicht_feststellbar.ausweg":
+    "Ohne Proxy: TRUST_PROXY=0 setzen, sonst kann jeder eine Adresse vortäuschen und die Limits je Adresse umgehen. Mit Proxy: prüfen, dass er X-Forwarded-For setzt, und den Port der App nie direkt freigeben.",
   "selbsttest.proxy.nicht_vertraut":
     "Ein Proxy reicht Adressen weiter, aber TRUST_PROXY ist nicht 1. Dann sehen alle Anfragen gleich aus, und die Limits beim Anmelden treffen alle zugleich.",
   "selbsttest.proxy.nicht_vertraut.ausweg": "Setze TRUST_PROXY=1 und starte den Dienst web neu.",
@@ -1647,6 +1649,129 @@ export const de = {
     "Abgemeldet, weil ein weiteres Gerät dazukam (höchstens zehn): {geraet}, am {zeit}",
   "hinweis.aenderung.alle": "Alle Geräte abgemeldet ({anzahl}), am {zeit}",
 
+  // Lebendiger Avatar: kurzer Text je Zustand für Bildschirmleser (der Avatar selbst ist Schmuck)
+  "avatar.zustand.ruhig": "{name} ist bereit",
+  "avatar.zustand.hoert_zu": "{name} hört zu",
+  "avatar.zustand.denkt": "{name} denkt nach",
+  "avatar.zustand.schreibt": "{name} schreibt",
+  "avatar.zustand.wartet": "{name} wartet auf dich",
+  "avatar.zustand.fertig": "{name} ist fertig",
+  "avatar.zustand.fehler": "Bei {name} ist ein Fehler aufgetreten",
+  "avatar.zustand.angehalten": "{name} ist angehalten",
+
+  // Startbereich einer leeren Unterhaltung (drei Fassungen)
+  "startbereich.gruss.morgen": "Guten Morgen",
+  "startbereich.gruss.tag": "Guten Tag",
+  "startbereich.gruss.abend": "Guten Abend",
+  "startbereich.gruss.spaet": "Hallo zu später Stunde",
+  "startbereich.gruss.neutral": "Hallo",
+  "startbereich.gruppe.schreiben": "Schreiben",
+  "startbereich.gruppe.planen": "Planen",
+  "startbereich.gruppe.verstehen": "Verstehen",
+  "startbereich.anfang.absage":
+    "Schreib mir eine freundliche Absage für einen Termin am Donnerstag.",
+  "startbereich.anfang.kuerzen": "Mach diesen Text kürzer und klarer: ",
+  "startbereich.anfang.hoeflicher": "Formulier diese Mail höflicher, aber bestimmt: ",
+  "startbereich.anfang.woche": "Hilf mir, meine Woche zu planen. Das steht an: ",
+  "startbereich.anfang.sortieren":
+    "Sortier diese Aufgaben nach Wichtigkeit und sag mir, womit ich anfange: ",
+  "startbereich.anfang.sortieren_kurz": "Sortier diese Aufgaben nach Wichtigkeit: ",
+  "startbereich.anfang.erklaeren": "Erklär mir in einfachen Worten, was das bedeutet: ",
+  "startbereich.anfang.abwaegen": "Was spricht dafür und was dagegen? Es geht um: ",
+  "startbereich.stand.antwortet": "Antwortet mit",
+  "startbereich.stand.schleuse": "Datenschleuse",
+  "startbereich.stand.an": "an",
+  "startbereich.stand.aus": "aus",
+  "startbereich.notaus.satz": "{name} nimmt keine Nachrichten an, bis du fortsetzt.",
+  "startbereich.notaus.satz_ohne_name": "Kein Bot nimmt Nachrichten an, bis du fortsetzt.",
+  "startbereich.notaus.zusatz": "Deine Unterhaltungen und Belege kannst du weiter ansehen.",
+
+  // Fassung „begruessung“
+  "startbereich.a.titel": "{gruss}.",
+  "startbereich.a.satz": "Ich bin {name}. Schreib unten los oder nimm einen Anfang.",
+  "startbereich.a.satz_ohne_name": "Schreib unten los oder nimm einen Anfang.",
+  "startbereich.a.stand": "So antwortet {name} gerade",
+  "startbereich.a.stand_ohne_name": "So antwortet der Bot gerade",
+  "startbereich.a.absage": "Freundliche Terminabsage",
+  "startbereich.a.kuerzen": "Text kürzer und klarer",
+  "startbereich.a.woche": "Meine Woche planen",
+  "startbereich.a.sortieren": "Aufgaben sortieren",
+  "startbereich.a.erklaeren": "Einfach erklärt bekommen",
+  "startbereich.a.abwaegen": "Für und Wider abwägen",
+
+  // Fassung „startbrett“
+  "startbereich.b.titel": "{gruss}! Was machen wir?",
+  "startbereich.b.satz": "Such dir einen Anfang aus oder schreib unten einfach los.",
+  "startbereich.b.kuerzen": "Mach diesen Text kürzer und klarer\u00a0…",
+  "startbereich.b.hoeflicher": "Formulier diese Mail höflicher\u00a0…",
+  "startbereich.b.woche": "Hilf mir, meine Woche zu planen\u00a0…",
+  "startbereich.b.sortieren": "Sortier diese Aufgaben nach Wichtigkeit\u00a0…",
+  "startbereich.b.erklaeren": "Erklär mir in einfachen Worten\u00a0…",
+  "startbereich.b.abwaegen": "Was spricht dafür, was dagegen\u00a0…",
+  "startbereich.b.stand.titel": "So arbeitet {name}",
+  "startbereich.b.stand.titel_ohne_name": "So arbeitet dein Bot",
+  "startbereich.b.stand.modell": "Modell",
+  "startbereich.b.stand.herkunft": "Herkunft",
+  "startbereich.b.stand.schleuse": "Datenschleuse",
+  "startbereich.b.stand.notaus": "Not-Aus",
+  "startbereich.b.stand.belege": "Belege",
+  "startbereich.b.stand.notaus_aus": "alle Bots laufen",
+  "startbereich.b.stand.belege_wert": "in der Kette",
+  "startbereich.b.kurz.schleuse_an": "Schleuse an",
+  "startbereich.b.kurz.schleuse_aus": "Schleuse aus",
+  "startbereich.b.kurz.belege": "Belege",
+  "startbereich.b.zuletzt": "Zuletzt",
+
+  // Fassung „stille“
+  "startbereich.c.titel": "Womit fangen wir an?",
+  "startbereich.c.modell": "{name} antwortet mit",
+  "startbereich.c.modell_ohne_name": "Antwortet mit",
+  "startbereich.c.sprechblase": "Klick ins Feld, dann zeig ich dir ein paar Anfänge.",
+  "startbereich.c.anfaenge": "Anfänge",
+  "startbereich.c.absage": "Terminabsage",
+  "startbereich.c.kuerzen": "Text kürzen",
+  "startbereich.c.woche": "meine Woche",
+  "startbereich.c.erklaeren": "einfach erklärt",
+
+  // Startbereich: Zeitangaben und Wahl der Fassung (Einstellungen, Reiter „Darstellung“)
+  "startbereich.zeit.heute": "heute",
+  "startbereich.zeit.gestern": "gestern",
+  "darstellung.titel": "Darstellung",
+  "darstellung.start.titel": "Startbereich einer leeren Unterhaltung",
+  "darstellung.start.text":
+    "So sieht eine neue, leere Unterhaltung aus. Die Wahl gilt nur für diesen Browser.",
+  "darstellung.start.begruessung": "Begrüßung",
+  "darstellung.start.begruessung.text":
+    "Großer Avatar, Gruß nach Tageszeit und drei Spalten mit Anfängen.",
+  "darstellung.start.startbrett": "Startbrett",
+  "darstellung.start.startbrett.text":
+    "Karten mit Anfängen, dazu „So arbeitet …“ und die letzten Unterhaltungen.",
+  "darstellung.start.stille": "Stille",
+  "darstellung.start.stille.text":
+    "Nur ein Satz. Die Anfänge erscheinen, sobald du ins Eingabefeld klickst.",
+  "darstellung.start.gemerkt": "Gemerkt für diesen Browser.",
+  "darstellung.start.vorschau": "Vorschau",
+
+  // Belege: Fassung des Tors je Entscheidung
+  "belege.urteil.nicht_pruefbar":
+    "Diese Kette enthält Belege aus einer neueren PaiBot-Fassung. Diese Fassung kann sie nicht vollständig prüfen. Prüfe mit derselben oder einer neueren Fassung. Hast du PaiBot nie auf eine neuere Fassung aktualisiert, ist das ein Warnzeichen.",
+  "belege.problem.fassung_unbekannt": "Beleg aus einer neueren PaiBot-Fassung",
+  "belege.problem.fassung_unpassend": "Beleg passt nicht zu seiner Fassung",
+  "belege.grund.entscheidung.fassung_unbekannt": "Beleg aus einer neueren PaiBot-Fassung",
+  "belege.grund.entscheidung.fassung_unpassend": "Beleg passt nicht zu seiner Fassung",
+  "belege.stand.nicht_pruefbar": "nicht prüfbar",
+  "belege.einzel.nicht_pruefbar":
+    "Beleg aus einer neueren PaiBot-Fassung: mit dieser Fassung nicht prüfbar.",
+  "belege.befehl.ausgaenge":
+    "Ausgänge: 0 vertrauenswürdig, 1 ungültig, 2 Aufruf oder Datei fehlerhaft, 3 Vertrauenskette gebrochen, 4 mit dieser Fassung nicht prüfbar (Belege aus einer neueren PaiBot-Fassung)",
+  "belege.geprueft.entscheidung_nicht_pruefbar":
+    "Entscheidungen nachgerechnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
+  "belege.geprueft.paare_nicht_pruefbar":
+    "Ergebnisse ihren Entscheidungen zugeordnet, aber für {anzahl} Einträge mit dieser Fassung nicht prüfbar",
+  "pruefung.nicht_pruefbar": "in sich stimmig, aber mit dieser Fassung nicht vollständig prüfbar",
+  "belege.einzel.ergebnis_kette":
+    "Ob dieses Ergebnis zu seiner Entscheidung und deren Fassung passt, zeigt die Prüfung der ganzen Kette.",
+
   // Routing-Regeln mit zweitem Schlüssel: Vorgaben aus dem Konto, Kennzeichnung nur mit Beleg
   "fehler.regel_unbekannt":
     "Die gewählte Routing-Regel gibt es bei deinem Anbieter nicht mehr, oder sie ist ausgeschaltet.",
@@ -1750,4 +1875,45 @@ export const de = {
     "Achtung: Bei „außerhalb der EU“ lässt das Tor keine Antwort dieses Anbieters zu.",
   "modelle.eigen.non_eu.hinweis":
     "Der Ort dieses Anbieters ist „außerhalb der EU“. Das Tor lehnt deshalb jede Antwort ab. Öffne „Ändern“ und wähl den Ort, der stimmt.",
+
+  // Tor-Fassung 2: Werkzeug-Verträge, neue Grenzen, Vorbedingungen und Deckel
+  "fehler.freigabe_noetig":
+    "Dafür bräuchte PaiBot deine Erlaubnis; das kann es in dieser Version noch nicht fragen.",
+  "fehler.werkzeug_unbekannt": "Dieses Werkzeug gibt es hier nicht.",
+  "fehler.werkzeug_eingabe_ungueltig": "Die Eingabe für das Werkzeug ist nicht gültig.",
+  "fehler.werkzeug_zeitgrenze": "Das Werkzeug hat nicht rechtzeitig geantwortet.",
+  "fehler.werkzeug_fehler": "Das Werkzeug hat einen Fehler gemeldet.",
+  "fehler.ausgang_unbekannt": "Ob der Werkzeug-Aufruf gewirkt hat, ist nicht bekannt.",
+  "fehler.schritte_aufgebraucht": "Die Antwort hat alle erlaubten Schritte gebraucht.",
+  "fehler.zu_viele_aufrufe": "Die Antwort hat alle erlaubten Werkzeug-Aufrufe gebraucht.",
+  "werkzeug.huelle.abgelehnt": "Nicht erlaubt: {titel}.",
+  "werkzeug.huelle.unbekannt": "Dieses Werkzeug gibt es nicht. Verfügbar: {namen}.",
+  "werkzeug.huelle.eingabe": "Eingabe ungültig: {feld} {art}",
+  "werkzeug.huelle.zeitgrenze": "Das Werkzeug hat nicht rechtzeitig geantwortet.",
+  "werkzeug.huelle.fehler": "Das Werkzeug hat einen Fehler gemeldet.",
+  "werkzeug.huelle.freigabe_noetig":
+    "Dafür bräuchte ich deine Erlaubnis; das kann ich in dieser Version noch nicht fragen.",
+  "tor.deckel.D-01":
+    "Gedeckelt: Pai hat in dieser Anfrage fremde Inhalte gelesen; Schreiben und Senden gehen nur mit deinem Okay.",
+  "regel.R-010": "Bot liest in der Doku seiner Version",
+  "regel.G-16": "Schritte je Lauf",
+  "regel.G-17": "Werkzeug-Aufrufe je Lauf",
+  "regel.G-18": "Token je Lauf",
+  "regeln.grenze.G-16": "Eine Antwort macht höchstens so viele Schritte wie erlaubt.",
+  "regeln.grenze.G-17": "Eine Antwort ruft höchstens so viele Werkzeuge auf wie erlaubt.",
+  "regeln.grenze.G-18": "Eine Antwort verbraucht zusammen höchstens so viele Token wie erlaubt.",
+  "regel.V-12": "Werkzeug angeboten",
+  "regel.V-13": "Eingabe des Werkzeugs gültig",
+  "regel.V-14": "Aufrufe je Schritt",
+  "regeln.vorbedingung.V-12": "Das Werkzeug gibt es, und es stand für diesen Schritt zur Wahl.",
+  "regeln.vorbedingung.V-13": "Die Eingabe passt zum Werkzeug.",
+  "regeln.vorbedingung.V-14": "Ein Schritt ruft höchstens so viele Werkzeuge auf wie erlaubt.",
+  "regel.D-01": "Nach fremden Inhalten fragen",
+  "belege.warnung.fassung_rueckschritt":
+    "Warnung: Nach einem Beleg einer neueren Tor-Fassung folgt einer einer älteren. Das kann beim Zurückgehen auf eine ältere PaiBot-Fassung oder kurz beim Update passieren. Ist beides nicht geschehen, ist das ein Warnzeichen.",
+  "pruefung.mit_warnung": "in sich stimmig, mit Warnung",
+  "belege.urteil.vertrauenswuerdig_warnung":
+    "Kette in sich stimmig, alle Schlüssel aus der Kette, aber mit Warnung.",
+  "belege.urteil.gueltig_anzahl_warnung":
+    "Mit Warnung: {anzahl} Belege geprüft, in sich stimmig, alle Schlüssel aus der Kette. Bitte die Warnung unten lesen.",
 } as const satisfies Record<string, string | readonly string[]>;

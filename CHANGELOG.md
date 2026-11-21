@@ -10,7 +10,7 @@ Seit:      2026-11-08
 
 # Changelog
 
-Alle wichtigen Änderungen an PaiBot, sortiert nach Folge der YouTube-Serie. Jede Folge hat einen eigenen Git-Tag.
+Alle wichtigen Änderungen an PaiBot, nach Themen sortiert: zuerst der Stand, der noch nicht veröffentlicht ist, darunter die früheren Bausteine.
 
 ## Noch nicht veröffentlicht
 
@@ -23,6 +23,16 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 - Seiten „Bot“ (Name, Anweisung, Aussehen, was der Bot darf), „Modell und Anbieter“ (Schlüssel testen, ersetzen, entfernen, Modell wählen) und „Datenschleuse“ (Zustand vom Worker, Standard für neue Unterhaltungen) ([Bot](docs/funktion-bot.md), [Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md), [Datenschleuse](docs/funktion-datenschleuse.md))
 - Seiten „Belege“ (Liste, Filter nach Aktion und Unterhaltung, ganze Kette im Browser prüfen, Anker, Schlüssel der Installation, Export) und „Regeln“ ([Belege](docs/funktion-belege.md), [Das Tor](docs/funktion-tor.md))
 - Einstellungen (Passwort, Sitzungen, Tagesbudget, Verlaufsgrenze, Zeitzone) und Info ([Doku](docs/funktion-einstellungen.md))
+- Anbieter-Auswahl in der Einrichtung und auf „Modell und Anbieter“: EUrouter mit deinen Routing-Regeln, Mistral AI (direkt) oder ein eigener bzw. lokaler Anbieter; an jeder Antwort steht, wer laut Anbieter geantwortet hat, und die Angaben zu Ort und Bedingungen nennen ihren Stand ([Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md))
+- Eigener Anbieter in der Oberfläche: OpenAI-kompatible Dienste anlegen, ändern und entfernen, auch auf deinem Rechner oder in deinem Netz (Ort „lokal“, Schlüssel dort freiwillig)
+- Chat: Unterhaltungen durchsuchen (Titel und Nachrichten), eine Unterhaltung als Datei sichern, eine Antwort neu erzeugen (auch mit einem anderen Modell, mit Blättern zwischen den Fassungen) ([Chat](docs/funktion-chat.md))
+- Not-Aus als Schalter: alle Bots mit einem Klick anhalten, Fortsetzen nur mit deinem Passwort, beides mit Beleg ([Das Tor](docs/funktion-tor.md#not-aus-alle-bots-anhalten))
+- Selbsttest „Ist meine Installation richtig eingestellt?“: Adresse, Proxy, Verbindung, Kopfzeilen, Datenbank-Rolle, Migrationen, Worker und mehr, jeweils mit Ausweg ([Selbsttest](docs/funktion-selbsttest.md))
+- Bekannte Geräte unter Einstellungen → Zugang und ein Hinweis bei der Anmeldung von einem neuen Gerät ([Einstellungen und Info](docs/funktion-einstellungen.md))
+- Sicherung und Wiederherstellung mit je einem Befehl, mit Prüfung der Belege-Kette danach ([Sicherung](docs/sicherung.md))
+- Neue Oberfläche des Chats: Menü „Du“ unten in der Seitenleiste, einklappbare Werkzeuge, Plätze für geplante Funktionen in der Eingabe-Leiste, helles und dunkles Design
+- Compose-Datei für Coolify mit erzeugten Geheimnissen (`deploy/docker-compose.coolify.yml`, [Doku](docs/deploy-coolify.md))
+- Entwickler-Doku: zu jeder Funktion eine Seite mit Aufbau, Datenmodell, Schnittstellen, Sicherheit, Tests und bekannten Schwächen; `pnpm doku:check` prüft sie mit ([Entwickler-Doku](docs/entwickler/README.md))
 - Lauf-Steuerung: eine Nachricht wird über das Tor zur Antwort, mit Belegen, Grenzen und Aufräumen hängender Läufe
 - Doku mit Bildern aus der laufenden App für alle Funktionsseiten, aufgenommen per Skript in einer Beispiel-Umgebung (`pnpm doku:app -- pnpm doku:screenshots`); Anleitung zum Aktualisieren ([Doku](docs/aktualisieren.md))
 - Das Tor: jede Aktion läuft durch feste Regeln und Grenzen ohne KI, mit Vorbedingungen und Nachweis je Aktion ([Doku](docs/funktion-tor.md))
@@ -50,6 +60,8 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 
 ### Sicherheit
 
+- Eine Unterhaltung, die als Datei gesichert wird, zeigt HTML, Bilder und Steuerzeichen nur als Text
+- Findet der Lauf Not-Aus und Stopp nicht mehr lesbar (Datenbank weg), hält er an
 - Die App verbindet sich mit einer eingeschränkten Datenbank-Rolle; Belege, Regeln und Schlüssel lassen sich darüber nur anhängen, nicht ändern oder löschen
 - Der Start bricht im Betrieb ab, wenn Pflichtwerte fehlen, zu schwach sind oder die Datenbank-Rechte zu weit gehen
 - Die Web-App sendet Schutz-Kopfzeilen mit strenger Content-Security-Policy
@@ -57,15 +69,18 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 
 ### Behoben
 
+- Das Aufräumen nach einem abgebrochenen Lauf schreibt nach einer abgelehnten Aktion das Ergebnis „abgelehnt“ und bricht nicht mehr ab
+- Der Einrichtungs-Code wird schon im ersten Schritt der Einrichtung geprüft, nicht erst beim Verbindungstest oder am Ende
+- Der Selbsttest sagt bei „Proxy“ nur noch „In Ordnung“, wenn ein Proxy erkennbar ist; sonst steht dort „nicht feststellbar“
 - Das Docker-Image enthält jetzt den Ordner `public` (Schriften und Symbole)
 - Test-Server schließen ruhende Verbindungen nicht mehr nach fünf Sekunden
 
-## Lizenz
+### Lizenz
 
 - Die Fair-Code-Lizenz ist jetzt Version 1.1: Forks sind erlaubt, wenn sie kostenlos bleiben, einen eigenen Namen tragen und „Powered by PaiBot“ mit Verweis auf paibot.de zeigen. Kurse, Bücher, Videos und Beratung bleiben erlaubt, bezahlter Betrieb oder Support für andere nicht. Dazu gibt es eine [Beitragsvereinbarung](docs/BEITRAGSVEREINBARUNG.md). Maßgeblich ist der Text in `LICENSE`.
 - Die Fair-Code-Lizenz ist Version 1.0 (kein Entwurf mehr) und gilt jetzt für die Nutzung durch eine Person, privat und für die eigene Arbeit. Die Nutzung mit mehreren Personen (Team, Unternehmen) braucht eine gesonderte Lizenz.
 
-## Folge 2 – Server
+## Server-Grundlage
 
 - Datenbank-Paket mit Drizzle, erster Migration und Test (PGlite)
 - Migrationen laufen beim Start der Web-App
@@ -74,7 +89,7 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 - Docker-Image, Docker Compose mit Postgres, Anleitung für Coolify
 - CI baut und startet den Stack und prüft den Healthcheck
 
-## Folge 0 – Gerüst
+## Gerüst
 
 - Monorepo mit pnpm, Turborepo, Biome und TypeScript
 - Minimale Web-App mit Healthcheck (`/api/health`)

@@ -47,11 +47,15 @@ export function openDatabase(url: string): DatabaseHandle {
 }
 
 /**
- * Baut die Abhängigkeiten eines Laufs. Der Signaturschlüssel der Belege wird vor jedem Lauf neu
- * geladen (`createSigningKeyHolder`: entschlüsselt mit der Bindung an Kennung und öffentlichen
- * Teil, privater Teil gegen den öffentlichen geprüft) und nur im Speicher gehalten; der
- * Beleg-Schreiber fragt ihn mit `current()` ab, nie unter seiner Sperre aus der Datenbank.
- * Vor der Einrichtung gibt es keinen Schlüssel; ein Beleg scheitert dann mit `einrichtung_offen`.
+ * Baut die Abhängigkeiten eines Laufs. Der Signaturschlüssel der Belege wird vor jedem Lauf aus
+ * der Datenbank gelesen (`createSigningKeyHolder`: entschlüsselt mit der Bindung an Kennung und
+ * öffentlichen Teil, privater Teil gegen den öffentlichen geprüft), damit ein nach dem Start
+ * eingerichteter oder gewechselter Schlüssel ohne Neustart gilt. Ein Halter für alle Läufe:
+ * Ist es derselbe Schlüssel, bleibt der gehaltene, und gleichzeitige Läufe signieren weiter damit;
+ * nur ein anderer Schlüssel ersetzt ihn. Der Beleg-Schreiber fragt ihn mit `current()` ab, nie
+ * unter seiner Sperre aus der Datenbank; ist der geholte nicht mehr der aktive der Kette, lädt er
+ * über `refresh()` neu. Vor der Einrichtung gibt es keinen Schlüssel; ein Beleg scheitert dann
+ * mit `einrichtung_offen`.
  */
 export function buildRunDeps(db: Database, env: Env): RunDepsSource {
   const master = loadMasterSecret(env);
@@ -73,6 +77,9 @@ export function buildRunDeps(db: Database, env: Env): RunDepsSource {
     current: async () => {
       if (!holder.loaded) throw new PaiBotError("einrichtung_offen");
       return holder.current();
+    },
+    refresh: async () => {
+      await holder.load();
     },
   });
   const gate = createGate({

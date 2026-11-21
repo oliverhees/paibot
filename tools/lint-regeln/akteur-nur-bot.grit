@@ -1,0 +1,43 @@
+// PaiBot – Lint-Regel: Im Worker und in den Paketen `agents`, `mcp` und `jobs` entsteht der Akteur
+// einer Anfrage ans Tor nur als `botActor(...)`. Verboten sind dort: `actor: <alles außer
+// botActor(...)>` (auch `"actor"` und die Kurzschreibweise `{ actor }`) und die Namen der Akteur-Typen (`Actor`,
+// `ActorKind`, `ActorOf`, `actorSchema`, `actorKind`), damit kein Akteur von außen als Parameter hereinkommt. Der bloße Text `besitzer` regelt `akteur-kein-besitzer-text.grit`. Nicht erkennbar: eine fertige Anfrage, die als
+// Ganzes von außen kommt (`gate.run(anfrage, …)`, `{ ...anfrage }`), und ein Akteur über
+// `ActionRequest["actor"]` – dafür gibt es die Laufzeit-Prüfung (siehe Entwickler-Doku zum Tor).
+//
+// Autor:     Oliver Hees
+// Website:   https://paibot.de
+// Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+// Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+// Seit:      2026-11-21
+
+language js
+
+or {
+  or {
+    `actor: $wert`,
+    `"actor": $wert`,
+    `'actor': $wert`
+  } where {
+    $wert <: not or {
+      `botActor($_)`,
+      `botActor($_,)`
+    },
+    register_diagnostic(span=$wert, message="Hier entsteht der Akteur nur als botActor(...), nie aus einem Parameter oder als Besitzer.")
+  },
+  JsShorthandPropertyObjectMember() as $kurz where {
+    $kurz <: r"^actor$",
+    register_diagnostic(span=$kurz, message="Hier entsteht der Akteur nur als botActor(...), nie aus einem Parameter oder als Besitzer.")
+  },
+  JsReferenceIdentifier() as $name where {
+    $name <: r"^(?:Actor|ActorKind|ActorOf|actorSchema|actorKind)$",
+    register_diagnostic(span=$name, message="Die Akteur-Typen gehören nicht in den Worker und die Bot-Pakete: der Akteur kommt nie von außen.")
+  },
+  or {
+    JsNamedImportSpecifier(),
+    JsShorthandNamedImportSpecifier()
+  } as $import where {
+    $import <: r"^(?:type\s+)?(?:Actor|ActorKind|ActorOf|actorSchema|actorKind)\b.*$",
+    register_diagnostic(span=$import, message="Die Akteur-Typen gehören nicht in den Worker und die Bot-Pakete: der Akteur kommt nie von außen.")
+  }
+}

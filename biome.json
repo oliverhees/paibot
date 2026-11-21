@@ -17,6 +17,41 @@
       "includes": ["**/*.ts", "**/*.tsx", "**/*.mjs"]
     },
     {
+      "path": "./tools/lint-regeln/akteur-besitzer.grit",
+      "includes": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.mjs",
+        "!apps/web/src/lib/api/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!packages/receipts/src/testhilfen.ts",
+        "!packages/receipts/src/testdaten/**",
+        "!apps/web/src/app/%5Fkomponenten/**"
+      ]
+    },
+    {
+      "path": "./tools/lint-regeln/akteur-nur-bot.grit",
+      "includes": [
+        "apps/worker/**/*.ts",
+        "packages/agents/**/*.ts",
+        "packages/mcp/**/*.ts",
+        "packages/jobs/**/*.ts",
+        "!**/*.test.ts"
+      ]
+    },
+    {
+      "path": "./tools/lint-regeln/akteur-kein-besitzer-text.grit",
+      "includes": [
+        "apps/worker/**/*.ts",
+        "packages/agents/**/*.ts",
+        "packages/mcp/**/*.ts",
+        "packages/jobs/**/*.ts",
+        "!**/*.test.ts",
+        "!packages/agents/src/raum/**"
+      ]
+    },
+    {
       "path": "./tools/lint-regeln/nur-in-tests.grit",
       "includes": [
         "**/*.ts",

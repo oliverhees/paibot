@@ -20,29 +20,75 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 
 **Eine neue Unterhaltung beginnen**
 
-1. Melde dich an. Du landest auf der Startseite mit der Überschrift „Frag deinen Bot etwas“. Das ist eine neue, noch leere Unterhaltung.
-2. Schreib deine Frage in das Feld „Schreib Pai eine Nachricht“ (statt „Pai“ steht dort der Name deines Bots). Oder klick auf eine der drei Beispiel-Fragen: Sie landet im Feld, gesendet wird noch nichts.
+1. Melde dich an. Du landest auf der Startseite. Das ist eine neue, noch leere Unterhaltung; sie zeigt den **Startbereich**: einen Gruß, ein paar Anfänge und welches Modell antwortet. Wie er aussieht, stellst du unter [Einstellungen → Darstellung](funktion-einstellungen.md) ein (siehe unten „Der Startbereich“).
+
+   ![Neue, leere Unterhaltung in der Fassung „Begrüßung“: großer Avatar, Gruß, drei Spalten mit Anfängen zum Schreiben, Planen und Verstehen, darunter das Modell und der Stand der Datenschleuse](assets/screenshots/chat-start-begruessung.png)
+
+2. Schreib deine Frage in das Feld „Schreib Pai eine Nachricht“ (statt „Pai“ steht dort der Name deines Bots). Oder klick auf einen **Anfang**: Sein Text landet im Feld, der Cursor steht dahinter, und gesendet wird nichts. Ergänze den Satz und sende ihn.
 3. Drück **Enter** oder klick auf den Pfeil rechts, um zu senden. Für eine neue Zeile drückst du **Umschalt+Enter**. Hat das Feld den Fokus, zeigt es eine schmale Linie in der Akzentfarbe. Nach dem Senden bleibt der Cursor im Feld, auch wenn die Antwort fertig ist oder du sie stoppst; du kannst also gleich weiterschreiben.
 
    ![Feld mit getippter Nachricht „Was steht diese Woche an?“ und der Fokus-Linie in der Akzentfarbe; unten links die gedämpften Plätze für spätere Funktionen und der Schalter „Datenschleuse aus“, rechts ein leerer Ring und der Pfeil zum Senden](assets/screenshots/chat-eingabe.png)
 
 4. Die Unterhaltung erscheint links in der Seitenleiste unter deinem Bot. Ihr Titel ist der Anfang deiner ersten Nachricht (höchstens 60 Zeichen); ändern kannst du ihn später.
 
-   ![Neue, leere Unterhaltung: Überschrift „Frag deinen Bot etwas“, drei Beispiel-Fragen, darunter das Feld „Schreib Pai eine Nachricht“ mit dem Schalter „Datenschleuse aus“](assets/screenshots/chat-leer.png)
+   ![Neue, leere Unterhaltung mit dem Feld „Schreib Pai eine Nachricht“ und dem Schalter „Datenschleuse aus“](assets/screenshots/chat-leer.png)
 
 **Die Antwort lesen**
 
-1. Unter deiner Nachricht erscheint die Antwort des Bots Stück für Stück. Oben steht neben dem Namen „wartet in der Schlange“ oder „schreibt“.
+1. Unter deiner Nachricht erscheint die Antwort des Bots Stück für Stück. Oben steht neben dem Namen, was der Bot gerade tut: „wartet in der Schlange“, „denkt nach“ (der Lauf läuft, noch ist kein Text da), „schreibt“ (Text kommt an) und kurz „fertig“. Der Avatar daneben zeigt dasselbe mit seinem Gesicht (siehe „Der Avatar zeigt, was dein Bot tut“).
 
    ![Die Antwort kommt gerade: der erste Satz steht schon da, darunter „schreibt“ und „Beleg folgt, sobald die Antwort fertig ist.“; in der Eingabe statt des Pfeils der Knopf „Stopp“](assets/screenshots/chat-streamt.png)
 
-2. Abgesetzte Blöcke (etwa ein Mail-Entwurf) haben rechts oben **Kopieren**. Ein Klick legt nur diesen Block in die Zwischenablage.
+2. Abgesetzte Blöcke (etwa ein Mail-Entwurf) haben rechts oben **Kopieren**. Ein Klick legt nur diesen Block in die Zwischenablage; der Avatar zwinkert dazu kurz.
 3. Links in einer Antwort zeigen in Klammern, wohin sie führen. Bilder lädt PaiBot nie; statt eines Bildes steht ein Link.
 4. Ist die Antwort fertig, steht darunter eine Zeile mit drei Teilen: **Beleg** mit seiner Kennung (z. B. `B-0142`), der **Weg** („direkt an den Anbieter“ bzw. „geschützt über die Datenschleuse“) und das **Modell** mit seiner Herkunft. Als Herkunft steht nur Belegbares: bei EUrouter, wer laut Antwort geantwortet hat, mit dessen Sitz laut der Anbieter-Liste von EUrouter (zum Beispiel „Antwort von Nebul · Sitz Niederlande laut EUrouter“); bei Mistral AI der Name des Anbieters; bei einem eigenen Anbieter der Ort, den du selbst angegeben hast, „laut deiner Einstellung“. Ein pauschales „EU“ gibt es nicht. Am Handy ist die Zeile gekürzt; ein Tipp auf den Weg klappt sie aus.
 
    ![Fertige Antwort mit dem abgesetzten Block „Entwurf“ und dem Knopf „Kopieren“; darunter die Zeile mit „Beleg“, „direkt · lokal“ und dem Beispiel-Modell](assets/screenshots/chat-antwort.png)
 
 5. Mit **Schritte** oben rechts blendest du diese Zeilen aus und wieder ein.
+
+**Der Startbereich**
+
+Der Startbereich ersetzt die leere Seite, solange eine Unterhaltung noch keine Nachricht hat. Er hat drei Fassungen; ab Werk gilt „Begrüßung“. Welche du siehst, wählst du unter _Einstellungen → Darstellung_ (siehe [Einstellungen](funktion-einstellungen.md)); die Wahl gilt für den Browser, in dem du sie triffst.
+
+1. **Begrüßung:** großer Avatar, ein Gruß nach Tageszeit in deiner Zeitzone („Guten Morgen“ von 5 bis 10 Uhr, „Guten Tag“ bis 16, „Guten Abend“ bis 22, sonst „Hallo zu später Stunde“) und sechs Anfänge in drei Spalten: Schreiben, Planen, Verstehen. Darunter steht, mit welchem Modell der Bot antwortet, und ob die Datenschleuse an ist.
+2. **Startbrett:** Karten mit Anfängen, dazu die Karte „So arbeitet Pai“ (Modell, Herkunft, Datenschleuse, Not-Aus, Zahl der Belege) und „Zuletzt“ mit bis zu drei deiner letzten Unterhaltungen.
+
+   ![Fassung „Startbrett“: Karten mit Anfängen, daneben „So arbeitet Pai“ mit Modell, Herkunft, Datenschleuse, Not-Aus und Belegen, darunter „Zuletzt“ mit Unterhaltungen](assets/screenshots/chat-start-startbrett.png)
+
+3. **Stille:** nur ein Satz und das Modell. Der Avatar sitzt über dem Eingabefeld. Klickst du ins Feld, erscheinen die Anfänge in seiner Sprechblase. Tippen oder **Esc** schließen sie; ein leeres Feld öffnet sie wieder.
+
+   ![Fassung „Stille“: ein Satz, das Modell und der Avatar mit Sprechblase über dem Eingabefeld](assets/screenshots/chat-start-stille.png)
+
+   ![Fassung „Stille“ mit Fokus im Feld: die Anfänge stehen in der Sprechblase](assets/screenshots/chat-start-stille-offen.png)
+
+4. Auf dem Handy rücken die Spalten untereinander.
+
+   ![Fassung „Begrüßung“ auf dem Handy: kleinerer Avatar, Gruß und Anfänge untereinander](assets/screenshots/chat-start-handy.png)
+
+5. Was in den Karten steht, kommt aus deiner Installation: Modell und Herkunft wie im Kopf des Chats (bei EUrouter „über EUrouter“, nie ein pauschales „EU“), der Schalter der Datenschleuse, der Not-Aus und die Zahl der Belege (die Nummer des letzten Belegs in der Kette, die bei 1 beginnt). Fehlt eine Angabe, fehlt ihre Zeile; PaiBot schätzt nichts. Ist der Not-Aus an, zeigt der Startbereich nur den Hinweis „Alle Bots sind angehalten.“ und keine Anfänge.
+
+**Der Avatar zeigt, was dein Bot tut**
+
+Der Avatar im Kopf der Seite hat ein Gesicht, das sich nur aus echten Ereignissen ändert, nie zufällig. Das Wort neben ihm bleibt immer stehen.
+
+| Was passiert                                                        | Avatar     | Wort neben ihm |
+| ------------------------------------------------------------------- | ---------- | -------------- |
+| nichts                                                              | ruhig      | „bereit“       |
+| du tippst etwas ins Feld                                            | hört zu    | „hört zu“      |
+| Lauf gestartet, noch kein Text                                      | denkt nach | „denkt nach“   |
+| Text kommt an                                                       | schreibt   | „schreibt“     |
+| Antwort fertig (knapp zwei Sekunden, dann wieder ruhig)             | fertig     | „fertig“       |
+| Lauf ist gescheitert, abgelehnt oder von der Datenschleuse gestoppt | Fehler     | „Fehler“       |
+| Not-Aus ist an                                                      | angehalten | „angehalten“   |
+
+Dazu kommen kurze Gesten: ein Nicken, wenn deine Nachricht abgeschickt ist; ein Kopfschütteln, wenn sie zu lang ist; Anpacken bei „Neu erzeugen“; ein „einverstanden“, wenn du einen Lauf selbst stoppst (kein Fehler); Staunen bei einer sehr langen Antwort (ab 1.500 Ausgabe-Token); ein Zwinkern beim Kopieren eines Blocks. Nur der große Avatar im Startbereich schaut deinem Mauszeiger nach. In der Seitenleiste und neben den Antworten steht er still. Hast du in deinem System „weniger Bewegung“ eingestellt, bewegt er sich gar nicht; die Zustände bleiben am Gesicht und am Wort erkennbar. Der Zustand „wartet auf dich“ kann der Avatar zeigen, PaiBot löst ihn heute noch nicht aus, weil es noch keine Freigaben gibt.
+
+![Der Avatar im Kopf „denkt nach“: der Lauf läuft, die Antwort hat noch keinen Text](assets/screenshots/chat-avatar-denkt.png)
+
+![Der Avatar im Kopf „schreibt“, während Text ankommt](assets/screenshots/chat-avatar-schreibt.png)
+
+![Der Avatar im Kopf zeigt kurz „fertig“, nachdem die Antwort da ist](assets/screenshots/chat-avatar-fertig.png)
 
 **Antwort stoppen**
 
@@ -118,7 +164,7 @@ Am Handy steht das Suchfeld oben im Menü; ein Tipp auf einen Treffer schließt 
    ![Fenster „Unterhaltung als Datei sichern“ mit dem Hinweis auf persönliche Inhalte und den Knöpfen „Abbrechen“ und „Datei sichern“](assets/screenshots/chat-sichern.png)
 
 3. Klick auf **Datei sichern**. Dein Browser speichert eine Textdatei, etwa `paibot-antwort-an-max-mustermann-2026-11-21.md`. Im Fenster steht danach „Gesichert als …“.
-4. Öffne die Datei mit einem beliebigen Texteditor. Oben stehen Titel, Name des Bots, wann die Unterhaltung angelegt und wann sie gesichert wurde. Darunter folgt jede Nachricht mit **wer** und **wann** als Überschrift und dem Text. Abgebrochene und fehlgeschlagene Antworten sind gekennzeichnet, ebenso frühere Fassungen einer neu erzeugten Antwort. Interne Kennungen und Schlüssel stehen nicht darin.
+4. Öffne die Datei mit einem beliebigen Texteditor. Oben stehen Titel, Name des Bots, wann die Unterhaltung angelegt und wann sie gesichert wurde. Darunter folgt jede Nachricht mit **wer** und **wann** als Überschrift und dem Text. Abgebrochene und fehlgeschlagene Antworten sind gekennzeichnet, ebenso frühere Fassungen einer neu erzeugten Antwort. Interne Kennungen und Schlüssel stehen nicht darin. Die Datei ist entschärft: Ein `<` aus einer Nachricht steht als `\<` darin (HTML erscheint als Text), ein Bild-Zeichen `![` als `!\[` (ein Markdown-Programm lädt so kein Bild aus dem Netz), Links auf `javascript:`, `data:` und `vbscript:` verlieren ihr Schema, Steuerzeichen fallen weg. Code-Blöcke und Code-Spannen bleiben wörtlich. In einem Texteditor bleibt alles lesbar; der Markdown-Text ist so gebaut, dass eine Vorschau daraus nichts ausführt oder nachlädt.
 5. Auch das Sichern bekommt zwei Belege („Unterhaltung als Datei gesichert“). Du findest sie unter **Belege** und in der Arbeitsfläche dieser Unterhaltung.
 
 **Antwort neu erzeugen**
@@ -167,16 +213,17 @@ Am Handy ist die Zeile unter der Antwort gekürzt. Ein Tipp auf den Weg klappt s
 
 Suche, Sichern und Neu erzeugen haben keine eigenen Einstellungen. Feste Werte: Ein Suchwort hat 2 bis 100 Zeichen; je Seite zeigt die Suche bis zu 10 Titel und 20 Nachrichten (höchstens 1.000 Treffer weit); bis zu 120 Suchanfragen je Minute. Neu erzeugen zählt auf dasselbe Limit wie das Senden (30 je Minute).
 
-| Einstellung            | Wo                                 | Bedeutung                                                                                 | Standard                                  |
-| ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Modell des Bots        | Seite „Modell und Anbieter“        | Ohne gewähltes Modell antwortet der Bot nicht („Für deinen Bot ist kein Modell gewählt.“) | keins                                     |
-| Anweisung des Bots     | Seite „Bot“                        | Steht am Ende der Anweisung an das Modell                                                 | leer                                      |
-| Ausgabegrenze des Bots | nicht in der Oberfläche            | Höchstens so viele Token je Antwort                                                       | 4096                                      |
-| Datenschleuse          | Schalter je Unterhaltung, Standard | `An`: jede Anfrage geht über die Datenschleuse oder gar nicht                             | aus                                       |
-| Verlaufsgrenze (Token) | Einstellungen                      | Wie viel vom bisherigen Gespräch mitgeschickt wird (etwa 4 Zeichen je Token)              | keine eigene Grenze                       |
-| Tagesbudget (Token)    | Einstellungen                      | Ist es erreicht, lehnt das Tor weitere Anfragen bis Mitternacht (deine Zeitzone) ab       | keins                                     |
-| Not-Aus                | Schalter oben in der Seitenleiste  | Ist er an, lehnt das Tor jede Anfrage des Bots ab                                         | aus                                       |
-| Zeitzone               | Einstellungen                      | Für das Datum in der Anweisung und den Beginn des Tagesbudgets                            | Zeitzone des Browsers bei der Einrichtung |
+| Einstellung            | Wo                                  | Bedeutung                                                                                 | Standard                                  |
+| ---------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Modell des Bots        | Seite „Modell und Anbieter“         | Ohne gewähltes Modell antwortet der Bot nicht („Für deinen Bot ist kein Modell gewählt.“) | keins                                     |
+| Anweisung des Bots     | Seite „Bot“                         | Steht am Ende der Anweisung an das Modell                                                 | leer                                      |
+| Ausgabegrenze des Bots | nicht in der Oberfläche             | Höchstens so viele Token je Antwort                                                       | 4096                                      |
+| Datenschleuse          | Schalter je Unterhaltung, Standard  | `An`: jede Anfrage geht über die Datenschleuse oder gar nicht                             | aus                                       |
+| Verlaufsgrenze (Token) | Einstellungen                       | Wie viel vom bisherigen Gespräch mitgeschickt wird (etwa 4 Zeichen je Token)              | keine eigene Grenze                       |
+| Tagesbudget (Token)    | Einstellungen                       | Ist es erreicht, lehnt das Tor weitere Anfragen bis Mitternacht (deine Zeitzone) ab       | keins                                     |
+| Not-Aus                | Schalter oben in der Seitenleiste   | Ist er an, lehnt das Tor jede Anfrage des Bots ab                                         | aus                                       |
+| Zeitzone               | Einstellungen                       | Für das Datum in der Anweisung und den Beginn des Tagesbudgets                            | Zeitzone des Browsers bei der Einrichtung |
+| Startbereich           | Einstellungen, Reiter „Darstellung“ | Fassung der leeren Unterhaltung: Begrüßung, Startbrett oder Stille; gilt je Browser       | Begrüßung                                 |
 
 Feste Werte der Lauf-Steuerung (im Code, `RUN_TUNING`):
 
@@ -249,6 +296,8 @@ Beteiligte Teile: `apps/web/src/app/(app)/chat/` und `apps/web/src/lib/chat/` (S
 - Beim Neu erzeugen mit anderem Modell wechselt das Modell des Bots, nicht nur das einer Antwort.
 - Die gesicherte Datei enthält eine Antwort, die beim Sichern noch lief, ohne Text (gekennzeichnet).
 - Die Plätze in der Leiste unter dem Feld sind **geplant, nicht gebaut**: Datei anhängen (Bilder, Dokumente), Merken (der Bot merkt sich etwas), Ziel (der Bot arbeitet, bis ein Ziel erreicht ist), Freigabe-Stufe (fragen, vorbereiten, ausführen mit Beleg), Web-Zugriff, Spracheingabe und die Anzeige, wie voll der Verlauf ist. Bis dahin sind sie gesperrt und ohne Verhalten.
+- Die Wahl des Startbereichs liegt in einem Cookie dieses Browsers (`paibot_startbereich`, ein Jahr). Auf einem anderen Gerät oder nach dem Löschen der Cookies gilt wieder „Begrüßung“. Sie steht nicht auf dem Server.
+- Die Anfänge sind reine Text-Aufgaben; sie rufen keine Werkzeuge auf. Der Gruß richtet sich nach der Zeitzone aus den Einstellungen. Der Avatar schaut zur Schreibstelle im Feld nur ungefähr (er rechnet mit der Länge der letzten Zeile, nicht mit der echten Cursor-Position).
 - Eine Nachricht hat höchstens 32.000 Zeichen. Kurz vor der Grenze zeigt die Eingabe, wie viele noch gehen; darüber wird nicht gesendet.
 
 ## Fehlerbehebung

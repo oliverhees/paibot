@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
 import { idSchema } from "./id";
 import {
   type ReceiptBody,
-  receiptBodySchema,
-  receiptEntrySchema,
+  receiptBodyWriteSchema,
+  receiptEntryReadSchema,
   receiptExportHeaderSchema,
   ZERO_PREV,
 } from "./receipts";
@@ -48,6 +48,8 @@ const action = {
   target: { conversationId, messageId },
 } as const;
 
+type Decided = Extract<ReceiptBody, { type: "decision" }>;
+
 const decision: ReceiptBody = {
   v: 1,
   id: receiptId(2),
@@ -56,10 +58,12 @@ const decision: ReceiptBody = {
   type: "decision",
   action,
   decision: {
+    gateFormat: 2,
     outcome: "allow",
     stage: "execute",
     rules: [{ id: "R-001", version: 1 }],
     limits: [{ name: "laenge", result: "ok", value: 5 }],
+    preconditions: [],
     reason: "Besitzer verwaltet seine Installation",
   },
   facts: {
@@ -102,8 +106,8 @@ const keyChange: ReceiptBody = {
 describe("Beleg-Körper", () => {
   it("nimmt alle vier Typen an", () => {
     for (const body of [start, decision, result, keyChange]) {
-      expect(receiptBodySchema.parse(body)).toEqual(body);
-      expect(receiptBodySchema.parse(JSON.parse(JSON.stringify(body)))).toEqual(body);
+      expect(receiptBodyWriteSchema.parse(body)).toEqual(body);
+      expect(receiptBodyWriteSchema.parse(JSON.parse(JSON.stringify(body)))).toEqual(body);
     }
   });
 
@@ -115,7 +119,7 @@ describe("Beleg-Körper", () => {
     };
     const ohneAlten = { ...vomNeuen, facts: { newKeyId, publicKey, signedBy: "new" } };
     for (const body of [vomNeuen, ohneAlten]) {
-      expect(receiptBodySchema.parse(body)).toEqual(body);
+      expect(receiptBodyWriteSchema.parse(body)).toEqual(body);
     }
 
     const bad: unknown[] = [
@@ -126,7 +130,7 @@ describe("Beleg-Körper", () => {
       { ...keyChange, facts: { newKeyId, publicKey, signedBy: "previous" } },
       { ...keyChange, facts: { ...keyChange.facts, newKeyId: keyId } },
     ];
-    for (const value of bad) expect(receiptBodySchema.safeParse(value).success).toBe(false);
+    for (const value of bad) expect(receiptBodyWriteSchema.safeParse(value).success).toBe(false);
   });
 
   it("beginnt die Kette mit 64 Nullen", () => {
@@ -146,13 +150,13 @@ describe("Beleg-Körper", () => {
       { ...result, result: { status: "ok", tokens: { input: 1.5, output: 2 } } },
       { ...result, result: { status: "fertig" } },
       { ...result, result: { status: "ok", digest: `sha256:${hex}` } },
-      { ...decision, facts: { ...decision.facts, inputChars: 4.5 } },
-      { ...decision, facts: { ...decision.facts, text: "Hallo" } },
+      { ...(decision as Decided), facts: { ...(decision as Decided).facts, inputChars: 4.5 } },
+      { ...(decision as Decided), facts: { ...(decision as Decided).facts, text: "Hallo" } },
       { ...decision, context: { digest: `sha256:${hex}` } },
       { ...decision, decision: undefined },
       { ...decision, type: "result" },
     ];
-    for (const value of bad) expect(receiptBodySchema.safeParse(value).success).toBe(false);
+    for (const value of bad) expect(receiptBodyWriteSchema.safeParse(value).success).toBe(false);
   });
 });
 
@@ -166,7 +170,7 @@ describe("gespeicherter Eintrag und Export", () => {
       keyId,
       body: decision,
     };
-    expect(Object.keys(receiptEntrySchema.parse(entry))).toEqual([
+    expect(Object.keys(receiptEntryReadSchema.parse(entry))).toEqual([
       "seq",
       "id",
       "hash",
@@ -174,8 +178,8 @@ describe("gespeicherter Eintrag und Export", () => {
       "keyId",
       "body",
     ]);
-    expect(receiptEntrySchema.safeParse({ ...entry, seq: 3 }).success).toBe(false);
-    expect(receiptEntrySchema.safeParse({ ...entry, signature: `${signature}A` }).success).toBe(
+    expect(receiptEntryReadSchema.safeParse({ ...entry, seq: 3 }).success).toBe(false);
+    expect(receiptEntryReadSchema.safeParse({ ...entry, signature: `${signature}A` }).success).toBe(
       false,
     );
   });

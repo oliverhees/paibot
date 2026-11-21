@@ -19,6 +19,7 @@ import {
   type AbschlussOptionen,
   type EinrichtungsSchritt,
   einrichtungAbschliessen,
+  einrichtungCodePruefen,
   einrichtungsStatus,
   einrichtungVerbindungstest,
 } from "./einrichtung";
@@ -39,6 +40,9 @@ function handler(u: TestUmgebung, optionen: AbschlussOptionen = {}) {
   return {
     status: u.handler("einrichtungStatus", async ({ db, dienste }) => ({
       daten: await einrichtungsStatus(db, dienste),
+    })),
+    code: u.handler("einrichtungCodePruefen", async (k) => ({
+      daten: await einrichtungCodePruefen(k),
     })),
     test: u.handler("einrichtungVerbindungstest", async (k) => ({
       daten: await einrichtungVerbindungstest(k),
@@ -153,6 +157,68 @@ describe("Einrichtungs-Code", () => {
     expect(u.log.filter((z) => z.startsWith("Einrichtungs-Code:"))).toEqual([
       `Einrichtungs-Code: ${TEST_CODE} (gilt 24 Stunden, längstens bis zum Ende der Einrichtung)`,
     ]);
+  });
+});
+
+describe("Code-Prüfung der Einrichtung", () => {
+  const pfad = "/api/einrichtung/code-pruefen";
+
+  it("richtiger Code: gültig; es wird nichts gespeichert und kein Anbieter gefragt", async () => {
+    const u = await bereit();
+    const r = await anfrage(u, handler(u).code, "POST", pfad, {
+      dose: vorabDose(),
+      koerper: { setupCode: TEST_CODE },
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.daten).toEqual({ gueltig: true });
+    expect(u.anbieterAufrufe).toEqual([]);
+    expect(await repo.settings.isSetupComplete(u.db)).toBe(false);
+  });
+
+  it("falscher Code: 401 und derselbe Zähler wie beim Abschluss; nach fünf Fehlversuchen gesperrt", async () => {
+    const u = await bereit();
+    const h = handler(u);
+    for (let i = 0; i < 5; i += 1) {
+      const r = await anfrage(u, h.code, "POST", pfad, {
+        dose: vorabDose(),
+        koerper: { setupCode: "AAAA-BBBB-CCCC" },
+      });
+      expect(r.status).toBe(401);
+    }
+    const zaehler = await repo.rateLimit.peek(u.db, {
+      key: "einrichtung:ip:203.0.113.7",
+      max: 5,
+      windowSeconds: 900,
+      now: u.zeit(),
+    });
+    expect(zaehler.count).toBe(5);
+    // Auch der richtige Code kommt jetzt nicht mehr durch: kein Weg zum Durchprobieren.
+    const gesperrt = await anfrage(u, h.code, "POST", pfad, {
+      dose: vorabDose(),
+      koerper: { setupCode: TEST_CODE },
+    });
+    expect(gesperrt.status).toBe(429);
+    // Der Abschluss ist über denselben Zähler gesperrt.
+    const abschluss = await anfrage(u, h.abschluss, "POST", "/api/einrichtung", {
+      dose: vorabDose(),
+      koerper: eingabe(),
+    });
+    expect(abschluss.status).toBe(429);
+  });
+
+  it("nach der Einrichtung nicht mehr erreichbar", async () => {
+    const u = await bereit();
+    const h = handler(u);
+    const fertig = await anfrage(u, h.abschluss, "POST", "/api/einrichtung", {
+      dose: vorabDose(),
+      koerper: eingabe(),
+    });
+    expect(fertig.status).toBe(200);
+    const r = await anfrage(u, h.code, "POST", pfad, {
+      dose: vorabDose(),
+      koerper: { setupCode: TEST_CODE },
+    });
+    expect(r.status).toBe(409);
   });
 });
 

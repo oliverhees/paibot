@@ -1,0 +1,47 @@
+// PaiBot – Lint-Regel: Der Akteur `besitzer` entsteht nur im Besitzer-Weg der Web-App
+// (`apps/web/src/lib/api/`). Verboten ist dort draußen (ohne Tests und die Testhilfe der Belege) ein
+// Wert `besitzer` als Akteur: `actor: <Ausdruck mit "besitzer">` (auch `"actor"`, `'…'`, `` `…` ``),
+// `"besitzer" as Actor`, `"besitzer" satisfies Actor`, eine Variable mit Typ `Actor` und eine
+// Funktion mit Rückgabetyp `Actor` oder `Promise<Actor>`, die `besitzer` liefert. Anzeige-Texte und
+// Typen (`zugang: "besitzer"`, `akteur === "besitzer"`, `von: "besitzer"`) treffen nicht.
+// Nicht erkennbar: eine Konstante, die später als Akteur dient (`actor: KONSTANTE`), ein
+// zusammengesetzter Text, eine Funktion ohne Typ-Angabe oder eine Methode, ein berechneter
+// Schlüssel (`["actor"]`), ein Spread von außen (`...anfrage`) und ein Wert aus einer anderen Datei.
+// Die Bestandsliste in `src/akteur-besitzer.test.ts` fängt davon ab, was den Text `besitzer` in
+// der Datei trägt.
+//
+// Autor:     Oliver Hees
+// Website:   https://paibot.de
+// Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+// Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+// Seit:      2026-11-21
+
+language js
+
+or {
+  or {
+    `actor: $wert`,
+    `"actor": $wert`,
+    `'actor': $wert`,
+    `$wert as Actor`,
+    `$wert satisfies Actor`,
+    `$name: Actor = $wert`
+  } where {
+    $wert <: contains $lit where {
+      $lit <: r"^[\"'`]besitzer[\"'`]$",
+      register_diagnostic(span=$lit, message="Der Akteur `besitzer` entsteht nur im Besitzer-Weg der Web-App (apps/web/src/lib/api/).")
+    }
+  },
+  // Eine Funktion, die als `Actor` getypt ist und `besitzer` zurückgibt (Hilfsfunktion).
+  or {
+    `function $f($args): Actor { $body }`,
+    `($args): Actor => $body`,
+    `async function $f($args): Promise<Actor> { $body }`,
+    `async ($args): Promise<Actor> => $body`
+  } where {
+    $body <: contains $lit where {
+      $lit <: r"^[\"'`]besitzer[\"'`]$",
+      register_diagnostic(span=$lit, message="Der Akteur `besitzer` entsteht nur im Besitzer-Weg der Web-App (apps/web/src/lib/api/).")
+    }
+  }
+}

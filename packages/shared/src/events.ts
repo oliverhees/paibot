@@ -12,12 +12,19 @@
 import { z } from "zod";
 import { actionTypeSchema } from "./actions";
 import { errorCodeSchema } from "./errors";
-import { isoTimeSchema, positiveIntSchema, servedBySchema, tokenUsageSchema } from "./grundtypen";
+import {
+  countSchema,
+  isoTimeSchema,
+  positiveIntSchema,
+  servedBySchema,
+  tokenUsageSchema,
+} from "./grundtypen";
 import { idSchema } from "./id";
 import {
   messageRoleSchema,
   routeSchema,
   toolCallStatusSchema,
+  toolKeySchema,
   toolKindSchema,
   toolNameSchema,
   toolSourceSchema,
@@ -76,6 +83,32 @@ export const EVENT_DATA = {
     messageId: messageId.optional(),
   }),
 } as const;
+
+/**
+ * Daten der Ereignisse für Läufe mit mehreren Schritten. Sie stehen bewusst noch nicht in
+ * `EVENT_DATA` und damit nicht in `CONVERSATION_EVENT_TYPES`: Die Datenbank prüft die Arten der
+ * Ereignisse gegen diese Liste; sie kommen mit der Migration für Werkzeug-Aufrufe dazu.
+ */
+export const STEP_EVENT_DATA = {
+  /** Ein erlaubter Werkzeug-Aufruf läuft. */
+  "tool.started": z.strictObject({ runId, actionId: idSchema("action") }),
+  /** Ein Schritt des Laufs ist zu Ende: mit Antwort, mit Zwischentext oder verworfen. */
+  "step.finished": z.strictObject({
+    runId,
+    step: countSchema,
+    ending: z.enum(["antwort", "zwischentext", "verworfen"]),
+    servedBy: servedBySchema.optional(),
+    modelReported: z.string().max(200).optional(),
+  }),
+  /** Text eines Schritts, der noch nicht die Antwort ist. */
+  "draft.delta": z.strictObject({ runId, step: countSchema, text: z.string().min(1) }),
+} as const;
+
+/** `tool.requested` für Läufe mit mehreren Schritten: dazu Kennung des Werkzeugs und Schritt. */
+export const toolRequestedDataV2 = EVENT_DATA["tool.requested"].extend({
+  key: toolKeySchema,
+  step: countSchema,
+});
 
 type EventData = typeof EVENT_DATA;
 export type ConversationEventType = keyof EventData;

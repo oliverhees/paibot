@@ -14,7 +14,8 @@ import { BOT_COLORS } from "@paibot/shared/objekte";
 import { t, tList } from "@paibot/shared/texte";
 import {
   AntwortZeile,
-  Avatar,
+  AvatarLebendig,
+  AvatarLebendigVorschau,
   Button,
   ChatBubble,
   ChatEingabe,
@@ -283,23 +284,15 @@ export function Beispiele() {
             <div className={styles.avatare}>
               {BOT_COLORS.map((farbe) => (
                 <figure key={farbe}>
-                  <Avatar farbe={farbe} groesse={44} titel={`Avatar ${farbe}`} />
+                  <AvatarLebendig farbe={farbe} groesse={44} titel={`Avatar ${farbe}`} />
                   <figcaption>{farbe}</figcaption>
                 </figure>
               ))}
             </div>
-            <div className={styles.avatare}>
-              {(["bereit", "arbeitet", "wartet", "schlaeft"] as const).map((z) => (
-                <figure key={z}>
-                  <Avatar farbe="violett" groesse={44} zustand={z} />
-                  <figcaption>{z === "schlaeft" ? "schläft" : z}</figcaption>
-                </figure>
-              ))}
-              <figure>
-                <Avatar farbe="limette" groesse={44} still />
-                <figcaption>still</figcaption>
-              </figure>
-            </div>
+          </Karte>
+
+          <Karte titel="Lebendiger Avatar: alle Formen und Zustände" breit>
+            <AvatarLebendigVorschau />
           </Karte>
 
           <Karte titel="Nachrichten" breit>
@@ -311,7 +304,7 @@ export function Beispiele() {
                 von="bot"
                 name="Pai"
                 zeit="14:31"
-                avatar={<Avatar farbe="violett" groesse={30} still />}
+                avatar={<AvatarLebendig farbe="violett" groesse={30} still />}
                 fuss={
                   <AntwortZeile
                     beleg={{ kennung: "B-0141", zustand: "gueltig", onPruefen: () => {} }}
@@ -327,7 +320,7 @@ export function Beispiele() {
                 von="bot"
                 name="Pai"
                 zeit="14:32"
-                avatar={<Avatar farbe="violett" groesse={30} zustand="arbeitet" />}
+                avatar={<AvatarLebendig farbe="violett" groesse={30} zustand="schreibt" still />}
                 zustand="streamt"
               >
                 <p>Ich schreibe gerade</p>
@@ -336,7 +329,7 @@ export function Beispiele() {
                 von="bot"
                 name="Pai"
                 zeit="14:33"
-                avatar={<Avatar farbe="violett" groesse={30} still />}
+                avatar={<AvatarLebendig farbe="violett" groesse={30} still />}
                 zustand="abgebrochen"
                 zustandText={t("chat.antwort.abgebrochen")}
               >
@@ -346,7 +339,7 @@ export function Beispiele() {
                 von="bot"
                 name="Pai"
                 zeit="14:34"
-                avatar={<Avatar farbe="violett" groesse={30} still />}
+                avatar={<AvatarLebendig farbe="violett" groesse={30} still />}
                 zustand="fehler"
                 zustandText={t("chat.antwort.fehlgeschlagen")}
               >
@@ -411,16 +404,14 @@ export function Beispiele() {
 
           <Karte titel="Leer, lädt, Fehler">
             <EmptyState
-              titel={t("chat.leer.titel")}
-              text={<p>{t("chat.leer.hinweis")}</p>}
-              bild={<Avatar farbe="violett" groesse={48} zustand="schlaeft" />}
-              aktion={tList("chat.leer.beispiele")
-                .slice(0, 2)
-                .map((b) => (
-                  <Button key={b} art="leise">
-                    {b}
-                  </Button>
-                ))}
+              titel="Frag deinen Bot etwas"
+              text={<p>Ein Beispiel für einen leeren Zustand.</p>}
+              bild={<AvatarLebendig farbe="violett" groesse={48} />}
+              aktion={["Schreib mir eine Absage.", "Hilf mir, meine Woche zu planen."].map((b) => (
+                <Button key={b} art="leise">
+                  {b}
+                </Button>
+              ))}
             />
             <LoadingState />
             <ErrorState

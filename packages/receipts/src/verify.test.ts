@@ -9,7 +9,6 @@
  * @since     2026-11-20
  */
 
-import { evaluate } from "@paibot/gate";
 import { RECEIPT_CHAIN_FORMAT, type ReceiptEntry } from "@paibot/shared/belege";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { ReceiptDraft } from "./build";
@@ -24,6 +23,7 @@ import {
   TEST_RULE,
   type TestKey,
   testDecision,
+  testEvaluate,
   testKey,
   testSign,
 } from "./testhilfen";
@@ -116,7 +116,7 @@ describe("verifyChain", () => {
     const action = sendAction();
     const facts = sendFacts();
     const extra = await signedEntry(
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testEvaluate(action, facts), facts },
       entries[19],
       key,
     );
@@ -296,7 +296,7 @@ describe("Schlüsselwechsel", () => {
     const facts = sendFacts();
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: testEvaluate(action, facts), facts },
         change,
         next,
       ),
@@ -350,7 +350,7 @@ describe("Schlüsselwechsel", () => {
     const facts = sendFacts();
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: testEvaluate(action, facts), facts },
         change,
         intruder,
       ),
@@ -368,7 +368,7 @@ describe("Schlüsselwechsel", () => {
     const facts = sendFacts();
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: testEvaluate(action, facts), facts },
         entries[3],
         other,
       ),
@@ -387,7 +387,7 @@ describe("Schlüsselwechsel", () => {
     const facts = sendFacts();
     entries.push(
       await signedEntry(
-        { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+        { type: "decision", action, decision: testEvaluate(action, facts), facts },
         entries[5],
         first,
       ),
@@ -547,7 +547,7 @@ describe("Entscheidung und Ergebnis je Aktion", () => {
     const action = sendAction();
     const facts = sendFacts();
     const drafts: ReceiptDraft[] = [
-      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "decision", action, decision: testEvaluate(action, facts), facts },
       { type: "result", action, result: { status: "ok" } },
     ];
     expect(await problems(drafts, RECEIPT_CHAIN_FORMAT)).toEqual(["regelstand_fehlt"]);

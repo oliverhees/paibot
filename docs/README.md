@@ -14,53 +14,75 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ## Inhalt
 
-| Bereich                | Datei                                                                    | Stand                               |
-| ---------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
-| Installation           | [installation.md](installation.md)                                       | vorhanden                           |
-| Server mit Coolify     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                           |
-| Aktualisieren          | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                           |
-| Sicherung              | [sicherung.md](sicherung.md)                                             | vorhanden, Befehle ohne Oberfläche  |
-| Einrichtung und Zugang | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern              |
-| Chat                   | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern              |
-| Bot                    | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern              |
-| Anbieter und Modelle   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern              |
-| Datenschleuse          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar |
-| Belege                 | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern              |
-| Das Tor und die Regeln | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern              |
-| Einstellungen und Info | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern              |
-| Selbsttest             | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern              |
-| Architektur            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit               |
-| Hintergrund-Läufe      | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)    |
-| Sicherheit             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit               |
-| Entwickeln und Testen  | [entwickeln.md](entwickeln.md)                                           | vorhanden                           |
-| Entwickler-Doku        | [entwickler/README.md](entwickler/README.md)                             | vorhanden, je Funktion eine Seite   |
-| Lizenzen der Pakete    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                           |
-| Beitragsvereinbarung   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                           |
-| Vorlage für Funktion   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                           |
-| Bots im Team           | folgt mit der Funktion                                                   | geplant                             |
-| Apps per MCP           | folgt mit der Funktion                                                   | geplant                             |
-| Browser-Dienst         | folgt mit der Funktion                                                   | geplant                             |
+| Bereich                 | Datei                                                                    | Stand                                    |
+| ----------------------- | ------------------------------------------------------------------------ | ---------------------------------------- |
+| Installation            | [installation.md](installation.md)                                       | vorhanden                                |
+| Server mit Coolify      | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                                |
+| Aktualisieren           | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                                |
+| Sicherung               | [sicherung.md](sicherung.md)                                             | vorhanden, Befehle ohne Oberfläche       |
+| Einrichtung und Zugang  | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern                   |
+| Chat                    | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern                   |
+| Bot                     | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern                   |
+| Anbieter und Modelle    | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern                   |
+| Datenschleuse           | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar      |
+| Belege                  | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern                   |
+| Das Tor und die Regeln  | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern                   |
+| Einstellungen und Info  | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern                   |
+| Selbsttest              | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern                   |
+| Architektur             | [architektur.md](architektur.md)                                         | vorhanden, wächst mit                    |
+| Hintergrund-Läufe       | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)         |
+| Sicherheit              | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit                    |
+| Entwickeln und Testen   | [entwickeln.md](entwickeln.md)                                           | vorhanden                                |
+| Entwickler-Doku         | [entwickler/README.md](entwickler/README.md)                             | vorhanden, je Funktion eine Seite        |
+| Doku-Index im Image     | [entwickler/doku-index.md](entwickler/doku-index.md)                     | vorhanden (Grundlage, ohne Oberfläche)   |
+| Werkzeug-Kern (Vertrag) | [entwickler/werkzeug-kern.md](entwickler/werkzeug-kern.md)               | vorhanden (Verträge, noch ohne Werkzeug) |
+| Lizenzen der Pakete     | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                                |
+| Beitragsvereinbarung    | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                                |
+| Vorlage für Funktion    | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                                |
+| Bots im Team            | folgt mit der Funktion                                                   | geplant                                  |
+| Apps per MCP            | folgt mit der Funktion                                                   | geplant                                  |
+| Browser-Dienst          | folgt mit der Funktion                                                   | geplant                                  |
 
 „Mit Bildern“ heißt: Die Seite hat zu jedem Schritt in der Oberfläche ein Bild aus der laufenden App, aufgenommen per Skript mit Beispiel-Daten.
 
 ### Neu
 
-- **Entwickler-Doku:** Zu jeder Funktion gibt es eine Seite für Entwickler mit Aufbau, Datenmodell, Schnittstellen, Sicherheit, Tests und bekannten Schwächen; jede Aussage nennt die Stelle im Code ([Entwickler-Doku](entwickler/README.md)).
-- **Seitenleiste mit Menü „Du“:** Unten links stehen die Werkzeuge (Belege, Regeln, Datenschleuse, Modell und Anbieter), ein- und ausklappbar. Der Knopf „Du“ öffnet Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden ([Einstellungen und Info](funktion-einstellungen.md)).
-- **Chat-Eingabe:** Nach dem Senden bleibt der Cursor im Feld; die Leiste zeigt schon die Plätze für geplante Funktionen (gesperrt, „kommt später“). Dazu Suche in allen Unterhaltungen, Unterhaltung als Datei sichern und Antwort neu erzeugen ([Chat](funktion-chat.md)).
-- **Eigener Anbieter in der Oberfläche:** OpenAI-kompatible Anbieter anlegen, ändern und entfernen, auch auf deinem Rechner ([Anbieter und Modelle](funktion-anbieter-und-modelle.md)).
-- **Bekannte Geräte und Hinweis bei neuer Anmeldung:** Liste der Browser, in denen du angemeldet warst, einzeln entfernbar; eine Leiste meldet Anmeldungen von neuen Geräten ([Einstellungen und Info](funktion-einstellungen.md), [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
-- **Sicherung und Wiederherstellung:** Ein Befehl sichert die Installation (Datenbank und Begleit-Datei mit Prüfsumme und Anker der Belege-Kette), ein Befehl spielt sie in eine frische Installation zurück und prüft danach Tabellen, Migrationen und die Belege-Kette ([Sicherung](sicherung.md)).
-- **Bilder für alle Funktionsseiten:** Chat, Bot, Anbieter und Modelle, Datenschleuse, Belege, Regeln sowie Einstellungen und Info zeigen jeden Schritt mit einem Bild aus der laufenden App, aufgenommen per Skript in einer Beispiel-Umgebung ([Screenshots](#screenshots)).
-- **Belege filtern und Schlüssel ansehen:** Filter nach Aktion und Unterhaltung (auch als Lesezeichen), Kasten „Schlüssel dieser Installation“ mit Kurzform ([Belege](funktion-belege.md)).
-- **Aktualisieren:** Wechsel auf eine neue Version mit eigenem Bau oder fertigem Image, mit Sicherung vorher ([Aktualisieren](aktualisieren.md)).
-- **Einstellungen und Info:** Passwort ändern, Geräte sehen und abmelden, Tagesgrenze und Verlaufsgrenze, Stand und Lizenz. Jede Änderung läuft durch das Tor und hat einen Beleg, den du von dort aus öffnen kannst ([Einstellungen und Info](funktion-einstellungen.md)).
-- **Belege ansehen und prüfen:** Liste aller Belege, ein Beleg als eigene Seite, „Ganze Kette prüfen“ im Browser, Anker sichern und vergleichen, Export für `pnpm belege:pruefen` ([Belege](funktion-belege.md)).
-- **Regeln:** Die Seite „Regeln“ zeigt die fest eingebauten Regeln, Grenzen und Vorbedingungen des Tors. Regeln kommen nur mit einem Update von PaiBot; die App selbst darf sie nur lesen ([Das Tor](funktion-tor.md)).
+Nach Themen geordnet, ohne Anspruch auf Vollständigkeit; die Seiten in der Tabelle oben sind maßgeblich.
+
+**Installieren und Betrieb**
+
+- **Coolify:** Eine eigene Compose-Datei mit erzeugten Geheimnissen und Hinweisen zu den häufigsten Stolpersteinen ([Server mit Coolify](deploy-coolify.md)).
 - **Migrations-Schritt im Betrieb:** Der Einmal-Dienst `migrate` richtet Datenbank und App-Rolle ein, danach starten `web` und `worker` nur mit der App-Rolle ([Installation](installation.md)).
-- **Einrichtungs-Code:** Er entsteht beim ersten Start und gilt 24 Stunden, längstens bis zum Ende der Einrichtung, auch wenn `web` neu startet. Ist er abgelaufen, steht beim nächsten Aufruf der Einrichtung ein neuer im Log; ein neuer Lauf des Migrations-Schritts verwirft ihn sofort ([Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
+- **Sicherung und Wiederherstellung:** Ein Befehl sichert die Installation (Datenbank und Begleit-Datei mit Prüfsumme und Anker der Belege-Kette), ein Befehl spielt sie in eine frische Installation zurück und prüft danach Tabellen, Migrationen und die Belege-Kette ([Sicherung](sicherung.md)).
+- **Aktualisieren:** Wechsel auf eine neue Version mit eigenem Bau oder fertigem Image, mit Sicherung vorher ([Aktualisieren](aktualisieren.md)).
+- **Selbsttest:** Unter Einstellungen → Selbsttest siehst du, ob Adresse, Proxy, Verbindung, Kopfzeilen, Datenbank-Rolle, Migrationen und Worker richtig eingestellt sind, jeweils mit Ausweg. Ob ein Proxy davorsteht, lässt sich nicht immer feststellen; dann steht dort ein ehrlicher Hinweis ([Selbsttest](funktion-selbsttest.md)).
+
+**Zugang und Sicherheit**
+
+- **Einrichtungs-Code:** Er entsteht beim ersten Start und gilt 24 Stunden, längstens bis zum Ende der Einrichtung, auch wenn `web` neu startet. Ein falscher Code fällt schon im ersten Schritt der Einrichtung auf. Ist er abgelaufen, steht beim nächsten Aufruf der Einrichtung ein neuer im Log; ein neuer Lauf des Migrations-Schritts verwirft ihn sofort ([Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
+- **Bekannte Geräte und Hinweis bei neuer Anmeldung:** Liste der Browser, in denen du angemeldet warst, einzeln entfernbar; eine Leiste meldet Anmeldungen von neuen Geräten ([Einstellungen und Info](funktion-einstellungen.md), [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
+- **Einstellungen und Info:** Passwort ändern, Geräte sehen und abmelden, Tagesgrenze und Verlaufsgrenze, Stand und Lizenz. Jede Änderung läuft durch das Tor und hat einen Beleg, den du von dort aus öffnen kannst ([Einstellungen und Info](funktion-einstellungen.md)).
 - **Not-Aus:** Oben in der Seitenleiste hältst du mit einem Klick alle Bots an; eine laufende Antwort bricht sofort ab, und auf jeder Seite steht die Leiste „Alle Bots sind angehalten.“. Fortsetzen geht nur mit deinem aktuellen Passwort; beides hat einen Beleg ([Das Tor](funktion-tor.md#not-aus-alle-bots-anhalten)).
-- **Selbsttest:** Unter Einstellungen → Selbsttest siehst du, ob Adresse, Proxy, Verbindung, Kopfzeilen, Datenbank-Rolle, Migrationen und Worker richtig eingestellt sind, jeweils mit Ausweg ([Selbsttest](funktion-selbsttest.md)).
+
+**Chat, Anbieter und Modelle**
+
+- **Anbieter-Auswahl:** EUrouter mit deinen Routing-Regeln, Mistral AI (direkt) oder ein eigener Anbieter, schon in der Einrichtung; an jeder Antwort steht, wer laut Anbieter geantwortet hat ([Anbieter und Modelle](funktion-anbieter-und-modelle.md)).
+- **Eigener Anbieter in der Oberfläche:** OpenAI-kompatible Anbieter anlegen, ändern und entfernen, auch auf deinem Rechner ([Anbieter und Modelle](funktion-anbieter-und-modelle.md)).
+- **Chat-Eingabe:** Nach dem Senden bleibt der Cursor im Feld; die Leiste zeigt schon die Plätze für geplante Funktionen (gesperrt, „kommt später“). Dazu Suche in allen Unterhaltungen, Unterhaltung als Datei sichern und Antwort neu erzeugen ([Chat](funktion-chat.md)).
+- **Seitenleiste mit Menü „Du“:** Unten links stehen die Werkzeuge (Belege, Regeln, Datenschleuse, Modell und Anbieter), ein- und ausklappbar. Der Knopf „Du“ öffnet Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden ([Einstellungen und Info](funktion-einstellungen.md)).
+
+**Belege und Tor**
+
+- **Belege ansehen und prüfen:** Liste aller Belege, ein Beleg als eigene Seite, „Ganze Kette prüfen“ im Browser, Anker sichern und vergleichen, Export für `pnpm belege:pruefen` ([Belege](funktion-belege.md)).
+- **Belege filtern und Schlüssel ansehen:** Filter nach Aktion und Unterhaltung (auch als Lesezeichen), Kasten „Schlüssel dieser Installation“ mit Kurzform ([Belege](funktion-belege.md)).
+- **Regeln:** Die Seite „Regeln“ zeigt die fest eingebauten Regeln, Grenzen und Vorbedingungen des Tors. Regeln kommen nur mit einem Update von PaiBot; die App selbst darf sie nur lesen ([Das Tor](funktion-tor.md)).
+
+**Doku selbst**
+
+- **Entwickler-Doku:** Zu jeder Funktion gibt es eine Seite für Entwickler mit Aufbau, Datenmodell, Schnittstellen, Sicherheit, Tests und bekannten Schwächen; jede Aussage nennt die Stelle im Code ([Entwickler-Doku](entwickler/README.md)).
+- **Bilder für alle Funktionsseiten:** Chat, Bot, Anbieter und Modelle, Datenschleuse, Belege, Regeln sowie Einstellungen und Info zeigen jeden Schritt mit einem Bild aus der laufenden App, aufgenommen per Skript in einer Beispiel-Umgebung ([Screenshots](#screenshots)).
+
+**Noch nicht in dieser Fassung** (siehe [Sicherheit](sicherheit.md)): ein Notfall-Zugang (ein vergessenes Passwort lässt sich nicht zurücksetzen), ein zweiter Faktor beim Anmelden und die erneute Bestätigung heikler Aktionen.
 
 Die Doku ist auch unter https://paibot.de/doku zu lesen.
 
@@ -132,7 +154,7 @@ Schritte in `vorher` (je Schritt genau eine Aktion):
 
 Ziele als Objekt: genau eines von `css`, `beschriftung`, `rolle` (mit `name`) oder `text`, dazu `"genau": false` für Teil-Treffer und `"nr": 0` für den ersten von mehreren Treffern. Für `text` gibt es Sonderwerte, damit nie ein Geheimnis in der Liste steht: `$einrichtungs-code` (Code aus dem Log), `$passwort` (Wegwerf-Passwort des Laufs), `$anbieter-schluessel` (Schlüssel des Test-Anbieters).
 
-Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob es zu jeder Funktionsseite die Entwickler-Seite `entwickler/<name>.md` mit den Abschnitten aus [entwickler/VORLAGE.md](entwickler/VORLAGE.md) gibt, ob jeder Datei-Verweis in den Entwickler-Seiten auf eine vorhandene Datei zeigt, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
+Nach jeder Änderung an Doku oder Screenshots gehört `pnpm doku:check` dazu. Es prüft, ob jede Funktionsseite alle Pflicht-Abschnitte der Vorlage hat, ob es zu jeder Funktionsseite die Entwickler-Seite `entwickler/<name>.md` mit den Abschnitten aus [entwickler/VORLAGE.md](entwickler/VORLAGE.md) gibt, ob jeder Datei-Verweis in den Entwickler-Seiten auf eine vorhandene Datei zeigt, ob `screenshots.json` gültig ist, ob irgendwo ein Wert steht, der wie ein Geheimnis aussieht (Schlüssel, Token, Passwort in einer Adresse), ob „So sieht es aus“ einen Screenshot oder einen gültigen Vermerk enthält, ob jedes Bild und jeder Link existiert, ob jeder Screenshot in `screenshots.json` eingetragen ist und ob jede Seite unter `docs/` in dieser Datei verlinkt ist. Es lehnt außerdem ab: HTML-Kommentare außer dem Urheber-Kopf ganz am Anfang einer Seite, unsichtbare und Bidi-Zeichen, Seiten unter `docs/`, die in keiner der beiden Listen in `scripts/doku-umfang.mjs` stehen („in den Index“ für die Anwender-Doku, „nicht in den Index“ mit Grund), und in den Seiten der ersten Liste typische Formulierungen eingeschleuster Anweisungen (nur eine Stichprobe, kein Schutz). Jede neue Seite unter `docs/` gehört deshalb in eine der beiden Listen. Fehler brechen ab; Warnungen zeigen offene Punkte (etwa „folgt mit der Oberfläche“). Mit `pnpm doku:check --streng` zählen auch Warnungen als Fehler, das gilt für einen fertigen Stand.
 
 ## Neue Doku-Seite anlegen
 

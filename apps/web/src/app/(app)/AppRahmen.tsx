@@ -230,6 +230,8 @@ export function AppRahmen({
             name: bot.name,
             rolle: t("navigation.bot.rolle"),
             farbe: bot.farbe,
+            // In der Liste steht der Avatar still; nur der Not-Aus ändert sein Gesicht.
+            ...(notAus ? { zustand: "angehalten" as const } : {}),
             href: BOT_ADRESSE,
             aktiv: botAktiv(
               pfad,

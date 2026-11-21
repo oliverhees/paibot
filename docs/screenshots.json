@@ -129,7 +129,8 @@
       {
         "klick": {
           "rolle": "link",
-          "name": "Schreib mir eine freundliche Absage für einen Termin."
+          "name": "Schreib mir eine freundliche Absage",
+          "genau": false
         }
       },
       {
@@ -283,6 +284,48 @@
       },
       {
         "warteAufText": "Routing-Regel für"
+      }
+    ],
+    "start-fassung-startbrett": [
+      {
+        "gehe": "/einstellungen/darstellung"
+      },
+      {
+        "klick": {
+          "rolle": "radio",
+          "name": "Startbrett",
+          "genau": false
+        }
+      },
+      {
+        "warteAufText": "Gemerkt für diesen Browser."
+      },
+      {
+        "gehe": "/"
+      },
+      {
+        "warteAuf": "[data-fassung='startbrett'], section:has(h1)"
+      }
+    ],
+    "start-fassung-stille": [
+      {
+        "gehe": "/einstellungen/darstellung"
+      },
+      {
+        "klick": {
+          "rolle": "radio",
+          "name": "Stille",
+          "genau": false
+        }
+      },
+      {
+        "warteAufText": "Gemerkt für diesen Browser."
+      },
+      {
+        "gehe": "/"
+      },
+      {
+        "warteAuf": "[data-fassung='stille']"
       }
     ],
     "einrichtung-eurouter-regeln-eu": [
@@ -768,6 +811,113 @@
       "beschreibung": "Chat: neue, leere Unterhaltung mit Beispiel-Fragen"
     },
     {
+      "name": "chat-start-begruessung",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-fassung='begruessung']",
+      "beschreibung": "Neue, leere Unterhaltung in der Fassung „Begrüßung“ (ab Werk): großer Avatar, Gruß, drei Spalten mit Anfängen, Modell und Datenschleuse"
+    },
+    {
+      "name": "chat-start-startbrett",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Fassung „Startbrett“: Karten mit Anfängen, „So arbeitet Pai“ und „Zuletzt“",
+      "vorher": [
+        {
+          "ablauf": "start-fassung-startbrett"
+        }
+      ],
+      "verdecke": ["[class*='zeilen'] small"]
+    },
+    {
+      "name": "chat-start-stille",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Fassung „Stille“: nur ein Satz und das Modell, der Avatar sitzt über dem Eingabefeld",
+      "vorher": [
+        {
+          "ablauf": "start-fassung-stille"
+        }
+      ]
+    },
+    {
+      "name": "chat-start-stille-offen",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Fassung „Stille“ mit Fokus im Feld: die Anfänge erscheinen in der Sprechblase",
+      "vorher": [
+        {
+          "ablauf": "start-fassung-stille"
+        },
+        {
+          "klick": {
+            "rolle": "textbox",
+            "name": "Nachricht"
+          }
+        },
+        {
+          "warteAuf": "[data-anfaenge]:not([hidden])"
+        }
+      ]
+    },
+    {
+      "name": "chat-start-handy",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-fassung='begruessung']",
+      "beschreibung": "Fassung „Begrüßung“ auf dem Handy"
+    },
+    {
+      "name": "einstellungen-darstellung",
+      "pfad": "/einstellungen/darstellung",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Einstellungen, Reiter „Darstellung“: drei Fassungen des Startbereichs mit Vorschau"
+    },
+    {
+      "name": "einstellungen-darstellung-gewaehlt",
+      "pfad": "/einstellungen/darstellung",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Reiter „Darstellung“: „Stille“ gewählt, „Gemerkt für diesen Browser.“",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Stille",
+            "genau": false
+          }
+        },
+        {
+          "warteAufText": "Gemerkt für diesen Browser."
+        }
+      ]
+    },
+    {
       "name": "chat-antwort",
       "pfad": "/",
       "zustand": "mit-beispieldaten",
@@ -784,7 +934,8 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "Schreib mir eine freundliche Absage für einen Termin."
+            "name": "Freundliche Terminabsage",
+            "genau": false
           }
         },
         {
@@ -819,7 +970,8 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "Hilf mir, meine Woche zu planen."
+            "name": "Meine Woche planen",
+            "genau": false
           }
         },
         {
@@ -847,7 +999,8 @@
         {
           "klick": {
             "rolle": "link",
-            "name": "Hilf mir, meine Woche zu planen."
+            "name": "Hilf mir, meine Woche zu planen.",
+            "genau": false
           }
         },
         {
@@ -1795,6 +1948,113 @@
         }
       ],
       "beschreibung": "Info auf dem Handy, unten: Hilfe, Sicherheitslücke, Bestandteile"
+    },
+    {
+      "name": "chat-avatar-denkt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Chat: Nachricht gesendet, die Antwort hat noch keinen Text; der Avatar im Kopf „denkt nach“",
+      "vorher": [
+        {
+          "anbieter": {
+            "reply": "Gern.",
+            "firstChunkDelayMs": 6000
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Freundliche Terminabsage",
+            "genau": false
+          }
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAuf": "button[aria-label='Stopp']"
+        },
+        {
+          "warteAufText": "denkt nach"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"]
+    },
+    {
+      "name": "chat-avatar-schreibt",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Chat: Die Antwort kommt, der Avatar im Kopf „schreibt“",
+      "vorher": [
+        {
+          "anbieter": {
+            "reply": "Gern. Ein Vorschlag für deine Woche: Montag das Angebot fertig schreiben, Dienstag die Rückrufe, Mittwoch Zeit für den Website-Text, Donnerstag die Steuerunterlagen sortieren, Freitag Puffer.",
+            "chunkChars": 73,
+            "holdAfterChunks": 1
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Meine Woche planen",
+            "genau": false
+          }
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "fertig schreiben,"
+        },
+        {
+          "warteAuf": "button[aria-label='Stopp']"
+        }
+      ],
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"]
+    },
+    {
+      "name": "chat-avatar-fertig",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Chat: Die Antwort ist fertig, der Avatar im Kopf zeigt kurz „fertig“",
+      "vorher": [
+        {
+          "anbieter": {
+            "reply": "Gern. Hier ist ein kurzer Vorschlag."
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Freundliche Terminabsage",
+            "genau": false
+          }
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAuf": "header [data-zustand='fertig'], [data-zustand='fertig']"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "zeigeFertig": true
     },
     {
       "name": "bot-start",

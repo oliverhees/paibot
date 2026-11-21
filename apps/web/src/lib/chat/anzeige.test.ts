@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   belegAdresse,
   belegKennung,
+  kurzTagText,
   laengenHinweis,
   schleuseFehler,
   schleuseFehlerArt,
@@ -159,5 +160,35 @@ describe("Fehler der Datenschleuse", () => {
     expect(zielZuSchleuseFehler("schluessel_passt_nicht")?.href).toBe("/datenschleuse");
     expect(zielZuSchleuseFehler("antwort_zu_gross")).toBeUndefined();
     expect(zielZuCode("schluessel_passt_nicht")?.href).toBe("/datenschleuse");
+  });
+});
+
+describe("kurzTagText", () => {
+  const jetzt = new Date("2026-11-21T10:00:00Z");
+  it("heute, gestern, Datum im selben Jahr, Datum mit Jahr", () => {
+    expect(kurzTagText("2026-11-21T08:00:00Z", "Europe/Berlin", jetzt)).toBe("heute");
+    expect(kurzTagText("2026-11-20T23:30:00Z", "Europe/Berlin", jetzt)).toBe("heute");
+    expect(kurzTagText("2026-11-20T10:00:00Z", "Europe/Berlin", jetzt)).toBe("gestern");
+    expect(kurzTagText("2026-11-16T10:00:00Z", "Europe/Berlin", jetzt)).toBe("16.11.");
+    expect(kurzTagText("2025-11-16T10:00:00Z", "Europe/Berlin", jetzt)).toBe("16.11.2025");
+  });
+  it("zählt Tage in der Zeitzone der Einstellungen, nicht in UTC", () => {
+    // 23:30 UTC am 20.11. ist in Berlin schon der 21.11. (heute), in Los Angeles noch der 20.11.
+    // (dort ist jetzt 02:00 am 21.11.) und damit gestern.
+    expect(kurzTagText("2026-11-20T23:30:00Z", "Europe/Berlin", jetzt)).toBe("heute");
+    expect(kurzTagText("2026-11-20T23:30:00Z", "America/Los_Angeles", jetzt)).toBe("gestern");
+    expect(kurzTagText("2026-11-21T09:00:00Z", "America/Los_Angeles", jetzt)).toBe("heute");
+  });
+  it("gestern stimmt auch nach einem 23-Stunden-Tag (Zeitumstellung) und am Monatsanfang", () => {
+    // 29.03.2026: Beginn der Sommerzeit, der Tag hat nur 23 Stunden.
+    const nachUmstellung = new Date("2026-03-30T00:30:00+02:00");
+    expect(kurzTagText("2026-03-29T12:00:00+02:00", "Europe/Berlin", nachUmstellung)).toBe(
+      "gestern",
+    );
+    const monat = new Date("2026-12-01T09:00:00Z");
+    expect(kurzTagText("2026-11-30T09:00:00Z", "Europe/Berlin", monat)).toBe("gestern");
+  });
+  it("ungültige Zeit: keine Angabe", () => {
+    expect(kurzTagText("kein Datum", "Europe/Berlin", jetzt)).toBeUndefined();
   });
 });

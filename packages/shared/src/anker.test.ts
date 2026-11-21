@@ -91,13 +91,29 @@ describe("Urteil über die Kette", () => {
     ).toBe("ungueltig");
   });
 
-  it("jedes Problem außer dem unbeglaubigten Wechsel macht die Kette ungültig", () => {
+  it("jedes Problem außer dem unbeglaubigten Wechsel und der unbekannten Fassung macht die Kette ungültig", () => {
     for (const problem of CHAIN_PROBLEMS) {
       const level = chainTrustLevel([{ problem }], true);
-      expect(level).toBe(
-        problem === "schluesselwechsel_nicht_beglaubigt" ? "vertrauen_gebrochen" : "ungueltig",
-      );
+      const expected =
+        problem === "schluesselwechsel_nicht_beglaubigt"
+          ? "vertrauen_gebrochen"
+          : problem === "fassung_unbekannt"
+            ? "nicht_pruefbar"
+            : "ungueltig";
+      expect(level).toBe(expected);
     }
+  });
+
+  it("Rangfolge: ungültig vor nicht prüfbar vor gebrochen vor vertrauenswürdig", () => {
+    const gebrochen = { problem: "schluesselwechsel_nicht_beglaubigt" } as const;
+    const unbekannt = { problem: "fassung_unbekannt" } as const;
+    const unpassend = { problem: "fassung_unpassend" } as const;
+    expect(chainTrustLevel([], true)).toBe("vertrauenswuerdig");
+    expect(chainTrustLevel([gebrochen], true)).toBe("vertrauen_gebrochen");
+    expect(chainTrustLevel([gebrochen, unbekannt], true)).toBe("nicht_pruefbar");
+    expect(chainTrustLevel([unbekannt, gebrochen], true)).toBe("nicht_pruefbar");
+    expect(chainTrustLevel([unbekannt, unpassend], true)).toBe("ungueltig");
+    expect(chainTrustLevel([unbekannt], false)).toBe("ungueltig");
   });
 
   it("das Urteil nennt, ob ein Anker geprüft wurde", () => {

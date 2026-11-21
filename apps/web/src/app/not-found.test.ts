@@ -29,4 +29,12 @@ describe("404-Seite", () => {
     expect(seite).not.toMatch(/\sstyle=/);
     expect(seite).not.toMatch(/<style|<script|dangerouslySetInnerHTML/);
   });
+
+  it("im App-Rahmen gibt es nur einen Hauptbereich: die Seite dort hat kein eigenes <main>", () => {
+    const imRahmen = readFileSync(new URL("./(app)/not-found.tsx", import.meta.url), "utf8");
+    expect(imRahmen).not.toMatch(/<main/);
+    expect(imRahmen).toContain('t("nicht_gefunden.titel")');
+    // Die Seite der Wurzel hat ihn, weil dort kein Rahmen darum liegt.
+    expect(seite).toMatch(/<main/);
+  });
 });

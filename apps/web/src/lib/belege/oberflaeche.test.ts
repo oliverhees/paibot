@@ -281,7 +281,15 @@ describe("Bausteine", () => {
     expect(regeln.find((r) => r.nr === "R-999")?.wirkung).toBe("fragt");
     expect(regeln.find((r) => r.nr === "R-006")?.stufen).toEqual([{ text: "lehnt ab", an: "nie" }]);
     expect(regeln.map((r) => r.nr)[0]).toBe("R-003");
-    expect(grenzenEintraege().map((g) => g.nr)).toEqual(["G-01", "G-02", "G-03", "G-04", "G-05"]);
+    expect(grenzenEintraege().map((g) => g.nr)).toEqual([
+      "G-01",
+      "G-02",
+      "G-03",
+      "G-04",
+      "G-05",
+      "G-16",
+      "G-18",
+    ]);
     const vorbedingungen = vorbedingungenEintraege().map((v) => v.nr);
     expect(vorbedingungen).toContain("V-01");
     expect(vorbedingungen).not.toContain("V-08");

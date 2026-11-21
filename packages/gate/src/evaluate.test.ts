@@ -22,9 +22,9 @@ import { t } from "@paibot/shared/texte";
 import {
   ACTIVE_STANDARD_RULES,
   CREDENTIAL_SCOPE,
+  type GateLimitName,
   LIMIT_NAMES,
   LIMITS_BY_ID,
-  type LimitName,
   listDecisionSchema,
   PRECONDITIONS,
   preconditionsFor,
@@ -33,7 +33,13 @@ import {
 } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import { conditionHolds, evaluate, NO_RULE_REASON, ruleApplies } from "./evaluate";
-import { ACTION_TYPES, BOT_ACTIONS, OWNER_ACTIONS, sampleAction, sampleFacts } from "./testdaten";
+import {
+  DECIDED_ACTIONS as ACTION_TYPES,
+  DECIDED_BOT_ACTIONS as BOT_ACTIONS,
+  DECIDED_OWNER_ACTIONS as OWNER_ACTIONS,
+  sampleAction,
+  sampleFacts,
+} from "./testdaten";
 
 declare global {
   interface ImportMeta {
@@ -113,7 +119,7 @@ function rule(change: Partial<RuleDefinition>): RuleDefinition {
 }
 
 /** Fakten, die genau eine Grenze verletzen, je Aktion; leer, wenn die Grenze die Aktion nicht betrifft. */
-const VIOLATIONS: Record<LimitName, Partial<Record<ActionType, Record<string, unknown>[]>>> = {
+const VIOLATIONS: Record<GateLimitName, Partial<Record<ActionType, Record<string, unknown>[]>>> = {
   schleuse_gefordert: {
     "modell.anfragen": [{ route: "direct" }, { schleuseReachable: false }],
   },
@@ -131,6 +137,15 @@ const VIOLATIONS: Record<LimitName, Partial<Record<ActionType, Record<string, un
     "nachricht.senden": [{ killSwitch: true }],
     "modell.anfragen": [{ killSwitch: true }],
     "werkzeug.aufrufen": [{ killSwitch: true }],
+  },
+  lauf_schritte: {
+    "modell.anfragen": [{ step: 1 }, { step: 4, maxSteps: 3 }],
+  },
+  lauf_aufrufe: {
+    "werkzeug.aufrufen": [{ callsInRun: 16 }, { callsInRun: 3, maxCallsPerRun: 2 }],
+  },
+  lauf_token: {
+    "modell.anfragen": [{ runTokens: 498774 }, { stepTokenEstimate: 500001 }],
   },
 };
 
@@ -546,7 +561,7 @@ describe("evaluate ist rein", () => {
     },
   );
 
-  it("das Paket importiert nur @paibot/shared und eigene Dateien", () => {
+  it("das Paket importiert nur @paibot/shared, Zod und eigene Dateien", () => {
     expect(Object.keys(SOURCES)).toEqual(
       expect.arrayContaining(["./evaluate.ts", "./gate.ts", "./permit.ts", "./limits/index.ts"]),
     );
@@ -561,14 +576,20 @@ describe("evaluate ist rein", () => {
           specifier.startsWith("./") ||
           specifier.startsWith("../") ||
           specifier === "@paibot/shared" ||
-          specifier.startsWith("@paibot/shared/");
+          specifier.startsWith("@paibot/shared/") ||
+          specifier === "zod";
         expect(allowed, `${file}: ${specifier}`).toBe(true);
       }
     }
   });
 
   it("Entscheidung und Grenzen nutzen weder Zeit noch Zufall noch Netz", () => {
-    for (const file of ["./evaluate.ts", "./limits/index.ts"]) {
+    for (const file of [
+      "./evaluate.ts",
+      "./limits/index.ts",
+      "./fassungen/index.ts",
+      "./fassungen/fassung-1.ts",
+    ]) {
       const code = (SOURCES[file] ?? "").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
       expect(code.length).toBeGreaterThan(500);
       expect(code).not.toMatch(

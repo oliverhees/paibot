@@ -16,18 +16,23 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 
 ## Seiten
 
-| Funktion               | Entwickler-Seite                                       | Anwender-Seite                                                              |
-| ---------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Einrichtung und Zugang | [einrichtung-und-zugang.md](einrichtung-und-zugang.md) | [funktion-einrichtung-und-zugang.md](../funktion-einrichtung-und-zugang.md) |
-| Chat                   | [chat.md](chat.md)                                     | [funktion-chat.md](../funktion-chat.md)                                     |
-| Bot                    | [bot.md](bot.md)                                       | [funktion-bot.md](../funktion-bot.md)                                       |
-| Anbieter und Modelle   | [anbieter-und-modelle.md](anbieter-und-modelle.md)     | [funktion-anbieter-und-modelle.md](../funktion-anbieter-und-modelle.md)     |
-| Datenschleuse          | [datenschleuse.md](datenschleuse.md)                   | [funktion-datenschleuse.md](../funktion-datenschleuse.md)                   |
-| Belege                 | [belege.md](belege.md)                                 | [funktion-belege.md](../funktion-belege.md)                                 |
-| Das Tor und die Regeln | [tor.md](tor.md)                                       | [funktion-tor.md](../funktion-tor.md)                                       |
-| Einstellungen und Info | [einstellungen.md](einstellungen.md)                   | [funktion-einstellungen.md](../funktion-einstellungen.md)                   |
-| Selbsttest             | [selbsttest.md](selbsttest.md)                         | [funktion-selbsttest.md](../funktion-selbsttest.md)                         |
-| Vorlage                | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
+| Funktion                | Entwickler-Seite                                       | Anwender-Seite                                                              |
+| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Einrichtung und Zugang  | [einrichtung-und-zugang.md](einrichtung-und-zugang.md) | [funktion-einrichtung-und-zugang.md](../funktion-einrichtung-und-zugang.md) |
+| Chat                    | [chat.md](chat.md)                                     | [funktion-chat.md](../funktion-chat.md)                                     |
+| Bot                     | [bot.md](bot.md)                                       | [funktion-bot.md](../funktion-bot.md)                                       |
+| Anbieter und Modelle    | [anbieter-und-modelle.md](anbieter-und-modelle.md)     | [funktion-anbieter-und-modelle.md](../funktion-anbieter-und-modelle.md)     |
+| Datenschleuse           | [datenschleuse.md](datenschleuse.md)                   | [funktion-datenschleuse.md](../funktion-datenschleuse.md)                   |
+| Belege                  | [belege.md](belege.md)                                 | [funktion-belege.md](../funktion-belege.md)                                 |
+| Das Tor und die Regeln  | [tor.md](tor.md)                                       | [funktion-tor.md](../funktion-tor.md)                                       |
+| Einstellungen und Info  | [einstellungen.md](einstellungen.md)                   | [funktion-einstellungen.md](../funktion-einstellungen.md)                   |
+| Selbsttest              | [selbsttest.md](selbsttest.md)                         | [funktion-selbsttest.md](../funktion-selbsttest.md)                         |
+| Sicherung               | [sicherung.md](sicherung.md)                           | [sicherung.md](../sicherung.md)                                             |
+| Team-Entwurf (Format)   | [team-entwurf.md](team-entwurf.md)                     | folgt mit der Oberfläche                                                    |
+| Doku-Index im Image     | [doku-index.md](doku-index.md)                         | –                                                                           |
+| Teamchat (Regeln)       | [teamchat.md](teamchat.md)                             | –                                                                           |
+| Werkzeug-Kern (Vertrag) | [werkzeug-kern.md](werkzeug-kern.md)                   | [funktion-tor.md](../funktion-tor.md)                                       |
+| Vorlage                 | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
 
 ## Aufbau des Monorepos
 
@@ -120,6 +125,7 @@ Gut zu wissen:
 
 - Zu jeder `docs/funktion-<name>.md` gibt es `docs/entwickler/<name>.md` mit den Abschnitten aus `docs/entwickler/VORLAGE.md` in derselben Reihenfolge.
 - Jeder Pfad in Backticks, der wie eine Datei im Repo aussieht (etwa `packages/gate/src/gate.ts`, Ordner mit `/` am Ende wie `packages/gate/`), muss existieren. Mit `#name` dahinter (etwa `packages/gate/src/gate.ts#createGate`) muss `name` in der Datei vorkommen.
+- In allen Seiten unter `docs/` stehen keine HTML-Kommentare außer dem Urheber-Kopf am Anfang und keine unsichtbaren oder Bidi-Zeichen; jede Seite steht in genau einer der beiden Listen in `scripts/doku-umfang.mjs` (siehe [Doku-Index](doku-index.md)).
 
 Die Tests dazu stehen in `tools/lint-regeln/src/doku-check.test.ts`.
 

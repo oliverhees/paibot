@@ -101,7 +101,9 @@ export async function einrichtungsStatus(
  * gibt den Nachweis „Einrichtungs-Code“.
  */
 async function codePruefen(
-  kontext: RoutenKontext<"einrichtungAbschliessen" | "einrichtungVerbindungstest">,
+  kontext: RoutenKontext<
+    "einrichtungAbschliessen" | "einrichtungVerbindungstest" | "einrichtungCodePruefen"
+  >,
   code: string,
 ): Promise<Nachweis> {
   if (!(await kontext.dienste.code.pruefen(kontext.db, code, kontext.dienste.uhr.now()))) {
@@ -152,6 +154,14 @@ function regelnFehlen(anbieter: EinrichtungsAnbieter): PaiBotError {
     text: t("anbieterwahl.regeln.leer", { anbieter: anbieter.name }),
     felder: [{ feld: "ruleNames", code: "fehlt" }],
   });
+}
+
+/** `POST /api/einrichtung/code-pruefen`: stimmt der Code? Speichert nichts, fragt keinen Anbieter. */
+export async function einrichtungCodePruefen(
+  kontext: RoutenKontext<"einrichtungCodePruefen">,
+): Promise<{ gueltig: true }> {
+  await codePruefen(kontext, kontext.eingabe.setupCode);
+  return { gueltig: true };
 }
 
 /** `POST /api/einrichtung/verbindungstest`: nur mit gültigem Code, nur mit neuem Schlüssel. */

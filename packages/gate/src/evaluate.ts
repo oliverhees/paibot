@@ -8,38 +8,25 @@
  * @since     2026-11-20
  */
 
-import {
-  ACTIONS,
-  type ActionRequest,
-  type ActionType,
-  actionRequestSchema,
-  actorKind,
-  type Facts,
-} from "@paibot/shared/aktionen";
+import type { ActionRequest, ActionType, Facts } from "@paibot/shared/aktionen";
 import type { ErrorCode } from "@paibot/shared/fehler";
-import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import { t } from "@paibot/shared/texte";
 import {
-  ACTOR_FACT,
   type Decision,
-  LIMITS_BY_ID,
-  type LimitCheck,
-  type LimitId,
-  type LimitName,
+  GATE_FORMAT,
   type ListDecision,
   type Outcome,
   PRECONDITIONS,
   type PreconditionCheck,
   type PreconditionId,
   type PreconditionName,
-  preconditionsFor,
   type RuleCondition,
   type RuleDefinition,
   type RuleSnapshot,
-  type Stage,
-  type StoredRuleRef,
 } from "@paibot/shared/tor";
-import { checkLimits, LIMIT_ORDER } from "./limits/index";
+import { currentGateFormat, type EvaluatedRule, gateFormatSpec } from "./fassungen/index";
+
+export type { EvaluatedRule } from "./fassungen/index";
 
 /** Fehlercode, mit dem eine nicht erlaubte Aktion gemeldet wird. */
 export const OUTCOME_ERROR_CODE = {
@@ -51,35 +38,13 @@ export const OUTCOME_ERROR_CODE = {
 /** Begründung, wenn keine einzige Regel passt. */
 export const NO_RULE_REASON = t("fehler.regel_fehlt");
 
-const LIMIT_ID_BY_NAME = Object.fromEntries(
-  Object.entries(LIMITS_BY_ID).map(([id, name]) => [name, id]),
-) as Record<LimitName, LimitId>;
-
 const PRECONDITION_ID_BY_NAME = Object.fromEntries(
   Object.entries(PRECONDITIONS).map(([id, { name }]) => [name, id]),
 ) as Record<PreconditionName, PreconditionId>;
 
-/** Alle Grenzen als „entfällt“, wenn die Eingabe gar nicht zu einer Aktion passt. */
-function limitsNotApplicable(): LimitCheck[] {
-  return LIMIT_ORDER.map((name) => ({ name, result: "entfaellt" }));
-}
-
-/** Vorbedingungen einer Aktion als „entfällt“ (bei ungültiger Eingabe); unbekannte Aktion → `[]`. */
-function preconditionsNotApplicable(type: unknown): PreconditionCheck[] {
-  if (typeof type !== "string" || !Object.hasOwn(ACTIONS, type)) return [];
-  return preconditionsFor(type as ActionType).map((id) => ({
-    name: PRECONDITIONS[id].name,
-    result: "entfaellt",
-  }));
-}
-
-/** Bedingungen über die Fakten mit dem Akteur aus der Aktion (wie bei Regeln). */
-function factContext(action: ActionRequest, facts: Facts): Record<string, unknown> {
-  return { ...(facts as Record<string, unknown>), [ACTOR_FACT]: actorKind(action.actor) };
-}
-
 /**
- * Prüft die Vorbedingungen der Aktion (`preconditionsFor`, nach ID) gegen die Fakten. Rein.
+ * Prüft die Vorbedingungen der Aktion (`preconditionsFor`, nach ID) gegen die Fakten, mit der
+ * aktuellen Fassung (`GATE_FORMAT`). Rein.
  * - `when` gilt nicht → `entfaellt`;
  * - alle Bedingungen in `require` gelten → `ok`, sonst `verletzt`. Fehlt ein Fakt, gilt die
  *   Bedingung nicht, die Vorbedingung ist also verletzt.
@@ -89,21 +54,7 @@ export function checkPreconditions<T extends ActionType>(
   action: ActionRequest<T>,
   facts: Facts<T>,
 ): PreconditionCheck[] {
-  const context = factContext(action as ActionRequest, facts as Facts);
-  return preconditionsFor(action.type).map((id) => {
-    const precondition: {
-      name: PreconditionName;
-      when?: readonly RuleCondition[];
-      require: readonly RuleCondition[];
-    } = PRECONDITIONS[id];
-    const name = precondition.name;
-    const when = precondition.when ?? [];
-    if (!when.every((condition) => conditionHolds(condition, context))) {
-      return { name, result: "entfaellt" };
-    }
-    const ok = precondition.require.every((condition) => conditionHolds(condition, context));
-    return { name, result: ok ? "ok" : "verletzt" };
-  });
+  return currentGateFormat().checkPreconditions(action, facts);
 }
 
 /** Kennung einer Vorbedingung zu ihrem Namen. */
@@ -112,13 +63,16 @@ export function preconditionId(name: PreconditionName): PreconditionId {
 }
 
 /**
- * Fehlercode, mit dem eine nicht erlaubte Entscheidung gemeldet wird: bei einer verletzten
- * Vorbedingung deren `errorCode` (die erste nach ID), bei verletztem Not-Aus (G-05) `angehalten`,
- * sonst `OUTCOME_ERROR_CODE`.
+ * Fehlercode, mit dem eine nicht erlaubte Entscheidung gemeldet wird, nach der aktuellen Fassung
+ * (`denialCode` der Fassung): bei einer verletzten Vorbedingung deren `errorCode` (die erste nach
+ * ID), bei verletztem Not-Aus (G-05) `angehalten`, ab Fassung 2 bei verletzter Grenze eines Laufs
+ * (G-16 bis G-18) `limit_erreicht`, sonst `OUTCOME_ERROR_CODE`.
  */
 export function denialCode(
   decision: Pick<Decision, "outcome" | "preconditions"> & { limits?: Decision["limits"] },
 ): ErrorCode {
+  const ofFormat = currentGateFormat().denialCode;
+  if (ofFormat !== undefined) return ofFormat(decision);
   const violated = (decision.preconditions ?? []).find((check) => check.result === "verletzt");
   if (violated !== undefined) return PRECONDITIONS[preconditionId(violated.name)].errorCode;
   const notAus = (decision.limits ?? []).some(
@@ -128,71 +82,29 @@ export function denialCode(
   return OUTCOME_ERROR_CODE[decision.outcome === "allow" ? "deny" : decision.outcome];
 }
 
-/** Ist die Eingabe eine gültige Aktion mit passenden Fakten? */
-function isValidInput(action: unknown, facts: unknown): boolean {
-  if (!actionRequestSchema.safeParse(action).success) return false;
-  const type = (action as { type: ActionType }).type;
-  return ACTIONS[type].facts.safeParse(facts).success;
-}
-
-/** Vergleicht zwei Regeln: Priorität aufsteigend, dann ID, dann Fassung. */
-function compareRules(a: RuleDefinition, b: RuleDefinition): number {
-  if (a.priority !== b.priority) return a.priority - b.priority;
-  if (a.id !== b.id) return a.id < b.id ? -1 : 1;
-  return a.version - b.version;
-}
-
-function outcomeOf(rule: RuleDefinition): Outcome {
-  if (rule.effect === "deny") return "deny";
-  if (rule.effect === "ask") return "ask";
-  if (rule.stage === "execute") return "allow";
-  return rule.stage === "prepare" ? "prepare" : "ask";
-}
-
-function limitReason(violated: readonly LimitCheck[]): string {
-  const names = violated.map((check) => {
-    const id = LIMIT_ID_BY_NAME[check.name];
-    return t("tor.grenze", { id, name: t(`regel.${id}`) });
-  });
-  return t("tor.grenze_verletzt", { grenzen: names.join(", ") }).slice(0, 500);
-}
-
-function preconditionReason(violated: readonly PreconditionCheck[]): string {
-  const names = violated.map((check) => {
-    const id = preconditionId(check.name);
-    return t("tor.grenze", { id, name: t(`regel.${id}`) });
-  });
-  return t("tor.vorbedingung_verletzt", { vorbedingungen: names.join(", ") }).slice(0, 500);
-}
-
-function invalidInputReason(): string {
-  return `${t("fehler.abgelehnt")} ${t("fehler.eingabe_ungueltig")}`;
-}
-
-/** Regel, wie `evaluate` sie annimmt: mit oder ohne Prüfsumme und Nummer im Regel-Protokoll. */
-export type EvaluatedRule = RuleDefinition & { readonly hash?: Sha256Digest };
-
-function isSnapshot(rules: readonly EvaluatedRule[] | RuleSnapshot): rules is RuleSnapshot {
-  return !Array.isArray(rules);
-}
-
-function ruleRef(rule: EvaluatedRule): StoredRuleRef {
-  const ref: StoredRuleRef = { id: rule.id, version: rule.version };
-  if (typeof rule.hash === "string") ref.hash = rule.hash;
-  return ref;
+/** Optionen für `evaluate`. */
+export interface EvaluateOptions {
+  /**
+   * Fassung der Auswertung; ohne Angabe `GATE_FORMAT`. Nur das Nachrechnen eines Belegs wählt
+   * eine ältere Fassung; das Tor selbst entscheidet immer mit `GATE_FORMAT`.
+   */
+  format?: number;
 }
 
 /**
  * Entscheidet über eine Aktion. Rein: kein I/O, keine Uhrzeit, kein Zufall; gleiche Eingaben
  * ergeben immer dieselbe Entscheidung. Damit lässt sich jede Entscheidung aus einem Beleg
- * nachrechnen: mit den Fakten und den Regeln zum damaligen Regelstand.
+ * nachrechnen: mit den Fakten, den Regeln zum damaligen Regelstand und der Fassung des Belegs.
+ *
+ * Gerechnet wird mit der eingefrorenen Fassung `GATE_FORMATS[options.format ?? GATE_FORMAT]`.
+ * Eine Fassung, die dieser Stand nicht kennt, ist ein `RangeError`.
  *
  * `rules` ist der Regelstand (`RuleSnapshot`: Regeln mit Prüfsumme und Stand) oder eine einfache
  * Liste von Regeln. Mit Regelstand trägt die Entscheidung `ruleStand` und je angewandter Regel die
  * Prüfsumme `hash`; ohne Regelstand fehlt `ruleStand`, und `hash` steht nur bei Regeln, die ihn
  * mitbringen.
  *
- * Reihenfolge:
+ * Reihenfolge (Fassung 1):
  * 1. Eingabe prüfen. Passt sie nicht zu den Verträgen (unbekannte Aktion, Akteur passt nicht zur
  *    Aktion, Fakten falsch), lautet das Ergebnis `deny` mit Stufe `ask`, leeren `matchedRules`,
  *    allen Grenzen und Vorbedingungen als `entfaellt`.
@@ -215,86 +127,44 @@ export function evaluate<T extends ActionType>(
   action: ActionRequest<T>,
   facts: Facts<T>,
   rules: RuleSnapshot,
+  options?: EvaluateOptions,
 ): Decision;
 export function evaluate<T extends ActionType>(
   action: ActionRequest<T>,
   facts: Facts<T>,
   rules: readonly EvaluatedRule[],
+  options?: EvaluateOptions,
 ): ListDecision;
 export function evaluate<T extends ActionType>(
   action: ActionRequest<T>,
   facts: Facts<T>,
   rules: readonly EvaluatedRule[] | RuleSnapshot,
+  options: EvaluateOptions = {},
 ): Decision | ListDecision {
-  const snapshot = isSnapshot(rules) ? rules : undefined;
-  const ruleList: readonly EvaluatedRule[] = snapshot ? snapshot.rules : (rules as EvaluatedRule[]);
-  const stand = snapshot === undefined ? {} : { ruleStand: snapshot.stand };
-
-  if (!isValidInput(action, facts)) {
-    return {
-      outcome: "deny",
-      stage: "ask",
-      matchedRules: [],
-      limits: limitsNotApplicable(),
-      preconditions: preconditionsNotApplicable((action as { type?: unknown } | null)?.type),
-      ...stand,
-      reason: invalidInputReason(),
-    };
-  }
-
-  const preconditions = checkPreconditions(action, facts);
-  const limits = checkLimits(action as ActionRequest, facts as Facts);
-  const candidates = ruleList.filter((rule) => ruleApplies(rule, action, facts));
-  const winner = [...candidates].sort(compareRules)[0];
-  const stage: Stage = winner ? winner.stage : "ask";
-  const matchedRules = winner ? [ruleRef(winner)] : [];
-  const base = { stage, matchedRules, limits, preconditions, ...stand };
-
-  const violatedPreconditions = preconditions.filter((check) => check.result === "verletzt");
-  if (violatedPreconditions.length > 0) {
-    return { outcome: "deny", ...base, reason: preconditionReason(violatedPreconditions) };
-  }
-  const violated = limits.filter((check) => check.result === "verletzt");
-  if (violated.length > 0) {
-    return { outcome: "deny", ...base, reason: limitReason(violated) };
-  }
-  if (!winner) {
-    return { outcome: "ask", ...base, stage: "ask", reason: NO_RULE_REASON };
-  }
-  return { outcome: outcomeOf(winner), ...base, reason: winner.reason };
+  const format = options.format ?? GATE_FORMAT;
+  const spec = gateFormatSpec(format);
+  if (spec === undefined) throw new RangeError(`Unbekannte Fassung des Tors: ${format}`);
+  return spec.evaluate(action, facts, rules);
 }
 
 /**
- * Gilt eine Regel für diese Aktion? Prüft `enabled`, die Aktion (`*` passt immer) und alle
- * Bedingungen. Eine Regel ohne Bedingungen passt auf jede passende Aktion.
+ * Gilt eine Regel für diese Aktion (aktuelle Fassung)? Prüft `enabled`, die Aktion (`*` passt
+ * immer) und alle Bedingungen. Eine Regel ohne Bedingungen passt auf jede passende Aktion. Die Art
+ * des Akteurs kommt aus der Aktion und lässt sich über die Fakten nicht überschreiben.
  */
 export function ruleApplies<T extends ActionType>(
   rule: RuleDefinition,
   action: ActionRequest<T>,
   facts: Facts<T>,
 ): boolean {
-  if (rule.enabled !== true) return false;
-  if (rule.action !== "*" && rule.action !== action.type) return false;
-  // Die Art des Akteurs kommt aus der Aktion und lässt sich über die Fakten nicht überschreiben.
-  const context = factContext(action as ActionRequest, facts as Facts);
-  return rule.conditions.every((condition) => conditionHolds(condition, context));
-}
-
-type Comparable = string | number | boolean;
-
-function isComparable(value: unknown): value is Comparable {
-  return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
-}
-
-function factValue(facts: Readonly<Record<string, unknown>>, name: string): unknown {
-  return Object.hasOwn(facts, name) ? facts[name] : undefined;
+  return currentGateFormat().ruleApplies(rule, action, facts);
 }
 
 /**
- * Prüft eine Bedingung gegen die Fakten. `ACTOR_FACT` (`akteur`) liefert die Art des Akteurs
- * (`besitzer` oder `bot`); alle anderen Namen sind Felder der Fakten. `value: { fact }` vergleicht
- * mit einem anderen Fakt. Fehlt ein Fakt, gilt die Bedingung nicht. `lt`/`lte`/`gt`/`gte`
- * vergleichen nur Zahlen mit Zahlen, sonst gilt die Bedingung nicht.
+ * Prüft eine Bedingung gegen die Fakten (aktuelle Fassung). `ACTOR_FACT` (`akteur`) liefert die
+ * Art des Akteurs (`besitzer` oder `bot`); alle anderen Namen sind Felder der Fakten.
+ * `value: { fact }` vergleicht mit einem anderen Fakt. Fehlt ein Fakt, gilt die Bedingung nicht.
+ * `lt`/`lte`/`gt`/`gte` vergleichen nur Zahlen mit Zahlen, sonst gilt die Bedingung nicht.
  *
  * Verglichen werden nur einzelne Werte (Text, Zahl, Schalter); ein Fakt mit einer Liste erfüllt
  * keine Bedingung.
@@ -303,36 +173,5 @@ export function conditionHolds(
   condition: RuleCondition,
   facts: Readonly<Record<string, unknown>>,
 ): boolean {
-  const left = factValue(facts, condition.fact);
-  if (!isComparable(left)) return false;
-
-  const raw = condition.value;
-  if (condition.op === "in") {
-    return Array.isArray(raw) && raw.some((item) => item === left);
-  }
-  if (Array.isArray(raw)) return false;
-
-  let right: unknown = raw;
-  if (typeof raw === "object" && raw !== null) {
-    right = factValue(facts, raw.fact);
-  }
-  if (!isComparable(right)) return false;
-
-  switch (condition.op) {
-    case "eq":
-      return left === right;
-    case "ne":
-      return left !== right;
-    case "lt":
-    case "lte":
-    case "gt":
-    case "gte":
-      if (typeof left !== "number" || typeof right !== "number") return false;
-      if (condition.op === "lt") return left < right;
-      if (condition.op === "lte") return left <= right;
-      if (condition.op === "gt") return left > right;
-      return left >= right;
-    default:
-      return false;
-  }
+  return currentGateFormat().conditionHolds(condition, facts);
 }

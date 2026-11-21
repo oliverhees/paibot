@@ -17,6 +17,7 @@ import {
   type Facts,
 } from "@paibot/shared/aktionen";
 import { type ActionId, type BotId, newId } from "@paibot/shared/ids";
+import { currentGateFormat } from "./fassungen/index";
 
 export const BOT_ID: BotId = newId("bot");
 
@@ -132,6 +133,14 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     killSwitch: false,
     targetOrigin: "https://api.eurouter.ai",
     targetDigest: `sha256:${"5e".repeat(32)}`,
+    step: 0,
+    maxSteps: 1,
+    runTokens: 0,
+    stepTokenEstimate: 1227,
+    maxRunTokens: 500000,
+    toolCount: 0,
+    untrustedInput: false,
+    trigger: "chat",
   },
   "lauf.abbrechen": { credential: "sitzung", runActive: true },
   "belege.exportieren": { credential: "sitzung", entries: 42 },
@@ -143,6 +152,20 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     toolKind: "lesen",
     argsDigest: ARGS_DIGEST,
     killSwitch: false,
+    toolKey: "eingebaut/notiz.lesen",
+    toolDigest: `sha256:${"0d".repeat(32)}`,
+    toolReach: "intern",
+    toolForeign: false,
+    toolRegistered: true,
+    toolOffered: true,
+    inputValid: true,
+    untrustedInput: false,
+    step: 0,
+    callIndexInStep: 0,
+    maxCallsPerStep: 8,
+    callsInRun: 0,
+    maxCallsPerRun: 16,
+    trigger: "chat",
   },
   "werkzeug.freigeben": {
     credential: "sitzung",
@@ -184,6 +207,18 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     killSwitch: false,
   },
 };
+
+/**
+ * Aktionen, über die das Tor in der aktuellen Fassung entscheidet (`currentGateFormat().actions`,
+ * ohne `werkzeug.freigeben` und `werkzeug.ausfuehren`).
+ */
+export const DECIDED_ACTIONS = currentGateFormat().actions as readonly ActionType[];
+/** Aktionen der aktuellen Fassung, die ein Bot auslöst. */
+export const DECIDED_BOT_ACTIONS = DECIDED_ACTIONS.filter((type) => ACTIONS[type].actor === "bot");
+/** Aktionen der aktuellen Fassung des Besitzers. */
+export const DECIDED_OWNER_ACTIONS = DECIDED_ACTIONS.filter(
+  (type) => ACTIONS[type].actor === "besitzer",
+);
 
 /** Aktionen, die ein Bot auslöst (aus den Verträgen). */
 export const BOT_ACTIONS = ACTION_TYPES.filter((type) => ACTIONS[type].actor === "bot");

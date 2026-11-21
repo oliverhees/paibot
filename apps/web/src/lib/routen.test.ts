@@ -70,6 +70,7 @@ describe("API-Routen", () => {
       [
         "anmelden",
         "einrichtungAbschliessen",
+        "einrichtungCodePruefen",
         "einrichtungStatus",
         "einrichtungVerbindungstest",
         "health",
@@ -93,6 +94,17 @@ describe("API-Routen", () => {
     expect(r.limits).toEqual(["verbindungstestIp", "einrichtungIp"]);
     expect(r.nurVorEinrichtung).toBe(true);
     expect(API_ROUTEN.einrichtungAbschliessen.nurVorEinrichtung).toBe(true);
+  });
+
+  it("die Code-Prüfung nimmt nur den Code und bremst wie der Abschluss je Adresse", () => {
+    const r = API_ROUTEN.einrichtungCodePruefen;
+    expect(r.eingabe.safeParse({ setupCode: "K7QD-9M2F-XW4H" }).success).toBe(true);
+    expect(r.eingabe.safeParse({ setupCode: "K7QD-9M2F-XW4H", apiKey: "sk-test" }).success).toBe(
+      false,
+    );
+    expect(r.limits).toEqual(API_ROUTEN.einrichtungAbschliessen.limits);
+    expect(r.nachweis).toBe("einrichtungs_code");
+    expect(r.nurVorEinrichtung).toBe(true);
   });
 
   it("jede Route ohne Sitzung, die etwas prüft oder verändert, hat ein Limit je Adresse", () => {

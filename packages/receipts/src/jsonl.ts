@@ -12,7 +12,7 @@ import {
   encodeAnchor,
   type ReceiptEntry,
   type ReceiptExportHeader,
-  receiptEntrySchema,
+  receiptEntryReadSchema,
   receiptExportHeaderSchema,
 } from "@paibot/shared/belege";
 import { t } from "@paibot/shared/texte";
@@ -76,8 +76,12 @@ export class ExportFormatError extends Error {
 /**
  * Liest einen Export. Leere Zeilen am Ende werden ignoriert.
  *
+ * Geprüft wird nur die Form jeder Zeile (`receiptEntryReadSchema`), nicht der Inhalt einer Fassung
+ * des Tors: Belege aus einer neueren PaiBot-Fassung bleiben so lesbar. Ob jede Entscheidung und
+ * jedes Ergebnis zu seiner Fassung passt, prüft `verifyChain`.
+ *
  * Fehler: `ExportFormatError`, wenn die erste Zeile nicht `receiptExportHeaderSchema` besteht oder
- * eine Eintragszeile kein JSON ist bzw. `receiptEntrySchema` nicht besteht. Die Kette selbst
+ * eine Eintragszeile kein JSON ist bzw. `receiptEntryReadSchema` nicht besteht. Die Kette selbst
  * prüft `verifyChain`.
  */
 export function parseJsonl(text: string): ParsedExport {
@@ -95,7 +99,7 @@ export function parseJsonl(text: string): ParsedExport {
   for (let index = 1; index < lines.length; index++) {
     const lineNumber = index + 1;
     const value = parseLine(lines[index] ?? "", lineNumber);
-    if (!receiptEntrySchema.safeParse(value).success) {
+    if (!receiptEntryReadSchema.safeParse(value).success) {
       throw new ExportFormatError(lineNumber, t("belege.export.kein_beleg"));
     }
     // Der gelesene Wert bleibt unverändert, damit die Prüfsumme über genau diese Daten läuft.

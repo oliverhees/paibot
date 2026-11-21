@@ -29,6 +29,7 @@ import {
   schleuseInput,
   sendMessageInput,
   settingsInput,
+  setupCodeCheckInput,
   setupConnectionTestInput,
   setupInput,
 } from "@paibot/shared/eingaben";
@@ -122,6 +123,22 @@ export const API_ROUTEN = {
     eingabe: setupConnectionTestInput,
     nachweis: "einrichtungs_code",
     limits: ["verbindungstestIp", "einrichtungIp"],
+    nurVorEinrichtung: true,
+  },
+  /**
+   * Prüft nur den Einrichtungs-Code, damit ein falscher Code schon im ersten Schritt auffällt.
+   * Speichert nichts. Ein falscher Code zählt auf `einrichtungIp`, dasselbe Limit wie beim
+   * Abschließen und beim Verbindungstest; das Raten wird dadurch nicht erleichtert.
+   */
+  einrichtungCodePruefen: {
+    methode: "POST",
+    pfad: "/api/einrichtung/code-pruefen",
+    zugang: "vorab",
+    antwort: "json",
+    veraendernd: false,
+    eingabe: setupCodeCheckInput,
+    nachweis: "einrichtungs_code",
+    limits: ["einrichtungIp"],
     nurVorEinrichtung: true,
   },
   einrichtungAbschliessen: {

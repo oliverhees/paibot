@@ -1,0 +1,489 @@
+/**
+ * PaiBot – Stile des lebendigen Avatars: Haltung, Übergänge und einmalige Regungen.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+/* Bewegt wird nur über transform und opacity. Ohne Bewegung (Systemwunsch oder `still`) gibt es
+   weder Übergänge noch Animationen; jeder Zustand bleibt am Gesicht und an der Haltung erkennbar. */
+
+.huelle {
+  --av-boden-o: 0.38;
+  --av-kontur-o: 0;
+  --av-grau: color-mix(in srgb, var(--ink-soft) 30%, var(--surface));
+  --av-gesicht-grau: var(--ink-soft);
+  --av-eck-zeichen: var(--bg);
+  --av-eck-rand: var(--surface);
+
+  position: relative;
+  display: inline-block;
+  flex: none;
+  line-height: 0;
+  transform-origin: 50% 88%;
+}
+
+@media (prefers-color-scheme: light) {
+  :global(:root:not([data-theme="dark"]):not([data-thema="dunkel"])) .huelle {
+    --av-boden-o: 0.13;
+    --av-kontur-o: 1;
+  }
+}
+
+:global(:root[data-theme="light"]) .huelle,
+:global(:root[data-thema="hell"]) .huelle {
+  --av-boden-o: 0.13;
+  --av-kontur-o: 1;
+}
+
+.kopf {
+  display: block;
+  overflow: visible;
+}
+
+/* Atmen: auf dem Rahmen, damit die Grafikkarte es übernimmt und nichts neu gezeichnet wird. */
+@keyframes atmen {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(0.993, 1.022);
+  }
+}
+
+.huelle[data-atem="1"] {
+  animation: atmen 4.8s ease-in-out infinite;
+}
+
+.boden {
+  fill: #000;
+  opacity: var(--av-boden-o);
+  transform-origin: 20px 38.6px;
+}
+
+.pose,
+.regung {
+  transform-origin: 20px 36px;
+}
+
+.pose {
+  transition: transform 0.55s cubic-bezier(0.34, 1.45, 0.5, 1);
+}
+
+.leib {
+  fill: var(--koerper);
+}
+
+.leibGrau {
+  fill: var(--av-grau);
+  transition: opacity 0.45s;
+}
+
+.kontur {
+  fill: none;
+  stroke: #18181b;
+  stroke-opacity: 0.2;
+  stroke-width: 0.7;
+  opacity: var(--av-kontur-o);
+}
+
+/* Gesicht */
+
+.gz {
+  fill: var(--gz);
+}
+
+.st {
+  fill: none;
+  stroke: var(--gz);
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grauz {
+  fill: var(--av-gesicht-grau);
+}
+
+.graus {
+  fill: none;
+  stroke: var(--av-gesicht-grau);
+  stroke-width: 2.1;
+  stroke-linecap: round;
+}
+
+.gesicht {
+  transform: translate(calc(var(--bx) * 0.55px), calc(var(--by) * 0.45px));
+  transition: transform 0.32s cubic-bezier(0.3, 0.75, 0.35, 1);
+}
+
+.augen {
+  transform: translate(calc(var(--bx) * 0.85px), calc(var(--by) * 0.65px));
+  transition: transform 0.32s cubic-bezier(0.3, 0.75, 0.35, 1);
+}
+
+.auge {
+  transition: transform 0.38s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+.af {
+  transition:
+    transform 0.38s cubic-bezier(0.34, 1.5, 0.5, 1),
+    opacity 0.2s;
+}
+
+.lid {
+  transition: transform 0.075s ease-in;
+}
+
+.huelle[data-blink="1"] .lid,
+.huelle[data-zu="1"] .lid {
+  transform: scale(1, 0.1);
+}
+
+.glanz {
+  fill: var(--koerper);
+  transition: opacity 0.25s;
+}
+
+.eBogen,
+.ePause {
+  transition: opacity 0.22s;
+}
+
+.braue {
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.5, 0.5, 1),
+    opacity 0.25s;
+}
+
+.munde {
+  transition: transform 0.38s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+.m {
+  opacity: 0;
+  transform: scale(0.55);
+  transition:
+    opacity 0.2s,
+    transform 0.34s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.m.an {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.mi {
+  transition: transform 0.3s cubic-bezier(0.34, 1.5, 0.5, 1);
+}
+
+/* Der Mund beim Schreiben steht halb offen; nur ein ankommendes Text-Stück bewegt ihn. */
+.sprech {
+  transform: scale(var(--sprech-x, 1), var(--sprech-y, 0.3));
+  transition: transform 0.085s ease-out;
+}
+
+.grob {
+  display: none;
+}
+
+.wangen {
+  fill: var(--gz);
+  opacity: 0.3;
+}
+
+/* Ring und Eck-Zeichen: nur dort, wo du handeln musst */
+
+.ring {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 1.7;
+  transform-origin: 20px 20px;
+  transition:
+    opacity 0.3s,
+    transform 0.45s cubic-bezier(0.34, 1.5, 0.5, 1);
+}
+
+.eck {
+  transform-origin: 36.6px 2.9px;
+  transition:
+    opacity 0.2s,
+    transform 0.4s cubic-bezier(0.34, 1.7, 0.5, 1);
+}
+
+.eckKreis {
+  stroke: var(--av-eck-rand);
+  stroke-width: 2;
+}
+
+.eckWarn .eckKreis {
+  fill: var(--warn);
+}
+
+.eckFehler .eckKreis {
+  fill: var(--danger);
+}
+
+.eckZeichen {
+  fill: var(--av-eck-zeichen);
+}
+
+.eckStrich {
+  fill: none;
+  stroke: var(--av-eck-zeichen);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+/* 24 Pixel und kleiner: vereinfachte Mimik */
+
+.klein .braue,
+.klein .glanz {
+  display: none;
+}
+
+.klein .st,
+.klein .graus {
+  stroke-width: 2.9;
+}
+
+.klein .fein {
+  display: none;
+}
+
+.klein .grob {
+  display: inline;
+}
+
+.klein .ring {
+  stroke-width: 2.8;
+}
+
+/* Einmalige Regungen des Körpers */
+
+@keyframes kHops {
+  0% {
+    transform: none;
+  }
+  14% {
+    transform: scale(1.07, 0.88);
+  }
+  40% {
+    transform: translate(0, -5.5px) scale(0.95, 1.07);
+  }
+  62% {
+    transform: translate(0, 0) scale(1.07, 0.9);
+  }
+  78% {
+    transform: scale(0.98, 1.03);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes kBoden {
+  0%,
+  100% {
+    transform: none;
+  }
+  40% {
+    transform: scale(0.68);
+    opacity: calc(var(--av-boden-o) * 0.5);
+  }
+  62% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes kNicken {
+  0% {
+    transform: none;
+  }
+  35% {
+    transform: translate(0, 1.5px) rotate(-3deg) scale(1.02, 0.95);
+  }
+  68% {
+    transform: translate(0, -0.5px) rotate(1deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes kStaunen {
+  0% {
+    transform: none;
+  }
+  18% {
+    transform: translate(0, -1.8px) rotate(3deg) scale(0.96, 1.07);
+  }
+  45% {
+    transform: translate(0, -0.6px) rotate(2deg) scale(0.99, 1.02);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes kZwinkern {
+  0% {
+    transform: none;
+  }
+  25%,
+  70% {
+    transform: rotate(6deg) translate(0.4px, 0);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes kSchuetteln {
+  0%,
+  100% {
+    transform: none;
+  }
+  15% {
+    transform: rotate(-5deg);
+  }
+  35% {
+    transform: rotate(5deg);
+  }
+  55% {
+    transform: rotate(-3.5deg);
+  }
+  75% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes kAnpacken {
+  0% {
+    transform: none;
+  }
+  28% {
+    transform: scale(1.07, 0.9);
+  }
+  58% {
+    transform: translate(0, -1.4px) scale(0.96, 1.07);
+  }
+  80% {
+    transform: scale(1.01, 0.99);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes kDucken {
+  0% {
+    transform: none;
+  }
+  35%,
+  65% {
+    transform: translate(0, 1.2px) scale(1.04, 0.91);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes kZucken {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translate(-1.1px, 0) rotate(-2deg);
+  }
+  45% {
+    transform: translate(1.1px, 0) rotate(2deg);
+  }
+  70% {
+    transform: translate(-0.6px, 0);
+  }
+}
+
+@keyframes kRing {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.huelle[data-regung="hops"] .regung {
+  animation: kHops 0.95s cubic-bezier(0.3, 0.7, 0.4, 1) 1;
+}
+
+.huelle[data-regung="hops"] .boden {
+  animation: kBoden 0.95s cubic-bezier(0.3, 0.7, 0.4, 1) 1;
+}
+
+.huelle[data-regung="nicken"] .regung {
+  animation: kNicken 0.62s ease-in-out 1;
+}
+
+.huelle[data-regung="staunen"] .regung {
+  animation: kStaunen 1.1s cubic-bezier(0.3, 0.8, 0.4, 1) 1;
+}
+
+.huelle[data-regung="zwinkern"] .regung {
+  animation: kZwinkern 0.9s ease-in-out 1;
+}
+
+.huelle[data-regung="schuetteln"] .regung {
+  animation: kSchuetteln 0.85s ease-in-out 1;
+}
+
+.huelle[data-regung="anpacken"] .regung {
+  animation: kAnpacken 0.8s ease-in-out 1;
+}
+
+.huelle[data-regung="ducken"] .regung {
+  animation: kDucken 0.9s ease-in-out 1;
+}
+
+.huelle[data-regung="zucken"] .regung {
+  animation: kZucken 0.55s ease-in-out 1;
+}
+
+.huelle[data-regung="ring"] .ring {
+  animation: kRing 1.1s ease-in-out 3;
+}
+
+/* Weniger Bewegung: nichts bewegt sich, alle Zustände bleiben als Standbild unterscheidbar. */
+
+@media (prefers-reduced-motion: reduce) {
+  .huelle,
+  .huelle * {
+    /* biome-ignore lint/complexity/noImportantStyles: schlägt die Regungen (höhere Spezifität) */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: wie oben */
+    transition: none !important;
+  }
+
+  .sprech {
+    transform: scale(1, 0.78);
+  }
+}
+
+.huelle[data-still="1"],
+.huelle[data-still="1"] * {
+  /* biome-ignore lint/complexity/noImportantStyles: schlägt die Regungen (höhere Spezifität) */
+  animation: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: wie oben */
+  transition: none !important;
+}
+
+.huelle[data-still="1"] .sprech {
+  transform: scale(1, 0.78);
+}

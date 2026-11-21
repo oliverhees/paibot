@@ -10,7 +10,7 @@
  */
 
 import { type Database, repo } from "@paibot/db";
-import type { ReceiptWriter } from "@paibot/gate";
+import { denialCode, type ReceiptWriter } from "@paibot/gate";
 import type { ActionRequest } from "@paibot/shared/aktionen";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import type { MessageId, RunId } from "@paibot/shared/ids";
@@ -123,7 +123,11 @@ async function streamedText(db: Database, run: Run, messageId: MessageId): Promi
   }
 }
 
-/** Schreibt für jede Entscheidung `modell.anfragen` des Laufs ohne Ergebnis das Ergebnis „unterbrochen“. */
+/**
+ * Schreibt für jede Entscheidung `modell.anfragen` des Laufs ohne Ergebnis ein Ergebnis: nach einer
+ * Ablehnung („nicht erlaubt“) dasselbe Ergebnis „abgelehnt“ mit demselben Code wie im Tor, nach
+ * einer Erlaubnis „unterbrochen“. Nur so passt das Ergebnis zur Entscheidung und die Kette bleibt gültig.
+ */
 async function closeOpenDecisions(
   db: Database,
   receipts: ReceiptWriter,
@@ -148,9 +152,16 @@ async function closeOpenDecisions(
       where: (t, { and, eq }) => and(eq(t.entryType, "result"), eq(t.actionId, actionId)),
     });
     if (result !== undefined) continue;
+    const entschieden = decision.body.decision;
     await receipts.appendResult({
       action: decision.body.action as ActionRequest,
-      result: { status: "error", code: STALE_CODE },
+      result:
+        entschieden.outcome === "allow"
+          ? { status: "error", code: STALE_CODE }
+          : {
+              status: "denied",
+              code: denialCode({ ...entschieden, preconditions: entschieden.preconditions ?? [] }),
+            },
       time: now,
     });
   }

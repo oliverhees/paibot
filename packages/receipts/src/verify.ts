@@ -12,6 +12,7 @@
 import {
   type ChainAnchor,
   type ChainFinding,
+  type ChainNote,
   type ChainProblem,
   type ChainVerdict,
   chainTrustLevel,
@@ -27,10 +28,12 @@ import type { StoredRuleRef } from "@paibot/shared/tor";
 import { type CanonicalValue, canonicalize } from "./canonical";
 import { digestBytes, hashReceipt } from "./hash";
 import {
+  decisionFormat,
   type ReevaluationProblem,
   type RuleHistory,
   type RuleVersion,
   reevaluate,
+  resultFitsFormat,
 } from "./nachrechnen";
 
 export * from "./build";
@@ -46,8 +49,11 @@ export * from "./nachrechnen";
 export const CHECK_NAMES = ["inhalt", "signatur", "kette", "entscheidung", "kontext"] as const;
 export type CheckName = (typeof CHECK_NAMES)[number];
 
-/** `entfaellt`: die Prüfung trifft auf diesen Eintrag nicht zu oder es fehlen Daten dafür. */
-export type CheckStatus = "ok" | "fehler" | "entfaellt";
+/**
+ * `entfaellt`: die Prüfung trifft auf diesen Eintrag nicht zu oder es fehlen Daten dafür.
+ * `nicht_pruefbar` (nur `entscheidung`): der Beleg stammt aus einer neueren Fassung des Tors.
+ */
+export type CheckStatus = "ok" | "fehler" | "entfaellt" | "nicht_pruefbar";
 
 export interface CheckResult {
   check: CheckName;
@@ -153,6 +159,15 @@ export interface ChainReport {
  * Mit `anchor` wird zusätzlich verglichen: gleiche Installation, gleicher Anfang, die Kette reicht
  * mindestens bis `anchor.seq`, und dort stehen dieselbe Prüfsumme und derselbe Schlüssel.
  *
+ * Inhalt je Fassung: Jede Entscheidung wird streng nach ihrer eigenen Fassung des Tors geprüft
+ * (`decision.gateFormat`, fehlend = 1; `decisionFormat`), jedes Ergebnis nach der Fassung der
+ * Entscheidung mit derselben `action.actionId` (`resultFitsFormat`). Passt ein Beleg nicht zu
+ * seiner bekannten Fassung, ist das `fassung_unpassend` (`ungueltig`); stammt eine Entscheidung
+ * aus einer neueren Fassung, `fassung_unbekannt` (`nicht_pruefbar`, nie `vertrauenswuerdig`). Das
+ * gilt gleich für Export, Prüfprogramm und Belege-Seite, weil alle hier prüfen. Folgt auf eine
+ * Entscheidung mit Fassungsangabe eine ohne, steht das als Hinweis `fassung_rueckschritt` in
+ * `verdict.notes`; die Stufe ändert das nie.
+ *
  * Grenze: Ohne Anker lässt sich nicht erkennen, dass am Ende Belege fehlen oder dass jemand die
  * ganze Kette mit einem eigenen Schlüssel neu geschrieben hat.
  *
@@ -186,6 +201,7 @@ export async function verifyChain(
   let firstFailure: ChainReport["firstFailure"];
   let notAttestedFrom: number | undefined;
   const actions = new ActionLedger();
+  const notes: ChainNote[] = [];
   let chainFormat = 1;
 
   for await (const entry of entries) {
@@ -217,6 +233,9 @@ export async function verifyChain(
     for (const problem of actions.record(body, chainFormat)) {
       findings.push({ problem, ...(Number.isSafeInteger(seq) && seq > 0 ? { seq } : {}) });
     }
+    if (actions.stepBack(body) && Number.isSafeInteger(seq) && seq > 0) {
+      notes.push({ note: "fassung_rueckschritt", seq });
+    }
     prev = entry;
     index++;
   }
@@ -232,6 +251,7 @@ export async function verifyChain(
       level,
       findings,
       anchor: options.anchor === undefined ? "fehlt" : "geprueft",
+      ...(notes.length > 0 ? { notes } : {}),
     },
   };
   if (prev !== null) report.head = { seq: seqOf(prev), hash: String(prev.hash) };
@@ -307,17 +327,45 @@ export function keyChangeSigner(
  * „cancelled“ nur nach „allow“, „denied“ nur nach einer anderen Entscheidung; jede Aktion hat höchstens
  * eine Entscheidung und ein Ergebnis. Ab Fassung 2 der Kette trägt jede Entscheidung Regelstand und
  * Prüfsummen.
+ *
+ * Dazu der Inhalt je Fassung des Tors: Jede Entscheidung nach ihrer eigenen Fassung, jedes Ergebnis
+ * nach der Fassung seiner Entscheidung (`fassung_unpassend`, `fassung_unbekannt`).
  */
 class ActionLedger {
-  readonly #decisions = new Map<string, { outcome: string; action: string }>();
+  readonly #decisions = new Map<
+    string,
+    { outcome: string; action: string; format: number | undefined }
+  >();
   readonly #results = new Set<string>();
+  #sawFormatField = false;
+
+  /** Folgt diese Entscheidung ohne Fassungsangabe auf eine mit? (Nur Hinweis.) */
+  stepBack(body: ReceiptBody | undefined): boolean {
+    if (body?.type !== "decision") return false;
+    const decision = (body as { decision?: unknown }).decision;
+    const hasField =
+      typeof decision === "object" && decision !== null && Object.hasOwn(decision, "gateFormat");
+    const back = this.#sawFormatField && !hasField;
+    if (hasField) this.#sawFormatField = true;
+    return back;
+  }
 
   record(body: ReceiptBody | undefined, format: number): ChainProblem[] {
     if (body?.type === "decision") {
       const problems: ChainProblem[] = [];
+      const fit = decisionFormat(body);
+      if (fit.status === "unbekannt") problems.push("fassung_unbekannt");
+      if (fit.status === "unpassend") problems.push("fassung_unpassend");
       const id = String(body.action?.actionId);
       if (this.#decisions.has(id)) problems.push("aktion_doppelt");
-      else this.#decisions.set(id, { outcome: body.decision?.outcome, action: actionKey(body) });
+      else {
+        this.#decisions.set(id, {
+          outcome: body.decision?.outcome,
+          action: actionKey(body),
+          // Ergebnisse werden nach dieser Fassung geprüft; ohne lesbare Fassung gar nicht.
+          format: fit.format,
+        });
+      }
       const decision = body.decision;
       if (
         format >= 2 &&
@@ -334,11 +382,17 @@ class ActionLedger {
       this.#results.add(id);
       const decision = this.#decisions.get(id);
       if (decision === undefined) return ["ergebnis_ohne_entscheidung"];
+      const problems: ChainProblem[] = [];
+      // Nach der Fassung der Entscheidung; bei unbekannter Fassung nur die Form (`undefined`).
+      if (decision.format !== undefined && resultFitsFormat(body, decision.format) === false) {
+        problems.push("fassung_unpassend");
+      }
       const allowed = decision.outcome === "allow";
       const denied = body.result?.status === "denied";
       if (decision.action !== actionKey(body) || allowed === denied) {
-        return ["ergebnis_passt_nicht_zur_entscheidung"];
+        problems.push("ergebnis_passt_nicht_zur_entscheidung");
       }
+      return problems;
     }
     return [];
   }

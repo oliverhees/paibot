@@ -16,6 +16,7 @@ import {
   CREDENTIAL_SCOPE,
   decisionSchema,
   FALLBACK_PRIORITY,
+  GATE_FORMAT,
   OWN_RULE_PRIORITY,
   PRECONDITION_IDS,
   PRECONDITIONS,
@@ -169,7 +170,7 @@ describe("Vorbedingungen", () => {
     expect(preconditionsFor("nachricht.senden")).toEqual(["V-01", "V-02"]);
     expect(preconditionsFor("lauf.abbrechen")).toEqual(["V-03"]);
     expect(preconditionsFor("schleuse.umschalten")).toEqual(["V-04"]);
-    expect(preconditionsFor("werkzeug.aufrufen")).toEqual(["V-05"]);
+    expect(preconditionsFor("werkzeug.aufrufen")).toEqual(["V-05", "V-12", "V-13", "V-14"]);
     expect(preconditionsFor("zugang.passwort_aendern")).toEqual(["V-06"]);
     expect(preconditionsFor("einrichtung.abschliessen")).toEqual(["V-07"]);
     expect(preconditionsFor("modell.anfragen")).toEqual([]);
@@ -190,7 +191,9 @@ describe("Vorbedingungen", () => {
     };
     expect(decisionSchema.parse(decision)).toEqual(decision);
     const { matchedRules, ...rest } = decision;
-    expect(receiptDecisionSchema.parse({ ...rest, rules: matchedRules })).toBeTruthy();
+    expect(
+      receiptDecisionSchema.parse({ ...rest, rules: matchedRules, gateFormat: GATE_FORMAT }),
+    ).toBeTruthy();
     expect(preconditionCheckSchema.safeParse({ name: "frei_erfunden", result: "ok" }).success).toBe(
       false,
     );

@@ -105,6 +105,11 @@ export interface ChatBereitschaft {
   /** Standard der Datenschleuse für neue Unterhaltungen. */
   schleuseStandard: SchleuseMode;
   zeitzone: string;
+  /**
+   * Zahl der Belege in der Kette (Nummer des letzten Belegs: die Kette beginnt bei 1, jeder Beleg
+   * ist der nächste, nichts wird gelöscht). 0 bei leerer Kette.
+   */
+  belegeGesamt: number;
   /** Kennung des Modells des Bots. */
   modellId?: string;
   /** Modelle, die sich wählen lassen (Anbieter an, Schlüssel da oder lokal), nach Namen. */

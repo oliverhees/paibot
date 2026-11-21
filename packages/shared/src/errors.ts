@@ -45,6 +45,22 @@ export const ERROR_STATUS = {
   intern: 500,
   /** Der Not-Aus ist an: Bots nehmen nichts an und fragen kein Modell an. */
   angehalten: 409,
+  /** Ein Werkzeug-Aufruf bräuchte die Erlaubnis des Besitzers; in dieser Fassung abgelehnt. */
+  freigabe_noetig: 202,
+  /** Das Modell wünscht ein Werkzeug, das es in diesem Schritt nicht gibt. */
+  werkzeug_unbekannt: 400,
+  /** Die Eingabe des Modells passt nicht zum Werkzeug. */
+  werkzeug_eingabe_ungueltig: 400,
+  /** Das Werkzeug hat nicht rechtzeitig geantwortet. */
+  werkzeug_zeitgrenze: 504,
+  /** Das Werkzeug hat einen Fehler gemeldet. */
+  werkzeug_fehler: 502,
+  /** Ob ein Werkzeug-Aufruf gewirkt hat, ist nicht bekannt. */
+  ausgang_unbekannt: 500,
+  /** Der Lauf hat alle erlaubten Schritte verbraucht. */
+  schritte_aufgebraucht: 429,
+  /** Der Lauf hat alle erlaubten Werkzeug-Aufrufe verbraucht. */
+  zu_viele_aufrufe: 429,
 } as const satisfies Record<string, number>;
 
 export type ErrorCode = keyof typeof ERROR_STATUS;

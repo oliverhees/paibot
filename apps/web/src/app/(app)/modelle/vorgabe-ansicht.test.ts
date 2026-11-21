@@ -193,6 +193,7 @@ describe("Chat: Kopf und Zeile unter der Antwort", () => {
     schleuseInstalliert: false,
     schleuseStandard: "off",
     zeitzone: "Europe/Berlin",
+    belegeGesamt: 23,
   };
   const conversationId = newId("conversation");
 
