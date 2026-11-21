@@ -24,6 +24,7 @@ import {
   ACTIVE_STANDARD_RULES,
   decisionSchema,
   LIMITS_BY_ID,
+  listDecisionSchema,
   ruleConditionSchema,
   ruleDefinitionSchema,
   ruleIdSchema,
@@ -234,15 +235,19 @@ describe("Entscheidung", () => {
     const decision = {
       outcome: "allow",
       stage: "execute",
-      matchedRules: [{ id: "R-002", version: 1 }],
+      matchedRules: [{ id: "R-002", version: 1, hash: `sha256:${"a".repeat(64)}` }],
       limits: [
         { name: "schleuse_gefordert", result: "ok" },
         { name: "laenge", result: "ok", value: 812 },
       ],
       preconditions: [],
+      ruleStand: 7,
       reason: "Bot darf antworten",
     };
     expect(decisionSchema.parse(decision)).toEqual(decision);
+    const { ruleStand: _s, ...withoutStand } = decision;
+    expect(decisionSchema.safeParse(withoutStand).success).toBe(false);
+    expect(listDecisionSchema.safeParse(withoutStand).success).toBe(true);
     const { preconditions: _p, ...withoutPreconditions } = decision;
     expect(decisionSchema.safeParse(withoutPreconditions).success).toBe(false);
     for (const outcome of ["deny", "ask", "prepare"]) {

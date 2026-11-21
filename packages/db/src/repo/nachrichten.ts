@@ -71,7 +71,7 @@ export async function insert(db: Database, input: MessageCreate): Promise<Messag
             id: input.id ?? newId("message"),
             conversationId: input.conversationId,
             role: input.role,
-            createdAt: sql`clock_timestamp()`,
+            createdAt: sql`pg_catalog.clock_timestamp()`,
             ...(input.content === undefined ? {} : { content: input.content }),
             ...(input.status === undefined ? {} : { status: input.status }),
             runId: input.runId ?? null,

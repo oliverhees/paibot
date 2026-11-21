@@ -15,7 +15,7 @@ import type { ReceiptEntry } from "@paibot/shared/belege";
 import { RULE_HASH_PREFIX } from "@paibot/shared/bindung";
 import {
   ACTIVE_STANDARD_RULES,
-  type Decision,
+  type ListDecision,
   type RuleDefinition,
   ruleContent,
   STANDARD_RULE_VERSIONS,
@@ -70,7 +70,7 @@ beforeAll(async () => {
 function decided(
   rules: readonly RuleVersion[],
   stand: number | undefined,
-): Decision & {
+): ListDecision & {
   action: ReturnType<typeof sendAction>;
   facts: ReturnType<typeof sendFacts>;
 } {

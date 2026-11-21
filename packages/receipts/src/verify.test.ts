@@ -10,8 +10,9 @@
  */
 
 import { evaluate } from "@paibot/gate";
-import type { ReceiptEntry } from "@paibot/shared/belege";
+import { RECEIPT_CHAIN_FORMAT, type ReceiptEntry } from "@paibot/shared/belege";
 import { beforeAll, describe, expect, it } from "vitest";
+import type { ReceiptDraft } from "./build";
 import {
   buildChain,
   copy,
@@ -19,8 +20,10 @@ import {
   sendAction,
   sendFacts,
   signedEntry,
+  TEST_INSTALLATION,
   TEST_RULE,
   type TestKey,
+  testDecision,
   testKey,
   testSign,
 } from "./testhilfen";
@@ -446,5 +449,108 @@ describe("Schlüsselwechsel", () => {
     const { first, next, entries } = await chainWithChange("new");
     const other = { ...keyInfo(testKey()), keyId: next.keyId };
     expect(keyChangeSigner(entries[4] as ReceiptEntry, [keyInfo(first), other])).toBeUndefined();
+  });
+});
+
+describe("Entscheidung und Ergebnis je Aktion", () => {
+  const signer: TestKey = testKey();
+
+  async function chainOf(drafts: ReceiptDraft[], format?: number): Promise<ReceiptEntry[]> {
+    const entries: ReceiptEntry[] = [];
+    entries.push(
+      await signedEntry(
+        {
+          type: "start",
+          facts: {
+            installationId: TEST_INSTALLATION,
+            publicKey: signer.publicKey,
+            software: "0.3.0+dev",
+            ...(format === undefined ? {} : { format }),
+          },
+        },
+        undefined,
+        signer,
+      ),
+    );
+    for (const draft of drafts) entries.push(await signedEntry(draft, entries.at(-1), signer));
+    return entries;
+  }
+
+  const problems = async (drafts: ReceiptDraft[], format?: number) =>
+    (await verifyChain(await chainOf(drafts, format))).verdict.findings.map((f) => f.problem);
+
+  it("Entscheidung, dann passendes Ergebnis: keine Probleme", async () => {
+    const action = sendAction();
+    const facts = sendFacts();
+    expect(
+      await problems(
+        [
+          { type: "decision", action, decision: testDecision(action, facts), facts },
+          { type: "result", action, result: { status: "ok" } },
+        ],
+        RECEIPT_CHAIN_FORMAT,
+      ),
+    ).toEqual([]);
+  });
+
+  it("zweimal „ok“ ohne Entscheidung mit derselben Aktion ist ungültig", async () => {
+    const action = sendAction();
+    const result: ReceiptDraft = { type: "result", action, result: { status: "ok" } };
+    const report = await verifyChain(await chainOf([result, result]));
+    expect(report.verdict.level).toBe("ungueltig");
+    expect(report.verdict.findings.map((f) => f.problem)).toEqual([
+      "ergebnis_ohne_entscheidung",
+      "aktion_doppelt",
+    ]);
+  });
+
+  it("„ok“ nach einer Ablehnung und ein Ergebnis zu einer anderen Aktion passen nicht", async () => {
+    const action = sendAction();
+    const facts = sendFacts();
+    const denied = { ...testDecision(action, facts), outcome: "deny" as const };
+    expect(
+      await problems([
+        { type: "decision", action, decision: denied, facts },
+        { type: "result", action, result: { status: "ok" } },
+      ]),
+    ).toEqual(["ergebnis_passt_nicht_zur_entscheidung"]);
+    const other = sendAction();
+    expect(
+      await problems([
+        { type: "decision", action: other, decision: testDecision(other, facts), facts },
+        {
+          type: "result",
+          action: {
+            ...other,
+            actor: "besitzer",
+            target: { ...other.target, messageId: action.target.messageId },
+          },
+          result: { status: "ok" },
+        },
+      ]),
+    ).toEqual(["ergebnis_passt_nicht_zur_entscheidung"]);
+  });
+
+  it("eine zweite Entscheidung derselben Aktion fällt auf", async () => {
+    const action = sendAction();
+    const facts = sendFacts();
+    const decision: ReceiptDraft = {
+      type: "decision",
+      action,
+      decision: testDecision(action, facts),
+      facts,
+    };
+    expect(await problems([decision, decision])).toEqual(["aktion_doppelt"]);
+  });
+
+  it("ab Fassung 2 der Kette braucht jede Entscheidung Regelstand und Prüfsummen; ältere Ketten nicht", async () => {
+    const action = sendAction();
+    const facts = sendFacts();
+    const drafts: ReceiptDraft[] = [
+      { type: "decision", action, decision: evaluate(action, facts, [TEST_RULE]), facts },
+      { type: "result", action, result: { status: "ok" } },
+    ];
+    expect(await problems(drafts, RECEIPT_CHAIN_FORMAT)).toEqual(["regelstand_fehlt"]);
+    expect(await problems(drafts)).toEqual([]);
   });
 });

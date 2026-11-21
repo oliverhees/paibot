@@ -139,8 +139,16 @@ export function belegRow(
   options: {
     seq: number;
     prevHash: string;
-    type?: "start" | "decision";
+    type?: "start" | "decision" | "result";
     conversationId?: ConversationId;
+    /** Kennung der Aktion (für Entscheidung und Ergebnis derselben Aktion). */
+    actionId?: ActionId;
+    /** Ergebnis der Entscheidung (Standard `allow`). */
+    outcome?: "allow" | "deny" | "ask";
+    /** Zustand des Ergebnisses (Standard `ok`). */
+    status?: "ok" | "error" | "cancelled" | "denied";
+    /** Akteur (Standard `besitzer`). */
+    actor?: string;
   } = {
     seq: 1,
     prevHash: ZERO_PREV,
@@ -157,7 +165,14 @@ export function belegRow(
     prev: options.prevHash,
     keyId,
   } as const;
-  const actionId: ActionId = newId("action");
+  const actionId: ActionId = options.actionId ?? newId("action");
+  const actor = options.actor ?? "besitzer";
+  const action = {
+    actionId,
+    type: "unterhaltung.loeschen",
+    actor,
+    target: { conversationId },
+  };
   const body = (
     type === "start"
       ? {
@@ -169,24 +184,21 @@ export function belegRow(
             software: "0.0.0+test",
           },
         }
-      : {
-          ...common,
-          type,
-          action: {
-            actionId,
-            type: "unterhaltung.loeschen",
-            actor: "besitzer",
-            target: { conversationId },
-          },
-          decision: {
-            outcome: "allow",
-            stage: "execute",
-            rules: [{ id: "R-001", version: 1 }],
-            limits: [],
-            reason: "Erlaubt.",
-          },
-          facts: { credential: "sitzung" },
-        }
+      : type === "result"
+        ? { ...common, type, action, result: { status: options.status ?? "ok" } }
+        : {
+            ...common,
+            type,
+            action,
+            decision: {
+              outcome: options.outcome ?? "allow",
+              stage: "execute",
+              rules: [{ id: "R-001", version: 1 }],
+              limits: [],
+              reason: "Erlaubt.",
+            },
+            facts: { credential: "sitzung" },
+          }
   ) as ReceiptBody;
   return {
     seq: options.seq,
@@ -194,7 +206,7 @@ export function belegRow(
     entryType: type,
     ...(type === "start"
       ? {}
-      : { actionId, action: "unterhaltung.loeschen", actor: "besitzer", conversationId }),
+      : { actionId, action: "unterhaltung.loeschen", actor, conversationId }),
     body,
     prevHash: options.prevHash,
     hash: sha256Digest(),

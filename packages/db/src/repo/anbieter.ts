@@ -115,7 +115,7 @@ export async function update(
     () =>
       db
         .update(providers)
-        .set({ ...patch, updatedAt: sql`now()` })
+        .set({ ...patch, updatedAt: sql`pg_catalog.now()` })
         .where(eq(providers.id, id))
         .returning(),
     fehler,
@@ -131,7 +131,11 @@ export async function setCheckResult(
 ): Promise<Provider | undefined> {
   const [row] = await db
     .update(providers)
-    .set({ lastCheckOk: result.ok, lastCheckedAt: result.at ?? new Date(), updatedAt: sql`now()` })
+    .set({
+      lastCheckOk: result.ok,
+      lastCheckedAt: result.at ?? new Date(),
+      updatedAt: sql`pg_catalog.now()`,
+    })
     .where(eq(providers.id, id))
     .returning();
   return row === undefined ? undefined : toProvider(row);

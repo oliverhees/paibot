@@ -34,6 +34,9 @@ zufall_base64url() {
 }
 
 umask 077
+# noclobber: Entsteht die Datei zwischen Prüfung und Schreiben, bricht das Schreiben ab, statt sie
+# zu überschreiben.
+set -C
 cat > "$ziel" <<VORLAGE
 # PaiBot – Einstellungen des Docker-Compose-Stacks (erzeugt von deploy/env-erzeugen.sh).
 # Nie committen. PAIBOT_SECRET und die Passwörter getrennt sichern (z. B. im Passwort-Manager).
@@ -45,6 +48,10 @@ POSTGRES_DB=paibot
 PAIBOT_SECRET=$(zufall_base64)
 APP_URL=http://localhost:3000
 WEB_PORT=3000
+# Speicher-Grenzen der Dienste (Standard: web 768m, worker 512m, migrate 384m):
+# PAIBOT_WEB_SPEICHER=768m
+# PAIBOT_WORKER_SPEICHER=512m
+# PAIBOT_MIGRATE_SPEICHER=384m
 
 # Datenschleuse (Standard: aus). Zum Einschalten die zwei Zeilen ohne # übernehmen,
 # danach: pnpm schleuse:config --env-datei deploy/.env (siehe docs/funktion-datenschleuse.md).

@@ -163,7 +163,7 @@ async function wechseln(
     () =>
       db
         .update(toolCalls)
-        .set({ status: nach, updatedAt: sql`now()`, ...felder })
+        .set({ status: nach, updatedAt: sql`pg_catalog.now()`, ...felder })
         .where(
           and(
             eq(toolCalls.actionId, actionId),

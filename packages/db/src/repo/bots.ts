@@ -96,7 +96,7 @@ export async function update(db: Database, id: BotId, patch: BotPatch): Promise<
     () =>
       db
         .update(bots)
-        .set({ ...patch, updatedAt: sql`now()` })
+        .set({ ...patch, updatedAt: sql`pg_catalog.now()` })
         .where(eq(bots.id, id))
         .returning(),
     fehler,
@@ -112,7 +112,11 @@ export async function setModel(
 ): Promise<Bot | undefined> {
   const [row] = await uebersetzen(
     () =>
-      db.update(bots).set({ modelId, updatedAt: sql`now()` }).where(eq(bots.id, id)).returning(),
+      db
+        .update(bots)
+        .set({ modelId, updatedAt: sql`pg_catalog.now()` })
+        .where(eq(bots.id, id))
+        .returning(),
     standardFehler,
   );
   return row === undefined ? undefined : toBot(row);

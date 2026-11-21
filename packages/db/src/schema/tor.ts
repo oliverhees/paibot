@@ -11,10 +11,12 @@
 import {
   type ActionId,
   type ConversationId,
+  FALLBACK_PRIORITY,
   type KeyId,
   type ReceiptBody,
   type ReceiptId,
   type RuleCondition,
+  STANDARD_PRIORITY_MAX,
   ZERO_PREV,
 } from "@paibot/shared";
 import { sql } from "drizzle-orm";
@@ -25,14 +27,21 @@ import {
   index,
   integer,
   jsonb,
-  pgTable,
   primaryKey,
   text,
   timestamp,
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { idCheck, inListCheck, matches, optionalIdCheck, PATTERNS, valueList } from "./helfer";
+import {
+  idCheck,
+  inListCheck,
+  matches,
+  optionalIdCheck,
+  PATTERNS,
+  pgTable,
+  valueList,
+} from "./helfer";
 import { RECEIPT_TYPES, RULE_EFFECTS, RULE_SOURCES, STAGES, STORED_ACTION_TYPES } from "./werte";
 
 /**
@@ -72,6 +81,17 @@ export const rules = pgTable(
     check("rules_reason_laenge", sql`char_length(${t.reason}) between 1 and 500`),
     index("rules_aktiv_priority_idx").on(t.enabled, t.priority),
     unique("rules_seq_eindeutig").on(t.seq),
+    check("rules_seq_ab_eins", sql`${t.seq} >= 1`),
+    check(
+      "rules_kennung_passt_zur_quelle",
+      sql`(${matches(t.id, PATTERNS.standardRuleId)}) = (${t.source} = 'standard')`,
+    ),
+    check("rules_vorschlag_nie_aktiv", sql`${t.source} <> 'proposal' or ${t.enabled} = false`),
+    check("rules_eigene_nur_aus", sql`${t.source} = 'standard' or ${t.enabled} = false`),
+    check(
+      "rules_prioritaet_je_quelle",
+      sql`(${t.source} = 'standard') = (${t.priority} <= ${sql.raw(String(STANDARD_PRIORITY_MAX))} or ${t.priority} = ${sql.raw(String(FALLBACK_PRIORITY))})`,
+    ),
   ],
 );
 
@@ -159,6 +179,9 @@ export const belege = pgTable(
     unique("belege_hash_eindeutig").on(t.hash),
     uniqueIndex("belege_prev_hash_eindeutig").on(t.prevHash),
     index("belege_action_id_idx").on(t.actionId),
+    uniqueIndex("belege_aktion_einmal")
+      .on(t.actionId, t.entryType)
+      .where(sql`${t.actionId} is not null`),
     index("belege_conversation_id_idx").on(t.conversationId),
     index("belege_created_at_idx").on(t.createdAt),
   ],

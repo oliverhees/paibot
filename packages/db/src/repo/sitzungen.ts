@@ -109,7 +109,7 @@ export async function extend(
     .update(sessions)
     .set({
       lastSeenAt: now,
-      expiresAt: sql`least(${gleitend}::timestamptz, ${sessions.createdAt} + make_interval(days => ${SESSION.maxDays}))`,
+      expiresAt: sql`least(${gleitend}::timestamptz, ${sessions.createdAt} + pg_catalog.make_interval(days => ${SESSION.maxDays}))`,
     })
     .where(and(eq(sessions.id, tokenHash), gueltig(now)))
     .returning();

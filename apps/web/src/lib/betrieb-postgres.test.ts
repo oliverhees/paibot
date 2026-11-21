@@ -9,21 +9,20 @@
  * @since     2026-11-20
  */
 
-import {
-  newPostgresTestRole,
-  type PostgresTestRole,
-  prepareDatabase,
-  runMigrations,
-} from "@paibot/db/migrate";
+import { randomBytes } from "node:crypto";
+import { prepareDatabase, runMigrations } from "@paibot/db/migrate";
 import {
   createPostgresTestDatabase,
   MIGRATIONS_FOLDER,
+  newPostgresTestRole,
   type PostgresTestDatabase,
+  type PostgresTestRole,
   TEST_DATABASE_URL_ENV,
 } from "@paibot/db/testing";
 import { createQueue, type RunJob } from "@paibot/jobs";
 import { newId } from "@paibot/shared/ids";
 import { afterAll, describe, expect, it } from "vitest";
+import { prepareStart } from "./betrieb";
 
 const BASE_URL = process.env[TEST_DATABASE_URL_ENV];
 const silent = { info: () => undefined, warn: () => undefined, error: () => undefined };
@@ -104,5 +103,52 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
     const appUrl = newRole(db);
     await runMigrations(db.url, MIGRATIONS_FOLDER, { appUrl });
     await roundTrip(appUrl);
+  }, 60_000);
+  it("Rolle migrate richtet alles ein und endet mit 0; danach startet web nur mit der App-Rolle, ohne zu migrieren", async () => {
+    const db = await createPostgresTestDatabase(BASE_URL ?? "", { migrate: false });
+    opened.push(db);
+    const appUrl = newRole(db);
+    const secret = randomBytes(32).toString("base64");
+    const exitCodes: number[] = [];
+    const exit = ((code: number) => {
+      exitCodes.push(code);
+    }) as (code: number) => never;
+    const env = (extra: Record<string, string>) =>
+      ({
+        NODE_ENV: "production",
+        PAIBOT_SECRET: secret,
+        MIGRATIONS_DIR: MIGRATIONS_FOLDER,
+        ...extra,
+      }) as NodeJS.ProcessEnv;
+
+    // Noch nicht migriert: web bricht ab, statt selbst zu migrieren.
+    await prepareStart(env({ DATABASE_URL: appUrl }), { log: silent, exit, attempts: 1 });
+    expect(exitCodes).toEqual([1]);
+
+    await prepareStart(
+      env({
+        NODE_ENV: "test",
+        PAIBOT_ROLE: "migrate",
+        DATABASE_URL: appUrl,
+        DATABASE_MIGRATION_URL: db.url,
+      }),
+      { log: silent, exit, attempts: 1 },
+    );
+    expect(exitCodes).toEqual([1, 0]);
+    // Ein zweiter Lauf macht nichts kaputt. (Das Passwort des Test-Superusers ist kurz, deshalb
+    // ohne die Prüfungen für den Betrieb; migriert wird trotzdem wie im Betrieb.)
+    await prepareStart(
+      env({
+        NODE_ENV: "test",
+        PAIBOT_ROLE: "migrate",
+        DATABASE_URL: appUrl,
+        DATABASE_MIGRATION_URL: db.url,
+      }),
+      { log: silent, exit, attempts: 1 },
+    );
+    expect(exitCodes).toEqual([1, 0, 0]);
+
+    await prepareStart(env({ DATABASE_URL: appUrl }), { log: silent, exit, attempts: 1 });
+    expect(exitCodes).toEqual([1, 0, 0]);
   }, 60_000);
 });

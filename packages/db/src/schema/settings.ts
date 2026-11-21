@@ -8,11 +8,11 @@
  * @since     2026-11-07
  */
 
-import type { BotId, InstallationId } from "@paibot/shared";
+import type { BotId, InstallationId, Sha256Digest } from "@paibot/shared";
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { bots } from "./anbieter";
-import { inListCheck, optionalIdCheck } from "./helfer";
+import { inListCheck, matches, optionalIdCheck, PATTERNS, pgTable } from "./helfer";
 import { SCHLEUSE_MODES } from "./werte";
 
 /**
@@ -38,6 +38,13 @@ export const settings = pgTable(
       .$type<BotId>()
       .references(() => bots.id, { onDelete: "set null" }),
     setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
+    /**
+     * Prüfwert des Einrichtungs-Codes (`sha256:` und 64 Hex-Zeichen), nie der Code selbst. Steht nur,
+     * solange es noch keinen Besitzer gibt; beim Abschluss der Einrichtung wird er gelöscht.
+     */
+    setupCodeHash: text("setup_code_hash").$type<Sha256Digest>(),
+    /** Wann der Einrichtungs-Code erzeugt wurde (zusammen mit `setupCodeHash` gesetzt). */
+    setupCodeCreatedAt: timestamp("setup_code_created_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -55,6 +62,18 @@ export const settings = pgTable(
       sql`${t.historyTokenLimit} is null or ${t.historyTokenLimit} > 0`,
     ),
     optionalIdCheck("settings_installation_id_format", t.installationId, "installation"),
+    check(
+      "settings_einrichtungs_code_format",
+      sql`${t.setupCodeHash} is null or ${matches(t.setupCodeHash, PATTERNS.sha256Digest)}`,
+    ),
+    check(
+      "settings_einrichtungs_code_paar",
+      sql`(${t.setupCodeHash} is null) = (${t.setupCodeCreatedAt} is null)`,
+    ),
+    check(
+      "settings_einrichtungs_code_nur_vorher",
+      sql`${t.setupCodeHash} is null or ${t.setupCompletedAt} is null`,
+    ),
   ],
 );
 

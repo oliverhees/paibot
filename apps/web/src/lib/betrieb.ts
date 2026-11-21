@@ -1,6 +1,7 @@
 /**
- * PaiBot – Prüfungen beim Start der App: Pflicht-Einstellungen in Produktion, dann Datenbank
- * vorbereiten (Migrationen, App-Rolle, Stand und Rechte).
+ * PaiBot – Prüfungen beim Start: Pflicht-Einstellungen in Produktion; Rolle `migrate` (Migrationen,
+ * App-Rolle, danach Ende), Rolle `web` (nur Stand und Rechte prüfen; migriert nur in der
+ * Entwicklung).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -11,7 +12,12 @@
 
 import path from "node:path";
 import { CryptoError, loadMasterSecret } from "@paibot/crypto";
-import { prepareDatabase, type StartLog } from "@paibot/db/migrate";
+import {
+  checkDatabase,
+  type DatabaseStartResult,
+  prepareDatabase,
+  type StartLog,
+} from "@paibot/db/migrate";
 import { t } from "@paibot/shared/texte";
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -37,13 +43,11 @@ function isPlaceholder(value: string): boolean {
   return PLACEHOLDERS.includes(normalized) || normalized.startsWith("<");
 }
 
-/**
- * Prüft die Pflicht-Einstellungen für den Betrieb und liefert verständliche Fehler (nie mit den
- * Werten selbst): `PAIBOT_SECRET` (32 Byte Base64, kein Platzhalter, erkennbar zufällig),
- * `DATABASE_URL` und – falls
- * gesetzt – `DATABASE_MIGRATION_URL` mit einem Passwort ab 24 Zeichen, das kein Platzhalter ist.
- */
-export function checkProductionEnv(env: Env): string[] {
+/** Rolle des Prozesses im Image (`PAIBOT_ROLE`). Der Worker hat seinen eigenen Einstieg. */
+export type StartRole = "web" | "migrate";
+
+/** Prüft `PAIBOT_SECRET` (32 Byte Base64, kein Platzhalter, erkennbar zufällig). */
+function checkSecret(env: Env): string[] {
   const errors: string[] = [];
   const secret = env.PAIBOT_SECRET;
   if (secret === undefined || secret.trim() === "") {
@@ -65,7 +69,37 @@ export function checkProductionEnv(env: Env): string[] {
     }
   }
 
-  for (const name of ["DATABASE_URL", "DATABASE_MIGRATION_URL"] as const) {
+  return errors;
+}
+
+/**
+ * Prüft die Pflicht-Einstellungen für den Betrieb und liefert verständliche Fehler (nie mit den
+ * Werten selbst): `PAIBOT_SECRET` (nur Rolle `web`, der Migrations-Schritt braucht es nicht) und
+ * `DATABASE_URL` mit einem Passwort ab 24 Zeichen, das kein Platzhalter ist.
+ *
+ * - Rolle `web`: `DATABASE_MIGRATION_URL` darf nicht gesetzt sein; die Zugangsdaten der
+ *   Migrations-Rolle gehören nur zum Dienst `migrate`.
+ * - Rolle `migrate`: `DATABASE_MIGRATION_URL` ist Pflicht (gleiche Regeln für das Passwort) und
+ *   nutzt eine andere Rolle mit einem anderen Passwort als `DATABASE_URL`.
+ */
+export function checkProductionEnv(env: Env, role: StartRole = "web"): string[] {
+  const errors: string[] = [];
+  const migration = env.DATABASE_MIGRATION_URL;
+  if (role === "web" && migration !== undefined && migration !== "") {
+    errors.push(
+      "DATABASE_MIGRATION_URL ist beim Dienst web gesetzt. Die Zugangsdaten der Migrations-Rolle gehören nur zum Dienst migrate; entferne die Variable bei web.",
+    );
+  }
+  if (role === "migrate" && (migration === undefined || migration === "")) {
+    errors.push("DATABASE_MIGRATION_URL fehlt (Zugang der Migrations-Rolle).");
+  }
+  if (role === "web") errors.push(...checkSecret(env));
+  const names =
+    role === "migrate"
+      ? (["DATABASE_URL", "DATABASE_MIGRATION_URL"] as const)
+      : (["DATABASE_URL"] as const);
+  const passwords = new Map<string, string>();
+  for (const name of names) {
     const value = env[name];
     if (value === undefined || value === "") {
       if (name === "DATABASE_URL") errors.push("DATABASE_URL fehlt.");
@@ -78,6 +112,7 @@ export function checkProductionEnv(env: Env): string[] {
       errors.push(`${name} ist keine gültige Adresse (postgres://benutzer:passwort@host:5432/db).`);
       continue;
     }
+    passwords.set(name, password);
     if (password === "") errors.push(`${name} enthält kein Passwort.`);
     else if (isPlaceholder(password)) {
       errors.push(`Das Passwort in ${name} ist ein Platzhalter. Setze ein zufälliges Passwort.`);
@@ -86,6 +121,12 @@ export function checkProductionEnv(env: Env): string[] {
         `Das Passwort in ${name} ist zu kurz (mindestens ${MIN_DB_PASSWORD_LENGTH} Zeichen).`,
       );
     }
+  }
+  const app = passwords.get("DATABASE_URL");
+  if (app !== undefined && app !== "" && app === passwords.get("DATABASE_MIGRATION_URL")) {
+    errors.push(
+      "DATABASE_URL und DATABASE_MIGRATION_URL nutzen dasselbe Passwort. Die App-Rolle braucht ein eigenes (POSTGRES_APP_PASSWORD).",
+    );
   }
   return errors;
 }
@@ -105,18 +146,25 @@ export interface StartOptions {
 }
 
 /**
- * Läuft einmal beim Start des Servers. In Produktion (`NODE_ENV=production`) bricht ein Fehler
- * den Start ab (Exit-Code 1); in der Entwicklung bleibt es bei Meldungen. Ohne `DATABASE_URL`
- * startet die Entwicklung ohne Datenbank. Danach steht `DATABASE_MIGRATION_URL` nicht mehr in
- * `process.env`.
+ * Läuft einmal beim Start des Servers, je nach `PAIBOT_ROLE`:
+ *
+ * - `migrate` (eigener Einmal-Dienst): Migrationen mit `DATABASE_MIGRATION_URL`, App-Rolle aus
+ *   `DATABASE_URL` einrichten, Rechte prüfen, danach Ende mit Exit 0 (Fehler: Exit 1). Startet
+ *   keinen Server.
+ * - `web` (Standard): In Produktion wird nie migriert, nur mit `DATABASE_URL` geprüft, ob die
+ *   Datenbank auf Stand ist und die Rolle nicht zu viel darf; ein Fehler bricht den Start ab
+ *   (Exit 1). In der Entwicklung migriert die Web-App wie bisher selbst (bequem mit `pnpm dev`),
+ *   Fehler bleiben Meldungen; ohne `DATABASE_URL` startet sie ohne Datenbank.
  */
 export async function prepareStart(env: NodeJS.ProcessEnv, options: StartOptions = {}) {
   const log = options.log ?? consoleLog;
   const exit = options.exit ?? ((code: number) => process.exit(code));
   const production = env.NODE_ENV === "production";
+  const role: StartRole = env.PAIBOT_ROLE === "migrate" ? "migrate" : "web";
 
-  if (production) {
-    const errors = checkProductionEnv(env);
+  if (production || role === "migrate") {
+    const errors = production ? checkProductionEnv(env, role) : [];
+    if (role === "migrate" && !env.DATABASE_URL) errors.push("DATABASE_URL fehlt.");
     if (errors.length > 0) {
       for (const message of errors) log.error(message);
       log.error("Start abgebrochen: Einstellungen unvollständig.");
@@ -130,16 +178,32 @@ export async function prepareStart(env: NodeJS.ProcessEnv, options: StartOptions
 
   const migrationsFolder =
     env.MIGRATIONS_DIR ?? path.resolve(process.cwd(), "../../packages/db/drizzle");
-  const result = await prepareDatabase({
+  const common = {
     env,
     migrationsFolder,
     production,
     log,
     ...(options.attempts === undefined ? {} : { attempts: options.attempts }),
     ...(options.delayMs === undefined ? {} : { delayMs: options.delayMs }),
-  });
-  delete env.DATABASE_MIGRATION_URL;
+  };
 
+  if (role === "migrate") {
+    const result = await prepareDatabase({ ...common, production: true });
+    if (!result.ok) {
+      log.error(result.message);
+      log.error("Migrations-Schritt abgebrochen.");
+      exit(1);
+      return;
+    }
+    log.info("Migrations-Schritt fertig.");
+    exit(0);
+    return;
+  }
+
+  const result: DatabaseStartResult = production
+    ? await checkDatabase(common)
+    : await prepareDatabase(common);
+  delete env.DATABASE_MIGRATION_URL;
   if (!result.ok) {
     log.error(result.message);
     if (production) {

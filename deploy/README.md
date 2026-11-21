@@ -10,17 +10,18 @@ Seit:      2026-11-07
 
 # Deployment
 
-PaiBot läuft als Docker-Compose-Stack: Postgres, die Web-App und der Worker. Die Datenschleuse lässt sich als Profil `schleuse` zuschalten (Standard: aus). Der Browser-Dienst kommt später dazu.
+PaiBot läuft als Docker-Compose-Stack: Postgres, der Einmal-Dienst für die Migrationen, die Web-App und der Worker. Die Datenschleuse lässt sich als Profil `schleuse` zuschalten (Standard: aus). Der Browser-Dienst kommt später dazu.
 
 | Dienst              | Aufgabe                                                    | Erreichbar                                     |
 | ------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
 | `postgres`          | Datenbank                                                  | nur im internen Netz `paibot-intern`           |
-| `web`               | PaiBot-App (Next.js), wendet beim Start die Migrationen an | `127.0.0.1:3000`, nach außen über deine Domain |
+| `migrate`           | einmal je Start: Migrationen, App-Rolle einrichten, Ende   | kein Port; nur Netz `paibot-intern`            |
+| `web`               | PaiBot-App (Next.js)                                       | `127.0.0.1:3000`, nach außen über deine Domain |
 | `worker`            | holt Aufträge ab; die Ausführung der Antworten folgt       | kein Port; Netz `paibot-intern` und nach außen |
 | `datenschleuse`     | nur mit Profil `schleuse`: maskiert Anfragen an das Modell | kein Port; nur der Worker erreicht sie         |
 | `schleuse-analyzer` | nur mit Profil `schleuse`: erkennt Namen, Orte, Nummern    | kein Port; nur die Datenschleuse erreicht ihn  |
 
-`web` und `worker` kommen aus demselben Image. Die Variable `PAIBOT_ROLE` (`web` oder `worker`) wählt, was startet. Der Worker startet erst, wenn `web` gesund ist, und bekommt nur die eingeschränkte Rolle der Datenbank (`DATABASE_URL`), nie `DATABASE_MIGRATION_URL`.
+`migrate`, `web` und `worker` kommen aus demselben Image. Die Variable `PAIBOT_ROLE` (`migrate`, `web` oder `worker`) wählt, was startet. Nur `migrate` bekommt die Zugangsdaten des Tabellen-Besitzers (`DATABASE_MIGRATION_URL`); er beendet sich nach getaner Arbeit mit Exit 0. `web` und `worker` starten erst danach (`service_completed_successfully`) und bekommen nur die eingeschränkte Rolle der Datenbank (`DATABASE_URL`). Speicher-Grenzen: `PAIBOT_WEB_SPEICHER` (768m), `PAIBOT_WORKER_SPEICHER` (512m), `PAIBOT_MIGRATE_SPEICHER` (384m).
 
 ## Lokal testen
 
@@ -28,7 +29,7 @@ PaiBot läuft als Docker-Compose-Stack: Postgres, die Web-App und der Worker. Di
 sh deploy/env-erzeugen.sh               # deploy/.env mit Zufallswerten
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 curl http://localhost:3000/api/health  # {"status":"ok","db":"ok",...}
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps   # web und worker „healthy“
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps -a   # web und worker „healthy“, migrate „Exited (0)“
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env logs worker
 ```
 

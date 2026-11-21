@@ -17,7 +17,21 @@ import {
   PATTERN_SOURCES,
 } from "@paibot/shared";
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, check } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, check, PgSchema } from "drizzle-orm/pg-core";
+
+/** Schema, in dem alle Tabellen der App liegen. */
+export const APP_SCHEMA_NAME = "public";
+
+/**
+ * Tabellen der App mit ausdrücklich genanntem Schema: Drizzle schreibt dann `"public"."belege"`
+ * statt `"belege"`. So hängt keine Abfrage vom Suchpfad der Verbindung ab, und eine gleichnamige
+ * Tabelle in einem anderen Schema wird nie getroffen. `pgSchema("public")` lässt Drizzle nicht zu,
+ * deshalb entsteht das Schema-Objekt direkt.
+ */
+export const appSchema = new PgSchema(APP_SCHEMA_NAME);
+
+/** Wie `pgTable` aus Drizzle, aber immer im Schema `public`. */
+export const pgTable = appSchema.table;
 
 /** Muster einer ID dieser Art, wie es die Datenbank prüft. */
 export function idPattern(kind: IdKind): string {
@@ -67,4 +81,5 @@ export const PATTERNS = {
   errorCode: PATTERN_SOURCES.errorCode,
   actor: ACTOR_PATTERN_SOURCE,
   ruleId: `^(R-[0-9]{3}|${ID_PREFIX.rule}_${ID_BODY_PATTERN})$`,
+  standardRuleId: "^R-[0-9]{3}$",
 } as const;

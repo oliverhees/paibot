@@ -10,7 +10,7 @@ Seit:      2026-11-20
 
 # Belege
 
-**Ergebnis:** Zu jeder Aktion in PaiBot gibt es einen Beleg. Du kannst jederzeit nachprüfen, dass kein Beleg nachträglich verändert, gelöscht oder eingeschoben wurde – in PaiBot selbst oder mit einem Export ganz ohne PaiBot. Mit einem Anker, den du außerhalb aufbewahrst, fällt auch auf, wenn am Ende Belege fehlen.
+**Ergebnis:** Zu jeder Aktion in PaiBot gibt es einen Beleg. Du kannst jederzeit nachprüfen, dass kein Beleg nachträglich verändert, gelöscht oder eingeschoben wurde – in PaiBot selbst oder mit einem Export ganz ohne PaiBot. Mit einem Anker, den du außerhalb aufbewahrst, fällt auch auf, wenn Belege bis zum Stand des Ankers fehlen; was danach kam, schützt erst ein neuerer Anker.
 
 ## Wofür
 
@@ -158,7 +158,15 @@ Beim Nachrechnen (Prüfung 4) gilt:
 - Es zählen nur die Regeln, die zum festgehaltenen Regelstand gehörten. Eine später dazugekommene Regel ändert alte Entscheidungen nicht.
 - Standard-Regeln zählen mit ihrem Inhalt aus dem Code von PaiBot, nicht mit dem aus der Datenbank.
 - Passt der Inhalt einer damals angewandten Regel nicht mehr zu ihrer Prüfsumme im Beleg, meldet der Prüfer genau diese Regel als geändert.
-- Ältere Belege ohne festgehaltenen Regelstand rechnet er mit den heutigen Regeln nach und sagt dazu „Regelstand nicht festgehalten“.
+- Ältere Belege ohne festgehaltenen Regelstand rechnet er mit den heutigen Regeln nach und sagt dazu „Regelstand nicht festgehalten“. Das gilt nur für Ketten älterer Installationen: Trägt der Start-Beleg die neue Fassung der Kette (`format: 2`), muss jede Entscheidung ihren Regelstand und je Regel die Prüfsumme tragen; fehlt das, ist die Kette ungültig („Regelstand fehlt“).
+
+Über die ganze Kette prüft er zusätzlich je Aktion:
+
+- Ein Ergebnis braucht vorher die Entscheidung derselben Aktion (gleiche Aktion, gleicher Akteur, gleiches Ziel). Fehlt sie, meldet er „Ergebnis ohne Entscheidung“.
+- „ok“, „Fehler“ und „abgebrochen“ passen nur zu einer Erlaubnis, „abgelehnt“ nur zu einer anderen Entscheidung; sonst „Ergebnis passt nicht zur Entscheidung“.
+- Je Aktion gibt es höchstens eine Entscheidung und ein Ergebnis; eine zweite meldet er als „Aktion doppelt“.
+
+Die Datenbank lässt solche Belege gar nicht erst zu: Sie nimmt je Aktion nur eine Entscheidung und ein Ergebnis an, und ein Ergebnis nur nach einer passenden Entscheidung. Der Prüfer erkennt es trotzdem, etwa in einem Export, der außerhalb von PaiBot verändert wurde.
 
 ### Was der Prüfer erkennt – und was nicht
 
@@ -168,7 +176,9 @@ Beim Nachrechnen (Prüfung 4) gilt:
 | Ein Beleg ist mit einem fremden Schlüssel signiert                               | erkannt                                         | erkannt                                                    |
 | Der öffentliche Schlüssel in der Datenbank wurde ausgetauscht                    | erkannt (Vergleich)                             | erkannt                                                    |
 | Schlüsselwechsel, den nur der neue Schlüssel signiert hat                        | gemeldet (Stufe „Vertrauenskette unterbrochen“) | gemeldet                                                   |
-| Am Ende fehlen Belege                                                            | **nicht erkennbar**                             | erkannt („kürzer als der Anker“)                           |
+| Am Ende fehlen Belege (bis zum Stand des Ankers)                                 | **nicht erkennbar**                             | erkannt („kürzer als der Anker“)                           |
+| Am Ende fehlen Belege, die nach dem Anker entstanden sind                        | **nicht erkennbar**                             | **nicht erkennbar**                                        |
+| Ergebnis ohne passende Entscheidung, Aktion doppelt                              | erkannt                                         | erkannt                                                    |
 | Belege bis zum Anker umgeschrieben und neu signiert (mit dem echten Schlüssel)   | **nicht erkennbar**                             | erkannt („Beleg an der Stelle des Ankers ist ein anderer“) |
 | Die Datenbank wurde vollständig ausgetauscht, mit eigenem Schlüssel neu signiert | **nicht erkennbar**                             | erkannt („beginnt mit einem anderen Schlüssel“)            |
 
@@ -191,6 +201,7 @@ Jeder Beleg „Entscheidung“ und „Ergebnis“ entsteht im Tor. Wie das Tor e
 
 - **Wer den Server vollständig kontrolliert** (Datenbank **und** `PAIBOT_SECRET`), kann die ganze Kette neu schreiben oder mit einem eigenen Schlüssel neu beginnen. Das fällt nur mit einem Anker auf, den du vorher außerhalb aufbewahrt hast, und nur für Belege bis zu diesem Anker.
 - **Abgeschnittenes Ende:** Fehlen die letzten Belege, bleibt der Rest eine gültige Kette. Ohne Anker ist das nicht erkennbar; mit Anker nur bis zu dessen Stand.
+- **Erster Anker:** Er stammt aus der Installation selbst. War sie schon beim ersten Anker manipuliert, bestätigt er die Fälschung. Notiere deshalb früh nach der Einrichtung die Kurzform des Start-Schlüssels und einen ersten Anker.
 - **Schlüsselwechsel mit `signedBy: "new"`** bestätigt kein alter Schlüssel. Der Prüfer meldet ihn als unterbrochene Vertrauenskette, nie als „gültig, alle Schlüssel aus der Kette“.
 - **Ältere Belege ohne Regelstand:** Sie werden mit den heutigen Regeln nachgerechnet. Ist seither eine Regel dazugekommen, kann eine damals richtige Entscheidung abweichen. Belege mit Regelstand betrifft das nicht.
 - Belege enthalten keine Inhalte. Ob eine Antwort wirklich zu einer Nachricht passt, prüft nur der Server über die Kontext-Prüfsumme, und nur solange die Nachricht noch gespeichert ist.

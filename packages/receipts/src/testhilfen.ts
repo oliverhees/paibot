@@ -14,9 +14,10 @@ import { evaluate } from "@paibot/gate";
 import type { ActionRequest } from "@paibot/shared/aktionen";
 import type { PublicKeyInfo, ReceiptEntry } from "@paibot/shared/belege";
 import { type KeyId, newId } from "@paibot/shared/ids";
-import type { RuleDefinition } from "@paibot/shared/tor";
+import type { Decision, RuleDefinition } from "@paibot/shared/tor";
 import { buildReceipt, type ReceiptDraft } from "./build";
 import { digestBytes, hashReceipt } from "./hash";
+import { hashRule, type RuleVersion } from "./nachrechnen";
 
 export interface TestKey {
   keyId: KeyId;
@@ -139,6 +140,28 @@ export async function buildChain(count: number, key: TestKey): Promise<ReceiptEn
     entries.push(prev);
   }
   return entries;
+}
+
+/**
+ * Entscheidung wie vom Tor: aus den Regeln nachgerechnet, mit Prüfsumme der angewandten Regel und
+ * dem Regelstand `stand`.
+ */
+export function testDecision(
+  action: ActionRequest,
+  facts: ReturnType<typeof sendFacts>,
+  rules: readonly RuleVersion[] = [TEST_RULE],
+  stand = 1,
+): Decision {
+  const decision = evaluate(action, facts, rules);
+  return {
+    ...decision,
+    matchedRules: decision.matchedRules.map((ref) => {
+      const rule = rules.find((r) => r.id === ref.id && r.version === ref.version);
+      if (rule === undefined) throw new Error("Regel fehlt");
+      return { id: ref.id, version: ref.version, hash: hashRule(rule) };
+    }),
+    ruleStand: stand,
+  };
 }
 
 /** Tiefe Kopie, damit Manipulationen das Original nicht berühren. */

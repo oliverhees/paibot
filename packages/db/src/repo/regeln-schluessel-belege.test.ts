@@ -11,6 +11,7 @@
 import {
   ACTIVE_STANDARD_RULES,
   newId,
+  type RuleDefinition,
   ruleContent,
   STANDARD_RULE_VERSIONS,
   STANDARD_RULES,
@@ -18,16 +19,22 @@ import {
 } from "@paibot/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "../client";
-import { belege as belegeTabelle, installationKeys as schluesselTabelle } from "../schema";
+import {
+  belege as belegeTabelle,
+  rules as regelTabelle,
+  installationKeys as schluesselTabelle,
+} from "../schema";
 import { belegRow, encrypted, fingerprint, keyRow, publicKey } from "../testdaten";
-import { createTestDb } from "../testing";
+import { createTestDb, type TestDb } from "../testing";
 import { belege, installationKeys, rules } from "./index";
 import { mitCode } from "./testhilfe";
 
 describe("rules", () => {
   let db: Database;
+  let ctx: TestDb;
   beforeEach(async () => {
-    db = (await createTestDb()).db;
+    ctx = await createTestDb();
+    db = ctx.db;
   });
 
   it("listActive liefert die aktiven Standard-Regeln nach Priorität", async () => {
@@ -50,47 +57,94 @@ describe("rules", () => {
     }
   });
 
-  it("nimmt je Regel nur die höchste Fassung und blendet ausgeschaltete aus", async () => {
-    const r1 = ACTIVE_STANDARD_RULES[0];
-    const neu = {
-      ...r1,
-      id: "R-100",
-      source: "owner" as const,
-      version: 1,
-      priority: 150,
-      title: "Eigene Regel",
-      conditions: [...r1.conditions],
-    };
-    await rules.appendVersion(db, neu);
-    await rules.appendVersion(db, { ...neu, version: 2, title: "Neue Fassung" });
-    const aktiv = await rules.listActive(db);
-    expect(aktiv.find((r) => r.id === "R-100")).toMatchObject({
-      version: 2,
-      title: "Neue Fassung",
-    });
-    expect(aktiv.filter((r) => r.id === "R-100")).toHaveLength(1);
+  /** Fügt eine Zeile direkt ein, wie es nur eine Migration darf. */
+  async function zeile(rule: RuleDefinition): Promise<void> {
+    await db
+      .insert(regelTabelle)
+      .values({ ...ruleContent(rule), conditions: [...rule.conditions] });
+  }
 
-    await rules.appendVersion(db, { ...neu, version: 3, enabled: false });
-    expect((await rules.listActive(db)).map((r) => r.id)).not.toContain("R-100");
-    expect(await rules.listVersions(db, "R-100").then((v) => v.map((r) => r.version))).toEqual([
-      1, 2, 3,
-    ]);
-    expect((await rules.get(db, "R-100", 2))?.title).toBe("Neue Fassung");
-    expect(await rules.get(db, "R-100", 9)).toBeUndefined();
+  const eigene = (felder: Partial<RuleDefinition> = {}): RuleDefinition => ({
+    ...ACTIVE_STANDARD_RULES[0],
+    id: newId("rule"),
+    version: 1,
+    source: "owner",
+    enabled: false,
+    priority: 1000,
+    title: "Eigene Regel",
+    conditions: [],
+    ...felder,
   });
 
-  it("appendVersion nimmt nur die nächste Fassung und keine Standard-Regeln", async () => {
-    const neu = { ...ACTIVE_STANDARD_RULES[0], id: "R-101", source: "owner" as const, version: 1 };
-    await expect(rules.appendVersion(db, { ...neu, version: 2 })).rejects.toMatchObject({
-      code: "eingabe_ungueltig",
+  it("nimmt je Regel nur die höchste Fassung und blendet ausgeschaltete aus", async () => {
+    const r005 = ACTIVE_STANDARD_RULES.find((r) => r.id === "R-005");
+    if (r005 === undefined) throw new Error("R-005 fehlt");
+    await zeile({ ...r005, version: 2, enabled: false });
+    expect((await rules.listActive(db)).map((r) => r.id)).not.toContain("R-005");
+    expect(await rules.listVersions(db, "R-005").then((v) => v.map((r) => r.version))).toEqual([
+      1, 2,
+    ]);
+    expect((await rules.get(db, "R-005", 1))?.enabled).toBe(true);
+    expect(await rules.get(db, "R-005", 9)).toBeUndefined();
+  });
+
+  it("eine abgeschaltete höhere Fassung einer Standard-Regel lässt den Regelstand scheitern", async () => {
+    const r006 = ACTIVE_STANDARD_RULES.find((r) => r.id === "R-006");
+    if (r006 === undefined) throw new Error("R-006 fehlt");
+    await zeile({ ...r006, version: 2, enabled: false });
+    await expect(rules.loadSnapshot(db)).rejects.toMatchObject({ code: "intern" });
+  });
+
+  it("eine Zeile mit Standard-Kennung, aber anderer Quelle verdeckt die Standard-Regel nie", async () => {
+    const r006 = ACTIVE_STANDARD_RULES.find((r) => r.id === "R-006");
+    if (r006 === undefined) throw new Error("R-006 fehlt");
+    // Ohne die Prüfung der Datenbank: das Lesen schließt solche Zeilen selbst aus.
+    await ctx.client.query("alter table rules drop constraint rules_kennung_passt_zur_quelle");
+    await ctx.client.query("alter table rules drop constraint rules_prioritaet_je_quelle");
+    await zeile({ ...r006, version: 2, source: "owner", enabled: false });
+    await zeile({ ...r006, version: 3, source: "proposal", enabled: false });
+    const aktiv = await rules.listActive(db);
+    expect(aktiv.find((r) => r.id === "R-006")).toMatchObject({ version: 1, source: "standard" });
+    await expect(rules.loadSnapshot(db)).resolves.toMatchObject({
+      rules: expect.arrayContaining([expect.objectContaining({ id: "R-006", version: 1 })]),
     });
-    await rules.appendVersion(db, neu);
-    await expect(rules.appendVersion(db, neu)).rejects.toMatchObject({
-      code: "eingabe_ungueltig",
+  });
+
+  describe("der Regelstand passt zu den Standard-Regeln im Code, sonst Abbruch", () => {
+    it("leere Regel-Tabelle", async () => {
+      await ctx.client.query("alter table rules disable trigger user");
+      await ctx.client.query("delete from rules");
+      await expect(rules.loadSnapshot(db)).rejects.toMatchObject({ code: "intern" });
     });
-    await expect(
-      rules.appendVersion(db, { ...ACTIVE_STANDARD_RULES[0], version: 2 }),
-    ).rejects.toMatchObject({ code: "eingabe_ungueltig" });
+
+    it("eine Standard-Regel fehlt (nur ihre Zeile ist weg)", async () => {
+      await ctx.client.query("alter table rules disable trigger user");
+      await ctx.client.query("delete from rules where id = 'R-999'");
+      await expect(rules.loadSnapshot(db)).rejects.toMatchObject({ code: "intern" });
+    });
+
+    it("eine unbekannte Standard-Kennung", async () => {
+      await zeile({ ...ACTIVE_STANDARD_RULES[0], id: "R-777" });
+      await expect(rules.loadSnapshot(db)).rejects.toMatchObject({ code: "intern" });
+    });
+
+    it("eine Fassung, die nicht zum Code passt", async () => {
+      await zeile({ ...ACTIVE_STANDARD_RULES[0], version: 2, effect: "allow", conditions: [] });
+      await expect(rules.loadSnapshot(db)).rejects.toMatchObject({ code: "intern" });
+    });
+
+    it("eine eingeschaltete eigene Regel (ohne die Prüfung der Datenbank)", async () => {
+      await ctx.client.query("alter table rules drop constraint rules_eigene_nur_aus");
+      await zeile(eigene({ enabled: true }));
+      await expect(rules.loadSnapshot(db)).rejects.toMatchObject({ code: "intern" });
+    });
+
+    it("eine eigene Regel vor den Standard-Regeln (ohne die Prüfung der Datenbank)", async () => {
+      await ctx.client.query("alter table rules drop constraint rules_eigene_nur_aus");
+      await ctx.client.query("alter table rules drop constraint rules_prioritaet_je_quelle");
+      await zeile(eigene({ enabled: true, priority: 1 }));
+      await expect(rules.loadSnapshot(db)).rejects.toMatchObject({ code: "intern" });
+    });
   });
 
   it("liefert den Regelstand und die Regeln zu einem früheren Stand", async () => {
@@ -99,23 +153,11 @@ describe("rules", () => {
     expect(vorher.rules.map((r) => r.id)).toEqual((await rules.listActive(db)).map((r) => r.id));
     for (const r of vorher.rules) expect(r.seq).toBeLessThanOrEqual(vorher.stand);
 
-    const sperre = {
-      ...ACTIVE_STANDARD_RULES[0],
-      id: "R-200",
-      source: "owner" as const,
-      version: 1,
-      effect: "deny" as const,
-      priority: 1,
-      conditions: [],
-    };
-    await rules.appendVersion(db, sperre);
+    await zeile(eigene());
     const nachher = await rules.loadSnapshot(db);
     expect(nachher.stand).toBe(vorher.stand + 1);
-    expect(nachher.rules[0]?.id).toBe("R-200");
-
-    const damals = await rules.listActiveAsOf(db, vorher.stand);
-    expect(damals).toEqual(vorher.rules);
-    expect(damals.map((r) => r.id)).not.toContain("R-200");
+    expect(nachher.rules).toEqual(vorher.rules);
+    expect(await rules.listActiveAsOf(db, vorher.stand)).toEqual(vorher.rules);
     expect(await rules.currentStand(db)).toBe(nachher.stand);
   });
 

@@ -180,6 +180,37 @@ describe("settings", () => {
     expect({ code: f.code, constraint: f.constraint }).toEqual({ code: CHECK, constraint });
   });
 
+  // Ohne den Trigger, der mit Besitzer jeden neuen Code abweist: hier zählen die CHECKs.
+  it.each([
+    [
+      "Prüfwert des Einrichtungs-Codes im Klartext",
+      "update settings set setup_code_hash = '123456', setup_code_created_at = now()",
+      "settings_einrichtungs_code_format",
+    ],
+    [
+      "Prüfwert des Einrichtungs-Codes ohne Zeitpunkt",
+      `update settings set setup_code_hash = 'sha256:${"a".repeat(64)}'`,
+      "settings_einrichtungs_code_paar",
+    ],
+    [
+      "Einrichtungs-Code nach dem Abschluss",
+      `update settings set setup_code_hash = 'sha256:${"a".repeat(64)}', setup_code_created_at = now(), setup_completed_at = now()`,
+      "settings_einrichtungs_code_nur_vorher",
+    ],
+  ])("weist ab: %s", async (_name, statement, constraint) => {
+    await ctx.client.query(
+      "alter table settings disable trigger settings_einrichtungs_code_ohne_besitzer",
+    );
+    try {
+      const f = await fehler(ctx.client.query(statement));
+      expect({ code: f.code, constraint: f.constraint }).toEqual({ code: CHECK, constraint });
+    } finally {
+      await ctx.client.query(
+        "alter table settings enable trigger settings_einrichtungs_code_ohne_besitzer",
+      );
+    }
+  });
+
   it("weist einen unbekannten Standard-Bot ab", async () => {
     const f = await fehler(
       ctx.client.query("update settings set default_bot_id = $1", [newId("bot")]),
@@ -602,11 +633,12 @@ describe("rules", () => {
     stage: "execute",
     conditions: [],
     priority: 500,
-    source: "owner",
+    source: "standard",
     title: "Beispiel",
     reason: "Zum Testen.",
     ...abweichung,
   });
+  const eigeneId = newId("rule");
 
   it.each(["rules_action_werte", "belege_action_werte"])(
     "%s kennt genau die Aktionen der Verträge",
@@ -623,10 +655,23 @@ describe("rules", () => {
     },
   );
 
-  it("legt Regeln an: neue Fassung ist eine neue Zeile, ID mit reg_ ist erlaubt", async () => {
+  it("legt Regeln an: neue Fassung ist eine neue Zeile, eigene Regel mit reg_ nur ausgeschaltet", async () => {
     await ctx.db.insert(rules).values(regel() as never);
     await ctx.db.insert(rules).values(regel({ version: 2 }) as never);
-    await ctx.db.insert(rules).values(regel({ id: newId("rule"), action: "*" }) as never);
+    await ctx.db.insert(rules).values(
+      regel({
+        id: eigeneId,
+        action: "*",
+        source: "owner",
+        enabled: false,
+        priority: 1000,
+      }) as never,
+    );
+    await ctx.db
+      .insert(rules)
+      .values(
+        regel({ id: newId("rule"), source: "proposal", enabled: false, priority: 999999 }) as never,
+      );
   });
 
   it.each([
@@ -635,15 +680,84 @@ describe("rules", () => {
     ["unbekannte Aktion", { id: "R-102", action: "alles.loeschen" }, CHECK, "rules_action_werte"],
     ["unbekannte Wirkung", { id: "R-103", effect: "maybe" }, CHECK, "rules_effect_werte"],
     ["unbekannte Stufe", { id: "R-104", stage: "later" }, CHECK, "rules_stage_werte"],
-    ["unbekannte Herkunft", { id: "R-105", source: "bot" }, CHECK, "rules_source_werte"],
+    [
+      "unbekannte Herkunft",
+      { id: eigeneId, version: 5, source: "bot", enabled: false, priority: 1000 },
+      CHECK,
+      "rules_source_werte",
+    ],
     ["Bedingungen als Objekt", { id: "R-106", conditions: {} }, CHECK, "rules_conditions_liste"],
     ["Priorität unter 0", { id: "R-107", priority: -1 }, CHECK, "rules_priority_bereich"],
-    ["Priorität über 1000000", { id: "R-108", priority: 1000001 }, CHECK, "rules_priority_bereich"],
+    [
+      "Priorität über 1000000",
+      { id: eigeneId, version: 8, source: "owner", enabled: false, priority: 1000001 },
+      CHECK,
+      "rules_priority_bereich",
+    ],
     ["leerer Titel", { id: "R-109", title: "" }, CHECK, "rules_title_laenge"],
     ["leere Begründung", { id: "R-110", reason: "" }, CHECK, "rules_reason_laenge"],
     ["doppelte Fassung", { id: "R-100", version: 1 }, UNIQUE, "rules_id_version_pk"],
+    [
+      "eigene Regel unter einer Standard-Kennung",
+      { id: "R-111", source: "owner", enabled: false, priority: 1000 },
+      CHECK,
+      "rules_kennung_passt_zur_quelle",
+    ],
+    [
+      "Standard-Regel mit erzeugter Kennung",
+      { id: eigeneId, version: 9 },
+      CHECK,
+      "rules_kennung_passt_zur_quelle",
+    ],
+    [
+      "eingeschaltete eigene Regel",
+      { id: eigeneId, version: 11, source: "owner", priority: 1000 },
+      CHECK,
+      "rules_eigene_nur_aus",
+    ],
+    [
+      "eigene Regel vor den Standard-Regeln",
+      { id: eigeneId, version: 12, source: "owner", enabled: false, priority: 0 },
+      CHECK,
+      "rules_prioritaet_je_quelle",
+    ],
+    [
+      "eigene Regel hinter der Auffang-Regel",
+      { id: eigeneId, version: 13, source: "owner", enabled: false, priority: 1000000 },
+      CHECK,
+      "rules_prioritaet_je_quelle",
+    ],
+    [
+      "Standard-Regel im Band der eigenen",
+      { id: "R-112", priority: 1000 },
+      CHECK,
+      "rules_prioritaet_je_quelle",
+    ],
   ])("weist ab: %s", async (_name, abweichung, code, constraint) => {
     await weistAb(rules, regel(abweichung), code, constraint);
+  });
+});
+
+describe("rules: Vorschläge", () => {
+  it("ein eingeschalteter Vorschlag wird abgewiesen, auch wenn eigene Regeln später aktiv sein dürfen", async () => {
+    await ctx.client.query("alter table rules drop constraint rules_eigene_nur_aus");
+    await weistAb(
+      rules,
+      {
+        id: newId("rule"),
+        version: 1,
+        action: "nachricht.senden",
+        effect: "allow",
+        stage: "execute",
+        conditions: [],
+        priority: 1000,
+        source: "proposal",
+        title: "Vorschlag",
+        reason: "Zum Testen.",
+      },
+      CHECK,
+      "rules_vorschlag_nie_aktiv",
+    );
   });
 });
 

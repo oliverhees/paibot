@@ -15,12 +15,12 @@ import type { ReceiptBody, ReceiptEntry } from "@paibot/shared/belege";
 import { RULE_HASH_PREFIX } from "@paibot/shared/bindung";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import {
-  type Decision,
   type GateRule,
+  type ListDecision,
   type RuleDefinition,
-  type RuleRef,
   ruleContent,
   STANDARD_RULE_VERSIONS,
+  type StoredRuleRef,
 } from "@paibot/shared/tor";
 import { type CanonicalValue, canonicalize } from "./canonical";
 import { sha256Hex } from "./sha256";
@@ -83,7 +83,7 @@ export type ReevaluationProblem = (typeof REEVALUATION_PROBLEMS)[number];
 export interface Reevaluation {
   status: "ok" | "fehler" | "entfaellt";
   /** Was das Tor mit den gespeicherten Fakten und den Regeln dieses Stands entscheidet. */
-  expected?: Decision;
+  expected?: ListDecision;
   /**
    * Mit welchem Regelstand nachgerechnet wurde. `nicht_festgehalten`: der Beleg nennt keinen
    * (ältere Belege); dann wird mit den übergebenen bzw. heute gültigen Regeln gerechnet.
@@ -92,7 +92,7 @@ export interface Reevaluation {
   /** Bei `fehler`: der Grund. */
   problem?: ReevaluationProblem;
   /** Bei `regel_fehlt` und `regel_geaendert`: die betroffene Regel (mit der Prüfsumme aus dem Beleg). */
-  rule?: RuleRef;
+  rule?: StoredRuleRef;
 }
 
 /**
@@ -171,7 +171,7 @@ function decide(
     if (used.hash !== ref.hash) return fail("regel_geaendert", { rule: ref });
   }
 
-  let expected: Decision;
+  let expected: ListDecision;
   try {
     expected = evaluate(body.action as ActionRequest, body.facts as unknown as Facts, effective);
   } catch {
@@ -213,7 +213,7 @@ function resolveRules(
   return { rules: resolved };
 }
 
-function idAndVersion(rule: RuleRef): RuleRef {
+function idAndVersion(rule: StoredRuleRef): StoredRuleRef {
   return { id: rule.id, version: rule.version };
 }
 

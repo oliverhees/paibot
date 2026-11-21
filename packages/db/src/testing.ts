@@ -18,6 +18,8 @@ import type { Database } from "./client";
 import { runMigrations } from "./migrate";
 import * as schema from "./schema";
 
+export * from "./rollen-testing";
+
 /** Ordner mit den Migrationen des Pakets. */
 export const MIGRATIONS_FOLDER = fileURLToPath(new URL("../drizzle", import.meta.url));
 

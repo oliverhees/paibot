@@ -8,9 +8,9 @@
  * @since     2026-11-20
  */
 
-import { type Database, installationKeys, repo, rules } from "@paibot/db";
+import { type Database, installationKeys, repo } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
-import { createGate, type Gate, isGateDenied, isGatePermit } from "@paibot/gate";
+import { createGate, type Gate, isGateDenied, isGatePermit, ruleSnapshot } from "@paibot/gate";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import type { ReceiptBody } from "@paibot/shared/belege";
 import { PaiBotError } from "@paibot/shared/fehler";
@@ -63,7 +63,12 @@ beforeAll(async () => {
     time: clock.now(),
   });
   gate = createGate({
-    rules: { listActive: () => repo.rules.listActive(ctx.db) },
+    rules: {
+      load: async () => {
+        const { stand, rules } = await repo.rules.loadSnapshot(ctx.db);
+        return ruleSnapshot(rules, stand);
+      },
+    },
     receipts: writer,
     clock,
   });
@@ -86,7 +91,8 @@ describe("Tor mit dem echten Beleg-Schreiber", () => {
     });
     expect(run.value).toBe("angelegt");
     expect(run.decision.outcome).toBe("allow");
-    expect(run.decision.matchedRules).toEqual([{ id: "R-001", version: 1 }]);
+    expect(run.decision.matchedRules).toMatchObject([{ id: "R-001", version: 1 }]);
+    expect(run.decision.matchedRules[0]?.hash).toMatch(/^sha256:/);
 
     const entries = await chain(ctx.db);
     const decision = entries.find((e) => e.id === run.receipts.decision.receiptId);
@@ -106,23 +112,12 @@ describe("Tor mit dem echten Beleg-Schreiber", () => {
   });
 
   it("abgelehnte Aktion: nichts wird ausgeführt, Ergebnis „abgelehnt“, Kette bleibt gültig", async () => {
-    const ruleId = newId("rule");
-    await ctx.db.insert(rules).values({
-      id: ruleId,
-      version: 1,
-      action: "bot.aendern",
-      effect: "deny",
-      stage: "execute",
-      conditions: [],
-      priority: 1,
-      source: "owner",
-      title: "Bots nicht ändern",
-      reason: "Bots werden hier nicht geändert.",
-    });
+    // Abgelehnt von R-006: Der Einrichtungs-Code gilt nicht für diese Aktion.
+    const ruleId = "R-006";
     const action = ownerAction("bot.aendern", { botId: newId("bot") });
     let executed = false;
     const error = await gate
-      .run(action, { credential: "sitzung", fields: ["name"] }, async () => {
+      .run(action, { credential: "einrichtungs_code", fields: ["name"] }, async () => {
         executed = true;
         return { value: undefined, result: { status: "ok" } };
       })
@@ -134,7 +129,7 @@ describe("Tor mit dem echten Beleg-Schreiber", () => {
     expect(error.decision).toMatchObject({
       outcome: "deny",
       matchedRules: [{ id: ruleId, version: 1 }],
-      reason: "Bots werden hier nicht geändert.",
+      reason: "Für diese Aktion gilt nur eine Anmeldung mit Sitzung.",
     });
     const entries = await chain(ctx.db);
     const result = entries.find((e) => e.id === error.receipts.result.receiptId);
@@ -194,6 +189,33 @@ describe("Tor mit dem echten Beleg-Schreiber", () => {
         .map((b) => b.type);
       expect(types).toEqual(["decision", "result"]);
     }
+    expect((await checkAll(ctx.db)).ok).toBe(true);
+  });
+
+  it("dieselbe Aktions-Kennung zweimal: nur einmal ausgeführt, die Kette bleibt gültig", async () => {
+    const action = ownerAction("unterhaltung.anlegen", {
+      conversationId: newId("conversation"),
+      botId: newId("bot"),
+    });
+    const facts: Facts<"unterhaltung.anlegen"> = { credential: "sitzung" };
+    let executions = 0;
+    const execute = async () => {
+      executions++;
+      return { value: 1, result: { status: "ok" as const } };
+    };
+    const results = await Promise.allSettled([
+      gate.run(action, facts, execute),
+      gate.run(action, facts, execute),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual(["fulfilled", "rejected"]);
+    expect(executions).toBe(1);
+    // Auch danach nicht noch einmal: Die Datenbank nimmt keine zweite Entscheidung derselben Aktion.
+    await expect(gate.run(action, facts, execute)).rejects.toThrow();
+    expect(executions).toBe(1);
+    const own = (await chain(ctx.db)).filter(
+      (e) => (e.body as { action?: { actionId?: string } }).action?.actionId === action.actionId,
+    );
+    expect(own.map((e) => e.body.type)).toEqual(["decision", "result"]);
     expect((await checkAll(ctx.db)).ok).toBe(true);
   });
 

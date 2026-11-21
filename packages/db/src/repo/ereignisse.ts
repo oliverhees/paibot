@@ -94,7 +94,9 @@ export async function append<T extends ConversationEventType>(
           .returning();
         if (row === undefined) throw new PaiBotError("intern");
 
-        await tx.execute(sql`select pg_notify(${EVENT_NOTIFY_CHANNEL}, ${input.conversationId})`);
+        await tx.execute(
+          sql`select pg_catalog.pg_notify(${EVENT_NOTIFY_CHANNEL}, ${input.conversationId})`,
+        );
         return toEvent(row) as ConversationEvent<T>;
       }),
     standardFehler,

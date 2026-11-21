@@ -8,17 +8,59 @@
  * @since     2026-11-20
  */
 
-import { newId } from "@paibot/shared";
+import { newId, type Sha256Digest } from "@paibot/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "../client";
-import { createTestDb } from "../testing";
-import { bots, settings } from "./index";
+import { createTestDb, type TestDb } from "../testing";
+import { bots, owner, settings } from "./index";
 import { mitCode } from "./testhilfe";
 
 describe("settings", () => {
   let db: Database;
+  let ctx: TestDb;
   beforeEach(async () => {
-    db = (await createTestDb()).db;
+    ctx = await createTestDb();
+    db = ctx.db;
+  });
+
+  describe("Prüfwert des Einrichtungs-Codes", () => {
+    const hash = (c: string) => `sha256:${c.repeat(64)}` as Sha256Digest;
+    const zeit = new Date("2026-11-21T08:00:00.000Z");
+
+    it("setzen, ersetzen, lesen; erscheint nicht in den Einstellungen", async () => {
+      expect(await settings.getSetupCode(db)).toBeUndefined();
+      expect(await settings.setSetupCode(db, { hash: hash("a"), now: zeit })).toBe(true);
+      expect(await settings.getSetupCode(db)).toEqual({ hash: hash("a"), createdAt: zeit });
+      expect(await settings.setSetupCode(db, { hash: hash("b") })).toBe(true);
+      expect((await settings.getSetupCode(db))?.hash).toBe(hash("b"));
+      expect(JSON.stringify(await settings.get(db))).not.toContain("sha256:");
+      await settings.clearSetupCode(db);
+      expect(await settings.getSetupCode(db)).toBeUndefined();
+    });
+
+    it("nur solange es keinen Besitzer gibt", async () => {
+      await owner.create(db, { passwordHash: "hash-1" });
+      expect(await settings.setSetupCode(db, { hash: hash("a") })).toBe(false);
+      expect(await settings.getSetupCode(db)).toBeUndefined();
+    });
+
+    it("auch die Datenbank lässt ihn mit Besitzer nicht neu setzen", async () => {
+      await settings.ensure(db);
+      await owner.create(db, { passwordHash: "hash-1" });
+      await expect(
+        ctx.client.query(
+          `update settings set setup_code_hash = '${hash("c")}', setup_code_created_at = now()`,
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it("nicht nach dem Abschluss der Einrichtung; der Abschluss löscht ihn", async () => {
+      await settings.setSetupCode(db, { hash: hash("a") });
+      await settings.completeSetup(db, { installationId: newId("installation") });
+      expect(await settings.getSetupCode(db)).toBeUndefined();
+      expect(await settings.setSetupCode(db, { hash: hash("b") })).toBe(false);
+      expect(await settings.getSetupCode(db)).toBeUndefined();
+    });
   });
 
   it("gibt vor der Einrichtung nichts zurück", async () => {

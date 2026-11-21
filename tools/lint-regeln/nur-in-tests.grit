@@ -1,4 +1,6 @@
-// PaiBot – Lint-Regel: Test-Zugänge der Pakete (`@paibot/<paket>/testing`) nur in Tests.
+// PaiBot – Lint-Regel: Test-Zugänge der Pakete nur in Tests: `@paibot/<paket>/testing` (auch mit
+// Unterpfad) und relative Pfade auf eine Datei oder einen Ordner `testing` (`./testing`,
+// `../testing.ts`, `./testing/hilfe`). Ein Pfad, der erst zur Laufzeit entsteht, ist nicht erkennbar.
 //
 // Autor:     Oliver Hees
 // Website:   https://paibot.de
@@ -9,6 +11,9 @@
 language js
 
 `$source` where {
-  $source <: r"^[\"'`]@paibot/[a-z-]+/testing[\"'`]$",
+  $source <: or {
+    r"^[\"'`]@paibot/[a-z-]+/testing(/[^\"'`]*)?[\"'`]$",
+    r"^[\"'`](\.\.?/)+([^\"'`]*/)?testing(\.ts|/[^\"'`]*)?[\"'`]$"
+  },
   register_diagnostic(span=$source, message="Test-Zugänge (`@paibot/*/testing`) gehören nur in Tests (*.test.ts).")
 }

@@ -10,17 +10,16 @@
 
 import type { ActionId, ConversationId, MessageId, ReceiptId, RunId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
+import { check, index, integer, jsonb, text, timestamp, unique } from "drizzle-orm/pg-core";
 import {
-  check,
-  index,
-  integer,
-  jsonb,
+  idCheck,
+  inListCheck,
+  matches,
+  optionalIdCheck,
+  PATTERNS,
   pgTable,
-  text,
-  timestamp,
-  unique,
-} from "drizzle-orm/pg-core";
-import { idCheck, inListCheck, matches, optionalIdCheck, PATTERNS, valueList } from "./helfer";
+  valueList,
+} from "./helfer";
 import { belege } from "./tor";
 import { conversations, messages, runs } from "./unterhaltungen";
 import {
