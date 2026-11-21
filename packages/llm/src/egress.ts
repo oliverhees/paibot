@@ -140,13 +140,14 @@ async function checkedAddresses(
   if (!allowed) return undefined;
   if (target.denyAddressesOf !== undefined && target.denyAddressesOf.length > 0) {
     const denied = new Set<string>();
-    for (const name of target.denyAddressesOf) {
-      try {
-        for (const address of await resolve(name)) denied.add(canonicalAddress(address));
-      } catch {
+    // Alle Namen gleichzeitig auflösen: Die Wartezeit zählt schon zur Zeitgrenze der Anfrage.
+    const lists = await Promise.all(
+      target.denyAddressesOf.map((name) =>
         // Name unbekannt (z. B. außerhalb von Docker): sperrt nichts.
-      }
-    }
+        Promise.resolve(resolve(name)).catch(() => [] as readonly string[]),
+      ),
+    );
+    for (const list of lists) for (const address of list) denied.add(canonicalAddress(address));
     if (addresses.some((address) => denied.has(canonicalAddress(address)))) return undefined;
   }
   return addresses;
