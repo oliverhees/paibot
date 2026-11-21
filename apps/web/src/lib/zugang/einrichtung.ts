@@ -23,6 +23,7 @@ import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
 import type { ZugangsDienste } from "./dienste";
 import { codeSicherstellen } from "./einrichtungs-code";
+import { geraetCookie, neuerGeraetWert } from "./geraet";
 import { _nachweisCode, type Nachweis, nachweisAusSitzung } from "./nachweis";
 import { neuerPasswortHash } from "./passwort";
 import {
@@ -335,6 +336,7 @@ export async function einrichtungAbschliessen(
   // Den Prüfwert des Codes hat `completeSetup` in derselben Transaktion gelöscht.
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.sitzung.token, false));
+  kontext.cookie(geraetCookie(rahmen, neuerGeraetWert(kontext.dienste.schluessel().sitzung)));
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));
   return ergebnis.daten;
 }

@@ -168,11 +168,30 @@ async function einrichtungsCodeVerwerfen(url: string, log: StartLog): Promise<vo
 }
 
 /**
+ * Hebt Sperren und Bremsen der Anmeldung auf. Ausweg, wenn der Besitzer sich nicht mehr anmelden
+ * kann (z. B. während vieler fremder Fehlversuche): Migrations-Schritt erneut starten. Ein Fehler
+ * hier bricht den Migrations-Schritt nicht ab.
+ */
+export async function anmeldeSperrenAufheben(url: string, log: StartLog): Promise<void> {
+  const { db, sql } = createDb(url);
+  try {
+    const anzahl = await repo.rateLimit.deleteByPrefix(db, "anmelden:");
+    if (anzahl > 0) log.info("Sperren der Anmeldung aufgehoben.");
+  } catch (error) {
+    const art = error instanceof Error ? error.name : typeof error;
+    log.warn(`Sperren der Anmeldung nicht aufgehoben (${art}).`);
+  } finally {
+    await sql.end({ timeout: 2 });
+  }
+}
+
+/**
  * Läuft einmal beim Start des Servers, je nach `PAIBOT_ROLE`:
  *
  * - `migrate` (eigener Einmal-Dienst): Migrationen mit `DATABASE_MIGRATION_URL`, App-Rolle aus
  *   `DATABASE_URL` einrichten, Rechte prüfen; ist die Einrichtung noch offen, den bisherigen
- *   Einrichtungs-Code verwerfen (`web` erzeugt dann einen neuen). Danach Ende mit Exit 0 (Fehler:
+ *   Einrichtungs-Code verwerfen (`web` erzeugt dann einen neuen) und Sperren der Anmeldung
+ *   aufheben. Danach Ende mit Exit 0 (Fehler:
  *   Exit 1). Startet keinen Server.
  * - `web` (Standard): In Produktion wird nie migriert, nur mit `DATABASE_URL` geprüft, ob die
  *   Datenbank auf Stand ist und die Rolle nicht zu viel darf; ein Fehler bricht den Start ab
@@ -219,6 +238,7 @@ export async function prepareStart(env: NodeJS.ProcessEnv, options: StartOptions
       return;
     }
     await einrichtungsCodeVerwerfen(env.DATABASE_URL ?? "", log);
+    await anmeldeSperrenAufheben(env.DATABASE_URL ?? "", log);
     log.info("Migrations-Schritt fertig.");
     exit(0);
     return;

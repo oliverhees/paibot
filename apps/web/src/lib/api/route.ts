@@ -22,7 +22,6 @@ import type {
 import { apiErrorFrom, errorBody, okBody } from "@paibot/shared/api";
 import { invalidInput, isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
-import type { RateLimitName } from "@paibot/shared/konstanten";
 import type { z } from "zod";
 import {
   istVeraendernd,
@@ -34,7 +33,7 @@ import {
 } from "../csrf";
 import { torAuf } from "../gate";
 import { clientAdresse } from "../kopfzeilen";
-import { type LimitBezug, setzeLimitZurueck, zaehleLimits } from "../rate-limit";
+import { type LimitBezug, type LimitName, setzeLimitZurueck, zaehleLimits } from "../rate-limit";
 import {
   API_ROUTEN,
   GROESSTER_KOERPER_BYTES,
@@ -43,6 +42,7 @@ import {
   type RoutenName,
 } from "../routen";
 import { prozessDienste, type ZugangsDienste } from "../zugang/dienste";
+import { geraetCookieName, istBekanntesGeraet } from "../zugang/geraet";
 import {
   type GepruefteSitzung,
   istNachweis,
@@ -51,6 +51,8 @@ import {
 } from "../zugang/nachweis";
 import {
   cookieLesen,
+  cookieLoeschen,
+  sitzungBeenden,
   sitzungPruefen,
   sitzungsCookieName,
   vorabCookieName,
@@ -93,7 +95,7 @@ export interface RoutenKontext<N extends RoutenName> {
   /** Hängt eine `Set-Cookie`-Zeile an die Antwort. */
   cookie(setCookie: string): void;
   /** Setzt ein Limit dieser Anfrage zurück (z. B. nach richtigem Passwort). */
-  limitZuruecksetzen(name: RateLimitName): Promise<void>;
+  limitZuruecksetzen(name: LimitName): Promise<void>;
   /**
    * Führt eine Aktion über das Tor aus. Akteur ist der Besitzer, `credential` setzt der Rahmen aus
    * dem Nachweis (nie aus der Eingabe). Die Aktion der Route verlangt den Nachweis laut
@@ -302,9 +304,26 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
         const bezug: LimitBezug = {
           adresse,
           ...(sitzung === undefined ? {} : { ownerId: sitzung.ownerId }),
+          bekanntesGeraet: istBekanntesGeraet(
+            d.schluessel().sitzung,
+            cookieLesen(cookieKopf, geraetCookieName({ appUrl })),
+          ),
         };
         if (def.limits !== undefined && def.limits.length > 0) {
-          await zaehleLimits(db, def.limits, bezug, { now, warten: d.warten });
+          try {
+            await zaehleLimits(db, def.limits, bezug, { now, warten: d.warten });
+          } catch (error) {
+            if (
+              def.beiLimitAbmelden === true &&
+              sitzung !== undefined &&
+              isPaiBotError(error) &&
+              error.code === "zu_viele_versuche"
+            ) {
+              await sitzungBeenden(db, sitzung);
+              cookies.push(cookieLoeschen(sitzungsCookieName({ appUrl }), { appUrl }, "Lax"));
+            }
+            throw error;
+          }
         }
 
         // 6. Eingabe mit Zod

@@ -9,7 +9,7 @@
  */
 
 import { PaiBotError } from "@paibot/shared";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, like, lt, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { rateLimits } from "../schema";
 import { standardFehler, uebersetzen } from "./fehler";
@@ -92,6 +92,16 @@ export async function deleteOlderThan(db: Database, olderThan: Date): Promise<nu
   const geloescht = await db
     .delete(rateLimits)
     .where(lt(rateLimits.windowStart, olderThan))
+    .returning({ key: rateLimits.key });
+  return geloescht.length;
+}
+
+/** Löscht alle Zähler, deren Schlüssel mit `prefix` beginnt (z. B. `anmelden:`). Gibt die Anzahl zurück. */
+export async function deleteByPrefix(db: Database, prefix: string): Promise<number> {
+  const muster = `${prefix.replace(/[\\%_]/g, (zeichen) => `\\${zeichen}`)}%`;
+  const geloescht = await db
+    .delete(rateLimits)
+    .where(like(rateLimits.key, muster))
     .returning({ key: rateLimits.key });
   return geloescht.length;
 }
