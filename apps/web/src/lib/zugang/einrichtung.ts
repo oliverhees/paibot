@@ -247,7 +247,7 @@ export async function einrichtungAbschliessen(
     modell = regeln.find((r) => r.displayName === gewaehlt);
   } else if (eingabe.ruleNames !== undefined || eingabe.ruleName !== undefined) {
     throw new PaiBotError("eingabe_ungueltig", {
-      text: t("regel.nur_eurouter"),
+      text: t("routingregel.nur_eurouter"),
       felder: [{ feld: "ruleNames", code: "ungueltig" }],
     });
   } else if (eingabe.apiKey !== undefined) {

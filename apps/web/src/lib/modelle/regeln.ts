@@ -74,7 +74,10 @@ export function regelFehlerText(
   anbieter: string,
 ): { text: string; ausweg: string } {
   const p = { name, anbieter };
-  return { text: t(`regel.fehler.${code}`, p), ausweg: t(`regel.fehler.${code}.ausweg`, p) };
+  return {
+    text: t(`routingregel.fehler.${code}`, p),
+    ausweg: t(`routingregel.fehler.${code}.ausweg`, p),
+  };
 }
 
 /**
@@ -164,7 +167,7 @@ async function anbieterMitRegeln(db: Database, id: string) {
   const gefunden = await repo.providers.getWithKey(db, id as ProviderId);
   if (gefunden === undefined) throw new PaiBotError("nicht_gefunden");
   if (!supportsRoutingRules(gefunden.provider.templateKey)) {
-    throw new PaiBotError("eingabe_ungueltig", { text: t("regel.nur_eurouter") });
+    throw new PaiBotError("eingabe_ungueltig", { text: t("routingregel.nur_eurouter") });
   }
   return gefunden;
 }
@@ -173,7 +176,7 @@ function gespeicherterSchluessel(d: ZugangsDienste, anbieter: Provider, enc: str
   if (enc === undefined) {
     throw new PaiBotError("schluessel_ungueltig", {
       text: t("modelle.schluessel.fehlt"),
-      ausweg: t("regel.schluessel_fehlt.ausweg"),
+      ausweg: t("routingregel.schluessel_fehlt.ausweg"),
     });
   }
   try {
@@ -200,7 +203,9 @@ export async function anbieterRegelHinzufuegen(k: RoutenKontext<"anbieterRegelHi
   const [ergebnis] = await regelnPruefen(k.dienste, provider, schluessel, [name]);
   if (ergebnis === undefined || !ergebnis.ok) {
     throw new PaiBotError("eingabe_ungueltig", {
-      text: ergebnis?.text ?? t("regel.fehler.regel_unbekannt", { name, anbieter: provider.name }),
+      text:
+        ergebnis?.text ??
+        t("routingregel.fehler.regel_unbekannt", { name, anbieter: provider.name }),
       ...(ergebnis?.ausweg ? { ausweg: ergebnis.ausweg } : {}),
       felder: [{ feld: "name", code: "ungueltig" }],
     });

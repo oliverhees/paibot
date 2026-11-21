@@ -94,8 +94,11 @@ describe("POST /api/anbieter/:id/regeln", () => {
     expect(r.body).toMatchObject({
       ok: false,
       fehler: {
-        text: t("regel.fehler.regel_unbekannt", { name: "Gibt es nicht", anbieter: "EUrouter" }),
-        ausweg: t("regel.fehler.regel_unbekannt.ausweg", { anbieter: "EUrouter" }),
+        text: t("routingregel.fehler.regel_unbekannt", {
+          name: "Gibt es nicht",
+          anbieter: "EUrouter",
+        }),
+        ausweg: t("routingregel.fehler.regel_unbekannt.ausweg", { anbieter: "EUrouter" }),
         felder: [{ feld: "name" }],
       },
     });
@@ -183,7 +186,7 @@ describe("EUrouter: keine Modell-Liste", () => {
     });
     expect(r.status).toBe(400);
     expect(r.body).toMatchObject({
-      fehler: { text: t("regel.liste_nicht", { anbieter: "EUrouter" }) },
+      fehler: { text: t("routingregel.liste_nicht", { anbieter: "EUrouter" }) },
     });
     expect(e.u.anbieterAufrufe.length).toBe(aufrufe);
   });

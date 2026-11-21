@@ -481,8 +481,8 @@ export async function anbieterModelle(k: RoutenKontext<"anbieterModelle">) {
   // Bei EUrouter stehen nur die Routing-Regeln des Kontos zur Wahl, nicht die Modell-Liste.
   if (supportsRoutingRules(provider.templateKey)) {
     throw new PaiBotError("eingabe_ungueltig", {
-      text: t("regel.liste_nicht", { anbieter: provider.name }),
-      ausweg: t("regel.liste_nicht.ausweg"),
+      text: t("routingregel.liste_nicht", { anbieter: provider.name }),
+      ausweg: t("routingregel.liste_nicht.ausweg"),
     });
   }
   const id = provider.id as ProviderId;
