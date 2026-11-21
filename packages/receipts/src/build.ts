@@ -22,6 +22,7 @@ import type { HmacDigest, IsoTime, Sha256Digest } from "@paibot/shared/grundtype
 import type { InstallationId, KeyId, ReceiptId } from "@paibot/shared/ids";
 import { type Decision, GATE_FORMAT, type ListDecision } from "@paibot/shared/tor";
 import { CanonicalizeError, type CanonicalValue, canonicalize } from "./canonical";
+import { decisionFormat, resultFitsFormat } from "./nachrechnen";
 
 /** Inhalt eines neuen Belegs, ohne die Angaben zur Kette. */
 export type ReceiptDraft =
@@ -73,8 +74,14 @@ export interface ChainLink {
  * Beleg (fehlend heißt Fassung 1), damit ein Beleg genau so aussieht wie vor den Fassungen und
  * auch ältere PaiBot-Fassungen ihn lesen. Jede andere Fassung käme in `decision.gateFormat`.
  *
- * Zusagen: Das Ergebnis besteht `receiptBodyWriteSchema` (das einzige Schema, mit dem hier geprüft
- * wird); es enthält keine Inhalte von Nachrichten.
+ * Schreiben wie Prüfen: Eine Entscheidung und ein Ergebnis müssen zusätzlich zur aktuellen,
+ * eingefrorenen Fassung passen (`GATE_FORMATS[GATE_FORMAT]`, `decisionFormat` bzw.
+ * `resultFitsFormat`), genau wie beim Prüfen der Kette. Weicht ein geteiltes Schema von der
+ * Fassung ab, entsteht so nie ein Beleg, den der eigene Prüfer verwirft; das Tor scheitert dann
+ * beim Schreiben der Entscheidung und führt nichts aus.
+ *
+ * Zusagen: Das Ergebnis besteht `receiptBodyWriteSchema` und passt zur Fassung `GATE_FORMAT`; es
+ * enthält keine Inhalte von Nachrichten.
  * Fehler: `PaiBotError("eingabe_ungueltig")`, wenn das Ergebnis das Schema nicht besteht
  * (z. B. Gleitkommazahl in den Fakten).
  */
@@ -140,6 +147,7 @@ function buildReceiptBody(draft: ReceiptDraft, link: ChainLink): ReceiptBody {
   const clean = withoutUndefined(body) as Record<string, unknown>;
   const parsed = receiptBodyWriteSchema.safeParse(clean);
   if (!parsed.success) throw invalidInput(parsed.error, clean);
+  if (!fitsCurrentFormat(clean)) throw new PaiBotError("eingabe_ungueltig");
   try {
     canonicalize(clean as CanonicalValue);
   } catch (error) {
@@ -148,6 +156,16 @@ function buildReceiptBody(draft: ReceiptDraft, link: ChainLink): ReceiptBody {
     throw error;
   }
   return clean as unknown as ReceiptBody;
+}
+
+/** Passt eine Entscheidung bzw. ein Ergebnis zur aktuellen Fassung, wie der Prüfer es verlangt? */
+function fitsCurrentFormat(body: Record<string, unknown>): boolean {
+  if (body.type === "decision") {
+    const fit = decisionFormat(body);
+    return fit.status === "passt" && fit.format === GATE_FORMAT;
+  }
+  if (body.type === "result") return resultFitsFormat(body, GATE_FORMAT) === true;
+  return true;
 }
 
 /**
