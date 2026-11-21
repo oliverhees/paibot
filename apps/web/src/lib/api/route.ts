@@ -42,7 +42,7 @@ import {
   type RoutenName,
 } from "../routen";
 import { prozessDienste, type ZugangsDienste } from "../zugang/dienste";
-import { geraetCookieName, istBekanntesGeraet } from "../zugang/geraet";
+import { bekanntesGeraet, geraetCookieName } from "../zugang/geraet";
 import {
   type GepruefteSitzung,
   istNachweis,
@@ -301,13 +301,19 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
           weiterleitung: kopf.get("x-forwarded-for"),
           vertrauteProxy: d.hinterProxy(),
         });
+        // Ein bekanntes Gerät zählt nur beim Anmelden (eigene Limits statt Adresse und Bremse).
+        const geraet = def.limits?.includes("anmeldenGesamt")
+          ? await bekanntesGeraet(
+              db,
+              d.schluessel().sitzung,
+              cookieLesen(cookieKopf, geraetCookieName({ appUrl })),
+              now,
+            )
+          : undefined;
         const bezug: LimitBezug = {
           adresse,
-          ...(sitzung === undefined ? {} : { ownerId: sitzung.ownerId }),
-          bekanntesGeraet: istBekanntesGeraet(
-            d.schluessel().sitzung,
-            cookieLesen(cookieKopf, geraetCookieName({ appUrl })),
-          ),
+          ...(sitzung === undefined ? {} : { ownerId: sitzung.ownerId, sitzungId: sitzung.id }),
+          ...(geraet === undefined ? {} : { geraet }),
         };
         if (def.limits !== undefined && def.limits.length > 0) {
           try {

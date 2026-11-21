@@ -182,7 +182,12 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   // aufheben (Ausweg im Migrations-Schritt).
   "web/src/lib/rate-limit.ts": {
     art: "betrieb",
-    nur: ["rateLimit.hit", "rateLimit.reset", "rateLimit.deleteByPrefix"],
+    nur: [
+      "rateLimit.hit",
+      "rateLimit.reset",
+      "rateLimit.deleteByPrefix",
+      "rateLimit.deleteOlderThan",
+    ],
   },
   // Einrichtungs-Code: entsteht vor der Einrichtung, wenn es noch keinen Signaturschlüssel gibt.
   "web/src/lib/zugang/einrichtungs-code.ts": {
@@ -199,6 +204,12 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   "web/src/lib/zugang/sitzung.ts": {
     art: "betrieb",
     nur: ["sessions.create", "sessions.end", "sessions.extend"],
+  },
+  // Bekannte Geräte: anlegen/ersetzen rufen nur die Aktionen (Anmelden, Einrichtung, Passwort
+  // ändern) in ihrer Ausführung.
+  "web/src/lib/zugang/geraet.ts": {
+    art: "betrieb",
+    nur: ["geraete.create", "geraete.remove"],
   },
   // Worker: Lauf als fehlgeschlagen markieren, wenn er abstürzt (Lebenszyklus, keine Aktion).
   "worker/src/lauf.ts": { art: "betrieb", nur: ["events.append", "runs.finish"] },

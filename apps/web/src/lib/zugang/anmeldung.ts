@@ -14,7 +14,13 @@ import type { LoginInput, PasswordChangeInput } from "@paibot/shared/eingaben";
 import { PaiBotError } from "@paibot/shared/fehler";
 import type { OwnerId } from "@paibot/shared/ids";
 import type { RoutenKontext } from "../api/route";
-import { geraetCookie, neuerGeraetWert } from "./geraet";
+import {
+  geraetAnlegen,
+  geraetAusAnfrage,
+  geraetCookie,
+  geraetCookieLoeschen,
+  geraetHash,
+} from "./geraet";
 import { _nachweisPasswort } from "./nachweis";
 import { neuerPasswortHash, pruefePasswort } from "./passwort";
 import {
@@ -54,36 +60,54 @@ export async function anmelden(kontext: RoutenKontext<"anmelden">): Promise<{ an
     { remember: eingabe.remember },
     async () => {
       const neu = await sitzungAnlegen(db, ownerId, { now: d.uhr.now(), userAgent });
-      return { value: neu, result: { status: "ok" } };
+      const geraet = await geraetAnlegen(db, d.schluessel().sitzung, ownerId, {
+        now: d.uhr.now(),
+        bisher: geraetAusAnfrage(kontext.request, { appUrl: d.appOrigin() }),
+      });
+      return { value: { ...neu, geraet }, result: { status: "ok" } };
     },
   );
   await kontext.limitZuruecksetzen("anmeldenIp");
   await kontext.limitZuruecksetzen("anmeldenIpTag");
+  await kontext.limitZuruecksetzen("anmeldenGeraet");
+  await kontext.limitZuruecksetzen("anmeldenGeraetTag");
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.value.token, eingabe.remember));
-  kontext.cookie(geraetCookie(rahmen, neuerGeraetWert(d.schluessel().sitzung)));
+  kontext.cookie(geraetCookie(rahmen, ergebnis.value.geraet.wert));
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));
   return { angemeldet: true };
 }
 
-/** `POST /api/zugang/abmelden`: beendet die Sitzung dieser Anfrage und löscht das Cookie. */
+/**
+ * `POST /api/zugang/abmelden`: beendet die Sitzung dieser Anfrage, entfernt das Gerät dieses
+ * Browsers auf dem Server und löscht beide Cookies.
+ */
 export async function abmelden(kontext: RoutenKontext<"abmelden">): Promise<{ abgemeldet: true }> {
   const { sitzung, db } = kontext;
+  const rahmen = { appUrl: kontext.dienste.appOrigin() };
+  const geraet = geraetHash(
+    kontext.dienste.schluessel().sitzung,
+    geraetAusAnfrage(kontext.request, rahmen),
+  );
   await kontext.tor(
     kontext.nachweis,
     { type: "zugang.abmelden", target: { ownerId: sitzung.ownerId } },
     {},
     async () => {
       await repo.sessions.end(db, sitzung.id);
+      if (geraet !== undefined) await repo.geraete.remove(db, geraet);
       return { value: undefined, result: { status: "ok" } };
     },
   );
-  const rahmen = { appUrl: kontext.dienste.appOrigin() };
   kontext.cookie(cookieLoeschen(sitzungsCookieName(rahmen), rahmen, "Lax"));
+  kontext.cookie(geraetCookieLoeschen(rahmen));
   return { abgemeldet: true };
 }
 
-/** `POST /api/zugang/alle-abmelden`: beendet alle Sitzungen des Besitzers, auch diese. */
+/**
+ * `POST /api/zugang/alle-abmelden`: beendet alle Sitzungen des Besitzers, auch diese, und entfernt
+ * alle bekannten Geräte.
+ */
 export async function alleAbmelden(
   kontext: RoutenKontext<"alleAbmelden">,
 ): Promise<{ beendet: number }> {
@@ -95,11 +119,13 @@ export async function alleAbmelden(
     { sessions: offen.length },
     async () => {
       const beendet = await repo.sessions.endAll(db, sitzung.ownerId);
+      await repo.geraete.removeAll(db, sitzung.ownerId);
       return { value: beendet, result: { status: "ok" } };
     },
   );
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(cookieLoeschen(sitzungsCookieName(rahmen), rahmen, "Lax"));
+  kontext.cookie(geraetCookieLoeschen(rahmen));
   return { beendet: ergebnis.value };
 }
 
@@ -133,8 +159,9 @@ export async function sitzungenListe(
 
 /**
  * `POST /api/zugang/passwort`: prüft das aktuelle Passwort (Fakt `currentPasswordVerified`, das Tor
- * lehnt sonst ab), setzt den neuen Hash und löscht in derselben Transaktion alle Sitzungen. Danach
- * bekommt diese Anfrage eine neue Sitzung mit frischem Token.
+ * lehnt sonst ab), setzt den neuen Hash und löscht in derselben Transaktion alle Sitzungen und alle
+ * bekannten Geräte. Danach bekommt diese Anfrage eine neue Sitzung mit frischem Token und dieser
+ * Browser ein neues Gerät.
  */
 export async function passwortAendern(
   kontext: RoutenKontext<"passwortAendern">,
@@ -156,12 +183,21 @@ export async function passwortAendern(
       const neu = await db.transaction(async (tx) => {
         await repo.owner.updatePassword(tx, sitzung.ownerId, neuerHash, d.uhr.now());
         await repo.sessions.endAll(tx, sitzung.ownerId);
-        return sitzungAnlegen(tx, sitzung.ownerId, { now: d.uhr.now(), userAgent });
+        await repo.geraete.removeAll(tx, sitzung.ownerId);
+        const neueSitzung = await sitzungAnlegen(tx, sitzung.ownerId, {
+          now: d.uhr.now(),
+          userAgent,
+        });
+        const geraet = await geraetAnlegen(tx, d.schluessel().sitzung, sitzung.ownerId, {
+          now: d.uhr.now(),
+        });
+        return { ...neueSitzung, geraet };
       });
       return { value: neu, result: { status: "ok" } };
     },
   );
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.value.token, false));
+  kontext.cookie(geraetCookie(rahmen, ergebnis.value.geraet.wert));
   return { geaendert: true };
 }

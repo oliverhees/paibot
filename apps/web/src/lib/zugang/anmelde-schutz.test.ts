@@ -10,13 +10,14 @@
  * @since     2026-11-21
  */
 
+import { geraete, repo } from "@paibot/db";
 import { describe, expect, it, vi } from "vitest";
 import { adressGruppe } from "../kopfzeilen";
 import { anmeldeSperrenAufheben, BREMSE, bremsTakt } from "../rate-limit";
 import { schluesselAus } from "../umgebung";
-import { anmelden, passwortAendern, sitzungenListe } from "./anmeldung";
+import { abmelden, alleAbmelden, anmelden, passwortAendern, sitzungenListe } from "./anmeldung";
 import { einrichtungAbschliessen } from "./einrichtung";
-import { geraetCookie, istBekanntesGeraet, neuerGeraetWert } from "./geraet";
+import { bekanntesGeraet, geraetCookie, neuerGeraetWert } from "./geraet";
 import {
   anfrage,
   Keksdose,
@@ -55,6 +56,8 @@ async function eingerichtet(hinterProxy = true) {
     anmelden: u.handler("anmelden", async (k) => ({ daten: await anmelden(k) })),
     passwort: u.handler("passwortAendern", async (k) => ({ daten: await passwortAendern(k) })),
     sitzungen: u.handler("sitzungen", async (k) => ({ daten: await sitzungenListe(k) })),
+    abmelden: u.handler("abmelden", async (k) => ({ daten: await abmelden(k) })),
+    alle: u.handler("alleAbmelden", async (k) => ({ daten: await alleAbmelden(k) })),
   };
   return { u, h, einrichtungsDose: dose };
 }
@@ -77,6 +80,13 @@ function versuch(
 /** Zählt, wie oft das Passwort wirklich geprüft wurde (Antwort „passwort_falsch“). */
 function geprueft(antworten: { body: { fehler?: { code: string } } }[]) {
   return antworten.filter((a) => a.body.fehler?.code === "passwort_falsch").length;
+}
+
+/** Viele Fehlversuche von verschiedenen Adressen: Danach gilt die gemeinsame Bremse. */
+async function flut(e: Umgebung) {
+  await Promise.all(
+    Array.from({ length: 50 }, (_, i) => versuch(e, `raten-${i}`, `198.51.100.${i + 1}`)),
+  );
 }
 
 describe("Adressen", () => {
@@ -120,6 +130,19 @@ describe("Gemeinsame Bremse", () => {
     });
   }
 
+  it("das Fenster je Adresse gleitet: Versuche am Ende eines Fensters zählen am Anfang des nächsten mit", async () => {
+    const e = await eingerichtet();
+    // Kurz vor dem Ende des Fensters (die Uhr der Tests beginnt an einer Fenster-Grenze).
+    e.u.spaeter(14 * MINUTE);
+    for (let i = 0; i < 5; i += 1) {
+      expect((await versuch(e, "falsch-falsch-1", "198.51.100.10")).status).toBe(401);
+    }
+    e.u.spaeter(2 * MINUTE);
+    const gleich = await versuch(e, TEST_PASSWORT, "198.51.100.10");
+    expect(gleich.status).toBe(429);
+    expect(Number(gleich.antwort.headers.get("retry-after"))).toBeGreaterThan(60);
+  });
+
   it("der Takt wächst mit den Versuchen bis höchstens eine Minute", () => {
     expect(bremsTakt(1)).toBe(BREMSE.startSekunden);
     expect(bremsTakt(BREMSE.verdoppelnNach + 1)).toBe(2 * BREMSE.startSekunden);
@@ -134,7 +157,8 @@ describe("Gemeinsame Bremse", () => {
       for (let i = 0; i < 5; i += 1) {
         expect((await versuch(e, "falsch-falsch-1", "198.51.100.9")).status).toBe(401);
       }
-      e.u.spaeter(16 * MINUTE);
+      // Das Fenster je Adresse gleitet: erst nach zwei Fenstern zählt die Runde nicht mehr mit.
+      e.u.spaeter(31 * MINUTE);
     }
     const danach = await versuch(e, TEST_PASSWORT, "198.51.100.9");
     expect(danach.status).toBe(429);
@@ -147,30 +171,123 @@ describe("Ausweg für den Besitzer", () => {
     const e = await eingerichtet(false);
     const bekannt = e.einrichtungsDose.werte.get("pb_geraet");
     expect(bekannt).toBeDefined();
-    await Promise.all(
-      Array.from({ length: 50 }, (_, i) => versuch(e, `raten-${i}`, `198.51.100.${i + 1}`)),
-    );
+    await flut(e);
     expect((await versuch(e, TEST_PASSWORT, "192.0.2.77")).status).toBe(429);
     const dose = vorabDose();
     dose.werte.set("pb_geraet", bekannt ?? "");
     expect((await versuch(e, TEST_PASSWORT, "192.0.2.77", dose)).status).toBe(200);
   });
 
-  it("ein gefälschtes oder fremdes Geräte-Cookie hilft nicht", async () => {
+  it("ein gefälschtes, fremdes oder nur signiertes Geräte-Cookie hilft nicht", async () => {
     const e = await eingerichtet(false);
-    await Promise.all(
-      Array.from({ length: 50 }, (_, i) => versuch(e, `raten-${i}`, `198.51.100.${i + 1}`)),
-    );
-    const fremd = neuerGeraetWert(schluesselAus({ PAIBOT_SECRET: testGeheimnis() }).sitzung);
-    for (const wert of [fremd, `${"a".repeat(32)}.${"b".repeat(43)}`, "x"]) {
+    await flut(e);
+    const fremd = neuerGeraetWert(schluesselAus({ PAIBOT_SECRET: testGeheimnis() }).sitzung).wert;
+    // Richtig signiert, aber nie auf dem Server angelegt.
+    const unbekannt = neuerGeraetWert(e.u.schluessel.sitzung).wert;
+    for (const wert of [fremd, unbekannt, `${"a".repeat(32)}.${"b".repeat(43)}`, "x"]) {
       const dose = vorabDose();
       dose.werte.set("pb_geraet", wert);
       expect((await versuch(e, TEST_PASSWORT, "192.0.2.78", dose)).status).toBe(429);
     }
-    expect(istBekanntesGeraet(e.u.schluessel.sitzung, fremd)).toBe(false);
+    const jetzt = e.u.zeit();
+    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, fremd, jetzt)).toBeUndefined();
+    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, unbekannt, jetzt)).toBeUndefined();
+    const echt = e.einrichtungsDose.werte.get("pb_geraet");
+    expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, echt, jetzt)).toMatch(
+      /^[0-9a-f]{64}$/,
+    );
+  });
+
+  it("ein gestohlenes Geräte-Cookie bringt von vielen Adressen höchstens 5 Prüfungen je 15 Minuten", async () => {
+    const e = await eingerichtet();
+    const gestohlen = e.einrichtungsDose.werte.get("pb_geraet") ?? "";
+    await flut(e);
+    const antworten = [];
+    for (let i = 0; i < 50; i += 1) {
+      const dose = vorabDose();
+      dose.werte.set("pb_geraet", gestohlen);
+      antworten.push(
+        await versuch(e, `raten-geraet-${i}`, `2001:db8:77:${i.toString(16)}::1`, dose),
+      );
+    }
+    // Fünf über das eigene Limit des Geräts, danach gilt die Bremse (höchstens ein Platz je Stufe
+    // ihres Takts; 50 weitere Versuche erreichen bis zu zwei Stufen).
+    expect(geprueft(antworten)).toBeLessThanOrEqual(7);
+    expect(antworten.filter((a) => a.status === 429).length).toBeGreaterThanOrEqual(43);
+  });
+
+  it("die Adresse des Besitzers sperren hält ein bekanntes Gerät nicht auf", async () => {
+    const e = await eingerichtet();
+    const bekannt = e.einrichtungsDose.werte.get("pb_geraet") ?? "";
+    for (let i = 0; i < 25; i += 1) await versuch(e, `raten-${i}`, "203.0.113.5");
+    expect((await versuch(e, TEST_PASSWORT, "203.0.113.5")).status).toBe(429);
+    const dose = vorabDose();
+    dose.werte.set("pb_geraet", bekannt);
+    expect((await versuch(e, TEST_PASSWORT, "203.0.113.5", dose)).status).toBe(200);
+  });
+
+  for (const fall of ["abmelden", "alle", "passwort"] as const) {
+    it(`nach ${fall === "abmelden" ? "Abmelden" : fall === "alle" ? "„Alle Sitzungen beenden“" : "neuem Passwort"} gilt das alte Geräte-Cookie nicht mehr`, async () => {
+      const e = await eingerichtet();
+      const dose = vorabDose();
+      expect((await versuch(e, TEST_PASSWORT, "192.0.2.3", dose)).status).toBe(200);
+      dose.werte.delete("pb_vorab");
+      const alt = dose.werte.get("pb_geraet") ?? "";
+      expect(await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, alt, e.u.zeit())).toBeDefined();
+      const r =
+        fall === "passwort"
+          ? await anfrage(e.u, e.h.passwort, "POST", "/api/zugang/passwort", {
+              dose,
+              koerper: { currentPassword: TEST_PASSWORT, newPassword: "Neues-Passwort-Lang-77" },
+            })
+          : await anfrage(
+              e.u,
+              fall === "abmelden" ? e.h.abmelden : e.h.alle,
+              "POST",
+              fall === "abmelden" ? "/api/zugang/abmelden" : "/api/zugang/alle-abmelden",
+              { dose },
+            );
+      expect(r.status).toBe(200);
+      expect(
+        await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, alt, e.u.zeit()),
+      ).toBeUndefined();
+      if (fall !== "passwort") {
+        expect(
+          r.antwort.headers.getSetCookie().some((z) => /^pb_geraet=;.*Max-Age=0/.test(z)),
+        ).toBe(true);
+      }
+      // Auch das Gerät der Einrichtung ist bei „alle“ und neuem Passwort weg.
+      const einrichtung = e.einrichtungsDose.werte.get("pb_geraet");
+      const nochDa = await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, einrichtung, e.u.zeit());
+      expect(nochDa === undefined).toBe(fall !== "abmelden");
+      // Und während einer Flut hilft das alte Cookie nicht mehr.
+      await flut(e);
+      const danach = vorabDose();
+      danach.werte.set("pb_geraet", alt);
+      expect((await versuch(e, "Neues-Passwort-Lang-77", "192.0.2.80", danach)).status).toBe(429);
+    });
+  }
+
+  it("ein Gerät gilt 90 Tage", async () => {
+    const e = await eingerichtet();
+    const bekannt = e.einrichtungsDose.werte.get("pb_geraet");
+    e.u.spaeter(89 * 24 * 60 * MINUTE);
     expect(
-      istBekanntesGeraet(e.u.schluessel.sitzung, neuerGeraetWert(e.u.schluessel.sitzung)),
-    ).toBe(true);
+      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, bekannt, e.u.zeit()),
+    ).toBeDefined();
+    e.u.spaeter(2 * 24 * 60 * MINUTE);
+    expect(
+      await bekanntesGeraet(e.u.db, e.u.schluessel.sitzung, bekannt, e.u.zeit()),
+    ).toBeUndefined();
+  });
+
+  it("je Besitzer bleiben höchstens zehn Geräte", async () => {
+    const e = await eingerichtet();
+    for (let i = 0; i < 12; i += 1) {
+      expect((await versuch(e, TEST_PASSWORT, `192.0.2.${100 + i}`)).status).toBe(200);
+    }
+    const zeilen = await e.u.db.select().from(geraete);
+    expect(zeilen.length).toBe(repo.geraete.MAX_GERAETE);
   });
 
   it("das Aufheben der Sperren (Migrations-Schritt) gibt die Anmeldung sofort wieder frei", async () => {
@@ -183,10 +300,10 @@ describe("Ausweg für den Besitzer", () => {
     expect((await versuch(e, TEST_PASSWORT, "192.0.2.79")).status).toBe(200);
   });
 
-  it("Geräte-Cookie nur über http-Anfragen von PaiBot selbst, langlebig", () => {
+  it("Geräte-Cookie nur über http-Anfragen von PaiBot selbst, 90 Tage", () => {
     const zeile = geraetCookie({ appUrl: "https://paibot.example.de" }, "w");
     expect(zeile).toBe(
-      "__Host-pb_geraet=w; Path=/; HttpOnly; SameSite=Strict; Max-Age=34560000; Secure",
+      "__Host-pb_geraet=w; Path=/; HttpOnly; SameSite=Strict; Max-Age=7776000; Secure",
     );
   });
 });
@@ -220,6 +337,15 @@ describe("Passwort ändern", () => {
       zuViele.antwort.headers.getSetCookie().some((z) => /^pb_sitzung=;.*Max-Age=0/.test(z)),
     ).toBe(true);
     expect(e.dose.werte.has("pb_sitzung")).toBe(false);
+  });
+
+  it("das Limit gilt je Sitzung: eine andere Sitzung des Besitzers ändert das Passwort weiter", async () => {
+    const e = await angemeldet();
+    const andere = vorabDose();
+    expect((await versuch(e, TEST_PASSWORT, "192.0.2.4", andere)).status).toBe(200);
+    andere.werte.delete("pb_vorab");
+    for (let i = 0; i < 6; i += 1) await aendern(e.u, e, e.dose, `falsch-${i}-xxxxxx`);
+    expect((await aendern(e.u, e, andere, TEST_PASSWORT)).status).toBe(200);
   });
 
   it("das alte Sitzungs-Cookie gilt nach der Sperre nicht mehr", async () => {

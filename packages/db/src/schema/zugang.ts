@@ -1,5 +1,5 @@
 /**
- * PaiBot – Datenbankschema: Besitzer, Sitzungen und Zähler für Rate-Limits.
+ * PaiBot – Datenbankschema: Besitzer, Sitzungen, bekannte Geräte und Zähler für Rate-Limits.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -66,6 +66,29 @@ export const sessions = pgTable(
   ],
 );
 
+/**
+ * Bekannte Geräte: Browser, in denen sich der Besitzer angemeldet hat. Die ID ist der SHA-256 der
+ * Kennung aus dem Cookie, die Kennung selbst wird nie gespeichert. Abmelden, „Alle Sitzungen
+ * beenden“ und ein neues Passwort löschen die Einträge; danach gilt das Cookie nicht mehr.
+ */
+export const geraete = pgTable(
+  "geraete",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id")
+      .$type<OwnerId>()
+      .notNull()
+      .references(() => owner.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    check("geraete_id_format", matches(t.id, PATTERNS.sessionId)),
+    check("geraete_ablauf_nach_start", sql`${t.expiresAt} > ${t.createdAt}`),
+    index("geraete_owner_id_idx").on(t.ownerId),
+  ],
+);
+
 /** Zähler für Rate-Limits: je Schlüssel und Zeitfenster eine Zeile. */
 export const rateLimits = pgTable(
   "rate_limits",
@@ -85,3 +108,4 @@ export const rateLimits = pgTable(
 export type Owner = typeof owner.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type RateLimit = typeof rateLimits.$inferSelect;
+export type Geraet = typeof geraete.$inferSelect;

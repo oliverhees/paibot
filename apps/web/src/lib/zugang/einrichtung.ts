@@ -24,7 +24,7 @@ import type { RoutenKontext } from "../api/route";
 import { schleuseEingerichtet } from "../schleuse/schleuse";
 import type { ZugangsDienste } from "./dienste";
 import { codeSicherstellen } from "./einrichtungs-code";
-import { geraetCookie, neuerGeraetWert } from "./geraet";
+import { geraetAnlegen, geraetCookie, type NeuesGeraet } from "./geraet";
 import { _nachweisCode, type Nachweis, nachweisAusSitzung } from "./nachweis";
 import { neuerPasswortHash } from "./passwort";
 import {
@@ -233,7 +233,13 @@ export async function einrichtungAbschliessen(
           now: d.uhr.now(),
           userAgent,
         });
-        return { value: neu, result: { status: "ok" } };
+        const geraet: NeuesGeraet = await geraetAnlegen(
+          tx,
+          d.schluessel().sitzung,
+          besitzer.id as OwnerId,
+          { now: d.uhr.now() },
+        );
+        return { value: { ...neu, geraet }, result: { status: "ok" } };
       },
       torOptionen,
     );
@@ -326,6 +332,7 @@ export async function einrichtungAbschliessen(
 
     return {
       sitzung: abschluss.value,
+      geraet: abschluss.value.geraet,
       daten: {
         installationId,
         botId,
@@ -340,7 +347,7 @@ export async function einrichtungAbschliessen(
   // Den Prüfwert des Codes hat `completeSetup` in derselben Transaktion gelöscht.
   const rahmen = { appUrl: d.appOrigin() };
   kontext.cookie(sitzungsCookie(rahmen, ergebnis.sitzung.token, false));
-  kontext.cookie(geraetCookie(rahmen, neuerGeraetWert(kontext.dienste.schluessel().sitzung)));
+  kontext.cookie(geraetCookie(rahmen, ergebnis.geraet.wert));
   kontext.cookie(cookieLoeschen(vorabCookieName(rahmen), rahmen, "Strict"));
   return ergebnis.daten;
 }

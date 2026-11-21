@@ -15,7 +15,7 @@ import type { Database } from "../client";
 import { owner as ownerTabelle } from "../schema";
 import { createTestDb } from "../testing";
 
-import { owner, rateLimit, sessions } from "./index";
+import { geraete, owner, rateLimit, sessions } from "./index";
 import { mitCode } from "./testhilfe";
 
 const TAG = 24 * 60 * 60 * 1000;
@@ -208,9 +208,87 @@ describe("rateLimit", () => {
     expect(await rateLimit.deleteOlderThan(db, nach(T0, 3600_000))).toBe(1);
   });
 
+  it("gleitendes Fenster: das vorige Fenster zählt anteilig mit", async () => {
+    const gl = { ...eingabe, sliding: true };
+    // 3 Versuche am Ende des ersten Fensters (T0 + 50 s).
+    for (let i = 0; i < 3; i++) await rateLimit.hit(db, { ...gl, now: nach(T0, 50_000) });
+    // 15 s ins nächste Fenster: vom vorigen zählen noch 45/60 → 3 × 0,75 + 1 = 3,25 > 3.
+    const frueh = await rateLimit.hit(db, { ...gl, now: nach(T0, 75_000) });
+    expect(frueh.allowed).toBe(false);
+    expect(frueh.count).toBe(4);
+    // Bis 3 × Anteil + 1 ≤ 3, also Anteil ≤ 2/3: noch 5 s.
+    expect(frueh.retryAfterSeconds).toBe(5);
+    // Ohne gleitendes Fenster wäre derselbe Versuch erlaubt.
+    const fest = await rateLimit.hit(db, {
+      ...eingabe,
+      key: "anmelden:ip:x",
+      now: nach(T0, 75_000),
+    });
+    expect(fest.allowed).toBe(true);
+    // 50 s ins nächste Fenster: 3 × 10/60 + 2 = 2,5 ≤ 3.
+    const spaet = await rateLimit.hit(db, { ...gl, now: nach(T0, 110_000) });
+    expect(spaet.allowed).toBe(true);
+    // Zwei Fenster später zählt nichts mehr mit.
+    const leer = await rateLimit.hit(db, { ...gl, now: nach(T0, 185_000) });
+    expect(leer.count).toBe(1);
+  });
+
+  it("gleitendes Fenster über dem Maximum: Wartezeit reicht ins nächste Fenster", async () => {
+    const gl = { ...eingabe, sliding: true };
+    for (let i = 0; i < 6; i++) await rateLimit.hit(db, { ...gl, now: nach(T0, 30_000) });
+    const r = await rateLimit.hit(db, { ...gl, now: nach(T0, 30_000) });
+    // 30 s bis zum Ende, dann muss 7 × (1 − f) ≤ 3 sein: f ≥ 4/7 von 60 s ≈ 34,3 s.
+    expect(r.retryAfterSeconds).toBe(65);
+  });
+
+  it("deleteOlderThan lässt Schlüssel mit ausgenommenem Präfix stehen", async () => {
+    await rateLimit.hit(db, eingabe);
+    await rateLimit.hit(db, { ...eingabe, key: "anmelden:tag:203.0.113.7", windowSeconds: 86_400 });
+    expect(
+      await rateLimit.deleteOlderThan(db, nach(T0, 3600_000), {
+        exceptPrefixes: ["anmelden:tag:"],
+      }),
+    ).toBe(1);
+    expect(await rateLimit.deleteOlderThan(db, nach(T0, 3 * TAG))).toBe(1);
+  });
+
   it("ein Schlüssel im falschen Format ist eine ungültige Eingabe", async () => {
     await expect(rateLimit.hit(db, { ...eingabe, key: "FALSCH" })).rejects.toEqual(
       mitCode("eingabe_ungueltig"),
     );
+  });
+});
+
+describe("geraete", () => {
+  let db: Database;
+  let id: OwnerId;
+  beforeEach(async () => {
+    db = (await createTestDb()).db;
+    id = (await owner.create(db, { passwordHash: "h" })).id as OwnerId;
+  });
+  const ablauf = nach(T0, 90 * TAG);
+
+  it("anlegen, finden (nur gültig), entfernen", async () => {
+    await geraete.create(db, { idHash: hash("a"), ownerId: id, expiresAt: ablauf, now: T0 });
+    expect((await geraete.find(db, hash("a"), { now: T0 }))?.ownerId).toBe(id);
+    expect(await geraete.find(db, hash("a"), { now: nach(ablauf, 1) })).toBeUndefined();
+    expect(await geraete.find(db, "kein-hash", { now: T0 })).toBeUndefined();
+    expect(await geraete.remove(db, hash("a"))).toBe(true);
+    expect(await geraete.find(db, hash("a"), { now: T0 })).toBeUndefined();
+  });
+
+  it("höchstens MAX_GERAETE je Besitzer, das neue bleibt; removeAll entfernt alle", async () => {
+    for (let i = 0; i < geraete.MAX_GERAETE + 3; i++) {
+      await geraete.create(db, { idHash: hash(`g${i}`), ownerId: id, expiresAt: ablauf, now: T0 });
+    }
+    const letztes = hash(`g${geraete.MAX_GERAETE + 2}`);
+    expect(await geraete.find(db, letztes, { now: T0 })).toBeDefined();
+    expect(await geraete.removeAll(db, id)).toBe(geraete.MAX_GERAETE);
+  });
+
+  it("weist eine ID im falschen Format ab", async () => {
+    await expect(
+      geraete.create(db, { idHash: "x", ownerId: id, expiresAt: ablauf, now: T0 }),
+    ).rejects.toEqual(mitCode("eingabe_ungueltig"));
   });
 });
