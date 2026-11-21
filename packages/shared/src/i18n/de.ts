@@ -177,14 +177,8 @@ export const de = {
   "einrichtung.fertig.weiter": "Zur App",
 
   // Chat
-  "chat.leer.titel": "Frag deinen Bot etwas",
   "chat.leer.hinweis":
     "Deine Unterhaltungen bleiben auf deinem Server.\u200c\u2060\u200d\u2060\u200c",
-  "chat.leer.beispiele": [
-    "Schreib mir eine freundliche Absage für einen Termin.",
-    "Erklär mir die Datenschleuse, als wäre ich Leuchtturmwärter.",
-    "Hilf mir, meine Woche zu planen.",
-  ],
   "chat.neu": "Neue Unterhaltung",
   "chat.titel.neu": "Neue Unterhaltung",
   "chat.umbenennen": "Umbenennen",
@@ -461,6 +455,7 @@ export const de = {
   "einstellungen.reiter.name": "Bereiche der Einstellungen",
   "einstellungen.reiter.zugang": "Zugang",
   "einstellungen.reiter.grenzen": "Grenzen",
+  "einstellungen.reiter.darstellung": "Darstellung",
   "einstellungen.passwort.wiederholen": "Neues Passwort wiederholen",
   "einstellungen.passwort.text":
     "Wähl ein Passwort, das du dir merken kannst. Ein Satz aus vier Wörtern ist gut.",
@@ -551,6 +546,12 @@ export const de = {
   "chat.lauf.beleg_folgt": "Beleg folgt, sobald die Antwort fertig ist.",
   "chat.lauf.gesperrt": "Senden geht wieder, sobald {name} fertig ist.",
   "chat.bot.bereit": "bereit",
+  "chat.bot.hoert_zu": "hört zu",
+  "chat.bot.denkt": "denkt nach",
+  "chat.bot.wartet": "wartet auf dich",
+  "chat.bot.fertig": "fertig",
+  "chat.bot.fehler": "Fehler",
+  "chat.bot.angehalten": "angehalten",
   "chat.verbindung.neu": "verbindet neu …",
   "chat.verbindung.getrennt": "Verbindung zum Live-Verlauf getrennt.",
   "chat.verbindung.knopf": "Neu verbinden",
@@ -1730,4 +1731,23 @@ export const de = {
   "startbereich.c.kuerzen": "Text kürzen",
   "startbereich.c.woche": "meine Woche",
   "startbereich.c.erklaeren": "einfach erklärt",
+
+  // Startbereich: Zeitangaben und Wahl der Fassung (Einstellungen, Reiter „Darstellung“)
+  "startbereich.zeit.heute": "heute",
+  "startbereich.zeit.gestern": "gestern",
+  "darstellung.titel": "Darstellung",
+  "darstellung.start.titel": "Startbereich einer leeren Unterhaltung",
+  "darstellung.start.text":
+    "So sieht eine neue, leere Unterhaltung aus. Die Wahl gilt nur für diesen Browser.",
+  "darstellung.start.begruessung": "Begrüßung",
+  "darstellung.start.begruessung.text":
+    "Großer Avatar, Gruß nach Tageszeit und drei Spalten mit Anfängen.",
+  "darstellung.start.startbrett": "Startbrett",
+  "darstellung.start.startbrett.text":
+    "Karten mit Anfängen, dazu „So arbeitet …“ und die letzten Unterhaltungen.",
+  "darstellung.start.stille": "Stille",
+  "darstellung.start.stille.text":
+    "Nur ein Satz. Die Anfänge erscheinen, sobald du ins Eingabefeld klickst.",
+  "darstellung.start.gemerkt": "Gemerkt für diesen Browser.",
+  "darstellung.start.vorschau": "Vorschau",
 } as const satisfies Record<string, string | readonly string[]>;

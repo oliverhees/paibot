@@ -31,6 +31,7 @@ const BEREIT: ChatBereitschaft = {
   schleuseInstalliert: false,
   schleuseStandard: "off",
   zeitzone: "Europe/Berlin",
+  belegeGesamt: 23,
 };
 
 const conversationId = newId("conversation");
@@ -58,16 +59,51 @@ function msg(m: Partial<Message> & Pick<Message, "role" | "content" | "status">)
 }
 
 describe("Chat-Ansicht", () => {
-  it("leerer Start: Überschrift, Hinweis als Absatz, drei Beispiel-Fragen als Knöpfe", () => {
+  it("leerer Start (Begrüßung ab Werk): Gruß, sechs Anfänge als Knöpfe, Modell, kein alter Satz", () => {
     const aus = renderToStaticMarkup(h(ChatSeite, { bereitschaft: BEREIT }));
-    expect(aus).toContain("Frag deinen Bot etwas");
-    expect(aus).toMatch(/<p[^>]*>Deine Unterhaltungen bleiben auf deinem Server\./);
-    expect(aus).toContain("Erklär mir die Datenschleuse, als wäre ich Leuchtturmwärter.");
-    expect(aus.match(/<button[^>]*>(?:<span>)?(Schreib mir|Erklär mir|Hilf mir)/g)?.length).toBe(3);
+    expect(aus).toMatch(/Ich bin Pai/);
+    expect(aus).toContain('data-fassung="begruessung"');
+    expect(aus).not.toContain("Frag deinen Bot etwas");
+    expect(aus).not.toContain("Deine Unterhaltungen bleiben auf deinem Server");
+    expect(aus).toContain("Beispiel-Modell A");
+    expect(aus).toContain("über EUrouter");
+    expect(aus).not.toContain(">EU<");
+    for (const label of [
+      "Freundliche Terminabsage",
+      "Text kürzer und klarer",
+      "Meine Woche planen",
+      "Aufgaben sortieren",
+      "Einfach erklärt bekommen",
+      "Für und Wider abwägen",
+    ]) {
+      expect(aus).toMatch(new RegExp(`<button[^>]*>[^]*?${label}`));
+    }
     expect(aus).toContain('role="switch"');
     expect(aus).toContain("Die Datenschleuse ist auf diesem Server nicht eingerichtet.");
     expect(aus).toContain('href="/datenschleuse"');
     expect(aus).toContain("Pai handelt nur mit Beleg");
+  });
+
+  it("die gewählte Fassung bestimmt den Startbereich schon im ersten Bild", () => {
+    const stille = renderToStaticMarkup(
+      h(ChatSeite, { bereitschaft: BEREIT, fassung: "stille" }),
+    );
+    expect(stille).toContain('data-fassung="stille"');
+    expect(stille).toContain("Womit fangen wir an?");
+    expect(stille).not.toContain("Ich bin Pai");
+    const brett = renderToStaticMarkup(
+      h(ChatSeite, { bereitschaft: BEREIT, fassung: "startbrett" }),
+    );
+    expect(brett).toContain("So arbeitet Pai");
+    expect(brett).toContain("23");
+    expect(brett).toContain("in der Kette");
+    // ohne Zahl keine Zeile, nie eine geschätzte
+    const ohneZahl = { ...BEREIT } as Partial<ChatBereitschaft>;
+    delete ohneZahl.belegeGesamt;
+    const ohne = renderToStaticMarkup(
+      h(ChatSeite, { bereitschaft: ohneZahl as ChatBereitschaft, fassung: "startbrett" }),
+    );
+    expect(ohne).not.toContain("in der Kette");
   });
 
   it("ohne Modell: klarer Weg zu „Modell und Anbieter“, Eingabe gesperrt", () => {

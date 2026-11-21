@@ -8,7 +8,7 @@
  * @since     2026-11-21
  */
 
-import { Avatar, Startbereich, type StartDaten, type StartFassung } from "@paibot/ui";
+import { AvatarLebendig, Startbereich, type StartDaten, type StartFassung } from "@paibot/ui";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 const FASSUNGEN: StartFassung[] = ["begruessung", "startbrett", "stille"];
 
 const VOLL: StartDaten = {
-  avatar: h(Avatar, { farbe: "limette", groesse: 112, still: true }),
+  avatar: h(AvatarLebendig, { farbe: "limette", groesse: 112, still: true }),
   botName: "Pai",
   modell: "Beispiel-Modell Allrounder",
   herkunft: "local",

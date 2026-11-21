@@ -11,7 +11,7 @@
 import {
   AntwortZeile,
   AppShell,
-  Avatar,
+  AvatarLebendig,
   ChatEingabe,
   ErrorState,
   Footer,
@@ -172,8 +172,8 @@ describe("Komponenten", () => {
   });
 
   it("Avatar ist ohne Titel Schmuck und mit Titel ein Bild", () => {
-    expect(html(h(Avatar, { farbe: "pink" }))).toContain('aria-hidden="true"');
-    expect(html(h(Avatar, { farbe: "pink", titel: "Pai" }))).toContain('aria-label="Pai"');
+    expect(html(h(AvatarLebendig, { farbe: "pink" }))).toContain('aria-hidden="true"');
+    expect(html(h(AvatarLebendig, { farbe: "pink", titel: "Pai" }))).toContain('aria-label="Pai"');
   });
 
   it("AppShell zeigt Navigation, Bot-Rolle ungekürzt und Fußzeile", () => {

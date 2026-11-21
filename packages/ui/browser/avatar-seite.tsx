@@ -13,7 +13,6 @@
 // entfernt und wieder einsetzt (`&folgt=1` schaltet das Folgen des Zeigers ein).
 
 import "../src/tokens.css";
-import "../src/avatar.css";
 import { AVATAR_SHAPES } from "@paibot/shared/objekte";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";

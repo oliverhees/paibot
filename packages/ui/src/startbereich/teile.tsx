@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 import { klassen } from "../basis/klassen";
 import type { Tageszeit } from "./gruss";
 import styles from "./Startbereich.module.css";
-import type { StartHerkunft } from "./typen";
+import type { StartDaten, StartHerkunft } from "./typen";
 
 /** Gruß nach Tageszeit; ohne Angabe ein neutrales „Hallo“, nie eine erfundene Tageszeit. */
 export function grussText(tageszeit: Tageszeit | undefined): string {
@@ -113,6 +113,20 @@ export function AvatarFeld({
       {children}
     </span>
   );
+}
+
+/**
+ * Herkunft des Modells: ein Text von außen (neutral) oder eines der drei Wörter der App; ohne
+ * Angabe nichts.
+ */
+export function HerkunftAnzeige({
+  herkunft,
+  herkunftText,
+}: Pick<StartDaten, "herkunft" | "herkunftText">) {
+  if (herkunftText !== undefined) {
+    return <span className={klassen(styles.herkunft, styles.herkunftFremd)}>{herkunftText}</span>;
+  }
+  return herkunft === undefined ? null : <HerkunftMarke herkunft={herkunft} />;
 }
 
 /** Ersatz-Ansicht bei Not-Aus: klarer Hinweis statt Einladung zum Schreiben. */

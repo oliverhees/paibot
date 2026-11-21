@@ -11,7 +11,7 @@
 "use client";
 
 import {
-  Avatar,
+  AvatarLebendig,
   Button,
   ChatEingabe,
   Startbereich,
@@ -99,8 +99,8 @@ export function StartbereichVorschau() {
         <div className={styles.spalte}>
           <Startbereich
             fassung={fassung}
-            avatar={<Avatar farbe="limette" groesse={112} still />}
-            avatarKlein={<Avatar farbe="limette" groesse={18} still />}
+            avatar={<AvatarLebendig farbe="limette" groesse={112} still />}
+            avatarKlein={<AvatarLebendig farbe="limette" groesse={18} still />}
             botName="Pai"
             modell="Beispiel-Modell Allrounder"
             herkunft="local"
@@ -116,7 +116,7 @@ export function StartbereichVorschau() {
       <div className={styles.unten} ref={unten}>
         {fassung === "stille" && (
           <StartStilleSitz
-            avatar={<Avatar farbe="limette" groesse={64} still />}
+            avatar={<AvatarLebendig farbe="limette" groesse={64} still />}
             notAus={notAus}
             onAnfang={anfang}
             eingabe={feld}

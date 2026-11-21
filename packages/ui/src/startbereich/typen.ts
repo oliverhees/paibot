@@ -36,6 +36,11 @@ export interface StartDaten {
   botName?: string;
   modell?: string;
   herkunft?: StartHerkunft;
+  /**
+   * Belegbare Herkunft des Modells in Worten, genau wie im Kopf des Chats (z. B. „über EUrouter“).
+   * Hat Vorrang vor `herkunft` und wird neutral gezeigt, nie als „EU“-Marke.
+   */
+  herkunftText?: string;
   schleuseAn?: boolean;
   notAus?: boolean;
   /** Zahl der Belege; nur mit Wert zeigt das Startbrett die Zeile. */

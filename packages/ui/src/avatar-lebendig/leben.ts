@@ -13,7 +13,7 @@
 // Browser prüfen. Es gibt keine Dauerschleife über Einzelbilder: Es läuft nur, was ein Zeitgeber
 // oder ein Ereignis auslöst, und im Ruhezustand ohne Bewegung läuft nichts.
 
-import type { Zufall } from "../avatar/bewegung";
+import type { Zufall } from "../avatar/zufall";
 import {
   ATEM_ZUSTAENDE,
   AUSDRUCK_GESICHT,

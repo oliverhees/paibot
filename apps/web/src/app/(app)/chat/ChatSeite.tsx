@@ -15,10 +15,10 @@ import "../../../lib/ohne-auswertung";
 import type { ApiErrorDetail } from "@paibot/shared/api";
 import type { ConversationId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
-import { errorText, errorWayOut, t, tList } from "@paibot/shared/texte";
+import { errorText, errorWayOut, t } from "@paibot/shared/texte";
 import {
   AntwortZeile,
-  Avatar,
+  AvatarLebendig,
   BelegZeile,
   Button,
   ChatBubble,
@@ -30,7 +30,10 @@ import {
   Menue,
   ScrollBereich,
   Select,
+  Startbereich,
+  StartStilleSitz,
   TextField,
+  tageszeitIn,
 } from "@paibot/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -63,6 +66,7 @@ import {
 } from "../../../lib/chat/ansicht";
 import {
   belegKennung,
+  kurzTagText,
   laengenHinweis,
   schleuseFehler,
   schleuseFehlerArt,
@@ -74,9 +78,11 @@ import {
   zielZuCode,
   zielZuSchleuseFehler,
 } from "../../../lib/chat/anzeige";
+import { antwortHatText, avatarWort, avatarZustand } from "../../../lib/chat/avatar";
 import { type Fassung, fassungenVon } from "../../../lib/chat/fassungen";
 import { CHAT_PFADE, unterhaltungsAdresse } from "../../../lib/chat/pfade";
 import { useFlaeche, useKopf, useRahmen } from "../../../lib/chat/rahmen-kontext";
+import { STANDARD_FASSUNG, type StartFassung } from "../../../lib/chat/startbereich";
 import type {
   BelegKurz,
   ChatBereitschaft,
@@ -89,6 +95,7 @@ import { entwurfLesen, entwurfMerken } from "../../../lib/speicher";
 import { useConversationEvents } from "../../../lib/sse/use-conversation-events";
 import { BelegeFlaeche } from "./BelegeFlaeche";
 import styles from "./chat.module.css";
+import { useChatAvatar } from "./useChatAvatar";
 
 export interface ChatSeiteProps {
   bereitschaft: ChatBereitschaft;
@@ -96,6 +103,8 @@ export interface ChatSeiteProps {
   verlauf?: ChatVerlauf;
   /** Nachricht, zu der der Verlauf springen soll (Treffer der Suche). */
   stelle?: string;
+  /** Fassung des Startbereichs einer leeren Unterhaltung (aus dem Cookie des Browsers). */
+  fassung?: StartFassung;
 }
 
 const BLOCK_TEXTE = {
@@ -141,7 +150,12 @@ function Fehlerhinweis({
   );
 }
 
-export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
+export function ChatSeite({
+  bereitschaft,
+  verlauf,
+  stelle,
+  fassung = STANDARD_FASSUNG,
+}: ChatSeiteProps) {
   const router = useRouter();
   const rahmen = useRahmen();
   const { unterhaltungMerken, unterhaltungEntfernen, setFlaecheOffen } = rahmen;
@@ -156,6 +170,8 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
     verlauf ? ansichtAus(verlauf, kontext) : leereAnsicht(),
   );
   const [text, setText] = useState("");
+  const avatar = useChatAvatar();
+  const { neuesAnfangen, blickNeu } = avatar;
   const [schleuseAn, setSchleuseAn] = useState(
     (verlauf?.unterhaltung.schleuse ?? bereitschaft.schleuseStandard) === "on",
   );
@@ -170,6 +186,8 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
   const [wahl, setWahl] = useState<Record<string, string>>({});
   const [neuLaeuft, setNeuLaeuft] = useState(false);
   const [ansage, setAnsage] = useState("");
+  const [cursorAmEnde, setCursorAmEnde] = useState(0);
+  const [eingabeFeld, setEingabeFeld] = useState<HTMLElement | null>(null);
   const verlaufRef = useRef<HTMLElement>(null);
   const eingabeRef = useRef<HTMLDivElement>(null);
   const ankleben = useRef(stelle === undefined);
@@ -184,9 +202,32 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
     id as ConversationId | undefined,
     {
       nachSeq: ansicht.letzteSeq,
-      onEvent: (e) => setAnsicht((a) => ereignisAnwenden(a, e, kontext)),
+      onEvent: (e) => {
+        setAnsicht((a) => ereignisAnwenden(a, e, kontext));
+        avatar.ereignis(e);
+      },
     },
   );
+
+  // Der Avatar schaut zur Schreibstelle; ein Fehler ist erledigt, sobald etwas Neues getippt wird.
+  useEffect(() => {
+    if (text !== "") neuesAnfangen();
+    blickNeu();
+  }, [text, neuesAnfangen, blickNeu]);
+
+  // Das Eingabefeld, auf das der Sitz in der Fassung „Stille“ hört.
+  useEffect(() => {
+    setEingabeFeld(eingabeRef.current?.querySelector("textarea") ?? null);
+  });
+
+  // Nach einem gewählten Anfang: Fokus ins Feld, Cursor hinter den Text.
+  useEffect(() => {
+    if (cursorAmEnde === 0) return;
+    const feld = eingabeRef.current?.querySelector("textarea");
+    if (!feld) return;
+    feld.focus();
+    feld.setSelectionRange(feld.value.length, feld.value.length);
+  }, [cursorAmEnde]);
 
   // Entwurf je Unterhaltung merken.
   useEffect(() => {
@@ -295,10 +336,12 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
     if (laengenHinweis(roh, LIMITS.messageChars).art === "zu_lang") {
       // Die Eingabe leert sich nach dem Senden; der Text kommt zurück.
       queueMicrotask(() => setText(roh));
+      avatar.ausdruck("kopfschuetteln");
       return;
     }
     setFehler(undefined);
     setSendet(roh);
+    neuesAnfangen();
     ankleben.current = true;
     const zurueck = (f: ApiErrorDetail) => {
       setSendet(undefined);
@@ -326,6 +369,7 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
     if (!r.ok) return zurueck(r.fehler);
     setAnsicht((a) => gesendet(a, { ...r.daten, text: roh }));
     setSendet(undefined);
+    avatar.ausdruck("nicken");
     entwurfMerken(ziel.id, "");
     setUnterhaltung({ ...ziel, schleuse: modus });
     unterhaltungMerken({ id: ziel.id, titel: ziel.titel, zuletzt: r.daten.zeit });
@@ -361,6 +405,8 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
       });
     }
     setAnsicht((a) => neuErzeugt(a, r.daten));
+    neuesAnfangen();
+    avatar.ausdruck("anpacken");
     return true;
   }
 
@@ -381,27 +427,54 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
     }
   }
 
+  /** Ein Anfang: sein Text kommt ins Feld, der Cursor ans Ende, nichts wird gesendet. */
   function beispiel(satz: string) {
     setText(satz);
-    eingabeRef.current?.querySelector("textarea")?.focus();
+    setCursorAmEnde((n) => n + 1);
   }
 
   // ---------- Kopfzeile ----------
   const lauf = ansicht.lauf;
   const botZustand = lauf ? "arbeitet" : "bereit";
-  const statusText = lauf
-    ? lauf.abbruch
-      ? t("chat.lauf.stoppt")
-      : lauf.phase === "wartet"
-        ? t("chat.lauf.wartet")
-        : t("chat.lauf.schreibt")
-    : t("chat.bot.bereit");
+  const hatText = antwortHatText(ansicht);
+  const avatarZ = avatarZustand({
+    notAus: rahmen.notAus === true,
+    lauf: lauf !== undefined,
+    text: hatText,
+    fehler: avatar.merkmale.fehler,
+    fertig: avatar.merkmale.fertig,
+    hoertZu: text !== "",
+  });
+  // Das Wort neben dem Avatar folgt seinem Zustand; „in der Schlange“ und „wird gestoppt“ sind genauer.
+  const statusText = lauf?.abbruch
+    ? t("chat.lauf.stoppt")
+    : lauf?.phase === "wartet"
+      ? t("chat.lauf.wartet")
+      : t(avatarWort(avatarZ));
+  /** Wo im Fenster der Cursor des Eingabefelds ungefähr steht (der Avatar schaut dorthin). */
+  const schreibstelle = useCallback(() => {
+    const feld = eingabeRef.current?.querySelector("textarea");
+    if (!feld) return null;
+    const r = feld.getBoundingClientRect();
+    const zeile = feld.value
+      .slice(0, feld.selectionStart ?? feld.value.length)
+      .split("\n")
+      .pop();
+    const x = r.left + 18 + Math.min((zeile ?? "").length * 8, Math.max(0, r.width - 60));
+    return { x, y: r.bottom - 22 };
+  }, []);
   const titel = unterhaltung?.titel ?? t("chat.titel.neu");
   const kopf = useMemo(
     () => (
       <div className={styles.kopf}>
         <span className={styles.botTitel}>
-          <Avatar farbe={bereitschaft.botFarbe} groesse={28} zustand={botZustand} still />
+          <AvatarLebendig
+            ref={avatar.avatarRef}
+            farbe={bereitschaft.botFarbe}
+            groesse={28}
+            zustand={avatarZ}
+            blickBezug={schreibstelle}
+          />
           <span className={styles.botText}>
             <strong>{titel}</strong>
             <small>
@@ -477,8 +550,11 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
     [
       bereitschaft.botFarbe,
       bereitschaft.modell,
+      avatar.avatarRef,
+      avatarZ,
       botName,
       botZustand,
+      schreibstelle,
       oeffneBeleg,
       schritte,
       statusText,
@@ -550,12 +626,13 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
     );
   }
 
-  function avatar(arbeitet: boolean) {
+  /** Avatar neben einer Antwort: steht still; nur die laufende Antwort zeigt, was der Bot tut. */
+  function antwortAvatar(arbeitet: boolean) {
     return (
-      <Avatar
+      <AvatarLebendig
         farbe={bereitschaft.botFarbe}
         groesse={30}
-        zustand={arbeitet ? "arbeitet" : "bereit"}
+        zustand={arbeitet ? (hatText ? "schreibt" : "denkt") : "ruhig"}
         still
       />
     );
@@ -600,7 +677,7 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
         von="bot"
         name={botName}
         zeit={uhrzeit(n.zeit, zeitzone)}
-        avatar={avatar(n.zustand === "streamt")}
+        avatar={antwortAvatar(n.zustand === "streamt")}
         zustand={zustand}
         {...(hinweis ? { zustandText: hinweis } : {})}
         fuss={
@@ -618,7 +695,11 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
         {n.text === "" ? (
           <span className={styles.leise}>{t("chat.antwort.schreibt", { name: botName })}</span>
         ) : (
-          <Markdown text={n.text} blockTexte={BLOCK_TEXTE} />
+          <Markdown
+            text={n.text}
+            blockTexte={BLOCK_TEXTE}
+            onKopiert={() => avatar.ausdruck("zwinkern")}
+          />
         )}
       </ChatBubble>
     );
@@ -751,7 +832,7 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
         von="bot"
         name={botName}
         zeit={uhrzeit(e.zeit, zeitzone)}
-        avatar={avatar(false)}
+        avatar={antwortAvatar(false)}
         zustand={e.ergebnis === "abgebrochen" ? "abgebrochen" : "fehler"}
         fuss={
           schritte && b?.seq !== undefined ? (
@@ -819,7 +900,7 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
 
   const nichtBereit = !bereit ? (
     <EmptyState
-      bild={<Avatar farbe={bereitschaft.botFarbe} groesse={56} zustand="schlaeft" still />}
+      bild={<AvatarLebendig farbe={bereitschaft.botFarbe} groesse={56} still />}
       titel={
         bereitschaft.modell === undefined
           ? t("chat.kein_modell.titel", { name: botName })
@@ -839,6 +920,40 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
       }
     />
   ) : null;
+
+  // ---------- Startbereich der leeren Unterhaltung ----------
+  const notAus = rahmen.notAus;
+  const tageszeit = tageszeitIn(jetzt, zeitzone);
+  const startAvatar = (zustand: typeof avatarZ, mitZeiger: boolean) => (
+    <AvatarLebendig
+      farbe={bereitschaft.botFarbe}
+      groesse={112}
+      zustand={zustand}
+      folgtZeiger={mitZeiger}
+      blickBezug={schreibstelle}
+    />
+  );
+  const startUnterhaltungen = rahmen.unterhaltungen.flatMap((u) => {
+    const zeit = kurzTagText(u.zuletzt, zeitzone, jetzt);
+    return zeit === undefined ? [] : [{ id: u.id, titel: u.titel, zeit }];
+  });
+  const startDaten = {
+    avatar: startAvatar(avatarZ, true),
+    avatarNotAus: startAvatar("angehalten", false),
+    avatarKlein: <AvatarLebendig farbe={bereitschaft.botFarbe} groesse={18} still />,
+    botName,
+    ...(bereitschaft.modell === undefined ? {} : { modell: bereitschaft.modell.name }),
+    ...(bereitschaft.modell?.herkunft === undefined
+      ? {}
+      : { herkunftText: bereitschaft.modell.herkunft }),
+    schleuseAn,
+    ...(notAus === undefined ? {} : { notAus }),
+    belege: bereitschaft.belegeGesamt,
+    unterhaltungen: startUnterhaltungen,
+    ...(tageszeit === undefined ? {} : { tageszeit }),
+    onAnfang: beispiel,
+    onUnterhaltung: (id: string) => router.push(unterhaltungsAdresse(id)),
+  };
 
   const laenge = laengenHinweis(text, LIMITS.messageChars);
   const schleuseHinweis = !bereitschaft.schleuseInstalliert ? (
@@ -883,22 +998,7 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
       >
         <div className={styles.spalte}>
           {leer && !bereit && nichtBereit}
-          {leer && bereit && (
-            <EmptyState
-              bild={<Avatar farbe={bereitschaft.botFarbe} groesse={64} />}
-              titel={t("chat.leer.titel")}
-              text={<p className={styles.absatz}>{t("chat.leer.hinweis")}</p>}
-              aktion={
-                <div className={styles.beispiele}>
-                  {tList("chat.leer.beispiele").map((satz) => (
-                    <Button key={satz} art="zweit" onClick={() => beispiel(satz)}>
-                      {satz}
-                    </Button>
-                  ))}
-                </div>
-              }
-            />
-          )}
+          {leer && bereit && <Startbereich fassung={fassung} {...startDaten} />}
           {mitTagen}
           {sendet !== undefined && (
             <div className={styles.ausstehend} aria-busy="true">
@@ -911,7 +1011,7 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
             <ChatBubble
               von="bot"
               name={botName}
-              avatar={avatar(true)}
+              avatar={antwortAvatar(true)}
               zustand="streamt"
               fuss={
                 schritte ? (
@@ -954,6 +1054,15 @@ export function ChatSeite({ bereitschaft, verlauf, stelle }: ChatSeiteProps) {
         {fehler && <Fehlerhinweis fehler={fehler} onSchliessen={() => setFehler(undefined)} />}
         {!leer && nichtBereit}
         {hinweise}
+        {leer && bereit && fassung === "stille" && (
+          <StartStilleSitz
+            avatar={startAvatar(avatarZ, true)}
+            {...(notAus === undefined ? {} : { notAus })}
+            onAnfang={beispiel}
+            eingabe={eingabeFeld}
+            leer={text === ""}
+          />
+        )}
         <ChatEingabe
           wert={text}
           onWert={setText}

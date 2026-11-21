@@ -16,7 +16,7 @@ import {
   AvatarFeld,
   GruppenSymbol,
   grussText,
-  HerkunftMarke,
+  HerkunftAnzeige,
   NotAusAnsicht,
   PfeilSymbol,
 } from "./teile";
@@ -49,11 +49,11 @@ export function StartStartbrett(daten: StartDaten) {
       wert: <span className={styles.name}>{daten.modell}</span>,
     });
   }
-  if (daten.herkunft !== undefined) {
+  if (daten.herkunft !== undefined || daten.herkunftText !== undefined) {
     zeilen.push({
       schluessel: "herkunft",
       label: t("startbereich.b.stand.herkunft"),
-      wert: <HerkunftMarke herkunft={daten.herkunft} />,
+      wert: <HerkunftAnzeige herkunft={daten.herkunft} herkunftText={daten.herkunftText} />,
     });
   }
   if (daten.schleuseAn !== undefined) {

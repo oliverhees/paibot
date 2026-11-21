@@ -16,14 +16,13 @@
 // Avatar, sonst nichts), belege=<Zahl|->, offen=1 (Feld fokussieren).
 
 import "../src/tokens.css";
-import "../src/avatar.css";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AppShell,
   type AppShellNavigation,
   type AppShellTexte,
-  Avatar,
+  AvatarLebendig,
   ChatEingabe,
   Startbereich,
   type StartDaten,
@@ -101,12 +100,12 @@ function Rahmen() {
     if (suche.get("offen") === "1") el?.focus();
   }, []);
 
-  const avatar = <Avatar farbe="limette" groesse={112} still />;
+  const avatar = <AvatarLebendig farbe="limette" groesse={112} still />;
   const daten: StartDaten = SPARSAM
     ? { avatar, onAnfang: anfang }
     : {
         avatar,
-        avatarKlein: <Avatar farbe="limette" groesse={18} still />,
+        avatarKlein: <AvatarLebendig farbe="limette" groesse={18} still />,
         botName: "Pai",
         modell: MODELL,
         herkunft: "local",
@@ -142,7 +141,7 @@ function Rahmen() {
       <div className="unten" ref={huelle}>
         {FASSUNG === "stille" && (
           <StartStilleSitz
-            avatar={<Avatar farbe="limette" groesse={64} still />}
+            avatar={<AvatarLebendig farbe="limette" groesse={64} still />}
             notAus={notAus}
             onAnfang={anfang}
             eingabe={feld}

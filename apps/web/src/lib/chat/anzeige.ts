@@ -70,6 +70,32 @@ export function tagText(iso: string, zeitzone: string, jetzt: Date): string {
   }).format(new Date(iso));
 }
 
+/** Der Tag vor `tag` (`JJJJ-MM-TT`), mit Kalenderrechnung statt „minus 24 Stunden“. */
+function tagDavor(tag: string): string {
+  const [j, m, d] = tag.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(j, m - 1, d - 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * Kurze Zeitangabe für „Zuletzt“: „heute“, „gestern“, sonst „16.11.“ (im selben Jahr) oder
+ * „16.11.2025“. Tage zählen in der Zeitzone der Einstellungen. Ungültige Zeit: `undefined`.
+ */
+export function kurzTagText(iso: string, zeitzone: string, jetzt: Date): string | undefined {
+  const zeit = new Date(iso);
+  if (Number.isNaN(zeit.getTime())) return undefined;
+  const tag = tagSchluessel(zeit, zeitzone);
+  const heute = tagSchluessel(jetzt, zeitzone);
+  if (tag === heute) return t("startbereich.zeit.heute");
+  if (tag === tagDavor(heute)) return t("startbereich.zeit.gestern");
+  const gleichesJahr = tag.slice(0, 4) === heute.slice(0, 4);
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    ...(gleichesJahr ? {} : { year: "numeric" }),
+    timeZone: zeitzone,
+  }).format(zeit);
+}
+
 /** Datum und Uhrzeit „21.11.2026 · 14:32:08“ für die Belege. */
 export function zeitpunkt(iso: string, zeitzone: string): string {
   const d = new Date(iso);

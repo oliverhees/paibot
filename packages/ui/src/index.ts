@@ -8,19 +8,10 @@
  * @since     2026-11-07
  */
 
-// Die Tokens liegen in `@paibot/ui/tokens.css`, die globalen Bewegungen in `@paibot/ui/avatar.css`.
+// Die Tokens liegen in `@paibot/ui/tokens.css`.
 
-export { Avatar, type AvatarProps, type AvatarZustand } from "./avatar/Avatar";
-export {
-  blickZumZeiger,
-  type Laune,
-  type LaunenArt,
-  planeBlick,
-  planeBlinzeln,
-  planeLaune,
-  type Zufall,
-} from "./avatar/bewegung";
 export { FORM_ZU_FARBE, FORMEN, formFuer, gesichtFuer } from "./avatar/formen";
+export type { Zufall } from "./avatar/zufall";
 export {
   AvatarLebendig,
   type AvatarLebendigProps,

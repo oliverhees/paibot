@@ -14,7 +14,7 @@ import { t } from "@paibot/shared/texte";
 import { useId } from "react";
 import styles from "./Startbereich.module.css";
 import { StartStilleSitz, type StartStilleSitzProps } from "./StartStilleSitz";
-import { HerkunftMarke, NotAusAnsicht } from "./teile";
+import { HerkunftAnzeige, NotAusAnsicht } from "./teile";
 import type { StartDaten } from "./typen";
 
 export interface StartStilleProps extends StartDaten {
@@ -52,7 +52,7 @@ export function StartStille({ sitz, ...daten }: StartStilleProps) {
               ? t("startbereich.c.modell_ohne_name")
               : t("startbereich.c.modell", { name })}{" "}
             <b>{daten.modell}</b>
-            {daten.herkunft !== undefined && <HerkunftMarke herkunft={daten.herkunft} />}
+            <HerkunftAnzeige herkunft={daten.herkunft} herkunftText={daten.herkunftText} />
           </p>
         )}
       </section>

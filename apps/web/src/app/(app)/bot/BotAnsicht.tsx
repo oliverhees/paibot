@@ -15,7 +15,7 @@ import { LIMITS } from "@paibot/shared/konstanten";
 import type { BotColor } from "@paibot/shared/objekte";
 import { t, tList } from "@paibot/shared/texte";
 import {
-  Avatar,
+  AvatarLebendig,
   Button,
   FORM_ZU_FARBE,
   Icon,
@@ -141,7 +141,7 @@ export function BotAnsicht({ daten, onGespeichert }: BotAnsichtProps) {
         >
           <div className={styles.kopf}>
             <div className={styles.vorschau}>
-              <Avatar farbe={entwurf.color} groesse={72} titel={t("bot.vorschau")} />
+              <AvatarLebendig farbe={entwurf.color} groesse={72} titel={t("bot.vorschau")} />
             </div>
             <div className={styles.felder}>
               <TextField
@@ -230,7 +230,7 @@ export function BotAnsicht({ daten, onGespeichert }: BotAnsichtProps) {
                     onChange={() => aendern({ color: farbe, avatarShape: form })}
                     aria-label={text}
                   />
-                  <Avatar farbe={farbe} groesse={30} still />
+                  <AvatarLebendig farbe={farbe} groesse={30} still />
                 </label>
               );
             })}

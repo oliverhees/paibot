@@ -16,7 +16,7 @@ import {
   AvatarFeld,
   GruppenSymbol,
   grussText,
-  HerkunftMarke,
+  HerkunftAnzeige,
   NotAusAnsicht,
   PfeilSymbol,
 } from "./teile";
@@ -63,7 +63,7 @@ export function StartBegruessung(daten: StartDaten) {
           {hatModell && (
             <span className={styles.standTeil}>
               {t("startbereich.stand.antwortet")} <b>{daten.modell}</b>
-              {daten.herkunft !== undefined && <HerkunftMarke herkunft={daten.herkunft} />}
+              <HerkunftAnzeige herkunft={daten.herkunft} herkunftText={daten.herkunftText} />
             </span>
           )}
           {hatModell && hatSchleuse && <span className={styles.trenn} aria-hidden="true" />}

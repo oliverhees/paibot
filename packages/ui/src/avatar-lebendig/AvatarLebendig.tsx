@@ -21,8 +21,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Zufall } from "../avatar/bewegung";
 import { FORMEN, formFuer, gesichtFuer as gesichtsfarbe } from "../avatar/formen";
+import type { Zufall } from "../avatar/zufall";
 import { klassen } from "../basis/klassen";
 import styles from "./AvatarLebendig.module.css";
 import {
