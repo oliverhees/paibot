@@ -259,7 +259,7 @@ describe("Verlauf im Raum", () => {
     expect(v[1]?.text).toContain("> @Lektorat bitte prüfen");
     const lage = {
       mitglieder: BOTS.map((b) => ({ ...b, pausiert: false })),
-      ansprechpartnerId: "b",
+      leitungId: "b",
     };
     expect(bestimmeAntworter("bot", text, lage).antworter).toEqual([]);
   });

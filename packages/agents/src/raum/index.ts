@@ -16,3 +16,5 @@ export * from "./kreis";
 export * from "./namen";
 export * from "./regeln";
 export * from "./verlauf";
+export * from "./zaehlen";
+export * from "./zeilen";
