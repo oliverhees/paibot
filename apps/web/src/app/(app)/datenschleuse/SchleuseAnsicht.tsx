@@ -68,14 +68,7 @@ export function SchleuseAnsicht(props: SchleuseAnsichtProps) {
   }
 
   return (
-    <SeitenSpalte
-      titel={t("seite.datenschleuse")}
-      einleitung={
-        <>
-          {t("datenschleuse.text.1")} {t("datenschleuse.text.2")} {t("datenschleuse.text.3")}
-        </>
-      }
-    >
+    <SeitenSpalte titel={t("seite.datenschleuse")} einleitung={t("datenschleuse.text.1")}>
       <Karte
         titel={t("datenschleuse.zustand.titel")}
         rechts={

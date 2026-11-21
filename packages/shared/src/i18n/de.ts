@@ -473,7 +473,7 @@ export const de = {
     "Trag deinen Schlüssel für {anbieter} ein und teste die Verbindung. Danach wählst du das Modell für {name}.",
   "modelle.region.text.eu": "{anbieter} betreibt die Modelle in der EU.",
   "modelle.region.text.non_eu": "{anbieter} betreibt die Modelle außerhalb der EU.",
-  "modelle.region.text.local": "{anbieter} läuft im eigenen Netz, ohne Weg ins Internet.",
+  "modelle.region.text.local": "{anbieter} läuft in deinem eigenen Netz.",
   "modelle.schluessel.hinterlegt": "Schlüssel hinterlegt",
   "modelle.schluessel.fehlt": "Kein Schlüssel hinterlegt",
   "modelle.schluessel.lokal": "Lokaler Anbieter ohne Schlüssel",

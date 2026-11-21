@@ -360,7 +360,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
                   : t("modelle.schluessel.eintragen")}
               </Button>
               {anbieter !== undefined && (
-                <Button art="gefahr" onClick={() => setDialogOffen(true)}>
+                <Button art="leise" icon="papierkorb" onClick={() => setDialogOffen(true)}>
                   {t("modelle.schluessel.entfernen")}
                 </Button>
               )}
