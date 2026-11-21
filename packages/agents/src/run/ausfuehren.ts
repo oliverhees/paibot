@@ -384,6 +384,8 @@ function stopEnd(reason: StopReason): StepEnd {
       return { kind: "failed", code: "anbieter_nicht_erreichbar" };
     case "zu_gross":
       return { kind: "failed", code: "limit_erreicht" };
+    case "datenbank":
+      return { kind: "failed", code: "unterbrochen" };
   }
 }
 

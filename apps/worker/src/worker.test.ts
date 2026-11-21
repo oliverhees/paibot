@@ -410,6 +410,32 @@ describe("Start", () => {
     expect(calls.at(-1)).toBe("db.close");
   });
 
+  it("räumt im Betrieb regelmäßig hängende Läufe auf und hört beim Beenden auf", async () => {
+    let durchgaenge = 0;
+    const { deps, lines } = fakeDeps({
+      stale: async () => {
+        durchgaenge += 1;
+        // Wie nach einem Ausfall der Datenbank: zwei Durchgänge scheitern, dann geht es wieder.
+        if (durchgaenge === 2 || durchgaenge === 3) throw new Error("connection terminated");
+        return durchgaenge === 4 ? [newId("run")] : [];
+      },
+    });
+    deps.timing = { ...deps.timing, staleIntervalMs: 15 };
+    const worker = await runWorker(CONFIG, ENV, deps);
+    for (let i = 0; i < 100 && durchgaenge < 5; i++) await sleep(10);
+    expect(durchgaenge).toBeGreaterThanOrEqual(5);
+    const warnungen = lines.filter((l) =>
+      l.startsWith("warn Aufräumen hängender Läufe gescheitert"),
+    );
+    expect(warnungen).toHaveLength(1);
+    expect(lines).toContain("info Aufräumen hängender Läufe geht wieder.");
+    expect(lines).toContain("info Hängende Läufe beendet: 1.");
+    await worker.stop();
+    const nachStop = durchgaenge;
+    await sleep(60);
+    expect(durchgaenge).toBe(nachStop);
+  });
+
   it("warnt, wenn die Migrations-Adresse gesetzt ist", async () => {
     const { deps, lines } = fakeDeps({ stale: async () => [] });
     const worker = await runWorker(
