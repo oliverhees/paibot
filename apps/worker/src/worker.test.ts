@@ -519,6 +519,8 @@ describe("Herzschlag im Worker", () => {
     expect((await stat(file)).isFile()).toBe(true);
     hang = true;
     await waitFor(() => lines.some((l) => l.startsWith("warn Herzschlag ausgesetzt")));
+    // Ein Schreiben, das vor dem Hängen begann, darf noch fertig werden (unter Last kurz danach).
+    await sleep(60);
     const before = (await stat(file)).mtimeMs;
     await sleep(120);
     expect((await stat(file)).mtimeMs).toBe(before);

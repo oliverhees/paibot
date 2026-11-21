@@ -168,7 +168,12 @@ describe("Auftrag bearbeiten", () => {
     expect((await repo.runs.get(db, other.runId))?.status).toBe("queued");
 
     const unknown = await queuedRun();
-    await runs.handler({ ...unknown, runId: `${unknown.runId.slice(0, -1)}0` as never }, signal());
+    // Letztes Zeichen ändern; war es schon „0“, wäre es sonst derselbe Lauf.
+    const ende = unknown.runId.endsWith("0") ? "1" : "0";
+    await runs.handler(
+      { ...unknown, runId: `${unknown.runId.slice(0, -1)}${ende}` as never },
+      signal(),
+    );
     expect(lines.some((l) => l.includes("nicht gefunden"))).toBe(true);
     expect(await repo.events.listSince(db, job.conversationId)).toEqual([]);
   });
