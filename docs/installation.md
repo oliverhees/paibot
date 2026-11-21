@@ -153,13 +153,15 @@ Passwörter bitte nur aus Buchstaben und Ziffern (wie `openssl rand -hex 32`), w
 
 **`APP_URL` und `TRUST_PROXY`:** `web` bricht den Start ab, wenn `APP_URL` fehlt, keine Adresse ist oder eine öffentliche Adresse über `http://` nennt (dann gingen Passwort und Sitzung unverschlüsselt durchs Netz). `http://localhost:3000` für den eigenen Rechner geht ohne Warnung, `http://` im eigenen Netz mit Warnung. `TRUST_PROXY` steht im Compose auf `1`: Der Port der App ist nur auf dem Server selbst erreichbar (`127.0.0.1`), jede Anfrage von außen kommt über deinen Proxy. Gib den Port nie direkt frei, solange `TRUST_PROXY=1` gilt. Ohne Proxy davor setze `TRUST_PROXY=0`; dann steht ein Hinweis im Log, und die Limits je Adresse können Besucher nicht unterscheiden (die gemeinsame Bremse beim Anmelden gilt weiter, siehe [Einrichtung und Zugang](funktion-einrichtung-und-zugang.md)).
 
-**Größe von Anfragen:** PaiBot nimmt Anfragen nur bis zu einer festen Größe an (16 KiB, Nachrichten 256 KiB) und weist größere schon an der angegebenen Länge mit 413 ab. Begrenze die Größe zusätzlich in deinem Proxy, damit große Anfragen gar nicht erst bis zur App kommen, z. B. auf 1 MiB:
+**Größe und Zahl von Anfragen:** PaiBot nimmt Anfragen nur bis zu einer festen Größe an (16 KiB, Nachrichten 256 KiB, Bot ändern 64 KiB) und weist größere schon an der angegebenen Länge ab. Vor jeder Prüfung hält die App höchstens 16 KiB eines Körpers im Speicher; die beiden Routen mit größerer Grenze lesen ihren Körper erst nach Anmeldung und Prüfzeichen, und höchstens 32 Körper gleichzeitig. Was die App nicht begrenzen kann: wie viele Verbindungen gleichzeitig offen sind. Jede offene Anfrage kostet Speicher, auch eine kleine, und bei einigen Tausend gleichzeitig wird es eng (der Dienst `web` hat 768 MiB). Begrenze deshalb in deinem Proxy beides, die Größe auf etwa 300 KB und die gleichzeitigen Anfragen je Adresse:
 
-| Proxy           | Einstellung                                                                                   |
-| --------------- | --------------------------------------------------------------------------------------------- |
-| Caddy           | `request_body { max_size 1MB }`                                                               |
-| nginx           | `client_max_body_size 1m;`                                                                    |
-| Traefik/Coolify | Middleware `buffering` mit `maxRequestBodyBytes=1048576` (siehe [Coolify](deploy-coolify.md)) |
+| Proxy           | Größe                                                   | Gleichzeitige Anfragen je Adresse                                                                    |
+| --------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Caddy           | `request_body { max_size 300KB }`                       | nicht eingebaut; nur mit Erweiterung oder einem Proxy davor                                          |
+| nginx           | `client_max_body_size 300k;`                            | `limit_conn_zone $binary_remote_addr zone=paibot:10m;` (im `http`-Block) und `limit_conn paibot 20;` |
+| Traefik/Coolify | Middleware `buffering` mit `maxRequestBodyBytes=300000` | Middleware `inFlightReq` mit `amount=20` (siehe [Coolify](deploy-coolify.md))                        |
+
+Eine Grenze von 1 MiB, wie sie früher hier stand, ist zu groß: Sie lässt mehr durch, als PaiBot je annimmt.
 
 Fehlt ein Pflichtwert, bricht schon `docker compose` mit einer Meldung „… fehlt“ ab. Ist ein Wert zu kurz, falsch geformt oder noch ein Platzhalter, startet die App nicht und nennt im Log, welcher Wert es ist (nie den Wert selbst).
 

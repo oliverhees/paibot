@@ -1127,4 +1127,8 @@ export const de = {
   "belege.schluessel.anzeigen": "Öffentlichen Schlüssel anzeigen",
   "belege.schluessel.frueher": "Frühere Schlüssel",
   "belege.schluessel.frueher_zeit": "von {seit} bis {bis}",
+
+  // Schutz von Anmeldung und Eingängen, zweite Runde
+  "anfrage.zu_viele_gleichzeitig":
+    "Gerade kommen zu viele Anfragen gleichzeitig an. Versuch es in ein paar Sekunden noch einmal.",
 } as const satisfies Record<string, string | readonly string[]>;
