@@ -1141,6 +1141,66 @@ export const de = {
     "Einrichtung offen: Der Einrichtungs-Code wurde am {zeit} erzeugt. Er steht im Log des Starts, der ihn erzeugt hat, nicht in diesem, und gilt 24 Stunden, längstens bis zum Ende der Einrichtung. Code nicht mehr zur Hand: Migrations-Schritt erneut starten (Dienst migrate, z. B. docker compose up -d), dann die Seite „Einrichtung“ neu laden; der neue Code steht danach im Log von web.",
   "aktion.geraet.hinzufuegen": "Gerät hinzugefügt",
   "aktion.geraet.entfernen": "Gerät entfernt",
+  // Eigener Anbieter in der Oberfläche: anlegen, ändern, testen, abgleichen, entfernen
+  "modelle.eigen.titel": "Eigener Anbieter",
+  "modelle.eigen.text":
+    "Verbinde zusätzlich einen eigenen Dienst mit kompatibler Schnittstelle, zum Beispiel einen, der auf deinem Rechner oder in deinem Netz läuft.",
+  "modelle.eigen.hinzufuegen": "Eigenen Anbieter hinzufügen",
+  "modelle.eigen.form.neu": "Neuer eigener Anbieter",
+  "modelle.eigen.form.aendern": "{anbieter} ändern",
+  "modelle.eigen.name": "Name",
+  "modelle.eigen.name.hilfe": "So heißt der Anbieter in PaiBot, zum Beispiel „Lokaler Anbieter“.",
+  "modelle.eigen.name.leer": "Gib dem Anbieter einen Namen.",
+  "modelle.eigen.adresse": "Adresse (Basis-URL)",
+  "modelle.eigen.adresse.hilfe":
+    "Die Adresse, unter der der Dienst seine Modelle anbietet, meist mit /v1 am Ende.",
+  "modelle.eigen.adresse.leer": "Gib die Adresse des Dienstes ein.",
+  "modelle.eigen.adresse_doppelt":
+    "Für diese Adresse gibt es schon einen Anbieter. Ändere ihn, statt einen zweiten anzulegen.",
+  "modelle.eigen.ort": "Wo läuft der Dienst?",
+  "modelle.eigen.ort.eu": "Bei einem Dienst in der EU",
+  "modelle.eigen.ort.non_eu": "Bei einem Dienst außerhalb der EU",
+  "modelle.eigen.ort.local": "Auf deinem Rechner oder in deinem Netz (lokal)",
+  "modelle.eigen.ort.hilfe":
+    "Öffentliche Dienste brauchen eine Adresse mit https:// und einen Schlüssel.",
+  "modelle.eigen.ort.hilfe.local":
+    "Nur bei „lokal“ sind Adressen im eigenen Netz und http:// erlaubt. Die Dienste von PaiBot selbst (Datenbank, Datenschleuse, Web-App, Worker) bleiben gesperrt.",
+  "modelle.eigen.warnung.unverschluesselt":
+    "Die Verbindung ist unverschlüsselt (http://). Nutz das nur auf deinem Rechner oder in einem Netz, dem du vertraust.",
+  "modelle.eigen.schluessel": "Schlüssel",
+  "modelle.eigen.schluessel.optional": "Schlüssel (bei „lokal“ freiwillig)",
+  "modelle.eigen.schluessel.hilfe.neu":
+    "Bei einem lokalen Dienst ohne Schlüssel lässt du das Feld leer. PaiBot speichert nur, was der Dienst beim Test annimmt.",
+  "modelle.eigen.schluessel.hilfe.aendern":
+    "Leer lassen, um den gespeicherten Schlüssel zu behalten. Ändert sich die Adresse, gib ihn noch einmal ein.",
+  "modelle.eigen.schluessel.entfernen": "Gespeicherten Schlüssel entfernen",
+  "modelle.eigen.schluessel.entfernen.hilfe":
+    "PaiBot verbindet sich danach ohne Schlüssel. Das geht nur bei einem lokalen Dienst.",
+  "modelle.eigen.ohne_schluessel_nur_lokal":
+    "Ohne Schlüssel geht es nur bei einem lokalen Dienst. Wähl „lokal“ oder trag einen Schlüssel ein.",
+  "modelle.eigen.vorlage_bleibt":
+    "Die Vorlage eines Anbieters lässt sich nicht ändern. Leg dafür einen neuen eigenen Anbieter an.",
+  "modelle.eigen.speichern": "Testen und speichern",
+  "modelle.eigen.speichert": "Teste und speichere …",
+  "modelle.eigen.speichern.hilfe":
+    "PaiBot testet die Verbindung vor dem Speichern. Gespeichert wird nur, was der Dienst annimmt.",
+  "modelle.eigen.gespeichert": "{anbieter} ist gespeichert. Die Verbindung steht.",
+  "modelle.eigen.aendern": "Ändern",
+  "modelle.eigen.auswahl": "Angezeigter Anbieter",
+  "modelle.eigen.auswahl.hilfe":
+    "Die Angaben und die Modell-Liste unten gehören zu diesem Anbieter.",
+  "modelle.eigen.entfernen": "Anbieter entfernen",
+  "modelle.eigen.entfernen.titel": "{anbieter} entfernen?",
+  "modelle.eigen.entfernen.text":
+    "Damit entfernst du {anbieter} samt Schlüssel und Modell-Liste. Frühere Antworten in deinen Unterhaltungen bleiben erhalten.",
+  "modelle.eigen.entfernen.modell":
+    "{name} arbeitet gerade mit {modell} von {anbieter}. Danach hat {name} kein Modell mehr, bis du ein anderes wählst.",
+  "modelle.eigen.entfernt": "{anbieter} ist entfernt.",
+  "modelle.eigen.lauf_aktiv": "{name} schreibt gerade mit einem Modell von {anbieter}.",
+  "modelle.eigen.lauf_aktiv.ausweg":
+    "Warte, bis die Antwort fertig ist, oder brich sie im Chat ab. Danach kannst du den Anbieter entfernen.",
+  "modelle.liste.abgleichen": "Liste abgleichen",
+  "modelle.liste.abgeglichen": "Liste abgeglichen: {anzahl} Modelle.",
   // Not-Aus („Alle Bots anhalten“) und Selbsttest
   "aktion.notaus.umschalten": "Not-Aus umgeschaltet",
   "regel.V-10": "Passwort zum Aufheben bestätigt",

@@ -206,6 +206,36 @@ function beobachte(seite) {
   seite.on("pageerror", (e) => ergebnis.konsole.push({ art: "pageerror", text: e.message }));
 }
 
+/**
+ * Maße eines Elements und seines nächsten Behälters (`selektor`, z. B. ein Blatt) im ruhenden
+ * Zustand: wartet, bis alle Animationen im Behälter beendet sind und zwei Messungen im Abstand von
+ * 100 ms gleich sind (höchstens 5 s). Danach erst gelten die Maße als Ergebnis.
+ */
+async function ruhendeBox(ort, selektor) {
+  const messen = () =>
+    ort.evaluate(async (el, sel) => {
+      const behaelter = el.closest(sel);
+      await Promise.all(
+        (behaelter ?? el)
+          .getAnimations({ subtree: true })
+          .map((a) => a.finished.catch(() => undefined)),
+      );
+      const r = (e) => {
+        const b = e.getBoundingClientRect();
+        return { x: b.x, y: b.y, width: b.width, height: b.height };
+      };
+      return { box: r(el), behaelter: behaelter ? r(behaelter) : undefined };
+    }, selektor);
+  let vorher = await messen();
+  for (let i = 0; i < 50; i += 1) {
+    await new Promise((fertig) => setTimeout(fertig, 100));
+    const jetzt = await messen();
+    if (JSON.stringify(jetzt) === JSON.stringify(vorher)) return jetzt;
+    vorher = jetzt;
+  }
+  throw new Error(`Maße kommen nicht zur Ruhe (${JSON.stringify(vorher)}).`);
+}
+
 /** Anmelden über die Seite `/anmelden`; liefert den Text der Meldung, falls eine erscheint. */
 async function anmeldeVersuch(seite, app, passwort) {
   if (!new URL(seite.url()).pathname.startsWith("/anmelden")) await seite.goto(`${app}/anmelden`);
@@ -392,10 +422,14 @@ async function main() {
     await handySeite.getByRole("link", { name: "Als eigene Seite öffnen" }).last().waitFor();
     // Der Beleg des abgebrochenen Laufs steht im Blatt, ganz im Bild.
     await handySeite.getByText("abgebrochen", { exact: true }).last().waitFor();
-    const link = await handySeite
-      .getByRole("link", { name: "Als eigene Seite öffnen" })
-      .last()
-      .boundingBox();
+    // Das Blatt fährt von unten herein (Animation `pb-blatt-hoch`, 30 px). Gemessen wird erst im
+    // ruhenden Zustand: Animationen des Blatts beendet und zwei gleiche Messungen hintereinander.
+    const linkOrt = handySeite.getByRole("link", { name: "Als eigene Seite öffnen" }).last();
+    const blatt = await ruhendeBox(linkOrt, "aside");
+    if (!blatt.behaelter || blatt.behaelter.y + blatt.behaelter.height > HANDY.height + 1) {
+      throw new Error(`Blatt ragt aus dem Bild (${JSON.stringify(blatt.behaelter)}).`);
+    }
+    const link = blatt.box;
     if (
       !link ||
       link.x < 0 ||

@@ -156,9 +156,11 @@ Mit eingeschalteter Datenschleuse sieht das Modell zum Beispiel nur `<PERSON_0>`
 | [Datenschleuse](docs/funktion-datenschleuse.md) als zuschaltbarer Dienst (Standard: aus)                | ✅ fertig und getestet |
 | [Einstellungen und Info](docs/funktion-einstellungen.md): Passwort, Sitzungen, Grenzen                  | ✅ fertig und getestet |
 | Verschlüsselung der gespeicherten Schlüssel ([Sicherheit](docs/sicherheit.md))                          | ✅ fertig und getestet |
+| [Sicherung und Wiederherstellung](docs/sicherung.md): ein Befehl je Richtung, mit Prüfung danach        | ✅ fertig und getestet |
 | Doku mit Bildern aus der laufenden App ([Doku](docs/README.md))                                         | ✅ fertig              |
 | Release zum Installieren (fertiges Image)                                                               | 🔨 im Bau              |
-| Eigener Anbieter in der Oberfläche, Not-Aus als Schalter                                                | 🗓️ geplant             |
+| [Eigener Anbieter](docs/funktion-anbieter-und-modelle.md) in der Oberfläche, auch auf deinem Rechner    | ✅ fertig und getestet |
+| Not-Aus als Schalter                                                                                    | 🗓️ geplant             |
 | Apps anbinden per MCP                                                                                   | 🗓️ geplant danach      |
 | Bots im Team                                                                                            | 🗓️ geplant danach      |
 

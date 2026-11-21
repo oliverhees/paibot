@@ -24,14 +24,13 @@ Bei beiden Wegen gilt: Die Datenbank bringt der Einmal-Dienst `migrate` auf den 
 
 ## 1. Vorher sichern
 
-Lege vor jedem Wechsel eine Sicherung der Datenbank an:
+Lege vor jedem Wechsel eine Sicherung an:
 
 ```bash
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec -T postgres \
-  pg_dump -U paibot -d paibot -Fc > paibot-$(date +%F).dump
+sh deploy/sicherung.sh sichern
 ```
 
-Mit fertigem Image steht im Befehl `deploy/docker-compose.image.yml` statt `deploy/docker-compose.yml`. Haben `POSTGRES_USER` oder `POSTGRES_DB` in `deploy/.env` andere Werte als `paibot`, setze diese ein.
+Mit fertigem Image hängst du `--image` an. Der Befehl legt unter `~/paibot-sicherungen/` einen Ordner mit der Datenbank und einer Begleit-Datei an (Version, Stand der Migrationen, Prüfsumme, Anker der Belege-Kette). Alles Weitere, auch wie du die Sicherung vorher zur Probe zurückspielst: [Sicherung und Wiederherstellung](sicherung.md).
 
 Die Sicherung enthält deine Unterhaltungen lesbar. Behandle sie wie ein Passwort und lege `PAIBOT_SECRET` nicht daneben ab (siehe [Sicherheit](sicherheit.md#was-in-der-datenbank-steht)). Ohne das `PAIBOT_SECRET` deiner Installation lassen sich die gespeicherten Schlüssel aus der Sicherung nicht nutzen.
 
@@ -90,21 +89,21 @@ Die Datenschleuse (Profil `schleuse`) wird auch auf diesem Weg aus einem festen 
 
 Eine Datenbank, die schon auf der neueren Version lief, passt nicht mehr zur älteren: Die ältere Version meldet dann im Log „Datenbank nicht auf Stand“ und startet nicht. Zurück geht es nur mit der Sicherung von vorher:
 
-1. Den alten Stand holen (`git checkout v<alte Version>`, bei fertigem Image zusätzlich `PAIBOT_VERSION` zurücksetzen).
-2. `web` und `worker` anhalten:
+1. Möchtest du den Stand der neueren Version behalten, sichere ihn zuerst (`sh deploy/sicherung.sh sichern`).
+2. Den alten Stand holen (`git checkout v<alte Version>`, bei fertigem Image zusätzlich `PAIBOT_VERSION` zurücksetzen).
+3. Stack samt Datenbank löschen (die Sicherungen bleiben, sie liegen außerhalb):
 
    ```bash
-   docker compose -f deploy/docker-compose.yml --env-file deploy/.env stop web worker
+   docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v
    ```
 
-3. Die Sicherung einspielen; `--clean` entfernt dabei den neueren Stand:
+4. Die Sicherung von vorher zurückspielen; der Befehl startet danach alles und prüft nach:
 
    ```bash
-   docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec -T postgres \
-     pg_restore -U paibot -d paibot --clean --if-exists < paibot-<Datum>.dump
+   sh deploy/sicherung.sh zurueckspielen ~/paibot-sicherungen/paibot-sicherung-<Zeit>
    ```
 
-4. Starten wie beim jeweiligen Weg oben (Schritt 4).
+Mit fertigem Image steht in Schritt 3 `deploy/docker-compose.image.yml`, und in Schritt 4 hängst du `--image` an.
 
 ## Fehlerbehebung
 

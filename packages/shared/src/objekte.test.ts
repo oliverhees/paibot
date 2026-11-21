@@ -316,6 +316,12 @@ describe("Eingaben", () => {
     expect(providerInput.safeParse({ ...base, baseUrl: "ftp://example.org" }).success).toBe(false);
     expect(providerInput.safeParse({ ...base, apiKey: "" }).success).toBe(false);
     expect(providerInput.safeParse({ ...base, country: "de" }).success).toBe(false);
+    const lokal = { ...base, baseUrl: "http://127.0.0.1:1234/v1", region: "local" };
+    expect(providerInput.parse({ ...lokal, removeApiKey: true }).removeApiKey).toBe(true);
+    expect(providerInput.safeParse({ ...lokal, removeApiKey: false }).success).toBe(false);
+    expect(
+      providerInput.safeParse({ ...lokal, removeApiKey: true, apiKey: "sk-test" }).success,
+    ).toBe(false);
     expect(connectionTestInput.safeParse({}).success).toBe(false);
     expect(connectionTestInput.safeParse({ apiKey: "sk-test" }).success).toBe(true);
   });

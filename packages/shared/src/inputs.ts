@@ -116,7 +116,8 @@ export const schleuseInput = z.strictObject({ mode: schleuseModeSchema });
 export type SchleuseInput = z.infer<typeof schleuseInput>;
 
 /**
- * Anbieter anlegen oder ändern. Ohne `apiKey` bleibt ein gespeicherter Schlüssel erhalten.
+ * Anbieter anlegen oder ändern. Ohne `apiKey` bleibt ein gespeicherter Schlüssel erhalten, außer
+ * `removeApiKey` ist gesetzt.
  * `http` ist nur für lokale Anbieter erlaubt.
  */
 export const providerInput = z
@@ -126,6 +127,11 @@ export const providerInput = z
     name: z.string().trim().min(1).max(LIMITS.providerNameChars),
     baseUrl: z.url({ protocol: /^https?$/ }).max(LIMITS.baseUrlChars),
     apiKey: apiKeySchema.optional(),
+    /**
+     * Nur beim Ändern: den gespeicherten Schlüssel löschen (geht nur bei Region `local`). Nicht
+     * zusammen mit `apiKey`.
+     */
+    removeApiKey: z.literal(true).optional(),
     region: regionSchema,
     country: z
       .string()
@@ -135,6 +141,9 @@ export const providerInput = z
   })
   .refine((input) => input.baseUrl.startsWith("https://") || input.region === "local", {
     path: ["baseUrl"],
+  })
+  .refine((input) => input.removeApiKey === undefined || input.apiKey === undefined, {
+    path: ["removeApiKey"],
   });
 export type ProviderInput = z.infer<typeof providerInput>;
 

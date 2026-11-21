@@ -49,6 +49,8 @@ pnpm dev
 | `docker-compose.ohne-internet.yml` | Zusatz für die Prüfung in der CI: alle Netze ohne Weg nach draußen          |
 | `docker-compose.entwicklung.yml`   | nur Entwicklung: Datenbank-Port auf `127.0.0.1`                             |
 | `env-erzeugen.sh`                  | legt `deploy/.env` mit zufälligen Passwörtern und `PAIBOT_SECRET` an        |
+| `sicherung.sh`                     | sichern, zurückspielen, prüfen: [Sicherung](../docs/sicherung.md)           |
+| `sicherung-db.sh`                  | Teil von `sicherung.sh`, läuft im Container `postgres`                      |
 | `docker-compose.schleuse-test.yml` | nur Tests: Datenschleuse mit Test-Anbieter auf `127.0.0.1`                  |
 | `schleuse/`                        | Konfiguration der Datenschleuse, erzeugt mit `pnpm schleuse:config`         |
 | `.env.example`                     | Vorlage mit allen Variablen (Werte leer)                                    |
