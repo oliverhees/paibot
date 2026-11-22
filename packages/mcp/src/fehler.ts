@@ -26,6 +26,7 @@ export const MCP_FEHLERCODES = [
   "zeit_ueberschritten",
   "abgebrochen",
   "verbindung_geschlossen",
+  "namen_ungueltig",
 ] as const;
 
 export type McpFehlerCode = (typeof MCP_FEHLERCODES)[number];
@@ -47,6 +48,7 @@ export const MCP_FEHLERTEXTE: Readonly<Record<McpFehlerCode, string>> = Object.f
   zeit_ueberschritten: "Die App hat nicht rechtzeitig geantwortet.",
   abgebrochen: "Der Aufruf wurde abgebrochen.",
   verbindung_geschlossen: "Die Verbindung zur App ist geschlossen.",
+  namen_ungueltig: "Die gespeicherten Werkzeug-Namen dieser App sind ungültig.",
 });
 
 /**

@@ -24,7 +24,7 @@ import {
   tokenInAddress,
 } from "../../../tools/test-mcp-server/src/presets";
 import { createEgressFetch, egressTargetOf } from "../../llm/src/egress";
-import { McpSchichtFehler } from "./fehler";
+import { MCP_FEHLERTEXTE, McpSchichtFehler } from "./fehler";
 import { STANDARD_GRENZEN } from "./grenzen";
 import {
   baueSicheresFetch,
@@ -39,6 +39,7 @@ import {
   pruefeAdresseMitSchalter,
   rufeWerkzeugAufIntern,
 } from "./verbindung";
+import { namenZumSpeichern } from "./werkzeug";
 
 type Protokoll = "modern" | "legacy" | "both";
 const PROTOKOLLE: Protokoll[] = ["modern", "legacy", "both"];
@@ -1317,7 +1318,7 @@ describe("holeWerkzeuge und die gespeicherten Namen", () => {
       bekannteNamen: new Map(),
     });
     expect(abruf1.werkzeuge[0]?.modellName).toBe("test__a_b");
-    const bekannteNamen = new Map(abruf1.werkzeuge.map((w) => [w.originalName, w.modellName]));
+    const bekannteNamen = namenZumSpeichern(abruf1.werkzeuge);
     const zweite = await starte({ tools: [roh("a.b"), roh("a_b")] });
     const abruf2 = await holeWerkzeuge({
       ...BASIS,
@@ -1355,5 +1356,78 @@ describe("Test-Schalter für Adressen: auch aus Code nicht über die Optionen", 
     expect(await fehlerCode(holeWerkzeugeOeffentlich(proxy as never))).toBe(
       "app_adresse_unzulaessig",
     );
+  });
+});
+
+// Gegenprobe: die Zuordnung wie früher aus allen Einträgen bauen (auch mit Name "") → der zweite
+// Abruf wirft `RangeError`; `bekannteNamen` ungeprüft weiterreichen → rohe Fehler, Anfragen gehen raus.
+describe("Zuordnung der Namen über zwei Abrufe", () => {
+  it("doppelte, zu lange und leere Namen vom Server machen den zweiten Abruf nicht kaputt", async () => {
+    const { url } = await starte({
+      tools: [werkzeug("a"), werkzeug("a"), werkzeug("x".repeat(300)), werkzeug(""), werkzeug("b")],
+    });
+    const erster = await holeWerkzeuge({ ...BASIS, adresse: url, fetch: echtesFetch as McpFetch });
+    const zuordnung = namenZumSpeichern(erster.werkzeuge);
+    expect([...zuordnung.values()].sort()).toEqual(["test__a", "test__b"]);
+    const zweiter = await holeWerkzeuge({
+      ...BASIS,
+      adresse: url,
+      fetch: echtesFetch as McpFetch,
+      bekannteNamen: zuordnung,
+    });
+    expect(zweiter.werkzeuge.map((w) => w.modellName)).toEqual(
+      erster.werkzeuge.map((w) => w.modellName),
+    );
+  });
+
+  it("eine ungültige Zuordnung wird vor dem Verbinden abgewiesen: McpSchichtFehler, keine Anfrage", async () => {
+    const { s, url } = await starte({ tools: [werkzeug("a")] });
+    const faelle: [string, unknown][] = [
+      ["Wert null", new Map([["a", null]])],
+      ["leerer Name", new Map([["a", ""]])],
+      ["falsche App", new Map([["a", "fremd__a"]])],
+      [
+        "doppelt",
+        new Map([
+          ["a", "test__a"],
+          ["b", "test__a"],
+        ]),
+      ],
+      ["keine Map", { a: "test__a" }],
+      ["fehlt", undefined],
+      ["zu viele", new Map(Array.from({ length: 2001 }, (_, i) => [`t${i}`, `test__t${i}`]))],
+    ];
+    for (const [fall, bekannteNamen] of faelle) {
+      let fehler: unknown;
+      try {
+        await holeWerkzeuge({
+          ...BASIS,
+          adresse: url,
+          fetch: echtesFetch as McpFetch,
+          bekannteNamen: bekannteNamen as never,
+        });
+      } catch (e) {
+        fehler = e;
+      }
+      expect(fehler, fall).toBeInstanceOf(McpSchichtFehler);
+      expect((fehler as McpSchichtFehler).code, fall).toBe("namen_ungueltig");
+      expect((fehler as McpSchichtFehler).message, fall).toBe(MCP_FEHLERTEXTE.namen_ungueltig);
+    }
+    expect(s.requests).toEqual([]);
+  });
+
+  it("auch die Namen anderer Apps werden vor dem Verbinden geprüft", async () => {
+    const { s, url } = await starte({ tools: [werkzeug("a")] });
+    expect(
+      await fehlerCode(
+        holeWerkzeuge({
+          ...BASIS,
+          adresse: url,
+          fetch: echtesFetch as McpFetch,
+          bereitsVergeben: new Set([5]) as never,
+        }),
+      ),
+    ).toBe("namen_ungueltig");
+    expect(s.requests).toEqual([]);
   });
 });
