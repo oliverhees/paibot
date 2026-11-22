@@ -134,6 +134,7 @@ export function toProvider(row: ProviderRow): Provider {
     name: row.name,
     baseUrl: row.baseUrl,
     keySet: row.apiKeyEnc !== null,
+    ...(row.managementKeyEnc === null ? {} : { managementKeySet: true }),
     region: row.region,
     ...wennGesetzt("country", row.country),
     enabled: row.enabled,

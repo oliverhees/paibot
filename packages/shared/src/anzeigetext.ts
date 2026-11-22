@@ -31,3 +31,13 @@ export function anzeigeText(wert: unknown, maxZeichen: number): string | undefin
 export function istAnzeigeText(wert: string, maxZeichen: number): boolean {
   return anzeigeText(wert, maxZeichen) === wert;
 }
+
+/**
+ * Ahmt ein Name den Wortlaut der Kennzeichnung einer Regel nach („… laut Regel …“)? Solche Namen
+ * nimmt PaiBot nicht an: Sie würden neben dem Namen wie die echte Kennzeichnung aussehen. Sie
+ * wären in Karte, Kopf und Zeile unter der Antwort überall dort ein Risiko, wo ein Name steht;
+ * deshalb wird am Ursprung abgelehnt, nicht an jeder Anzeige einzeln.
+ */
+export function ahmtKennzeichnungNach(name: string): boolean {
+  return /laut[\s\u00a0]*regel/i.test(name.normalize("NFKC"));
+}

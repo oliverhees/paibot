@@ -24,6 +24,7 @@
     "./stand": "./src/stand.ts",
     "./bindung": "./src/bindung.ts",
     "./anzeigetext": "./src/anzeigetext.ts",
+    "./regelliste": "./src/regelliste.ts",
     "./werkzeug": "./src/werkzeug.ts"
   },
   "scripts": {

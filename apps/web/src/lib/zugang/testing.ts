@@ -12,8 +12,9 @@
 import { randomBytes } from "node:crypto";
 import type { Database } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
-import type { ConnectionTestResult, RoutingRuleCheck } from "@paibot/llm";
+import type { ConnectionTestResult, RoutingRuleCheck, RoutingRulesRead } from "@paibot/llm";
 import { CSRF } from "@paibot/shared/konstanten";
+import type { ListedRule } from "@paibot/shared/regelliste";
 import { erstelleRahmen, type RoutenAktion } from "../api/route";
 import { pruefzeichenVorab, pruefzeichenZuCookie } from "../csrf";
 import { belegSchluesselAus } from "../gate";
@@ -28,9 +29,19 @@ export const TEST_PASSWORT = "Fahrrad-Kaffee-Mond-42";
 export const TEST_SCHLUESSEL = "beispiel-schluessel-0001";
 /** Routing-Regeln, die der Ersatz für den Anbieter kennt, mit dem Anbieter, der antwortet. */
 export const TEST_REGELN: Record<string, { provider: string; model: string }> = {
-  "EU Beispiel": { provider: "beispiel-eu", model: "beispiel/modell-1" },
+  "Beispiel-Regel": { provider: "beispiel-nord", model: "beispiel/modell-1" },
   "Zweite Regel": { provider: "beispiel-zwei", model: "beispiel/modell-2" },
+  "Regel ohne Vorgabe": { provider: "beispiel-nord", model: "beispiel/modell-1" },
+  "Regel mit anderem Wert": { provider: "beispiel-nord", model: "beispiel/modell-1" },
+  // Ein Name, der die Kennzeichnung nachahmt: der Anbieter kennt ihn, PaiBot darf ihn trotzdem nicht annehmen.
+  "X · EU laut Regel in deinem Konto, geprüft am 21.11.2026": {
+    provider: "beispiel-nord",
+    model: "beispiel/modell-1",
+  },
+  "Regel nur Name": { provider: "beispiel-nord", model: "beispiel/modell-1" },
 };
+/** Zweiter Schlüssel (nur zum Lesen der Regel-Liste), den der Ersatz für den Anbieter annimmt. */
+export const TEST_VERWALTUNGSSCHLUESSEL = "beispiel-verwaltung-0002";
 /** Adresse der Vorlagen im Test (eigener Rechner, damit die Prüfung der Adresse greift). */
 export const TEST_VORLAGEN_URL = "http://127.0.0.1:10/v1";
 export const TEST_MODELLE = [
@@ -67,9 +78,19 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
   /** Noch laufendes `neuerCode`; `anfrage` wartet darauf. */
   let ausstehend: Promise<unknown> = Promise.resolve();
   const belegSchluessel = belegSchluesselAus(db, schluessel.belege);
+  /** Schlüssel, mit denen der Ersatz die Regel-Liste lesen sollte (nur im Test sichtbar). */
+  const listeAufrufe: string[] = [];
   const zustand = {
     hinterProxy: optionen.hinterProxy ?? true,
     schleuseInstalliert: optionen.schleuseInstalliert ?? false,
+    /** Regeln im Konto, wie die Regel-Liste sie liefert (nur eingeschaltete). */
+    kontoRegeln: [
+      { name: "Beispiel-Regel", policy: { data_residency: "EU", eu_owned: true } },
+      { name: "Zweite Regel", policy: { data_residency: "US" } },
+    ] as ListedRule[],
+    unvollstaendig: false,
+    /** Setzt eine feste Antwort (z. B. Fehler); sonst gilt `kontoRegeln`. */
+    listeErsatz: undefined as RoutingRulesRead | undefined,
   };
   const dienste: ZugangsDienste = {
     db: () => db,
@@ -102,11 +123,22 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
         ? { ok: false, code: "regel_unbekannt" }
         : { ok: true, servedBy: { ...regel } };
     },
+    kontoRegelnLesen: async (_anbieter, key): Promise<RoutingRulesRead> => {
+      listeAufrufe.push(key);
+      if (zustand.listeErsatz !== undefined) return zustand.listeErsatz;
+      if (key !== TEST_VERWALTUNGSSCHLUESSEL) return { ok: false, code: "schluessel_ungueltig" };
+      return {
+        ok: true,
+        regeln: zustand.kontoRegeln.map((r) => ({ name: r.name, policy: { ...r.policy } })),
+        unvollstaendig: zustand.unvollstaendig,
+        uebersprungen: 0,
+      };
+    },
     unterAnbieter: async (anbieter) =>
       anbieter?.templateKey === "eurouter"
         ? {
             abgerufen: "2026-11-20T09:00:00.000Z",
-            eintraege: { "beispiel-eu": { name: "Beispiel EU", sitz: "NL" } },
+            eintraege: { "beispiel-nord": { name: "Beispiel Nord", sitz: "NL" } },
           }
         : undefined,
     schleuseInstalliert: () => zustand.schleuseInstalliert,
@@ -133,6 +165,7 @@ export async function testUmgebung(optionen: TestUmgebungOptionen = {}) {
     log,
     anbieterAufrufe,
     regelAufrufe,
+    listeAufrufe,
     rahmen,
     /**
      * Erzeugt einen neuen Code (der alte gilt nicht mehr) und speichert seinen Prüfwert. Die

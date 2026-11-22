@@ -14,6 +14,8 @@ import {
   type ConnectionTestResult,
   checkRoutingRule,
   type RoutingRuleCheck,
+  type RoutingRulesRead,
+  readRoutingRules,
   schleuseFromEnv,
   testConnection,
 } from "@paibot/llm";
@@ -62,6 +64,13 @@ export interface ZugangsDienste {
     schluessel: string,
     name: string,
   ): Promise<RoutingRuleCheck>;
+  /**
+   * Liest die Regel-Liste des Kontos mit dem zweiten Schlüssel (nur lesend, nur für diesen Zweck).
+   */
+  kontoRegelnLesen(
+    anbieter: EinrichtungsAnbieter,
+    verwaltungsschluessel: string,
+  ): Promise<RoutingRulesRead>;
   /** Öffentliche Anbieter-Liste von EUrouter (Namen, Sitz), zwischengespeichert. */
   unterAnbieter(
     anbieter: Pick<EinrichtungsAnbieter, "templateKey" | "baseUrl" | "region"> | undefined,
@@ -120,6 +129,7 @@ export function prozessDienste(): ZugangsDienste {
     einrichtungsAnbieter: () => einrichtungsAnbieter(process.env),
     vorlage: (schluessel) => vorlageAnbieter(schluessel, process.env),
     regelPruefen: (anbieter, schluessel, name) => checkRoutingRule(anbieter, schluessel, name),
+    kontoRegelnLesen: (anbieter, schluessel) => readRoutingRules(anbieter, schluessel),
     unterAnbieter: (anbieter) => unterAnbieterListe(anbieter),
     schleuseInstalliert: () => {
       try {

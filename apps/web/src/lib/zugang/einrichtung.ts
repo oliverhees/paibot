@@ -17,13 +17,26 @@ import { createReceiptWriter } from "@paibot/receipts";
 import { providerSecretBinding, secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
 import type { SetupConnectionTestInput, SetupInput } from "@paibot/shared/eingaben";
 import { type ErrorCode, PaiBotError } from "@paibot/shared/fehler";
-import { type BotId, type KeyId, newId, type OwnerId, type ProviderId } from "@paibot/shared/ids";
+import {
+  type BotId,
+  type KeyId,
+  type ModelId,
+  newId,
+  type OwnerId,
+  type ProviderId,
+} from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
 import type { ProviderTemplateKey } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import type { RoutenKontext } from "../api/route";
 import { verbindungsFehler } from "../modelle/anbieter";
 import { type RegelErgebnis, regelnPruefen } from "../modelle/regeln";
+import {
+  type GeleseneListe,
+  listeLesen,
+  verwaltungsschluesselVerschluesseln,
+} from "../modelle/verwaltung";
+import { euSatz, istEuBelegt, residenzSatz, vorgabeAus } from "../modelle/vorgabe";
 import { schleuseEingerichtet } from "../schleuse/schleuse";
 import type { EinrichtungsAnbieter } from "../umgebung";
 import { geraetHinzufuegen } from "./anmeldung";
@@ -158,6 +171,12 @@ export async function einrichtungVerbindungstest(
   const eingabe: SetupConnectionTestInput = kontext.eingabe;
   await codePruefen(kontext, eingabe.setupCode);
   const anbieter = gewaehlterAnbieter(kontext.dienste, eingabe.templateKey);
+  if (eingabe.managementKey !== undefined && !supportsRoutingRules(anbieter.templateKey)) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("routingregel.nur_eurouter"),
+      felder: [{ feld: "managementKey", code: "ungueltig" }],
+    });
+  }
   if (supportsRoutingRules(anbieter.templateKey)) {
     if (eingabe.ruleNames === undefined) throw regelnFehlen(anbieter);
     const regeln = await regelnPruefen(
@@ -166,6 +185,17 @@ export async function einrichtungVerbindungstest(
       eingabe.apiKey,
       eingabe.ruleNames,
     );
+    if (eingabe.managementKey !== undefined) {
+      const liste = await listeLesen(kontext.dienste, anbieter, eingabe.managementKey);
+      const jetzt = kontext.dienste.uhr.now();
+      for (const r of regeln) {
+        const gelesen = r.ok ? liste.regeln.find((x) => x.name === r.name) : undefined;
+        if (gelesen === undefined) continue;
+        const vorgabe = vorgabeAus(gelesen.policy, jetzt, jetzt, "UTC");
+        r.eu = istEuBelegt(vorgabe);
+        r.vorgabeText = euSatz(vorgabe, anbieter.name) ?? residenzSatz(vorgabe) ?? "";
+      }
+    }
     return { modelle: [], regeln };
   }
   const ergebnis = await kontext.dienste.verbindungTesten(anbieter, eingabe.apiKey);
@@ -236,6 +266,14 @@ export async function einrichtungAbschliessen(
   let modell: ModelInfo | undefined;
   /** Bei EUrouter: die geprüften Regeln (Name als Modell `rule:<Name>`). */
   const regeln: ModelInfo[] = [];
+  /** Nur mit zweitem Schlüssel: die gelesene Regel-Liste des Kontos. */
+  let kontoListe: GeleseneListe | undefined;
+  if (eingabe.managementKey !== undefined && !mitRegeln) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      text: t("routingregel.nur_eurouter"),
+      felder: [{ feld: "managementKey", code: "ungueltig" }],
+    });
+  }
   if (eingabe.apiKey !== undefined && mitRegeln) {
     if (eingabe.ruleNames === undefined || eingabe.modelSlug !== undefined) {
       throw regelnFehlen(anbieter);
@@ -251,6 +289,9 @@ export async function einrichtungAbschliessen(
         ...(falsch.ausweg ? { ausweg: falsch.ausweg } : {}),
         felder: [{ feld: "ruleNames", code: "ungueltig" }],
       });
+    }
+    if (eingabe.managementKey !== undefined) {
+      kontoListe = await listeLesen(d, anbieter, eingabe.managementKey);
     }
     for (const r of ergebnisse) regeln.push({ slug: routingRuleSlug(r.name), displayName: r.name });
     const gewaehlt = eingabe.ruleName ?? eingabe.ruleNames[0];
@@ -366,6 +407,17 @@ export async function einrichtungAbschliessen(
       torOptionen,
     );
 
+    // Vorgaben einer Regel aus der gelesenen Liste des Kontos (nur mit zweitem Schlüssel).
+    const vorgabeSetzen = async (modelId: ModelId, name: string) => {
+      const gelesen = kontoListe?.regeln.find((r) => r.name === name);
+      if (gelesen === undefined) return;
+      await repo.models.setRulePolicy(tx, modelId, {
+        policy: gelesen.policy,
+        source: "verwaltungsschluessel",
+        checkedAt: d.uhr.now(),
+      });
+    };
+
     // Anbieter und Modell, wenn ein Schlüssel angegeben ist.
     if (eingabe.apiKey !== undefined) {
       const providerId = newId("provider") as ProviderId;
@@ -373,7 +425,12 @@ export async function einrichtungAbschliessen(
       await kontext.tor(
         sitzung,
         { type: "anbieter.speichern", target: { providerId } },
-        { created: true, region: anbieter.region, keySet: true },
+        {
+          created: true,
+          region: anbieter.region,
+          keySet: true,
+          ...(kontoListe === undefined ? {} : { managementKeySet: true }),
+        },
         async () => {
           await repo.providers.create(tx, {
             id: providerId,
@@ -384,15 +441,25 @@ export async function einrichtungAbschliessen(
             apiKeyEnc: encryptSecret(apiKey, schluessel.geheimnisse, {
               aad: secretAad(providerSecretBinding(providerId, anbieter.baseUrl)),
             }),
+            ...(eingabe.managementKey === undefined || kontoListe === undefined
+              ? {}
+              : {
+                  managementKeyEnc: verwaltungsschluesselVerschluesseln(
+                    d,
+                    { id: providerId, baseUrl: anbieter.baseUrl },
+                    eingabe.managementKey,
+                  ),
+                }),
           });
           // Die übrigen geprüften Regeln stehen danach zur Wahl; die gewählte legt `modell.waehlen` an.
           for (const regel of regeln) {
             if (regel.slug === modell?.slug) continue;
-            await repo.models.create(tx, {
+            const angelegt = await repo.models.create(tx, {
               providerId,
               slug: regel.slug,
               displayName: regel.displayName,
             });
+            await vorgabeSetzen(angelegt.id as ModelId, regel.displayName);
           }
           stoeren(optionen, "anbieter");
           return { value: undefined, result: { status: "ok" } };
@@ -416,6 +483,7 @@ export async function einrichtungAbschliessen(
                 ? {}
                 : { contextWindow: gewaehlt.contextWindow }),
             });
+            await vorgabeSetzen(modelId as ModelId, gewaehlt.displayName);
             await repo.bots.setModel(tx, botId, modelId);
             stoeren(optionen, "modell");
             return { value: undefined, result: { status: "ok" } };

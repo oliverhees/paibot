@@ -27,7 +27,7 @@ import {
 } from "./testhilfen";
 import { verifyChain } from "./verify";
 
-const HERKUNFT = { provider: "beispiel-eu", model: "beispiel/modell-1" };
+const HERKUNFT = { provider: "beispiel-nord", model: "beispiel/modell-1" };
 
 let key: TestKey;
 let kette: ReceiptEntry[];

@@ -316,6 +316,10 @@ PaiBot lässt sich wie eine App auf Rechner und Handy ablegen: mit eigenem Fenst
 
 **Voraussetzung:** PaiBot ist über **https** erreichbar (z. B. mit Coolify und eigener Domain) oder du öffnest es auf demselben Rechner über `http://localhost`. Über eine einfache `http`-Adresse im Netzwerk bieten Browser das Installieren nicht an.
 
+So sieht PaiBot als App im Handy-Format aus (dunkles Design, Beispiel-Daten). Das Fenster „Installieren“ des Browsers gehört dem Browser und ist hier nicht abgebildet; es sieht je nach Browser und Version anders aus.
+
+![PaiBot im Handy-Format im dunklen Design: Startseite des Chats mit Begrüßung und Eingabefeld, so wie sie nach dem Installieren im eigenen Fenster erscheint](assets/screenshots/chat-start-handy.png)
+
 ### Am Rechner (Chrome, Edge)
 
 1. PaiBot im Browser öffnen und anmelden.

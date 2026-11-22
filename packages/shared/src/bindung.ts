@@ -22,11 +22,13 @@ export const SECRET_AAD_PREFIX = "pb-geheimnis/v2";
  * - Anbieter-Schlüssel: Tabelle `providers`, ID des Anbieters, Zweck `api_key`, Zusatz = die
  *   normalisierte Basis-URL (`normalizedBaseUrl`, z. B. `https://api.eurouter.ai/v1`). Ein anderer
  *   Host, Port oder Pfad macht den Schlüssel unbrauchbar.
+ * - Zweiter Schlüssel eines Anbieters (nur zum Lesen von Einstellungen des Kontos): wie der
+ *   Anbieter-Schlüssel, aber Zweck `management_key`; beide Werte lassen sich nicht vertauschen.
  * - Signaturschlüssel: Tabelle `installation_keys`, ID des Schlüssels, Zweck `private_key`,
  *   Zusatz = öffentlicher Schlüssel (base64url).
  */
 export type SecretBinding =
-  | { table: "providers"; id: ProviderId; purpose: "api_key"; extra: string }
+  | { table: "providers"; id: ProviderId; purpose: "api_key" | "management_key"; extra: string }
   | { table: "installation_keys"; id: KeyId; purpose: "private_key"; extra: string };
 
 /**
@@ -88,6 +90,23 @@ export function providerSecretBinding(providerId: ProviderId, baseUrl: string): 
     table: "providers",
     id: providerId,
     purpose: "api_key",
+    extra: normalizedBaseUrl(baseUrl),
+  };
+}
+
+/**
+ * Bindung des zweiten Schlüssels eines Anbieters (nur zum Lesen der Routing-Regeln): wie
+ * `providerSecretBinding`, aber mit eigenem Zweck. Ein Wert des einen Schlüssels lässt sich nicht
+ * als der andere entschlüsseln.
+ */
+export function providerManagementKeyBinding(
+  providerId: ProviderId,
+  baseUrl: string,
+): SecretBinding {
+  return {
+    table: "providers",
+    id: providerId,
+    purpose: "management_key",
     extra: normalizedBaseUrl(baseUrl),
   };
 }

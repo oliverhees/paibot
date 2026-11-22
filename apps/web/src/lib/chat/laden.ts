@@ -16,6 +16,7 @@ import type { ConversationId, ModelId } from "@paibot/shared/ids";
 import type { Conversation, Provider, Settings } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { anbieterHerkunft, type UnterAnbieterListe } from "../modelle/herkunft";
+import { type RegelVorgabe, vorgabeAus } from "../modelle/vorgabe";
 import type {
   BelegKurz,
   ChatBereitschaft,
@@ -172,14 +173,39 @@ export async function modellInfo(db: Database, modelId: ModelId): Promise<Modell
   const modell = await repo.models.get(db, modelId);
   if (modell === undefined) return undefined;
   const anbieter = await repo.providers.get(db, modell.providerId);
-  return modellInfoVon(modell.displayName, anbieter);
+  return modellInfoVon(
+    modell.displayName,
+    anbieter,
+    anbieter?.templateKey === "eurouter" ? await vorgabeVon(db, modelId) : undefined,
+  );
+}
+
+/** Gelesene Vorgaben der Regel hinter einem Modell, falls es welche gibt. */
+async function vorgabeVon(
+  db: Database,
+  modelId: ModelId,
+  zeitzone?: string,
+): Promise<RegelVorgabe | undefined> {
+  const gespeichert = await repo.models.rulePolicyOf(db, modelId);
+  if (gespeichert === undefined) return undefined;
+  const zone = zeitzone ?? (await repo.settings.get(db))?.timezone ?? "Europe/Berlin";
+  return vorgabeAus(gespeichert.policy, gespeichert.checkedAt, new Date(), zone);
 }
 
 /** Name und belegbare Herkunft; ohne Anbieter nur der Name (nie eine angenommene Region). */
-function modellInfoVon(name: string, anbieter: Provider | undefined): ModellInfo {
+function modellInfoVon(
+  name: string,
+  anbieter: Provider | undefined,
+  vorgabe?: RegelVorgabe,
+): ModellInfo {
   if (anbieter === undefined) return { name };
   const kurz = { name: anbieter.name, templateKey: anbieter.templateKey, region: anbieter.region };
-  return { name, herkunft: anbieterHerkunft(kurz), anbieter: kurz };
+  return {
+    name,
+    herkunft: anbieterHerkunft(kurz),
+    anbieter: kurz,
+    ...(vorgabe === undefined ? {} : { vorgabe }),
+  };
 }
 
 /** Kann der Bot antworten? Modell, Schlüssel, Datenschleuse und Zeitzone für die Oberfläche. */
@@ -196,7 +222,13 @@ export async function ladeBereitschaft(
     const m = await repo.models.get(db, bot.modelId);
     if (m !== undefined) {
       const anbieter = await repo.providers.get(db, m.providerId);
-      modell = modellInfoVon(m.displayName, anbieter);
+      modell = modellInfoVon(
+        m.displayName,
+        anbieter,
+        anbieter?.templateKey === "eurouter"
+          ? await vorgabeVon(db, m.id as ModelId, settings?.timezone)
+          : undefined,
+      );
       schluessel = anbieter?.keySet === true || anbieter?.region === "local";
     }
   }
@@ -205,7 +237,10 @@ export async function ladeBereitschaft(
   for (const m of await repo.models.list(db, { enabledOnly: true })) {
     const p = anbieter.get(m.providerId);
     if (p === undefined || !p.enabled || !(p.keySet || p.region === "local")) continue;
-    waehlbar.push({ id: m.id, ...modellInfoVon(m.displayName, p) });
+    waehlbar.push({
+      id: m.id,
+      ...modellInfoVon(m.displayName, p, await vorgabeVon(db, m.id as ModelId, settings?.timezone)),
+    });
   }
   const eurouter = [...anbieter.values()].find((p) => p.templateKey === "eurouter");
   const liste =

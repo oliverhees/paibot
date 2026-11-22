@@ -94,6 +94,30 @@ export const servedBySchema = z.strictObject({
 });
 export type ServedBy = z.infer<typeof servedBySchema>;
 
+/** Woher die gespeicherten Vorgaben einer Routing-Regel stammen: aus der Regel-Liste des Kontos. */
+export const RULE_POLICY_SOURCES = ["verwaltungsschluessel"] as const;
+export type RulePolicySource = (typeof RULE_POLICY_SOURCES)[number];
+
+/** Kurzer Wert einer Vorgabe (z. B. `EU`, `deny`): sichtbare Zeichen, höchstens 32. */
+export const RULE_POLICY_VALUE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
+
+/**
+ * Vorgaben einer Routing-Regel, so wie die Regel-Liste des Kontos sie meldet (Namen der Felder wie
+ * dort). Jedes Feld kann fehlen; ein Wert in anderer Form wird nie gespeichert. `data_residency`
+ * ist die Angabe der Regel, keine Prüfung durch PaiBot; die Kennzeichnung „EU“ gibt es nur bei
+ * genau `EU`. Kennungen des Kontos stehen hier nie.
+ */
+export const rulePolicySchema = z.strictObject({
+  data_residency: z.string().regex(RULE_POLICY_VALUE_PATTERN).optional(),
+  eu_owned: z.boolean().optional(),
+  data_collection: z.string().regex(RULE_POLICY_VALUE_PATTERN).optional(),
+  max_retention_days: z.number().int().min(0).max(36500).optional(),
+  allow_fallbacks: z.boolean().optional(),
+  /** Ausweich-Modelle der Regel (Feld `models`). */
+  models: z.array(z.string().regex(SERVED_MODEL_PATTERN)).max(20).optional(),
+});
+export type RulePolicy = z.infer<typeof rulePolicySchema>;
+
 /** Zeitzone als IANA-Name, z. B. `Europe/Berlin`. */
 export const timezoneSchema = z
   .string()
