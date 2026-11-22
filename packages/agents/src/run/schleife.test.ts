@@ -275,6 +275,58 @@ describe("Fremde Inhalte (Deckel D-01)", () => {
     expect(env.tools.protocol.count("test_schreiben")).toBe(0);
   });
 
+  /** „Neu erzeugen“: neuer Lauf zur selben Nachricht der Person, mit dem Drehbuch `script`, bis zum Ende. */
+  async function neuErzeugen(
+    env: Env,
+    messageId: Parameters<typeof repo.runs.create>[1]["triggerMessageId"],
+    script: FakeScript,
+  ) {
+    const lauf = await repo.withTransaction(env.db, async (tx) => {
+      const run = await repo.runs.create(tx, {
+        conversationId: env.conversationId,
+        triggerMessageId: messageId,
+        botId: env.botId,
+      });
+      await repo.events.append(tx, {
+        conversationId: env.conversationId,
+        type: "run.queued",
+        data: { runId: run.id },
+      });
+      return run;
+    });
+    provider.configure({ script });
+    expect(await executeRun(lauf.id, env.deps, never())).toMatchObject({ status: "succeeded" });
+    return lauf.id;
+  }
+
+  /** Fakt `untrustedInput` am ersten Schritt jedes Laufs (`modell.anfragen`), in der Reihenfolge der Läufe. */
+  async function fremdJeLauf(env: Env) {
+    return decisions(await env.receipts(), "modell.anfragen")
+      .filter((d) => d.facts.step === 0)
+      .map((d) => d.facts.untrustedInput);
+  }
+
+  // Gegenprobe: `untrustedInput` über alle Läufe der Unterhaltung statt über die gesendeten End-Antworten → rot.
+  it("neu erzeugt: die ersetzte End-Antwort mit fremden Inhalten wird nicht mehr gesendet, der nächste Lauf gilt als unbedenklich", async () => {
+    const env = await setup(SCRIPTS.fremd, { tools: { allowedByR010: "test_fremd" } });
+    const eins = await env.queueMessage(QUESTION);
+    expect(await executeRun(eins.runId, env.deps, never())).toMatchObject({ status: "succeeded" });
+    await neuErzeugen(env, eins.messageId, SCRIPTS.nurText);
+    provider.configure({ script: SCRIPTS.nurText });
+    expect((await env.ask("Und jetzt?")).outcome).toMatchObject({ status: "succeeded" });
+    expect(await fremdJeLauf(env)).toEqual([false, false, false]);
+  });
+
+  it("neu erzeugt mit fremden Inhalten: die geltende End-Antwort stammt aus einem Lauf mit fremden Inhalten, der nächste Lauf gilt als bedenklich", async () => {
+    const env = await setup(SCRIPTS.nurText, { tools: { allowedByR010: "test_fremd" } });
+    const eins = await env.queueMessage(QUESTION);
+    expect(await executeRun(eins.runId, env.deps, never())).toMatchObject({ status: "succeeded" });
+    await neuErzeugen(env, eins.messageId, SCRIPTS.fremd);
+    provider.configure({ script: SCRIPTS.nurText });
+    expect((await env.ask("Und jetzt?")).outcome).toMatchObject({ status: "succeeded" });
+    expect(await fremdJeLauf(env)).toEqual([false, false, true]);
+  });
+
   it("ohne fremde Inhalte: Deckel entfaellt (Gegenstück)", async () => {
     const env = await setup(SCRIPTS.schreiben);
     await env.ask();
