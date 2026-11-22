@@ -172,6 +172,80 @@ describe.skipIf(BASE_URL === undefined)("Apps mit der App-Rolle (Postgres)", () 
     expect(await apps.getTokenEnc(db, konto.id)).toBeUndefined();
   });
 
+  it("Bestätigen und Token-Wechsel gleichzeitig: danach ist die neueste Fassung „neu“ (App-Zeile gesperrt)", async () => {
+    const konto = await apps.create(db, {
+      shortName: "gleichzeitig",
+      name: "Gleichzeitig",
+      url: "https://gleichzeitig.beispiel.test/mcp",
+      authKind: "token",
+      tokenEnc: tokenV2(),
+    });
+    const [erstes] = await apps.sehen(db, konto.id, [
+      {
+        originalName: "suchen",
+        toolDigest: abdruck("1"),
+        description: "Sucht",
+        inputSchema: { type: "object" },
+      },
+    ]);
+    const tool = erstes?.tool;
+    if (tool === undefined) throw new Error("Werkzeug fehlt");
+    const ziel = zielAbdruck(konto.id, konto.url);
+    const aktion = await kette.werkzeugBestaetigen({
+      appId: konto.id,
+      toolId: tool.toolId,
+      toolClass: "lesen",
+      toolDigest: tool.toolDigest,
+      targetDigest: ziel,
+      toolStatus: "neu",
+      toolVersion: 1,
+    });
+    let wechselFertig = false;
+    let wechsel: Promise<unknown> = Promise.resolve();
+    // Verbindung A bestätigt und hält die Transaktion offen; Verbindung B wechselt den Token.
+    await db.transaction(async (tx) => {
+      await apps.einstufen(tx as unknown as Database, {
+        toolId: tool.toolId,
+        toolClass: "lesen",
+        actionId: aktion,
+        seenDigest: tool.toolDigest,
+        targetDigest: ziel,
+      });
+      wechsel = apps
+        .changeAccess(db, konto.id, { tokenEnc: tokenV2().replace("a", "y") })
+        .then(() => {
+          wechselFertig = true;
+        });
+      await new Promise((weiter) => setTimeout(weiter, 600));
+      // Mit der Sperre wartet B, bis A fertig ist; ohne sie sieht B die offene Bestätigung nicht.
+      expect(wechselFertig).toBe(false);
+    });
+    await wechsel;
+    expect((await apps.currentTool(db, tool.toolId))?.status).toBe("neu");
+  });
+
+  it("bot_app_grants: die Nummer vergibt die Datenbank; eine selbst gesetzte scheitert (OVERRIDING SYSTEM VALUE)", async () => {
+    const konto = await apps.create(db, {
+      shortName: "nummer",
+      name: "Nummer",
+      url: "https://nummer.beispiel.test/mcp",
+      authKind: "token",
+      tokenEnc: tokenV2(),
+    });
+    const aktion = await kette.zugriffSetzen({ appId: konto.id, botId, access: "lesen" });
+    const zeile = (seq: string, id: string) =>
+      app.unsafe(
+        `insert into bot_app_grants (seq, app_id, bot_id, access, connection_no, action_id)
+         overriding system value
+         values (${seq}, '${konto.id}', '${botId}', 'lesen', ${konto.connectionNo}, '${id}')`,
+      );
+    expect(await codeOf(zeile("9000000000000000000", aktion))).toBe("23514");
+    expect(await codeOf(zeile("1", aktion))).toBe("23514");
+    // Der richtige Weg bleibt offen: die Nummer kommt aus der Folge der Datenbank.
+    await apps.setAccess(db, { appId: konto.id, botId, access: "lesen", actionId: aktion });
+    expect(await apps.currentAccess(db, konto.id, botId)).toBe("lesen");
+  });
+
   it("messages.untrusted: die App-Rolle darf es setzen, aber nicht zurücknehmen", async () => {
     const konv = await conversations.create(db, { botId, title: "Fremd" });
     const frage = await messages.insert(db, {

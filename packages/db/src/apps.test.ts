@@ -143,6 +143,10 @@ describe("Apps anlegen und lesen", () => {
       "https://a.test/#f",
       'https://a.test/"x',
       "https://a.test/ä",
+      'https://a"b.test/x',
+      "https://a\\b.test/x",
+      "https://a.test\\x",
+      'https://a.test"',
     ]) {
       expect(await codeOf(roh(url)), url).toBe(CHECK);
     }

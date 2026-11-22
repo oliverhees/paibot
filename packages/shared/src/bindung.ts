@@ -117,11 +117,18 @@ export function providerManagementKeyBinding(
 
 /**
  * Einheitliche Form der Adresse einer App (ab Tor-Fassung 3): wie `normalizedBaseUrl`, aber nur
- * `https`. Wirft `TypeError` bei allem anderen, auch bei Zugangsdaten, Anfrage-Teil oder Anker.
+ * `https`. Wirft `TypeError` bei allem anderen, auch bei Zugangsdaten, Anfrage-Teil oder Anker und
+ * bei einem Anführungszeichen oder Rückstrich irgendwo in der Adresse.
  */
 export function normalizedAppUrl(url: string): string {
   const normalized = normalizedBaseUrl(url);
   if (!normalized.startsWith("https://")) throw new TypeError("Ungültige Adresse der App");
+  // Kein Anführungszeichen und kein Rückstrich, weder in der Eingabe noch in der normalisierten
+  // Form (`%22` im Host wird von `URL` zu `"`): Die Datenbank bildet den Abdruck des Ziels aus
+  // dem Text der Adresse ohne Maskierung und lehnt solche Zeichen in der ganzen Adresse ab.
+  if (/["\\]/.test(url) || /["\\]/.test(normalized)) {
+    throw new TypeError("Ungültige Adresse der App");
+  }
   return normalized;
 }
 
