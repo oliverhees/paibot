@@ -38,7 +38,8 @@ describe("Schnittstelle", () => {
       historyMaxMessages: 50,
       maxRequestChars: 120000,
     });
-    expect(agents.MAX_MOTOR_STEPS).toBe(1);
+    // Die Zahl der Schritte kommt aus den Einstellungen (`max_steps_per_run`), nicht mehr aus dem Code.
+    expect("MAX_MOTOR_STEPS" in agents).toBe(false);
     expect(agents.PROMPT_PLACEHOLDERS).toEqual(["name", "datum", "zeitzone", "anweisung"]);
   });
 

@@ -84,6 +84,7 @@ describe("Glücksfall", () => {
       "message.created",
       "text.delta",
       "message.completed",
+      "step.finished",
       "beleg.created",
     ]);
     const answer = await repo.messages.get(env.db, outcome.messageId as never);
@@ -427,23 +428,31 @@ describe("Fehler", () => {
     );
   });
 
-  it("Werkzeug-Wunsch ohne Werkzeuge: Lauf endet mit abgelehnt, nichts wird ausgeführt", async () => {
+  it("Werkzeug-Wunsch ohne Werkzeuge: jeder Wunsch belegt abgelehnt (V-12), Lauf endet mit werkzeug_unbekannt, nichts wird ausgeführt", async () => {
     const env = await setup([
       { type: "tool-call", callId: "c1", name: "dateien_loeschen", input: { pfad: "/" } },
       { type: "finish", finishReason: "tool-calls", usage: { input: 3, output: 1 } },
     ]);
     const { runId } = await env.queueMessage(QUESTION);
     const outcome = await executeRun(runId, env.deps, never());
-    expect(outcome).toMatchObject({ status: "failed", code: "abgelehnt" });
+    expect(outcome).toMatchObject({ status: "failed", code: "werkzeug_unbekannt" });
     expect(env.motor.calls).toHaveLength(1);
-    const actions = (await env.receipts()).map((r) =>
-      r.body.type === "decision" || r.body.type === "result" ? r.body.action.type : r.body.type,
+    const bodies = (await env.receipts()).map((r) => r.body);
+    const toolDecision = bodies.find(
+      (b) => b.type === "decision" && b.action.type === "werkzeug.aufrufen",
     );
-    expect(actions).not.toContain("werkzeug.aufrufen");
-    expect(await repo.toolCalls.listForRun(env.db, runId)).toEqual([]);
-    expect((await env.receipts()).at(-1)?.body).toMatchObject({
-      result: { status: "error", code: "abgelehnt" },
+    expect(toolDecision).toMatchObject({
+      decision: { outcome: "deny" },
+      facts: { toolName: "dateien_loeschen", toolRegistered: false, toolOffered: false },
     });
+    expect(bodies.at(-1)).toMatchObject({
+      action: { type: "werkzeug.aufrufen" },
+      result: { status: "denied", code: "werkzeug_unbekannt" },
+    });
+    const calls = await repo.toolCalls.listForRun(env.db, runId);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ status: "denied", errorCode: "werkzeug_unbekannt" });
+    expect(await env.verify()).toMatchObject({ ok: true });
   });
 });
 

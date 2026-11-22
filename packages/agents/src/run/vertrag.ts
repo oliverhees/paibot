@@ -16,6 +16,7 @@ import type { ErrorCode } from "@paibot/shared/fehler";
 import type { MessageId, RunId } from "@paibot/shared/ids";
 import type { Motor } from "@paibot/shared/motor";
 import type { RunStatus } from "@paibot/shared/objekte";
+import type { ToolRegistry } from "../werkzeuge/register";
 
 /** Stellschrauben eines Laufs. */
 export interface RunTuning {
@@ -58,19 +59,6 @@ export const RUN_TUNING: RunTuning = {
 };
 
 /**
- * Schritt-Budget eines Laufs: so viele Modell-Schritte darf ein Lauf machen. In der Basis gibt es
- * keine Werkzeuge, also genau einen Schritt.
- */
-export const MAX_MOTOR_STEPS = 1;
-
-/**
- * Höchstzahl der Token eines Laufs (Grenze G-18), bis die Grenze einstellbar ist. Heute bleibt
- * jeder Lauf weit darunter (Eingabe höchstens `maxRequestChars`, Ausgabe höchstens die
- * Ausgabegrenze des Bots).
- */
-export const TRANSITION_MAX_RUN_TOKENS = 500_000;
-
-/**
  * Zustand der Datenschleuse für einen Lauf. `state` (aus `probeSchleuse`) sagt, warum sie nicht
  * bereit ist; fehlt er, zählt nur `reachable`.
  */
@@ -95,13 +83,15 @@ export interface RunDeps {
    */
   receipts?: ReceiptWriter;
   tuning?: Partial<RunTuning>;
+  /**
+   * Register der Werkzeuge (im Betrieb `createShippedRegistry()`, einmal je Prozess). Fehlt es,
+   * gilt das leere Register: Der Lauf bietet keine Werkzeuge an.
+   */
+  tools?: ToolRegistry;
 }
 
 /** Endzustände eines Laufs. */
-export type FinalRunStatus = Extract<
-  RunStatus,
-  "succeeded" | "failed" | "cancelled" | "denied" | "waiting_approval"
->;
+export type FinalRunStatus = Extract<RunStatus, "succeeded" | "failed" | "cancelled" | "denied">;
 
 export interface RunOutcome {
   runId: RunId;

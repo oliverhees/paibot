@@ -2183,4 +2183,17 @@ export const de = {
   "apps.zugriff.text.lesen.leer":
     "{name} darf lesen, aber noch ist kein Werkzeug als „liest“ bestätigt. Dann bekommt der Bot nichts.",
   "apps.zugriff.notaus": "Not-Aus aktiv: Der Zugriff lässt sich gerade nicht ändern.",
+  // Lauf mit mehreren Schritten: fester Satz am Ende einer Grenze, Texte der Werkzeug-Hülle
+  "lauf.grenze.antwort":
+    "Für diese Frage bräuchte ich mehr, als die Grenze „{titel}“ erlaubt. Ich habe nach {n} Schritten aufgehört; frag gern enger nach.",
+  "lauf.schritte.antwort":
+    "Für diese Frage hätte ich mehr Schritte gebraucht, als erlaubt sind. Ich habe aufgehört; frag gern enger nach.",
+  "werkzeug.huelle.keine": "keins",
+  "werkzeug.huelle.feld": "Eingabe",
+  "werkzeug.huelle.art.typ": "hat den falschen Typ.",
+  "werkzeug.huelle.art.zu_gross": "ist zu groß.",
+  "werkzeug.huelle.art.zu_klein": "ist zu klein.",
+  "werkzeug.huelle.art.unbekannt": "enthält ein Feld, das es nicht gibt.",
+  "werkzeug.huelle.art.format": "hat nicht die erwartete Form.",
+  "werkzeug.huelle.art.ungueltig": "ist nicht gültig.",
 } as const satisfies Record<string, string | readonly string[]>;

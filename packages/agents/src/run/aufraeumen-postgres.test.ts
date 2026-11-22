@@ -30,7 +30,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createFakeMotor } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
 import { failStaleRuns } from "./aufraeumen";
-import { MAX_MOTOR_STEPS, TRANSITION_MAX_RUN_TOKENS } from "./vertrag";
 
 const baseUrl = process.env[TEST_DATABASE_URL_ENV];
 
@@ -86,12 +85,12 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
       tokensToday: 0,
       killSwitch,
       ...providerTargetFacts(env.providerId, "http://127.0.0.1:9/v1"),
-      // Werte eines Laufs mit einem Schritt ohne Werkzeuge, wie `kontext.ts#modelFacts`.
+      // Werte eines ersten Schritts ohne Werkzeuge mit den Startwerten der Einstellungen.
       step: 0,
-      maxSteps: MAX_MOTOR_STEPS,
+      maxSteps: 8,
       runTokens: 0,
       stepTokenEstimate: 2051,
-      maxRunTokens: TRANSITION_MAX_RUN_TOKENS,
+      maxRunTokens: 60000,
       toolCount: 0,
       untrustedInput: false,
       trigger: "chat",

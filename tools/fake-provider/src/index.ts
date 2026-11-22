@@ -694,9 +694,18 @@ export function createFakeProvider(
         : [];
     const reasoning = scripted?.step.reasoning;
     const reasoningField = reasoning?.field ?? "reasoning";
-    const model = typeof body.model === "string" ? body.model : (rule?.model ?? "");
-    // Wie bei einem Vermittler: Wer geantwortet hat, steht in jedem Stück und in der Antwort.
-    const servedBy = rule === undefined ? {} : { provider: rule.provider };
+    const scriptedServedBy = scripted?.step.servedBy;
+    const model =
+      scriptedServedBy?.model ??
+      (typeof body.model === "string" ? body.model : (rule?.model ?? ""));
+    // Wie bei einem Vermittler: Wer geantwortet hat, steht in jedem Stück und in der Antwort. Ein
+    // Drehbuch-Schritt kann das je Schritt festlegen.
+    const servedBy =
+      scriptedServedBy !== undefined
+        ? { provider: scriptedServedBy.provider }
+        : rule === undefined
+          ? {}
+          : { provider: rule.provider };
     const id = `chatcmpl-fake-${nextId()}`;
     const created = Math.floor(Date.now() / 1000);
     const finishReason = scripted?.step.finish ?? (calls.length > 0 ? "tool_calls" : "stop");

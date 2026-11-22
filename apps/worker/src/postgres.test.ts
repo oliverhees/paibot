@@ -121,6 +121,7 @@ describe.skipIf(BASE_URL === undefined)("Worker gegen echtes Postgres", () => {
           "message.created",
           "text.delta",
           "message.completed",
+          "step.finished",
           "beleg.created",
         ]);
       }

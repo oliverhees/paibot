@@ -11,11 +11,13 @@
 
 import {
   createAiSdkMotor,
+  createShippedRegistry,
   executeRun,
   failStaleRuns,
   RUN_TUNING,
   type RunDeps,
   readSchleuseStatus,
+  type ToolRegistry,
 } from "@paibot/agents";
 import { createSigningKeyHolder, decryptSecret, deriveKey, loadMasterSecret } from "@paibot/crypto";
 import { createDb, type Database, repo } from "@paibot/db";
@@ -104,9 +106,14 @@ export function buildRunDeps(db: Database, env: Env): RunDepsSource {
     receipts,
   };
 
+  // Register der Werkzeuge: einmal je Prozess gebaut und geprüft (bricht bei einem Fehler ab).
+  let shipped: Promise<ToolRegistry> | undefined;
+
   return {
     base,
     async prepare() {
+      shipped ??= createShippedRegistry();
+      base.tools ??= await shipped;
       try {
         await holder.load();
       } catch (error) {

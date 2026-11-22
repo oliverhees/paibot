@@ -22,7 +22,7 @@ import type { ModelChoice } from "@paibot/llm/modell";
 import type { Facts } from "@paibot/shared/aktionen";
 import { targetOrigin } from "@paibot/shared/bindung";
 import type { RunId } from "@paibot/shared/ids";
-import type { TurnMessage } from "@paibot/shared/motor";
+import type { ToolSpec, TurnMessage } from "@paibot/shared/motor";
 import type {
   Bot,
   Conversation,
@@ -34,7 +34,8 @@ import type {
   SchleuseMode,
   Settings,
 } from "@paibot/shared/objekte";
-import { MAX_MOTOR_STEPS, type RunSchleuseStatus, TRANSITION_MAX_RUN_TOKENS } from "./vertrag";
+import type { SchrittFakten } from "./nahtstellen";
+import type { RunSchleuseStatus } from "./vertrag";
 
 /** Alles, was ein Lauf aus der Datenbank braucht, gelesen in einem Lesestand. */
 export interface RunContext {
@@ -46,7 +47,10 @@ export interface RunContext {
   model?: Model;
   /** Anbieter des Modells mit verschlüsseltem Schlüssel. */
   provider?: { provider: Provider; apiKeyEnc?: string };
-  /** Letzte Nachrichten bis einschließlich der auslösenden Nachricht, älteste zuerst. */
+  /**
+   * Letzte Nachrichten der Person und End-Antworten (ohne Zwischentexte eines Laufs mit
+   * Werkzeugen) bis einschließlich der auslösenden Nachricht, älteste zuerst.
+   */
   messages: Message[];
   /** Verbrauchte Token (Eingabe plus Ausgabe) seit Mitternacht in der Zeitzone der Einstellungen. */
   tokensToday: number;
@@ -86,8 +90,11 @@ export async function loadRunContext(
       const model = bot.modelId === undefined ? undefined : await repo.models.get(tx, bot.modelId);
       const provider =
         model === undefined ? undefined : await repo.providers.getWithKey(tx, model.providerId);
+      // Nur Nachrichten der Person und End-Antworten: Zwischentexte zählen weder für die Grenze
+      // noch gehen sie an das Modell.
       const recent = await repo.messages.listForConversation(tx, conversation.id, {
         limit: options.historyMaxMessages,
+        nurAntworten: true,
       });
       const tokensToday = await repo.messages.tokensSince(
         tx,
@@ -144,6 +151,7 @@ export function startOfDay(now: Date, timezone: string): Date {
 function usableAnswer(message: Message): boolean {
   return (
     message.role === "assistant" &&
+    message.step === undefined &&
     (message.status === "complete" || message.status === "cancelled") &&
     message.content !== ""
   );
@@ -171,55 +179,124 @@ function currentAnswers(messages: readonly Message[]): Message[] {
 }
 
 /**
- * Verlauf für das Modell: nur Nachrichten der Person und je Nachricht die geltende Antwort des
+ * Verlauf für das Modell: nur Nachrichten der Person und je Nachricht die geltende End-Antwort des
  * Bots (`currentAnswers`), neueste zuerst gezählt, bis `maxChars` erreicht ist. Älteres wird
  * abgeschnitten, nie zusammengefasst; die auslösende Nachricht bleibt immer drin.
  */
 export function buildHistory(messages: readonly Message[], maxChars: number): TurnMessage[] {
+  return buildHistoryWithRuns(messages, maxChars).history;
+}
+
+/**
+ * Wie `buildHistory`, dazu die Läufe der End-Antworten, die tatsächlich im Verlauf stehen (für
+ * fremde Inhalte: `untrustedInput`). Fällt eine Antwort aus dem Verlauf, fehlt auch ihr Lauf.
+ */
+export function buildHistoryWithRuns(
+  messages: readonly Message[],
+  maxChars: number,
+): { history: TurnMessage[]; runIds: RunId[] } {
   const usable = currentAnswers(messages);
   const kept: TurnMessage[] = [];
+  const runIds: RunId[] = [];
   let chars = 0;
   for (let i = usable.length - 1; i >= 0; i--) {
     const message = usable[i] as Message;
     const next = chars + message.content.length;
     if (kept.length > 0 && next > maxChars) break;
     chars = next;
-    kept.unshift(
-      message.role === "user"
-        ? { role: "user", text: message.content }
-        : { role: "assistant", text: message.content },
-    );
+    if (message.role === "user") {
+      kept.unshift({ role: "user", text: message.content });
+    } else {
+      kept.unshift({ role: "assistant", text: message.content });
+      if (message.runId !== undefined) runIds.unshift(message.runId);
+    }
   }
-  return kept;
+  return { history: kept, runIds };
 }
 
-/** Zeichen einer Eingabe an das Modell: Anweisung plus Text aller Nachrichten im Verlauf. */
-export function requestChars(system: string, history: readonly TurnMessage[]): number {
+/**
+ * Zeichen einer Eingabe an das Modell: Anweisung, Text aller Nachrichten, jeder Werkzeug-Aufruf
+ * und jedes Ergebnis (als JSON) und Name, Beschreibung und JSON-Schema jedes angebotenen
+ * Werkzeugs.
+ */
+export function requestChars(
+  system: string,
+  history: readonly TurnMessage[],
+  tools: readonly ToolSpec[] = [],
+): number {
   let chars = system.length;
   for (const entry of history) {
-    if (entry.role === "user" || entry.role === "assistant") chars += entry.text.length;
+    if (entry.role === "user") chars += entry.text.length;
+    else if (entry.role === "assistant") {
+      chars += entry.text.length;
+      for (const call of entry.toolCalls ?? []) chars += JSON.stringify(call).length;
+    } else {
+      for (const result of entry.results) chars += JSON.stringify(result).length;
+    }
+  }
+  for (const tool of tools) {
+    chars += tool.name.length + tool.description.length + JSON.stringify(tool.inputSchema).length;
   }
   return chars;
 }
 
-/** Vorsatz der Kontext-Prüfsumme über die ausgehende Anfrage. */
+/** Vorsatz der Kontext-Prüfsumme über die ausgehende Anfrage ohne Werkzeuge. */
 export const REQUEST_DIGEST_PREFIX = "pb-anfrage/v1\n";
+/** Vorsatz der Kontext-Prüfsumme, wenn Werkzeuge angeboten sind oder Schritte im Verlauf stehen. */
+export const REQUEST_DIGEST_PREFIX_TOOLS = "pb-anfrage/v2\n";
+
+/** Ein angebotenes Werkzeug, wie es in die Kontext-Prüfsumme eingeht. */
+export interface DigestTool {
+  name: string;
+  description: string;
+  inputSchema: ToolSpec["inputSchema"];
+  toolDigest: string;
+}
 
 /**
  * Kontext-Prüfsumme über die ausgehende Anfrage (Anweisung, Verlauf, Modell, Weg) für den Beleg
- * „Entscheidung“. Nur die Prüfsumme geht in den Beleg, nie der Inhalt.
+ * „Entscheidung“. Sind Werkzeuge angeboten oder stehen Werkzeug-Aufrufe bzw. Ergebnisse im
+ * Verlauf, gilt der Vorsatz v2 mit der Liste der Werkzeuge (Name, Beschreibung, Schema, Abdruck);
+ * sonst bleibt die Prüfsumme Byte für Byte wie in v1. Nur die Prüfsumme geht in den Beleg, nie
+ * der Inhalt.
  */
 export function requestDigest(
   key: DerivedKey<"context-v1">,
-  input: { system: string; history: readonly TurnMessage[]; modelId: string; route: Route },
+  input: {
+    system: string;
+    history: readonly TurnMessage[];
+    modelId: string;
+    route: Route;
+    tools?: readonly DigestTool[];
+  },
 ): string {
+  const tools = input.tools ?? [];
+  const withSteps = input.history.some(
+    (entry) =>
+      entry.role === "tool" || (entry.role === "assistant" && entry.toolCalls !== undefined),
+  );
+  if (tools.length === 0 && !withSteps) {
+    const payload = JSON.stringify({
+      history: input.history,
+      modelId: input.modelId,
+      route: input.route,
+      system: input.system,
+    });
+    return contextDigest(key, `${REQUEST_DIGEST_PREFIX}${payload}`);
+  }
   const payload = JSON.stringify({
     history: input.history,
     modelId: input.modelId,
     route: input.route,
     system: input.system,
+    tools: tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      toolDigest: tool.toolDigest,
+    })),
   });
-  return contextDigest(key, `${REQUEST_DIGEST_PREFIX}${payload}`);
+  return contextDigest(key, `${REQUEST_DIGEST_PREFIX_TOOLS}${payload}`);
 }
 
 /** Wahl von Anbieter und Modell für `resolveModel`, aus demselben Lesestand wie die Fakten. */
@@ -278,6 +355,12 @@ export function modelFacts(input: {
   schleuse: SchleuseConnection | undefined;
   inputChars: number;
   maxInputChars: number;
+  /** Ausgabegrenze dieses Schritts (`ausgabeGrenze`). */
+  maxOutputTokens: number;
+  /** Tagesverbrauch vom Lauf-Anfang plus Verbrauch dieses Laufs (`tokensHeute`). */
+  tokensToday: number;
+  /** Lauf-Fakten des Schritts (`schrittFakten`). */
+  schritt: SchrittFakten;
 }): Facts<"modell.anfragen"> {
   const { context, route } = input;
   const { provider } = context.provider;
@@ -295,23 +378,15 @@ export function modelFacts(input: {
     schleuseReachable: route.schleuseReachable,
     inputChars: input.inputChars,
     maxInputChars: input.maxInputChars,
-    maxOutputTokens: context.bot.maxOutputTokens,
+    maxOutputTokens: input.maxOutputTokens,
     botMaxOutputTokens: context.bot.maxOutputTokens,
-    tokensToday: context.tokensToday,
+    tokensToday: input.tokensToday,
     ...(context.settings.dailyTokenBudget === undefined
       ? {}
       : { dailyTokenBudget: context.settings.dailyTokenBudget }),
     killSwitch: context.settings.killSwitch,
     ...target,
-    // Übergangswerte, bis die Steuerung mehrere Schritte macht: ein Schritt, keine Werkzeuge.
-    step: 0,
-    maxSteps: MAX_MOTOR_STEPS,
-    runTokens: 0,
-    stepTokenEstimate: Math.ceil(input.inputChars / 4) + context.bot.maxOutputTokens,
-    maxRunTokens: TRANSITION_MAX_RUN_TOKENS,
-    toolCount: 0,
-    untrustedInput: false,
-    trigger: "chat",
+    ...input.schritt,
   };
 }
 

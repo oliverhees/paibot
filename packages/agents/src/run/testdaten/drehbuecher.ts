@@ -29,6 +29,7 @@ export interface ScriptStep {
   reasoning?: { text: string; field?: "reasoning" | "reasoning_content" };
   usage?: false | { prompt: number; completion: number };
   finish?: "stop" | "tool_calls" | "length";
+  servedBy?: { provider: string; model?: string };
 }
 
 /** Ein Drehbuch (Form wie `FakeScript`). */
@@ -244,6 +245,20 @@ export const SCRIPTS = {
   langsam: oneCallThenAnswer(call("test_langsam", { q: "x" })),
   langsamSchreiben: oneCallThenAnswer(call("test_langsam_schreiben", { q: "x" })),
   wirft: oneCallThenAnswer(call("test_wirft", { q: "x" })),
+  /** Zwei Schritte, die je ein anderer Anbieter mit anderem Modell beantwortet. */
+  zweiAnbieter: {
+    steps: [
+      {
+        toolCalls: [call("test_lesen", { q: "eins" })],
+        servedBy: { provider: "anbieter-eins", model: "modell-eins" },
+      },
+      { text: ANSWER_TEXT, servedBy: { provider: "anbieter-zwei", model: "modell-zwei" } },
+    ],
+  },
+  /** Langer Text in einem Schritt mit Werkzeugen (vorläufiger Text in vielen Stücken). */
+  langerText: { steps: [{ text: "Wort ".repeat(400) }] },
+  /** Text, der beim Abbruch vorläufig bleibt. */
+  abbruchEntwurf: { steps: [{ text: "ABGEBROCHENER-ENTWURF wird nie Antwort" }] },
   /** Zwei Werkzeug-Schritte, für gleichzeitige Läufe und den Ablauf der Belege. */
   zweiWerkzeugSchritte: {
     steps: [

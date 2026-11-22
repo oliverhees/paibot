@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  checkScript,
   createFakeProvider,
   FAKE_CONTROL_KEY_HEADER,
   FAKE_CONTROL_PATHS,
@@ -686,3 +687,34 @@ function canConnect(host: string, port: number): Promise<boolean> {
     });
   });
 }
+
+describe("Anbieter je Schritt", () => {
+  it("ein Schritt mit servedBy meldet Anbieter und Modell in jedem Stück; ohne das Feld wie bisher", async () => {
+    provider.configure({
+      script: {
+        steps: [
+          { text: "eins", servedBy: { provider: "anbieter-a", model: "modell-a" } },
+          { text: "zwei", servedBy: { provider: "anbieter-b" } },
+          { text: "drei" },
+        ],
+      },
+    });
+    const a = await ask(true);
+    expect(a.chunks.every((chunk) => chunk.provider === "anbieter-a")).toBe(true);
+    expect(a.chunks.every((chunk) => chunk.model === "modell-a")).toBe(true);
+    const b = await ask(false);
+    expect(b.text).toBe("zwei");
+    const c = await ask(true);
+    expect(c.chunks.some((chunk) => "provider" in chunk)).toBe(false);
+    expect(c.chunks.every((chunk) => chunk.model === "fake/test-modell")).toBe(true);
+  });
+
+  it("servedBy wird geprüft", () => {
+    expect(checkScript({ steps: [{ servedBy: { provider: "" } }] })).toMatch(/servedBy/);
+    expect(checkScript({ steps: [{ servedBy: { provider: "a", x: 1 } }] })).toMatch(/servedBy/);
+    expect(checkScript({ steps: [{ servedBy: { provider: "a", model: 5 } }] })).toMatch(/servedBy/);
+    expect(typeof checkScript({ steps: [{ servedBy: { provider: "a", model: "m" } }] })).toBe(
+      "object",
+    );
+  });
+});

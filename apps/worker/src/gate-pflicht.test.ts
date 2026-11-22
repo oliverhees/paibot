@@ -178,8 +178,8 @@ type BotAktion = {
 
 /**
  * Jede Aktion eines Bots aus dem Vertrag: `lauf` = jeder Auftrag geht hier durch das Tor;
- * `werkzeug` = in der Basis gibt der Motor keine Werkzeuge heraus, ein Werkzeug-Wunsch führt nichts
- * aus (geprüft unten).
+ * `werkzeug` = ohne angebotene Werkzeuge führt ein Werkzeug-Wunsch nichts aus, er wird belegt
+ * abgelehnt (geprüft unten).
  */
 const BOT_AKTIONEN: Record<BotAktion, "lauf" | "werkzeug"> = {
   "modell.anfragen": "lauf",
@@ -229,17 +229,19 @@ describe("Tor-Pflicht im Worker", () => {
     expect(fremd.map((s) => `${s.art} ${s.tabelle}`)).toEqual([]);
   });
 
-  it("Werkzeug-Wunsch des Motors: nichts ausgeführt, kein Werkzeug-Beleg, kein Werkzeug-Aufruf gespeichert", async () => {
+  it("Werkzeug-Wunsch des Motors ohne angebotene Werkzeuge: belegt abgelehnt (V-12), nichts ausgeführt, Zeile denied", async () => {
     const u = await umgebung([
       { type: "tool-call", callId: "c1", name: "dateien_loeschen", input: { pfad: "/" } },
       { type: "finish", finishReason: "tool-calls", usage: { input: 3, output: 1 } },
     ]);
-    const { protokoll } = await u.auftrag();
-    const werkzeug = Object.entries(BOT_AKTIONEN)
-      .filter(([, art]) => art === "werkzeug")
-      .map(([a]) => a);
-    expect(protokoll.filter((s) => s.aktion !== null && werkzeug.includes(s.aktion))).toEqual([]);
-    expect(protokoll.filter((s) => s.tabelle === "tool_calls")).toEqual([]);
+    const { runId, protokoll } = await u.auftrag();
     expect(fensterVon(protokoll, "modell.anfragen")).toHaveLength(1);
+    // Je Wunsch ein Beleg-Paar „Entscheidung“ und „Ergebnis“ (abgelehnt); nichts dazwischen ausgeführt.
+    expect(fensterVon(protokoll, "werkzeug.aufrufen")).toHaveLength(1);
+    expect(protokoll.filter((s) => s.aktion === "werkzeug.ausfuehren")).toEqual([]);
+    expect(
+      (await repo.toolCalls.listForRun(u.db, runId)).map((c) => [c.status, c.errorCode]),
+    ).toEqual([["denied", "werkzeug_unbekannt"]]);
+    expect((await repo.runs.get(u.db, runId))?.errorCode).toBe("werkzeug_unbekannt");
   });
 });

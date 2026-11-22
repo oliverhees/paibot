@@ -18,7 +18,7 @@ Bevor es ein Werkzeug gibt, stehen die Verträge dafür fest: wie ein Werkzeug b
 
 - **Vertrag zuerst, Fassung 2 eingefroren:** Die Fakten gehören zur Auswertung des Tors. Mit ihnen steht die Tor-Fassung 2 fest (`packages/gate/src/fassungen/fassung-2.ts#GATE_FORMAT_2`); was später am Tor anders entscheiden soll, braucht eine neue Fassung (`docs/entwickler/tor.md`, Abschnitt „Fassungen“).
 - In dieser Fassung gibt es für keine Aktion eine Freigabe-Karte. Ergibt das Tor für einen Werkzeug-Aufruf ‚fragen‘, behandelt die Steuerung ihn als abgelehnt; es entsteht kein wartender Zustand, weder am Aufruf noch am Lauf (`packages/gate/src/gate.ts#GateDenied`, `toolCallDecision`).
-- Der heutige Chat läuft mit festen Übergangswerten weiter: ein Schritt, keine Werkzeuge (`packages/agents/src/run/kontext.ts#modelFacts`, `packages/agents/src/run/vertrag.ts#TRANSITION_MAX_RUN_TOKENS`).
+- Die Fakten je Schritt eines Laufs entstehen in `packages/agents/src/run/nahtstellen.ts#schrittFakten`; die Schleife steht in `packages/agents/src/run/schleife.ts#runLoop`.
 
 ## Aufbau
 
@@ -148,11 +148,7 @@ PAIBOT_TEST_DATABASE_URL=postgres://… pnpm --filter @paibot/durchstich test
 
 ## Bekannte Schwächen
 
-- **Übergangswerte:** `step` 0, `maxSteps` 1, `runTokens` 0, `maxRunTokens` 500 000, `toolCount` 0, `untrustedInput` `false`, `trigger` `"chat"` sind fest (`packages/agents/src/run/kontext.ts#modelFacts`). Sie stimmen nur, solange es keine Werkzeug-Schleife gibt: Heute gibt es keine fremden Inhalte im Lauf, keine Werkzeuge und nur den Schritt 0. Mit der Werkzeug-Schleife müssen sie durch die echten Werte des Laufs ersetzt werden (Schritt, verbrauchte Token, Zahl der Werkzeuge, fremde Inhalte); bleiben sie fest, prüfen G-16, G-18 und der Deckel D-01 nichts.
-- **G-16 und G-18 ohne Wirkung:** Ein Lauf macht heute genau einen Schritt; beide Grenzen sind deshalb immer eingehalten (`packages/agents/src/run/vertrag.ts#MAX_MOTOR_STEPS`).
-- **`untrustedInput` heute immer `false`:** Der Deckel D-01 greift im Chat deshalb nie (`packages/agents/src/run/kontext.ts#modelFacts`).
 - **Abdruck v2 nur mit Ganzzahlen:** Gleitkommazahlen in den Argumenten werfen beim Abdruck (`packages/gate/src/abdruck.ts#toolCallDigestText`).
 - **Abdruck der Beschreibung asynchron:** Er nutzt nur Web Crypto und gibt ein `Promise` zurück (`packages/gate/src/abdruck.ts#toolDefinitionDigest`).
 - **Aufräumen und Reihenfolge Beleg ↔ Zeile:** Stirbt der Worker, nachdem das Ergebnis `ok` belegt ist, aber bevor die Zeile `succeeded` wurde, endet die Zeile als `cancelled`, der Beleg bleibt `ok` (`packages/db/src/repo/werkzeuge.ts#endOpenForRun`). Die Reihenfolge legt erst die Werkzeug-Schleife fest.
 - **Altzeilen in Warte-Zuständen:** Zeilen in `tool_calls.waiting_approval`/`approved` oder `runs.waiting_approval` erzeugt der Code nicht. Gäbe es sie, könnte der Trigger einen solchen Aufruf nicht mehr beenden; ein wartender Lauf kann noch enden (`packages/db/src/werkzeug-kern.test.ts`).
-- **`max_tokens_per_run` wirkt noch nicht:** Der Lauf nutzt bis zur Werkzeug-Schleife den Übergangswert (`packages/agents/src/run/vertrag.ts#TRANSITION_MAX_RUN_TOKENS`); die Grenzen in `settings` liest noch niemand.

@@ -33,6 +33,12 @@ export interface FakeScriptStep {
   usage?: false | { prompt: number; completion: number };
   /** `finish_reason`; Standard: `tool_calls` mit Aufrufen, sonst `stop`. */
   finish?: "stop" | "tool_calls" | "length";
+  /**
+   * Wer laut Antwort dieses Schritts geantwortet hat (`provider` und, wenn gesetzt, `model` in
+   * jedem Stück), wie bei einem Vermittler. Fehlt das Feld, gilt das Verhalten ohne Drehbuch
+   * (Routing-Regel bzw. nichts).
+   */
+  servedBy?: { provider: string; model?: string };
 }
 
 export interface FakeScript {
@@ -121,7 +127,14 @@ function checkToolCall(value: unknown, where: string): FakeScriptToolCall | stri
 
 function checkStep(value: unknown, where: string): FakeScriptStep | string {
   if (!isObject(value)) return `${where}: erwartet ein Objekt.`;
-  const extra = unknownKey(value, ["text", "toolCalls", "reasoning", "usage", "finish"]);
+  const extra = unknownKey(value, [
+    "text",
+    "toolCalls",
+    "reasoning",
+    "usage",
+    "finish",
+    "servedBy",
+  ]);
   if (extra !== undefined) return `${where}: unbekanntes Feld \`${extra}\`.`;
   if (value.text !== undefined && typeof value.text !== "string") {
     return `${where}: \`text\` muss Text sein.`;
@@ -168,6 +181,18 @@ function checkStep(value: unknown, where: string): FakeScriptStep | string {
     value.finish !== "length"
   ) {
     return `${where}: \`finish\` muss stop, tool_calls oder length sein.`;
+  }
+  if (value.servedBy !== undefined) {
+    const served = value.servedBy;
+    if (
+      !isObject(served) ||
+      unknownKey(served, ["provider", "model"]) !== undefined ||
+      typeof served.provider !== "string" ||
+      served.provider === "" ||
+      (served.model !== undefined && (typeof served.model !== "string" || served.model === ""))
+    ) {
+      return `${where}: \`servedBy\` braucht \`provider\` (Text) und optional \`model\` (Text).`;
+    }
   }
   return value as FakeScriptStep;
 }

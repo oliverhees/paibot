@@ -53,6 +53,16 @@ export const STEP_EVENT_DATA = {
   "draft.delta": z.strictObject({ runId, step: countSchema, text: z.string().min(1) }),
 } as const;
 
+/** Grundform von `tool.requested` (ohne Kennung des Werkzeugs und Schritt). */
+const toolRequestedDataV1 = z.strictObject({
+  runId,
+  actionId: idSchema("action"),
+  messageId,
+  name: toolNameSchema,
+  source: toolSourceSchema,
+  kind: toolKindSchema,
+});
+
 /** Daten je Ereignis-Typ. */
 export const EVENT_DATA = {
   "message.created": z.strictObject({ messageId, role: messageRoleSchema, text: z.string() }),
@@ -79,15 +89,11 @@ export const EVENT_DATA = {
   "run.cancelled": z.strictObject({ runId, code: errorCodeSchema, text: z.string().min(1) }),
   "run.failed": z.strictObject({ runId, code: errorCodeSchema, text: z.string().min(1) }),
   "run.denied": z.strictObject({ runId, code: errorCodeSchema, text: z.string().min(1) }),
-  /** Das Modell wünscht einen Werkzeug-Aufruf; die Argumente stehen nur im Verlauf, nicht hier. */
-  "tool.requested": z.strictObject({
-    runId,
-    actionId: idSchema("action"),
-    messageId,
-    name: toolNameSchema,
-    source: toolSourceSchema,
-    kind: toolKindSchema,
-  }),
+  /**
+   * Das Modell wünscht einen Werkzeug-Aufruf; die Argumente stehen nur im Verlauf, nicht hier.
+   * Mit Kennung des Werkzeugs und Schritt des Laufs (`toolRequestedDataV2`).
+   */
+  "tool.requested": toolRequestedDataV1.extend({ key: toolKeySchema, step: countSchema }),
   /** Ein Werkzeug-Aufruf ist erledigt (ausgeführt, abgelehnt, gescheitert oder abgebrochen). */
   "tool.finished": z.strictObject({
     runId,
@@ -105,11 +111,8 @@ export const EVENT_DATA = {
   ...STEP_EVENT_DATA,
 } as const;
 
-/** `tool.requested` für Läufe mit mehreren Schritten: dazu Kennung des Werkzeugs und Schritt. */
-export const toolRequestedDataV2 = EVENT_DATA["tool.requested"].extend({
-  key: toolKeySchema,
-  step: countSchema,
-});
+/** `tool.requested` für Läufe mit mehreren Schritten: mit Kennung des Werkzeugs und Schritt. */
+export const toolRequestedDataV2 = EVENT_DATA["tool.requested"];
 
 type EventData = typeof EVENT_DATA;
 export type ConversationEventType = keyof EventData;

@@ -502,12 +502,15 @@ describe("mit dem echten Motor", () => {
     expect(everything).not.toContain(PROVIDER_KEY);
   });
 
-  it("Werkzeug-Wunsch des Modells ohne Werkzeuge: abgelehnt, nichts ausgeführt, keine zweite Anfrage", async () => {
+  it("Werkzeug-Wunsch des Modells ohne Werkzeuge: belegt abgelehnt, nichts ausgeführt, keine zweite Anfrage", async () => {
     const env = await setup();
     provider.configure({ reply: "", toolCall: { name: "rechner", arguments: { a: 1 } } });
     const { runId } = await env.queueMessage(QUESTION);
     const outcome = await executeRun(runId, env.deps, never());
-    expect(outcome).toMatchObject({ status: "failed", code: "abgelehnt" });
+    expect(outcome).toMatchObject({ status: "failed", code: "werkzeug_unbekannt" });
+    expect(await repo.toolCalls.listForRun(env.db, runId)).toMatchObject([
+      { status: "denied", errorCode: "werkzeug_unbekannt", name: "rechner" },
+    ]);
     expect(chatRequests(provider)).toHaveLength(1);
     expect(
       (chatRequests(provider)[0]?.body as { tools?: unknown } | undefined)?.tools,

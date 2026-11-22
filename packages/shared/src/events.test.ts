@@ -136,6 +136,8 @@ const EXAMPLES: ConversationEvent[] = [
       name: "kalender_lesen",
       source: "eingebaut",
       kind: "lesen",
+      key: "eingebaut/kalender.lesen",
+      step: 0,
     },
   },
   {

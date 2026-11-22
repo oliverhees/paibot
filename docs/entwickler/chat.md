@@ -21,7 +21,7 @@ Belegte Entscheidungen im Code:
 - **Senden ganz oder gar nicht:** Nachricht, Lauf, Ereignisse und Auftrag in der Warteschlange entstehen in einer Transaktion (`apps/web/src/lib/chat/aktionen.ts#nachrichtSenden`, `apps/web/src/lib/warteschlange.ts`, Kopfkommentar).
 - **Keine Wiederholung:** Ein fehlgeschlagener Lauf wird nie wiederholt, „eine Modell-Antwort darf nicht doppelt entstehen“ (`packages/jobs/src/vertrag.ts#RUN_QUEUE`, `retryLimit: 0`); auch die Lauf-Steuerung wiederholt nie und fällt nie auf den direkten Weg zurück (Kommentar an `packages/agents/src/run/ausfuehren.ts#executeRun`).
 - **Warteschlange in Postgres:** pg-boss im Schema `pgboss`; nur `packages/jobs/` kennt die Bibliothek (`packages/jobs/src/pgboss-queue.ts`, `packages/jobs/src/vertrag.ts#QUEUE_SCHEMA`).
-- **Motor nur an einer Stelle:** Der Motor auf dem Vercel AI SDK steckt in `packages/agents/src/motor-aisdk.ts` und macht genau einen Modell-Schritt ohne Werkzeug-Ausführung (Kopfkommentar; `packages/agents/src/run/vertrag.ts#MAX_MOTOR_STEPS` ist 1).
+- **Motor nur an einer Stelle:** Der Motor auf dem Vercel AI SDK steckt in `packages/agents/src/motor-aisdk.ts` und macht je Aufruf genau einen Modell-Schritt ohne Werkzeug-Ausführung (Kopfkommentar); wie viele Schritte ein Lauf macht, steuert `packages/agents/src/run/schleife.ts#runLoop`.
 - **Eine LISTEN-Verbindung je Prozess:** Meldungen gehen im Speicher an alle offenen Ströme (`apps/web/src/lib/sse/verteiler.ts`, Kopfkommentar).
 
 ## Aufbau
