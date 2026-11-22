@@ -99,6 +99,13 @@
       "when": 1795273455301,
       "tag": "0013_widerruf_grund",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795304424194,
+      "tag": "0014_werkzeug_kern",
+      "breakpoints": true
     }
   ]
 }

@@ -89,6 +89,8 @@ export function toMessage(row: MessageRow): Message {
             ...wennGesetzt("model", row.servedModel),
           },
         }),
+    ...wennGesetzt("step", row.step),
+    origin: row.origin,
     createdAt: toIsoTime(row.createdAt),
   };
 }
@@ -166,6 +168,12 @@ export function toSettings(row: SettingsRow): Settings {
     ...wennGesetzt("installationId", row.installationId),
     ...wennGesetzt("defaultBotId", row.defaultBotId),
     killSwitch: row.killSwitch,
+    maxStepsPerRun: row.maxStepsPerRun,
+    maxToolCallsPerStep: row.maxToolCallsPerStep,
+    maxToolCallsPerRun: row.maxToolCallsPerRun,
+    maxTokensPerRun: row.maxTokensPerRun,
+    toolResultMaxChars: row.toolResultMaxChars,
+    toolResultsMaxCharsPerStep: row.toolResultsMaxCharsPerStep,
     createdAt: toIsoTime(row.createdAt),
     updatedAt: toIsoTime(row.updatedAt),
   };

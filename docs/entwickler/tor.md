@@ -113,7 +113,9 @@ Jede verändernde Route nennt ihre Aktion im Routen-Vertrag (`apps/web/src/lib/r
 
 Vorbedingungen `V-01` bis `V-14`, Grenzen `G-01` bis `G-05` und `G-16` bis `G-18` und der Deckel `D-01` stehen in `packages/shared/src/gate.ts#PRECONDITIONS`, `packages/shared/src/gate.ts#LIMITS_BY_ID` und `packages/shared/src/gate.ts#CAPS`.
 
-Standard-Regeln in der Datenbank: R-001 bis R-006 und R-999 (`packages/shared/src/gate.ts#ACTIVE_STANDARD_RULES`). R-007, R-008 und R-010 stehen nur im Code (`packages/shared/src/gate.ts#UNSTORED_STANDARD_RULE_VERSIONS`).
+Standard-Regeln in der Datenbank: R-001 bis R-006, R-010 und R-999 (`packages/shared/src/gate.ts#ACTIVE_STANDARD_RULES`); R-010 legt `packages/db/drizzle/0014_werkzeug_kern.sql` an. R-007 und R-008 stehen nur im Code (`packages/shared/src/gate.ts#UNSTORED_STANDARD_RULE_VERSIONS`).
+
+Regeln gehören nicht zur Fassung: Eine neue Regel-Zeile ändert alte Entscheidungen nicht, sie bekommt eine größere Nummer im Regel-Protokoll (`seq`), und das Nachrechnen nimmt den Regelstand des Belegs (`packages/receipts/src/nachrechnen.ts#reevaluate`). Der feste Fall der Fassung 2 „R-010 nicht in den Regeln aus der Datenbank“ bleibt richtig, weil er seinen Regel-Satz selbst mitbringt (`packages/gate/src/fassungen/fassung-2.korpus.json`, `ruleSets.datenbank`).
 
 ## Sicherheit
 
@@ -161,7 +163,7 @@ pnpm --filter @paibot/web test
 
 ## Bekannte Schwächen
 
-- **Keine Freigabe in Fassung 2:** `werkzeug.freigeben` und `werkzeug.ausfuehren` stehen in den Verträgen, die aktuelle Fassung kennt sie nicht (Anfrage ungültig, `deny`); die Datenbank nimmt sie ebenfalls nicht an (`packages/shared/src/actions.ts#UNSTORED_ACTION_TYPES`). R-007, R-008 und R-010 stehen nur im Code (`packages/shared/src/gate.ts#UNSTORED_STANDARD_RULE_VERSIONS`); das Nachrechnen kennt ungespeicherte Standard-Regeln nicht (`packages/receipts/src/nachrechnen.ts#reevaluate`).
+- **Keine Freigabe in Fassung 2:** `werkzeug.freigeben` und `werkzeug.ausfuehren` stehen in den Verträgen, die aktuelle Fassung kennt sie nicht (Anfrage ungültig, `deny`); die Datenbank nimmt sie ebenfalls nicht an (`packages/shared/src/actions.ts#UNSTORED_ACTION_TYPES`). R-007 und R-008 stehen nur im Code (`packages/shared/src/gate.ts#UNSTORED_STANDARD_RULE_VERSIONS`); das Nachrechnen kennt ungespeicherte Standard-Regeln nicht (`packages/receipts/src/nachrechnen.ts#reevaluate`).
 - **Deckel mit Standard-Regeln wirkungslos:** R-005 fragt vor jeder eigenen Regel; „gedeckelt“ entsteht heute nur mit einem Regelstand aus eigenen Regeln (Tests).
 - **`ask` und `prepare` führen nie aus:** In dieser Fassung gibt es weder Freigabe noch Vorbereitung im Tor; beide enden als `GateDenied` (Kommentar an `Gate.run` in `packages/gate/src/gate.ts`).
 - **Keine eigenen Regeln:** `verifyStandardRules` lässt nur Regeln der Quelle `standard` zu (`packages/db/src/repo/regeln.ts#verifyStandardRules`), die App-Rolle darf `rules` nur lesen (`packages/db/src/rollen.ts`).

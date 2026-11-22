@@ -32,6 +32,7 @@ import { checkAppRole, runMigrations } from "@paibot/db/migrate";
 import {
   createPostgresTestDatabase,
   MIGRATIONS_FOLDER,
+  migrationsUpTo,
   newPostgresTestRole,
   type PostgresTestDatabase,
   type PostgresTestRole,
@@ -334,6 +335,114 @@ async function befuellen(appUrl: string) {
       }),
       { context: { digest: contextDigest(contextKey, frage) } },
     );
+    // Antwort mit Zwischentext und vorläufigem Text eines Schritts, Werkzeug-Aufrufe in jedem
+    // Zustand dieser Fassung (Entscheidungen durchs Tor über R-010).
+    const antwort = await repo.messages.insert(db, {
+      conversationId: fertig.id,
+      role: "assistant",
+      status: "streaming",
+      runId: lauf.id,
+    });
+    await sql`insert into public.messages (id, conversation_id, role, content, run_id, step)
+      values (${newId("message")}, ${fertig.id}, 'assistant', 'Ich schaue nach.', ${lauf.id}, 0)`;
+    await repo.events.append(db, {
+      conversationId: fertig.id,
+      type: "draft.delta",
+      data: { runId: lauf.id, step: 0, text: "Ich schaue nach." },
+    });
+    await repo.events.append(db, {
+      conversationId: fertig.id,
+      type: "step.finished",
+      data: { runId: lauf.id, step: 0, ending: "zwischentext" },
+    });
+    const belegt: { decision: { receiptId: string }; result: { receiptId: string } }[] = [];
+    for (let i = 0; i < 4; i++) {
+      const r = await gate.run(
+        {
+          actionId: newId("action"),
+          type: "werkzeug.aufrufen",
+          actor: `bot:${bot.id}`,
+          target: { conversationId: fertig.id, runId: lauf.id, botId: bot.id },
+        },
+        {
+          botOfConversation: true,
+          runRunning: true,
+          toolName: "doku_nachschlagen",
+          toolSource: "eingebaut",
+          toolKind: "lesen",
+          argsDigest: `hmac-sha256:${"a7".repeat(32)}`,
+          killSwitch: false,
+          toolKey: "eingebaut/doku.nachschlagen",
+          toolDigest: `sha256:${"4d".repeat(32)}`,
+          toolReach: "intern",
+          toolForeign: false,
+          toolRegistered: true,
+          toolOffered: true,
+          inputValid: true,
+          untrustedInput: false,
+          step: 0,
+          callIndexInStep: i,
+          maxCallsPerStep: 8,
+          callsInRun: i,
+          maxCallsPerRun: 16,
+          trigger: "chat",
+        },
+        async () => ({ value: undefined, result: { status: "ok" as const } }),
+      );
+      belegt.push(r.receipts);
+    }
+    const aufruf = async (position: number) =>
+      (
+        await repo.toolCalls.create(db, {
+          actionId: newId("action"),
+          conversationId: fertig.id,
+          runId: lauf.id,
+          messageId: antwort.id,
+          position,
+          callId: `aufruf-${position}`,
+          name: "doku_nachschlagen",
+          source: "eingebaut",
+          kind: "lesen",
+          input: { frage: "Not-Aus" },
+          argsDigest: `hmac-sha256:${"b".repeat(64)}` as never,
+          toolKey: "eingebaut/doku.nachschlagen",
+          toolDigest: `sha256:${"4d".repeat(32)}` as never,
+          reach: "intern",
+          foreignContent: false,
+          step: 0,
+          untrustedInput: false,
+        })
+      ).actionId;
+    const entschieden = async (position: number, i: number) => {
+      const id = await aufruf(position);
+      await repo.toolCalls.recordDecision(db, id, {
+        outcome: "allow",
+        decisionReceiptId: belegt[i]?.decision.receiptId as never,
+      });
+      return id;
+    };
+    await aufruf(0);
+    await entschieden(1, 0);
+    await repo.toolCalls.finish(db, await entschieden(2, 1), {
+      status: "succeeded",
+      output: { text: "gefunden" },
+      resultReceiptId: belegt[1]?.result.receiptId as never,
+    });
+    await repo.toolCalls.finish(db, await entschieden(3, 2), {
+      status: "failed",
+      output: null,
+      resultReceiptId: belegt[2]?.result.receiptId as never,
+    });
+    await repo.toolCalls.recordDecision(db, await aufruf(4), {
+      outcome: "deny",
+      decisionReceiptId: belegt[3]?.decision.receiptId as never,
+      output: "Abgelehnt.",
+    });
+    await repo.toolCalls.cancel(db, await aufruf(5), { output: null });
+    await repo.messages.finalize(db, antwort.id, {
+      status: "complete",
+      content: "Kurz nach zwei.",
+    });
     await repo.runs.finish(db, lauf.id, { status: "succeeded" });
 
     // Unterhaltung 2 und 3: ein Lauf, der gerade läuft, und einer, der noch wartet.
@@ -609,6 +718,98 @@ describe.skipIf(bereit.grund !== undefined)(
         expect(wartend?.n).toBe(0);
       } finally {
         await sql.end({ timeout: 2 });
+      }
+    });
+
+    it("Werkzeug-Aufrufe, Zwischentext und vorläufiger Text kommen mit zurück", async () => {
+      expect(vorher["public.tool_calls"]).toBe(6);
+      const sql = verbinden(leer.url);
+      try {
+        const zustaende = await sql<{ status: string }[]>`
+          select status from public.tool_calls order by position`;
+        expect(zustaende.map((z) => z.status)).toEqual([
+          "requested",
+          "running",
+          "succeeded",
+          "failed",
+          "denied",
+          "cancelled",
+        ]);
+        const [schritt] = await sql<{ n: number }[]>`
+          select count(*)::int as n from public.messages where step = 0`;
+        expect(schritt?.n).toBe(1);
+        const [entwurf] = await sql<{ n: number }[]>`
+          select count(*)::int as n from public.conversation_events where type = 'draft.delta'`;
+        expect(entwurf?.n).toBe(1);
+        const [r010] = await sql<{ n: number }[]>`
+          select count(*)::int as n from public.rules where id = 'R-010'`;
+        expect(r010?.n).toBe(1);
+      } finally {
+        await sql.end({ timeout: 2 });
+      }
+    });
+
+    it("eine Sicherung vom Stand 0013 (veröffentlichte Fassung) wird zurückgespielt und danach auf den neuen Stand gehoben", async () => {
+      const alt = await createPostgresTestDatabase(basis, { migrate: false });
+      const ziel = await createPostgresTestDatabase(basis, { migrate: false });
+      try {
+        await runMigrations(alt.url, migrationsUpTo(14));
+        const daten = readFileSync(
+          new URL("./testdaten/stand-0013-rc.sql", import.meta.url),
+          "utf8",
+        );
+        const laden = verbinden(alt.url);
+        try {
+          await laden.begin(async (tx) => {
+            await tx.unsafe("set local session_replication_role = replica");
+            await tx.unsafe(daten).simple();
+          });
+        } finally {
+          await laden.end({ timeout: 2 });
+        }
+        const altZeilen = await zaehlen(alt.url);
+        const gesichert = skript(alt.url, "sichern");
+        expect(gesichert.stderr).not.toContain("FEHLER");
+        expect(gesichert.status).toBe(0);
+        const zeile = gesichert.stderr.split("\n").find((z) => z.startsWith("PAIBOT-STAND "));
+        const altBegleit = JSON.stringify({
+          format: "pb-sicherung",
+          v: 1,
+          stand: JSON.parse((zeile ?? "").slice("PAIBOT-STAND ".length)),
+        });
+
+        const lauf = skript(ziel.url, "zurueckspielen", gesichert.stdout);
+        expect(lauf.stderr).not.toContain("FEHLER");
+        expect(lauf.status).toBe(0);
+        expect(await zaehlen(ziel.url)).toEqual(altZeilen);
+        // „Alles aus der Sicherung ist da“: der Vergleich mit der Begleit-Datei.
+        const vergleich = skript(ziel.url, "vergleichen", altBegleit)
+          .stdout.toString()
+          .trim()
+          .split("\n");
+        for (const z of vergleich.filter((v) => v.startsWith("T|"))) {
+          const [, , erwartet, jetzt] = z.split("|");
+          expect(jetzt, z).toBe(erwartet);
+        }
+        const belege = vergleich.find((z) => z.startsWith("B|"))?.split("|");
+        expect(belege?.[6]).toBe("true");
+
+        // Migrations-Schritt mit dem neuen Code: auf 0014, gleiche Daten, R-010 dazu.
+        await runMigrations(ziel.url, MIGRATIONS_FOLDER);
+        const neu = await zaehlen(ziel.url);
+        expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 1);
+        expect(neu["drizzle.__drizzle_migrations"]).toBe(15);
+        for (const tabelle of Object.keys(altZeilen).filter(
+          (t) => t !== "public.rules" && t !== "drizzle.__drizzle_migrations",
+        )) {
+          expect(neu[tabelle], tabelle).toBe(altZeilen[tabelle]);
+        }
+        const exportText = skript(ziel.url, "export").stdout.toString("utf8");
+        const gelesen = parseJsonl(exportText);
+        expect((await verifyChain(gelesen.entries, gelesen.header.publicKeys)).ok).toBe(true);
+      } finally {
+        await alt.drop();
+        await ziel.drop();
       }
     });
 

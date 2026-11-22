@@ -31,7 +31,7 @@ import {
 import { APP_TABLE_RIGHTS, checkAppRole, checkMigrationState } from "./rollen";
 import { prepareDatabase } from "./rollen-start";
 import { belege, installationKeys, rules } from "./schema";
-import { belegRow, fingerprint, hmacDigest, keyRow, publicKey } from "./testdaten";
+import { belegRow, fingerprint, hmacDigest, keyRow, publicKey, sha256Digest } from "./testdaten";
 import {
   createPostgresTestDatabase,
   MIGRATIONS_FOLDER,
@@ -190,7 +190,7 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
       select table_name as name, string_agg(column_name, ', ' order by column_name) as columns
       from information_schema.column_privileges
       where table_schema = 'public' and grantee = ${roleName} and privilege_type = 'UPDATE'
-        and table_name in ('installation_keys', 'tool_calls')
+        and table_name in ('installation_keys', 'messages', 'tool_calls')
       group by table_name order by table_name`;
     const allowed = (name: string) =>
       (/update\s*\(([^)]*)\)/.exec(APP_TABLE_RIGHTS[name] ?? "")?.[1] ?? "")
@@ -200,6 +200,7 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
         .join(", ");
     expect(Object.fromEntries(columns.map((row) => [row.name, row.columns]))).toEqual({
       installation_keys: allowed("installation_keys"),
+      messages: allowed("messages"),
       tool_calls: allowed("tool_calls"),
     });
   });
@@ -280,6 +281,12 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
         kind: "lesen",
         input: { frage: "Wetter" },
         argsDigest: hmacDigest(),
+        toolKey: "eingebaut/suche",
+        toolDigest: sha256Digest(),
+        reach: "intern",
+        foreignContent: false,
+        step: 0,
+        untrustedInput: false,
       });
       await toolCalls.recordDecision(db, actionId, {
         outcome: "allow",

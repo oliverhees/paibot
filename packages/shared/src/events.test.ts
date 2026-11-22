@@ -146,6 +146,30 @@ const EXAMPLES: ConversationEvent[] = [
     type: "tool.finished",
     data: { runId, actionId, status: "denied", code: "abgelehnt" },
   },
+  {
+    conversationId,
+    seq: 16,
+    time,
+    runId,
+    type: "tool.started",
+    data: { runId, actionId },
+  },
+  {
+    conversationId,
+    seq: 17,
+    time,
+    runId,
+    type: "step.finished",
+    data: { runId, step: 0, ending: "zwischentext" },
+  },
+  {
+    conversationId,
+    seq: 18,
+    time,
+    runId,
+    type: "draft.delta",
+    data: { runId, step: 0, text: "Ich schaue nach" },
+  },
 ];
 
 describe("Ereignisse", () => {
@@ -166,7 +190,11 @@ describe("Ereignisse", () => {
       "tool.finished",
       "schleuse.blockiert",
       "beleg.created",
+      "tool.started",
+      "step.finished",
+      "draft.delta",
     ]);
+    expect(CONVERSATION_EVENT_TYPES as readonly string[]).not.toContain("tool.held");
   });
 
   it("überstehen die Rundreise kodieren und dekodieren", () => {

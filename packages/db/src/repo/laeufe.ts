@@ -30,15 +30,18 @@ import {
   standardFehler,
   uebersetzen,
 } from "./fehler";
-import { withTransaction } from "./transaktion";
 
 export type FinalRunStatus = Extract<RunStatus, "succeeded" | "failed" | "cancelled" | "denied">;
 
-/** Erlaubte Wege: Zielstatus → Status, aus denen man dorthin wechseln darf. */
+/**
+ * Erlaubte Wege: Zielstatus → Status, aus denen man dorthin wechseln darf. In dieser Fassung führt
+ * kein Weg nach `waiting_approval` (wie der Trigger `runs_regeln`, Migration 0014); die Wege
+ * hinaus bleiben für Läufe aus der Zeit davor.
+ */
 export const RUN_TRANSITIONS: Readonly<Record<RunStatus, readonly RunStatus[]>> = {
   queued: [],
   running: ["queued"],
-  waiting_approval: ["running"],
+  waiting_approval: [],
   succeeded: ["running", "waiting_approval"],
   failed: ["queued", "running", "waiting_approval"],
   cancelled: ["queued", "running", "waiting_approval"],
@@ -148,9 +151,13 @@ export function markRunning(db: Database, id: RunId, options: { now?: Date } = {
   return wechseln(db, id, "running", { startedAt: now, heartbeatAt: now });
 }
 
-/** `running` → `waiting_approval`: der Lauf hält vor einer Aktion der Stufe „fragen“ an. */
-export function markWaiting(db: Database, id: RunId): Promise<Run> {
-  return wechseln(db, id, "waiting_approval", {});
+/**
+ * In dieser Fassung stillgelegt (kein Lauf wartet auf eine Freigabe; die Datenbank verhindert es
+ * mit dem Trigger `runs_regeln`): wirft sofort `intern`, ohne Abfrage. Eine spätere Fassung mit
+ * Freigaben stellt den Weg `running` → `waiting_approval` wieder her.
+ */
+export function markWaiting(_db: Database, _id: RunId): never {
+  throw new PaiBotError("intern");
 }
 
 /** Beendet den Lauf mit `succeeded`, `failed`, `cancelled` oder `denied`. */
@@ -166,35 +173,12 @@ export function finish(
 }
 
 /**
- * Setzt einen wartenden Lauf fort: der alte Lauf endet als `succeeded`, ein neuer Lauf mit
- * `resumesRunId` beginnt, beides in einer Transaktion.
+ * In dieser Fassung stillgelegt (es gibt keine wartenden Läufe, die man fortsetzen könnte): wirft
+ * sofort `intern`, ohne Abfrage. Eine spätere Fassung mit Freigaben stellt sie wieder her; die
+ * Daten-Form (`resumesRunId`) bleibt dafür bestehen.
  */
-export async function resume(
-  db: Database,
-  waitingRunId: RunId,
-  options: { now?: Date } = {},
-): Promise<Run> {
-  return withTransaction(db, async (tx) => {
-    const alt = await finishWaiting(tx, waitingRunId, options.now ?? new Date());
-    return create(tx, {
-      conversationId: alt.conversationId,
-      triggerMessageId: alt.triggerMessageId,
-      botId: alt.botId,
-      resumesRunId: alt.id,
-    });
-  });
-}
-
-async function finishWaiting(db: Database, id: RunId, now: Date): Promise<Run> {
-  const [row] = await db
-    .update(runs)
-    .set({ status: "succeeded", finishedAt: now })
-    .where(and(eq(runs.id, id), eq(runs.status, "waiting_approval")))
-    .returning();
-  if (row !== undefined) return toRun(row);
-  const [vorhanden] = await db.select({ status: runs.status }).from(runs).where(eq(runs.id, id));
-  if (vorhanden === undefined) throw new PaiBotError("nicht_gefunden");
-  throw new StatuswechselError("lauf", id, vorhanden.status, "succeeded");
+export function resume(_db: Database, _waitingRunId: RunId, _options: { now?: Date } = {}): never {
+  throw new PaiBotError("intern");
 }
 
 /**

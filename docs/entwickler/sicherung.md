@@ -62,7 +62,7 @@ Keine eigenen Tabellen. Gelesen werden alle Tabellen der Schemas `public` und `d
 
 Die Rolle `paibot_sicherung` legt `rolle_einrichten` bei Bedarf an; sie ist keine Migration.
 
-Neue Migrationen mit Funktionen oder Triggern verlangen eine Anpassung: Der erlaubte Rumpf jeder Funktion steht als Name und MD5 in `ERLAUBTE_FUNKTIONEN` (`deploy/sicherung-db.sh`); ein Test vergleicht die Liste mit den Migrationen unter `packages/db/drizzle/` (`tools/durchstich/src/sicherung.test.ts`, Test „enthält genau die Funktions-Rümpfe aus allen Migrationen“).
+Neue Migrationen mit Funktionen oder Triggern verlangen eine Anpassung: Der erlaubte Rumpf jeder Funktion steht als Name und MD5 in `ERLAUBTE_FUNKTIONEN` (`deploy/sicherung-db.sh`); ein Test vergleicht die Liste mit den Migrationen unter `packages/db/drizzle/` (`tools/durchstich/src/sicherung.test.ts`, Test „enthält genau die Funktions-Rümpfe aus allen Migrationen“). Mit `packages/db/drizzle/0014_werkzeug_kern.sql` kamen `paibot_tool_calls_regeln`, `paibot_messages_unveraenderlich`, `paibot_runs_regeln` und die dritte Fassung von `paibot_ereignisse_nur_anhaengen` dazu; die alten Rümpfe bleiben, weil ältere Sicherungen sie tragen. Die Trigger stellt `pg_restore` nach den Daten her; das Markieren aktiver Läufe (`running` → `running`) geht am Trigger `runs_regeln` vorbei, weil er nur den Weg nach `waiting_approval` sperrt. Eine Sicherung vom Stand 0013 lässt sich zurückspielen und danach mit `migrate` heben (Test „eine Sicherung vom Stand 0013 …“ in `tools/durchstich/src/sicherung.test.ts`).
 
 ## Schnittstellen
 

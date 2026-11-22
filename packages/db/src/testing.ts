@@ -8,6 +8,9 @@
  * @since     2026-11-20
  */
 
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
@@ -84,6 +87,45 @@ export async function createTestDb(): Promise<TestDb> {
   mitSicheremSchliessen(client);
   schliessenAnmelden(client);
   return { db: drizzle(client, { schema }), client };
+}
+
+/**
+ * Kopie des Migrations-Ordners mit nur den ersten `count` Migrationen (in einem neuen Ordner unter
+ * dem Temp-Ordner), z. B. um eine Datenbank auf einem älteren Stand anzulegen.
+ */
+export function migrationsUpTo(count: number): string {
+  const folder = mkdtempSync(path.join(tmpdir(), "paibot-migration-"));
+  mkdirSync(path.join(folder, "meta"));
+  const journal = JSON.parse(
+    readFileSync(path.join(MIGRATIONS_FOLDER, "meta", "_journal.json"), "utf8"),
+  ) as { entries: { tag: string }[] };
+  journal.entries = journal.entries.slice(0, count);
+  for (const entry of journal.entries) {
+    cpSync(path.join(MIGRATIONS_FOLDER, `${entry.tag}.sql`), path.join(folder, `${entry.tag}.sql`));
+  }
+  writeFileSync(path.join(folder, "meta", "_journal.json"), JSON.stringify(journal));
+  return folder;
+}
+
+/**
+ * Legt eine Datenbank im Speicher an und wendet nur die Migrationen aus `migrationsFolder` an
+ * (z. B. aus `migrationsUpTo`). Weitere Migrationen später mit `migrateTestDb`.
+ */
+export async function createTestDbFrom(migrationsFolder: string): Promise<TestDb> {
+  const client = new PGlite();
+  mitSicheremSchliessen(client);
+  schliessenAnmelden(client);
+  const db = drizzle(client, { schema });
+  await migrate(db, { migrationsFolder });
+  return { db, client };
+}
+
+/** Wendet die Migrationen aus `migrationsFolder` (Standard: alle) auf eine Test-Datenbank an. */
+export async function migrateTestDb(
+  testDb: TestDb,
+  migrationsFolder: string = MIGRATIONS_FOLDER,
+): Promise<void> {
+  await migrate(drizzle(testDb.client, { schema }), { migrationsFolder });
 }
 
 /** Umgebungsvariable mit der Adresse eines Wegwerf-Postgres für die Tests gegen echtes Postgres. */

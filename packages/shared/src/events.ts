@@ -33,6 +33,26 @@ import {
 const runId = idSchema("run");
 const messageId = idSchema("message");
 
+/**
+ * Daten der Ereignisse für Läufe mit mehreren Schritten. Sie stehen jetzt in `EVENT_DATA` und
+ * damit in `CONVERSATION_EVENT_TYPES` (die Datenbank prüft die Arten gegen diese Liste; die
+ * Migration für Werkzeug-Aufrufe hat sie aufgenommen).
+ */
+export const STEP_EVENT_DATA = {
+  /** Ein erlaubter Werkzeug-Aufruf läuft. */
+  "tool.started": z.strictObject({ runId, actionId: idSchema("action") }),
+  /** Ein Schritt des Laufs ist zu Ende: mit Antwort, mit Zwischentext oder verworfen. */
+  "step.finished": z.strictObject({
+    runId,
+    step: countSchema,
+    ending: z.enum(["antwort", "zwischentext", "verworfen"]),
+    servedBy: servedBySchema.optional(),
+    modelReported: z.string().max(200).optional(),
+  }),
+  /** Text eines Schritts, der noch nicht die Antwort ist. */
+  "draft.delta": z.strictObject({ runId, step: countSchema, text: z.string().min(1) }),
+} as const;
+
 /** Daten je Ereignis-Typ. */
 export const EVENT_DATA = {
   "message.created": z.strictObject({ messageId, role: messageRoleSchema, text: z.string() }),
@@ -82,26 +102,7 @@ export const EVENT_DATA = {
     action: actionTypeSchema,
     messageId: messageId.optional(),
   }),
-} as const;
-
-/**
- * Daten der Ereignisse für Läufe mit mehreren Schritten. Sie stehen bewusst noch nicht in
- * `EVENT_DATA` und damit nicht in `CONVERSATION_EVENT_TYPES`: Die Datenbank prüft die Arten der
- * Ereignisse gegen diese Liste; sie kommen mit der Migration für Werkzeug-Aufrufe dazu.
- */
-export const STEP_EVENT_DATA = {
-  /** Ein erlaubter Werkzeug-Aufruf läuft. */
-  "tool.started": z.strictObject({ runId, actionId: idSchema("action") }),
-  /** Ein Schritt des Laufs ist zu Ende: mit Antwort, mit Zwischentext oder verworfen. */
-  "step.finished": z.strictObject({
-    runId,
-    step: countSchema,
-    ending: z.enum(["antwort", "zwischentext", "verworfen"]),
-    servedBy: servedBySchema.optional(),
-    modelReported: z.string().max(200).optional(),
-  }),
-  /** Text eines Schritts, der noch nicht die Antwort ist. */
-  "draft.delta": z.strictObject({ runId, step: countSchema, text: z.string().min(1) }),
+  ...STEP_EVENT_DATA,
 } as const;
 
 /** `tool.requested` für Läufe mit mehreren Schritten: dazu Kennung des Werkzeugs und Schritt. */

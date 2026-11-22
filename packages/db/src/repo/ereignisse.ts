@@ -18,7 +18,7 @@ import {
   PaiBotError,
   type RunId,
 } from "@paibot/shared";
-import { and, asc, eq, gt, lt, max, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, max, notExists, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { ACTIVE_RUN_STATUSES, conversationEvents, conversations, runs } from "../schema";
 import { toEvent } from "./abbildung";
@@ -133,8 +133,8 @@ export async function lastSeq(db: Database, conversationId: ConversationId): Pro
 }
 
 /**
- * Löscht `text.delta`-Ereignisse, die vor `olderThan` entstanden sind und zu keinem aktiven
- * Lauf gehören (die fertige Nachricht steht in `messages`). Nur das erlaubt der Trigger;
+ * Löscht `text.delta`- und `draft.delta`-Ereignisse, die vor `olderThan` entstanden sind und zu
+ * keinem aktiven Lauf gehören (der fertige Text steht in `messages`). Nur das erlaubt der Trigger;
  * andere Ereignisse bleiben. Ohne Angabe gilt `TEXT_DELTA_RETENTION_DAYS`. Gibt die Anzahl zurück.
  */
 export async function pruneTextDeltas(
@@ -148,7 +148,7 @@ export async function pruneTextDeltas(
     .delete(conversationEvents)
     .where(
       and(
-        eq(conversationEvents.type, "text.delta"),
+        inArray(conversationEvents.type, ["text.delta", "draft.delta"]),
         lt(conversationEvents.createdAt, grenze),
         notExists(
           db

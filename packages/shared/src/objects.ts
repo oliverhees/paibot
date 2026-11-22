@@ -17,6 +17,7 @@ import {
   isoTimeSchema,
   positiveIntSchema,
   servedBySchema,
+  sha256DigestSchema,
   timezoneSchema,
 } from "./grundtypen";
 import { idSchema } from "./id";
@@ -59,7 +60,7 @@ export const messageStatusSchema = z.enum(MESSAGE_STATUSES);
 
 /**
  * Woher der Text einer Nachricht des Bots stammt: vom Modell oder als fester Text von PaiBot
- * (z. B. eine Meldung der Steuerung). In dieser Fassung nur festgelegt, noch nicht gespeichert.
+ * (z. B. eine Meldung der Steuerung). Steht an jeder Nachricht (Spalte `origin`).
  */
 export const MESSAGE_ORIGINS = ["modell", "fest"] as const;
 export const messageOriginSchema = z.enum(MESSAGE_ORIGINS);
@@ -160,6 +161,10 @@ export const messageSchema = z.strictObject({
   errorCode: errorCodeSchema.optional(),
   /** Wer laut Antwort der Schnittstelle geantwortet hat (nur Antworten des Bots, wenn gemeldet). */
   servedBy: servedBySchema.optional(),
+  /** Schritt eines Laufs mit Werkzeugen; fehlt bei der End-Antwort und bei Nachrichten der Person. */
+  step: countSchema.optional(),
+  /** Woher der Text stammt; fehlt = `modell`. */
+  origin: messageOriginSchema.optional(),
   createdAt: isoTimeSchema,
 });
 export type Message = z.infer<typeof messageSchema>;
@@ -240,6 +245,13 @@ export const settingsSchema = z.strictObject({
   installationId: idSchema("installation").optional(),
   defaultBotId: idSchema("bot").optional(),
   killSwitch: z.boolean(),
+  /** Grenzen eines Laufs mit Werkzeugen (fest, in der Oberfläche nicht änderbar). */
+  maxStepsPerRun: positiveIntSchema,
+  maxToolCallsPerStep: positiveIntSchema,
+  maxToolCallsPerRun: positiveIntSchema,
+  maxTokensPerRun: positiveIntSchema,
+  toolResultMaxChars: positiveIntSchema,
+  toolResultsMaxCharsPerStep: positiveIntSchema,
   createdAt: isoTimeSchema,
   updatedAt: isoTimeSchema,
 });
@@ -305,6 +317,12 @@ export const TOOL_CALL_STATUSES = [
 export const toolCallStatusSchema = z.enum(TOOL_CALL_STATUSES);
 export type ToolCallStatus = z.infer<typeof toolCallStatusSchema>;
 
+/**
+ * Wohin ein Werkzeug wirkt, wie es an einem Aufruf gespeichert ist. Gleich `TOOL_REACHES` der
+ * Aktionen (ein Test vergleicht beide); eine eigene Liste, weil die Aktionen diese Datei einbinden.
+ */
+export const TOOL_CALL_REACHES = ["intern", "nach_aussen"] as const;
+
 /** Zustände, in denen der Aufruf erledigt ist und ein Ergebnis für das Modell hat. */
 export const FINISHED_TOOL_CALL_STATUSES = [
   "succeeded",
@@ -345,6 +363,23 @@ export const toolCallSchema = z.strictObject({
   resultStatus: toolResultStatusSchema.optional(),
   output: jsonValueSchema.optional(),
   errorCode: errorCodeSchema.optional(),
+  /** Kennung des Werkzeugs (`toolKeySchema`). Fehlt nur bei Aufrufen aus der Zeit davor. */
+  toolKey: toolKeySchema.optional(),
+  /** Abdruck der Beschreibung des Werkzeugs. */
+  toolDigest: sha256DigestSchema.optional(),
+  reach: z.enum(TOOL_CALL_REACHES).optional(),
+  /** Das Werkzeug liefert Inhalte von außerhalb von PaiBot. */
+  foreignContent: z.boolean().optional(),
+  /** Schritt des Laufs, ab 0. */
+  step: countSchema.optional(),
+  /** Der Lauf hatte vor diesem Aufruf schon fremde Inhalte gelesen. */
+  untrustedInput: z.boolean().optional(),
+  /** Roher Name des Modells, nur wenn `name` der Platzhalter ist (bereinigt und gekürzt). */
+  rawName: z.string().min(1).max(64).optional(),
+  /** Das Ergebnis wurde für das Modell gekürzt. */
+  outputTruncated: z.boolean().optional(),
+  /** Zeichen des Ergebnisses vor dem Kürzen. */
+  outputChars: countSchema.optional(),
   createdAt: isoTimeSchema,
   updatedAt: isoTimeSchema,
   finishedAt: isoTimeSchema.optional(),

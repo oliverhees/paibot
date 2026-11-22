@@ -57,6 +57,19 @@ Datenfluss „Grenzen speichern“ (`apps/web/src/lib/einstellungen/grenzen.ts#e
 
 `settings` legt `packages/db/drizzle/0000_init.sql` an. Zugriff über `packages/db/src/repo/einstellungen.ts`.
 
+Grenzen für Läufe mit Werkzeugen (`packages/db/drizzle/0014_werkzeug_kern.sql`, `packages/db/src/schema/settings.ts#settings`), Standard und erlaubter Bereich:
+
+| Spalte                            | Standard | Bereich       |
+| --------------------------------- | -------- | ------------- |
+| `max_steps_per_run`               | 8        | 1–16          |
+| `max_tool_calls_per_step`         | 8        | 1–16          |
+| `max_tool_calls_per_run`          | 16       | 1–64          |
+| `max_tokens_per_run`              | 60 000   | 1 000–500 000 |
+| `tool_result_max_chars`           | 16 000   | 1 000–24 000  |
+| `tool_results_max_chars_per_step` | 24 000   | 1 000–24 000  |
+
+Zeichen je Ergebnis dürfen nicht über den Zeichen je Schritt liegen (`settings_werkzeug_zeichen_passen`). Beim Update setzt die Migration `max_tokens_per_run` auf die höchste Ausgabegrenze der Bots plus 30 000 (mindestens 60 000, höchstens 500 000). Die Grenzen sind nicht in der Oberfläche änderbar und stehen nicht in `SettingsPatch` (`packages/db/src/repo/einstellungen.ts`): Welche Felder `einstellung.aendern` ändern darf, steht in den Fakten der Aktion (`packages/shared/src/actions.ts#SETTINGS_FIELDS`) und gehört zur Tor-Fassung; eine Änderung dort braucht eine neue Fassung. Gelesen werden sie über `toSettings` (`packages/db/src/repo/abbildung.ts`); der Lauf nutzt sie noch nicht.
+
 ## Schnittstellen
 
 Routen aus `apps/web/src/lib/routen.ts#API_ROUTEN` (Zugang `besitzer`):

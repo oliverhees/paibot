@@ -18,27 +18,36 @@ import {
   PaiBotError,
   type ReceiptId,
   type RunId,
+  type Sha256Digest,
   type ToolCallRecord,
   type ToolCallStatus,
+  type ToolKey,
   type ToolKind,
+  type ToolReach,
   type ToolSource,
   toIsoTime,
 } from "@paibot/shared";
+import { errorText } from "@paibot/shared/texte";
+import { type ToolEnvelope, toolEnvelopeSchema } from "@paibot/shared/werkzeug";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { type ToolCallRow, toolCalls } from "../schema";
 import { StatuswechselError, standardFehler, uebersetzen } from "./fehler";
 
-/** Erlaubte Wege: Zielzustand → Zustände, aus denen man dorthin wechseln darf. */
+/**
+ * Erlaubte Wege: Zielzustand → Zustände, aus denen man dorthin wechseln darf. Spiegel des Triggers
+ * `tool_calls_regeln` (Migration 0014; ein Test vergleicht beide über alle Paare): In dieser
+ * Fassung führt kein Weg nach `waiting_approval` oder `approved` und keiner hinaus.
+ */
 export const TOOL_CALL_TRANSITIONS: Readonly<Record<ToolCallStatus, readonly ToolCallStatus[]>> = {
   requested: [],
-  waiting_approval: ["requested"],
-  approved: ["waiting_approval"],
-  running: ["requested", "approved"],
+  waiting_approval: [],
+  approved: [],
+  running: ["requested"],
   succeeded: ["running"],
   failed: ["running"],
-  denied: ["requested", "waiting_approval"],
-  cancelled: ["requested", "waiting_approval", "approved", "running"],
+  denied: ["requested"],
+  cancelled: ["requested", "running"],
 };
 
 export interface ToolCallCreate {
@@ -54,6 +63,19 @@ export interface ToolCallCreate {
   kind: ToolKind;
   input: unknown;
   argsDigest: HmacDigest;
+  /** Kennung des Werkzeugs, z. B. `eingebaut/doku.nachschlagen`. */
+  toolKey: ToolKey;
+  /** Abdruck der Beschreibung des Werkzeugs, wie sie das Modell in diesem Schritt sah. */
+  toolDigest: Sha256Digest;
+  reach: ToolReach;
+  /** Das Werkzeug liefert Inhalte von außerhalb von PaiBot. */
+  foreignContent: boolean;
+  /** Schritt des Laufs, ab 0. */
+  step: number;
+  /** Der Lauf hatte vor diesem Aufruf schon fremde Inhalte gelesen. */
+  untrustedInput: boolean;
+  /** Roher Name des Modells, nur wenn `name` der Platzhalter ist; schon bereinigt und gekürzt. */
+  rawName?: string;
 }
 
 function toToolCall(row: ToolCallRow): ToolCallRecord {
@@ -79,6 +101,15 @@ function toToolCall(row: ToolCallRow): ToolCallRecord {
     createdAt: toIsoTime(row.createdAt),
     updatedAt: toIsoTime(row.updatedAt),
     ...(row.finishedAt === null ? {} : { finishedAt: toIsoTime(row.finishedAt) }),
+    ...(row.toolKey === null ? {} : { toolKey: row.toolKey }),
+    ...(row.toolDigest === null ? {} : { toolDigest: row.toolDigest }),
+    ...(row.reach === null ? {} : { reach: row.reach }),
+    ...(row.foreignContent === null ? {} : { foreignContent: row.foreignContent }),
+    ...(row.step === null ? {} : { step: row.step }),
+    ...(row.untrustedInput === null ? {} : { untrustedInput: row.untrustedInput }),
+    ...(row.rawName === null ? {} : { rawName: row.rawName }),
+    ...(row.outputTruncated === null ? {} : { outputTruncated: row.outputTruncated }),
+    ...(row.outputChars === null ? {} : { outputChars: row.outputChars }),
   };
 }
 
@@ -101,6 +132,13 @@ export async function create(db: Database, input: ToolCallCreate): Promise<ToolC
           kind: input.kind,
           input: input.input,
           argsDigest: input.argsDigest,
+          toolKey: input.toolKey,
+          toolDigest: input.toolDigest,
+          reach: input.reach,
+          foreignContent: input.foreignContent,
+          step: input.step,
+          untrustedInput: input.untrustedInput,
+          rawName: input.rawName ?? null,
         })
         .returning(),
     standardFehler,
@@ -138,7 +176,10 @@ export async function listForMessages(
   return rows.map(toToolCall);
 }
 
-/** Aufrufe einer Unterhaltung, die auf die Freigabe des Besitzers warten. */
+/**
+ * Aufrufe einer Unterhaltung, die auf die Freigabe des Besitzers warten. In dieser Fassung führt
+ * kein Weg nach `waiting_approval`; die Liste ist deshalb leer.
+ */
 export async function listWaiting(
   db: Database,
   conversationId: ConversationId,
@@ -183,15 +224,16 @@ async function wechseln(
 }
 
 /**
- * Hält die Entscheidung des Tors fest: `allow` → `running`, `ask` → `waiting_approval`,
- * `deny` → `denied` (mit Ergebnis `denied` für das Modell).
+ * Hält die Entscheidung des Tors fest: `allow` → `running`, `deny` → `denied` (mit Ergebnis
+ * `denied` für das Modell). In dieser Fassung gibt es kein „fragen“: Das Tor belegt dann selbst
+ * „abgelehnt“, und die Lauf-Steuerung hält das als `deny` fest. Jede andere Angabe wirft
+ * `intern`, bevor eine Abfrage läuft.
  */
 export function recordDecision(
   db: Database,
   actionId: ActionId,
   input:
     | { outcome: "allow"; decisionReceiptId: ReceiptId }
-    | { outcome: "ask"; decisionReceiptId: ReceiptId }
     | {
         outcome: "deny";
         decisionReceiptId: ReceiptId;
@@ -204,46 +246,45 @@ export function recordDecision(
   if (input.outcome === "allow") {
     return wechseln(db, actionId, "running", { decisionReceiptId: input.decisionReceiptId });
   }
-  if (input.outcome === "ask") {
-    return wechseln(db, actionId, "waiting_approval", {
+  if (input.outcome === "deny") {
+    return wechseln(db, actionId, "denied", {
       decisionReceiptId: input.decisionReceiptId,
+      resultReceiptId: input.resultReceiptId ?? null,
+      resultStatus: "denied",
+      output: input.output,
+      errorCode: input.errorCode ?? "abgelehnt",
+      finishedAt: input.now ?? new Date(),
     });
   }
-  return wechseln(db, actionId, "denied", {
-    decisionReceiptId: input.decisionReceiptId,
-    resultReceiptId: input.resultReceiptId ?? null,
-    resultStatus: "denied",
-    output: input.output,
-    errorCode: input.errorCode ?? "abgelehnt",
-    finishedAt: input.now ?? new Date(),
-  });
-}
-
-/** `waiting_approval` → `approved`: der Besitzer hat zugestimmt. */
-export function approve(db: Database, actionId: ActionId): Promise<ToolCallRecord> {
-  return wechseln(db, actionId, "approved", {});
-}
-
-/** `approved` → `running`: der fortgesetzte Lauf führt den Aufruf jetzt aus. */
-export function markRunning(db: Database, actionId: ActionId): Promise<ToolCallRecord> {
-  return wechseln(db, actionId, "running", {});
+  return Promise.reject(new PaiBotError("intern"));
 }
 
 /**
- * `waiting_approval` → `denied`: der Besitzer hat abgelehnt. Das Modell bekommt `output` als
- * Ergebnis `denied`.
+ * In dieser Fassung stillgelegt (es gibt keine Freigaben): wirft sofort `intern`, ohne Abfrage.
+ * Eine spätere Fassung mit Freigaben stellt den Weg `waiting_approval` → `approved` wieder her.
+ */
+export function approve(_db: Database, _actionId: ActionId): never {
+  throw new PaiBotError("intern");
+}
+
+/**
+ * In dieser Fassung stillgelegt: `approved` → `running` gibt es nicht. Wirft sofort `intern`,
+ * ohne Abfrage; eine spätere Fassung mit Freigaben stellt den Weg wieder her.
+ */
+export function markRunning(_db: Database, _actionId: ActionId): never {
+  throw new PaiBotError("intern");
+}
+
+/**
+ * In dieser Fassung stillgelegt (der Besitzer gibt nichts frei, also lehnt er auch nichts ab):
+ * wirft sofort `intern`, ohne Abfrage. Eine spätere Fassung mit Freigaben stellt sie wieder her.
  */
 export function rejectByOwner(
-  db: Database,
-  actionId: ActionId,
-  input: { output: unknown; now?: Date },
-): Promise<ToolCallRecord> {
-  return wechseln(db, actionId, "denied", {
-    resultStatus: "denied",
-    output: input.output,
-    errorCode: "abgelehnt",
-    finishedAt: input.now ?? new Date(),
-  });
+  _db: Database,
+  _actionId: ActionId,
+  _input: { output: unknown; now?: Date },
+): never {
+  throw new PaiBotError("intern");
 }
 
 /** `running` → `succeeded` oder `failed` mit Ergebnis und Ergebnis-Beleg. */
@@ -254,6 +295,10 @@ export function finish(
     status: "succeeded" | "failed";
     output: unknown;
     resultReceiptId: ReceiptId;
+    /** Das Ergebnis wurde für das Modell gekürzt. */
+    outputTruncated?: boolean;
+    /** Zeichen des Ergebnisses vor dem Kürzen. */
+    outputChars?: number;
     errorCode?: ErrorCode;
     now?: Date;
   },
@@ -262,21 +307,77 @@ export function finish(
     resultStatus: input.status === "succeeded" ? "ok" : "error",
     output: input.output,
     resultReceiptId: input.resultReceiptId,
+    outputTruncated: input.outputTruncated ?? null,
+    outputChars: input.outputChars ?? null,
     errorCode: input.errorCode ?? null,
     finishedAt: input.now ?? new Date(),
   });
 }
 
-/** Bricht einen offenen Aufruf ab (Lauf abgebrochen); das Modell bekommt `output` als Fehler. */
+/**
+ * Bricht einen offenen Aufruf ab (Lauf abgebrochen); das Modell bekommt `output` als Fehler.
+ * `ausgang_unbekannt`, wenn der Aufruf schon lief und vielleicht gewirkt hat; sonst `unterbrochen`.
+ */
 export function cancel(
   db: Database,
   actionId: ActionId,
-  input: { output: unknown; now?: Date },
+  input: { output: unknown; errorCode?: "unterbrochen" | "ausgang_unbekannt"; now?: Date },
 ): Promise<ToolCallRecord> {
   return wechseln(db, actionId, "cancelled", {
     resultStatus: "error",
     output: input.output,
-    errorCode: "unterbrochen",
+    errorCode: input.errorCode ?? "unterbrochen",
     finishedAt: input.now ?? new Date(),
   });
+}
+
+/**
+ * Code, mit dem ein offener Aufruf beim Aufräumen endet: `requested` war noch nicht beim Werkzeug
+ * (`unterbrochen`). Bei `running` ist nicht bekannt, ob er gewirkt hat, wenn er schreibt oder
+ * nach außen wirkt; ohne gespeicherte Wirkung (Zeilen aus der Zeit davor) zählt er wie „nach
+ * außen“ (`ausgang_unbekannt`). Sonst `unterbrochen`.
+ */
+export function openCallEndCode(
+  row: Pick<ToolCallRow, "status" | "kind" | "reach">,
+): "unterbrochen" | "ausgang_unbekannt" {
+  if (row.status !== "running") return "unterbrochen";
+  return row.kind === "schreiben" || row.reach === "nach_aussen" || row.reach === null
+    ? "ausgang_unbekannt"
+    : "unterbrochen";
+}
+
+/**
+ * Beendet alle offenen Aufrufe (`requested`, `running`) eines Laufs, z. B. beim Aufräumen nach
+ * einem Absturz: Zustand `cancelled`, Ergebnis `error` mit `openCallEndCode`, für das Modell die
+ * feste Hülle mit Code und Text (ohne Kennung des Werkzeugs, also bei Zeilen aus der Zeit davor:
+ * `null`). Nie wiederholt: Aus `cancelled` führt kein Weg zurück; ein zweiter Aufruf ändert
+ * nichts. Gibt die Anzahl der beendeten Aufrufe zurück.
+ */
+export async function endOpenForRun(
+  db: Database,
+  runId: RunId,
+  input: { now?: Date } = {},
+): Promise<number> {
+  const offen = await db
+    .select()
+    .from(toolCalls)
+    .where(and(eq(toolCalls.runId, runId), inArray(toolCalls.status, ["requested", "running"])))
+    .orderBy(asc(toolCalls.createdAt), asc(toolCalls.messageId), asc(toolCalls.position));
+  const now = input.now ?? new Date();
+  for (const row of offen) {
+    const code = openCallEndCode(row);
+    const huelle: ToolEnvelope | null =
+      row.toolKey === null
+        ? null
+        : toolEnvelopeSchema.parse({
+            paibot: "werkzeug-ergebnis",
+            werkzeug: row.toolKey,
+            art: "daten",
+            status: "fehler",
+            code,
+            text: errorText(code),
+          });
+    await cancel(db, row.actionId, { output: huelle, errorCode: code, now });
+  }
+  return offen.length;
 }

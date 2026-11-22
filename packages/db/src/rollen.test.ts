@@ -40,7 +40,10 @@ describe("APP_TABLE_RIGHTS", () => {
   it("Belege: nur lesen und anhängen; Regeln: nur lesen", () => {
     expect(APP_TABLE_RIGHTS.belege).toBe("select, insert");
     expect(APP_TABLE_RIGHTS.rules).toBe("select");
-    expect(Object.values(APP_TABLE_RIGHTS).join()).not.toMatch(/truncate|trigger|references/);
+    // Als Recht (ganzes Wort), nicht als Teil eines Spaltennamens wie `output_truncated`.
+    expect(Object.values(APP_TABLE_RIGHTS).join()).not.toMatch(
+      /(?:^|[\s,])(?:truncate|trigger|references)(?=$|[\s,(])/,
+    );
   });
 
   it("Werkzeug-Aufrufe: kein Löschen, ändern nur Zustand und Ergebnis", () => {

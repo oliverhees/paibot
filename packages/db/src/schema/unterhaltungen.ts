@@ -35,6 +35,7 @@ import {
 import {
   ACTIVE_RUN_STATUSES,
   CONVERSATION_EVENT_TYPES,
+  MESSAGE_ORIGINS,
   MESSAGE_ROLES,
   MESSAGE_STATUSES,
   ROUTES,
@@ -68,7 +69,13 @@ export const conversations = pgTable(
   ],
 );
 
-/** Nachrichten einer Unterhaltung. Der Text steht nur hier und in den Ereignissen. */
+/**
+ * Nachrichten einer Unterhaltung. Der Text steht nur hier und in den Ereignissen. `step` ist leer
+ * bei Nachrichten der Person und bei der End-Antwort eines Laufs; ein Zwischentext eines Laufs mit
+ * Werkzeugen trägt seinen Schritt. Je Lauf gibt es höchstens eine End-Antwort und je Schritt
+ * höchstens einen Zwischentext. Schritt, Herkunft, Rolle, Lauf und Unterhaltung sind nach dem
+ * Anlegen unveränderlich (Trigger `messages_unveraenderlich`, Migration 0014).
+ */
 export const messages = pgTable(
   "messages",
   {
@@ -91,6 +98,10 @@ export const messages = pgTable(
     servedProvider: text("served_provider"),
     servedModel: text("served_model"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Schritt eines Laufs mit Werkzeugen; leer = End-Antwort bzw. Nachricht der Person. */
+    step: integer("step"),
+    /** Woher der Text stammt: vom Modell oder als fester Text von PaiBot. */
+    origin: text("origin").$type<(typeof MESSAGE_ORIGINS)[number]>().notNull().default("modell"),
   },
   (t) => [
     idCheck("messages_id_format", t.id, "message"),
@@ -114,14 +125,26 @@ export const messages = pgTable(
       "messages_error_code_format",
       sql`${t.errorCode} is null or ${matches(t.errorCode, PATTERNS.errorCode)}`,
     ),
+    check("messages_step_nicht_negativ", sql`${t.step} is null or ${t.step} >= 0`),
+    inListCheck("messages_origin_werte", t.origin, MESSAGE_ORIGINS),
+    check("messages_fest_nur_bot", sql`${t.origin} <> 'fest' or ${t.role} = 'assistant'`),
+    check(
+      "messages_schritt_nur_bot",
+      sql`${t.step} is null or (${t.role} = 'assistant' and ${t.runId} is not null)`,
+    ),
     index("messages_conversation_created_idx").on(t.conversationId, t.createdAt),
     index("messages_run_id_idx").on(t.runId),
+    uniqueIndex("messages_eine_antwort_je_lauf")
+      .on(t.runId)
+      .where(sql`${t.role} = 'assistant' and ${t.step} is null and ${t.runId} is not null`),
+    uniqueIndex("messages_ein_schritt").on(t.runId, t.step).where(sql`${t.step} is not null`),
   ],
 );
 
 /**
  * Läufe: die Arbeit an einer Antwort im Hintergrund. Ein Lauf, der auf eine Freigabe wartet,
  * zählt als offen. Fortgesetzt wird er durch einen neuen Lauf, der über `resumes_run_id` auf ihn zeigt.
+ * In dieser Fassung führt kein Weg nach `waiting_approval` (Trigger `runs_regeln`, Migration 0014).
  */
 export const runs = pgTable(
   "runs",
@@ -173,8 +196,8 @@ export const runs = pgTable(
 );
 
 /**
- * Ereignis-Strom je Unterhaltung. Es wird nur angehängt; gelöscht werden nur `text.delta`-Ereignisse
- * (und alles zusammen mit der Unterhaltung).
+ * Ereignis-Strom je Unterhaltung. Es wird nur angehängt; gelöscht werden nur `text.delta`- und
+ * `draft.delta`-Ereignisse (und alles zusammen mit der Unterhaltung).
  */
 export const conversationEvents = pgTable(
   "conversation_events",
@@ -198,7 +221,7 @@ export const conversationEvents = pgTable(
     index("conversation_events_run_id_idx").on(t.runId),
     index("conversation_events_aufraeumen_idx")
       .on(t.createdAt)
-      .where(sql`${t.type} = 'text.delta'`),
+      .where(sql`${t.type} in ('text.delta', 'draft.delta')`),
   ],
 );
 
