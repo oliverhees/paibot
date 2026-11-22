@@ -74,16 +74,30 @@ describe("Abgleich-Klassen der Tabellen", () => {
     }
   });
 
-  it("die Klassen der Tabellen mit Geheimnissen sind festgenagelt", () => {
-    const erwartet: Record<string, string> = {
+  it("die Klasse jeder Tabelle ist festgenagelt (eine Änderung braucht eine bewusste Entscheidung)", () => {
+    const erwartet: Record<string, "A" | "B" | "C"> = {
+      belege: "A",
+      rules: "A",
+      app_tools: "A",
+      bot_app_grants: "A",
+      conversation_events: "A",
+      messages: "B",
+      runs: "B",
+      tool_calls: "B",
+      bots: "B",
+      conversations: "B",
+      models: "B",
+      settings: "B",
+      apps: "B",
+      providers: "B",
+      owner: "B",
       installation_keys: "C",
       sessions: "C",
       geraete: "C",
-      owner: "B",
-      providers: "B",
-      apps: "B",
-      settings: "B",
+      rate_limits: "C",
+      schleuse_zustand: "C",
     };
+    expect(Object.keys(erwartet).sort()).toEqual([...TABELLEN].sort());
     for (const [name, klasse] of Object.entries(erwartet)) {
       expect(ABGLEICH_KLASSEN[name]?.klasse, name).toBe(klasse);
     }
