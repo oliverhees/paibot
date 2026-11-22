@@ -22,6 +22,7 @@ __pycache__/
 
 # Werkzeug- und KI-Ordner gehören nicht ins Repo
 .claude/
+CLAUDE.md
 CLAUDE.local.md
 .cursor/
 .windsurf/
