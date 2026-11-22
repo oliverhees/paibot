@@ -20,15 +20,15 @@ Welche Seiten hinein kommen, legen zwei feste Listen fest (`scripts/doku-umfang.
 
 ## Aufbau
 
-| Datei                           | Aufgabe                                                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `scripts/doku-umfang.mjs`       | die beiden Listen und der Mustervergleich (`passtAuf`), von Index und Prüfung gemeinsam benutzt        |
-| `scripts/doku-index.mjs`        | Befehl `pnpm doku:index`: wählt die Seiten, baut den Index (`baueIndex`), schreibt die Datei           |
-| `scripts/doku-index/hilfen.mjs` | Bereinigung und Zerlegung (`zerlege`), Erkennung unsichtbarer Zeichen, Formen für die Prüfung          |
-| `scripts/doku-check.mjs`        | die Prüfungen j bis l (versteckte Teile, Listen, eingeschleuste Anweisungen)                           |
-| `apps/web/Dockerfile`           | Bau-Stufe: `RUN pnpm doku:index`; Laufzeit-Stufe: `ENV PAIBOT_DOKU_INDEX` und eine Kopier-Zeile        |
-| `.dockerignore`                 | lässt die Seiten der Liste „in den Index“ in den Build, Bilder und alle anderen Seiten bleiben draußen |
-| `scripts/doku-index/testdaten/` | Testseiten und Mini-Projekte nur für die Tests, nie unter `docs/`                                      |
+| Datei                           | Aufgabe                                                                                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/doku-umfang.mjs`       | die beiden Listen und der Mustervergleich (`passtAuf`), von Index und Prüfung gemeinsam benutzt                                          |
+| `scripts/doku-index.mjs`        | Befehl `pnpm doku:index`: wählt die Seiten, baut den Index (`baueIndex`), schreibt die Datei                                             |
+| `scripts/doku-index/hilfen.mjs` | Bereinigung und Zerlegung (`zerlege`), Erkennung unsichtbarer Zeichen, Formen für die Prüfung                                            |
+| `scripts/doku-check.mjs`        | die Prüfungen j bis l (versteckte Teile, Listen, eingeschleuste Anweisungen)                                                             |
+| `apps/web/Dockerfile`           | Bau-Stufe: `RUN pnpm doku:index`; Laufzeit-Stufe: `ENV PAIBOT_DOKU_INDEX` und eine Kopier-Zeile (root-eigen, nur lesbar, `--chmod=0444`) |
+| `.dockerignore`                 | lässt die Seiten der Liste „in den Index“ in den Build, Bilder und alle anderen Seiten bleiben draußen                                   |
+| `scripts/doku-index/testdaten/` | Testseiten und Mini-Projekte nur für die Tests, nie unter `docs/`                                                                        |
 
 Datenfluss:
 
@@ -38,7 +38,7 @@ Datenfluss:
 4. Der Index wird als `doku-index.json` im Ordner `doku-index` des Projektstamms geschrieben. Die Datei ist erzeugt und steht in `.gitignore`.
 5. Die Laufzeit-Stufe kopiert die Datei nach `/app/doku-index/doku-index.json`; die Umgebungsvariable `PAIBOT_DOKU_INDEX` zeigt dorthin. Web und Worker nutzen dasselbe Image, also dieselbe Kopie.
 
-Bereinigung: entfernt alle HTML-Kommentare (auch den Urheber-Kopf), HTML-Tags und Bilder außerhalb von Code, unsichtbare und Bidi-Zeichen (U+200B bis U+200F, U+FEFF, U+202A bis U+202E, U+2066 bis U+2069) sowie Steuerzeichen außer Zeilenumbruch und Tabulator. Links werden zu ihrem Text. Codeblöcke und Code in Backticks bleiben unverändert, auch wenn darin etwas wie ein Tag oder Link aussieht.
+Bereinigung: entfernt zuerst unsichtbare und Bidi-Zeichen (damit ein dadurch zerteilter Kommentar nicht übrig bleibt), dann alle HTML-Kommentare (auch den Urheber-Kopf), HTML-Tags und Bilder außerhalb von Code; entfernte Zeichen sind (U+200B bis U+200F, U+FEFF, U+202A bis U+202E, U+2066 bis U+2069) sowie Steuerzeichen außer Zeilenumbruch und Tabulator. Links werden zu ihrem Text. Codeblöcke und Code in Backticks bleiben unverändert, auch wenn darin etwas wie ein Tag oder Link aussieht.
 
 ## Datenmodell und Migrationen
 
@@ -85,18 +85,18 @@ Gesucht wird im Worker, im Speicher, mit einer festen Regel ohne Netz: Normalisi
 - Die Doku gilt als vertrauenswürdig, weil sie beim Bau aus diesem Repo entsteht. Liest ein Werkzeug Ankündigungen oder andere Inhalte, die nicht beim Bau aus dem Repo entstehen, gelten diese als fremd.
 - Der Index kann zur Laufzeit nicht verändert werden: Das Image ist schreibgeschützt (`deploy/docker-compose.yml`), die Datei liegt im Image.
 - Die Bereinigung nimmt versteckte Teile (Kommentare, unsichtbare und Bidi-Zeichen) heraus, bevor etwas im Index landet.
-- `pnpm doku:check` lehnt in allen Seiten unter `docs/` HTML-Kommentare außer dem Urheber-Kopf am Anfang sowie unsichtbare und Bidi-Zeichen ab. In den Seiten der Liste „in den Index“ lehnt es zusätzlich typische Formulierungen eingeschleuster Anweisungen ab (`scripts/doku-index/hilfen.mjs#EINSCHLEUSE_FORMEN`). Das ist eine Stichprobe, kein Schutz: Sie erkennt nur bekannte Formen, und eine andere Formulierung geht durch.
+- `pnpm doku:check` lehnt in allen Seiten unter `docs/` HTML-Kommentare außer dem Urheber-Kopf am Anfang sowie unsichtbare und Bidi-Zeichen ab. Ebenso lehnt es rohes HTML im Fließtext ab (`scripts/doku-index/hilfen.mjs#findeRohesHtml`, aufgerufen in `scripts/doku-check.mjs#checkVersteckt`): jedes `<` vor Buchstabe, `/`, `!` oder `?` außerhalb von Codeblöcken, Code in Backticks und dem Urheber-Kopf, also auch `<!x …>`, `<?x …?>`, CDATA und Tags wie ein ausgeblendetes `span`; ausgenommen sind Adress-Verweise in spitzen Klammern und die Vorlagen. Erlaubte Tags stehen in `hilfen.mjs#ERLAUBTE_TAGS` (heute keine, weil keine Seite eines braucht); auch ein erlaubtes Tag darf kein Attribut `hidden` oder `style` tragen. Für Seiten der Liste „in den Index“ prüft es außerdem, dass Überschriften, ihre Pfade und Anker keine Zeichen enthalten, die der Index-Bau ablehnt (`hilfen.mjs#findeUnerlaubtImTitel`, dieselbe Funktion wie beim Bau; `scripts/doku-check.mjs#checkUeberschriften`). In den Seiten der Liste „in den Index“ lehnt es zusätzlich typische Formulierungen eingeschleuster Anweisungen ab (`scripts/doku-index/hilfen.mjs#EINSCHLEUSE_FORMEN`). Das ist eine Stichprobe, kein Schutz: Sie erkennt nur bekannte Formen, und eine andere Formulierung geht durch.
 - Testseiten mit eingeschleusten Sätzen liegen nur unter `scripts/doku-index/testdaten/`, nie unter `docs/`; in echten Doku-Seiten wird so etwas beschrieben, nie wörtlich zitiert. Ein Test stellt sicher, dass kein Text aus den Testdaten im echten Index steht.
 - Der Index enthält nur Dateien aus dem Repo.
 
 ## Tests
 
-| Test                                         | Prüft                                                                                                                                                                                                            |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tools/lint-regeln/src/doku-index.test.ts`   | Bereinigung, Zerlegung, Pfad der Überschriften, Auswahl der Seiten, Abbruch beim Bau (fehlende Seite, Muster ohne Treffer, leer, über 4 MB, doppelte Kennung), Wiederholbarkeit, keine Testdaten im echten Index |
-| `tools/lint-regeln/src/doku-check.test.ts`   | versteckte Teile, die beiden Listen, jede Form eingeschleuster Anweisungen mit Beispiel und Gegenbeispiel                                                                                                        |
-| `tools/lint-regeln/src/dockerignore.test.ts` | `.dockerignore` lässt die Seiten der Liste hinein und Bilder und Entwickler-Seiten draußen; die Zeilen im Dockerfile; aus dem so bestimmten Build-Kontext entsteht der Index (ohne Docker)                       |
-| `.github/workflows/ci.yml`                   | Schritt „Doku-Index im Image prüfen“: der Index im Web- und im Worker-Container ist byte-gleich zu einem frisch gebauten                                                                                         |
+| Test                                         | Prüft                                                                                                                                                                                                                        |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tools/lint-regeln/src/doku-index.test.ts`   | Bereinigung, Zerlegung, Pfad der Überschriften, Auswahl der Seiten, Abbruch beim Bau (fehlende Seite, Muster ohne Treffer, leer, über 4 MB, doppelte Kennung), Wiederholbarkeit, keine Testdaten im echten Index             |
+| `tools/lint-regeln/src/doku-check.test.ts`   | versteckte Teile, die beiden Listen, jede Form eingeschleuster Anweisungen mit Beispiel und Gegenbeispiel                                                                                                                    |
+| `tools/lint-regeln/src/dockerignore.test.ts` | `.dockerignore` lässt die Seiten der Liste hinein und Bilder und Entwickler-Seiten draußen; die Zeilen im Dockerfile (Index root-eigen und nur lesbar); aus dem so bestimmten Build-Kontext entsteht der Index (ohne Docker) |
+| `.github/workflows/ci.yml`                   | Schritt „Doku-Index im Image prüfen“: der Index im Web- und im Worker-Container ist byte-gleich zu einem frisch gebauten                                                                                                     |
 
 Ausführen:
 

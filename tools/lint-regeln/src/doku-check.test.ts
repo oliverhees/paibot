@@ -32,6 +32,12 @@ const { pruefeDoku } = (await import(pathToFileURL(SCRIPT).href)) as {
   pruefeDoku: (optionen: { wurzel: string; streng?: boolean }) => Ergebnis;
 };
 
+const { findeRohesHtml } = (await import(
+  pathToFileURL(path.join(ROOT, "scripts", "doku-index", "hilfen.mjs")).href
+)) as {
+  findeRohesHtml: (text: string, erlaubt?: string[]) => { zeile: number; form: string }[];
+};
+
 const VORLAGE = [
   "# <Name>",
   "",
@@ -648,6 +654,85 @@ describe("doku:check – versteckte Teile (L4-5)", () => {
   it("Windows-Zeilenenden sind kein Fehler", () => {
     const inhalt = (KOPF + SEITE).replace(/\n/g, "\r\n");
     expect(pruefe(mit({ "docs/funktion-beispiel.md": inhalt }), true).code).toBe(0);
+  });
+});
+
+describe("doku:check – rohes HTML und Überschriften (#85)", () => {
+  // Gegenprobe: `findeRohesHtml` im Aufruf von `checkVersteckt` (scripts/doku-check.mjs) weglassen
+  // → alle Fälle unten bestehen den Check, die Tests werden rot.
+  it.each([
+    ["ein Tag mit Verstecken-Attribut", "Text <span hidden>geheim</span> Ende."],
+    ["ein Tag mit Stil", 'Text <span style="display:none">geheim</span> Ende.'],
+    ["ein Tag über zwei Zeilen", "Text <span\nhidden>geheim</span> Ende."],
+    ["eine Erklärung der Form <!x …>", "Text <!x geheim> Ende."],
+    ["eine Verarbeitungsanweisung", "Text <?x geheim ?> Ende."],
+    ["ein CDATA-Abschnitt", "Text <![CDATA[ geheim ]]> Ende."],
+    ["ein schließendes Tag", "Text </div> Ende."],
+    ["ein Bild-Tag", '<img src="x.png" alt="x">'],
+  ])("%s im Fließtext ist ein Fehler", (_name, satz) => {
+    const { code, ausgabe } = pruefe(mit({ "docs/funktion-beispiel.md": seiteMit(satz) }));
+    expect(code).toBe(1);
+    expect(ausgabe).toMatch(/docs\/funktion-beispiel\.md: Zeile \d+: Rohes HTML im Fließtext/);
+  });
+
+  it("dasselbe in Inline-Code, im Codeblock und als Adress-Verweis ist erlaubt", () => {
+    const satz = [
+      "Schreibe `<span hidden>` oder `<!x y>` so.",
+      "",
+      "```html",
+      '<span style="display:none">x</span>',
+      "<![CDATA[ x ]]>",
+      "```",
+      "",
+      "Siehe <https://paibot.de/x> und <hi@paibot.de>. Auch 1 < 2 und 3 > 2.",
+    ].join("\n");
+    const { code, ergebnis } = pruefe(mit({ "docs/funktion-beispiel.md": seiteMit(satz) }), true);
+    expect(ergebnis.fehler).toEqual([]);
+    expect(code).toBe(0);
+  });
+
+  it("die Vorlagen mit ihren Platzhaltern in spitzen Klammern bleiben erlaubt", () => {
+    expect(pruefe(grundstock(), true).code).toBe(0);
+  });
+
+  it("erlaubte Tags: ohne Liste verboten, mit Liste erlaubt, aber nie mit hidden oder style", () => {
+    expect(findeRohesHtml("Ein <kbd>Strg</kbd> Test.").length).toBe(2);
+    expect(findeRohesHtml("Ein <kbd>Strg</kbd> Test.", ["kbd"])).toEqual([]);
+    expect(findeRohesHtml("Ein <KBD>x</KBD>.", ["kbd"])).toEqual([]);
+    for (const tag of [
+      "<kbd hidden>",
+      '<kbd style="x">',
+      "<kbd\nHIDDEN>",
+      '<kbd aria-hidden="true">',
+    ]) {
+      expect(findeRohesHtml(`A ${tag}x</kbd>`, ["kbd"]).length).toBe(1);
+    }
+    // Kommentare und `<!…>` sind nie erlaubt, auch nicht über die Liste
+    expect(findeRohesHtml("A <!x y>", ["!x", "x"]).length).toBe(1);
+  });
+
+  it("der Urheber-Kopf am Anfang zählt nicht als rohes HTML; die Zeilennummer stimmt", () => {
+    const funde = findeRohesHtml("<!--\nKopf <b>\n-->\n\nText\n<b>x</b>\n");
+    expect(funde.map((f) => f.zeile)).toEqual([6, 6]);
+  });
+
+  // Gegenprobe: `checkUeberschriften` aus `pruefeDoku` nehmen → die Fälle bestehen den Check.
+  it.each([
+    ["das leere Braille-Zeichen U+2800", "\u2800", "U+2800"],
+    ["ein Zeichen für den privaten Gebrauch U+E000", "\ue000", "U+E000"],
+    ["ein Tabulator", "\t", "U+0009"],
+  ])("%s in einer Überschrift der Anwender-Doku ist ein Fehler", (_name, zeichen, code) => {
+    const seite = seiteMit(`### Unter${zeichen}titel\n\nText.`);
+    const ergebnis = pruefe(mit({ "docs/funktion-beispiel.md": seite }));
+    expect(ergebnis.code).toBe(1);
+    expect(ergebnis.ausgabe).toContain(
+      `enthält das Zeichen ${code}, das in Titeln nicht erlaubt ist`,
+    );
+  });
+
+  it("gewöhnliche Überschriften mit Umlauten und Emoji bestehen", () => {
+    const seite = seiteMit("### Größe 😀 und Zähler\n\nText.");
+    expect(pruefe(mit({ "docs/funktion-beispiel.md": seite }), true).code).toBe(0);
   });
 });
 
