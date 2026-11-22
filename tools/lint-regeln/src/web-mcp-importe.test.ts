@@ -97,6 +97,8 @@ describe("Web-App: Importe aus der MCP-Schicht (muss grün sein)", () => {
     aufbereiten:
       'import { bereiteWerkzeugeAuf, McpSchichtFehler, type McpWerkzeugRoh } from "@paibot/mcp";\nexport const a = [bereiteWerkzeugeAuf, McpSchichtFehler];\nexport type B = McpWerkzeugRoh;\n',
     Adresse: 'import { pruefeAdresse } from "@paibot/mcp";\nexport const a = pruefeAdresse;\n',
+    "empfohlene Grenzen":
+      'import { MCP_EMPFOHLENE_ANTWORT_BYTES, MCP_EMPFOHLENES_LEERLAUF_MS } from "@paibot/mcp";\nexport const a = [MCP_EMPFOHLENE_ANTWORT_BYTES, MCP_EMPFOHLENES_LEERLAUF_MS];\n',
     "Modell-Namen":
       'import { vergebeModellNamen, type McpWerkzeugBereinigt } from "@paibot/mcp";\nexport const a = vergebeModellNamen;\nexport type B = McpWerkzeugBereinigt;\n',
   };
