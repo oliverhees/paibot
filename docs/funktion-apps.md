@@ -77,7 +77,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 - **Grenzen beim Lesen der Liste:** PaiBot liest höchstens 200 Werkzeuge je Abruf; hat die App mehr, steht das in der Meldung und die übrigen fehlen.
 - **Was „geändert“ im Einzelnen war,** zeigt die Seite noch nicht: Sie sagt nur, dass sich die Fassung geändert hat.
 - **Nicht gegen echte Server geprüft:** Verbinden, Einstufen und Zugriff sind gegen einen Test-Server geprüft, nicht gegen echte MCP-Server (zum Beispiel Notion, Linear oder ein Kalender). Ob echte Server nach diesen Regeln bestätigbar sind, ist offen.
-- **Im Chat:** Die Zeile eines Werkzeug-Aufrufs im Chat nennt die App noch nicht. Links in Antworten, die sich auf Inhalte aus einer App stützen, sollen nicht anklickbar sein; ob die Antwort als solche gekennzeichnet ist, liefert die Schnittstelle noch nicht.
+- **Im Chat:** Die Zeile eines Werkzeug-Aufrufs im Chat nennt die App noch nicht. Hat sich eine Antwort auf Inhalte aus einer App gestützt, sind Links darin nicht anklickbar: Das ganze Ziel steht als Text daneben, auch der Abfrage-Teil. Wer es öffnen will, kopiert es. Das Kennzeichen kommt für eine frisch fertige Antwort erst, wenn die Seite den Lauf noch einmal gelesen hat (kurz nach dem Ende); lädst du die Seite neu, steht es sofort da.
 
 ## Fehlerbehebung
 

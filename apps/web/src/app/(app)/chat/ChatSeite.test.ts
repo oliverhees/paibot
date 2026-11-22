@@ -9,6 +9,7 @@
  * @since     2026-11-21
  */
 
+import { readFileSync } from "node:fs";
 import { newId } from "@paibot/shared/ids";
 import type { Message, Run } from "@paibot/shared/objekte";
 import { createElement as h } from "react";
@@ -440,5 +441,10 @@ describe("Avatar im Chat", () => {
     );
     expect(aus).toContain('data-zustand="ruhig"');
     expect(folgt(aus)).toBe(0);
+  });
+
+  it("die Seite gibt das Kennzeichen „fremde Quelle“ an die Markdown-Anzeige weiter", () => {
+    const quelle = readFileSync(new URL("./ChatSeite.tsx", import.meta.url), "utf8");
+    expect(quelle).toContain("fremd={n.fremd === true}");
   });
 });

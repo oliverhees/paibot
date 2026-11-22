@@ -49,8 +49,8 @@ export interface AnsichtNachricht {
   herkunft?: "fest";
   /**
    * Die Antwort stützt sich auf Inhalte aus einer fremden Quelle (etwa einer App): Links darin
-   * sind nicht anklickbar und zeigen ihr volles Ziel. Gesetzt wird es erst, wenn die Schnittstelle
-   * das Kennzeichen der Nachricht liefert; bis dahin bleibt es ungesetzt.
+   * sind nicht anklickbar und zeigen ihr volles Ziel. Kommt aus dem Kennzeichen `untrusted` der
+   * Nachricht; fehlt es dort, bleibt `fremd` ungesetzt.
    */
   fremd?: true;
   /**
@@ -231,6 +231,7 @@ function ausNachricht(m: Message, modelle: Record<string, ModellInfo>): AnsichtN
     ...(m.servedBy === undefined ? {} : { servedBy: m.servedBy }),
     ...(m.errorCode === undefined ? {} : { fehlerCode: m.errorCode }),
     ...(m.origin === "fest" ? { herkunft: "fest" as const } : {}),
+    ...(m.untrusted === true ? { fremd: true as const } : {}),
   };
 }
 
@@ -411,7 +412,8 @@ export function offeneNachfragen(a: ChatAnsicht): { runId: string; schluessel: s
 /**
  * Übernimmt, was der Server zu einem Lauf gelesen hat: Fundstellen, Frage, Belege und den
  * gespeicherten Zustand der Aufrufe (ein gespeicherter Zustand „läuft“ überschreibt kein schon
- * gemeldetes Ende) sowie die feste Herkunft von Antworten des Laufs.
+ * gemeldetes Ende) sowie die feste Herkunft und das Kennzeichen „fremder Inhalt“ von Antworten des
+ * Laufs.
  */
 export function nachfrageUebernehmen(
   a: ChatAnsicht,
@@ -453,12 +455,17 @@ export function nachfrageUebernehmen(
     };
   }
   const feste = new Set(antwort.feste);
+  const fremde = new Set(antwort.fremde ?? []);
   return {
     ...stand,
     eintraege: stand.eintraege.map((e) => {
       if (e.art !== "nachricht" || e.runId !== runId || e.herkunftOffen !== true) return e;
       const { herkunftOffen: _weg, ...rest } = e;
-      return feste.has(e.id) ? { ...rest, herkunft: "fest" as const } : rest;
+      return {
+        ...rest,
+        ...(feste.has(e.id) ? { herkunft: "fest" as const } : {}),
+        ...(fremde.has(e.id) ? { fremd: true as const } : {}),
+      };
     }),
   };
 }

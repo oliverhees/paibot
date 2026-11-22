@@ -120,6 +120,8 @@ export interface LaufWerkzeuge {
   werkzeuge: WerkzeugAnzeige[];
   /** Kennungen der Antworten dieses Laufs, die PaiBot selbst gegeben hat (nicht das Modell). */
   feste: string[];
+  /** Kennungen der Antworten dieses Laufs, die Inhalte aus einer fremden Quelle (etwa einer App) tragen. */
+  fremde?: string[];
 }
 
 /** Alles, was die Chat-Ansicht beim Öffnen einer Unterhaltung braucht (ein Lesestand). */

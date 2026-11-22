@@ -218,7 +218,10 @@ export async function ladeLaufWerkzeuge(
     const feste = antworten
       .filter((m) => m.runId === runId && m.origin === "fest")
       .map((m) => m.id);
-    return { werkzeuge, feste };
+    const fremde = antworten
+      .filter((m) => m.runId === runId && m.untrusted === true)
+      .map((m) => m.id);
+    return { werkzeuge, feste, fremde };
   }, LESESTAND);
 }
 

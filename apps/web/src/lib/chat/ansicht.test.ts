@@ -28,6 +28,7 @@ import {
   gesendet,
   kopfModell,
   leereAnsicht,
+  nachfrageUebernehmen,
   neuErzeugbar,
   neuErzeugt,
   sendenGesperrt,
@@ -292,6 +293,80 @@ describe("Nachholen nach Verbindungsabbruch", () => {
     // Ein Ereignis zweimal hintereinander:
     const doppelt = ereignisseAnwenden(einmal, [g.liste[6] as ConversationEvent], KONTEXT);
     expect(doppelt).toBe(einmal);
+  });
+});
+
+describe("Kennzeichen „fremder Inhalt“ in der Ansicht", () => {
+  const msg = (teil: Partial<Message> & Pick<Message, "id" | "role" | "content" | "status">) =>
+    ({ conversationId, createdAt: "2026-11-21T10:00:00.000Z", ...teil }) as Message;
+
+  // Gegenprobe: `fremd` in `ausNachricht` nicht setzen → die Antwort aus einer App zeigt ihre Links wie jede andere.
+  it("eine Antwort mit `untrusted` bekommt `fremd`, alles andere nicht", () => {
+    const verlauf: ChatVerlauf = {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [
+        msg({ id: newId("message"), role: "user", content: "Frage", status: "complete" }),
+        msg({
+          id: newId("message"),
+          role: "assistant",
+          content: "mit App",
+          status: "complete",
+          untrusted: true,
+        }),
+        msg({ id: newId("message"), role: "assistant", content: "ohne", status: "complete" }),
+      ],
+      laeufe: [],
+      ereignisse: [],
+      letzteSeq: 0,
+      belege: [],
+      modelle: {},
+    };
+    const a = ansichtAus(verlauf, KONTEXT);
+    const eintraege = a.eintraege.filter((e) => e.art === "nachricht");
+    expect(eintraege.map((e) => [e.text, e.fremd === true])).toEqual([
+      ["Frage", false],
+      ["mit App", true],
+      ["ohne", false],
+    ]);
+  });
+});
+
+describe("Nachfrage zum Lauf: Kennzeichen „fremder Inhalt“", () => {
+  // Gegenprobe: `fremde` in `nachfrageUebernehmen` nicht auswerten → die frisch fertige Antwort bleibt anklickbar.
+  it("übernimmt `fremd` für die genannten Antworten des Laufs, ohne die anderen anzufassen", () => {
+    const a0 = leereAnsicht();
+    const mitAntworten: ChatAnsicht = {
+      ...a0,
+      eintraege: [
+        {
+          art: "nachricht",
+          id: "msg_a",
+          rolle: "bot",
+          text: "mit App",
+          zeit: "2026-11-21T10:00:00.000Z",
+          zustand: "fertig",
+          runId: "run_1",
+          herkunftOffen: true,
+        },
+        {
+          art: "nachricht",
+          id: "msg_b",
+          rolle: "bot",
+          text: "ohne",
+          zeit: "2026-11-21T10:00:01.000Z",
+          zustand: "fertig",
+          runId: "run_1",
+          herkunftOffen: true,
+        },
+      ],
+    };
+    const danach = nachfrageUebernehmen(mitAntworten, "run_1", {
+      werkzeuge: [],
+      feste: [],
+      fremde: ["msg_a"],
+    });
+    const fremd = danach.eintraege.map((e) => (e.art === "nachricht" ? e.fremd === true : false));
+    expect(fremd).toEqual([true, false]);
   });
 });
 

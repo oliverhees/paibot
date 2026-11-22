@@ -103,6 +103,7 @@ describe("GET /api/unterhaltungen/:id/laeufe/:laufId/werkzeuge", () => {
     expect(roh).not.toContain('"output"');
     expect(roh).not.toContain('"input"');
     expect(daten.feste).toEqual([]);
+    expect(daten.fremde).toEqual([]);
   });
 
   it("nennt die festen Antworten des Laufs, nicht die des Modells", async () => {
@@ -122,5 +123,30 @@ describe("GET /api/unterhaltungen/:id/laeufe/:laufId/werkzeuge", () => {
     });
     const daten = (await lesen(e, id, lauf.runId)).body.daten as LaufWerkzeuge;
     expect(daten.feste).toEqual([fest.id]);
+  });
+
+  // Gegenprobe: `fremde` in `ladeLaufWerkzeuge` nicht berechnen → die Liste bleibt leer.
+  it("nennt die Antworten des Laufs mit dem Kennzeichen „fremder Inhalt“, nicht die anderen", async () => {
+    const e = await eingerichtet();
+    const { id, laeufe } = await mitZwischentexten(e, {
+      laeufe: [{ frage: "Frage", zwischentexte: [{ text: "VORHER" }], ende: "failed" }],
+    });
+    const lauf = laeufe[0];
+    if (lauf === undefined) throw new Error("kein Lauf");
+    const fremd = await repo.messages.insert(e.u.db, {
+      conversationId: id,
+      role: "assistant",
+      content: "Antwort mit Inhalt aus einer App",
+      status: "streaming",
+      runId: lauf.runId,
+    });
+    await repo.messages.finalize(e.u.db, fremd.id, {
+      status: "complete",
+      content: "Antwort mit Inhalt aus einer App",
+      untrusted: true,
+    });
+    const daten = (await lesen(e, id, lauf.runId)).body.daten as LaufWerkzeuge;
+    expect(daten.fremde).toEqual([fremd.id]);
+    expect(daten.feste).toEqual([]);
   });
 });
