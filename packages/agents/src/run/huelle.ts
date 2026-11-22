@@ -17,7 +17,7 @@ import { errorText, isTextKey, type TextKey, t } from "@paibot/shared/texte";
 import { type Decision, LIMITS_BY_ID, PRECONDITIONS } from "@paibot/shared/tor";
 import { type ToolEnvelope, type ToolKey, toolEnvelopeSchema } from "@paibot/shared/werkzeug";
 import type { z } from "zod";
-import { jsonUeberGrenzen, setOwn } from "./bereinigen";
+import { ERGEBNIS_PRUEFUNG_GRENZEN, jsonUeberGrenzen, setOwn } from "./bereinigen";
 
 /** Text eines Schlüssels, der keine Platzhalter hat. */
 export function plainText(key: TextKey): string {
@@ -315,7 +315,7 @@ export function truncateContent(
   value: JsonValue,
   maxChars: number,
 ): { inhalt: JsonValue; gekuerzt: boolean; chars: number } | undefined {
-  if (jsonUeberGrenzen(value)) return undefined;
+  if (jsonUeberGrenzen(value, ERGEBNIS_PRUEFUNG_GRENZEN)) return undefined;
   const chars = contentChars(value);
   // Erst die festen Grenzen der Hülle: Zeichenketten und Listen vom Ende her kürzen. Das ist eine
   // eigene Kopie, die unten verändert werden darf.
@@ -334,14 +334,21 @@ export function truncateContent(
   return { inhalt: current, gekuerzt: final < chars, chars };
 }
 
+/**
+ * Kürzt einen Text auf höchstens `max` UTF-16-Einheiten (das zählt die Hülle: `String.length`),
+ * ohne ein Ersatzzeichen-Paar (etwa ein Emoji) in der Mitte zu zerreißen: Endet der Schnitt nach
+ * der ersten Hälfte eines Paars, fällt diese mit weg.
+ */
+function cutUtf16(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const last = text.charCodeAt(max - 1);
+  const endsInPair = last >= 0xd800 && last <= 0xdbff;
+  return text.slice(0, endsInPair ? max - 1 : max);
+}
+
 /** Zeichenketten auf `BOUNDED_JSON_LIMITS.text` und Listen auf `.items` kürzen (vom Ende her). */
 function fitBounds(value: JsonValue): JsonValue {
-  if (typeof value === "string") {
-    const chars = Array.from(value);
-    return chars.length <= BOUNDED_JSON_LIMITS.text
-      ? value
-      : chars.slice(0, BOUNDED_JSON_LIMITS.text).join("");
-  }
+  if (typeof value === "string") return cutUtf16(value, BOUNDED_JSON_LIMITS.text);
   if (Array.isArray(value)) return value.slice(0, BOUNDED_JSON_LIMITS.items).map(fitBounds);
   if (value !== null && typeof value === "object") {
     const out: { [key: string]: JsonValue } = {};
