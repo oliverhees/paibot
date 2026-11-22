@@ -484,6 +484,15 @@ describe("Adress- und Token-Wechsel, Trennen", () => {
       actionId: await kette.zugriffSetzen({ appId: app.id, botId, access: "lesen" }),
     });
     await apps.disconnect(db, app.id);
+    // Roh: Beim erneuten Verbinden steigt die Nummer um genau eins.
+    expect(
+      await codeOf(
+        ctx.client.query(
+          "update apps set state = 'verbunden', disconnected_at = null, connection_no = 5, auth_kind = 'keine' where id = $1",
+          [app.id],
+        ),
+      ),
+    ).toBe(RESTRICT);
     const wieder = await apps.reconnect(db, app.id, { authKind: "token", tokenEnc: tokenV2() });
     expect(wieder).toMatchObject({ state: "verbunden", connectionNo: 2 });
     expect(await apps.currentAccess(db, app.id, botId)).toBe("keiner");
