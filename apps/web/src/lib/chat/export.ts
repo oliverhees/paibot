@@ -174,11 +174,20 @@ export interface ExportEingabe {
   jetzt: Date;
 }
 
+/**
+ * Was in die Datei kommt und mitgezählt wird: deine Nachrichten und die End-Antworten. Weder
+ * Systemnachrichten noch Zwischentexte eines Laufs mit Werkzeugen (`step` gesetzt). Die Datei, die
+ * Anzahl in ihrem Kopf, die Kopfzeile der Antwort und der Beleg benutzen dieselbe Auswahl.
+ */
+export function inDerDatei(m: Message): boolean {
+  return m.role !== "system" && m.step === undefined;
+}
+
 /** Baut die Markdown-Datei. Rein, ohne Datenbank. */
 export function unterhaltungAlsMarkdown(e: ExportEingabe): string {
   const z = e.zeitzone;
   const jetztIso = e.jetzt.toISOString();
-  const sichtbar = e.nachrichten.filter((m) => m.role !== "system");
+  const sichtbar = e.nachrichten.filter(inDerDatei);
   const fassungen = fassungenVon(
     sichtbar.map((m) => ({ id: m.id, rolle: m.role === "user" ? "du" : "bot" })),
   );
@@ -259,7 +268,7 @@ export const unterhaltungExportieren: RoutenAktion<"unterhaltungExport"> = async
   const u = verlauf === undefined ? undefined : await repo.conversations.get(k.db, conversationId);
   const settings = await repo.settings.get(k.db);
   const bot = u === undefined ? undefined : await repo.bots.get(k.db, u.botId);
-  const nachrichten = verlauf?.nachrichten.filter((m) => m.role !== "system") ?? [];
+  const nachrichten = verlauf?.nachrichten.filter(inDerDatei) ?? [];
   const jetzt = k.dienste.uhr.now();
   const zeitzone = settings?.timezone ?? "Europe/Berlin";
   const ergebnis = await k.tor(

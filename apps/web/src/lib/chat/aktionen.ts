@@ -256,6 +256,8 @@ const NEU_FENSTER = 50;
  * der Person (mit dem Modell, das der Bot jetzt hat). Das Tor entscheidet über
  * `antwort.neu_erzeugen` (Unterhaltung vorhanden, kein Lauf aktiv, letzte Antwort, Not-Aus); erst
  * mit Erlaubnis entstehen in EINER Transaktion Lauf, Ereignis `run.queued` und der Auftrag.
+ * Ziel und „letzte Antwort“ gelten nur für End-Antworten: Zwischentexte eines Laufs mit Werkzeugen
+ * (`step` gesetzt) lesen beide Stellen nicht mit.
  */
 export function antwortNeuErzeugen(einreihen: Einreihen): RoutenAktion<"antwortNeuErzeugen"> {
   return async (k) => {
@@ -267,9 +269,12 @@ export function antwortNeuErzeugen(einreihen: Einreihen): RoutenAktion<"antwortN
     const verlauf =
       unterhaltung === undefined
         ? []
-        : (await repo.messages.listForConversation(k.db, id, { limit: NEU_FENSTER })).filter(
-            (m) => m.role !== "system",
-          );
+        : (
+            await repo.messages.listForConversation(k.db, id, {
+              limit: NEU_FENSTER,
+              nurAntworten: true,
+            })
+          ).filter((m) => m.role !== "system");
     const stelle = verlauf.findIndex((m) => m.id === antwortId);
     const antwort = verlauf[stelle];
     if (unterhaltung !== undefined && (antwort === undefined || antwort.role !== "assistant")) {
@@ -298,7 +303,9 @@ export function antwortNeuErzeugen(einreihen: Einreihen): RoutenAktion<"antwortN
         if (botId === undefined || ausloeser === undefined) throw new PaiBotError("nicht_gefunden");
         const value = await k.db.transaction(async (tx) => {
           // Kam seit dem Lesen eine Nachricht dazu, ist die Antwort nicht mehr die letzte.
-          const [letzte] = (await repo.messages.listForConversation(tx, id, { limit: 5 }))
+          const [letzte] = (
+            await repo.messages.listForConversation(tx, id, { limit: 5, nurAntworten: true })
+          )
             .filter((m) => m.role !== "system")
             .slice(-1);
           if (letzte?.id !== antwortId) throw new PaiBotError("nicht_gefunden");

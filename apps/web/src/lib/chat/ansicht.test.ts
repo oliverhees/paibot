@@ -9,7 +9,11 @@
  * @since     2026-11-21
  */
 
-import type { ConversationEvent, ConversationEventType } from "@paibot/shared/ereignisse";
+import {
+  type ConversationEvent,
+  type ConversationEventType,
+  EVENT_DATA,
+} from "@paibot/shared/ereignisse";
 import { newId } from "@paibot/shared/ids";
 import type { Message, Run } from "@paibot/shared/objekte";
 import { describe, expect, it } from "vitest";
@@ -683,5 +687,137 @@ describe("Herkunft der Antwort", () => {
     });
     // Ohne bekanntes Modell: nur der Name, keine Region und kein „EU“.
     expect(antwort?.art === "nachricht" && antwort.modell).toEqual({ name: "Beispiel-Modell A" });
+  });
+});
+
+describe("Zwischentexte eines Laufs mit Werkzeugen", () => {
+  const ZEIT = "2026-11-21T10:00:00.000Z";
+
+  function msg(teil: Partial<Message> & Pick<Message, "id" | "role" | "content">): Message {
+    return { conversationId, createdAt: ZEIT, status: "complete", ...teil } as Message;
+  }
+
+  function lauf(id: string, trigger: string, status: Run["status"]): Run {
+    return {
+      id,
+      conversationId,
+      triggerMessageId: trigger,
+      status,
+      createdAt: ZEIT,
+      finishedAt: ZEIT,
+    } as Run;
+  }
+
+  it("Zwischentexte werden kein Eintrag und keine Antwort ihres Laufs", () => {
+    const frage1 = newId("message");
+    const frage2 = newId("message");
+    const laufA = newId("run");
+    const laufB = newId("run");
+    const verlauf: ChatVerlauf = {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [
+        msg({ id: frage1 as never, role: "user", content: "Frage 1" }),
+        msg({
+          id: newId("message") as never,
+          role: "assistant",
+          content: "ZWISCHEN-A0",
+          runId: laufA as never,
+          step: 0,
+        }),
+        msg({
+          id: newId("message") as never,
+          role: "assistant",
+          content: "ZWISCHEN-A1",
+          runId: laufA as never,
+          step: 1,
+          status: "failed",
+        }),
+        msg({
+          id: newId("message") as never,
+          role: "assistant",
+          content: "Antwort A",
+          runId: laufA as never,
+        }),
+        msg({ id: frage2 as never, role: "user", content: "Frage 2" }),
+        msg({
+          id: newId("message") as never,
+          role: "assistant",
+          content: "ZWISCHEN-B0",
+          runId: laufB as never,
+          step: 0,
+          status: "cancelled",
+        }),
+      ],
+      // neueste zuerst, wie der Lesestand sie liefert
+      laeufe: [lauf(laufB, frage2, "cancelled"), lauf(laufA, frage1, "succeeded")],
+      ereignisse: [],
+      letzteSeq: 0,
+      belege: [],
+      modelle: {},
+    };
+    const a = ansichtAus(verlauf, KONTEXT);
+    expect(nachrichten(a)).toEqual([
+      "du:fertig:Frage 1",
+      "bot:fertig:Antwort A",
+      "du:fertig:Frage 2",
+      "ende:abgebrochen:unterbrochen",
+    ]);
+    expect(JSON.stringify(a.eintraege)).not.toContain("ZWISCHEN");
+    // Lauf B hat nur einen Zwischentext und gilt deshalb als ohne Antwort beendet.
+    expect(a.eintraege.at(-1)).toMatchObject({ art: "lauf-ende", runId: laufB });
+    // „Neu erzeugen“ bezieht sich auf keine Nachricht: Frage 2 ist die letzte Nachricht.
+    expect(neuErzeugbar(a)).toBeUndefined();
+  });
+
+  it("Ereignisse der Schritte erzeugen keinen Eintrag", () => {
+    const ev = folge();
+    const runId = newId("run");
+    const user = newId("message");
+    const antwort = newId("message");
+    const tool = newId("message");
+    const aktion = newId("action");
+    const liste = [
+      ev("message.created", { messageId: user, role: "user", text: "Frage" }),
+      ev("run.queued", { runId }, runId),
+      ev("run.started", { runId }, runId),
+      ev("beleg.created", { belegId: newId("receipt"), action: "modell.anfragen" }, runId),
+      ev(
+        "tool.requested",
+        {
+          runId,
+          actionId: aktion,
+          messageId: tool,
+          name: "doku_nachschlagen",
+          source: "eingebaut",
+          kind: "lesen",
+          key: "eingebaut/doku.nachschlagen",
+          step: 0,
+        },
+        runId,
+      ),
+      ev("step.finished", { runId, step: 0, ending: "zwischentext" }, runId),
+      ev("tool.started", { runId, actionId: aktion }, runId),
+      ev("tool.finished", { runId, actionId: aktion, status: "succeeded" }, runId),
+      ev("draft.delta", { runId, step: 1, text: "ENTWURF" }, runId),
+      ev("step.finished", { runId, step: 1, ending: "antwort" }, runId),
+      ev("message.created", { messageId: antwort, role: "assistant", text: "" }, runId),
+      ev("text.delta", { runId, messageId: antwort, text: "Die Antwort." }, runId),
+      ev(
+        "message.completed",
+        {
+          messageId: antwort,
+          route: "direct",
+          modelLabel: "Beispiel-Modell A",
+          tokens: { input: 10, output: 5 },
+        },
+        runId,
+      ),
+    ];
+    // Die Daten sind gültig, der Test prüft also wirklich die Ereignisse, die der Worker schreibt.
+    for (const e of liste) expect(EVENT_DATA[e.type].safeParse(e.data).success, e.type).toBe(true);
+    const a = ereignisseAnwenden(leereAnsicht(), liste, KONTEXT);
+    expect(nachrichten(a)).toEqual(["du:fertig:Frage", "bot:fertig:Die Antwort."]);
+    expect(JSON.stringify(a.eintraege)).not.toContain("ENTWURF");
+    expect(a.letzteSeq).toBe(liste.length);
   });
 });

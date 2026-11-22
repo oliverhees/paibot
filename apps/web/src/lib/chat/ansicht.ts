@@ -90,8 +90,13 @@ const LAUF_ENDE: Partial<Record<Run["status"], AnsichtLaufEnde["ergebnis"]>> = {
   denied: "abgelehnt",
 };
 
+/**
+ * Nur deine Nachrichten und End-Antworten kommen in die Ansicht. Ein Zwischentext eines Laufs mit
+ * Werkzeugen (`step` gesetzt) ist weder Eintrag noch Antwort seines Laufs, auch wenn der Lesestand
+ * ihn enthielte.
+ */
 function ausNachricht(m: Message, modelle: Record<string, ModellInfo>): AnsichtNachricht | null {
-  if (m.role === "system") return null;
+  if (m.role === "system" || m.step !== undefined) return null;
   const modell = m.modelId === undefined ? undefined : modelle[m.modelId];
   return {
     art: "nachricht",

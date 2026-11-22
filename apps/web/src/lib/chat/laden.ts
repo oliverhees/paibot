@@ -130,6 +130,10 @@ async function laufEreignisse(
  * Verlauf einer Unterhaltung in einem einzigen Lesestand: Nachrichten, Läufe, Ereignisse des
  * aktiven Laufs, letzte Nummer und Belege passen so zusammen; was danach kommt, liefert der
  * Ereignis-Strom ab `letzteSeq`. `undefined`, wenn es die Unterhaltung nicht gibt.
+ *
+ * Die Nachrichten sind nur deine und die End-Antworten des Bots; Zwischentexte eines Laufs mit
+ * Werkzeugen (`step` gesetzt) sind nicht dabei. Eine spätere Anzeige der Schritte stellt das
+ * bewusst um und trennt die Zwischentexte dann in der Ansicht.
  */
 export async function ladeVerlauf(
   db: Database,
@@ -140,7 +144,7 @@ export async function ladeVerlauf(
     if (unterhaltung === undefined) return undefined;
     const settings = await repo.settings.get(tx);
     const letzteSeq = await repo.events.lastSeq(tx, id);
-    const nachrichten = await repo.messages.listForConversation(tx, id);
+    const nachrichten = await repo.messages.listForConversation(tx, id, { nurAntworten: true });
     const alleLaeufe = await repo.runs.listForConversation(tx, id, { limit: LAEUFE_GRENZE });
     const aktiverLauf = await repo.runs.getActive(tx, id);
     const ereignisse =
