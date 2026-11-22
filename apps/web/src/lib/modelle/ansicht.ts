@@ -56,7 +56,7 @@ export function eigenerAnbieter(
 
 /**
  * Name des Anbieters mitten im Satz. Eigene und lokale Anbieter tragen frei gewählte Namen
- * („Lokaler Anbieter“, „Mein Ollama“), die nach „für“, „zu“ oder „von“ holprig klingen; in
+ * („Lokaler Anbieter“, „Mein Modell-Server“), die nach „für“, „zu“ oder „von“ holprig klingen; in
  * Anführungszeichen lesen sie sich glatt. Bekannte Dienste wie EUrouter bleiben, wie sie sind.
  */
 export function anbieterImSatz(anbieter: Pick<Provider, "name" | "templateKey">): string {

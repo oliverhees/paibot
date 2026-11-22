@@ -18,7 +18,7 @@ import { _unterAnbieterVergessen, listenAdresse, unterAnbieterListe } from "./un
 
 const EUROUTER = { name: "EUrouter", templateKey: "eurouter", region: "eu" } as const;
 const MISTRAL = { name: "Mistral AI", templateKey: "mistral", region: "eu" } as const;
-const EIGEN = { name: "Mein Ollama", templateKey: "eigener", region: "local" } as const;
+const EIGEN = { name: "Mein Modell-Server", templateKey: "eigener", region: "local" } as const;
 const LISTE = {
   abgerufen: "2026-11-21T10:00:00.000Z",
   eintraege: { tensorix: { name: "Tensorix", sitz: "IE" }, ohnesitz: { name: "Ohne Sitz" } },
@@ -33,7 +33,7 @@ describe("Herkunft ohne pauschales EU", () => {
       expect(text.split(/\W+/)).not.toContain(eu);
     }
     expect(anbieterHerkunft({ ...EIGEN, region: "eu" })).toBe(
-      `Mein Ollama · ${eu} laut deiner Einstellung`,
+      `Mein Modell-Server · ${eu} laut deiner Einstellung`,
     );
   });
 

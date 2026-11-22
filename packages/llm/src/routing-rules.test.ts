@@ -343,24 +343,24 @@ describe("Ort „lokal“ nur für Adressen im eigenen Rechner oder Netz", () =>
   it("Name, der auf eine öffentliche Adresse zeigt: gesperrt, auch über https", async () => {
     const seen: string[] = [];
     const guarded = createEgressFetch(
-      [providerEgressTarget("https://ollama.example.org/v1", "local")],
+      [providerEgressTarget("https://modell.example.org/v1", "local")],
       async () => {
         seen.push("gesendet");
         return new Response("{}");
       },
-      { lookup: async (host) => (host === "ollama.example.org" ? ["93.184.215.14"] : []) },
+      { lookup: async (host) => (host === "modell.example.org" ? ["93.184.215.14"] : []) },
     );
-    const error = await guarded("https://ollama.example.org/v1/models").catch((e: unknown) => e);
+    const error = await guarded("https://modell.example.org/v1/models").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(EgressBlockedError);
     expect((error as EgressBlockedError).reason).toBe("adresse_nicht_erlaubt");
     expect(seen).toEqual([]);
     // Gegenprobe: zeigt der Name ins eigene Netz, geht die Anfrage.
     const ok = createEgressFetch(
-      [providerEgressTarget("https://ollama.example.org/v1", "local")],
+      [providerEgressTarget("https://modell.example.org/v1", "local")],
       async () => new Response("{}"),
-      { lookup: async (host) => (host === "ollama.example.org" ? ["10.0.0.7"] : []) },
+      { lookup: async (host) => (host === "modell.example.org" ? ["10.0.0.7"] : []) },
     );
-    expect((await ok("https://ollama.example.org/v1/models")).status).toBe(200);
+    expect((await ok("https://modell.example.org/v1/models")).status).toBe(200);
   });
 
   it("Verbindungstest meldet nicht_lokal statt eines allgemeinen Fehlers", async () => {
@@ -370,16 +370,16 @@ describe("Ort „lokal“ nur für Adressen im eigenen Rechner oder Netz", () =>
       detail: "nicht_lokal",
     });
     const blocked: typeof fetch = async () => {
-      throw new EgressBlockedError("https://ollama.example.org:443", "adresse_nicht_erlaubt");
+      throw new EgressBlockedError("https://modell.example.org:443", "adresse_nicht_erlaubt");
     };
     expect(
-      await testConnection({ baseUrl: "https://ollama.example.org/v1", region: "local" }, "", {
+      await testConnection({ baseUrl: "https://modell.example.org/v1", region: "local" }, "", {
         fetch: blocked,
       }),
     ).toMatchObject({ detail: "nicht_lokal" });
     // Gegenprobe: derselbe Block bei Ort EU ist ein gewöhnlicher Fehler ohne diesen Hinweis.
     const eu = await testConnection(
-      { baseUrl: "https://ollama.example.org/v1", region: "eu" },
+      { baseUrl: "https://modell.example.org/v1", region: "eu" },
       "sk-x",
       { fetch: blocked },
     );

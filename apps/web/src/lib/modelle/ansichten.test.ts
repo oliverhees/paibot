@@ -161,7 +161,7 @@ describe("Texte bei eigenem oder lokalem Anbieter", () => {
   const eigen = t("modelle.anbieter.name.eigener");
 
   it("eigene Anbieter bekommen Sätze ohne „Konto bei …“, EUrouter behält seinen", () => {
-    for (const name of [lokal, eigen, "Mein Ollama"]) {
+    for (const name of [lokal, eigen, "Mein Modell-Server"]) {
       const text = listeLeerAusweg({ name, templateKey: "eigener" });
       expect(text).toBe(t("modelle.liste.leer.ausweg_eigen", { anbieter: `„${name}“` }));
       expect(text).not.toContain("Konto");
