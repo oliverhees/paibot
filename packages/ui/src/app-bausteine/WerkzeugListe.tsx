@@ -83,7 +83,9 @@ export function WerkzeugListe({
       ) : (
         <ul className={styles.eintraege}>
           {geordnet.map(({ id, ...karte }) => (
-            <li key={id}>
+            // Mit einer neuen Fassung wird die Karte neu aufgebaut: Ein offenes Einstufen schließt sich,
+            // und bestätigt wird nie eine Fassung, die der Besitzer beim Öffnen nicht gesehen hat.
+            <li key={`${id}:${karte.fassung ?? ""}`}>
               <WerkzeugKarte
                 {...karte}
                 ebene={kartenEbene}

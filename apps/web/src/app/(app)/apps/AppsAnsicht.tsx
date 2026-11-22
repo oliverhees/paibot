@@ -13,7 +13,6 @@
 
 "use client";
 
-import type { ApiErrorDetail } from "@paibot/shared/api";
 import { t } from "@paibot/shared/texte";
 import {
   type AppFehlerArt,
@@ -34,8 +33,15 @@ import {
 } from "@paibot/ui";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { type ApiErgebnis, apiFetch } from "../../../lib/api/client";
-import { appFehlerArt, werkzeugEintrag, zugriffZaehler } from "../../../lib/apps/ansicht";
+import { apiFetch } from "../../../lib/api/client";
+import {
+  appFehlerArt,
+  einstufenKoerper,
+  fehlerMeldung,
+  type Meldung,
+  werkzeugEintrag,
+  zugriffZaehler,
+} from "../../../lib/apps/ansicht";
 import { APP_PFADE } from "../../../lib/apps/pfade";
 import type { AppSeitenEintrag } from "../../../lib/apps/seite";
 import styles from "./apps.module.css";
@@ -48,36 +54,6 @@ export interface AppsAnsichtEintrag extends AppSeitenEintrag {
 export interface AppsAnsichtProps {
   apps: readonly AppsAnsichtEintrag[];
   notAus: boolean;
-}
-
-/** Einstufung der Oberfläche → Klasse der Route. */
-const KLASSE: Record<WerkzeugArt, "lesen" | "schreiben" | "gesperrt"> = {
-  liest: "lesen",
-  schreibt: "schreiben",
-  gesperrt: "gesperrt",
-};
-
-interface Meldung {
-  art: "ok" | "fehler";
-  text: string;
-  ausweg?: string;
-  /** Die Liste der Werkzeuge, die PaiBot nicht prüfen kann (fremde Namen). */
-  nichtPruefbar?: readonly string[];
-  hinweis?: string;
-}
-
-/** Fehler der Route als Meldung: der feste Satz der Route mit Ausweg, nie ein Text der App. */
-function fehlerMeldung(r: Extract<ApiErgebnis<unknown>, { ok: false }>): Meldung {
-  const fehler: ApiErrorDetail = r.fehler;
-  const warten =
-    r.wartenSekunden === undefined
-      ? ""
-      : ` ${t("apps.seite.aktion.warten", { sekunden: String(r.wartenSekunden) })}`;
-  return {
-    art: "fehler",
-    text: fehler.text,
-    ...(fehler.ausweg === undefined ? {} : { ausweg: `${fehler.ausweg}${warten}` }),
-  };
 }
 
 /** Schlüssel für gleiche Namen: der Name mit seiner Nummer unter den gleichen. */
@@ -173,7 +149,7 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
       const art = appFehlerArt(r.fehler.code);
       setFormFehler(
         art === undefined
-          ? { meldung: fehlerMeldung(r) }
+          ? { meldung: fehlerMeldung(r.fehler, r.wartenSekunden) }
           : { art, ...(art === "adresse_unzulaessig" ? { grund: r.fehler.text } : {}) },
       );
       return;
@@ -209,7 +185,7 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
       if (art !== undefined) {
         setTestFehler((alt) => ({ ...alt, [app.id]: art }));
       } else {
-        meldeFuer(app.id, fehlerMeldung(r));
+        meldeFuer(app.id, fehlerMeldung(r.fehler, r.wartenSekunden));
       }
       return;
     }
@@ -236,13 +212,14 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
     if (fassung === undefined) return;
     setLaeuft(`${app.id}:${werkzeug}`);
     meldeFuer(app.id, undefined);
-    const r = await apiFetch("PUT", APP_PFADE.werkzeugEinstufen(app.id, werkzeug), {
-      klasse: KLASSE[art],
-      gesehenerAbdruck: fassung,
-    });
+    const r = await apiFetch(
+      "PUT",
+      APP_PFADE.werkzeugEinstufen(app.id, werkzeug),
+      einstufenKoerper(art, fassung),
+    );
     setLaeuft(undefined);
     if (!r.ok) {
-      meldeFuer(app.id, fehlerMeldung(r));
+      meldeFuer(app.id, fehlerMeldung(r.fehler, r.wartenSekunden));
       return;
     }
     neuLaden();
@@ -254,7 +231,7 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
     const r = await apiFetch("PUT", APP_PFADE.zugriff(app.id, botId), { zugriff: wert });
     setLaeuft(undefined);
     if (!r.ok) {
-      meldeFuer(app.id, fehlerMeldung(r));
+      meldeFuer(app.id, fehlerMeldung(r.fehler, r.wartenSekunden));
       return;
     }
     neuLaden();
@@ -266,7 +243,7 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
     setLaeuft(undefined);
     setTrennen(undefined);
     if (!r.ok) {
-      meldeFuer(app.id, fehlerMeldung(r));
+      meldeFuer(app.id, fehlerMeldung(r.fehler, r.wartenSekunden));
       return;
     }
     neuLaden();
@@ -364,7 +341,6 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
                     >
                       {offen.has(app.id) && (
                         <div className={styles.innen}>
-                          {meldung !== undefined && <MeldungsZeile meldung={meldung} />}
                           <WerkzeugListe
                             werkzeuge={eintraege}
                             {...(laeuft?.startsWith(`${app.id}:tool_`)
@@ -397,6 +373,8 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
                         </div>
                       )}
                     </AppZeile>
+                    {/* Meldungen zu dieser App stehen immer da, auch bei zugeklappter App. */}
+                    {meldung !== undefined && <MeldungsZeile meldung={meldung} />}
                   </li>
                 );
               })}

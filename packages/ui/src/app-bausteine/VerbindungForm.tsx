@@ -91,6 +91,10 @@ export function VerbindungForm({
     <form
       className={klassen(styles.form, className)}
       onSubmit={absenden}
+      // Sicherheitsnetz: Würde der Browser das Formular je selbst absenden, ginge nichts in die
+      // Adresse (kein GET mit Token in der Zeile der Adresse).
+      method="post"
+      autoComplete="off"
       noValidate
       aria-busy={laeuft || undefined}
     >
@@ -121,8 +125,7 @@ export function VerbindungForm({
           label={t("apps.form.token")}
           hilfe={t("apps.form.token.hilfe")}
           type="password"
-          name="zugang"
-          autoComplete="new-password"
+          autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
           value={token}

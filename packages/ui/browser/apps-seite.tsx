@@ -213,6 +213,30 @@ function Gesperrt() {
   );
 }
 
+function Fassungswechsel() {
+  const [fassung, setFassung] = useState("aaaaaaaaaaaaaaaa");
+  const eintrag: WerkzeugListeEintrag = {
+    id: "wechsel",
+    name: "notiz_suchen",
+    beschreibung: fassung === "aaaaaaaaaaaaaaaa" ? "Erste Fassung." : "Zweite Fassung.",
+    status: "neu",
+    fassung,
+  };
+  return (
+    <Seite titel="Werkzeug – neue Fassung bei offenem Einstufen">
+      <div className="stapel">
+        <button type="button" id="wechsel" onClick={() => setFassung("bbbbbbbbbbbbbbbb")}>
+          Fassung wechseln
+        </button>
+        <WerkzeugListe
+          werkzeuge={[eintrag]}
+          onEinstufen={(id, art, f) => protokolliere(`eingestuft: ${id} = ${art} @${f ?? "-"}`)}
+        />
+      </div>
+    </Seite>
+  );
+}
+
 function Fehler() {
   return (
     <Seite titel="Apps – Fehler">
@@ -289,6 +313,7 @@ const ANSICHTEN: Record<string, () => React.ReactNode> = {
   verbindet: () => <Verbindet />,
   verbunden: () => <Verbunden />,
   gesperrt: () => <Gesperrt />,
+  fassungswechsel: () => <Fassungswechsel />,
   fehler: () => <Fehler />,
   notaus: () => <NotAus />,
   lang: () => <Lang />,

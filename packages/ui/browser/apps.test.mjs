@@ -191,6 +191,25 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
     expect(await kasten.textContent()).toContain("Von der App, nicht von PaiBot");
   });
 
+  // Gegenprobe: In `WerkzeugListe` den Schlüssel wieder auf `id` setzen → das Feld bleibt offen, und
+  // „Bestätigen“ schickt die neue Fassung, die der Besitzer nie gesehen hat.
+  it("neue Fassung bei offenem Einstufen: das Feld schließt sich, bestätigt wird nur die Fassung, die er beim Öffnen sah", async () => {
+    await oeffne("fassungswechsel");
+    const k = karte("notiz_suchen");
+    await k.locator("[data-ausloeser]").click();
+    await k.getByRole("radio", { name: "Liest nur", exact: false }).click();
+    await page.locator("#wechsel").click();
+    // Die Karte ist neu aufgebaut: kein offenes Feld mehr, der Text ist der neue.
+    expect(await k.locator("form").count()).toBe(0);
+    expect(await k.textContent()).toContain("Zweite Fassung.");
+    expect(await protokoll()).toBe("");
+    // Wer jetzt einstuft, bestätigt die neue Fassung, nachdem er sie gesehen hat.
+    await k.locator("[data-ausloeser]").click();
+    await k.getByRole("radio", { name: "Liest nur", exact: false }).click();
+    await k.getByRole("button", { name: "Bestätigen" }).click();
+    expect(await protokoll()).toBe("eingestuft: wechsel = liest @bbbbbbbbbbbbbbbb");
+  });
+
   it("Standard ist „schreibt“: neue Werkzeuge werden nicht angeboten, „liest“ ist nie vorgewählt", async () => {
     await oeffne("verbunden");
     const k = karte("aufgabe_loeschen");

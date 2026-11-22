@@ -193,6 +193,69 @@ try {
   );
   await seite.unroute("**/api/apps/*/zugriff/*");
 
+  // 3b. Fehler stehen auch bei zugeklappter App da (Trennen, Erneut testen)
+  await seite.goto(`${lauf.url}/apps`, { waitUntil: "load" });
+  await seite.route("**/api/apps/*", (route) => {
+    if (route.request().method() !== "DELETE") return route.continue();
+    return route.fulfill({
+      status: 429,
+      headers: { "content-type": "application/json", "retry-after": "5" },
+      body: JSON.stringify({
+        ok: false,
+        fehler: {
+          code: "limit_erreicht",
+          text: "Die App wird gerade abgeglichen oder geändert.",
+          ausweg: "Warte einen Moment und trenne sie dann noch einmal.",
+        },
+      }),
+    });
+  });
+  await seite.getByRole("button", { name: "Trennen: Notizen" }).click();
+  await seite
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Trennen", exact: true })
+    .click();
+  const trennenSichtbar = await seite
+    .getByText("Warte einen Moment und trenne sie dann noch einmal.", { exact: false })
+    .waitFor({ timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  pruefe(
+    "Trennen: der Fehler (429) steht auch bei zugeklappter App da, mit Ausweg",
+    trennenSichtbar,
+  );
+  await seite.unroute("**/api/apps/*");
+  await seite.route("**/api/apps/*/werkzeuge", (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    return route.fulfill({
+      status: 429,
+      headers: { "content-type": "application/json", "retry-after": "5" },
+      body: JSON.stringify({
+        ok: false,
+        fehler: {
+          code: "limit_erreicht",
+          text: "Es sind zu viele Abrufe in kurzer Zeit.",
+          ausweg: "Warte kurz und teste dann noch einmal.",
+        },
+      }),
+    });
+  });
+  await seite.getByRole("button", { name: "Erneut testen: Notizen" }).click();
+  const testenSichtbar = await seite
+    .getByText("Warte kurz und teste dann noch einmal.", { exact: false })
+    .waitFor({ timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  pruefe(
+    "Erneut testen: der Fehler steht auch bei zugeklappter App da, mit Ausweg",
+    testenSichtbar,
+  );
+  await seite.unroute("**/api/apps/*/werkzeuge");
+
   // 4. Token: nach dem Absenden nirgends mehr
   await seite.goto(`${lauf.url}/apps`, { waitUntil: "load" });
   await seite.getByRole("button", { name: "App verbinden" }).click();

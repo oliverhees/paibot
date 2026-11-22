@@ -13,6 +13,9 @@
 import { describe, expect, it } from "vitest";
 import {
   appFehlerArt,
+  einstufenKoerper,
+  fehlerMeldung,
+  klasseVon,
   schemaTexteVollstaendig,
   type WerkzeugAntwort,
   werkzeugEintrag,
@@ -205,5 +208,46 @@ describe("appFehlerArt", () => {
   it("unbekannte Codes gehören nicht zu den App-Fehlern", () => {
     expect(appFehlerArt("intern")).toBeUndefined();
     expect(appFehlerArt("limit_erreicht")).toBeUndefined();
+  });
+});
+
+describe("Einstufen: was an die Route geht", () => {
+  // Gegenprobe: `liest` auf `schreiben` abbilden → rot.
+  it("„liest“ wird als „lesen“ geschickt, „schreibt“ als „schreiben“, „gesperrt“ als „gesperrt“", () => {
+    expect(klasseVon("liest")).toBe("lesen");
+    expect(klasseVon("schreibt")).toBe("schreiben");
+    expect(klasseVon("gesperrt")).toBe("gesperrt");
+  });
+
+  // Gegenprobe: den Abdruck der gesehenen Fassung nicht mitschicken (oder einen anderen) → rot.
+  it("der Abdruck der gesehenen Fassung geht genau so mit", () => {
+    expect(einstufenKoerper("liest", ABDRUCK)).toEqual({
+      klasse: "lesen",
+      gesehenerAbdruck: ABDRUCK,
+    });
+  });
+});
+
+describe("Meldungen zu Fehlern der Routen", () => {
+  // Gegenprobe: den Ausweg aus der Meldung weglassen → rot.
+  it("der Ausweg steht in der Meldung, bei 429 mit der Wartezeit", () => {
+    const m = fehlerMeldung(
+      {
+        text: "Die App wird gerade abgeglichen oder geändert.",
+        ausweg: "Warte einen Moment und setze den Zugriff dann noch einmal.",
+      },
+      5,
+    );
+    expect(m.art).toBe("fehler");
+    expect(m.text).toBe("Die App wird gerade abgeglichen oder geändert.");
+    expect(m.ausweg).toBe(
+      "Warte einen Moment und setze den Zugriff dann noch einmal. Versuche es in 5 Sekunden noch einmal.",
+    );
+  });
+
+  it("ohne Ausweg steht die Wartezeit allein da, ohne Wartezeit der Ausweg allein", () => {
+    expect(fehlerMeldung({ text: "x" }, 7).ausweg).toBe("Versuche es in 7 Sekunden noch einmal.");
+    expect(fehlerMeldung({ text: "x", ausweg: "Tu y." }).ausweg).toBe("Tu y.");
+    expect(fehlerMeldung({ text: "x" })).not.toHaveProperty("ausweg");
   });
 });

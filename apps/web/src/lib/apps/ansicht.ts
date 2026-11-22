@@ -10,6 +10,7 @@
  * @since     2026-11-22
  */
 
+import { t } from "@paibot/shared/texte";
 import type {
   AppFehlerArt,
   SchemaText,
@@ -179,4 +180,43 @@ const FEHLER_ARTEN: Record<string, AppFehlerArt> = {
 /** Fehler-Text der Oberfläche zu einem Code der Routen; `undefined`, wenn es kein App-Fehler ist. */
 export function appFehlerArt(code: string): AppFehlerArt | undefined {
   return FEHLER_ARTEN[code];
+}
+
+/** Klasse der Route zu einer Einstufung der Oberfläche: „liest“ wird `lesen`, nie etwas anderes. */
+export function klasseVon(art: WerkzeugArt): "lesen" | "schreiben" | "gesperrt" {
+  return { liest: "lesen", schreibt: "schreiben", gesperrt: "gesperrt" }[art] as
+    | "lesen"
+    | "schreiben"
+    | "gesperrt";
+}
+
+/** Körper von `PUT /api/apps/:id/werkzeuge/:werkzeug`: die Klasse und der Abdruck der gesehenen Fassung. */
+export function einstufenKoerper(art: WerkzeugArt, fassung: string) {
+  return { klasse: klasseVon(art), gesehenerAbdruck: fassung };
+}
+
+/** Eine Meldung zu einer App oder zur Seite. */
+export interface Meldung {
+  art: "ok" | "fehler";
+  text: string;
+  ausweg?: string;
+  /** Die Liste der Werkzeuge, die PaiBot nicht prüfen kann (fremde Namen). */
+  nichtPruefbar?: readonly string[];
+  hinweis?: string;
+}
+
+/**
+ * Fehler der Route als Meldung: der feste Satz der Route mit Ausweg und, bei 429, der Wartezeit;
+ * nie ein Text der App. Fehlt der Ausweg, steht die Wartezeit allein da.
+ */
+export function fehlerMeldung(
+  fehler: { text: string; ausweg?: string | undefined },
+  wartenSekunden?: number,
+): Meldung {
+  const warten =
+    wartenSekunden === undefined
+      ? undefined
+      : t("apps.seite.aktion.warten", { sekunden: String(wartenSekunden) });
+  const ausweg = [fehler.ausweg, warten].filter((x) => x !== undefined && x !== "").join(" ");
+  return { art: "fehler", text: fehler.text, ...(ausweg === "" ? {} : { ausweg }) };
 }
