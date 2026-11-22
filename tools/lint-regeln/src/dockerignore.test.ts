@@ -9,7 +9,15 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -182,6 +190,9 @@ describe("Build-Kontext nach .dockerignore ergibt den Index am Laufzeit-Ort (ohn
       mkdirSync(path.dirname(path.join(kontext, datei)), { recursive: true });
       cpSync(path.join(ROOT, datei), path.join(kontext, datei));
     }
+    // Im Image liegen die Pakete der Wurzel nach `pnpm install` in node_modules; hier zeigt ein
+    // Link auf die schon installierten (nicht kopiert, nichts im Arbeitsbaum geschrieben).
+    symlinkSync(path.join(ROOT, "node_modules"), path.join(kontext, "node_modules"), "dir");
     // Wie im Dockerfile: `pnpm doku:index` ruft genau diesen Befehl auf.
     const skript = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")).scripts[
       "doku:index"
@@ -209,5 +220,23 @@ describe("Build-Kontext nach .dockerignore ergibt den Index am Laufzeit-Ort (ohn
       (z) => !z.startsWith("!docs/"),
     );
     expect(ausgeschlossen(ohne, "docs/installation.md")).toBe(true);
+  });
+});
+
+describe("CI: Doku-Index im Image prüfen", () => {
+  const ci = readFileSync(path.join(ROOT, ".github", "workflows", "ci.yml"), "utf8");
+  const start = ci.search(/^ {2}docker:\s*$/m);
+  const nachDocker = ci.slice(start);
+  const naechster = nachDocker.slice(1).search(/^ {2}[A-Za-z0-9_-]+:\s*$/m);
+  const job = naechster === -1 ? nachDocker : nachDocker.slice(0, naechster + 1);
+
+  it("der Job richtet pnpm und Node ein und installiert, bevor das Skript den Index baut", () => {
+    expect(start).toBeGreaterThan(-1);
+    const installieren = job.indexOf("pnpm install --frozen-lockfile");
+    const bauen = job.indexOf("node scripts/doku-index.mjs");
+    expect(installieren).toBeGreaterThan(-1);
+    expect(bauen).toBeGreaterThan(installieren);
+    expect(job.indexOf("pnpm/action-setup@")).toBeGreaterThan(-1);
+    expect(job.indexOf("actions/setup-node@")).toBeGreaterThan(-1);
   });
 });

@@ -32,11 +32,17 @@ const { pruefeDoku } = (await import(pathToFileURL(SCRIPT).href)) as {
   pruefeDoku: (optionen: { wurzel: string; streng?: boolean }) => Ergebnis;
 };
 
-const { findeRohesHtml } = (await import(
-  pathToFileURL(path.join(ROOT, "scripts", "doku-index", "hilfen.mjs")).href
+const { leseSeite, ERLAUBTE_TAGS } = (await import(
+  pathToFileURL(path.join(ROOT, "scripts", "doku-index", "markdown.mjs")).href
 )) as {
-  findeRohesHtml: (text: string, erlaubt?: string[]) => { zeile: number; form: string }[];
+  leseSeite: (roh: string) => { funde: { zeile: number; art: string; meldung: string }[] };
+  ERLAUBTE_TAGS: string[];
 };
+const { htmlAusnahme } = (await import(pathToFileURL(SCRIPT).href)) as {
+  htmlAusnahme: (datei: string, imIndex: boolean) => boolean;
+};
+/** Funde der Art „html“ in einem Text. */
+const htmlFunde = (text: string) => leseSeite(text).funde.filter((f) => f.art === "html");
 
 const VORLAGE = [
   "# <Name>",
@@ -133,8 +139,8 @@ afterEach(() => {
   for (const dir of ordner.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-function anlegen(dateien: Dateien): string {
-  const dir = mkdtempSync(path.join(tmpdir(), "paibot-doku-check-"));
+function anlegen(dateien: Dateien, zweck = "check"): string {
+  const dir = mkdtempSync(path.join(tmpdir(), `paibot-doku-parser-${zweck}-`));
   ordner.push(dir);
   for (const [rel, inhalt] of Object.entries(dateien)) {
     const file = path.join(dir, rel);
@@ -145,8 +151,8 @@ function anlegen(dateien: Dateien): string {
 }
 
 /** Prüft im selben Prozess; `ausgabe` hat dieselben Zeilen wie der Befehl. */
-function pruefe(dateien: Dateien, streng = false) {
-  const ergebnis = pruefeDoku({ wurzel: anlegen(dateien), streng });
+function pruefe(dateien: Dateien, streng = false, zweck = "check") {
+  const ergebnis = pruefeDoku({ wurzel: anlegen(dateien, zweck), streng });
   const zeilen = [
     ...ergebnis.warnungen.map((m) => `WARNUNG ${m.file}: ${m.problem}`),
     ...ergebnis.fehler.map((m) => `FEHLER  ${m.file}: ${m.problem}`),
@@ -160,9 +166,13 @@ function pruefe(dateien: Dateien, streng = false) {
 
 /** Ruft den Befehl wirklich auf (Exit-Code und Ausgabe). */
 function befehl(dateien: Dateien, ...extra: string[]) {
-  const result = spawnSync(process.execPath, [SCRIPT, "--wurzel", anlegen(dateien), ...extra], {
-    encoding: "utf8",
-  });
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT, "--wurzel", anlegen(dateien, "befehl"), ...extra],
+    {
+      encoding: "utf8",
+    },
+  );
   return { code: result.status, ausgabe: `${result.stdout}${result.stderr}` };
 }
 
@@ -583,17 +593,18 @@ describe("doku:check – versteckte Teile (L4-5)", () => {
     for (const seite of [mitte, ende]) {
       const { code, ausgabe } = pruefe(mit({ "docs/funktion-beispiel.md": seite }));
       expect(code).toBe(1);
-      expect(ausgabe).toMatch(/docs\/funktion-beispiel\.md: Zeile \d+: Ein HTML-Kommentar/);
+      expect(ausgabe).toMatch(/docs\/funktion-beispiel\.md: Zeile \d+: Rohes HTML im Fließtext/);
     }
   });
 
-  it("ein Kommentar ohne Kopf am Anfang und ein Kommentar im Codeblock sind Fehler", () => {
+  it("ein Kommentar ohne Kopf am Anfang ist ein Fehler; derselbe Text im Codeblock ist sichtbar und erlaubt", () => {
     const ohneKopf = pruefe(mit({ "docs/funktion-beispiel.md": `${SEITE}\n<!-- x -->\n` }));
     expect(ohneKopf.code).toBe(1);
     const imCode = pruefe(
-      mit({ "docs/funktion-beispiel.md": `${KOPF}${SEITE}\n\`\`\`\n<!-- x -->\n\`\`\`\n` }),
+      mit({ "docs/funktion-beispiel.md": `${KOPF}${SEITE}\n\`\`\`text\n<!-- x -->\n\`\`\`\n` }),
+      true,
     );
-    expect(imCode.code).toBe(1);
+    expect(imCode.code).toBe(0);
   });
 
   it("zwei Kommentare am Anfang: nur der erste ist der Kopf", () => {
@@ -679,7 +690,7 @@ describe("doku:check – rohes HTML und Überschriften (#85)", () => {
     const satz = [
       "Schreibe `<span hidden>` oder `<!x y>` so.",
       "",
-      "```html",
+      "```text",
       '<span style="display:none">x</span>',
       "<![CDATA[ x ]]>",
       "```",
@@ -696,24 +707,31 @@ describe("doku:check – rohes HTML und Überschriften (#85)", () => {
   });
 
   it("erlaubte Tags: ohne Liste verboten, mit Liste erlaubt, aber nie mit hidden oder style", () => {
-    expect(findeRohesHtml("Ein <kbd>Strg</kbd> Test.").length).toBe(2);
-    expect(findeRohesHtml("Ein <kbd>Strg</kbd> Test.", ["kbd"])).toEqual([]);
-    expect(findeRohesHtml("Ein <KBD>x</KBD>.", ["kbd"])).toEqual([]);
-    for (const tag of [
-      "<kbd hidden>",
-      '<kbd style="x">',
-      "<kbd\nHIDDEN>",
-      '<kbd aria-hidden="true">',
-    ]) {
-      expect(findeRohesHtml(`A ${tag}x</kbd>`, ["kbd"]).length).toBe(1);
+    expect(ERLAUBTE_TAGS).toEqual([]);
+    expect(htmlFunde("Ein <kbd>Strg</kbd> Test.").length).toBe(2);
+    ERLAUBTE_TAGS.push("kbd");
+    try {
+      expect(htmlFunde("Ein <kbd>Strg</kbd> Test.")).toEqual([]);
+      expect(htmlFunde("Ein <KBD>x</KBD>.")).toEqual([]);
+      for (const tag of [
+        "<kbd hidden>",
+        '<kbd style="x">',
+        "<kbd\nHIDDEN>",
+        '<kbd aria-hidden="true">',
+      ]) {
+        expect(htmlFunde(`A ${tag}x</kbd>`).length, tag).toBe(1);
+      }
+      // Kommentare und `<!…>` sind nie erlaubt, auch nicht über die Liste
+      ERLAUBTE_TAGS.push("!x", "x");
+      expect(htmlFunde("A <!x y>").length).toBe(1);
+    } finally {
+      ERLAUBTE_TAGS.length = 0;
     }
-    // Kommentare und `<!…>` sind nie erlaubt, auch nicht über die Liste
-    expect(findeRohesHtml("A <!x y>", ["!x", "x"]).length).toBe(1);
   });
 
   it("der Urheber-Kopf am Anfang zählt nicht als rohes HTML; die Zeilennummer stimmt", () => {
-    const funde = findeRohesHtml("<!--\nKopf <b>\n-->\n\nText\n<b>x</b>\n");
-    expect(funde.map((f) => f.zeile)).toEqual([6, 6]);
+    const funde = htmlFunde("<!--\nKopf <b>\n-->\n\nText\n\n<b>x</b>\n");
+    expect(funde.map((f) => f.zeile)).toEqual([7, 7]);
   });
 
   // Gegenprobe: `checkUeberschriften` aus `pruefeDoku` nehmen → die Fälle bestehen den Check.
@@ -857,5 +875,123 @@ describe("doku:check – eingeschleuste Anweisungen (L4-3)", () => {
     expect(pruefe(mit({ "docs/funktion-fremd.md": testseite })).code).toBe(1);
     // Im echten docs/ liegt nichts davon.
     expect(pruefeDoku({ wurzel: ROOT }).fehler).toEqual([]);
+  });
+});
+
+describe("doku:check – Verborgenes, vom Parser gelesen", () => {
+  const meldung = (satz: string, zweck: string, streng = true) =>
+    pruefe(mit({ "docs/funktion-beispiel.md": seiteMit(satz) }), streng, zweck);
+
+  // Gegenprobe: den Aufruf von `checkVersteckt` in `pruefeDoku` (scripts/doku-check.mjs) weglassen
+  // → alle Fälle bestehen den Check, die Tests werden rot.
+  const FORM = {
+    definition: "Link-Definition",
+    fussnote: "Fußnote",
+    zeichenreferenz: "Zeichenreferenz",
+    "zaun-zusatz": "Zusatz hinter der Sprache",
+    "zaun-sprache": "Sprache „geheim“",
+    mermaid: "Diagramm",
+    html: "Rohes HTML",
+    tabelle: "Tabellenzeile mit mehr Zellen als Spalten",
+  } as const;
+  it.each([
+    ["eine Kommentar-Definition", "definition", "[//]: # (GEHEIM)"],
+    ["eine Definition mit Titel", "definition", '[x]: https://example.org "GEHEIM"'],
+    ["eine Definition mit leerer Adresse", "definition", "[comment]: <> (GEHEIM)"],
+    ["ein Bild über eine Definition", "definition", "![GEHEIM][ref]\n\n[ref]: a.png"],
+    ["eine Fußnote", "fussnote", "Text[^1]\n\n[^1]: GEHEIM"],
+    ["eine Fußnote ohne Verweis", "fussnote", "[^1]: GEHEIM"],
+    ["Zeichenreferenzen für Tag-Zeichen", "zeichenreferenz", "a&#xE0047;&#xE0045;b"],
+    ["ein benanntes Zeichen", "zeichenreferenz", "a&shy;b"],
+    ["eine überzählige Tabellenzelle", "tabelle", "| a | b |\n| - | - |\n| 1 | 2 | GEHEIM |"],
+    ["ein Zusatz hinter der Sprache", "zaun-zusatz", "```bash GEHEIM\nls\n```"],
+    ["eine Sprache außerhalb der Liste", "zaun-sprache", "```geheim\nls\n```"],
+    ["ein Diagramm-Kommentar", "mermaid", "```mermaid\nflowchart LR\n  A --> B\n  %% GEHEIM\n```"],
+    [
+      "ein Backtick-Paar, das nicht schließt, vor einem Tag",
+      "html",
+      "` <span hidden>GEHEIM</span> ``",
+    ],
+    ["ein maskiertes Backtick-Paar um ein Tag", "html", "\\`<span hidden>GEHEIM</span>\\`"],
+    [
+      "ein Zaun mit Backtick in der Sprache, danach ein Tag",
+      "html",
+      "``` x`y\n<div hidden>GEHEIM</div>",
+    ],
+    ["ein Kommentar mit getrenntem Ende", "html", "Vor <!-- a -​-> GEHEIM --> nach."],
+  ])("%s ist ein Fehler mit Zeile und Hinweis", (_name, art, satz) => {
+    const { code, ausgabe, ergebnis } = meldung(satz, "verborgen");
+    expect(code).toBe(1);
+    expect(ausgabe).toContain(FORM[art as keyof typeof FORM]);
+    expect(ausgabe).toMatch(/docs\/funktion-beispiel\.md: Zeile \d+: /);
+    expect(ergebnis.fehler.every((f) => f.fix.length > 10)).toBe(true);
+  });
+
+  // Gegenprobe: die Tiefenprüfung in `leseSeite` (scripts/doku-index/markdown.mjs) entfernen →
+  // der Check wirft einen RangeError statt einer Meldung.
+  it("5 000 verschachtelte Zitate und eine zu große Seite sind Fehler mit Meldung, kein Absturz", () => {
+    const tief = meldung("> ".repeat(5000) + "Text", "tief");
+    expect(tief.code).toBe(1);
+    expect(tief.ausgabe).toMatch(/Zeile \d+: Der Baum der Seite ist tiefer als 50 Ebenen/);
+    const gross = meldung("Satz. ".repeat(70_000), "gross");
+    expect(gross.code).toBe(1);
+    expect(gross.ausgabe).toMatch(/Zeile 1: Die Seite ist mit \d+ Bytes größer als erlaubt/);
+  });
+
+  it("jede Form hat ihre Art im Text der Meldung", () => {
+    const text = (satz: string) => meldung(satz, "art").ausgabe;
+    expect(text("[//]: # (x)")).toContain("Link-Definition");
+    expect(text("Text[^1]\n\n[^1]: x")).toContain("Fußnote");
+    expect(text("a&#65;b")).toContain("Zeichenreferenz &#65;");
+    expect(text("```bash x\nls\n```")).toContain("Zusatz hinter der Sprache");
+  });
+
+  it.each([
+    ["eine Tabelle", "| a | b |\n| - | - |\n| 1 | 2 |"],
+    ["eine Tabelle mit einer Zeile mit weniger Zellen", "| a | b |\n| - | - |\n| 1 | 2 |\n| 3 |"],
+    ["Inline-Code mit < und einer Zeichenreferenz", "Schreibe `<b>` und `&#x41;`."],
+    ["ein Codeblock mit HTML", "```text\n<div hidden>x</div>\n```"],
+    ["Adress-Verweise im Netz und per E-Mail", "<https://paibot.de/x> und <hi@paibot.de>"],
+    ["ein Kleiner-als-Zeichen im Satz", "Wert 1 < 2 und 3 > 2."],
+    ["ein maskiertes Tag, das als Text sichtbar ist", "Sichtbar: \\<span hidden>Text\\</span>."],
+    ["ein Zaun mit Tilden", "~~~bash\nls\n~~~"],
+    ["ein Zaun in einer Liste", "1. Schritt\n\n   ```bash\n   ls\n   ```"],
+    ["ein eingerückter Codeblock", "Vorher:\n\n    eingerückt <b>"],
+    ["ein Bild mit Titel in Klammern", "![Alt](assets/screenshots/beispiel.png (Titel))"],
+    ["ein Zaun in einem Zitat", "> ```text\n> x\n> ```"],
+    ["ein Diagramm ohne Kommentare", "```mermaid\nflowchart LR\n  A --> B\n```"],
+  ])("%s besteht den Check (Ausgang 0)", (_name, satz) => {
+    const { code, ausgabe } = meldung(satz, "gegenprobe");
+    expect(ausgabe).toBe("");
+    expect(code).toBe(0);
+  });
+
+  it("der Befehl endet bei einem Fund mit Ausgang 1 und nennt die Zeile", () => {
+    const { code, ausgabe } = befehl(
+      mit({ "docs/funktion-beispiel.md": seiteMit("[//]: # (GEHEIM)") }),
+      "--streng",
+    );
+    expect(code).toBe(1);
+    expect(ausgabe).toContain("Link-Definition");
+  });
+
+  // Gegenprobe: in `htmlAusnahme` (scripts/doku-check.mjs) die Bedingung `!imIndex` weglassen
+  // → eine Vorlage in der Liste „in den Index“ bleibt ausgenommen, der Test wird rot.
+  it("die Ausnahme für HTML gilt nur für die beiden Vorlagen und nur außerhalb des Index", () => {
+    expect(htmlAusnahme("docs/VORLAGE-funktion.md", false)).toBe(true);
+    expect(htmlAusnahme("docs/entwickler/VORLAGE.md", false)).toBe(true);
+    expect(htmlAusnahme("docs/VORLAGE-funktion.md", true)).toBe(false);
+    expect(htmlAusnahme("docs/entwickler/VORLAGE.md", true)).toBe(false);
+    expect(htmlAusnahme("docs/funktion-beispiel.md", false)).toBe(false);
+    expect(htmlAusnahme("docs/funktion-beispiel.md", true)).toBe(false);
+  });
+
+  it("in einer Vorlage ist HTML erlaubt, jede andere versteckte Form nicht", () => {
+    const vorlage = `${VORLAGE}\n[//]: # (GEHEIM)\n`;
+    const { code, ausgabe } = pruefe(mit({ "docs/VORLAGE-funktion.md": vorlage }), true, "vorlage");
+    expect(code).toBe(1);
+    expect(ausgabe).toContain("docs/VORLAGE-funktion.md: Zeile");
+    expect(ausgabe).toContain("Link-Definition");
+    expect(ausgabe).not.toContain("Rohes HTML");
   });
 });
