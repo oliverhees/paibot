@@ -22,7 +22,7 @@ Die Datenschleuse ist ein eigenes Projekt (Lizenz AGPL-3.0, Quellcode: <https://
 
 ## So benutzt du es
 
-Voraussetzung: PaiBot läuft schon mit Docker Compose (siehe [Installation](installation.md)), und du hast Node.js 22 für den Befehl `pnpm schleuse:config` (oder `node scripts/schleuse-config.mjs`, ohne weitere Pakete).
+Voraussetzung: PaiBot läuft schon mit Docker Compose (siehe [Installation](installation.md)), und du hast Node.js 26 für den Befehl `pnpm schleuse:config` (oder `node scripts/schleuse-config.mjs`, ohne weitere Pakete).
 
 **Zuschalten**
 

@@ -40,7 +40,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 
 ## Aufbau des Monorepos
 
-pnpm-Workspace mit den Ordnern `apps/*`, `packages/*` und `tools/*` (`pnpm-workspace.yaml`), gebaut mit Turborepo (`turbo.json`). Node.js steht in `.nvmrc` (22), pnpm in `package.json` (Feld `packageManager`).
+pnpm-Workspace mit den Ordnern `apps/*`, `packages/*` und `tools/*` (`pnpm-workspace.yaml`), gebaut mit Turborepo (`turbo.json`). Node.js steht in `.nvmrc` (26), pnpm in `package.json` (Feld `packageManager`).
 
 | Ordner                 | Paket                   | Inhalt                                                                     |
 | ---------------------- | ----------------------- | -------------------------------------------------------------------------- |

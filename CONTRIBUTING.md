@@ -56,7 +56,7 @@ Labels und Meilensteine stehen in [`.github/projekt.json`](.github/projekt.json)
 
 ## Entwicklungsumgebung
 
-Voraussetzungen: **Node.js 22** und **pnpm 10**.
+Voraussetzungen: **Node.js 26** und **pnpm 10**.
 
 ```bash
 git clone https://github.com/<dein-name>/paibot.git

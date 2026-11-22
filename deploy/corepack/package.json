@@ -1,0 +1,9 @@
+{
+  "name": "paibot-corepack-gesperrt",
+  "private": true,
+  "description": "Nur für Bau und Sicherung: corepack in fester Fassung, mit Prüfsummen aus package-lock.json (npm ci).",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "corepack": "0.36.0"
+  }
+}

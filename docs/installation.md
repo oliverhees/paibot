@@ -20,7 +20,7 @@ Der offizielle Weg ist **Docker Compose**. Das gilt lokal und auf dem Server. Al
 | ------------------- | ------------------------------------------------------------------------- |
 | Lokal und Server    | Docker mit dem Compose-Plugin                                             |
 | Server (empfohlen)  | Server mit Rechenzentrum in der EU, Ubuntu LTS, mind. 2 vCPU und 4 GB RAM |
-| Entwicklung am Code | Node.js 22 und pnpm 10                                                    |
+| Entwicklung am Code | Node.js 26 und pnpm 10                                                    |
 
 ## Was heute mitläuft
 

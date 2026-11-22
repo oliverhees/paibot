@@ -227,7 +227,7 @@ PaiBot wird laufend gebaut. Den Stand zeigen die [Issues und Meilensteine](https
 
 > PaiBot ist im Bau. Zum Ausprobieren mit Datenbank, Einrichtung und Chat: [Installation mit Docker Compose](docs/installation.md). Der Schnellstart unten ist für die Entwicklung.
 
-**Voraussetzungen:** Node.js 22 und pnpm 10
+**Voraussetzungen:** Node.js 26 und pnpm 10
 
 ```bash
 git clone https://github.com/oliverhees/paibot.git
