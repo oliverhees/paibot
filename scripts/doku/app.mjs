@@ -40,6 +40,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   legeBeispielAppsAn,
   legeDatenbankAn,
+  legeFeindlicheAppAn,
   loescheDatenbank,
   starteEigenenServer,
 } from "./datenbank.mjs";
@@ -313,7 +314,7 @@ async function warteAufAntwort(url, sekunden = 60) {
  * Kleine Steuerung für `pnpm doku:screenshots`: `POST /datenschleuse` mit `{ "zustand": … }` und
  * dem Token als Bearer. Antwortet erst, wenn der Worker den Zustand gemeldet hat.
  */
-function starteSteuerung(token, setzeSchleuse, legeAppsAn) {
+function starteSteuerung(token, setzeSchleuse, legeAppsAn, legeFeindlicheAppAn) {
   let warteschlange = Promise.resolve();
   const server = createHttpServer((anfrage, antwort) => {
     const ende = (status, daten) => {
@@ -321,6 +322,15 @@ function starteSteuerung(token, setzeSchleuse, legeAppsAn) {
       antwort.end(JSON.stringify(daten));
     };
     if (anfrage.headers.authorization !== `Bearer ${token}`) return ende(401, { ok: false });
+    if (anfrage.method === "POST" && anfrage.url === "/feindliche-app") {
+      warteschlange = warteschlange
+        .then(() => legeFeindlicheAppAn())
+        .then(
+          (ergebnis) => ende(200, { ok: true, ...ergebnis }),
+          (error) => ende(500, { ok: false, fehler: error.message }),
+        );
+      return undefined;
+    }
     if (anfrage.method === "POST" && anfrage.url === "/beispiel-apps") {
       warteschlange = warteschlange
         .then(() => legeAppsAn())
@@ -583,6 +593,7 @@ async function main() {
       }
     },
     () => legeBeispielAppsAn(ROOT, db.app),
+    () => legeFeindlicheAppAn(ROOT, db.app),
   );
   aufgaben.push(() => steuerDienst.stop());
 

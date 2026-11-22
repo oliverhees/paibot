@@ -346,3 +346,33 @@ export async function legeBeispielAppsAn(root, appAdresse) {
     await sql.end({ timeout: 5 });
   }
 }
+
+/**
+ * Eine Beispiel-App mit Texten, die ein Angreifer schreiben könnte (Bild-Adresse, Link, Markdown,
+ * HTML). Nur für die Prüfung im Browser (`pnpm apps:browser`), nie in einem Bild der Doku.
+ */
+export async function legeFeindlicheAppAn(root, appAdresse) {
+  const postgres = postgresTreiber(root);
+  const sql = postgres(appAdresse, { max: 1, onnotice: () => undefined, connect_timeout: 10 });
+  const text =
+    '<img src="https://bild.beispiel.example/x.png"> [Klick](https://bild.beispiel.example/l?k=1) **fett** <script>window.__boese = 1</script>';
+  try {
+    await sql.begin(async (tx) => {
+      await tx`
+        insert into apps (id, short_name, name, url, auth_kind)
+        values ('app_1c1m0r5k7q8s9t0v1w2x3y4z6a', 'boese', ${text.slice(0, 60)},
+                'https://boese.beispiel.example/mcp', 'keine')`;
+      await tx`
+        insert into app_tools (tool_id, version, app_id, original_name, model_name, tool_key,
+                               tool_digest, description, input_schema, status, tool_class)
+        values ('wzg_1c1m0r5k7q8s9t0v1w2x3y4z6b', 1, 'app_1c1m0r5k7q8s9t0v1w2x3y4z6a', 'boese',
+                'boese__boese', 'mcp/boese/boese',
+                ${`sha256:${createHash("sha256").update("boese").digest("hex")}`}, ${text},
+                ${tx.json({ type: "object", properties: { feld: { type: "string", description: text } } })},
+                'neu', 'schreiben')`;
+    });
+    return { angelegt: 1 };
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
