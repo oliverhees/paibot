@@ -14,6 +14,7 @@
 import type { RuleDefinition } from "@paibot/shared/tor";
 import { R014_V1 } from "@paibot/shared/tor-fassung-3";
 import { describe, expect, it } from "vitest";
+import { GATE_FORMAT_3 } from "./fassung-3";
 import korpus from "./fassung-3.korpus.json";
 
 interface Pruefung {
@@ -268,4 +269,27 @@ describe("Korpus der Fassung 3: Inhalt", () => {
       caps: [{ name: "fremd_dann_fragen", result: "nicht_noetig" }],
     });
   });
+});
+
+function rechne(fall3: Fall3): Record<string, unknown> {
+  const decision = GATE_FORMAT_3.evaluate(
+    fall3.action as never,
+    fall3.facts as never,
+    regeln3(fall3),
+  );
+  const { reason: _reason, ...rest } = decision as unknown as Record<string, unknown>;
+  return rest;
+}
+
+describe("Korpus der Fassung 3: Auswertung", () => {
+  for (const entry of KORPUS_3.cases) {
+    it(entry.name, () => {
+      expect(rechne(entry)).toStrictEqual(entry.expected);
+    });
+  }
+  for (const entry of KORPUS_3.limitCases) {
+    it(`grenzen: ${entry.name}`, () => {
+      expect(GATE_FORMAT_3.checkLimits(entry.action, entry.facts)).toStrictEqual(entry.expected);
+    });
+  }
 });

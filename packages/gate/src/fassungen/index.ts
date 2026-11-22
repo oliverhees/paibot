@@ -22,7 +22,14 @@ export type {
   GateFormatSpec,
 } from "./typ";
 
-/** Eingefrorene Beschreibung je Fassung. Eine Fassung wird nie geändert, nur neue kommen dazu. */
+/**
+ * Eingefrorene Beschreibung je Fassung. Eine Fassung wird nie geändert, nur neue kommen dazu.
+ *
+ * Fassung 3 („Apps lesen“, `fassung-3.ts`) ist eingefroren, steht aber bewusst noch nicht in
+ * dieser Liste: Solange die Datenbank Apps, Werkzeuge und Zugriffe nicht speichert, entscheidet das
+ * Tor mit Fassung 2, und kein Weg rechnet mit Fassung 3. Sie kommt hierher in dem Schritt, der
+ * `GATE_FORMAT` auf 3 hebt.
+ */
 export const GATE_FORMATS: Readonly<Record<1 | 2, GateFormatSpec>> = {
   1: GATE_FORMAT_1,
   2: GATE_FORMAT_2,
