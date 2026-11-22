@@ -221,13 +221,9 @@ export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise
   let phase: Phase = "offen";
   const verbindungAbbruch = new AbortController();
   if (optionen.signal?.aborted === true) throw new McpSchichtFehler("abgebrochen");
-  optionen.signal?.addEventListener(
-    "abort",
-    () => verbindungAbbruch.abort(new McpSchichtFehler("abgebrochen")),
-    {
-      once: true,
-    },
-  );
+  const vonAussen = () => verbindungAbbruch.abort(new McpSchichtFehler("abgebrochen"));
+  optionen.signal?.addEventListener("abort", vonAussen, { once: true });
+  const loeseAussen = () => optionen.signal?.removeEventListener("abort", vonAussen);
   const sicheresFetch = baueSicheresFetch(
     optionen.fetch,
     adresse.url,
@@ -260,6 +256,7 @@ export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise
     );
   } catch (fehler) {
     phase = "zu";
+    loeseAussen();
     verbindungAbbruch.abort(new McpSchichtFehler("verbindung_geschlossen"));
     throw ordneFehlerZu(fehler);
   }
@@ -346,6 +343,7 @@ export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise
         // Beim Schließen ist ein Fehler nicht mehr wichtig; danach geht ohnehin nichts mehr hinaus.
       } finally {
         phase = "zu";
+        loeseAussen();
         verbindungAbbruch.abort(new McpSchichtFehler("verbindung_geschlossen"));
       }
     },
