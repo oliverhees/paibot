@@ -65,12 +65,12 @@ export const apps = pgTable(
     idCheck("apps_id_format", t.id, "app"),
     check(
       "apps_short_name_format",
-      sql`${matches(t.shortName, "^[a-z0-9][a-z0-9_-]{0,63}$")} and position('__' in ${t.shortName}) = 0`,
+      sql`${matches(t.shortName, "^[a-z0-9][a-z0-9_-]{0,63}$")} and not (${matches(t.shortName, "__")})`,
     ),
     check("apps_name_laenge", sql`char_length(${t.name}) between 1 and 100`),
     check(
       "apps_url_format",
-      sql`char_length(${t.url}) <= 2000 and ${matches(t.url, "^[!-~]+$")} and ${matches(t.url, '^https://[^/?#@\\s]+(/[^?#\\s"\\\\]*)?$')} and ${t.url} !~ '/$'`,
+      sql`char_length(${t.url}) <= 2000 and ${matches(t.url, "^[!-~]+$")} and ${matches(t.url, '^https://[^/?#@\\s]+(/[^?#\\s"\\\\]*)?$')} and not (${matches(t.url, "/$")})`,
     ),
     inListCheck("apps_auth_kind_werte", t.authKind, APP_AUTH_KINDS),
     inListCheck("apps_state_werte", t.state, APP_STATES),
@@ -152,7 +152,7 @@ export const appTools = pgTable(
     check("app_tools_description_laenge", sql`char_length(${t.description}) <= 2000`),
     check(
       "app_tools_input_schema_objekt",
-      sql`jsonb_typeof(${t.inputSchema}) = 'object' and octet_length(${t.inputSchema}::text) <= 65536`,
+      sql`jsonb_typeof(${t.inputSchema}) = 'object'`,
     ),
     inListCheck("app_tools_status_werte", t.status, APP_TOOL_STATUSES),
     inListCheck("app_tools_tool_class_werte", t.toolClass, APP_TOOL_CLASSES),

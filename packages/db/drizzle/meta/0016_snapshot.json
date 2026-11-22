@@ -1,5 +1,5 @@
 {
-  "id": "1630c21f-cc2c-4ca5-8998-8018d84c9e12",
+  "id": "d1dedb4f-886a-4275-899d-4e52fda01be8",
   "prevId": "884722c3-7f02-48fb-8272-12a83cb988ce",
   "version": "7",
   "dialect": "postgresql",
@@ -665,7 +665,7 @@
         },
         "app_tools_input_schema_objekt": {
           "name": "app_tools_input_schema_objekt",
-          "value": "jsonb_typeof(\"public\".\"app_tools\".\"input_schema\") = 'object' and octet_length(\"public\".\"app_tools\".\"input_schema\"::text) <= 65536"
+          "value": "jsonb_typeof(\"public\".\"app_tools\".\"input_schema\") = 'object'"
         },
         "app_tools_status_werte": {
           "name": "app_tools_status_werte",
@@ -799,7 +799,7 @@
         },
         "apps_short_name_format": {
           "name": "apps_short_name_format",
-          "value": "\"public\".\"apps\".\"short_name\" ~ '^[a-z0-9][a-z0-9_-]{0,63}$' and position('__' in \"public\".\"apps\".\"short_name\") = 0"
+          "value": "\"public\".\"apps\".\"short_name\" ~ '^[a-z0-9][a-z0-9_-]{0,63}$' and not (\"public\".\"apps\".\"short_name\" ~ '__')"
         },
         "apps_name_laenge": {
           "name": "apps_name_laenge",
@@ -807,7 +807,7 @@
         },
         "apps_url_format": {
           "name": "apps_url_format",
-          "value": "char_length(\"public\".\"apps\".\"url\") <= 2000 and \"public\".\"apps\".\"url\" ~ '^[!-~]+$' and \"public\".\"apps\".\"url\" ~ '^https://[^/?#@\\s]+(/[^?#\\s\"\\\\]*)?$' and \"public\".\"apps\".\"url\" !~ '/$'"
+          "value": "char_length(\"public\".\"apps\".\"url\") <= 2000 and \"public\".\"apps\".\"url\" ~ '^[!-~]+$' and \"public\".\"apps\".\"url\" ~ '^https://[^/?#@\\s]+(/[^?#\\s\"\\\\]*)?$' and not (\"public\".\"apps\".\"url\" ~ '/$')"
         },
         "apps_auth_kind_werte": {
           "name": "apps_auth_kind_werte",

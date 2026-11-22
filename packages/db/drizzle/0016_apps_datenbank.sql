@@ -38,7 +38,7 @@ CREATE TABLE "public"."app_tools" (
 	CONSTRAINT "app_tools_tool_key_format" CHECK (char_length("public"."app_tools"."tool_key") <= 140 and "public"."app_tools"."tool_key" ~ '^mcp(/[a-z0-9][a-z0-9_.-]{0,63}){2}$'),
 	CONSTRAINT "app_tools_tool_digest_format" CHECK ("public"."app_tools"."tool_digest" ~ '^sha256:[0-9a-f]{64}$'),
 	CONSTRAINT "app_tools_description_laenge" CHECK (char_length("public"."app_tools"."description") <= 2000),
-	CONSTRAINT "app_tools_input_schema_objekt" CHECK (jsonb_typeof("public"."app_tools"."input_schema") = 'object' and octet_length("public"."app_tools"."input_schema"::text) <= 65536),
+	CONSTRAINT "app_tools_input_schema_objekt" CHECK (jsonb_typeof("public"."app_tools"."input_schema") = 'object'),
 	CONSTRAINT "app_tools_status_werte" CHECK ("public"."app_tools"."status" in ('neu', 'bestaetigt', 'geaendert', 'entfernt', 'gesperrt')),
 	CONSTRAINT "app_tools_tool_class_werte" CHECK ("public"."app_tools"."tool_class" in ('lesen', 'schreiben', 'gesperrt')),
 	CONSTRAINT "app_tools_einstufung_passt_zum_stand" CHECK (("public"."app_tools"."status" in ('neu', 'geaendert', 'entfernt') and "public"."app_tools"."tool_class" = 'schreiben') or ("public"."app_tools"."status" = 'bestaetigt' and "public"."app_tools"."tool_class" in ('lesen', 'schreiben')) or ("public"."app_tools"."status" = 'gesperrt' and "public"."app_tools"."tool_class" = 'gesperrt')),
@@ -63,9 +63,9 @@ CREATE TABLE "public"."apps" (
 	"disconnected_at" timestamp with time zone,
 	CONSTRAINT "apps_short_name_eindeutig" UNIQUE("short_name"),
 	CONSTRAINT "apps_id_format" CHECK ("public"."apps"."id" ~ '^app_[0-7][0-9a-hjkmnp-tv-z]{25}$'),
-	CONSTRAINT "apps_short_name_format" CHECK ("public"."apps"."short_name" ~ '^[a-z0-9][a-z0-9_-]{0,63}$' and position('__' in "public"."apps"."short_name") = 0),
+	CONSTRAINT "apps_short_name_format" CHECK ("public"."apps"."short_name" ~ '^[a-z0-9][a-z0-9_-]{0,63}$' and not ("public"."apps"."short_name" ~ '__')),
 	CONSTRAINT "apps_name_laenge" CHECK (char_length("public"."apps"."name") between 1 and 100),
-	CONSTRAINT "apps_url_format" CHECK (char_length("public"."apps"."url") <= 2000 and "public"."apps"."url" ~ '^[!-~]+$' and "public"."apps"."url" ~ '^https://[^/?#@\s]+(/[^?#\s"\\]*)?$' and "public"."apps"."url" !~ '/$'),
+	CONSTRAINT "apps_url_format" CHECK (char_length("public"."apps"."url") <= 2000 and "public"."apps"."url" ~ '^[!-~]+$' and "public"."apps"."url" ~ '^https://[^/?#@\s]+(/[^?#\s"\\]*)?$' and not ("public"."apps"."url" ~ '/$')),
 	CONSTRAINT "apps_auth_kind_werte" CHECK ("public"."apps"."auth_kind" in ('keine', 'token')),
 	CONSTRAINT "apps_state_werte" CHECK ("public"."apps"."state" in ('verbunden', 'getrennt')),
 	CONSTRAINT "apps_token_format" CHECK ("public"."apps"."token_enc" is null or "public"."apps"."token_enc" ~ '^v2:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$'),
@@ -132,14 +132,16 @@ ON CONFLICT ("id", "version") DO NOTHING;
 -- besteht nur aus sichtbaren ASCII-Zeichen ohne Anführungszeichen und Rückstrich (CHECK), das JSON
 -- braucht also keine Maskierung.
 CREATE FUNCTION paibot_app_ziel_abdruck(app_id text, url text) RETURNS text
-LANGUAGE sql IMMUTABLE
+LANGUAGE plpgsql IMMUTABLE
 SET search_path = pg_catalog, public
 AS $$
-  SELECT 'sha256:' || pg_catalog.encode(
+BEGIN
+  RETURN 'sha256:' || pg_catalog.encode(
     pg_catalog.sha256(pg_catalog.convert_to(
       'pb-appziel/v1' || pg_catalog.chr(10) || '{"appId":"' || app_id || '","url":"' || url || '"}',
       'UTF8')),
-    'hex')
+    'hex');
+END;
 $$;
 --> statement-breakpoint
 -- Apps: Kennung, Kurzname und Anlegezeit bleiben; Verbindungsnummer nur beim erneuten Verbinden
@@ -258,6 +260,10 @@ BEGIN
   SELECT * INTO app FROM public.apps WHERE id = NEW.app_id;
   IF NOT FOUND OR app.state <> 'verbunden' THEN
     RAISE EXCEPTION 'Werkzeuge gibt es nur für eine verbundene App.'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF octet_length(NEW.input_schema::text) > 65536 THEN
+    RAISE EXCEPTION 'Das Eingabe-Schema eines Werkzeugs ist zu groß.'
       USING ERRCODE = 'check_violation';
   END IF;
   SELECT * INTO prev FROM public.app_tools
