@@ -10,11 +10,10 @@
 
 import { t } from "@paibot/shared/texte";
 import { EmptyState, Logo } from "@paibot/ui";
-import styles from "./not-found.module.css";
 
 export function DatenbankFehlt() {
   return (
-    <main className={styles.seite}>
+    <main className="nicht-gefunden">
       <EmptyState
         bild={<Logo titel="PaiBot" />}
         titel={t("zugang.datenbank.titel")}

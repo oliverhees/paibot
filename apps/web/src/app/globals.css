@@ -55,3 +55,43 @@ body::before {
     linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 64px 100%;
   mask-image: radial-gradient(80% 70% at 50% 20%, #000 30%, transparent 100%);
 }
+
+/* 404-Seite und Hinweis „Datenbank fehlt“. Die Stile stehen hier und nicht in einer CSS-Datei der
+   Seite selbst: Next lädt das Stylesheet einer Datei, die nur die 404-Seite einbindet, auf jeder
+   anderen Seite vor, ohne es dort zu brauchen (Warnung „preloaded using link preload but not
+   used“ in der Konsole). Hier lädt es der Rahmen ohnehin. */
+.nicht-gefunden {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.nicht-gefunden > section {
+  width: min(100%, 520px);
+}
+
+.nicht-gefunden-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: inset 0 0 0 1px var(--accent-kante);
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nicht-gefunden-link:hover {
+  filter: brightness(1.06);
+}
+
+/* Innerhalb des App-Rahmens: kein eigenes Vollbild, der Rahmen hat schon den Hauptbereich. */
+.nicht-gefunden-im-rahmen {
+  min-height: 0;
+  padding-block: 48px;
+}

@@ -13,19 +13,18 @@ import { t } from "@paibot/shared/texte";
 import { EmptyState, Logo } from "@paibot/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
-import styles from "../not-found.module.css";
 
 export const metadata: Metadata = { title: t("nicht_gefunden.seitentitel") };
 
 export default function NotFoundImRahmen() {
   return (
-    <div className={`${styles.seite} ${styles.imRahmen}`}>
+    <div className="nicht-gefunden nicht-gefunden-im-rahmen">
       <EmptyState
         bild={<Logo titel="PaiBot" />}
         titel={t("nicht_gefunden.titel")}
         text={t("nicht_gefunden.text")}
         aktion={
-          <Link href="/" className={styles.link}>
+          <Link href="/" className="nicht-gefunden-link">
             {t("nicht_gefunden.link")}
           </Link>
         }
