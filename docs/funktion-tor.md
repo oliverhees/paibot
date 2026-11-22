@@ -135,12 +135,12 @@ G-16 und G-18 prüfen jeden Schritt einer Antwort mit den Werten aus den Einstel
 
 **Nummern:** Diese Nummern gibt es in dieser Fassung:
 
-| Art          | Nummern                       |
-| ------------ | ----------------------------- |
-| Regeln       | R-001 bis R-008, R-010, R-999 |
-| Vorbedingung | V-01 bis V-14                 |
-| Grenzen      | G-01 bis G-05, G-16 bis G-18  |
-| Deckel       | D-01                          |
+| Art          | Nummern                                                                |
+| ------------ | ---------------------------------------------------------------------- |
+| Regeln       | R-001 bis R-008, R-010, R-014 (Apps, siehe „Pai liest in Apps“), R-999 |
+| Vorbedingung | V-01 bis V-14                                                          |
+| Grenzen      | G-01 bis G-05, G-16 bis G-18                                           |
+| Deckel       | D-01                                                                   |
 
 Lücken in der Nummerierung sind Absicht: Jede Nummer wird nur einmal vergeben und nie neu belegt.
 
