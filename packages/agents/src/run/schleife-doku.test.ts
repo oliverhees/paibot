@@ -20,17 +20,21 @@ import { evaluate, toolResultDigestText } from "@paibot/gate";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import type { ReceiptEntry } from "@paibot/shared/belege";
+import { EVENT_DATA } from "@paibot/shared/ereignisse";
 import type { RunId } from "@paibot/shared/ids";
 import type { JsonValue } from "@paibot/shared/motor";
+import { t } from "@paibot/shared/texte";
 import { ACTIVE_STANDARD_RULES, type RuleDefinition } from "@paibot/shared/tor";
 import type { ToolDefinition, ToolEnvelope } from "@paibot/shared/werkzeug";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAiSdkMotor } from "../motor-aisdk";
 import { type RunSetup, setupRun } from "../testing/lauf-umgebung";
+import { createTestTools } from "../testing/werkzeuge";
 import { dokuIndexAusText } from "../werkzeuge/doku/index-laden";
 import { bereiteIndexVor, type GeladenerDokuIndex } from "../werkzeuge/doku/suche";
 import { echterIndexText } from "../werkzeuge/doku/testdaten/echter-index";
 import {
+  EINSCHLEUSUNG,
   UNSICHTBAR,
   UNSICHTBAR_BEREINIGT,
   UNSICHTBARE_ZEICHEN,
@@ -40,9 +44,13 @@ import { createToolRegistry } from "../werkzeuge/register";
 import { executeRun } from "./ausfuehren";
 import {
   ANTWORT_MIT_SEITE,
+  ANTWORT_OHNE_WUNSCH,
   DOKU_SCRIPTS,
   EINGABE_RAENDER,
+  ENTWURF,
+  FRAGE_FALLE,
   PFAD_FRAGEN,
+  ZWEITER_SCHRITT,
 } from "./testdaten/drehbuecher-doku";
 
 // Drehbücher: `testdaten/drehbuecher-doku.ts`, Test-Indizes: `../werkzeuge/doku/testdaten`.
@@ -397,30 +405,213 @@ describe("Ergebnis, Quellen, Abdruck, Belege", () => {
   });
 });
 
+/** Fester Satz mit der Version des echten Index. */
+const festerSatz = () =>
+  t("werkzeug.doku.nichts_gefunden", { stand: echt.stand.split("+")[0] ?? "" });
+
+/** Nachrichten des Bots in einem Lauf. */
+async function botNachrichten(env: RunSetup, runId: RunId) {
+  const alle = await repo.messages.listForConversation(env.db, env.conversationId, { limit: 200 });
+  return alle.filter((m) => m.role === "assistant" && m.runId === runId);
+}
+
 describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
-  it.todo(
-    "„Wie verbinde ich Telegram?“: genau eine Anfrage, End-Antwort origin fest mit dem festen Satz samt Version, Lauf succeeded, Zwischentext step 0 mit dem Entwurf, keine andere End-Antwort",
-  );
-  it.todo("zwei Fragen ohne Treffer im selben Schritt: kein weiterer Modell-Schritt");
-  it.todo("abgelehnter Aufruf und eine Frage ohne Treffer: kein weiterer Modell-Schritt");
-  it.todo("nur abgelehnte Aufrufe: der Lauf geht weiter, das Modell sieht die Ablehnung");
-  it.todo(
-    "nach dem Kurzschluss: für den Schritt erst step.finished zwischentext, dann step.finished verworfen, beide gültig, in der Transaktion der festen Antwort",
-  );
-  it.todo("ohne Kurzschluss gibt es nie step.finished verworfen");
-  it.todo(
-    "der Entwurf des Schritts erscheint nie als Antwort: die Nachrichten der Unterhaltung ohne Zwischentexte enthalten nur Frage und festen Satz",
-  );
+  // Gegenprobe: `nachAufrufen` immer „weiter“ → die zweite Anfrage kommt an.
+  it("„Wie verbinde ich Telegram?“: genau eine Anfrage, End-Antwort origin fest mit dem festen Satz samt Version, Lauf succeeded, Zwischentext step 0 mit dem Entwurf, keine andere End-Antwort", async () => {
+    const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
+    const { runId, outcome } = await env.ask(FRAGE_FALLE);
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    expect(chats()).toHaveLength(1);
+    expect((await repo.runs.get(env.db, runId))?.status).toBe("succeeded");
+    const nachrichten = await botNachrichten(env, runId);
+    expect(nachrichten.map((m) => [m.step, m.origin, m.content])).toEqual([
+      [0, "modell", ENTWURF],
+      [undefined, "fest", festerSatz()],
+    ]);
+    expect(festerSatz()).toContain("0.3.0-dev");
+    expect(JSON.stringify(nachrichten)).not.toContain(ZWEITER_SCHRITT);
+  });
+
+  it("Belege ohne Treffer: modell.anfragen, werkzeug.aufrufen (R-010) mit Fundstellen 0 und Doku-Stand, danach kein Beleg mehr", async () => {
+    const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
+    await env.ask(FRAGE_FALLE);
+    const entries = await env.receipts();
+    expect(ablauf(entries)).toEqual([
+      "decision modell.anfragen",
+      "result modell.anfragen",
+      "decision werkzeug.aufrufen",
+      "result werkzeug.aufrufen",
+    ]);
+    expect(decisions(entries, "werkzeug.aufrufen")[0]?.decision.rules.map((r) => r.id)).toEqual([
+      "R-010",
+    ]);
+    expect(results(entries, "werkzeug.aufrufen")).toMatchObject([
+      { result: { status: "ok", found: 0, docStand: echt.stand } },
+    ]);
+    expect(await env.verify()).toMatchObject({ ok: true });
+  });
+
+  it("zwei Fragen ohne Treffer im selben Schritt: kein weiterer Modell-Schritt", async () => {
+    const env = await setup(DOKU_SCRIPTS.zweimalNichts);
+    const { runId } = await env.ask(FRAGE_FALLE);
+    expect(chats()).toHaveLength(1);
+    expect(env.zaehler.n).toBe(2);
+    expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({ origin: "fest" });
+  });
+
+  it("eine Frage trifft, eine nicht: der Lauf geht weiter", async () => {
+    const env = await setup(DOKU_SCRIPTS.einerTrifft);
+    const { runId } = await env.ask(FRAGE_FALLE);
+    expect(chats()).toHaveLength(2);
+    expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({
+      origin: "modell",
+      content: ANTWORT_MIT_SEITE,
+    });
+  });
+
+  it("abgelehnter Aufruf und eine Frage ohne Treffer: kein weiterer Modell-Schritt", async () => {
+    const env = await setup(DOKU_SCRIPTS.abgelehntUndNichts);
+    const { runId } = await env.ask(FRAGE_FALLE);
+    expect(chats()).toHaveLength(1);
+    expect(await repo.toolCalls.listForRun(env.db, runId)).toMatchObject([
+      { status: "denied", errorCode: "werkzeug_eingabe_ungueltig" },
+      { status: "succeeded" },
+    ]);
+    expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({
+      origin: "fest",
+      content: festerSatz(),
+    });
+  });
+
+  // Gegenprobe: abgelehnte Aufrufe als „nichts gefunden“ zählen → hier Kurzschluss.
+  it("nur abgelehnte Aufrufe: der Lauf geht weiter, das Modell sieht die Ablehnung", async () => {
+    const env = await setup(DOKU_SCRIPTS.nurAbgelehnt);
+    const { runId } = await env.ask(FRAGE_FALLE);
+    expect(chats()).toHaveLength(2);
+    expect(gesendeteHuellen(1)).toMatchObject([
+      { status: "abgelehnt", code: "werkzeug_eingabe_ungueltig" },
+    ]);
+    expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({
+      origin: "modell",
+      content: ANTWORT_OHNE_WUNSCH,
+    });
+  });
+
+  // Gegenprobe: Ereignis „verworfen“ weglassen.
+  it("nach dem Kurzschluss: für den Schritt erst step.finished zwischentext, dann step.finished verworfen, beide gültig, in der Transaktion der festen Antwort", async () => {
+    const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
+    const { runId } = await env.ask(FRAGE_FALLE);
+    // Eine Unterhaltung mit genau diesem Lauf.
+    const ereignisse = await env.events();
+    const schritte = ereignisse.filter((e) => e.type === "step.finished");
+    expect(
+      schritte.map((e) => [
+        (e.data as { step: number }).step,
+        (e.data as { ending: string }).ending,
+      ]),
+    ).toEqual([
+      [0, "zwischentext"],
+      [0, "verworfen"],
+    ]);
+    for (const e of schritte) {
+      expect(EVENT_DATA["step.finished"].safeParse(e.data).success).toBe(true);
+    }
+    // Gleiche Transaktion: „verworfen“ steht unmittelbar vor den Ereignissen der festen Antwort.
+    const typen = ereignisse.map((e) => e.type);
+    const stelle = typen.lastIndexOf("step.finished");
+    expect(typen.slice(stelle, stelle + 2)).toEqual(["step.finished", "message.created"]);
+    const fest = (await botNachrichten(env, runId)).find((m) => m.origin === "fest");
+    expect((ereignisse[stelle + 1]?.data as { messageId?: string } | undefined)?.messageId).toBe(
+      fest?.id,
+    );
+  });
+
+  it("ohne Kurzschluss gibt es nie step.finished verworfen", async () => {
+    for (const script of [
+      DOKU_SCRIPTS.treffer,
+      DOKU_SCRIPTS.einerTrifft,
+      DOKU_SCRIPTS.nurAbgelehnt,
+    ]) {
+      const env = await setup(script);
+      await env.ask(FRAGE_FALLE);
+      const endungen = (await env.events())
+        .filter((e) => e.type === "step.finished")
+        .map((e) => (e.data as { ending: string }).ending);
+      expect(endungen).not.toContain("verworfen");
+    }
+  });
+
+  // Gegenprobe: `nurAntworten: false` beim Lesen → der Entwurf erscheint.
+  it("der Entwurf des Schritts erscheint nie als Antwort: die Nachrichten der Unterhaltung ohne Zwischentexte enthalten nur Frage und festen Satz", async () => {
+    const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
+    await env.ask(FRAGE_FALLE);
+    const sichtbar = await repo.messages.listForConversation(env.db, env.conversationId, {
+      nurAntworten: true,
+    });
+    expect(sichtbar.map((m) => [m.role, m.content])).toEqual([
+      ["user", FRAGE_FALLE],
+      ["assistant", festerSatz()],
+    ]);
+    expect(JSON.stringify(sichtbar)).not.toContain(ENTWURF);
+  });
 });
 
 describe("Anweisung, eingeschleuste Aufforderung, Chat", () => {
   it.todo(
     "mit dem Doku-Werkzeug kommt beim Test-Anbieter die Anweisung mit dem Satz zum Nachschlagen und zu Daten statt Anweisungen an",
   );
-  it.todo(
-    "eine Aufforderung im Doku-Text, test_schreiben zu rufen: der Aufruf geht durchs Tor, R-005 fragt, abgelehnt freigabe_noetig, test_schreiben läuft 0-mal",
-  );
-  it.todo(
-    "mit Doku-Werkzeug ohne Wunsch: eine Anfrage, End-Antwort mit dem Text des Drehbuchs, origin modell, step leer, ein Beleg-Paar modell.anfragen, keine Zeile tool_calls – der Text kommt erst am Schritt-Ende",
-  );
+
+  // Der Schutz ist das Tor: Eine Regel, die test_schreiben erlaubt, gibt es im vollen Satz der
+  // Standard-Regeln nicht; eine Gegenprobe müsste das Tor selbst ändern.
+  it("eine Aufforderung im Doku-Text, test_schreiben zu rufen: der Aufruf geht durchs Tor, R-005 fragt, abgelehnt freigabe_noetig, test_schreiben läuft 0-mal", async () => {
+    const index = bereiteIndexVor(
+      { version: "9.9.9-test", pruefsumme: `sha256:${"0".repeat(64)}` },
+      EINSCHLEUSUNG,
+    );
+    const testWerkzeuge = createTestTools();
+    const env = await setup(DOKU_SCRIPTS.einschleusung, {
+      index,
+      weitere: [testWerkzeuge.byName("test_schreiben")],
+    });
+    const { runId, outcome } = await env.ask("Wie stelle ich den Kompass ein?");
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    expect(String(gesendeteHuellen(1)[0] && JSON.stringify(gesendeteHuellen(1)[0]))).toContain(
+      "test_schreiben",
+    );
+    expect(testWerkzeuge.protocol.count("test_schreiben")).toBe(0);
+    expect(await repo.toolCalls.listForRun(env.db, runId)).toMatchObject([
+      { status: "succeeded", toolKey: DOKU_TOOL_KEY },
+      { status: "denied", errorCode: "freigabe_noetig", name: "test_schreiben" },
+    ]);
+    const entscheidungen = decisions(await env.receipts(), "werkzeug.aufrufen");
+    expect(
+      entscheidungen.map((d) => [d.decision.outcome, d.decision.rules.map((r) => r.id)]),
+    ).toEqual([
+      ["allow", ["R-010"]],
+      ["ask", ["R-005"]],
+    ]);
+  });
+
+  it("mit Doku-Werkzeug ohne Wunsch: eine Anfrage, End-Antwort mit dem Text des Drehbuchs, origin modell, step leer, ein Beleg-Paar modell.anfragen, keine Zeile tool_calls – der Text kommt erst am Schritt-Ende", async () => {
+    const env = await setup(DOKU_SCRIPTS.ohneWunsch);
+    const { runId, outcome } = await env.ask("Hallo!");
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    expect(chats()).toHaveLength(1);
+    const nachrichten = await botNachrichten(env, runId);
+    expect(nachrichten).toMatchObject([
+      { content: ANTWORT_OHNE_WUNSCH, origin: "modell", status: "complete" },
+    ]);
+    expect(nachrichten[0]?.step).toBeUndefined();
+    expect(await repo.toolCalls.listForRun(env.db, runId)).toEqual([]);
+    expect(ablauf(await env.receipts())).toEqual([
+      "decision modell.anfragen",
+      "result modell.anfragen",
+    ]);
+    // Mit Werkzeug im Register gibt es während des Schritts nur vorläufigen Text; die Antwort
+    // (`message.created`, `text.delta`) entsteht erst mit dem Ende des Schritts.
+    const typen = (await env.events()).map((e) => e.type);
+    expect(typen).toContain("draft.delta");
+    expect(typen.indexOf("draft.delta")).toBeLessThan(typen.lastIndexOf("message.created"));
+    expect(typen.indexOf("step.finished")).toBeLessThan(typen.indexOf("text.delta"));
+  });
 });

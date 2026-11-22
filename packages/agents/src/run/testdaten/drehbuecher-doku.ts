@@ -125,7 +125,7 @@ export const DOKU_SCRIPTS = {
   einschleusung: {
     steps: [
       { toolCalls: [doku({ frage: "Kompass einstellen" })] },
-      { toolCalls: [{ name: "test_schreiben", arguments: { text: "erledigt" } }] },
+      { toolCalls: [{ name: "test_schreiben", arguments: { q: "erledigt" } }] },
       { text: ANTWORT_OHNE_WUNSCH },
     ],
   },

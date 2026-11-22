@@ -1,7 +1,7 @@
 /**
  * PaiBot – Nahtstellen eines Laufs mit Werkzeugen und die Fakten je Schritt. Jeder dieser Werte
  * entsteht in genau einer Funktion hier; spätere Fassungen (Werkzeuge von Apps, Ketten über
- * mehrere Läufe, Freigaben, Kurzschluss nach einem Werkzeug) ändern nur diese Stellen.
+ * mehrere Läufe, Freigaben) ändern nur diese Stellen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -17,6 +17,8 @@ import type { ErrorCode } from "@paibot/shared/fehler";
 import type { RunId } from "@paibot/shared/ids";
 import type { Run, Settings } from "@paibot/shared/objekte";
 import type { TextKey } from "@paibot/shared/texte";
+import type { ToolKey } from "@paibot/shared/werkzeug";
+import { DOKU_TOOL_KEY } from "../werkzeuge/doku/werkzeug";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
 
 /** Zähler einer Kette: Schritte, Werkzeug-Aufrufe und Token (Eingabe plus Ausgabe). */
@@ -30,6 +32,19 @@ export interface ChainCounters {
 export interface AufrufErgebnis {
   status: "ok" | "fehler" | "abgelehnt";
   code?: ErrorCode;
+  /** Kennung des Werkzeugs (bei unbekanntem Namen die des Platzhalters); fehlt sie, zählt der Aufruf nicht als Nachschlagen. */
+  toolKey?: ToolKey;
+  /** Das Tor hat erlaubt und das Werkzeug ist zu Ende gelaufen (mit Ergebnis oder Werkzeug-Fehler); fehlt der Wert, gilt `false`. */
+  ausgefuehrt?: boolean;
+  /** Nur beim Nachschlagen in der Doku mit Ergebnis: Doku-Stand und Zahl der Fundstellen. */
+  doku?: { stand: string; gefunden: number };
+}
+
+/** Festes Ende nach den Aufrufen eines Schritts: Schlüssel des Satzes und die Werte seiner Platzhalter. */
+export interface FestesEnde {
+  art: "fest";
+  textKey: TextKey;
+  werte?: Readonly<Record<string, string>>;
 }
 
 /** Nahtstelle 1: alle Werkzeuge, die dieser Lauf anbieten darf. In dieser Fassung: das Register. */
@@ -75,13 +90,26 @@ export function nachFrage(denied: GateDenied): { art: "abgelehnt"; decision: Den
 }
 
 /**
- * Nahtstelle 5: nach allen Aufrufen eines Schritts weiter oder festes Ende. In dieser Fassung
- * immer „weiter“.
+ * Nahtstelle 5: nach allen Aufrufen eines Schritts weiter oder festes Ende. Festes Ende genau
+ * dann, wenn mindestens ein ausgeführter Aufruf des Nachschlagens in der Doku ein Ergebnis hat
+ * und jeder ausgeführte Aufruf des Nachschlagens ein Ergebnis ohne Fundstelle ist. Abgelehnte
+ * Aufrufe zählen nicht mit (das Modell sieht die Ablehnung); ein Werkzeug-Fehler oder die
+ * Zeitgrenze ist keine Meldung „nichts gefunden“ und lässt den Lauf weitergehen. Der Satz nennt
+ * die Version aus dem Doku-Stand (ohne Prüfsumme).
  */
 export function nachAufrufen(
-  _ergebnisse: readonly AufrufErgebnis[],
-): { art: "weiter" } | { art: "fest"; textKey: TextKey } {
-  return { art: "weiter" };
+  ergebnisse: readonly AufrufErgebnis[],
+): { art: "weiter" } | FestesEnde {
+  const doku = ergebnisse.filter((e) => e.toolKey === DOKU_TOOL_KEY && e.ausgefuehrt === true);
+  const mitErgebnis = doku.filter((e) => e.status === "ok" && e.doku !== undefined);
+  if (mitErgebnis.length === 0 || mitErgebnis.length !== doku.length) return { art: "weiter" };
+  if (!mitErgebnis.every((e) => e.doku?.gefunden === 0)) return { art: "weiter" };
+  const stand = mitErgebnis[0]?.doku?.stand ?? "";
+  return {
+    art: "fest",
+    textKey: "werkzeug.doku.nichts_gefunden",
+    werte: { stand: stand.split("+")[0] ?? stand },
+  };
 }
 
 /** Auslöser des Laufs. In dieser Fassung gibt es nur den Chat. */
