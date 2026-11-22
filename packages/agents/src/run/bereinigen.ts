@@ -96,16 +96,43 @@ export const JSON_PRUEFUNG_GRENZEN = {
   chars: BOUNDED_JSON_LIMITS.items * BOUNDED_JSON_LIMITS.text,
 } as const;
 
+/** Grenzen der Vorprüfung; `keys` ist optional (ohne die Angabe zählt nur die Gesamtzahl). */
+export interface JsonPruefungGrenzen {
+  readonly depth: number;
+  readonly nodes: number;
+  readonly chars: number;
+  /** Höchstzahl der Schlüssel je Objekt. */
+  readonly keys?: number;
+}
+
+/**
+ * Grenzen der Vorprüfung für Ergebnisse von Werkzeugen. Ergebnisse kommen künftig auch aus
+ * fremden Quellen (MCP) und werden danach gekürzt, deshalb gilt die Form von `boundedJsonSchema`:
+ * höchstens 64 Schlüssel je Objekt, denn ein Objekt mit mehr Schlüsseln passt nie in die Hülle
+ * (die Listen dürfen länger sein, sie werden gekürzt). Die Gesamtzahl der Knoten ist ein Viertel
+ * der Grenze für Eingaben (256 · 64 · 2 = 32 768): Ein Ergebnis darf nur eine begrenzte Menge
+ * Arbeit machen, bevor es auf das Limit der Hülle (höchstens ein paar zehntausend Zeichen) passt.
+ */
+export const ERGEBNIS_PRUEFUNG_GRENZEN: JsonPruefungGrenzen = {
+  depth: BOUNDED_JSON_LIMITS.depth,
+  nodes: BOUNDED_JSON_LIMITS.items * BOUNDED_JSON_LIMITS.keys * 2,
+  chars: JSON_PRUEFUNG_GRENZEN.chars,
+  keys: BOUNDED_JSON_LIMITS.keys,
+};
+
 /**
  * Vorprüfung ohne Rekursion: Überschreitet der Wert Tiefe, Knotenzahl oder Zeichenmenge der
- * `JSON_PRUEFUNG_GRENZEN`? Sie läuft vor jedem Bereinigen und Prüfen einer Eingabe oder eines
+ * `JSON_PRUEFUNG_GRENZEN` (für Ergebnisse `ERGEBNIS_PRUEFUNG_GRENZEN`, dort auch die Schlüssel je
+ * Objekt)? Sie läuft vor jedem Bereinigen und Prüfen einer Eingabe oder eines
  * Ergebnisses, nutzt einen eigenen Stapel (kein Überlauf des Aufrufstapels) und bricht beim ersten
  * Verstoß ab. Ein Kreis im Wert (ein Objekt, das sich selbst enthält) reißt die Tiefe und endet
  * deshalb ebenfalls. Die Wurzel liegt auf Ebene 1; ein Objekt oder eine Liste auf Ebene 9 ist zu
  * tief, ein einfacher Wert dort noch erlaubt (wie bei `boundedJsonSchema`).
  */
-export function jsonUeberGrenzen(value: unknown): boolean {
-  const limits = JSON_PRUEFUNG_GRENZEN;
+export function jsonUeberGrenzen(
+  value: unknown,
+  limits: JsonPruefungGrenzen = JSON_PRUEFUNG_GRENZEN,
+): boolean {
   const stack: { value: unknown; depth: number }[] = [{ value, depth: 1 }];
   let nodes = 0;
   let chars = 0;
@@ -125,6 +152,7 @@ export function jsonUeberGrenzen(value: unknown): boolean {
         }
       } else {
         const keys = Object.keys(current);
+        if (limits.keys !== undefined && keys.length > limits.keys) return true;
         if (nodes + keys.length > limits.nodes) return true;
         for (const key of keys) {
           chars += key.length;
@@ -135,6 +163,41 @@ export function jsonUeberGrenzen(value: unknown): boolean {
     }
   }
   return false;
+}
+
+/**
+ * Steckt im Wert etwas, das kein JSON ist: eine Funktion, ein Symbol, ein BigInt, ein Objekt mit
+ * fremdem Prototyp (auch `Object.prototype` selbst) oder eine Klasse wie `Date` und `Map`?
+ * zod liest ein fehlendes Feld über den Prototyp: `z.object({ constructor: z.unknown() })` gibt für
+ * `{}` eine Funktion als Wert zurück, auch tief im Schema und auch in `optional`, Liste,
+ * Vereinigung, Schnitt oder `lazy`. Deshalb wird nach dem Prüfen mit dem Schema der Wert selbst
+ * geprüft. Läuft ohne Rekursion; ein Kreis endet an der Grenze von `jsonUeberGrenzen`, die vor dem
+ * Aufruf gelaufen sein muss (hier zusätzlich ein fester Deckel).
+ */
+export function jsonHasNonJson(value: unknown): boolean {
+  const stack: unknown[] = [value];
+  let steps = 0;
+  for (let current = stack.pop(); steps < 1_000_000; current = stack.pop()) {
+    steps += 1;
+    const type = typeof current;
+    if (type === "function" || type === "symbol" || type === "bigint") return true;
+    if (current !== null && type === "object") {
+      if (Array.isArray(current)) {
+        if (Object.getPrototypeOf(current) !== Array.prototype || current.length > 1_000_000)
+          return true;
+        for (const entry of current) stack.push(entry);
+      } else {
+        const proto = Object.getPrototypeOf(current);
+        if (proto !== Object.prototype && proto !== null) return true;
+        if (current === Object.prototype) return true;
+        for (const key of Object.keys(current as object))
+          stack.push((current as Record<string, unknown>)[key]);
+      }
+    }
+    if (stack.length === 0) return false;
+  }
+  // Mehr Schritte als jeder zulässige Wert braucht: wie ein Kreis behandeln.
+  return true;
 }
 
 /** Jede Zeichenkette eines JSON-Werts (auch Schlüssel) bereinigt; die Form bleibt gleich. */

@@ -33,8 +33,10 @@ import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
 import {
   cleanJson,
   cleanText,
+  ERGEBNIS_PRUEFUNG_GRENZEN,
   jsonHasKeyClash,
   jsonHasNonInteger,
+  jsonHasNonJson,
   jsonHasProtoKey,
   jsonHasUnwanted,
   jsonUeberGrenzen,
@@ -157,8 +159,12 @@ export function prepareCalls(
       } else if (def !== undefined) {
         // Erst bereinigen (NFC), dann prüfen: Das Werkzeug bekommt genau die geprüfte Form.
         const parsed = def.input.safeParse(cleanJson(value));
-        if (parsed.success) accepted = parsed.data as JsonValue;
-        else {
+        if (parsed.success) {
+          // Nach dem Schema noch einmal: ein Schema kann mehr liefern, als hineinkam (`transform`),
+          // und zod liest fehlende Felder über den Prototyp.
+          if (jsonUeberGrenzen(parsed.data) || jsonHasNonJson(parsed.data)) inputValid = false;
+          else accepted = parsed.data as JsonValue;
+        } else {
           inputValid = false;
           issue = parsed.error.issues[0];
         }
@@ -605,11 +611,17 @@ export function outcomeEnvelope(
         : "werkzeug_fehler";
     return codeEnvelope(key, "fehler", code, errorEnvelopeText(code));
   }
-  // Als Allererstes: ein zu tiefes, zu großes oder kreisförmiges Ergebnis wird nie weiter angefasst.
-  if (jsonUeberGrenzen(outcome.output))
+  // Als Allererstes: ein zu tiefes, zu großes, zu breites oder kreisförmiges Ergebnis wird nie
+  // weiter angefasst (ein Ergebnis aus fremder Quelle darf den Worker nicht lahmlegen).
+  if (jsonUeberGrenzen(outcome.output, ERGEBNIS_PRUEFUNG_GRENZEN))
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   const checked = tool.definition.output.safeParse(outcome.output);
   if (!checked.success)
+    return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
+  // Dasselbe für den Wert, der wirklich weiterläuft: Ein Schema mit `transform` oder ein
+  // Getter kann ihn anders machen als die Ausgabe. Dazu kein Wert, der kein JSON ist, etwa eine
+  // Funktion aus `Object.prototype`, die zod bei einem fehlenden Feld liefert.
+  if (jsonUeberGrenzen(checked.data, ERGEBNIS_PRUEFUNG_GRENZEN) || jsonHasNonJson(checked.data))
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   // Kein stilles Überschreiben und nie ein Schlüssel `__proto__` (auch nicht erst durch das
   // Bereinigen): so ein Ergebnis geht nicht an das Modell.

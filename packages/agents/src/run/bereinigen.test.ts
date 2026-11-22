@@ -8,16 +8,18 @@
  * @since     2026-11-22
  */
 
-import { boundedJsonSchema } from "@paibot/shared/belege";
+import { BOUNDED_JSON_LIMITS, boundedJsonSchema } from "@paibot/shared/belege";
 import { describe, expect, it } from "vitest";
 import { TEST_FOREIGN_CLEAN, TEST_FOREIGN_TEXT } from "../testing/werkzeuge";
 import {
   cleanJson,
   cleanText,
+  ERGEBNIS_PRUEFUNG_GRENZEN,
   hasUnwanted,
   JSON_PRUEFUNG_GRENZEN,
   jsonHasKeyClash,
   jsonHasNonInteger,
+  jsonHasNonJson,
   jsonHasProtoKey,
   jsonHasUnwanted,
   jsonUeberGrenzen,
@@ -327,5 +329,119 @@ describe("Vorprüfung ohne Rekursion (Tiefe, Größe, Kreise)", () => {
     ]) {
       expect(jsonUeberGrenzen(value)).toBe(false);
     }
+  });
+});
+
+// Gegenprobe: In `jsonUeberGrenzen` die Zeile `if (++nodes > limits.nodes) return true;`
+// durch `++nodes;` ersetzen → der Fall „Gesamtzahl“ wird rot. Vorher blieben alle Tests grün,
+// weil jeder Behälter für sich klein war und die Prüfung je Behälter nie ansprach.
+describe("Vorprüfung: Gesamtzahl der Knoten über mehrere Behälter", () => {
+  it("jeder Behälter für sich klein, zusammen über der Grenze: abgelehnt", () => {
+    const { nodes } = JSON_PRUEFUNG_GRENZEN;
+    const haelfte = Math.ceil(nodes / 2) + 10;
+    // Die Wurzel prüft nur ihre eigenen Einträge, der innere Behälter nur seine; erst die Summe
+    // liegt über der Grenze.
+    const form = [...new Array<number>(haelfte).fill(1), new Array<number>(haelfte).fill(1)];
+    expect(1 + form.length).toBeLessThanOrEqual(nodes);
+    expect(1 + haelfte).toBeLessThanOrEqual(nodes);
+    expect(jsonUeberGrenzen(form)).toBe(true);
+    // Gegenprobe: dieselbe Form mit einem kleineren inneren Behälter bleibt unter der Grenze.
+    const klein = [...new Array<number>(haelfte).fill(1), new Array<number>(10).fill(1)];
+    expect(jsonUeberGrenzen(klein)).toBe(false);
+  });
+
+  it("acht Ebenen mit je 64 Schlüsseln, über geteilte Einträge zu riesiger Gesamtzahl: abgelehnt, ohne zu hängen", () => {
+    let ebene: Record<string, unknown> = { ende: 1 };
+    for (let i = 0; i < 7; i++) {
+      const neu: Record<string, unknown> = {};
+      for (let k = 0; k < 64; k++) neu[`k${k}`] = ebene;
+      ebene = neu;
+    }
+    const start = performance.now();
+    expect(jsonUeberGrenzen(ebene)).toBe(true);
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+});
+
+// Gegenprobe: Die Grenzen für Ergebnisse auf die der Eingaben zurücksetzen → rot.
+describe("Vorprüfung für Ergebnisse", () => {
+  it("Schlüssel je Objekt höchstens so viele wie in der Hülle (64), Gesamtknoten deutlich weniger als bei Eingaben", () => {
+    expect(ERGEBNIS_PRUEFUNG_GRENZEN.keys).toBe(boundedKeys());
+    expect(ERGEBNIS_PRUEFUNG_GRENZEN.nodes).toBeLessThan(JSON_PRUEFUNG_GRENZEN.nodes / 2);
+    const mit = (n: number) =>
+      Object.fromEntries(Array.from({ length: n }, (_, i) => [`k${i}`, 1]));
+    expect(jsonUeberGrenzen(mit(64), ERGEBNIS_PRUEFUNG_GRENZEN)).toBe(false);
+    expect(jsonUeberGrenzen(mit(65), ERGEBNIS_PRUEFUNG_GRENZEN)).toBe(true);
+    // Für Eingaben ändert sich nichts.
+    expect(jsonUeberGrenzen(mit(65))).toBe(false);
+  });
+
+  it("die breite Form aus der Prüfung (256 Objekte × 64 Schlüssel × 6 Texte) ist zu groß und wird sofort abgelehnt", () => {
+    const form = Array.from({ length: 256 }, () =>
+      Object.fromEntries(Array.from({ length: 64 }, (_, k) => [`k${k}`, Array(6).fill("x")])),
+    );
+    expect(jsonUeberGrenzen(form)).toBe(false);
+    const start = performance.now();
+    expect(jsonUeberGrenzen(form, ERGEBNIS_PRUEFUNG_GRENZEN)).toBe(true);
+    expect(performance.now() - start).toBeLessThan(100);
+  });
+
+  it("Knoten: eine Liste genau an der Grenze erlaubt, einer mehr abgelehnt", () => {
+    const { nodes } = ERGEBNIS_PRUEFUNG_GRENZEN;
+    expect(jsonUeberGrenzen(new Array<number>(nodes - 1).fill(1), ERGEBNIS_PRUEFUNG_GRENZEN)).toBe(
+      false,
+    );
+    expect(jsonUeberGrenzen(new Array<number>(nodes).fill(1), ERGEBNIS_PRUEFUNG_GRENZEN)).toBe(
+      true,
+    );
+  });
+});
+
+function boundedKeys(): number {
+  return BOUNDED_JSON_LIMITS.keys;
+}
+
+// Gegenprobe: `jsonHasNonJson` immer `false` zurückgeben → rot.
+describe("Werte, die kein JSON sind", () => {
+  it("erkennt Funktionen, Symbole, BigInt und Prototypen auf jeder Ebene", () => {
+    const f = () => 1;
+    for (const wert of [
+      f,
+      { a: f },
+      { a: { b: [1, f] } },
+      [Symbol("x")],
+      { a: 1n },
+      { a: Object.prototype },
+      { a: Array.prototype },
+      { a: { toString: Object.prototype.toString } },
+      { a: new Date() },
+      { a: new Map() },
+      { a: Object.create({ geerbt: 1 }) },
+    ]) {
+      expect(jsonHasNonJson(wert)).toBe(true);
+    }
+  });
+
+  it("lässt reines JSON durch, auch Objekte mit eigenen Schlüsseln wie constructor und __proto__", () => {
+    const eigen = JSON.parse('{"constructor":1,"__proto__":{"x":2},"toString":"t"}') as unknown;
+    for (const wert of [
+      null,
+      true,
+      0,
+      "text",
+      [],
+      {},
+      { a: [1, { b: null }] },
+      Object.create(null),
+      eigen,
+    ]) {
+      expect(jsonHasNonJson(wert)).toBe(false);
+    }
+  });
+
+  it("endet bei einem Kreis, statt zu hängen", () => {
+    const kreis: Record<string, unknown> = {};
+    kreis.q = kreis;
+    expect(() => jsonHasNonJson(kreis)).not.toThrow();
   });
 });

@@ -9,7 +9,7 @@
  * @since     2026-11-20
  */
 
-import type { executeRun as executeRunFn, RunDeps } from "@paibot/agents";
+import { closeOpenRunWork, type executeRun as executeRunFn, type RunDeps } from "@paibot/agents";
 import { type Database, repo } from "@paibot/db";
 import type { RunJob, RunJobHandler } from "@paibot/jobs";
 import type { ErrorCode } from "@paibot/shared/fehler";
@@ -45,8 +45,8 @@ export interface RunHandler {
 }
 
 /**
- * Setzt einen Lauf auf `failed` mit `code` und hängt das Ereignis `run.failed` an, beides in
- * einer Transaktion. Ist der Lauf schon beendet oder gehört er zu einer anderen Unterhaltung,
+ * Setzt einen Lauf auf `failed` mit `code`, beendet seine offenen Werkzeug-Aufrufe und seine
+ * streamende Antwort und hängt das Ereignis `run.failed` an, alles in einer Transaktion. Ist der Lauf schon beendet oder gehört er zu einer anderen Unterhaltung,
  * bleibt alles, wie es ist. Liefert, ob der Lauf jetzt als fehlgeschlagen gilt.
  */
 export async function failRun(
@@ -71,6 +71,8 @@ export async function failRun(
   try {
     await repo.withTransaction(db, async (tx) => {
       await repo.runs.finish(tx, job.runId, { status: "failed", errorCode: code });
+      // Offene Werkzeug-Aufrufe und eine streamende Antwort enden mit dem Lauf.
+      await closeOpenRunWork(tx, run, code);
       await repo.events.append(tx, {
         conversationId: run.conversationId,
         type: "run.failed",

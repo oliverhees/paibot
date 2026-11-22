@@ -18,6 +18,7 @@ import { isPaiBotError } from "@paibot/shared/fehler";
 import { type ActionId, type ConversationId, newId, type RunId } from "@paibot/shared/ids";
 import type { JsonValue, ToolCall } from "@paibot/shared/motor";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { createFakeMotor } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
 import { createTestTools } from "../testing/werkzeuge";
@@ -30,6 +31,7 @@ import {
   prepareCalls,
 } from "./aufruf";
 import * as bereinigen from "./bereinigen";
+import * as huelle from "./huelle";
 
 const contextKey = deriveKey(
   loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") }),
@@ -458,5 +460,199 @@ describe("Vorprüfung vor dem Bereinigen", () => {
       () => {},
     );
     expect(envelope.status).toBe("ok");
+  });
+});
+
+/** Test-Werkzeug `test_lesen` mit anderem Eingabe- und Ausgabe-Schema (nur für die Fälle unten). */
+async function werkzeugMitSchemas(
+  schemas: { input?: unknown; output?: unknown },
+  maxOutput = 20_000,
+) {
+  const def = createTestTools().byName("test_lesen");
+  const registry = await createToolRegistry([
+    {
+      ...def,
+      ...(schemas.input === undefined ? {} : { input: schemas.input as never }),
+      ...(schemas.output === undefined ? {} : { output: schemas.output as never }),
+      limits: { ...def.limits, maxOutputChars: maxOutput },
+    },
+  ]);
+  const tool = registry.byModelName("test_lesen");
+  if (tool === undefined) throw new Error("fehlt");
+  return { registry, tool };
+}
+
+/** Hülle aus einem Ergebnis, mit Platz für 20 000 Zeichen. */
+function huelleAus(tool: Awaited<ReturnType<typeof werkzeugMitSchemas>>["tool"], output: unknown) {
+  return outcomeEnvelope(
+    { status: "ok", output: output as never },
+    tool,
+    { toolResultMaxChars: 20_000 },
+    20_000,
+    () => {},
+  );
+}
+
+// Gegenprobe: Die Vorprüfung für Ergebnisse (`ERGEBNIS_PRUEFUNG_GRENZEN`) aus
+// `outcomeEnvelope` nehmen und `truncateContent` wieder quadratisch machen → die breite Form
+// rechnete über 100 s am Stück (gemessen: 105 761 ms).
+describe("Breites Ergebnis", () => {
+  it("256 Objekte × 64 Schlüssel × 6 Ein-Zeichen-Texte: Hülle fehler, unter einer Sekunde", async () => {
+    const { tool } = await werkzeugMitSchemas({ output: z.unknown() });
+    const form = Array.from({ length: 256 }, () =>
+      Object.fromEntries(Array.from({ length: 64 }, (_, k) => [`k${k}`, Array(6).fill("x")])),
+    );
+    const start = performance.now();
+    const envelope = huelleAus(tool, form);
+    expect(performance.now() - start).toBeLessThan(1000);
+    expect(envelope.status).toBe("fehler");
+    expect(envelope).toMatchObject({ art: "daten", code: "werkzeug_fehler" });
+  });
+
+  it("ein Objekt mit mehr als 64 Schlüsseln passt nie in die Hülle: Hülle fehler, ohne zu kürzen", async () => {
+    const { tool } = await werkzeugMitSchemas({ output: z.unknown() });
+    const truncate = vi.spyOn(huelle, "truncateContent");
+    try {
+      const viele = Object.fromEntries(Array.from({ length: 65 }, (_, k) => [`k${k}`, 1]));
+      expect(huelleAus(tool, viele).status).toBe("fehler");
+      expect(truncate).not.toHaveBeenCalled();
+      const genau = Object.fromEntries(Array.from({ length: 64 }, (_, k) => [`k${k}`, 1]));
+      expect(huelleAus(tool, genau).status).toBe("ok");
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+});
+
+// Gegenprobe: Die Vorprüfung nur auf `outcome.output` laufen lassen, nicht auf
+// `checked.data` → ein Schema mit `transform` reicht einen riesigen Wert durch.
+describe("Vorprüfung auch für den Wert nach dem Schema", () => {
+  it("ein transform, das einen 10 000 Ebenen tiefen Wert liefert: Hülle fehler, kein Wurf", async () => {
+    const { tool } = await werkzeugMitSchemas({
+      output: z.unknown().transform(() => nested(10_000)),
+    });
+    let envelope: ReturnType<typeof huelleAus> | undefined;
+    expect(() => {
+      envelope = huelleAus(tool, { klein: 1 });
+    }).not.toThrow();
+    expect(envelope?.status).toBe("fehler");
+  });
+
+  it("ein transform, das einen Kreis liefert: Hülle fehler, kein Wurf", async () => {
+    const kreis: Record<string, unknown> = {};
+    kreis.q = kreis;
+    const { tool } = await werkzeugMitSchemas({ output: z.unknown().transform(() => kreis) });
+    let envelope: ReturnType<typeof huelleAus> | undefined;
+    expect(() => {
+      envelope = huelleAus(tool, 1);
+    }).not.toThrow();
+    expect(envelope?.status).toBe("fehler");
+  });
+
+  it("ein transform, das ein zu breites Objekt liefert: Hülle fehler, ohne zu kürzen", async () => {
+    const { tool } = await werkzeugMitSchemas({
+      output: z
+        .unknown()
+        .transform(() => Object.fromEntries(Array.from({ length: 70 }, (_, k) => [`k${k}`, 1]))),
+    });
+    const truncate = vi.spyOn(huelle, "truncateContent");
+    try {
+      expect(huelleAus(tool, 1).status).toBe("fehler");
+      expect(truncate).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+});
+
+/** Schemas, die `{}` mit einer Funktion aus `Object.prototype` als Wert annehmen (zod 4). */
+const SCHEMAS_MIT_PROTOTYP_FELD: {
+  name: string;
+  schema: z.ZodType;
+  wert: unknown;
+  nurAusgabe?: boolean;
+}[] = [
+  {
+    name: "verschachtelt",
+    schema: z.strictObject({ a: z.object({ constructor: z.unknown() }) }),
+    wert: { a: {} },
+  },
+  {
+    name: "optional",
+    schema: z.strictObject({ a: z.object({ constructor: z.unknown() }).optional() }),
+    wert: { a: {} },
+  },
+  {
+    name: "Liste",
+    schema: z.strictObject({ a: z.array(z.object({ hasOwnProperty: z.unknown() })) }),
+    wert: { a: [{}] },
+  },
+  {
+    name: "Vereinigung",
+    schema: z.strictObject({ a: z.union([z.object({ valueOf: z.unknown() }), z.string()]) }),
+    wert: { a: {} },
+  },
+  {
+    name: "Schnitt",
+    schema: z.strictObject({
+      a: z.intersection(z.object({ constructor: z.unknown() }), z.object({})),
+    }),
+    wert: { a: {} },
+    // Das JSON-Schema des Schnitts enthält einen leeren Wert; schon der Aufbau des Registers wirft.
+    nurAusgabe: true,
+  },
+  {
+    name: "lazy",
+    schema: z.strictObject({ a: z.lazy(() => z.object({ toString: z.unknown() })) }),
+    wert: { a: {} },
+  },
+];
+
+// Hinweis: Diese Fälle würden ohne `jsonHasNonJson` NICHT rot. Schon der Abdruck der Eingabe (wirft,
+// die Eingabe gilt als ungültig) und die Hülle des Ergebnisses weisen die Funktion ab. Hier steht
+// das Verhalten fest, nicht der Schutz am Ursprung; den sichert der Test der Hilfsfunktion in
+// `bereinigen.test.ts`. Ein Test, der genau diese beiden Aufrufstellen sichert, fehlt noch.
+describe("Prototyp-Felder in verschachtelten Schemas", () => {
+  for (const { name, schema, wert, nurAusgabe } of SCHEMAS_MIT_PROTOTYP_FELD) {
+    it(`Ergebnis (${name}): Hülle fehler, die Funktion wird nie Teil des Werts`, async () => {
+      const { tool } = await werkzeugMitSchemas({ output: schema });
+      // Vorbedingung: Das Schema nimmt `{}` wirklich mit einer Funktion an (sonst prüft der Test nichts).
+      const roh = schema.safeParse(wert);
+      expect(roh.success).toBe(true);
+      expect(bereinigen.jsonHasNonJson(roh.data)).toBe(true);
+      const envelope = huelleAus(tool, wert);
+      expect(envelope.status).toBe("fehler");
+      expect(envelope).toMatchObject({ code: "werkzeug_fehler" });
+    });
+
+    it.skipIf(nurAusgabe === true)(
+      `Eingabe (${name}): ungültig, das Werkzeug läuft nicht mit der Funktion`,
+      async () => {
+        const { registry } = await werkzeugMitSchemas({ input: schema });
+        const [call] = prepareCalls([wish({ input: wert as never })], {
+          registry,
+          offered: new Set(["test_lesen"]),
+          contextKey,
+          runId,
+          conversationId,
+        });
+        expect(call?.inputValid).toBe(false);
+      },
+    );
+  }
+
+  it("Gegenprobe: gleiche Schemas mit unverdächtigen Feldnamen bleiben gültig", async () => {
+    const schema = z.strictObject({ a: z.object({ name: z.string() }), b: z.array(z.string()) });
+    const { registry, tool } = await werkzeugMitSchemas({ input: schema, output: schema });
+    const gut = { a: { name: "x" }, b: ["y"] };
+    const [call] = prepareCalls([wish({ input: gut })], {
+      registry,
+      offered: new Set(["test_lesen"]),
+      contextKey,
+      runId,
+      conversationId,
+    });
+    expect(call?.inputValid).toBe(true);
+    expect(huelleAus(tool, gut).status).toBe("ok");
   });
 });
