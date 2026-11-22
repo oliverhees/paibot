@@ -136,7 +136,7 @@ PAIBOT_TEST_DATABASE_URL=postgres://… pnpm --filter @paibot/db test
 
 ## Bekannte Schwächen
 
-- **Noch keine Anwendung:** Keine Route, keine Oberfläche, kein Aufruf im Lauf nutzt die Tabellen. Dass ein getrennter Zugang im Lauf als `appAccess: keiner` ankommt, prüft erst der Test im Paket des Laufs; die Datenbank liefert es über `currentAccess`.
+- **Anwendung:** Die Routen der App-Verwaltung, die Seite „Apps“ und der Anschluss im Lauf nutzen die Tabellen (siehe [Apps](apps.md)). Dass ein getrennter Zugang im Lauf als `appAccess: keiner` ankommt, prüft erst der Test im Paket des Laufs; die Datenbank liefert es über `currentAccess`.
 - **Kennzeichen „fremder Inhalt“ je Lauf:** Die Datenbank kennt nur das Kennzeichen und die Vererbung innerhalb eines Laufs. Ob ein Lauf in irgendeinem Schritt fremde Inhalte hatte, entscheidet der Lauf und ruft dann `markRunUntrusted`.
 - **Zugriff überlebt einen Bot nicht:** `bot_app_grants.bot_id` hat keinen Fremdschlüssel; Zeilen gelöschter Bots bleiben als Protokoll stehen.
 - **Größe der Texte:** `description` und `input_schema` sind die bereinigten Texte; ihre Grenzen hier (2000 Zeichen und 65 536 Bytes) sind Obergrenzen der Datenbank, nicht die der Schicht, die sie liefert.

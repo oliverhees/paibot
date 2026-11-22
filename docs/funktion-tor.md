@@ -146,7 +146,7 @@ Lücken in der Nummerierung sind Absicht: Jede Nummer wird nur einmal vergeben u
 
 ### Pai liest in Apps (Fassung 3)
 
-**Stand:** Die Regeln gelten: Das Tor entscheidet nach Fassung 3, und die Datenbank kann Apps, ihre Werkzeuge und den Zugriff der Bots speichern. Die Funktion „Apps“ selbst ist für dich **noch nicht erreichbar**: Apps verbinden und Pai in Apps lesen lassen kannst du in der Oberfläche noch nicht. Die Regeln stehen hier, damit du siehst, wie das Tor über Apps entscheiden wird, sobald es sie gibt.
+**Stand:** Die Regeln gelten: Das Tor entscheidet nach Fassung 3, und die Datenbank kann Apps, ihre Werkzeuge und den Zugriff der Bots speichern. Apps verbindest du auf der Seite „Apps“ ([Apps](funktion-apps.md)). Die Regeln stehen hier, damit du siehst, wie das Tor über Apps entscheidet.
 
 Mit Fassung 3 kommen vier Aktionen dazu, alle nur von dir: eine App verbinden (oder erneut testen), ein Werkzeug der App einstufen („liest“, „schreibt“ oder „gesperrt“), einem Bot Zugriff geben („kein Zugriff“ oder „darf lesen“) und eine App trennen. Ein Zugriff „darf schreiben“ kommt in Fassung 3 nicht vor.
 

@@ -23,6 +23,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Einrichtung und Zugang  | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern                      |
 | Chat                    | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern                      |
 | Bot                     | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern                      |
+| Apps                    | [funktion-apps.md](funktion-apps.md)                                     | vorhanden, mit Bildern                      |
 | Anbieter und Modelle    | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern                      |
 | Datenschleuse           | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar         |
 | Belege                  | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern                      |
@@ -70,12 +71,13 @@ Nach Themen geordnet, ohne Anspruch auf Vollständigkeit; die Seiten in der Tabe
 - **Anbieter-Auswahl:** EUrouter mit deinen Routing-Regeln, Mistral AI (direkt) oder ein eigener Anbieter, schon in der Einrichtung; an jeder Antwort steht, wer laut Anbieter geantwortet hat ([Anbieter und Modelle](funktion-anbieter-und-modelle.md)).
 - **Eigener Anbieter in der Oberfläche:** OpenAI-kompatible Anbieter anlegen, ändern und entfernen, auch auf deinem Rechner ([Anbieter und Modelle](funktion-anbieter-und-modelle.md)).
 - **Chat-Eingabe:** Nach dem Senden bleibt der Cursor im Feld; die Leiste zeigt schon die Plätze für geplante Funktionen (gesperrt, „kommt später“). Dazu Suche in allen Unterhaltungen, Unterhaltung als Datei sichern und Antwort neu erzeugen ([Chat](funktion-chat.md)).
-- **Seitenleiste mit Menü „Du“:** Unten links stehen die Werkzeuge (Belege, Regeln, Datenschleuse, Modell und Anbieter), ein- und ausklappbar. Der Knopf „Du“ öffnet Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden ([Einstellungen und Info](funktion-einstellungen.md)).
+- **Seitenleiste mit Menü „Du“:** Unten links stehen die Werkzeuge (Belege, Regeln, Datenschleuse, Modell und Anbieter, Apps), ein- und ausklappbar. Der Knopf „Du“ öffnet Zugang, Einstellungen, Neuigkeiten, Hilfe (Dokumentation, Roadmap, Selbsttest), Info und Abmelden ([Einstellungen und Info](funktion-einstellungen.md)).
 
 **Belege und Tor**
 
 - **Belege ansehen und prüfen:** Liste aller Belege, ein Beleg als eigene Seite, „Ganze Kette prüfen“ im Browser, Anker sichern und vergleichen, Export für `pnpm belege:pruefen` ([Belege](funktion-belege.md)).
 - **Belege filtern und Schlüssel ansehen:** Filter nach Aktion und Unterhaltung (auch als Lesezeichen), Kasten „Schlüssel dieser Installation“ mit Kurzform ([Belege](funktion-belege.md)).
+- **Apps:** Auf der Seite „Apps“ verbindest du MCP-Server mit öffentlicher https-Adresse, siehst den Text jedes Werkzeugs, stufst es selbst ein und gibst einem Bot höchstens Lese-Zugriff ([Apps](funktion-apps.md)). Gegen echte Server ist das noch nicht geprüft.
 - **Regeln:** Die Seite „Regeln“ zeigt die fest eingebauten Regeln, Grenzen und Vorbedingungen des Tors. Regeln kommen nur mit einem Update von PaiBot; die App selbst darf sie nur lesen ([Das Tor](funktion-tor.md)).
 
 **Doku selbst**

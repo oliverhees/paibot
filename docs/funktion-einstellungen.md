@@ -32,7 +32,7 @@ Unter **Einstellungen** regelst du den Zugang zu deinem PaiBot und die Grenzen, 
 
 **Die Seitenleiste: Werkzeuge und das Menü „Du“**
 
-1. Unten links in der Seitenleiste stehen die **Werkzeuge**: Belege, Regeln, Datenschleuse sowie Modell und Anbieter. Mit **Werkzeuge einklappen** blendest du sie aus; die Liste deiner Unterhaltungen bekommt dann den Platz. **Werkzeuge ausklappen** zeigt sie wieder. Dein Browser merkt sich, wie du es eingestellt hast. Im Menü am Handy stehen die Werkzeuge immer offen.
+1. Unten links in der Seitenleiste stehen die **Werkzeuge**: Belege, Regeln, Datenschleuse, Modell und Anbieter sowie Apps. Mit **Werkzeuge einklappen** blendest du sie aus; die Liste deiner Unterhaltungen bekommt dann den Platz. **Werkzeuge ausklappen** zeigt sie wieder. Dein Browser merkt sich, wie du es eingestellt hast. Im Menü am Handy stehen die Werkzeuge immer offen.
 
    ![Seitenleiste mit eingeklappten Werkzeugen: oben die Unterhaltungen, unten „Werkzeuge ausklappen“, darunter der Knopf „Du“ und die Fußzeile](assets/screenshots/navigation-eingeklappt.png)
 2. Ganz unten steht der Knopf **Du**. Klick darauf (oder drück Enter bzw. die Leertaste, wenn er den Fokus hat). Es öffnet sich ein Menü mit **Zugang**, **Einstellungen**, **Neuigkeiten**, unter **Hilfe** die Einträge **Dokumentation**, **Roadmap** und **Selbsttest**, dann **Info** und abgesetzt **Abmelden**. Mit den Pfeiltasten wählst du, Escape schließt das Menü.
