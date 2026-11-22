@@ -600,7 +600,7 @@ describe("der Lauf endet mitten im Schritt", () => {
 });
 
 describe("Aufrufe: Zustand und Phase", () => {
-  // Gegenprobe: den Zustand „fertig“ schon bei `tool.started` setzen → der erste Fall wird rot.
+  // Gegenprobe: den Zustand „fertig“ schon bei `tool.requested` setzen → der erste Fall wird rot.
   it("der Zustand kommt nur aus `tool.finished`, nie aus der Reihenfolge der Ereignisse", () => {
     const g = nachschlagen(folge());
     const status = (k: number) =>
