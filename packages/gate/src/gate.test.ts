@@ -33,6 +33,7 @@ import {
   type ResultRecord,
   type RuleProvider,
   type RuleSnapshotProvider,
+  verifyRuleSnapshot,
 } from "./gate";
 import { isGatePermit } from "./permit";
 import { ruleSnapshot } from "./regel-hash";
@@ -282,12 +283,16 @@ describe("nicht erlaubte Aktion", () => {
   ] as const)(
     "%s: Ausführung nie aufgerufen, Ergebnis-Beleg denied, GateDenied",
     async (outcome, code) => {
+      // Der Regelstand ist vollständig (alle Standard-Regeln plus eine eigene Regel im Band ab
+      // 1000). Eine eigene Regel entscheidet nur, wo keine Standard-Regel vor ihr greift: hier bei
+      // einer Anfrage, deren Bot nicht zur Unterhaltung gehört (sonst entschiede nur R-999).
       const rules: RuleDefinition[] = [
+        ...ACTIVE_STANDARD_RULES,
         {
           ...ACTIVE_STANDARD_RULES[0],
-          id: "R-110",
+          id: newId("rule"),
           source: "owner",
-          priority: 1,
+          priority: 1000,
           effect: outcome === "deny" ? "deny" : outcome === "ask" ? "ask" : "allow",
           stage: outcome === "prepare" ? "prepare" : "ask",
           conditions: [],
@@ -298,8 +303,8 @@ describe("nicht erlaubte Aktion", () => {
       const execute = vi.fn();
       const error = await caught(
         createGate(ports).run(
-          sampleAction("anbieter.loeschen"),
-          sampleFacts("anbieter.loeschen"),
+          sampleAction("modell.anfragen"),
+          { ...sampleFacts("modell.anfragen"), botOfConversation: false },
           execute,
         ),
       );
@@ -373,11 +378,12 @@ describe("Beleg „Entscheidung“ scheitert", () => {
   });
 
   it("auch eine abgelehnte Aktion bekommt dann keinen Ergebnis-Beleg", async () => {
-    const { ports, log } = memoryPorts({ failDecision: true, rules: [] });
+    const { ports, log } = memoryPorts({ failDecision: true });
+    // Not-Aus: die Anfrage des Bots wird abgelehnt (G-05), der Beleg „Entscheidung“ scheitert.
     await caught(
       createGate(ports).run(
-        sampleAction("zugang.abmelden"),
-        sampleFacts("zugang.abmelden"),
+        sampleAction("modell.anfragen"),
+        { ...sampleFacts("modell.anfragen"), killSwitch: true },
         vi.fn(),
       ),
     );
@@ -655,6 +661,67 @@ describe("Regelstand: geprüft, bevor entschieden wird", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  describe("jeder Stand enthält alle aktiven Standard-Regeln", () => {
+    it.each([0, 1000])(
+      "nur eine eigene Regel „alles erlauben“ (Priorität %i) → intern, nichts belegt, nichts ausgeführt",
+      async (priority) => {
+        const allowAll = own({ action: "*", effect: "allow", stage: "execute", priority });
+        const { error, log, entries, execute } = await runWith(await ruleSnapshot([allowAll], 30));
+        expect(error.code).toBe("intern");
+        expect(log).toEqual(["rules"]);
+        expect(entries).toEqual([]);
+        expect(execute).not.toHaveBeenCalled();
+      },
+    );
+
+    it("eigene Regel mit lesbarer Kennung R-500, ohne Standard-Regeln → intern", async () => {
+      const r500 = own({ id: "R-500" as RuleDefinition["id"], priority: 1000 });
+      const { error, entries, execute } = await runWith(await ruleSnapshot([r500], 30));
+      expect(error.code).toBe("intern");
+      expect(entries).toEqual([]);
+      expect(execute).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["ohne Stand-Angabe", undefined],
+      ["mit Stand 30", 30],
+    ] as const)("die leere Regel-Liste (%s) → intern", async (_label, stand) => {
+      const { error, entries, execute } = await runWith(await ruleSnapshot([], stand));
+      expect(error.code).toBe("intern");
+      expect(entries).toEqual([]);
+      expect(execute).not.toHaveBeenCalled();
+    });
+
+    it.each(ACTIVE_STANDARD_RULES.map((rule) => rule.id))(
+      "ohne die Standard-Regel %s (alle anderen da, dazu eine eigene Regel) → intern",
+      async (id) => {
+        const rules = [
+          ...ACTIVE_STANDARD_RULES.filter((rule) => rule.id !== id),
+          own({ priority: 1000 }),
+        ];
+        const { error, log, entries, execute } = await runWith(await ruleSnapshot(rules, 30));
+        expect(error.code).toBe("intern");
+        expect(log).toEqual(["rules"]);
+        expect(entries).toEqual([]);
+        expect(execute).not.toHaveBeenCalled();
+      },
+    );
+
+    it("der volle Standard-Satz plus eine eigene Regel im Band wird angenommen", async () => {
+      const rules = [...ACTIVE_STANDARD_RULES, own({ priority: 1000 })];
+      await expect(verifyRuleSnapshot(await ruleSnapshot(rules, 30))).resolves.toMatchObject({
+        stand: 30,
+      });
+      const { ports, log } = memoryPorts({ snapshot: await ruleSnapshot(rules, 30) });
+      const result = await createGate(ports).run(
+        sampleAction("zugang.abmelden"),
+        sampleFacts("zugang.abmelden"),
+        okExecute(log),
+      );
+      expect(result.decision.outcome).toBe("allow");
+    });
+  });
+
   it("unbekannte Quelle → intern, keine stille Annahme", async () => {
     const snapshot = await ruleSnapshot(ACTIVE_STANDARD_RULES, 7);
     const changed = {
@@ -826,18 +893,11 @@ describe("werkzeug.aufrufen", () => {
     });
   });
 
-  it("erlaubt durch eigene Regel: ausgeführt; der Beleg kennt nur den Abdruck der Argumente", async () => {
-    const allow: RuleDefinition = {
-      ...ACTIVE_STANDARD_RULES[0],
-      id: newId("rule"),
-      action: "werkzeug.aufrufen",
-      source: "owner",
-      priority: 1000,
-      conditions: [{ fact: "akteur", op: "eq", value: "bot" }],
-    };
-    // Nur in Tests: ein Regelstand ohne Standard-Regeln (die Datenbank liefert ihn nie).
-    const { ports, log, entries } = memoryPorts({ rules: [allow] });
-    const facts = sampleFacts("werkzeug.aufrufen");
+  it("erlaubt durch R-010: ausgeführt; der Beleg kennt nur den Abdruck der Argumente", async () => {
+    // Im Betrieb erlaubt nur R-010 (lesend, intern, eingebaut, Kennung der Doku-Suche) einen
+    // Werkzeug-Aufruf; R-005 („fragen“) steht vor jeder eigenen Regel.
+    const { ports, log, entries } = memoryPorts();
+    const facts = { ...sampleFacts("werkzeug.aufrufen"), toolKey: "eingebaut/doku.nachschlagen" };
     const result = await createGate(ports).run(
       sampleAction("werkzeug.aufrufen"),
       facts,

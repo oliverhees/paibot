@@ -115,10 +115,14 @@ describe("Fehlercode einer Ablehnung in Fassung 2", () => {
     });
     expect(codes(decision)).toBe("regel_fehlt");
 
+    // Durch das Tor (vollständiger Regelstand): R-005 fragt, ohne Deckel. Eine eigene Regel, die
+    // ein schreibendes Werkzeug erlaubt, steht im Betrieb hinter R-005 und kommt nicht dazu; den
+    // Deckel selbst zeigt die Entscheidung oben. Hier gilt: „fragen“ wird im Beleg
+    // `regel_fehlt` und für den Werkzeug-Aufruf `freigabe_noetig`.
     const results: unknown[] = [];
     let seq = 0;
     const gate = createGate({
-      rules: { load: () => ruleSnapshot([ERLAUBT_WERKZEUG]) },
+      rules: { load: () => ruleSnapshot(ACTIVE_STANDARD_RULES) },
       receipts: {
         appendDecision: async () => ({ receiptId: newId("receipt"), seq: ++seq }),
         appendResult: async (record) => {
