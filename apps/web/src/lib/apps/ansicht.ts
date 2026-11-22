@@ -159,6 +159,18 @@ export function aenderungenZwischen(
  */
 const MAX_TIEFE = 64;
 
+/** Zahlen- und Längengrenzen im Schema: Sie gehen ans Modell und stehen in der Liste der Texte. */
+const GRENZ_STICHWORTE = [
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "minLength",
+  "maxLength",
+  "minItems",
+  "maxItems",
+] as const;
+
 /** Name der Wurzel des Schemas in der Liste der Texte. */
 const WURZEL = "(Werkzeug)";
 
@@ -210,6 +222,18 @@ export function schemaTexteVollstaendig(schema: unknown): SchemaTexteErgebnis {
     // Auch die Wurzel des Schemas geht ans Modell (ihre Beschreibung bleibt erhalten): Sie steht
     // unter dem Namen „(Werkzeug)“ in der Liste, nicht unter einem Feld.
     const ort = pfad === "" ? WURZEL : pfad;
+    // Auch Typ, Pflichtfelder und Grenzen gehen ans Modell: Sie stehen als eigene Zeilen da.
+    if (typeof knoten.type === "string") nimm(ort, "typ", knoten.type);
+    else if (Array.isArray(knoten.type)) for (const v of knoten.type) nimm(ort, "typ", v);
+    if (Array.isArray(knoten.required) && knoten.required.length > 0) {
+      for (const v of knoten.required) nimm(ort, "pflicht", v);
+    }
+    for (const grenze of GRENZ_STICHWORTE) {
+      if (grenze in knoten) nimm(ort, "grenze", `${grenze} ${alsText(knoten[grenze])}`);
+    }
+    if (typeof knoten.additionalProperties === "boolean") {
+      nimm(ort, "zusatz", knoten.additionalProperties ? "ja" : "nein");
+    }
     if (typeof knoten.description === "string") nimm(ort, "feldbeschreibung", knoten.description);
     if (Array.isArray(knoten.enum)) for (const v of knoten.enum) nimm(ort, "enum", v);
     if ("default" in knoten) nimm(ort, "default", knoten.default);

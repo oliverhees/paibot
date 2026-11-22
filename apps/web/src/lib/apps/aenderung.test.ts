@@ -74,7 +74,7 @@ describe("aenderungenZwischen", () => {
     expect(a[0]?.vorher).not.toContain("feldname");
   });
 
-  it("nur die Form des Schemas ändert sich (Typ, Pflichtfeld), kein Text: trotzdem sichtbar, beide Fassungen im Ganzen", () => {
+  it("ein neues Pflichtfeld oder eine neue Grenze steht als Zeile im Vergleich", () => {
     const neu = fassung({
       modellText: {
         name: "mcp-x__echo",
@@ -83,12 +83,19 @@ describe("aenderungenZwischen", () => {
       },
     });
     const a = aenderungenZwischen(fassung(), neu);
-    expect(a).toEqual([
-      {
-        feld: "eingabe",
-        vorher: JSON.stringify(SCHEMA),
-        nachher: JSON.stringify({ ...SCHEMA, required: ["text"] }),
-      },
+    expect(a).toHaveLength(1);
+    expect(a[0]?.feld).toBe("eingabe");
+    expect(a[0]?.nachher).toContain("(pflicht): text");
+    expect(a[0]?.vorher).toBe("");
+  });
+
+  it("ändert sich nur die Form, ohne dass sich eine Zeile ändert (Reihenfolge der Felder): beide Fassungen im Ganzen", () => {
+    const a1 = { type: "object", properties: { a: { type: "string" }, b: { type: "string" } } };
+    const a2 = { type: "object", properties: { b: { type: "string" }, a: { type: "string" } } };
+    const alt = fassung({ modellText: { name: "n", beschreibung: "b", schema: a1 } });
+    const neu = fassung({ modellText: { name: "n", beschreibung: "b", schema: a2 } });
+    expect(aenderungenZwischen(alt, neu)).toEqual([
+      { feld: "eingabe", vorher: JSON.stringify(a1), nachher: JSON.stringify(a2) },
     ]);
   });
 

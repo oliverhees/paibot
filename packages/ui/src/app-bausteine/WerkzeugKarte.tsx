@@ -90,6 +90,10 @@ const SCHEMA_ART: Record<SchemaTextArt, () => string> = {
   enum: () => t("apps.schema.art.enum"),
   default: () => t("apps.schema.art.default"),
   beispiel: () => t("apps.schema.art.beispiel"),
+  typ: () => t("apps.schema.art.typ"),
+  pflicht: () => t("apps.schema.art.pflicht"),
+  grenze: () => t("apps.schema.art.grenze"),
+  zusatz: () => t("apps.schema.art.zusatz"),
   ausgabe: () => t("apps.schema.art.ausgabe"),
 };
 

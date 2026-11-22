@@ -85,6 +85,10 @@ export type SchemaTextArt =
   | "enum"
   | "default"
   | "beispiel"
+  | "typ"
+  | "pflicht"
+  | "grenze"
+  | "zusatz"
   | "ausgabe";
 
 export interface SchemaText {

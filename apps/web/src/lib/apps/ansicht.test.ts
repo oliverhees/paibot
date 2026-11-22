@@ -159,7 +159,11 @@ describe("werkzeugSchemaTexte", () => {
     // Und mit sehr vielen Feldern verschwindet nichts.
     const viele: Record<string, unknown> = {};
     for (let i = 0; i < 5000; i++) viele[`f${i}`] = { type: "string", description: `d${i}` };
-    expect(werkzeugSchemaTexte({ type: "object", properties: viele })).toHaveLength(10000);
+    // Je Feld Name, Typ und Beschreibung (3 × 5000), dazu der Typ der Wurzel.
+    const ohneTyp = werkzeugSchemaTexte({ type: "object", properties: viele }).filter(
+      (t) => t.art !== "typ",
+    );
+    expect(ohneTyp).toHaveLength(10000);
   });
 
   // Gegenprobe: die Wurzel wieder überspringen (`if (pfad !== "")`) → die Anweisung fehlt in den gezeigten Texten.
