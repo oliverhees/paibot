@@ -673,6 +673,10 @@ export const de = {
   "modelle.test.limit_erreicht.ausweg": "Prüf Guthaben und Limits in deinem Konto bei {anbieter}.",
   "modelle.test.limit_erreicht.ausweg_eigen": "Prüf Guthaben und Limits von {anbieter}.",
   "modelle.liste.titel": "Modell für {name}",
+  "modelle.lesen.zu_oft":
+    "Die Modell-Liste wurde in kurzer Zeit sehr oft gelesen. Versuch es in {sekunden} Sekunden noch einmal.",
+  "modelle.lesen.zu_oft.ausweg":
+    "Warte kurz und öffne die Seite dann noch einmal. Dieses Lesen ist getrennt vom Verbindungstest begrenzt.",
   "modelle.liste.text":
     "Die Liste kommt direkt von {anbieter}. Sie zeigt nur Modelle, die Text schreiben und Antworten nach und nach liefern können.",
   "modelle.liste.laedt": "Lade die Modelle von {anbieter} …",

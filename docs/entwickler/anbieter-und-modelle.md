@@ -90,7 +90,7 @@ Routen aus `apps/web/src/lib/routen.ts#API_ROUTEN` (Zugang `besitzer`):
 | `POST /api/anbieter/:id/modelle`                 | `anbieter.speichern`                           |
 | `POST /api/anbieter/:id/regeln`                  | `anbieter.speichern` (Limit `verbindungstest`) |
 | `DELETE /api/anbieter/:id/regeln/:modellId`      | `anbieter.speichern`                           |
-| `POST /api/anbieter/:id/modelle/lesen`           | – (lesend, schreibt nichts)                    |
+| `POST /api/anbieter/:id/modelle/lesen`           | – (lesend, Limit `modelleLesen`)               |
 | `PUT /api/anbieter/:id/verwaltungsschluessel`    | `anbieter.speichern` (Limit `verbindungstest`) |
 | `DELETE /api/anbieter/:id/verwaltungsschluessel` | `anbieter.speichern`                           |
 | `POST /api/anbieter/:id/regeln/liste`            | – (lesend, Limit `verbindungstest`)            |
@@ -98,6 +98,8 @@ Routen aus `apps/web/src/lib/routen.ts#API_ROUTEN` (Zugang `besitzer`):
 | `PUT /api/bot/modell`                            | `modell.waehlen` (siehe [Bot](bot.md))         |
 
 Die Seite „Modell und Anbieter“ liest die Modell-Liste beim Öffnen über `POST /api/anbieter/:id/modelle/lesen`; gespeichert wird erst bei „Liste abgleichen“ oder beim Übernehmen eines noch nicht gespeicherten Modells (`apps/web/src/app/(app)/modelle/ModelleAnsicht.tsx#listeLaden`). Der Fakt `managementKeySet` der Aktion `anbieter.speichern` (`packages/shared/src/actions.ts`) hält fest, ob ein zweiter Schlüssel hinterlegt ist, nie den Schlüssel. Auch der Beleg beim Ändern eines Anbieters nennt ihn (`apps/web/src/lib/modelle/anbieter.ts#anbieterAendern`); der zweite Schlüssel bleibt dabei, wie er ist.
+
+Das Lesen der Modell-Liste hat ein eigenes Limit, `modelleLesen`: 60 Aufrufe je Minute und Besitzer, gezählt unter einem eigenen Schlüssel (`apps/web/src/lib/rate-limit.ts#ZUSATZ_LIMITS`, Route in `apps/web/src/lib/routen.ts#API_ROUTEN`). Es verbraucht das Budget des `verbindungstest` nicht; ein Aufruf darüber bekommt `zu_viele_versuche` mit Satz und Ausweg. Die Route läuft bewusst ohne Tor und ohne Beleg: Sie schreibt nichts und schickt nur den Schlüssel an den Anbieter, für den er gespeichert ist (`apps/web/src/lib/modelle/anbieter.ts#anbieterModelleLesen`).
 
 Route-Dateien unter `apps/web/src/app/api/anbieter/`. Die Aktion `modell.anfragen` des Bots beschreibt [Chat](chat.md).
 
