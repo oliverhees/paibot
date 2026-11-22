@@ -168,11 +168,42 @@ Im Beleg eines Aufrufs stehen neben der Kennung der App auch die Kennung des Wer
 
 „Liest“ ist deine Einschätzung. Ob ein Werkzeug bei der App wirklich nichts ändert, kann PaiBot nicht prüfen; die Angabe „nur lesend“ einer App übernimmt PaiBot nie als Einstufung.
 
+### Bots pausieren und Teams (Fassung 4)
+
+**Stand:** Die Regeln gelten: Das Tor entscheidet nach Fassung 4, und die Datenbank kann Teams, Entwürfe für Teams und Köpfe von Fäden speichern. **Bedienen kannst du das noch nicht:** Es gibt keine Seite und keinen Knopf, um einen Bot zu pausieren, ein Team anzulegen oder einen Faden zu beginnen. Die Aktionen gibt es im Tor, damit jede später durch dasselbe Tor läuft und einen Beleg bekommt.
+
+Mit Fassung 4 kommen dreizehn Aktionen dazu, alle nur von dir und nie von einem Bot: einen Bot anlegen, löschen oder pausieren, ein Team anlegen, ändern oder löschen, einen Bot einem Team zuordnen, einen Entwurf für ein Team erstellen, verwerfen, anlegen oder zurücknehmen, einen Faden anlegen und den Stabschef-Schalter setzen. Eine Regel, die einem Bot das erlaubt, gibt es nicht und lässt sich nicht anlegen: Das Tor lehnt jede dieser Aktionen mit einem Bot als Auslöser ab, auch bei einer Regel, die alles erlaubt.
+
+Was du schon heute davon merkst: **Ein pausierter Bot antwortet nicht.** Die Pause gilt sofort, auch mitten in einer Antwort: Ruft er danach noch ein Werkzeug auf oder fragt das Modell, lehnt das Tor ab. Pausieren kannst du in dieser Version noch nicht.
+
+| Nummer | Name                                  | Was sie prüft                                                                                                     |
+| ------ | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| G-15   | Bot nicht pausiert                    | Grenze: Der Bot der Unterhaltung ist nicht pausiert (bei Nachricht senden, Modell anfragen und Werkzeug aufrufen) |
+| G-32   | Umfang des Entwurfs                   | Grenze: Der Entwurf hat nicht mehr Bots als erlaubt                                                               |
+| G-33   | Bots insgesamt                        | Grenze: Nach dem Anlegen gibt es nicht mehr Bots als erlaubt                                                      |
+| G-34   | Offene Entwürfe und Entwürfe je Tag   | Grenze: Es liegen nicht zu viele Entwürfe offen, und es entstehen nicht zu viele an einem Tag                     |
+| V-25   | Team vorhanden                        | Vorbedingung: Das Team gibt es                                                                                    |
+| V-27   | Entwurf offen                         | Vorbedingung: Der Entwurf ist noch offen                                                                          |
+| V-28   | Entwurf unverändert seit der Vorschau | Vorbedingung: Du legst genau den Entwurf an, den du gesehen hast                                                  |
+| V-29   | Namen im Entwurf frei                 | Vorbedingung: Kein Name aus dem Entwurf ist schon vergeben                                                        |
+| V-30   | Modelle im Entwurf vorhanden          | Vorbedingung: Jedes Modell aus dem Entwurf gibt es bei dir                                                        |
+| V-31   | Ansprechpartner gehört zum Entwurf    | Vorbedingung: Der Ansprechpartner ist ein Bot des Entwurfs                                                        |
+| V-37   | Standard-Bot bleibt                   | Vorbedingung: Dein Standard-Bot lässt sich nicht löschen                                                          |
+| V-42   | Kein Lauf des Bots aktiv              | Vorbedingung: Ein Bot, der gerade antwortet, lässt sich nicht löschen                                             |
+| V-43   | Team unbenutzt und unverändert        | Vorbedingung: Ein Entwurf lässt sich nur zurücknehmen, wenn nichts davon benutzt oder geändert wurde              |
+| V-44   | Leitung gehört zum Team               | Vorbedingung: Die neue Leitung ist ein Bot des Teams                                                              |
+
+Die Seite „Regeln“ zeigt diese Nummern noch nicht, weil du die Aktionen noch nicht benutzen kannst.
+
+Ein **Faden** ist eine Unterhaltung, die einem Team gehört und keinen eigenen Bot hat. In dieser Version nimmt ein Faden keine Nachricht an: Schreibst du in einen Faden, kommt der Hinweis „In einem Faden antwortet noch kein Bot.“, und es entsteht weder eine Nachricht noch eine Antwort.
+
+**Löschen:** Einen Bot, der schon gearbeitet hat, und deinen Standard-Bot kann die Datenbank nicht löschen; ein Team mit Fäden auch nicht. Eine Funktion zum Löschen gibt es in der Oberfläche noch nicht.
+
 ## So funktioniert es
 
 - Das Tor liegt im Paket `packages/gate`. Es ist der einzige Weg, eine Aktion auszuführen (`gate.run`).
 - Die Entscheidung trifft die Funktion `evaluate`. Sie ist rein: Sie liest keine Uhr, keine Datenbank, kein Netz und nutzt keine KI. Sie bekommt nur die Aktion, die Fakten (Werte wie Zeichenzahl, Region, Schalter, nie Inhalte von Nachrichten oder Schlüssel) und die Regeln.
-- **Fassung der Tor-Regeln:** Das Tor entscheidet jetzt nach **Fassung 3** („Pai liest in Apps“). Jeder Beleg nennt sie, ältere Belege werden nach ihrer Fassung geprüft (Belege ohne Angabe nach Fassung 1, Belege der Fassung 2 nach Fassung 2). Eine Fassung wird nie geändert; was das Tor anders entscheiden würde, kommt als neue Fassung. Die Regel R-014 steht in der Datenbank. Nach dem Wechsel auf diese Version gibt es kein Zurück auf eine ältere: Ein älteres Programm erkennt die neuen Aktionen und die neue Fassung der Belege nicht. Mach vorher eine Sicherung ([Aktualisieren](aktualisieren.md)).
+- **Fassung der Tor-Regeln:** Das Tor entscheidet jetzt nach **Fassung 4** („Bots, Teams und Fäden“). Jeder Beleg nennt sie, ältere Belege werden nach ihrer Fassung geprüft (Belege ohne Angabe nach Fassung 1, Belege der Fassungen 2 und 3 nach Fassung 2 und 3). Ein älterer Stand von PaiBot, der Fassung 4 noch nicht kennt, urteilt über Belege der Fassung 4 „mit dieser Fassung nicht prüfbar“, nie „ungültig“. Eine Fassung wird nie geändert; was das Tor anders entscheiden würde, kommt als neue Fassung. Die Regel R-014 steht in der Datenbank. Nach dem Wechsel auf diese Version gibt es kein Zurück auf eine ältere: Ein älteres Programm erkennt die neuen Aktionen und die neue Fassung der Belege nicht. Mach vorher eine Sicherung ([Aktualisieren](aktualisieren.md)).
 - Reihenfolge: 1. Eingabe prüfen, 2. Vorbedingungen, 3. Grenzen, 4. Regeln, 5. Deckel (nur bei Werkzeug-Aufrufen). Alle Vorbedingungen der Aktion, alle Grenzen und bei Werkzeug-Aufrufen der Deckel stehen im Beleg. Eine verletzte Vorbedingung geht einer verletzten Grenze vor; beide führen immer zur Ablehnung. Von allen Regeln, die passen, entscheidet die mit der kleinsten Priorität; sie bleibt auch bei einer Ablehnung im Beleg sichtbar.
 - Regelstand: Für jede angewandte Regel stehen Kennung, Fassung und eine Prüfsumme ihres Inhalts im Beleg, dazu der Stand des Regel-Protokolls. Regeln werden nie geändert, nur als neue Fassung angehängt. Mit dem Stand lässt sich eine Entscheidung später mit genau den Regeln von damals nachrechnen, und eine nachträglich veränderte Regel fällt an der Prüfsumme auf.
 - Bevor das Tor entscheidet, prüft es den Regelstand: Jede Prüfsumme muss zum Inhalt passen, und jede eingebaute Regel (Quelle „standard“, Kennung `R-…`) muss genau der Fassung gleichen, die in PaiBot selbst steht. Fehlt eine eingebaute Regel (auch, weil eine abgeschaltete höhere Fassung sie verdeckt), taucht eine unbekannte Kennung `R-…` auf, trägt eine Kennung `R-…` eine andere Quelle, ist ein Regel-Vorschlag eingeschaltet oder liegt eine Regel außerhalb des Prioritäten-Bands ihrer Quelle, entscheidet das Tor nicht, schreibt keinen Beleg und führt nichts aus (Fehler `intern`). Das gilt auch für eine leere Regel-Tabelle: Dann wird nie „alles gefragt“ und nie „alles erlaubt“, sondern abgebrochen. Regel-Vorschläge zählen nie mit.

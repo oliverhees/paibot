@@ -68,6 +68,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 ## Grenzen
 
 - Es gibt einen Bot. Weitere Bots anlegen ist nicht Teil dieser Version.
+- Einen Bot pausieren oder löschen kannst du in der Oberfläche noch nicht. Die Datenbank und das Tor kennen es schon: Ein pausierter Bot antwortet nicht, und ein Bot, der schon gearbeitet hat, und dein Standard-Bot lassen sich nicht löschen (der feste Satz dazu: „Dieser Bot hat schon gearbeitet und lässt sich nicht löschen.“ bzw. „Das ist dein Standard-Bot und lässt sich nicht löschen.“). Mehr dazu bei [Tor und Belege](funktion-tor.md#bots-pausieren-und-teams-fassung-4).
 - Als eingebautes Werkzeug nutzt der Bot das Nachschlagen in der Doku. Weitere Werkzeuge bekommt er nur aus Apps, die du verbunden, eingestuft und freigegeben hast, und nur lesende ([Apps](funktion-apps.md)). Er führt sonst selbst nichts aus.
 - Eine kurze Rolle oder Beschreibung des Bots lässt sich noch nicht speichern; die Navigation zeigt „dein persönlicher Assistent“.
 - Die Ausgabegrenze je Antwort hat den Standard 4096 Token und ist höchstens 200 000 (das prüft auch die Datenbank; beim Update werden höhere Werte auf 200 000 gesetzt); die Einrichtung setzt keinen eigenen Wert. Die Seite „Bot“ zeigt sie nicht und bietet kein Feld dafür; beim Speichern schickt sie den gespeicherten Wert unverändert zurück. Ändern lässt sie sich in dieser Version nur über die Schnittstelle der App (`PUT /api/bot`).

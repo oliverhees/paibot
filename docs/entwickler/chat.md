@@ -129,13 +129,13 @@ Browser-Test und Bilder der Vorschau:
 
 ## Datenmodell und Migrationen
 
-| Tabelle               | Schema                                     | Wofür                                                                                                      |
-| --------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `conversations`       | `packages/db/src/schema/unterhaltungen.ts` | Unterhaltungen mit Bot und Schalter der Datenschleuse                                                      |
-| `messages`            | `packages/db/src/schema/unterhaltungen.ts` | Nachrichten mit Rolle, Weg und Token; wer laut Antwort geantwortet hat (`served_provider`, `served_model`) |
-| `runs`                | `packages/db/src/schema/unterhaltungen.ts` | Läufe; höchstens ein offener je Unterhaltung (`runs_ein_offener_lauf_je_unterhaltung`)                     |
-| `conversation_events` | `packages/db/src/schema/unterhaltungen.ts` | Ereignis-Strom mit laufender Nummer je Unterhaltung                                                        |
-| `pgboss.*`            | eigenes Schema der Warteschlange           | Aufträge (`packages/jobs/src/vertrag.ts#QUEUE_SCHEMA`)                                                     |
+| Tabelle               | Schema                                     | Wofür                                                                                                                                            |
+| --------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `conversations`       | `packages/db/src/schema/unterhaltungen.ts` | Unterhaltungen mit Bot (oder, bei der Art `faden`, mit Team) und Schalter der Datenschleuse; Einzelheiten in [Bots und Teams](bots-und-teams.md) |
+| `messages`            | `packages/db/src/schema/unterhaltungen.ts` | Nachrichten mit Rolle, Weg und Token; wer laut Antwort geantwortet hat (`served_provider`, `served_model`)                                       |
+| `runs`                | `packages/db/src/schema/unterhaltungen.ts` | Läufe; höchstens ein offener je Unterhaltung (`runs_ein_offener_lauf_je_unterhaltung`)                                                           |
+| `conversation_events` | `packages/db/src/schema/unterhaltungen.ts` | Ereignis-Strom mit laufender Nummer je Unterhaltung                                                                                              |
+| `pgboss.*`            | eigenes Schema der Warteschlange           | Aufträge (`packages/jobs/src/vertrag.ts#QUEUE_SCHEMA`)                                                                                           |
 
 Offene Zustände eines Laufs: `packages/shared/src/objects.ts#ACTIVE_RUN_STATUSES`.
 
