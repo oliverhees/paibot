@@ -513,6 +513,20 @@ describe("Apps im Lauf gegen den Test-Server", () => {
 });
 
 describe("Die echte Hülle im Worker hält ihre Sperren", () => {
+  it("eine Weiterleitung (307) auf eine zweite App, deren Name öffentlich auflöst: dort kommt nichts an, der Lauf geht ohne Werkzeuge weiter", async () => {
+    await serverMit([LESEN]);
+    const env = await umgebung(einAufruf("notizen__suche"), { klassen: { suche: "lesen" } });
+    await server.setzeVerhalten({
+      listAnswer: { kind: "redirect", location: "https://zweite.test.example/mcp", status: 307 },
+    });
+    adressen.set("zweite.test.example", [OEFFENTLICH]);
+    const { ergebnis } = await env.frage();
+    expect(ergebnis).toMatchObject({ status: "succeeded" });
+    expect(angebot(env)).toEqual([]);
+    expect(erreicht.length).toBeGreaterThan(0);
+    expect(erreicht.every((z) => z === `https://${HOST}`)).toBe(true);
+  });
+
   it("löst der Name auf eine Loopback-Adresse auf, bekommt der Server nichts zu sehen (mit öffentlicher Auflösung geht es)", async () => {
     await serverMit([LESEN]);
     const env = await umgebung(einAufruf("notizen__suche"), { klassen: { suche: "lesen" } });

@@ -349,6 +349,22 @@ describe("Die echte Hülle hält ihre Sperren", () => {
     expect((await verbinden(u)).status).toBe(201);
   });
 
+  it("eine Weiterleitung (307) auf eine zweite App, deren Name öffentlich auflöst: dort kommt nichts an, nichts wird gespeichert", async () => {
+    await server.setzeVerhalten({
+      token: TOKEN,
+      listAnswer: { kind: "redirect", location: "https://zweite.test.example/mcp", status: 307 },
+    });
+    naht.adressen.set("zweite.test.example", [OEFFENTLICH]);
+    const u = await umgebung();
+    const r = await verbinden(u);
+    expect(r.status).toBeGreaterThanOrEqual(400);
+    expect(naht.erreicht.length).toBeGreaterThan(0);
+    // Unter der Hülle kam nur der erste Name an; der zweite wurde nie angefragt (und bekam keinen Zugang).
+    expect(naht.erreicht.every((z) => z === `https://${HOST}`)).toBe(true);
+    expect(await repo.apps.list(u.e.u.db)).toHaveLength(0);
+    await ohneToken(u);
+  });
+
   it("eine Weiterleitung des Servers wird nicht verfolgt: nichts außer dem erlaubten Ziel wird erreicht", async () => {
     await server.setzeVerhalten({
       listAnswer: { kind: "redirect", location: "http://127.0.0.1:1/geheim", status: 302 },
