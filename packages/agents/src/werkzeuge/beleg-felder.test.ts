@@ -39,9 +39,10 @@ describe("Ergebnis des Nachschlagens aus der gespeicherten Hülle", () => {
 
   // Gegenprobe: in `dokuAusHuelle` die Prüfung `STAND_MUSTER` bei gekürzter Hülle entfernen →
   // bei knappem Platz zählt ein beschnittener Stand („0.3.0-“, „0“, „“).
-  it("bei jedem Platz von 0 bis 80 Zeichen: gekürzt zählt nur mit vollständigem Stand", () => {
+  it("bei jedem Platz von 0 bis 130 Zeichen: gekürzt zählt nur mit vollständigem Stand", () => {
     let gekuerztGesehen = 0;
-    for (let platz = 0; platz <= 80; platz += 1) {
+    let ungekuerztGesehen = 0;
+    for (let platz = 0; platz <= 130; platz += 1) {
       const huelle = huelleMitPlatz(platz);
       if (huelle === undefined) continue;
       const doku = dokuAusHuelle(DOKU_TOOL_KEY, huelle);
@@ -52,10 +53,13 @@ describe("Ergebnis des Nachschlagens aus der gespeicherten Hülle", () => {
           doku === undefined ? {} : { docStand: STAND, found: 0 },
         );
       } else {
+        ungekuerztGesehen += 1;
         expect(doku, `Platz ${platz}`).toEqual({ stand: STAND, gefunden: 0 });
       }
     }
+    // Beide Bereiche müssen wirklich durchlaufen worden sein, sonst prüft die Schleife nichts.
     expect(gekuerztGesehen).toBeGreaterThan(10);
+    expect(ungekuerztGesehen).toBeGreaterThan(10);
   });
 
   it("ein beschnittener Stand in einer gekürzten Hülle zählt nicht, mit vollständigem Stand schon", () => {
