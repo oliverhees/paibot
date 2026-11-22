@@ -86,6 +86,7 @@ import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { istBekannteDevWarnung } from "./doku/konsole.mjs";
 import {
   ANBIETER_STANDARD,
   aendereLauf,
@@ -388,10 +389,8 @@ function watch(context, page, baseUrl, entwicklung = false) {
     // Antworten mit 4xx/5xx meldet Chromium so; gewollte Fehler (z. B. falsches Passwort)
     // gehören zur Aufnahme. Unerwartete Status der Seite selbst prüft `status`.
     if (message.text().startsWith("Failed to load resource")) return;
-    // Nur der Entwicklungs-Server von Next meldet, ein vorgeladenes Stylesheet werde nicht gleich
-    // gebraucht; das betrifft jede Seite unter /_komponenten und sagt nichts über die Seite aus.
-    if (entwicklung && /was preloaded using link preload but not used/u.test(message.text()))
-      return;
+    // Einzige Ausnahme: eine Warnung des Entwicklungs-Servers (scripts/doku/konsole.mjs).
+    if (istBekannteDevWarnung(type, message.text(), entwicklung)) return;
     problems.push(`Konsole (${type}): ${message.text()}`);
   });
   context.route(
