@@ -128,7 +128,16 @@ function ohneKommentare(text: string): string {
 
 /** So liest Code die Tabelle `messages` (Zugriffsfunktionen, Suche, Abfragen, Lesestand der Web-App). */
 const LESER: readonly RegExp[] = [
-  /\brepo\.messages\./,
+  // `repo.messages` in jeder Form: `repo.messages.get`, `repo?.messages.get`, `const m = repo.messages`
+  /\brepo\??\.messages\b/,
+  // jeder Name, der die Zugriffsfunktionen aufruft (Import als Namensraum, `repo` unter anderem Namen)
+  /\b\w+\??\.messages\??\.(?:insert|get|listForConversation|finalize|tokensSince)\b/,
+  // Lesen über einen berechneten Namen: `repo[k]`
+  /\brepo\s*\[/,
+  // `sql`… from ${messages}``, auch `${schema.messages}`
+  /\$\{\s*(?:\w+\.)?messages\s*\}/,
+  // Import der Tabelle ohne `as` aus dem Datenbank-Paket
+  /\bimport\s*(?:type\s*)?\{[^}]*\bmessages\b[^}]*\}\s*from\s*["']@paibot\/db/,
   /\brepo\.search\.messageHits\b/,
   /\bquery\.messages\b/,
   /\bladeVerlauf\(/,
@@ -165,7 +174,7 @@ function ohneNurAntworten(texte: ReadonlyMap<string, string>): string[] {
   const funde: string[] = [];
   for (const [datei, text] of texte) {
     const code = ohneKommentare(text);
-    for (const treffer of code.matchAll(/\bmessages\.listForConversation\(/g)) {
+    for (const treffer of code.matchAll(/\bmessages\??\.listForConversation\(/g)) {
       let tiefe = 1;
       let ende = (treffer.index ?? 0) + treffer[0].length;
       while (ende < code.length && tiefe > 0) {
@@ -175,12 +184,32 @@ function ohneNurAntworten(texte: ReadonlyMap<string, string>): string[] {
         ende += 1;
       }
       const aufruf = code.slice(treffer.index, ende);
-      if (!/\bnurAntworten:\s*true\b/.test(aufruf)) {
+      if (!hatFilter(aufruf)) {
         funde.push(`${datei}: ${aufruf.replace(/\s+/g, " ").slice(0, 90)}`);
       }
     }
+    // Die Funktion unter anderem Namen (`const { listForConversation: l } = repo.messages`): Der
+    // Aufruf ist dann nicht mehr zu prüfen und gilt als Fund.
+    for (const treffer of code.matchAll(
+      /\{[^{}]*\blistForConversation\b[^{}]*\}\s*=\s*[\w.?]*\bmessages\b/g,
+    )) {
+      funde.push(`${datei}: ${treffer[0].replace(/\s+/g, " ").slice(0, 90)}`);
+    }
   }
   return funde;
+}
+
+/**
+ * Hat der Aufruf (Text von `messages.listForConversation(` bis zur schließenden Klammer) genau
+ * einen Filter `nurAntworten: true` als Eintrag einer Option? Nicht gezählt: der Filter in einem
+ * Text, ein zweiter Eintrag gleichen Namens, `...`-Optionen (können ihn überschreiben) und eine
+ * Verknüpfung wie `nurAntworten: true && flag`.
+ */
+function hatFilter(aufruf: string): boolean {
+  const ohneTexte = aufruf.replace(/"[^"\n]*"|'[^'\n]*'|`[^`]*`/g, '""');
+  if (ohneTexte.includes("...")) return false;
+  if ((ohneTexte.match(/\bnurAntworten\b/g) ?? []).length !== 1) return false;
+  return /\bnurAntworten:\s*true\s*(?=[,}])/.test(ohneTexte);
 }
 
 /**
@@ -370,5 +399,91 @@ describe("Wer Nachrichten liest", () => {
     expect(ohneKommentare("a /* b */ c")).toBe("a   c");
     expect(ohneKommentare('const u = "http://x"; // weg')).toBe('const u = "http://x"; ');
     expect(ohneKommentare("const t = `a // b`;")).toBe("const t = `a // b`;");
+  });
+});
+
+// Gegenprobe: Je ein Muster aus `LESER` bzw. die Prüfung des Filters in `ohneNurAntworten`
+// streichen → die zugehörige Probe wird rot. Die Proben sind bekannte Umgehungen
+// der früheren Fassung der Regel.
+describe("Umgehungen der Regel", () => {
+  it("erkennt Leser unter anderen Schreibweisen", () => {
+    const proben: [string, string][] = [
+      ["namensraum", 'import * as r from "@paibot/db/repo";\nawait r.messages.get(db, id);'],
+      [
+        "repo-als-r",
+        'import { repo as r } from "@paibot/db";\nawait r.messages.listForConversation(db, id);',
+      ],
+      ["alias", "const m = repo.messages;\nawait m.get(db, id);"],
+      ["optional", "await repo?.messages.get(db, id);"],
+      ["optional-zweimal", "await repo?.messages?.get(db, id);"],
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Probe-Code als Text, kein Platzhalter
+      ["sql-vorlage", "await db.execute(sql`select 1 from ${messages} where id = 1`);"],
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: Probe-Code als Text, kein Platzhalter
+      ["sql-schema", "await db.execute(sql`select 1 from ${schema.messages} where id = 1`);"],
+      [
+        "import-ohne-as",
+        'import { messages } from "@paibot/db/schema";\nconst t = messages;\ndb.select().from(t);',
+      ],
+      ["dynamisch", "const x = await repo[k].get(db, id);"],
+    ];
+    for (const [name, code] of proben) {
+      expect(leserDateien(new Map([[`${name}.ts`, code]])), name).toEqual([`${name}.ts`]);
+    }
+  });
+
+  it("meldet einen Aufruf ohne Filter, auch wenn der Filter nur scheinbar da ist", () => {
+    const proben: [string, string][] = [
+      [
+        "spread",
+        "await repo.messages.listForConversation(tx, id, { nurAntworten: true, ...opts });",
+      ],
+      [
+        "spread-vorne",
+        "await repo.messages.listForConversation(tx, id, { ...opts, nurAntworten: true });",
+      ],
+      [
+        "doppelt",
+        "await repo.messages.listForConversation(tx, id, { nurAntworten: true, nurAntworten: false });",
+      ],
+      ["als-text", 'await repo.messages.listForConversation(tx, id, "nurAntworten: true");'],
+      ["als-text-2", "await repo.messages.listForConversation(tx, id, 'nurAntworten: true');"],
+      [
+        "verknuepft",
+        "await repo.messages.listForConversation(tx, id, { nurAntworten: true && flag });",
+      ],
+      [
+        "zerlegt",
+        "const { listForConversation: l } = repo.messages;\nawait l(tx, id, { nurAntworten: true });",
+      ],
+      ["optional-aufruf", "await repo?.messages?.listForConversation(tx, id, { limit: 5 });"],
+    ];
+    for (const [name, code] of proben) {
+      expect(ohneNurAntworten(new Map([[`${name}.ts`, code]])).length, name).toBe(1);
+    }
+  });
+
+  it("lässt einen echten Filter durch, auch hinter anderen Optionen und über Zeilen", () => {
+    const gut = new Map([
+      ["a.ts", "await repo.messages.listForConversation(tx, id, { nurAntworten: true });"],
+      [
+        "b.ts",
+        "await repo.messages.listForConversation(tx, id, { limit: 5, nurAntworten: true });",
+      ],
+      [
+        "c.ts",
+        "await repo?.messages.listForConversation(\n  tx,\n  id,\n  { nurAntworten: true,\n limit: 3 },\n);",
+      ],
+    ]);
+    expect(ohneNurAntworten(gut)).toEqual([]);
+  });
+
+  it("meldet nichts bei ähnlichem, das keine Nachrichten liest (zweite Runde)", () => {
+    const harmlos = new Map([
+      ["a.ts", "const r = await fetch(url); return r.messages.map((m) => m.text);"],
+      ["b.ts", "const { runs } = repo; await repo.runs.get(db, id);"],
+      ["c.ts", 'import { messages } from "ai";'],
+      ["d.ts", "await repo.conversations.get(db, id);"],
+    ]);
+    expect(leserDateien(harmlos)).toEqual([]);
   });
 });
