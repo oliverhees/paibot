@@ -27,10 +27,10 @@ export function brauchtVergleich(tool: AppTool): boolean {
 
 /**
  * Die Fassung, mit der eine Fassung zu vergleichen ist: die jüngste frühere, die der Besitzer
- * eingestuft hat (`bestaetigt` oder `gesperrt`) und deren Abdruck ein anderer ist als der heutige.
- * Bei einer geänderten Fassung gilt sonst die unmittelbar vorherige. Eine neue Fassung hat nur dann
- * einen Vergleich, wenn der Besitzer früher eine andere eingestuft hatte (etwa weil sich das
- * Werkzeug während einer Trennung geändert hat).
+ * eingestuft hat (`bestaetigt` oder `gesperrt`), auch wenn ihr Abdruck der heutige ist: Dann ist der
+ * Vergleich leer, aber „bisher“ nennt die Entscheidung des Besitzers (auch eine Sperre). Bei einer
+ * geänderten Fassung gilt sonst die unmittelbar vorherige. Eine neue Fassung ohne frühere
+ * Einstufung hat keinen Vergleich.
  *
  * War der Verlauf abgeschnitten (es gibt ältere Fassungen, als geladen wurden) und liegt darin keine
  * eingestufte Fassung, kann die bestätigte außerhalb liegen: Dann ist der Vergleich
@@ -44,11 +44,10 @@ export function vergleichFuer(
 ): { frueher: AppTool | undefined; unvollstaendig: boolean } {
   if (!brauchtVergleich(tool)) return { frueher: undefined, unvollstaendig: false };
   const frueher = verlauf.filter((f) => f.version < tool.version);
+  // Die jüngste Einstufung, auch mit gleichem Abdruck und auch eine Sperre: Sie bestimmt „bisher“.
+  // Ist ihr Abdruck der heutige, ist der Vergleich leer (nichts geändert), „bisher“ stimmt trotzdem.
   const eingestuft = frueher
-    .filter(
-      (f) =>
-        (f.status === "bestaetigt" || f.status === "gesperrt") && f.toolDigest !== tool.toolDigest,
-    )
+    .filter((f) => f.status === "bestaetigt" || f.status === "gesperrt")
     .at(-1);
   if (eingestuft !== undefined) return { frueher: eingestuft, unvollstaendig: false };
   if (abgeschnitten) return { frueher: undefined, unvollstaendig: true };

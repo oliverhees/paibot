@@ -1011,7 +1011,7 @@ describe("Was hat sich geändert", () => {
     expect(ws.filter((x) => x.frueher !== undefined)).toHaveLength(1);
   });
 
-  it("nach Neu verbinden mit gleicher Fassung: „neu“ ohne Vergleich (es hat sich nichts geändert)", async () => {
+  it("nach Neu verbinden mit gleicher Fassung: „neu“, „bisher“ nennt die bestätigte Fassung, aber kein Änderungs-Vergleich", async () => {
     const u = await umgebung();
     const g = await geaendert(u, 0);
     await u.e.rufe(u.h.trennen, "DELETE", `/api/apps/${g.id}`, { params: { id: g.id } });
@@ -1020,8 +1020,11 @@ describe("Was hat sich geändert", () => {
       koerper: { token: TOKEN },
     });
     const f = fassungen(await verlauf(u, g.id, g.werkzeug));
-    expect(f[f.length - 1]?.stand).toBe("neu");
-    expect(f[f.length - 1]?.frueher).toBeUndefined();
+    const neueste = f[f.length - 1];
+    expect(neueste?.stand).toBe("neu");
+    // Dieselbe Fassung: der Vergleich ist die jüngste Einstufung selbst, es gibt nichts Geändertes.
+    expect(neueste?.frueher?.abdruck).toBe(neueste?.abdruck);
+    expect(neueste?.frueher?.klasse).toBe("lesen");
   });
 
   // Gegenprobe: in `ladeFassungen` nur `grenze` statt `grenze + 1` laden → kein Hinweis, rot.

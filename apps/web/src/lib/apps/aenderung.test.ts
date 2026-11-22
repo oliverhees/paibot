@@ -168,6 +168,19 @@ describe("werkzeugEintrag mit früherer Fassung", () => {
     ).toBeUndefined();
   });
 
+  it("neu mit der gesperrten Fassung als jüngster Einstufung: „bisher“ nennt die Sperre, kein Änderungs-Vergleich", () => {
+    const e = werkzeugEintrag(
+      antwort({
+        stand: "neu",
+        frueher: fassung({ klasse: "gesperrt" }),
+        modellText: fassung().modellText,
+        hinweiseLautApp: fassung().hinweiseLautApp,
+      }),
+    );
+    expect(e.bisher).toBe("gesperrt");
+    expect(e.aenderungen).toEqual([]);
+  });
+
   it("nur eine geänderte oder neue Fassung zeigt Änderungen: bestätigt oder entfernt (auch mit früherer Fassung) nicht", () => {
     for (const stand of ["bestaetigt", "entfernt"] as const) {
       const e = werkzeugEintrag(antwort({ stand, frueher: fassung() }));

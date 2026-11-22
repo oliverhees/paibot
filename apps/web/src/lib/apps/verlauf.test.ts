@@ -35,6 +35,22 @@ describe("vergleichFuer", () => {
     expect(r.unvollstaendig).toBe(false);
   });
 
+  // Gegenprobe: wieder nur Fassungen mit anderem Abdruck zulassen → rot (es wäre Fassung 2 „bestätigt“).
+  it("bindet den Vergleich an die jüngste Einstufung, auch bei gleichem Abdruck und auch bei einer Sperre", () => {
+    // A bestätigt, B geändert, B gesperrt, B neu (nach Neu verbinden).
+    const verlauf = [
+      fassung(1, "neu", 1),
+      fassung(2, "bestaetigt", 1),
+      fassung(3, "geaendert", 2),
+      fassung(4, "gesperrt", 2),
+      fassung(5, "neu", 2),
+    ];
+    const r = vergleichFuer(verlauf, verlauf[4] as AppTool, false);
+    expect(r.frueher?.version).toBe(4);
+    expect(r.frueher?.status).toBe("gesperrt");
+    expect(r.unvollstaendig).toBe(false);
+  });
+
   it("ohne Grenze und ohne eingestufte Fassung: geändert nimmt den Vorgänger, neu hat nichts", () => {
     const verlauf = [fassung(1, "neu"), fassung(2, "geaendert")];
     expect(vergleichFuer(verlauf, verlauf[1] as AppTool, false)).toEqual({
@@ -42,6 +58,7 @@ describe("vergleichFuer", () => {
       unvollstaendig: false,
     });
     const neu = [fassung(1, "neu"), fassung(2, "neu", 1)];
+    // Nie eingestuft: nichts zu vergleichen.
     expect(vergleichFuer(neu, neu[1] as AppTool, false)).toEqual({
       frueher: undefined,
       unvollstaendig: false,
