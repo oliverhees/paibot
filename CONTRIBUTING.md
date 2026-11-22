@@ -56,7 +56,7 @@ Labels und Meilensteine stehen in [`.github/projekt.json`](.github/projekt.json)
 
 ## Entwicklungsumgebung
 
-Voraussetzungen: **Node.js 22** und **pnpm 10**.
+Voraussetzungen: **Node.js 26** und **pnpm 10**. Node 26 bringt corepack nicht mehr mit. pnpm 10.28.0 bekommst du zum Beispiel so (selbst ausprobiert mit Node v26.13.1; geprüft wird dabei nur die Prüfsumme der npm-Registry, nicht die sha512 aus `packageManager`): `npm install --prefix ~/.pnpm-10.28.0 pnpm@10.28.0 --ignore-scripts` und dann `~/.pnpm-10.28.0/node_modules/.bin` in den `PATH` aufnehmen.
 
 ```bash
 git clone https://github.com/<dein-name>/paibot.git

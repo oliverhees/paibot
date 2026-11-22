@@ -165,6 +165,7 @@ export async function runLoop(
       botId: run.botId,
       killSwitch: context.settings.killSwitch,
       signal: guard.signal,
+      gesamtfristMs: tuning.appAbrufMs,
     }),
   );
   const registry: ToolRegistry = appWerkzeuge.registry;

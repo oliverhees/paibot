@@ -440,6 +440,7 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
           db,
           botId: run.botId,
           modelName: call.name,
+          erwartet: { appId: bezug.appId, appToolId: bezug.appToolId },
         }),
       )) ?? fehlendeAppFakten(bezug.appId, bezug.appToolId);
     if (input.stepApp !== undefined) input.stepApp.appId ??= appFakten.appId;

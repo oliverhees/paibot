@@ -38,7 +38,7 @@ HIER=$(cd "$(dirname "$0")" && pwd)
 WURZEL=$(cd "$HIER/.." && pwd)
 DB_SKRIPT="$HIER/sicherung-db.sh"
 # Gleiches Basis-Image wie apps/web/Dockerfile: Node für den Prüfer der Belege.
-NODE_IMAGE=node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+NODE_IMAGE=node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
 WARTEZEIT=${PAIBOT_SICHERUNG_WARTEZEIT:-240}
 
 meldung() { printf '%s\n' "$*" >&2; }
@@ -292,6 +292,12 @@ pruefer_bereitstellen() {
       find /tmp/bau -name node_modules -prune -exec rm -rf {} +
       rm -rf /tmp/bau/.git
       cd /tmp/bau
+      # Node 26 liefert corepack nicht mehr mit: feste Fassung aus deploy/corepack (Prüfsummen, keine Skripte).
+      mkdir /tmp/corepack-gesperrt
+      cp /repo/deploy/corepack/package.json /repo/deploy/corepack/package-lock.json /tmp/corepack-gesperrt/
+      npm ci --prefix /tmp/corepack-gesperrt --no-audit --no-fund --ignore-scripts > /tmp/corepack-gesperrt.log 2>&1 ||
+        { tail -n 40 /tmp/corepack-gesperrt.log; exit 1; }
+      PATH=/tmp/corepack-gesperrt/node_modules/.bin:$PATH
       corepack pnpm install --frozen-lockfile --filter "@paibot/receipts..." > /tmp/install.log 2>&1 ||
         { tail -n 40 /tmp/install.log; exit 1; }
       corepack pnpm --filter @paibot/receipts build > /tmp/build.log 2>&1 ||

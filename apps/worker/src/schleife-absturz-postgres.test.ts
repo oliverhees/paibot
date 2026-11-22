@@ -146,7 +146,7 @@ describe.skipIf(BASE_URL === undefined)("Worker mitten im Werkzeug beendet", () 
       bundle: true,
       platform: "node",
       format: "esm",
-      target: "node22",
+      target: "node26",
       external: ["pg-native"],
       banner: {
         js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',

@@ -37,6 +37,7 @@ describe("Schnittstelle", () => {
       maxAnswerChars: 200000,
       historyMaxMessages: 50,
       maxRequestChars: 120000,
+      appAbrufMs: 15000,
     });
     // Die Zahl der Schritte kommt aus den Einstellungen (`max_steps_per_run`), nicht mehr aus dem Code.
     expect("MAX_MOTOR_STEPS" in agents).toBe(false);

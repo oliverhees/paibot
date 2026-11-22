@@ -30,7 +30,7 @@ Den Text-Index der Doku, der ins Image kommt, baut `pnpm doku:index` (Datei `dok
 
 Mit `pnpm dev` (nicht Produktion) migriert die Web-App die Datenbank aus `DATABASE_URL` beim Start selbst. In Produktion und im Docker-Stack tut sie das nie: Dort richtet zuerst der Einmal-Dienst `migrate` Migrationen und App-Rolle ein, danach starten `web` und `worker` nur mit der App-Rolle. Wer den Produktions-Build lokal startet, führt deshalb vorher denselben Schritt aus (`PAIBOT_ROLE=migrate` mit `DATABASE_URL` der App-Rolle und `DATABASE_MIGRATION_URL`).
 
-Voraussetzungen: Node.js 22 und pnpm 10 (siehe [CONTRIBUTING.md](../CONTRIBUTING.md)).
+Voraussetzungen: Node.js 26 und pnpm 10 (siehe [CONTRIBUTING.md](../CONTRIBUTING.md)). Node 26 bringt corepack nicht mehr mit. pnpm 10.28.0 bekommst du zum Beispiel so (selbst ausprobiert mit Node v26.13.1; geprüft wird dabei nur die Prüfsumme der npm-Registry, nicht die sha512 aus `packageManager`): `npm install --prefix ~/.pnpm-10.28.0 pnpm@10.28.0 --ignore-scripts` und dann `~/.pnpm-10.28.0/node_modules/.bin` in den `PATH` aufnehmen.
 
 ### Test-Anbieter im Test starten
 

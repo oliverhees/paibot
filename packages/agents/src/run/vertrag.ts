@@ -43,6 +43,11 @@ export interface RunTuning {
   historyMaxMessages: number;
   /** Höchstens so viele Zeichen (Anweisung plus Verlauf) gehen an das Modell. */
   maxRequestChars: number;
+  /**
+   * Gesamtfrist für den Abruf der Werkzeug-Listen aller Apps beim Lauf-Start. Eine App, die bis
+   * dahin nicht geantwortet hat, trägt zu diesem Lauf nichts bei.
+   */
+  appAbrufMs: number;
 }
 
 export const RUN_TUNING: RunTuning = {
@@ -57,6 +62,7 @@ export const RUN_TUNING: RunTuning = {
   maxAnswerChars: 200000,
   historyMaxMessages: 50,
   maxRequestChars: 120000,
+  appAbrufMs: 15000,
 };
 
 /**
