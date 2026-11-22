@@ -510,7 +510,9 @@ jobs:
 
           echo "::group::Stack samt Volume löschen, zurückspielen in den normalen Stack"
           $mit_anbieter --profile pruefen down -v
-          if docker volume ls -q | grep -qx 'paibot_postgres-data'; then echo "Volume der Datenbank noch da"; exit 1; fi
+          # Ohne -q: grep liest die Ausgabe ganz. Mit -q endet es beim ersten Treffer; unter pipefail
+          # gilt die Zeile dann je nach Timing als fehlgeschlagen, obwohl der Treffer da ist.
+          if docker volume ls -q | grep -x 'paibot_postgres-data' > /dev/null; then echo "Volume der Datenbank noch da"; exit 1; fi
           sh deploy/sicherung.sh zurueckspielen "$ordner" | tee "$RUNNER_TEMP/zurueckspielen.txt"
           for zeile in "✓ Ziel-Datenbank ist leer." "✓ Tabellen:" "✓ Migrations-Schritt fertig" "Kette gültig, alle Schlüssel aus der Kette." \
                        "✓ Belege-Kette geprüft, gegen den Anker aus der Begleit-Datei." "Ergebnis: Alles aus der Sicherung ist da."; do
@@ -522,9 +524,9 @@ jobs:
           docker run --rm --network host --read-only --cap-drop ALL -v "$PWD/scripts:/probe:ro" \
             -e PAIBOT_PROBE_URL=http://127.0.0.1:3000 -e PAIBOT_PROBE_HERKUNFT=http://localhost:3000 \
             -e PAIBOT_PROBE_PASSWORT="$passwort" "$node_image" node /probe/sicherung-probe.mjs anmelden
-          curl -fsS -D "$RUNNER_TEMP/health3.head" http://localhost:3000/api/health | grep -q '"db":"ok"'
+          curl -fsS -D "$RUNNER_TEMP/health3.head" http://localhost:3000/api/health | grep '"db":"ok"' > /dev/null
           if grep -qi '^x-pb-db-rolle:' "$RUNNER_TEMP/health3.head"; then echo "zu viele Rechte nach dem Zurückspielen"; exit 1; fi
-          $compose logs worker | grep -qF "[paibot-worker] Veraltete Läufe aufgeräumt:" || { $compose logs worker | tail -40; exit 1; }
+          $compose logs worker | grep -F "[paibot-worker] Veraltete Läufe aufgeräumt:" > /dev/null || { $compose logs worker | tail -40; exit 1; }
           sh deploy/sicherung.sh pruefen "$ordner" | tail -n 3
           echo "::endgroup::"
 
