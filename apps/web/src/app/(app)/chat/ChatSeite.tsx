@@ -25,9 +25,12 @@ import {
   ChatEingabe,
   Dialog,
   EmptyState,
+  FestHinweis,
   Icon,
   Markdown,
   Menue,
+  Phase,
+  type PhaseArt,
   ScrollBereich,
   Select,
   Startbereich,
@@ -35,10 +38,14 @@ import {
   StatusChip,
   TextField,
   tageszeitIn,
+  VorlaeufigerText,
+  WerkzeugZeile,
+  Zwischenschritt,
 } from "@paibot/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Fragment,
   type ReactNode,
   useCallback,
   useEffect,
@@ -53,6 +60,8 @@ import {
   type AnsichtEintrag,
   type AnsichtLaufEnde,
   type AnsichtNachricht,
+  type AnsichtSchritt,
+  type AnsichtWerkzeug,
   abbruchAngefragt,
   abbruchZurueck,
   ansichtAus,
@@ -62,9 +71,13 @@ import {
   gesendet,
   kopfModell as kopfModellVon,
   leereAnsicht,
+  nachfrageUebernehmen,
   neuErzeugbar,
   neuErzeugt,
+  offeneNachfrage,
   ohneVorgabe,
+  schritteVon,
+  schrittSichtbar,
   sendenGesperrt,
 } from "../../../lib/chat/ansicht";
 import {
@@ -86,11 +99,17 @@ import { antwortHatText, avatarWort, chatAvatarZustand } from "../../../lib/chat
 import { type Fassung, fassungenVon } from "../../../lib/chat/fassungen";
 import { CHAT_PFADE, unterhaltungsAdresse } from "../../../lib/chat/pfade";
 import { useFlaeche, useKopf, useRahmen } from "../../../lib/chat/rahmen-kontext";
+import {
+  herkunftKette,
+  werkzeugZeileAngaben,
+  zahlWerkzeuge,
+} from "../../../lib/chat/schritte-anzeige";
 import { STANDARD_FASSUNG, type StartFassung } from "../../../lib/chat/startbereich";
 import type {
   BelegKurz,
   ChatBereitschaft,
   ChatVerlauf,
+  LaufWerkzeuge,
   ModellInfo,
   ModellWahl,
   UnterhaltungInfo,
@@ -112,6 +131,8 @@ export interface ChatSeiteProps {
   stelle?: string;
   /** Fassung des Startbereichs einer leeren Unterhaltung (aus dem Cookie des Browsers). */
   fassung?: StartFassung;
+  /** Ob der Knopf „Schritte“ anfangs an ist (Werkzeug- und Beleg-Zeilen sichtbar); sonst immer an. */
+  schritteAnfangs?: boolean;
 }
 
 const BLOCK_TEXTE = {
@@ -177,6 +198,7 @@ export function ChatSeite({
   verlauf,
   stelle,
   fassung = STANDARD_FASSUNG,
+  schritteAnfangs = true,
 }: ChatSeiteProps) {
   const router = useRouter();
   const rahmen = useRahmen();
@@ -206,7 +228,9 @@ export function ChatSeite({
   // Eigene Nachrichten, die schon vor dem Senden im Verlauf standen (für die vorläufige Anzeige).
   const vorSenden = useRef<ReadonlySet<string>>(new Set());
   const [fehler, setFehler] = useState<ApiErrorDetail | undefined>();
-  const [schritte, setSchritte] = useState(true);
+  const [schritte, setSchritte] = useState(schritteAnfangs);
+  // Aufgeklappte Zwischenschritte und Werkzeug-Zeilen; ohne Eintrag sind sie zu und werden nicht gemerkt.
+  const [aufgeklappt, setAufgeklappt] = useState<Record<string, boolean>>({});
   const [belegOffen, setBelegOffen] = useState<string | undefined>();
   const [dialog, setDialog] = useState<
     "umbenennen" | "loeschen" | "sichern" | "modell" | undefined
@@ -282,15 +306,41 @@ export function ChatSeite({
     };
   }, [id, offeneBelege, loescht]);
 
-  // Fertige Antwort im Live-Bereich ansagen (nicht jedes Stück).
+  // Werkzeug-Aufrufe eines Laufs holen (Fundstellen, Frage, Belege) und feste Antworten erkennen:
+  // einmal je Änderung am Zustand, nie in einer Schleife.
+  const nachfrage = useMemo(() => offeneNachfrage(ansicht), [ansicht]);
+  const nachfrageLauf = nachfrage?.runId;
+  const nachfrageSchluessel = nachfrage?.schluessel;
+  useEffect(() => {
+    if (id === undefined || nachfrageLauf === undefined || nachfrageSchluessel === undefined)
+      return;
+    if (loescht) return;
+    let aktiv = true;
+    void (async () => {
+      const r = await apiFetch<LaufWerkzeuge>("GET", CHAT_PFADE.laufWerkzeuge(id, nachfrageLauf));
+      if (aktiv && r.ok) setAnsicht((a) => nachfrageUebernehmen(a, nachfrageLauf, r.daten));
+    })();
+    return () => {
+      aktiv = false;
+    };
+  }, [id, nachfrageLauf, nachfrageSchluessel, loescht]);
+
+  // Fertige Antwort im Live-Bereich ansagen (nicht jedes Stück); eine feste Antwort mit ihrem Hinweis.
   useEffect(() => {
     const fertig = ansicht.fertigeAntwort;
     if (fertig === undefined) return;
     const n = ansicht.eintraege.find((e) => e.art === "nachricht" && e.id === fertig);
     if (n?.art !== "nachricht") return;
     const kurz = n.text.length > 400 ? `${n.text.slice(0, 400)} …` : n.text;
-    setAnsage(`${t("chat.antwort.fertig", { name: botName })}: ${kurz}`);
+    const hinweis = n.herkunft === "fest" ? ` (${t("schritte.fest.hinweis")})` : "";
+    setAnsage(`${t("chat.antwort.fertig", { name: botName })}${hinweis}: ${kurz}`);
   }, [ansicht.fertigeAntwort, ansicht.eintraege, botName]);
+
+  // Ein Nachschlagen beginnt: einmal ansagen (der vorläufige Text selbst wird nie vorgelesen).
+  const nachschlagend = ansicht.lauf?.phase === "schlaegt_nach";
+  useEffect(() => {
+    if (nachschlagend) setAnsage(`${botName} ${t("schritte.phase.schlaegt_nach")}`);
+  }, [nachschlagend, botName]);
 
   // Mitrollen, solange man unten ist.
   useEffect(() => {
@@ -478,7 +528,19 @@ export function ChatSeite({
     ? t("chat.lauf.stoppt")
     : lauf?.phase === "wartet"
       ? t("chat.lauf.wartet")
-      : t(avatarWort(avatarZ));
+      : lauf?.phase === "schlaegt_nach"
+        ? t("schritte.phase.schlaegt_nach")
+        : t(avatarWort(avatarZ));
+  /** Phase des laufenden Laufs für die Zeile über der vorläufigen Anzeige. */
+  const phaseArt: PhaseArt = lauf?.abbruch
+    ? "stoppt"
+    : lauf?.phase === "wartet"
+      ? "wartet"
+      : lauf?.phase === "schlaegt_nach"
+        ? "schlaegt_nach"
+        : hatText
+          ? "schreibt"
+          : "denkt";
   /** Wo im Fenster der Cursor des Eingabefelds ungefähr steht (der Avatar schaut dorthin). */
   const schreibstelle = useCallback(() => {
     const feld = eingabeRef.current?.querySelector("textarea");
@@ -656,6 +718,18 @@ export function ChatSeite({
     ]
       .filter((teil): teil is string => teil !== undefined)
       .join(" · ");
+    // Antwort aus mehreren Schritten: Modell und Unter-Anbieter je Schritt, dazu die Zahl der Aufrufe.
+    const kette = n.runId === undefined ? [] : schritteVon(ansicht, n.runId);
+    const mehrere =
+      kette.length > 0
+        ? herkunftKette(
+            kette,
+            { modell, ...(n.servedBy === undefined ? {} : { servedBy: n.servedBy }) },
+            bereitschaft.modell,
+            bereitschaft.unterAnbieter,
+          )
+        : undefined;
+    const anzahl = zahlWerkzeuge(kette);
     return (
       <AntwortZeile
         {...(beleg ? { beleg } : {})}
@@ -666,6 +740,94 @@ export function ChatSeite({
           ...(satz === undefined || marke === undefined ? {} : { kennzeichnung: { marke, satz } }),
           ...(herkunft === "" ? {} : { herkunft }),
         }}
+        {...(mehrere === undefined ? {} : { schritte: mehrere })}
+        {...(anzahl > 0 ? { werkzeuge: anzahl } : {})}
+      />
+    );
+  }
+
+  /** Klappt eine Zeile oder einen Zwischenschritt auf oder zu. */
+  function umschalten(schluessel: string) {
+    setAufgeklappt((a) => ({ ...a, [schluessel]: !a[schluessel] }));
+  }
+
+  /** Eine Werkzeug-Zeile; der Zustand kommt nur aus dem Aufruf, Beleg und Regel aus den Belegen. */
+  function werkzeugZeile(w: AnsichtWerkzeug) {
+    const { beleg, ...rest } = werkzeugZeileAngaben(w, ansicht.belege);
+    const schluessel = `w:${w.actionId}`;
+    return (
+      <WerkzeugZeile
+        key={schluessel}
+        {...rest}
+        {...(beleg === undefined
+          ? {}
+          : { beleg: { kennung: beleg.kennung, onOeffnen: () => oeffneBeleg(beleg.id) } })}
+        offen={aufgeklappt[schluessel] === true}
+        onUmschalten={() => umschalten(schluessel)}
+      />
+    );
+  }
+
+  /**
+   * Ein Schritt über der Antwort: sein Text (vorläufig, eingeklappter Zwischenschritt, verworfen
+   * oder abgebrochen) und seine Werkzeug-Zeilen. Der Knopf „Schritte“ blendet Werkzeug-Zeilen und
+   * eingeklappte Zwischenschritte aus; vorläufiger Text, „verworfen“ und „abgebrochen“ bleiben.
+   */
+  function schrittElement(x: AnsichtSchritt): ReactNode {
+    const schluessel = `s:${x.runId}:${x.step}`;
+    const teile: ReactNode[] = [];
+    if (x.text !== "") {
+      if (x.ende === "laeuft" || x.ende === "antwort") {
+        teile.push(<VorlaeufigerText key="text" name={botName} zustand="laeuft" text={x.text} />);
+      } else if (x.ende === "abgebrochen") {
+        teile.push(
+          <VorlaeufigerText key="text" name={botName} zustand="abgebrochen" text={x.text} />,
+        );
+      } else if (x.ende === "verworfen" || schritte) {
+        teile.push(
+          <Zwischenschritt
+            key="text"
+            name={botName}
+            art={x.ende}
+            text={x.text}
+            offen={aufgeklappt[schluessel] === true}
+            onUmschalten={() => umschalten(schluessel)}
+          />,
+        );
+      }
+    }
+    if (schritte) {
+      for (const w of [...x.werkzeuge].sort((a, b) => a.position - b.position)) {
+        teile.push(werkzeugZeile(w));
+      }
+    }
+    return teile.length === 0 ? null : <Fragment key={schluessel}>{teile}</Fragment>;
+  }
+
+  /** Alle Schritte eines Laufs, die gerade etwas zu zeigen haben. */
+  function schrittListe(runId: string): ReactNode[] {
+    return schritteVon(ansicht, runId)
+      .filter(schrittSichtbar)
+      .map(schrittElement)
+      .filter((e) => e !== null);
+  }
+
+  /** Block des Bots ohne Blase: die Schritte eines Laufs, der noch keine Antwort hat (oder keine bekam). */
+  function schrittBlock(runId: string, aktiv: boolean): ReactNode {
+    return (
+      <ChatBubble
+        key={`schritte-${runId}`}
+        von="bot"
+        name={botName}
+        avatar={antwortAvatar(aktiv)}
+        ohneBlase
+        zustand={aktiv ? "streamt" : "fertig"}
+        davor={
+          <>
+            {aktiv && <Phase art={phaseArt} />}
+            {schrittListe(runId)}
+          </>
+        }
       />
     );
   }
@@ -715,6 +877,7 @@ export function ChatSeite({
       : n.zustand === "fehler" && n.fehlerCode
         ? zielZuCode(n.fehlerCode)
         : undefined;
+    const davor = n.runId === undefined ? [] : schrittListe(n.runId);
     return (
       <ChatBubble
         key={n.id}
@@ -724,6 +887,7 @@ export function ChatSeite({
         avatar={antwortAvatar(n.zustand === "streamt")}
         zustand={zustand}
         {...(hinweis ? { zustandText: hinweis } : {})}
+        {...(davor.length > 0 ? { davor: <>{davor}</> } : {})}
         fuss={
           <>
             {ziel && (
@@ -731,6 +895,7 @@ export function ChatSeite({
                 {ziel.text}
               </Link>
             )}
+            {n.herkunft === "fest" && <FestHinweis />}
             {antwortZeile(n)}
             {fassungsZeile(n)}
           </>
@@ -944,11 +1109,17 @@ export function ChatSeite({
         </span>,
       );
     }
+    // Ein Lauf ohne Antwort zeigt seine Schritte (z. B. den abgebrochenen Text) vor seinem Hinweis.
+    if (e.art === "lauf-ende" && schrittListe(e.runId).length > 0) {
+      mitTagen.push(schrittBlock(e.runId, false));
+    }
     mitTagen.push(eintrag(e));
   }
   const streamtSchon = ansicht.eintraege.some(
     (e) => e.art === "nachricht" && e.rolle === "bot" && e.runId === lauf?.id,
   );
+  // Hat der Lauf schon etwas zu zeigen (vorläufigen Text oder einen Aufruf), ersetzt das den Platzhalter.
+  const laufSchritte = lauf !== undefined && schrittListe(lauf.id).length > 0;
   const leer = ansicht.eintraege.length === 0 && sendet === undefined;
   // Kam die Nachricht schon über den Ereignis-Strom, steht sie im Verlauf; die vorläufige entfällt.
   const vorlaeufig =
@@ -1070,7 +1241,8 @@ export function ChatSeite({
               </ChatBubble>
             </div>
           )}
-          {lauf && !streamtSchon && (
+          {lauf && !streamtSchon && laufSchritte && schrittBlock(lauf.id, true)}
+          {lauf && !streamtSchon && !laufSchritte && (
             <ChatBubble
               von="bot"
               name={botName}
