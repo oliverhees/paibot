@@ -28,6 +28,7 @@ import { ACTIVE_STANDARD_RULES, type RuleDefinition } from "@paibot/shared/tor";
 import type { ToolDefinition, ToolEnvelope } from "@paibot/shared/werkzeug";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAiSdkMotor } from "../motor-aisdk";
+import { SATZ_DOKU, SATZ_OHNE_WERKZEUGE } from "../prompt";
 import { type RunSetup, setupRun } from "../testing/lauf-umgebung";
 import { createTestTools } from "../testing/werkzeuge";
 import { dokuIndexAusText } from "../werkzeuge/doku/index-laden";
@@ -373,10 +374,6 @@ describe("Ergebnis, Quellen, Abdruck, Belege", () => {
     expect(antwort?.content).toBe(ANTWORT_MIT_SEITE);
   });
 
-  it.todo(
-    "Belege ohne Treffer: modell.anfragen, werkzeug.aufrufen (R-010) mit Fundstellen 0 und Doku-Stand, danach kein Beleg mehr",
-  );
-
   // Gegenprobe: die Bereinigung der Ausgabe in `aufruf.ts` überspringen → ein Zeichen kommt an.
   it("unsichtbare Zeichen im Index (Tag, Variantenwähler, Bidi, Nullbreite) kommen beim Test-Anbieter nicht an", async () => {
     // Der geprüfte Lader lehnt diesen Index ab; deshalb an ihm vorbei vorbereitet.
@@ -557,9 +554,19 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
 });
 
 describe("Anweisung, eingeschleuste Aufforderung, Chat", () => {
-  it.todo(
-    "mit dem Doku-Werkzeug kommt beim Test-Anbieter die Anweisung mit dem Satz zum Nachschlagen und zu Daten statt Anweisungen an",
-  );
+  // Gegenprobe: die Werkzeuge des Laufs nicht an `buildSystemPrompt` geben → der Satz fehlt.
+  it("mit dem Doku-Werkzeug kommt beim Test-Anbieter die Anweisung mit dem Satz zum Nachschlagen und zu Daten statt Anweisungen an, in jedem Schritt gleich", async () => {
+    const env = await setup(DOKU_SCRIPTS.treffer);
+    await env.ask();
+    expect(chats()).toHaveLength(2);
+    for (const i of [0, 1]) {
+      const system = body(i).messages.filter((m) => m.role === "system");
+      expect(system).toHaveLength(1);
+      expect(String(system[0]?.content)).toContain(SATZ_DOKU);
+      expect(String(system[0]?.content)).not.toContain(SATZ_OHNE_WERKZEUGE);
+    }
+    expect(body(0).messages[0]).toEqual(body(1).messages[0]);
+  });
 
   // Der Schutz ist das Tor: Eine Regel, die test_schreiben erlaubt, gibt es im vollen Satz der
   // Standard-Regeln nicht; eine Gegenprobe müsste das Tor selbst ändern.

@@ -160,7 +160,13 @@ export async function runLoop(
   const mode: Mode = werkzeuge.length === 0 ? "ohne_werkzeuge" : "mit_werkzeugen";
   const stand = kettenStand(run);
   const startedAt = Date.now();
-  const system = buildSystemPrompt(context.bot, context.settings, deps.clock.now());
+  // Die Werkzeuge des Laufs (nicht die des Schritts): Die Anweisung bleibt im letzten Schritt gleich.
+  const system = buildSystemPrompt(
+    context.bot,
+    context.settings,
+    deps.clock.now(),
+    werkzeuge.map((tool) => tool.definition.key),
+  );
   const historyLimit =
     context.settings.historyTokenLimit === undefined
       ? Number.POSITIVE_INFINITY
