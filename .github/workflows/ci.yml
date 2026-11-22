@@ -311,7 +311,7 @@ jobs:
           draussen="$host_ip:18099 1.1.1.1:443 8.8.8.8:53 9.9.9.9:443 example.org:443 github.com:443"
           # Gegenprobe: Aus einem gewöhnlichen Container erreicht die Probe den Dienst auf dem Runner.
           docker run --rm -i --network bridge --cap-drop ALL \
-            node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a \
+            node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 \
             node - --drinnen "$host_ip:18099" < tools/e2e/src/netz-probe.cjs
           # Nur zur Auskunft: die Adresse des Docker-Netzes auf dem Runner selbst (falls es eine gibt).
           gateway=$(docker network inspect paibot_paibot-aussen --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}')
@@ -481,7 +481,7 @@ jobs:
           export FAKE_PROVIDER_API_KEY
           compose="docker compose -f deploy/docker-compose.yml --env-file deploy/.env"
           mit_anbieter="docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ohne-internet.yml --env-file deploy/.env"
-          node_image=node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+          node_image=node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
           passwort="Probe-$(od -An -tx1 -N12 /dev/urandom | tr -d ' \n')-Satz"
           ziel="$RUNNER_TEMP/sicherungen"
           echo "::group::Ausgangslage: frischer Stack mit Test-Anbieter, eingerichtet, eine Unterhaltung"
@@ -605,8 +605,8 @@ jobs:
             -e PAIBOT_TEST_FAKE_PROVIDER_URL=http://127.0.0.1:4600 \
             -e PAIBOT_TEST_FAKE_PROVIDER_CONTROL_KEY="$steuer_key" \
             -e PAIBOT_TEST_FAKE_PROVIDER_KEY="$anbieter_key" \
-            node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a \
-            sh -c 'corepack enable && { pnpm install --frozen-lockfile --filter "@paibot/durchstich..." > /tmp/pnpm-install.log 2>&1 || { cat /tmp/pnpm-install.log; exit 1; }; } && pnpm --filter @paibot/durchstich exec vitest run src/schleuse-vertrag.test.ts'
+            node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 \
+            sh -c 'mkdir /tmp/corepack-gesperrt && cp deploy/corepack/package.json deploy/corepack/package-lock.json /tmp/corepack-gesperrt/ && { npm ci --prefix /tmp/corepack-gesperrt --no-audit --no-fund --ignore-scripts > /tmp/npm-corepack.log 2>&1 || { cat /tmp/npm-corepack.log; exit 1; }; } && export PATH=/tmp/corepack-gesperrt/node_modules/.bin:$PATH && corepack enable && { pnpm install --frozen-lockfile --filter "@paibot/durchstich..." > /tmp/pnpm-install.log 2>&1 || { cat /tmp/pnpm-install.log; exit 1; }; } && pnpm --filter @paibot/durchstich exec vitest run src/schleuse-vertrag.test.ts'
           $testcompose down -v
       - name: Protokolle der Dienste im Fehlerfall
         if: failure()

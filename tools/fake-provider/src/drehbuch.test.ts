@@ -622,7 +622,7 @@ describe("Prozess ohne Schlüssel", () => {
       bundle: true,
       platform: "node",
       format: "esm",
-      target: "node22",
+      target: "node26",
       logLevel: "silent",
     });
     const child = spawn(process.execPath, [outfile], {

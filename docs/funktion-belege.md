@@ -98,7 +98,7 @@ pnpm belege:pruefen paibot-belege-2026-11-21.jsonl --anker pb-anker.json
 | `3`       | Kette in sich gültig, aber ein Schlüsselwechsel ist nur vom neuen Schlüssel signiert (siehe unten) |
 | `4`       | Kette mit dieser Fassung nicht prüfbar: sie enthält Belege aus einer neueren PaiBot-Fassung        |
 
-Der Befehl braucht keine Datenbank und kein Netz. Er funktioniert auch auf einem anderen Rechner, solange dort Node.js 22 oder neuer und der Code von PaiBot liegen.
+Der Befehl braucht keine Datenbank und kein Netz. Er funktioniert auch auf einem anderen Rechner, solange dort Node.js 26 oder neuer und der Code von PaiBot liegen.
 
 ### Anker: so bewahrst du den Kettenkopf außerhalb auf
 
