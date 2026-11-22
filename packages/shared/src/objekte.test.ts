@@ -83,6 +83,7 @@ describe("Fachobjekte", () => {
         {
           id: conversationId,
           botId: newId("bot"),
+          kind: "direkt",
           title: "Woche planen",
           createdAt: time,
           updatedAt: time,
@@ -192,10 +193,23 @@ describe("Fachobjekte", () => {
     }
   });
 
+  it("ein Faden hat ein Team und keinen Bot", () => {
+    const faden = {
+      id: conversationId,
+      kind: "faden",
+      teamId: newId("team"),
+      title: "Ein Faden",
+      createdAt: time,
+      updatedAt: time,
+    };
+    expect(conversationSchema.parse(faden)).toEqual(faden);
+  });
+
   it("lehnen null, alte Werte und falsche IDs ab", () => {
     const conversation = {
       id: conversationId,
       botId: newId("bot"),
+      kind: "direkt",
       title: "x",
       createdAt: time,
       updatedAt: time,
@@ -210,6 +224,12 @@ describe("Fachobjekte", () => {
       false,
     );
     expect(conversationSchema.safeParse({ ...conversation, title: "" }).success).toBe(false);
+    expect(conversationSchema.safeParse({ ...conversation, kind: "team" }).success).toBe(false);
+    const { kind: _ohneArt, ...ohneArt } = conversation;
+    expect(conversationSchema.safeParse(ohneArt).success).toBe(false);
+    expect(conversationSchema.safeParse({ ...conversation, teamId: conversationId }).success).toBe(
+      false,
+    );
     expect(
       settingsSchema.safeParse({
         locale: "de",

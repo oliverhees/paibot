@@ -29,6 +29,10 @@ export const ID_PREFIX = {
   app: "app",
   /** Ein Werkzeug einer verbundenen App, ab Tor-Fassung 3. */
   tool: "wzg",
+  /** Ein Team aus Bots, ab Tor-Fassung 4. */
+  team: "tea",
+  /** Ein Entwurf für ein Team, ab Tor-Fassung 4. */
+  entwurf: "ent",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIX;
@@ -52,6 +56,8 @@ export type RuleRecordId = Id<"rule">;
 export type DeviceId = Id<"device">;
 export type AppId = Id<"app">;
 export type AppToolId = Id<"tool">;
+export type TeamId = Id<"team">;
+export type EntwurfId = Id<"entwurf">;
 
 /** Gesamtlänge einer ID: drei Zeichen Präfix, Unterstrich, 26 Zeichen. */
 export const ID_LENGTH = 30;

@@ -134,9 +134,17 @@ export type SessionId = z.infer<typeof sessionIdSchema>;
 
 export const localeSchema = z.enum(SUPPORTED_LOCALES);
 
+/** Art einer Unterhaltung: Direkt-Chat mit einem Bot, Faden eines Teams oder Entwurf eines Teams. */
+export const CONVERSATION_KINDS = ["direkt", "faden", "entwurf"] as const;
+export const conversationKindSchema = z.enum(CONVERSATION_KINDS);
+export type ConversationKind = z.infer<typeof conversationKindSchema>;
+
 export const conversationSchema = z.strictObject({
   id: idSchema("conversation"),
-  botId: idSchema("bot"),
+  /** Fehlt bei einem Faden: Er gehört einem Team (`teamId`), nicht einem Bot. */
+  botId: idSchema("bot").optional(),
+  kind: conversationKindSchema,
+  teamId: idSchema("team").optional(),
   title: z.string().min(1).max(200),
   /** Fehlt der Wert, gilt der Standard aus den Einstellungen. */
   schleuseMode: schleuseModeSchema.optional(),

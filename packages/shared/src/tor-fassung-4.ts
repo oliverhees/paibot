@@ -24,10 +24,7 @@ import { ID_BODY_PATTERN, idSchema } from "./id";
 /** Nummer der Fassung, die dieser Vertrag beschreibt. */
 export const FORMAT_4 = 4;
 
-/**
- * Kennung eines Teams (`tea_…`) und eines Entwurfs (`ent_…`). Die Arten stehen noch nicht in
- * `ID_PREFIX`; die Vorsilben sind ein Vorschlag, bis die Datenbank sie festlegt.
- */
+/** Kennung eines Teams (`tea_…`) und eines Entwurfs (`ent_…`); die Vorsilben stehen in `ID_PREFIX`. */
 export const teamIdSchema = z.string().regex(new RegExp(`^tea_${ID_BODY_PATTERN}$`));
 export const entwurfIdSchema = z.string().regex(new RegExp(`^ent_${ID_BODY_PATTERN}$`));
 
