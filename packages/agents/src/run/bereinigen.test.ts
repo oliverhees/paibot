@@ -58,6 +58,47 @@ describe("Bereinigen", () => {
     expect(cleanJson({ "k\u200b": ["a\u202eb"] })).toEqual({ k: ["ab"] });
   });
 
+  // Gegenprobe: die Liste aus der ersten Fassung (nur Steuer-, Bidi- und wenige unsichtbare
+  // Zeichen) → jede dieser Zeilen rot.
+  it.each([
+    ["Tag-Zeichen U+E0001, U+E0020–U+E007F", "\u{e0001}\u{e0020}\u{e0041}\u{e0062}\u{e007f}"],
+    ["weiches Trennzeichen U+00AD", "\u00ad"],
+    ["unsichtbare Operatoren U+2061–U+2064", "\u2061\u2062\u2063\u2064"],
+    ["veraltete Format-Zeichen U+206A–U+206F", "\u206a\u206b\u206c\u206d\u206e\u206f"],
+    ["Anmerkungs-Zeichen U+FFF9–U+FFFB", "\ufff9\ufffa\ufffb"],
+    ["Variationswähler U+FE00–U+FE0F", "\ufe00\ufe01\ufe0e\ufe0f"],
+    ["Variationswähler U+E0100–U+E01EF", "\u{e0100}\u{e0150}\u{e01ef}"],
+    ["Mongolischer Vokal-Trenner U+180E", "\u180e"],
+    ["Füllzeichen U+115F, U+1160, U+3164, U+FFA0", "\u115f\u1160\u3164\uffa0"],
+    ["Zeilen- und Absatztrenner U+2028, U+2029", "\u2028\u2029"],
+    ["unsichtbarer Verbinder U+034F", "\u034f"],
+  ])("entfernt und erkennt: %s", (_name, zeichen) => {
+    expect(hasUnwanted(`a${zeichen}b`)).toBe(true);
+    expect(cleanText(`a${zeichen}b`)).toBe("ab");
+    expect(jsonHasUnwanted({ q: `a${zeichen}b` })).toBe(true);
+    expect(cleanJson({ [`k${zeichen}`]: [`a${zeichen}b`] })).toEqual({ k: ["ab"] });
+    expect(rawToolName(zeichen.repeat(64))).toBeUndefined();
+  });
+
+  // Gegenprobe: `\p{L}` oder `\p{So}` in die Liste aufnehmen → rot.
+  it("sichtbare Zeichen bleiben: Umlaute, Emoji, chinesische, japanische und koreanische Schrift", () => {
+    const sichtbar = [
+      "Grüße aus Köln, Maß und Fuß",
+      "😀 👍🏽 🎉 € → ✓",
+      "中文文本",
+      "日本語のテキスト",
+      "한국어",
+      "مرحبا",
+      "Zeile\nzwei\tTab",
+    ];
+    for (const text of sichtbar) {
+      expect(cleanText(text), text).toBe(text.normalize("NFC"));
+      expect(hasUnwanted(text), text).toBe(false);
+    }
+    // U+FE0F ändert nur die Darstellung: Das Herz bleibt, nur als Schrift statt als Bild.
+    expect(cleanText("\u2764\ufe0f")).toBe("\u2764");
+  });
+
   it("erkennt Zahlen, die keine sicheren Ganzzahlen sind", () => {
     expect(jsonHasNonInteger({ zahl: 1.5 })).toBe(true);
     expect(jsonHasNonInteger([1, [2, { a: 2 ** 60 }]])).toBe(true);

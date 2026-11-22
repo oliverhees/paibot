@@ -1,6 +1,6 @@
 /**
  * PaiBot – Bereinigung von Namen, Eingaben und Ergebnissen der Werkzeuge: Steuerzeichen,
- * Bidi-Zeichen und unsichtbare Zeichen entfernen bzw. erkennen, Text auf NFC bringen.
+ * Format-Zeichen, Variationswähler und Füllzeichen entfernen bzw. erkennen, Text auf NFC bringen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -13,12 +13,23 @@ import type { JsonValue } from "@paibot/shared/motor";
 
 /**
  * Zeichen, die nie in einem Namen, einer Eingabe oder einem Ergebnis eines Werkzeugs stehen
- * bleiben: Steuerzeichen außer Zeilenumbruch und Tabulator (U+0000–U+0008, U+000B–U+001F,
- * U+007F–U+009F), Bidi-Zeichen (U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069) und
- * unsichtbare Zeichen (U+200B–U+200D, U+2060, U+FEFF).
+ * bleiben:
+ *
+ * - Steuerzeichen außer Zeilenumbruch und Tabulator (U+0000–U+0008, U+000B–U+001F, U+007F–U+009F);
+ * - alle Format-Zeichen (`\p{Cf}`): Bidi-Zeichen (U+061C, U+200E, U+200F, U+202A–U+202E,
+ *   U+2066–U+2069), unsichtbare Zeichen (U+200B–U+200D, U+2060–U+2064, U+206A–U+206F, U+FEFF),
+ *   das weiche Trennzeichen U+00AD, U+180E, U+FFF9–U+FFFB und die Tag-Zeichen U+E0001,
+ *   U+E0020–U+E007F, mit denen sich unsichtbarer Text verstecken lässt;
+ * - Variationswähler (U+FE00–U+FE0F, U+E0100–U+E01EF), auch U+FE0F: Er ändert nur die
+ *   Darstellung eines sichtbaren Zeichens (etwa ein Herz als Bild statt als Schrift), das Zeichen
+ *   selbst bleibt; eine Folge solcher Wähler kann aber unsichtbar Daten tragen;
+ * - der unsichtbare Verbinder U+034F und die Füllzeichen U+115F, U+1160, U+3164, U+FFA0;
+ * - Zeilen- und Absatztrenner U+2028, U+2029 (Zeilenumbruch bleibt U+000A).
+ *
+ * Sichtbare Zeichen (Umlaute, Emoji, chinesische oder japanische Schrift) bleiben.
  */
 const UNWANTED_SOURCE =
-  "[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\u061c\\u200b-\\u200f\\u202a-\\u202e\\u2060\\u2066-\\u2069\\ufeff]";
+  "[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\p{Cf}\\u034f\\u115f\\u1160\\u180e\\u2028\\u2029\\u3164\\ufe00-\\ufe0f\\uffa0\\u{e0100}-\\u{e01ef}]";
 const UNWANTED = new RegExp(UNWANTED_SOURCE, "gu");
 const HAS_UNWANTED = new RegExp(UNWANTED_SOURCE, "u");
 
