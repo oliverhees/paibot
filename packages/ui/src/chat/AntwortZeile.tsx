@@ -15,6 +15,7 @@ import { type ReactNode, useId, useState } from "react";
 import { Icon } from "../basis/Icon";
 import { klassen } from "../basis/klassen";
 import styles from "./AntwortZeile.module.css";
+import { schrittText } from "./schritte/text";
 
 export type BelegZustand = "gueltig" | "offen" | "ungueltig";
 
@@ -61,6 +62,15 @@ export interface KennzeichnungAngabe {
   satz: string;
 }
 
+/** Ein Schritt der Antwort, wenn sie aus mehreren Aufrufen des Modells entstand. */
+export interface HerkunftSchritt {
+  modell: ModellAngabe;
+  /** Unter-Anbieter, der den Schritt beantwortet hat (z. B. „tensorix“), wenn belegt. */
+  unterAnbieter?: string;
+  /** Modell, das der Anbieter gemeldet hat, wenn es vom Namen abweicht. */
+  gemeldet?: string;
+}
+
 function nameText(modell: ModellAngabe): string {
   return modell.nameFrei === true ? `„${modell.name}“` : modell.name;
 }
@@ -90,6 +100,51 @@ export function Kennzeichnung({
 function herkunftText(modell: ModellAngabe): string | undefined {
   if (modell.herkunft !== undefined) return modell.herkunft;
   return modell.region === undefined ? undefined : t(`modelle.region.${modell.region}`);
+}
+
+/** „tensorix (glm-5.1)“; weicht das gemeldete Modell ab, steht beides da. Fremde Namen bereinigt. */
+function schrittHerkunftText(s: HerkunftSchritt): string {
+  const name = schrittText(s.modell.name, "modell");
+  const modell = s.modell.nameFrei === true ? `„${name}“` : name;
+  const gemeldet = s.gemeldet === undefined ? "" : schrittText(s.gemeldet, "modell");
+  const innen =
+    gemeldet !== "" && gemeldet !== name
+      ? `${modell}, ${t("schritte.antwort.gemeldet", { modell: gemeldet })}`
+      : modell;
+  const anbieter = s.unterAnbieter === undefined ? "" : schrittText(s.unterAnbieter, "modell");
+  return anbieter === "" ? innen : `${anbieter} (${innen})`;
+}
+
+function werkzeugeText(n: number): string {
+  return n === 1 ? t("schritte.antwort.werkzeug") : t("schritte.antwort.werkzeuge", { n });
+}
+
+/**
+ * Teil „Modell“ für eine Antwort aus mehreren Schritten: Anbieter und Modell je Schritt, dahinter
+ * die Zahl der Werkzeug-Aufrufe. Schmal bleibt die Kurzform.
+ */
+export function SchritteHerkunft({
+  schritte,
+  werkzeuge = 0,
+}: {
+  schritte: readonly HerkunftSchritt[];
+  werkzeuge?: number;
+}) {
+  const liste = schritte.map(schrittHerkunftText).join(", ");
+  const dazu = werkzeuge > 0 ? ` · ${werkzeugeText(werkzeuge)}` : "";
+  return (
+    <span className={klassen(styles.teil, styles.modell)} title={`${liste}${dazu}`}>
+      <span className={klassen(styles.lang, styles.liste)}>
+        {t("schritte.antwort.von", { liste })}
+        {dazu}
+      </span>
+      <span className={styles.kurz}>
+        {schritte.length === 1
+          ? t("schritte.antwort.von_kurz_eins")
+          : t("schritte.antwort.von_kurz", { n: schritte.length })}
+      </span>
+    </span>
+  );
 }
 
 function belegText(beleg: BelegAngabe): string {
@@ -223,16 +278,31 @@ export interface AntwortZeileProps {
   modell: ModellAngabe;
   /** Inhalt zum Aufklappen, z. B. „Das hat das Modell gesehen“. */
   details?: ReactNode;
+  /**
+   * Antwort aus mehreren Schritten: Modell und Unter-Anbieter je Schritt. Ersetzt in der Zeile den
+   * Teil „Modell“; die Herkunft steht nur je Schritt, nie als Aussage über die ganze Antwort.
+   */
+  schritte?: readonly HerkunftSchritt[];
+  /** Zahl der Werkzeug-Aufrufe dieser Antwort; ab 1 steht sie als Teil in der Zeile. */
+  werkzeuge?: number;
 }
 
 /**
  * Ruhige Zeile unter jeder Antwort: Beleg · Datenschleuse · Modell mit Herkunft.
  * Schmal werden die Teile gekürzt; aufgeklappt steht alles ausgeschrieben.
  */
-export function AntwortZeile({ beleg, schleuse, modell, details }: AntwortZeileProps) {
+export function AntwortZeile({
+  beleg,
+  schleuse,
+  modell,
+  details,
+  schritte,
+  werkzeuge,
+}: AntwortZeileProps) {
   const [offen, setOffen] = useState(false);
   const panelId = useId();
   const region = herkunftText(modell);
+  const mehrere = schritte !== undefined && schritte.length > 0;
   return (
     <div className={styles.huelle}>
       <div className={styles.zeile}>
@@ -243,7 +313,19 @@ export function AntwortZeile({ beleg, schleuse, modell, details }: AntwortZeileP
           onUmschalten={() => setOffen((o) => !o)}
           steuert={panelId}
         />
-        <ModellHerkunft modell={modell} />
+        {mehrere ? (
+          <SchritteHerkunft schritte={schritte} werkzeuge={werkzeuge ?? 0} />
+        ) : (
+          <>
+            <ModellHerkunft modell={modell} />
+            {werkzeuge !== undefined && werkzeuge > 0 && (
+              <span className={klassen(styles.teil, styles.werkzeuge)}>
+                <Icon name="zahnrad" />
+                {werkzeugeText(werkzeuge)}
+              </span>
+            )}
+          </>
+        )}
       </div>
       <div id={panelId} className={styles.panel} hidden={!offen}>
         <ul className={styles.voll}>
@@ -253,12 +335,31 @@ export function AntwortZeile({ beleg, schleuse, modell, details }: AntwortZeileP
             </li>
           )}
           <li>{schleuseText(schleuse)}</li>
-          <li>{region === undefined ? nameText(modell) : `${nameText(modell)} · ${region}`}</li>
-          {modell.kennzeichnung !== undefined && (
-            <li>
-              <Kennzeichnung angabe={modell.kennzeichnung} voll />
-            </li>
+          {mehrere ? (
+            schritte.map((schritt, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: feste Reihenfolge der Schritte
+              <li key={i}>
+                {t("schritte.antwort.schritt", { n: i + 1 })}: {schrittHerkunftText(schritt)}
+                {herkunftText(schritt.modell) !== undefined && ` · ${herkunftText(schritt.modell)}`}
+                {schritt.modell.kennzeichnung !== undefined && (
+                  <>
+                    {" "}
+                    <Kennzeichnung angabe={schritt.modell.kennzeichnung} voll />
+                  </>
+                )}
+              </li>
+            ))
+          ) : (
+            <>
+              <li>{region === undefined ? nameText(modell) : `${nameText(modell)} · ${region}`}</li>
+              {modell.kennzeichnung !== undefined && (
+                <li>
+                  <Kennzeichnung angabe={modell.kennzeichnung} voll />
+                </li>
+              )}
+            </>
           )}
+          {werkzeuge !== undefined && werkzeuge > 0 && <li>{werkzeugeText(werkzeuge)}</li>}
         </ul>
         {details}
       </div>

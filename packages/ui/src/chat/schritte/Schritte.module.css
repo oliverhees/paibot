@@ -1,0 +1,447 @@
+/**
+ * PaiBot – Stile der Schritte im Chat: vorläufiger Text, Zwischenschritte, Werkzeug-Zeilen.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-22
+ */
+
+/* Kennzeichnungen von PaiBot sind Marken mit Fläche, Symbol und Wort. Fremder Text (Text des
+   Modells, Name eines Werkzeugs, Frage, Titel einer Quelle) hat nie eine solche Fläche: er steht
+   gedämpft, in Anführungszeichen oder in der gestrichelten Spalte. */
+
+/* ---------- Marke ---------- */
+
+.marke {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+  font-weight: 650;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.marke svg {
+  flex: none;
+}
+
+.marke[data-marke="vorlaeufig"] {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+
+.marke[data-marke="verworfen"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.marke[data-marke="abgebrochen"] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* ---------- Vorläufiger Text ---------- */
+
+.vorlaeufig {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 0 2px 12px;
+  border-left: 2px dashed var(--line-strong);
+}
+
+.vorlaeufig[data-zustand="abgebrochen"] {
+  border-left-color: var(--warn);
+}
+
+.vorlaeufigKopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.etikett {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.vorlaeufigText {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Zwischenschritt ---------- */
+
+.pfeil {
+  flex: none;
+  transition: transform var(--dauer-kurz) var(--kurve-sanft);
+}
+
+.wzPfeil {
+  margin-top: 3px;
+}
+
+.zwischen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.zwischenKopf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 8px 3px 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.zwischenKopf:hover {
+  background: var(--surface-raised);
+}
+
+.zwischenKopf:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.zwischenKopf[aria-expanded="true"] .pfeil {
+  transform: rotate(180deg);
+}
+
+.zwischenPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin-left: 4px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-feld);
+  background: var(--surface-sunken);
+}
+
+.zwischenPanel[hidden] {
+  display: none;
+}
+
+.erklaerung {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.zwischenText,
+.zwischenTextVerworfen {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.zwischenTextVerworfen {
+  text-decoration: line-through;
+}
+
+/* ---------- Werkzeug-Zeile ---------- */
+
+.werkzeug {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wzZeile {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 8px 4px 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+  text-align: left;
+}
+
+button.wzZeile {
+  cursor: pointer;
+}
+
+button.wzZeile:hover {
+  background: var(--surface);
+}
+
+button.wzZeile:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+button.wzZeile[aria-expanded="true"] .pfeil {
+  transform: rotate(180deg);
+}
+
+.wzIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.wzText {
+  min-width: 0;
+  padding-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.wzTitel {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.fremd {
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.status[data-status="fertig"] {
+  color: var(--ok);
+}
+
+.status[data-status="abgelehnt"] {
+  color: var(--warn);
+}
+
+.status[data-status="fehlgeschlagen"] {
+  color: var(--danger);
+}
+
+.status[data-status="abgebrochen"] {
+  color: var(--ink-soft);
+}
+
+.status svg {
+  flex: none;
+}
+
+.ring {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--line-strong);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: pb-schritt-drehen 1s linear infinite;
+}
+
+.zusatz {
+  color: var(--ink-soft);
+}
+
+.wzDetail {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0 0 0 30px;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.wzDetail[hidden] {
+  display: none;
+}
+
+.wzDetail dt {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.wzDetail dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.quellen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quelle {
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-raised);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.beleg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.beleg:hover {
+  background: var(--surface-raised);
+}
+
+.beleg:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ---------- Hinweis auf feste Antworten, Phase ---------- */
+
+.fest {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--schrift-s);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.fest svg {
+  flex: none;
+}
+
+.phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.phasePunkt {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-kante);
+  animation: pb-schritt-puls 1.2s ease-in-out infinite;
+}
+
+.phase[data-phase="wartet"] .phasePunkt {
+  background: var(--line-strong);
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes pb-schritt-drehen {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pb-schritt-puls {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 519px) {
+  .wzDetail {
+    grid-template-columns: minmax(0, 1fr);
+    margin-left: 8px;
+    gap: 2px;
+  }
+
+  .wzDetail dd {
+    margin-bottom: 6px;
+  }
+
+  .zwischenPanel {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pfeil {
+    transition: none;
+  }
+
+  .ring,
+  .phasePunkt {
+    animation: none;
+  }
+}

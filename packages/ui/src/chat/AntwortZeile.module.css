@@ -126,6 +126,18 @@ button.teil:focus-visible {
   overflow: hidden;
 }
 
+.liste {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.werkzeuge {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  font-weight: 550;
+}
+
 /* Nur der Teil „Modell“ wird schmaler; Beleg und Weg behalten ihre Breite. Eine lange Herkunft
    endet mit „…“ statt mitten im Zeichen abgeschnitten (ganz steht sie im Titel und aufgeklappt). */
 .teil:not(.modell) {

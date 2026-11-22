@@ -33,11 +33,13 @@ export interface FremdErgebnis {
 /**
  * Macht aus beliebigem Text der App einen Anzeige-Text.
  * `mehrzeilig` erlaubt Zeilenumbrüche (höchstens eine Leerzeile in Folge), sonst eine Zeile.
+ * `grenze` ersetzt die Höchstlänge der Art (in Zeichen), z. B. für längere Texte des Modells.
  */
 export function bereinigeFremdText(
   roh: unknown,
   art: FremdArt,
   mehrzeilig = art === "beschreibung" || art === "wert",
+  grenze?: number,
 ): FremdErgebnis {
   if (typeof roh !== "string") return { text: "", gekuerzt: false };
   const zeilen = roh
@@ -51,7 +53,7 @@ export function bereinigeFremdText(
     .replace(/ {2,}/g, " ")
     .trim();
   const zeichen = Array.from(text);
-  const max = FREMD_MAX[art];
+  const max = grenze ?? FREMD_MAX[art];
   let gekuerzt = false;
   if (zeichen.length > max) {
     text = `${zeichen

@@ -14,7 +14,7 @@ import styles from "./ChatBubble.module.css";
 
 export interface ChatBubbleProps {
   von: "du" | "bot";
-  children: ReactNode;
+  children?: ReactNode;
   /** Uhrzeit, z. B. „14:32“. */
   zeit?: string;
   /** Name des Bots über der Antwort. */
@@ -23,6 +23,10 @@ export interface ChatBubbleProps {
   avatar?: ReactNode;
   /** Zeile unter der Antwort (Beleg, Datenschleuse, Modell) oder Hinweise. */
   fuss?: ReactNode;
+  /** Schritte über der Antwort (Werkzeug-Zeilen, Zwischenschritte, vorläufiger Text). */
+  davor?: ReactNode;
+  /** Ohne Blase: solange es noch keine Antwort gibt, steht nur `davor` im Block des Bots. */
+  ohneBlase?: boolean;
   /** streamt: Schreibmarke am Ende; abgebrochen/fehler: ruhigere bzw. markierte Blase. */
   zustand?: "fertig" | "streamt" | "abgebrochen" | "fehler";
   /** Hinweis zum Zustand, z. B. „Abgebrochen“ (immer mit Wort). */
@@ -37,6 +41,8 @@ export function ChatBubble({
   name,
   avatar,
   fuss,
+  davor,
+  ohneBlase = false,
   zustand = "fertig",
   zustandText,
 }: ChatBubbleProps) {
@@ -62,10 +68,13 @@ export function ChatBubble({
             {zeit && <span className={styles.zeit}>{zeit}</span>}
           </div>
         )}
-        <div className={klassen(styles.blase, styles.blaseBot)}>
-          {children}
-          {zustand === "streamt" && <span className={styles.marke} aria-hidden="true" />}
-        </div>
+        {davor}
+        {!ohneBlase && (
+          <div className={klassen(styles.blase, styles.blaseBot)}>
+            {children}
+            {zustand === "streamt" && <span className={styles.marke} aria-hidden="true" />}
+          </div>
+        )}
         {zustandText && <p className={styles.zustand}>{zustandText}</p>}
         {fuss}
       </div>
