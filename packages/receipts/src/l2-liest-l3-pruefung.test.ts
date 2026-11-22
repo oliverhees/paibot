@@ -65,7 +65,7 @@ describe("Prüfung, die nur die Fassungen 1 und 2 kennt", () => {
     const { entries } = parseJsonl(text);
     expect(entries.length).toBe(kette.entries.length);
     const report = await verifyChain(entries, {
-      rules: (kette.snapshot as { rules: never }).rules,
+      rules: kette.regeln,
     });
     expect(report.verdict.level).toBe("nicht_pruefbar");
     expect(report.ok).toBe(false);

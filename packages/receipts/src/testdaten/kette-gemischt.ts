@@ -40,6 +40,11 @@ export class GemischteKette {
   snapshot: RuleSnapshot | undefined;
   #tick = 0;
 
+  /** Regeln zum Nachrechnen (der Regelstand, mit dem das Tor entscheidet). */
+  get regeln(): RuleSnapshot["rules"] {
+    return (this.snapshot as RuleSnapshot).rules;
+  }
+
   /** Zeitpunkt, streng aufsteigend. */
   time(): Date {
     return new Date(Date.UTC(2026, 10, 22, 12, 0, 0, ++this.#tick));

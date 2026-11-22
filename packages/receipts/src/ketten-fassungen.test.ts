@@ -30,7 +30,7 @@ function fassungen(entries: readonly ReceiptEntry[]): (number | "fehlt")[] {
 }
 
 async function pruefe(kette: GemischteKette) {
-  return verifyChain(kette.entries, { rules: (kette.snapshot as { rules: never }).rules });
+  return verifyChain(kette.entries, { rules: kette.regeln });
 }
 
 describe("Belege der Fassungen 1, 2 und 3 in einer Kette", () => {
@@ -63,7 +63,7 @@ describe("Belege der Fassungen 1, 2 und 3 in einer Kette", () => {
       const fit = decisionFormat(entry.body);
       expect(fit.status, String(entry.seq)).toBe("passt");
       formate.push((fit as { format: number }).format);
-      const neu = reevaluate(entry, (kette.snapshot as { rules: never }).rules);
+      const neu = reevaluate(entry, kette.regeln);
       expect(neu.status, String(entry.seq)).toBe("ok");
     }
     expect(formate).toEqual([1, 2, 3, 3]);
@@ -88,7 +88,7 @@ describe("Belege der Fassungen 1, 2 und 3 in einer Kette", () => {
     const { entries } = parseJsonl(text);
     expect(entries).toHaveLength(kette.entries.length);
     const report = await verifyChain(entries, {
-      rules: (kette.snapshot as { rules: never }).rules,
+      rules: kette.regeln,
     });
     expect(report.verdict.level).toBe("vertrauenswuerdig");
     const out: string[] = [];
