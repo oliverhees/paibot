@@ -17,7 +17,7 @@ import { errorText, isTextKey, type TextKey, t } from "@paibot/shared/texte";
 import { type Decision, LIMITS_BY_ID, PRECONDITIONS } from "@paibot/shared/tor";
 import { type ToolEnvelope, type ToolKey, toolEnvelopeSchema } from "@paibot/shared/werkzeug";
 import type { z } from "zod";
-import { setOwn } from "./bereinigen";
+import { jsonUeberGrenzen, setOwn } from "./bereinigen";
 
 /** Text eines Schlüssels, der keine Platzhalter hat. */
 export function plainText(key: TextKey): string {
@@ -166,91 +166,172 @@ export function contentChars(value: JsonValue): number {
   return JSON.stringify(value).length;
 }
 
-/** Kürzt die längste Zeichenkette (vom Ende her; bei Gleichstand die letzte) um `excess` Zeichen. */
-function shortenLongestString(
-  value: JsonValue,
-  excess: number,
-): { value: JsonValue; done: boolean } {
-  type Path = (string | number)[];
-  let best: { path: Path; length: number } | undefined;
-  const visit = (node: JsonValue, path: Path) => {
-    if (typeof node === "string") {
-      if (node.length > 0 && (best === undefined || node.length >= best.length)) {
-        best = { path, length: node.length };
-      }
-    } else if (Array.isArray(node)) {
-      for (const [i, child] of node.entries()) visit(child, [...path, i]);
-    } else if (node !== null && typeof node === "object") {
-      for (const [key, child] of Object.entries(node)) visit(child, [...path, key]);
-    }
-  };
-  visit(value, []);
-  if (best === undefined) return { value, done: false };
-  const target = best;
-  const replace = (node: JsonValue, depth: number): JsonValue => {
-    if (depth === target.path.length) {
-      const text = node as string;
-      return Array.from(text)
-        .slice(0, Math.max(0, Array.from(text).length - excess))
-        .join("");
-    }
-    const step = target.path[depth] as string | number;
-    if (Array.isArray(node))
-      return node.map((child, i) => (i === step ? replace(child, depth + 1) : child));
-    const copy: { [key: string]: JsonValue } = {};
-    for (const [key, child] of Object.entries(node as { [key: string]: JsonValue })) {
-      setOwn(copy, key, key === step ? replace(child, depth + 1) : child);
-    }
-    return copy;
-  };
-  return { value: replace(value, 0), done: true };
+/** Zeichenkette eines Werts, so wie sie in der Länge zählt: Zeichen von `JSON.stringify`. */
+function jsonLength(text: string): number {
+  return JSON.stringify(text).length;
 }
 
-/** Entfernt das letzte Element der letzten nicht leeren Liste. */
-function dropLastListEntry(value: JsonValue): { value: JsonValue; done: boolean } {
-  if (Array.isArray(value)) {
-    for (let i = value.length - 1; i >= 0; i--) {
-      const inner = dropLastListEntry(value[i] as JsonValue);
-      if (inner.done)
-        return { value: value.map((child, j) => (j === i ? inner.value : child)), done: true };
-    }
-    return value.length === 0 ? { value, done: false } : { value: value.slice(0, -1), done: true };
+/** Eine Zeichenkette im Wert: wo sie steht, ihre Länge und ihre Stelle in der Reihenfolge des Lesens. */
+interface StringSlot {
+  container: JsonValue[] | { [key: string]: JsonValue };
+  key: string | number;
+  /** Länge in UTF-16-Einheiten; danach wird die längste gewählt. */
+  length: number;
+  order: number;
+}
+
+/** Ist `a` vor `b` zu kürzen? Längere zuerst; bei Gleichstand die spätere in der Reihenfolge. */
+function shortenBefore(a: StringSlot, b: StringSlot): boolean {
+  return a.length > b.length || (a.length === b.length && a.order > b.order);
+}
+
+/** Heap der nicht leeren Zeichenketten, die längste (bei Gleichstand die letzte) oben. */
+class StringHeap {
+  private readonly items: StringSlot[] = [];
+
+  get size(): number {
+    return this.items.length;
   }
-  if (value !== null && typeof value === "object") {
-    const entries = Object.entries(value);
-    for (let i = entries.length - 1; i >= 0; i--) {
-      const [key, child] = entries[i] as [string, JsonValue];
-      const inner = dropLastListEntry(child);
-      if (inner.done) return { value: { ...value, [key]: inner.value }, done: true };
+
+  push(slot: StringSlot): void {
+    const items = this.items;
+    items.push(slot);
+    let i = items.length - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (!shortenBefore(items[i] as StringSlot, items[parent] as StringSlot)) break;
+      [items[i], items[parent]] = [items[parent] as StringSlot, items[i] as StringSlot];
+      i = parent;
     }
   }
-  return { value, done: false };
+
+  peek(): StringSlot | undefined {
+    return this.items[0];
+  }
+
+  /** Nimmt die oberste Zeichenkette heraus. */
+  pop(): void {
+    const items = this.items;
+    const last = items.pop();
+    if (items.length === 0 || last === undefined) return;
+    items[0] = last;
+    let i = 0;
+    for (;;) {
+      const left = 2 * i + 1;
+      const right = left + 1;
+      let top = i;
+      if (left < items.length && shortenBefore(items[left] as StringSlot, items[top] as StringSlot))
+        top = left;
+      if (
+        right < items.length &&
+        shortenBefore(items[right] as StringSlot, items[top] as StringSlot)
+      )
+        top = right;
+      if (top === i) return;
+      [items[i], items[top]] = [items[top] as StringSlot, items[i] as StringSlot];
+      i = top;
+    }
+  }
+}
+
+/**
+ * Kürzt die Zeichenketten des Werts (ein eigener Wert, wird verändert), die längste zuerst, bei
+ * Gleichstand die letzte, jeweils um den noch fehlenden Rest (`length - maxChars`), bis der Wert
+ * passt oder keine Zeichenkette mehr etwas hergibt. Gibt die neue Länge zurück. Jede Zeichenkette
+ * wird einmal gelesen und die Länge nur um die Änderung nachgeführt, die Laufzeit wächst also
+ * (bis auf den Heap) mit der Größe des Werts und nicht mit der Zahl der Runden.
+ */
+function shortenStrings(value: JsonValue, length: number, maxChars: number): number {
+  const heap = new StringHeap();
+  let order = 0;
+  const visit = (node: JsonValue) => {
+    if (Array.isArray(node)) {
+      for (let i = 0; i < node.length; i++) {
+        const child = node[i] as JsonValue;
+        if (typeof child === "string") {
+          if (child.length > 0) heap.push({ container: node, key: i, length: child.length, order });
+          order += 1;
+        } else visit(child);
+      }
+    } else if (node !== null && typeof node === "object") {
+      for (const [key, child] of Object.entries(node)) {
+        if (typeof child === "string") {
+          if (child.length > 0) heap.push({ container: node, key, length: child.length, order });
+          order += 1;
+        } else visit(child);
+      }
+    }
+  };
+  visit(value);
+  while (length > maxChars) {
+    const slot = heap.peek();
+    if (slot === undefined) break;
+    heap.pop();
+    const container = slot.container as { [key: string | number]: JsonValue };
+    const text = container[slot.key] as string;
+    const chars = Array.from(text);
+    const shorter = chars.slice(0, Math.max(0, chars.length - (length - maxChars))).join("");
+    length -= jsonLength(text) - jsonLength(shorter);
+    container[slot.key] = shorter;
+    // Eine gekürzte Zeichenkette, die noch etwas enthält, kommt später noch einmal dran.
+    if (shorter.length > 0) heap.push({ ...slot, length: shorter.length });
+  }
+  return length;
+}
+
+/**
+ * Entfernt letzte Listeneinträge (ein eigener Wert, wird verändert), bis der Wert passt: erst in
+ * den Kindern von hinten nach vorn (jedes Kind wird ganz geleert), dann die Einträge der Liste
+ * selbst von hinten. Gibt die neue Länge zurück.
+ */
+function dropListEntries(value: JsonValue, length: number, maxChars: number): number {
+  let current = length;
+  const visit = (node: JsonValue): void => {
+    if (current <= maxChars) return;
+    if (Array.isArray(node)) {
+      for (let i = node.length - 1; i >= 0 && current > maxChars; i--) visit(node[i] as JsonValue);
+      while (node.length > 0 && current > maxChars) {
+        const entry = node.pop() as JsonValue;
+        current -= JSON.stringify(entry).length + (node.length > 0 ? 1 : 0);
+      }
+    } else if (node !== null && typeof node === "object") {
+      const children = Object.values(node);
+      for (let i = children.length - 1; i >= 0 && current > maxChars; i--)
+        visit(children[i] as JsonValue);
+    }
+  };
+  visit(value);
+  return current;
 }
 
 /**
  * Kürzt einen Inhalt deterministisch auf höchstens `maxChars` (`contentChars`): erst
  * Zeichenketten vom Ende her (die längste zuerst), dann Listen vom Ende her. `undefined`, wenn es
- * auch so nicht passt oder der gekürzte Inhalt nicht zum Vertrag der Hülle passt.
+ * auch so nicht passt oder der gekürzte Inhalt nicht zum Vertrag der Hülle passt. Die Laufzeit
+ * wächst mit der Größe des Werts; ein zu tiefer, zu großer oder kreisförmiger Wert wird
+ * gar nicht erst angefasst.
  */
 export function truncateContent(
   value: JsonValue,
   maxChars: number,
 ): { inhalt: JsonValue; gekuerzt: boolean; chars: number } | undefined {
+  if (jsonUeberGrenzen(value)) return undefined;
   const chars = contentChars(value);
-  // Erst die festen Grenzen der Hülle: Zeichenketten und Listen vom Ende her kürzen.
-  let current = fitBounds(value);
-  let length = contentChars(current);
-  for (let round = 0; length > maxChars && round < 10_000; round++) {
-    const excess = length - maxChars;
-    let next = shortenLongestString(current, excess);
-    if (!next.done || contentChars(next.value) >= length) next = dropLastListEntry(current);
-    if (!next.done) return undefined;
-    current = next.value;
-    length = contentChars(current);
+  // Erst die festen Grenzen der Hülle: Zeichenketten und Listen vom Ende her kürzen. Das ist eine
+  // eigene Kopie, die unten verändert werden darf.
+  // Die Hülle um den Wert macht auch eine einzelne Zeichenkette als Wert kürzbar.
+  const holder: JsonValue[] = [fitBounds(value)];
+  let length = contentChars(holder[0] as JsonValue);
+  if (length > maxChars) {
+    length = shortenStrings(holder, length, maxChars);
+    if (length > maxChars) length = dropListEntries(holder[0] as JsonValue, length, maxChars);
   }
-  if (length > maxChars) return undefined;
+  const current = holder[0] as JsonValue;
+  // Nachgerechnet statt der mitgeführten Länge vertraut: Die Grenze muss wirklich eingehalten sein.
+  const final = contentChars(current);
+  if (final > maxChars) return undefined;
   if (!boundedJsonSchema.safeParse(current).success) return undefined;
-  return { inhalt: current, gekuerzt: length < chars, chars };
+  return { inhalt: current, gekuerzt: final < chars, chars };
 }
 
 /** Zeichenketten auf `BOUNDED_JSON_LIMITS.text` und Listen auf `.items` kürzen (vom Ende her). */
