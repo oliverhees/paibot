@@ -2,7 +2,7 @@
  * PaiBot – Tests: Läufe mit dem Werkzeug „In der Doku nachschlagen“ über das echte Tor mit allen
  * Standard-Regeln (erlaubt nur über R-010), den Test-Anbieter mit Drehbuch und eine echte
  * Datenbank: Ergebnis nur als Werkzeug-Ergebnis, ehrliche Quellen, Abdruck und Belege,
- * Bereinigung, kein weiterer Modell-Schritt bei „nichts gefunden“, „verworfen“, Anweisung,
+ * Bereinigung, der Lauf geht bei „nichts gefunden“ weiter, Anweisung,
  * eingeschleuste Aufforderung, Chat ohne Wunsch.
  *
  * @author    Oliver Hees
@@ -20,10 +20,8 @@ import { evaluate, toolResultDigestText } from "@paibot/gate";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import type { ReceiptEntry } from "@paibot/shared/belege";
-import { EVENT_DATA } from "@paibot/shared/ereignisse";
 import type { RunId } from "@paibot/shared/ids";
 import type { JsonValue } from "@paibot/shared/motor";
-import { t } from "@paibot/shared/texte";
 import { ACTIVE_STANDARD_RULES, type RuleDefinition } from "@paibot/shared/tor";
 import type { ToolDefinition, ToolEnvelope } from "@paibot/shared/werkzeug";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -402,34 +400,41 @@ describe("Ergebnis, Quellen, Abdruck, Belege", () => {
   });
 });
 
-/** Fester Satz mit der Version des echten Index. */
-const festerSatz = () =>
-  t("werkzeug.doku.nichts_gefunden", { stand: echt.stand.split("+")[0] ?? "" });
-
 /** Nachrichten des Bots in einem Lauf. */
 async function botNachrichten(env: RunSetup, runId: RunId) {
   const alle = await repo.messages.listForConversation(env.db, env.conversationId, { limit: 200 });
   return alle.filter((m) => m.role === "assistant" && m.runId === runId);
 }
 
-describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
-  // Gegenprobe: `nachAufrufen` immer „weiter“ → die zweite Anfrage kommt an.
-  it("„Wie verbinde ich Telegram?“: genau eine Anfrage, End-Antwort origin fest mit dem festen Satz samt Version, Lauf succeeded, Zwischentext step 0 mit dem Entwurf, keine andere End-Antwort", async () => {
+describe("Nachschlagen ohne Fundstelle: der Lauf geht weiter", () => {
+  // Gegenprobe: in `schleife.ts` die Bedingung `if (last)` nach den Aufrufen durch `if (true)` ersetzen
+  // → nur eine Anfrage, die End-Antwort ist der Satz „Die Antwort ist zu lang geworden …“.
+  it("„Wie verbinde ich Telegram?“: zweite Anfrage an den Anbieter, ihre Antwort ist die End-Antwort (origin modell), das Modell sieht Quelle, Stand und gefunden 0", async () => {
     const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
     const { runId, outcome } = await env.ask(FRAGE_FALLE);
     expect(outcome).toMatchObject({ status: "succeeded" });
-    expect(chats()).toHaveLength(1);
+    expect(chats()).toHaveLength(2);
     expect((await repo.runs.get(env.db, runId))?.status).toBe("succeeded");
     const nachrichten = await botNachrichten(env, runId);
     expect(nachrichten.map((m) => [m.step, m.origin, m.content])).toEqual([
       [0, "modell", ENTWURF],
-      [undefined, "fest", festerSatz()],
+      [undefined, "modell", ZWEITER_SCHRITT],
     ]);
-    expect(festerSatz()).toContain("0.3.0-dev");
-    expect(JSON.stringify(nachrichten)).not.toContain(ZWEITER_SCHRITT);
+    expect(gesendeteHuellen(1)).toMatchObject([
+      {
+        status: "ok",
+        werkzeug: DOKU_TOOL_KEY,
+        inhalt: {
+          status: "nichts_gefunden",
+          quelle: "Doku von PaiBot",
+          stand: echt.stand,
+          gefunden: 0,
+        },
+      },
+    ]);
   });
 
-  it("Belege ohne Treffer: modell.anfragen, werkzeug.aufrufen (R-010) mit Fundstellen 0 und Doku-Stand, danach kein Beleg mehr", async () => {
+  it("Belege ohne Treffer: modell.anfragen, werkzeug.aufrufen (R-010) mit Fundstellen 0 und Doku-Stand, dann die zweite modell.anfragen", async () => {
     const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
     await env.ask(FRAGE_FALLE);
     const entries = await env.receipts();
@@ -438,6 +443,8 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
       "result modell.anfragen",
       "decision werkzeug.aufrufen",
       "result werkzeug.aufrufen",
+      "decision modell.anfragen",
+      "result modell.anfragen",
     ]);
     expect(decisions(entries, "werkzeug.aufrufen")[0]?.decision.rules.map((r) => r.id)).toEqual([
       "R-010",
@@ -448,17 +455,21 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     expect(await env.verify()).toMatchObject({ ok: true });
   });
 
-  it("zwei Fragen ohne Treffer im selben Schritt: kein weiterer Modell-Schritt", async () => {
+  it("zwei Fragen ohne Treffer im selben Schritt: beide Ergebnisse gehen an das Modell, der Lauf geht weiter", async () => {
     const env = await setup(DOKU_SCRIPTS.zweimalNichts);
     const { runId } = await env.ask(FRAGE_FALLE);
-    expect(chats()).toHaveLength(1);
+    expect(chats()).toHaveLength(2);
     expect(env.zaehler.n).toBe(2);
-    expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({ origin: "fest" });
+    expect(gesendeteHuellen(1)).toMatchObject([
+      { status: "ok", inhalt: { status: "nichts_gefunden", gefunden: 0 } },
+      { status: "ok", inhalt: { status: "nichts_gefunden", gefunden: 0 } },
+    ]);
+    expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({
+      origin: "modell",
+      content: ZWEITER_SCHRITT,
+    });
   });
 
-  // Gegenprobe: In `nachAufrufen` (`nahtstellen.ts`) einen Fehler als Fehlanzeige zählen
-  // (`const mitErgebnis = doku` und `e.doku?.gefunden ?? 0` statt `e.doku?.gefunden`) → in allen
-  // drei Fällen hier nur eine Anfrage und der feste Satz.
   it("Fehler des Werkzeugs beim Nachschlagen: keine Fehlanzeige, der Lauf geht zum nächsten Modell-Schritt", async () => {
     const env = await setup(DOKU_SCRIPTS.nichtsGefunden, {
       aendern: {
@@ -475,10 +486,9 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     const nachrichten = await botNachrichten(env, runId);
     expect(nachrichten.at(-1)).toMatchObject({ origin: "modell", content: ZWEITER_SCHRITT });
     expect(nachrichten.some((m) => m.origin === "fest")).toBe(false);
-    expect(JSON.stringify(nachrichten)).not.toContain(festerSatz());
   });
 
-  it("eine Frage ohne Treffer und ein Fehler im selben Schritt: der Lauf geht weiter, kein fester Satz", async () => {
+  it("eine Frage ohne Treffer und ein Fehler im selben Schritt: der Lauf geht weiter", async () => {
     const echtesWerkzeug = widen(dokuNachschlagen(echt));
     let aufrufe = 0;
     const env = await setup(DOKU_SCRIPTS.nichtsUndFehler, {
@@ -532,10 +542,10 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
   // Hülle entfernen → der Beleg trägt den beschnittenen Stand „0.3.0-de“ mit Fundstellen 0.
   it("knapper Platz im Schritt: ein beschnittener Doku-Stand steht weder im Beleg noch zählt die Hülle", async () => {
     const env = await setup(DOKU_SCRIPTS.einerTrifft);
-    // Der erste Aufruf braucht rund 1 000 Zeichen; für den zweiten bleiben 170 Zeichen Platz.
+    // Der erste Aufruf braucht rund 1 000 Zeichen; für den zweiten bleibt wenig Platz.
     await env.db
       .update(settingsTable)
-      .set({ toolResultMaxChars: 1000, toolResultsMaxCharsPerStep: 1170 });
+      .set({ toolResultMaxChars: 1000, toolResultsMaxCharsPerStep: 1210 });
     const { runId } = await env.ask(FRAGE_FALLE);
     const [, zweiter] = await repo.toolCalls.listForRun(env.db, runId);
     const gespeichert = zweiter?.output as ToolEnvelope & { gekuerzt?: boolean };
@@ -562,21 +572,24 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     });
   });
 
-  it("abgelehnter Aufruf und eine Frage ohne Treffer: kein weiterer Modell-Schritt", async () => {
+  it("abgelehnter Aufruf und eine Frage ohne Treffer: der Lauf geht weiter, das Modell sieht beides", async () => {
     const env = await setup(DOKU_SCRIPTS.abgelehntUndNichts);
     const { runId } = await env.ask(FRAGE_FALLE);
-    expect(chats()).toHaveLength(1);
+    expect(chats()).toHaveLength(2);
     expect(await repo.toolCalls.listForRun(env.db, runId)).toMatchObject([
       { status: "denied", errorCode: "werkzeug_eingabe_ungueltig" },
       { status: "succeeded" },
     ]);
+    expect(gesendeteHuellen(1)).toMatchObject([
+      { status: "abgelehnt", code: "werkzeug_eingabe_ungueltig" },
+      { status: "ok", inhalt: { status: "nichts_gefunden", gefunden: 0 } },
+    ]);
     expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({
-      origin: "fest",
-      content: festerSatz(),
+      origin: "modell",
+      content: ZWEITER_SCHRITT,
     });
   });
 
-  // Gegenprobe: abgelehnte Aufrufe als „nichts gefunden“ zählen → hier Kurzschluss.
   it("nur abgelehnte Aufrufe: der Lauf geht weiter, das Modell sieht die Ablehnung", async () => {
     const env = await setup(DOKU_SCRIPTS.nurAbgelehnt);
     const { runId } = await env.ask(FRAGE_FALLE);
@@ -590,38 +603,10 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     });
   });
 
-  // Gegenprobe: Ereignis „verworfen“ weglassen.
-  it("nach dem Kurzschluss: für den Schritt erst step.finished zwischentext, dann step.finished verworfen, beide gültig, in der Transaktion der festen Antwort", async () => {
-    const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
-    const { runId } = await env.ask(FRAGE_FALLE);
-    // Eine Unterhaltung mit genau diesem Lauf.
-    const ereignisse = await env.events();
-    const schritte = ereignisse.filter((e) => e.type === "step.finished");
-    expect(
-      schritte.map((e) => [
-        (e.data as { step: number }).step,
-        (e.data as { ending: string }).ending,
-      ]),
-    ).toEqual([
-      [0, "zwischentext"],
-      [0, "verworfen"],
-    ]);
-    for (const e of schritte) {
-      expect(EVENT_DATA["step.finished"].safeParse(e.data).success).toBe(true);
-    }
-    // Gleiche Transaktion: „verworfen“ steht unmittelbar vor den Ereignissen der festen Antwort.
-    const typen = ereignisse.map((e) => e.type);
-    const stelle = typen.lastIndexOf("step.finished");
-    expect(typen.slice(stelle, stelle + 2)).toEqual(["step.finished", "message.created"]);
-    const fest = (await botNachrichten(env, runId)).find((m) => m.origin === "fest");
-    expect((ereignisse[stelle + 1]?.data as { messageId?: string } | undefined)?.messageId).toBe(
-      fest?.id,
-    );
-  });
-
-  it("ohne Kurzschluss gibt es nie step.finished verworfen", async () => {
+  it("ohne Ergebnis mit Fundstelle gibt es nie step.finished verworfen; der Schritt endet als Zwischentext, der nächste als Antwort", async () => {
     for (const script of [
-      DOKU_SCRIPTS.treffer,
+      DOKU_SCRIPTS.nichtsGefunden,
+      DOKU_SCRIPTS.zweimalNichts,
       DOKU_SCRIPTS.einerTrifft,
       DOKU_SCRIPTS.nurAbgelehnt,
     ]) {
@@ -630,12 +615,12 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
       const endungen = (await env.events())
         .filter((e) => e.type === "step.finished")
         .map((e) => (e.data as { ending: string }).ending);
-      expect(endungen).not.toContain("verworfen");
+      expect(endungen).toEqual(["zwischentext", "antwort"]);
     }
   });
 
   // Gegenprobe: `nurAntworten: false` beim Lesen → der Entwurf erscheint.
-  it("der Entwurf des Schritts erscheint nie als Antwort: die Nachrichten der Unterhaltung ohne Zwischentexte enthalten nur Frage und festen Satz", async () => {
+  it("der Entwurf des Schritts erscheint nie als Antwort: die Nachrichten der Unterhaltung ohne Zwischentexte enthalten nur Frage und die Antwort des zweiten Schritts", async () => {
     const env = await setup(DOKU_SCRIPTS.nichtsGefunden);
     await env.ask(FRAGE_FALLE);
     const sichtbar = await repo.messages.listForConversation(env.db, env.conversationId, {
@@ -643,7 +628,7 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     });
     expect(sichtbar.map((m) => [m.role, m.content])).toEqual([
       ["user", FRAGE_FALLE],
-      ["assistant", festerSatz()],
+      ["assistant", ZWEITER_SCHRITT],
     ]);
     expect(JSON.stringify(sichtbar)).not.toContain(ENTWURF);
   });

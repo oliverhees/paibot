@@ -148,9 +148,21 @@ describe("Ergebnis", () => {
     const outcome = await dokuNachschlagen(index).run({ frage: "Wie verbinde ich Telegram?" }, ctx);
     expect(outcome).toEqual({
       status: "ok",
-      output: { status: "nichts_gefunden", stand: index.stand },
+      output: {
+        status: "nichts_gefunden",
+        stand: index.stand,
+        quelle: "Doku von PaiBot",
+        gefunden: 0,
+      },
     });
-    expect(dokuQuellen({ status: "nichts_gefunden", stand: index.stand })).toEqual([]);
+    expect(
+      dokuQuellen({
+        status: "nichts_gefunden",
+        stand: index.stand,
+        quelle: "Doku von PaiBot",
+        gefunden: 0,
+      }),
+    ).toEqual([]);
   });
 });
 

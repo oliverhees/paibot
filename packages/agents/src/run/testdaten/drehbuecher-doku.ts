@@ -19,7 +19,7 @@ export const DOKU_NAME = "doku_nachschlagen";
 /** Text, den das Modell vor dem Nachschlagen schreibt; darf nie als Antwort erscheinen. */
 export const ENTWURF = "ENTWURF";
 
-/** Text eines zweiten Schritts, der nach „nichts gefunden“ nie angefragt werden darf. */
+/** Antwort des Modells im zweiten Schritt, nachdem das Nachschlagen nichts gefunden hat. */
 export const ZWEITER_SCHRITT = "ZWEITER-SCHRITT";
 
 /** End-Antwort nach einem Treffer; nennt die Seite nur, weil das Drehbuch sie schreibt. */
@@ -72,7 +72,7 @@ export const DOKU_SCRIPTS = {
   treffer: {
     steps: [{ toolCalls: [doku({ frage: FRAGE_TREFFER })] }, { text: ANTWORT_MIT_SEITE }],
   },
-  /** Schritt 0: Text „ENTWURF“ und eine Frage ohne Treffer; Schritt 1 darf nie angefragt werden. */
+  /** Schritt 0: Text „ENTWURF“ und eine Frage ohne Treffer; Schritt 1 antwortet mit eigenen Worten. */
   nichtsGefunden: {
     steps: [
       { text: ENTWURF, toolCalls: [doku({ frage: FRAGE_FALLE })] },
@@ -100,7 +100,7 @@ export const DOKU_SCRIPTS = {
       { text: ANTWORT_MIT_SEITE },
     ],
   },
-  /** Ein Aufruf mit ungültiger Eingabe (abgelehnt) und einer ohne Treffer: Kurzschluss. */
+  /** Ein Aufruf mit ungültiger Eingabe (abgelehnt) und einer ohne Treffer: der Lauf geht weiter. */
   abgelehntUndNichts: {
     steps: [
       {

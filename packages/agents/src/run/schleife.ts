@@ -29,7 +29,7 @@ import type {
   TurnMessage,
 } from "@paibot/shared/motor";
 import type { Route, Run, Settings } from "@paibot/shared/objekte";
-import { errorText, isTextKey, type TextKey, t } from "@paibot/shared/texte";
+import { errorText, isTextKey, t } from "@paibot/shared/texte";
 import { LIMITS_BY_ID } from "@paibot/shared/tor";
 import { buildSystemPrompt } from "../prompt";
 import { emptyToolRegistry, type RegisteredTool, type ToolRegistry } from "../werkzeuge/register";
@@ -46,14 +46,11 @@ import {
   requestDigest,
 } from "./kontext";
 import {
-  type AufrufErgebnis,
   addiereToken,
   ausgabeGrenze,
-  type FestesEnde,
   kappeToken,
   kettenStand,
   laufAusloeser,
-  nachAufrufen,
   schrittFakten,
   tokensHeute,
   untrustedInput,
@@ -122,7 +119,7 @@ async function freshSettings(db: Database): Promise<Settings> {
   return settings;
 }
 
-/** Grenzen, deren Ablehnung in einem späteren Schritt mit einem festen Satz endet. */
+/** Grenzen, deren Ablehnung in einem späteren Schritt mit einer festen End-Antwort endet. */
 const LIMIT_END_NAMES = new Set(["laenge", "lauf_token", "lauf_schritte"]);
 
 /** Endet die Ablehnung eines späteren Schritts mit festem Satz (nur G-03, G-16, G-18 verletzt)? */
@@ -313,7 +310,6 @@ export async function runLoop(
 
     // Wünsche des Schritts, je einzeln durchs Tor, nacheinander in der Reihenfolge des Modells.
     const results: ToolResult[] = [];
-    const outcomes: AufrufErgebnis[] = [];
     let stepChars = 0;
     for (const [i, call] of value.calls.entries()) {
       if (guard.reason !== undefined) {
@@ -341,13 +337,6 @@ export async function runLoop(
         return withMessage(stopEnd(guard.reason ?? "abbruch"));
       }
       results.push(outcome.result);
-      outcomes.push({
-        status: outcome.status,
-        ...(outcome.code === undefined ? {} : { code: outcome.code }),
-        toolKey: call.toolKey,
-        ausgefuehrt: outcome.ausgefuehrt,
-        ...(outcome.doku === undefined ? {} : { doku: outcome.doku }),
-      });
     }
     stand.token = addiereToken(stand.token, addiereToken(value.tokens.input, value.tokens.output));
     stand.schritte += 1;
@@ -356,21 +345,14 @@ export async function runLoop(
       // Wunsch, obwohl keine Werkzeuge angeboten waren: alle sind belegt abgelehnt (V-12).
       return withMessage({ kind: "failed", code: "werkzeug_unbekannt" });
     }
-    const next = nachAufrufen(outcomes);
-    if (next.art === "fest" || last) {
+    if (last) {
       lastMessageId = await fixedAnswer(db, context, {
-        text: next.art === "fest" ? festerSatz(next) : t("lauf.schritte.antwort"),
+        text: t("lauf.schritte.antwort"),
         route: value.model.route,
         label: value.model.label,
         flushChars: tuning.deltaFlushChars,
-        // Der Text dieses Schritts war schon Zwischentext; mit dem festen Ende ist er verworfen.
-        ...(next.art === "fest" ? { verworfen: step } : {}),
       });
-      return withMessage(
-        next.art === "fest"
-          ? { kind: "succeeded", tokens: { input: 0, output: 0 } }
-          : { kind: "failed", code: "schritte_aufgebraucht" },
-      );
+      return withMessage({ kind: "failed", code: "schritte_aufgebraucht" });
     }
     runHistory.push(
       {
@@ -385,15 +367,6 @@ export async function runLoop(
       { role: "tool", results },
     );
   }
-}
-
-/** Text eines festen Endes: der Satz zum Schlüssel, Platzhalter mit den Werten gefüllt. */
-function festerSatz(ende: FestesEnde): string {
-  if (ende.werte === undefined) return plainText(ende.textKey);
-  return (t as unknown as (key: TextKey, werte: Readonly<Record<string, string>>) => string)(
-    ende.textKey,
-    ende.werte,
-  );
 }
 
 /** Übrige Aufrufe ohne Entscheidung abbrechen (ohne Beleg; sie waren noch nicht am Tor). */
@@ -800,20 +773,15 @@ async function announceAnswer(
 
 /**
  * Feste End-Antwort von PaiBot (Herkunft `fest`), z. B. wenn eine Grenze mitten im Lauf greift.
- * Mit `verworfen` steht in derselben Transaktion zuerst `step.finished` mit `verworfen` für
- * diesen Schritt (sein Text war schon als Zwischentext gemeldet).
  */
 async function fixedAnswer(
   db: Database,
   context: Ready,
-  input: { text: string; route: Route; label: string; flushChars: number; verworfen?: number },
+  input: { text: string; route: Route; label: string; flushChars: number },
 ): Promise<MessageId> {
   const run = context.run;
   return write(() =>
     repo.withTransaction(db, async (tx) => {
-      if (input.verworfen !== undefined) {
-        await repo.events.append(tx, stepFinished(run, input.verworfen, "verworfen"));
-      }
       const message = await repo.messages.insert(tx, {
         conversationId: run.conversationId,
         role: "assistant",
