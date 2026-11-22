@@ -200,7 +200,7 @@
         "taste": "Enter"
       },
       {
-        "warteAufText": "Die Liste kommt direkt von Dienst auf meinem Rechner"
+        "warteAufText": "Die Liste kommt direkt von „Dienst auf meinem Rechner“"
       }
     ],
     "einrichtung-bis-anbieter": [
@@ -3156,7 +3156,7 @@
           }
         },
         {
-          "warteAufText": "Dienst auf meinem Rechner ist gespeichert."
+          "warteAufText": "„Dienst auf meinem Rechner“ ist gespeichert."
         },
         {
           "warteAufText": "Beispiel-Modell Kompakt"
@@ -3291,7 +3291,7 @@
           }
         },
         {
-          "warteAufText": "Dienst auf meinem Rechner ist entfernt."
+          "warteAufText": "„Dienst auf meinem Rechner“ ist entfernt."
         }
       ],
       "beschreibung": "Eigener Anbieter entfernt; der erste Anbieter ist wieder allein"
