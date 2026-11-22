@@ -2303,6 +2303,4 @@ export const de = {
   "werkzeug.huelle.art.ungueltig": "ist nicht gültig.",
   // Werkzeug „In der Doku nachschlagen“
   "werkzeug.titel.doku_nachschlagen": "In der Doku nachschlagen",
-  "werkzeug.doku.nichts_gefunden":
-    "Dazu steht in der Doku deiner PaiBot-Version ({stand}) nichts. Deshalb sage ich dazu nichts Genaues. Schau gern selbst in die Doku oder frag mich mit anderen Worten. Hattest du in derselben Nachricht noch etwas anderes gefragt, frag es bitte noch einmal getrennt.",
 } as const satisfies Record<string, string | readonly string[]>;

@@ -10,11 +10,9 @@
  * @since     2026-11-22
  */
 
-import { repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import type { MotorEvent } from "@paibot/shared/motor";
-import { t } from "@paibot/shared/texte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeMotor, type FakeMotorStep } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
@@ -37,7 +35,6 @@ vi.mock("./nahtstellen", async (original) => {
     kettenStand: weiter("kettenStand"),
     untrustedInput: weiter("untrustedInput"),
     nachFrage: weiter("nachFrage"),
-    nachAufrufen: weiter("nachAufrufen"),
     laufAusloeser: weiter("laufAusloeser"),
   };
 });
@@ -119,16 +116,6 @@ describe("jede Nahtstelle einmal ersetzt", () => {
       finish("tool-calls"),
     ]);
     expect(gerufen).toBe(1);
-  });
-
-  it("nachAufrufen: festes Ende → kein weiterer Modell-Schritt, End-Antwort fest", async () => {
-    ersatz.nachAufrufen = () => ({ art: "fest", textKey: "lauf.schritte.antwort" });
-    const { env, runId, motor } = await lauf([aufruf, finish("tool-calls")]);
-    expect(motor.calls).toHaveLength(1);
-    const end = (
-      await repo.messages.listForConversation(env.db, env.conversationId, { limit: 20 })
-    ).find((m) => m.runId === runId && m.step === undefined);
-    expect(end).toMatchObject({ origin: "fest", content: t("lauf.schritte.antwort") });
   });
 
   it("laufAusloeser: Ersatz automation → Fakt trigger am Werkzeug-Aufruf", async () => {
