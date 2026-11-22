@@ -89,8 +89,6 @@ Die Datenschleuse (Profil `schleuse`) wird auch auf diesem Weg aus einem festen 
 
 Eine Datenbank, die schon auf der neueren Version lief, passt nicht mehr zur älteren: Die ältere Version meldet dann im Log „Datenbank nicht auf Stand“ und startet nicht. Das gilt auch für den Wechsel auf den Stand mit der Datenbank für Apps: Danach gibt es kein Zurück auf eine ältere Version ohne die Sicherung von vorher, also mach sie vor dem Wechsel. Zurück geht es nur mit der Sicherung von vorher:
 
-Das gilt auch für den Wechsel auf den Stand mit der Datenbank für Teams (Bots mit Pause und Team, Teams, Entwürfe, Fäden): Dieser Wechsel hat **keinen Weg zurück ohne Sicherung**. Die ältere Version kennt Unterhaltungen ohne festen Bot und die neuen Aktionen in den Belegen nicht. Lege deshalb vor dem Update die Sicherung an, mit der du zurückkannst ([Vorher sichern](#1-vorher-sichern)); ohne sie gibt es nach dem Wechsel keine Rückkehr zur älteren Version.
-
 1. Möchtest du den Stand der neueren Version behalten, sichere ihn zuerst (`sh deploy/sicherung.sh sichern`).
 2. Den alten Stand holen (`git checkout v<alte Version>`, bei fertigem Image zusätzlich `PAIBOT_VERSION` zurücksetzen).
 3. Stack samt Datenbank löschen (die Sicherungen bleiben, sie liegen außerhalb):
@@ -104,6 +102,8 @@ Das gilt auch für den Wechsel auf den Stand mit der Datenbank für Teams (Bots 
    ```bash
    sh deploy/sicherung.sh zurueckspielen ~/paibot-sicherungen/paibot-sicherung-<Zeit>
    ```
+
+Das gilt auch für den Wechsel auf den Stand mit der Datenbank für Teams (Bots mit Pause und Team, Teams, Entwürfe, Fäden): Dieser Wechsel hat **keinen Weg zurück ohne Sicherung**. Die ältere Version kennt Unterhaltungen ohne festen Bot und die neuen Aktionen in den Belegen nicht. Lege deshalb vor dem Update die Sicherung an, mit der du zurückkannst ([Vorher sichern](#1-vorher-sichern)); ohne sie gibt es nach dem Wechsel keine Rückkehr zur älteren Version.
 
 Mit fertigem Image steht in Schritt 3 `deploy/docker-compose.image.yml`, und in Schritt 4 hängst du `--image` an.
 
