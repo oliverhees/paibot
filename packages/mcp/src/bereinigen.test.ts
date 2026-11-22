@@ -52,7 +52,7 @@ describe("bereinigeText", () => {
       "Kurz-Verweis mit Definition": `![r]\n\n[r]: ${GEHEIM}`,
       "Verweis mit Namen": `![alt][r]\n\n[r]: ${GEHEIM}`,
       "ohne schließende Klammer": `![x](${GEHEIM}`,
-      "viele Anfänge hintereinander": "![".repeat(500) + `](${GEHEIM})`,
+      "viele Anfänge hintereinander": `${"![".repeat(500)}](${GEHEIM})`,
     };
     for (const [name, roh] of Object.entries(PROBEN)) {
       it(`${name}`, () => {
