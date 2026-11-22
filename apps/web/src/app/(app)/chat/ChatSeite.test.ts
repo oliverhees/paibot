@@ -298,6 +298,49 @@ describe("Chat-Ansicht", () => {
     expect(aus).toContain('href="/modelle"');
   });
 
+  it("abgelehnt wegen Tagesbudget: Ausweg und Link zu den Grenzen, auch nach dem Neuladen", () => {
+    const user = newId("message");
+    const runId = newId("run");
+    const beleg: BelegKurz = {
+      id: newId("receipt"),
+      vollstaendig: true,
+      seq: 7,
+      art: "decision",
+      aktion: "modell.anfragen",
+      zeit: "2026-11-21T13:31:05.000Z",
+      runId,
+      akteur: "bot",
+      entscheidung: {
+        outcome: "deny",
+        regeln: [],
+        grund: "Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: G-04 „Tagesbudget“.",
+      },
+    };
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: BEREIT,
+        verlauf: verlauf({
+          nachrichten: [
+            msg({ id: user as never, role: "user", content: "Hallo", status: "complete" }),
+          ],
+          laeufe: [
+            {
+              id: runId,
+              status: "denied",
+              errorCode: "abgelehnt",
+              triggerMessageId: user,
+              createdAt: "2026-11-21T13:31:00.000Z",
+            } as Run,
+          ],
+          belege: [beleg],
+        }),
+      }),
+    );
+    expect(aus).toContain("Das Tagesbudget ist für heute aufgebraucht.");
+    expect(aus).toContain("Einstellungen › Grenzen");
+    expect(aus).toContain('href="/einstellungen/grenzen"');
+  });
+
   it("kein Inline-Skript und kein unsicheres HTML", () => {
     const aus = renderToStaticMarkup(h(ChatSeite, { bereitschaft: BEREIT, verlauf: verlauf() }));
     expect(aus).not.toMatch(/<script|dangerouslySetInnerHTML/);

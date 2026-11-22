@@ -19,6 +19,7 @@ import {
   schleuseFehler,
   schleuseFehlerArt,
   TITEL_ZEICHEN,
+  tagesbudgetAusweg,
   tagText,
   titelAusNachricht,
   uhrzeit,
@@ -89,6 +90,31 @@ describe("zielZuCode", () => {
     expect(zielZuCode("schleuse_blockiert")?.href).toBe("/datenschleuse");
     expect(zielZuCode("limit_erreicht")?.href).toBe("/einstellungen");
     expect(zielZuCode("intern")).toBeUndefined();
+  });
+});
+
+describe("tagesbudgetAusweg", () => {
+  const grund = "Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: G-04 „Tagesbudget“.";
+  it("nennt bei G-04 den Ausweg und führt zu den Grenzen", () => {
+    const r = tagesbudgetAusweg({ ergebnis: "abgelehnt", code: "abgelehnt" }, [grund]);
+    expect(r?.ausweg).toContain("Einstellungen › Grenzen");
+    expect(r?.ausweg).toContain("Mitternacht");
+    expect(r?.ziel.href).toBe("/einstellungen/grenzen");
+  });
+  it("sonst nichts: andere Grenze, anderer Code, anderes Ende, kein Grund", () => {
+    const andere = "Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: G-03 „Länge“.";
+    expect(
+      tagesbudgetAusweg({ ergebnis: "abgelehnt", code: "abgelehnt" }, [andere]),
+    ).toBeUndefined();
+    expect(
+      tagesbudgetAusweg({ ergebnis: "abgelehnt", code: "angehalten" }, [grund]),
+    ).toBeUndefined();
+    expect(
+      tagesbudgetAusweg({ ergebnis: "fehlgeschlagen", code: "abgelehnt" }, [grund]),
+    ).toBeUndefined();
+    expect(
+      tagesbudgetAusweg({ ergebnis: "abgelehnt", code: "abgelehnt" }, [undefined]),
+    ).toBeUndefined();
   });
 });
 

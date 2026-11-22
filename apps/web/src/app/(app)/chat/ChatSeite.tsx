@@ -70,6 +70,7 @@ import {
   laengenHinweis,
   schleuseFehler,
   schleuseFehlerArt,
+  tagesbudgetAusweg,
   tagSchluessel,
   tagText,
   titelAusNachricht,
@@ -815,7 +816,14 @@ export function ChatSeite({
       schleuseGemeldet: e.schleuseGrund !== undefined,
     });
     const schleuse = schleuseArt ? schleuseFehler(schleuseArt) : undefined;
-    const ziel = schleuseArt ? zielZuSchleuseFehler(schleuseArt) : zielZuCode(e.code);
+    const budget = tagesbudgetAusweg(e, [
+      e.text,
+      ...ansicht.belege
+        .filter((x) => x.runId === e.runId && x.art === "decision")
+        .map((x) => x.entscheidung?.grund),
+    ]);
+    const ziel =
+      budget?.ziel ?? (schleuseArt ? zielZuSchleuseFehler(schleuseArt) : zielZuCode(e.code));
     const b = belegZurAntwort(ansicht.belege, e.runId);
     const ueberschrift =
       e.ergebnis === "abgebrochen"
@@ -828,7 +836,9 @@ export function ChatSeite({
     const satz =
       e.ergebnis === "abgebrochen" ? undefined : (schleuse?.text ?? e.text ?? errorText(e.code));
     const ausweg =
-      e.ergebnis === "abgebrochen" ? undefined : (schleuse?.ausweg ?? errorWayOut(e.code));
+      e.ergebnis === "abgebrochen"
+        ? undefined
+        : (budget?.ausweg ?? schleuse?.ausweg ?? errorWayOut(e.code));
     return (
       <ChatBubble
         key={`ende-${e.runId}`}

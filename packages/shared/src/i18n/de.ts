@@ -560,6 +560,9 @@ export const de = {
   "chat.ende.abgebrochen_teil": "Abgebrochen. Der Text bis hierhin bleibt stehen.",
   "chat.ende.abgelehnt": "Vom Tor abgelehnt",
   "chat.ende.schleuse": "Meldung der Datenschleuse: {grund}",
+  "chat.ende.tagesbudget":
+    "Das Tagesbudget ist für heute aufgebraucht. Du kannst es unter Einstellungen › Grenzen erhöhen oder leeren. Sonst zählt der Verbrauch ab Mitternacht in deiner Zeitzone wieder bei null.",
+  "chat.ziel.grenzen": "Zu den Grenzen",
   "chat.kopf.schritte": "Schritte",
   "chat.kopf.schritte_label": "Beleg-Zeilen unter den Antworten zeigen",
   "chat.kopf.menue": "Weitere Aktionen",

@@ -162,6 +162,24 @@ export function zielZuCode(code: ErrorCode): { href: string; text: string } | un
   }
 }
 
+/**
+ * Hat das Tor wegen des Tagesbudgets (Grenze G-04) abgelehnt? Der Code ist dann `abgelehnt`; die
+ * Grenze steht in der Begründung des Tors („G-04 …“). Die Begründung kommt aus dem Ende des Laufs
+ * oder, nach dem Neuladen, aus dem Beleg der Entscheidung. Dann gibt es einen Ausweg mit Link zu
+ * den Grenzen; sonst nichts.
+ */
+export function tagesbudgetAusweg(
+  e: { ergebnis: "abgebrochen" | "fehlgeschlagen" | "abgelehnt"; code: ErrorCode },
+  gruende: readonly (string | undefined)[],
+): { ausweg: string; ziel: { href: string; text: string } } | undefined {
+  if (e.ergebnis !== "abgelehnt" || e.code !== "abgelehnt") return undefined;
+  if (!gruende.some((g) => g !== undefined && /\bG-04\b/.test(g))) return undefined;
+  return {
+    ausweg: t("chat.ende.tagesbudget"),
+    ziel: { href: "/einstellungen/grenzen", text: t("chat.ziel.grenzen") },
+  };
+}
+
 /** Fehler, die an der Datenschleuse lagen und dort ihren eigenen Text mit Ausweg haben. */
 export type SchleuseFehlerArt =
   | "blockiert"
