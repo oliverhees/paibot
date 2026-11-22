@@ -4505,6 +4505,61 @@
       "ausschnitt": "section[aria-labelledby='getrennte-apps']",
       "verdecke": ["span:has-text('getrennt am')"],
       "beschreibung": "Eine getrennte App neu verbinden: die gespeicherte Adresse als Text und das Feld für den neuen Token (in dieser Aufnahme wird die Beispiel-App „Notizen“ getrennt; sie steht deshalb als letzte der Aufnahmen mit Beispiel-Apps)"
+    },
+    {
+      "name": "faden-arbeitet",
+      "pfad": "/_komponenten/faden?szene=arbeitet",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "textarea",
+      "beschreibung": "Faden eines Teams, das arbeitet (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "faden-wartet",
+      "pfad": "/_komponenten/faden?szene=wartet",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "textarea",
+      "beschreibung": "Faden, in dem das Team auf deine Antwort wartet, mit Antwort-Vorschlägen (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "faden-grenze",
+      "pfad": "/_komponenten/faden?szene=grenze",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "textarea",
+      "beschreibung": "Faden an einer Grenze, mit dem Knopf für mehr Budget (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "faden-gross",
+      "pfad": "/_komponenten/faden?szene=gross",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "textarea",
+      "beschreibung": "Großer Faden mit neun Zielen und acht Mitgliedern, Kopf zugeklappt (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "faden-handy",
+      "pfad": "/_komponenten/faden?szene=gross",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "textarea",
+      "beschreibung": "Großer Faden auf dem Handy, Leiste als Blatt von unten (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "faden-hell",
+      "pfad": "/_komponenten/faden?szene=arbeitet&thema=hell",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "textarea",
+      "beschreibung": "Faden im hellen Design (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
     }
   ]
 }

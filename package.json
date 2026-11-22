@@ -28,7 +28,8 @@
     "e2e": "turbo run build --output-logs=errors-only && node tools/e2e/src/e2e.mjs",
     "schleuse:config": "node scripts/schleuse-config.mjs",
     "belege:pruefen": "turbo run build --filter=@paibot/receipts --output-logs=errors-only && node packages/receipts/dist/belege-pruefen.mjs",
-    "apps:browser": "node scripts/apps-browser.mjs"
+    "apps:browser": "node scripts/apps-browser.mjs",
+    "faden:browser": "node scripts/faden-browser.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",

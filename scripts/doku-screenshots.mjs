@@ -369,7 +369,7 @@ async function anmeldung(browser) {
 }
 
 /** Wächter einer Aufnahme: alles, was die Aufnahme ungültig macht. */
-function watch(context, page, baseUrl) {
+function watch(context, page, baseUrl, entwicklung = false) {
   const problems = [];
   const host = new URL(baseUrl).host;
   page.on("pageerror", (error) => problems.push(`Fehler in der Seite: ${error.message}`));
@@ -388,6 +388,10 @@ function watch(context, page, baseUrl) {
     // Antworten mit 4xx/5xx meldet Chromium so; gewollte Fehler (z. B. falsches Passwort)
     // gehören zur Aufnahme. Unerwartete Status der Seite selbst prüft `status`.
     if (message.text().startsWith("Failed to load resource")) return;
+    // Nur der Entwicklungs-Server von Next meldet, ein vorgeladenes Stylesheet werde nicht gleich
+    // gebraucht; das betrifft jede Seite unter /_komponenten und sagt nichts über die Seite aus.
+    if (entwicklung && /was preloaded using link preload but not used/u.test(message.text()))
+      return;
     problems.push(`Konsole (${type}): ${message.text()}`);
   });
   context.route(
@@ -416,7 +420,7 @@ async function shoot(browser, entry, baseUrl) {
   let problems;
   try {
     page = await context.newPage();
-    problems = watch(context, page, baseUrl);
+    problems = watch(context, page, baseUrl, entry.modus === "entwicklung");
     // Meldungen der Content-Security-Policy kommen als Ereignis in der Seite; das Skript dafür
     // läuft über das Werkzeug des Browsers, nicht als Teil der Seite.
     await page.addInitScript(() => {

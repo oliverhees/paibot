@@ -121,6 +121,12 @@ Regeln der Oberfläche, jeweils mit ihrer Stelle:
 - **Kein Zod im Browser:** Die Bausteine importieren aus `@paibot/shared` nur Typen (`packages/ui/src/kein-zod.test.ts`).
 - **Erkannte Zeilen:** Die Bausteine zeigen, was der Server erkannt hat (`ErkannteZeilen` in `packages/ui/src/faden/Zeilen.tsx`); sie erkennen selbst nichts.
 
+Browser-Test und Bilder der Vorschau:
+
+- **Browser-Test:** `scripts/faden-browser.mjs` (`pnpm faden:browser`) prüft die Vorschau in Chromium gegen den laufenden Entwicklungs-Server, zum Beispiel `FADEN_URL=http://localhost:3000 pnpm faden:browser`. Die Adresse muss `localhost` heißen; unter `127.0.0.1` lädt der Entwicklungs-Server die Skripte der Seite nicht, und nichts reagiert. Geprüft werden: Kopf auf und zu mit Klick, Enter und Leertaste; Szene „großer Faden“ startet zugeklappt; Enter sendet, Umschalt+Enter macht eine neue Zeile, `@` öffnet die Auswahl, Escape schließt; ein Vorschlag füllt nur das Eingabefeld; „+10.000 Token“ nur in der Szene „Grenze erreicht“ und nie „Neu erzeugen“; Pfeiltasten und Ende in den Reitern; am Handy (390 Pixel) in jeder Szene, dunkel und hell, kein waagerechter Balken und nirgends ein sichtbarer Scrollbalken; Blatt von unten am Handy; Wechsel hell/dunkel. Der Browser läuft ohne `--hide-scrollbars`, sonst fände der Scrollbalken-Test nie etwas.
+- **Bilder:** Die Aufnahmen `faden-arbeitet`, `faden-wartet`, `faden-grenze`, `faden-gross`, `faden-handy` und `faden-hell` stehen in `docs/screenshots.json` (Art „entwicklung“) und entstehen mit `pnpm doku:screenshots faden-arbeitet …` aus der Vorschau, nur mit Beispiel-Daten. Die Bilder zeigen die Leiste der Vorschau-Seite (Szenen-Auswahl, Knopf „Hell“) mit; im Programm gibt es sie nicht. Die Warnung des Entwicklungs-Servers „vorgeladenes Stylesheet nicht gebraucht“ zählt bei Aufnahmen dieser Art nicht als Fehler (`watch` in `scripts/doku-screenshots.mjs`).
+- **Nicht geprüft:** wie Bots-Text mit echten Modellen aussieht, und die Anbindung an Server, Datenbank und Worker (gibt es noch nicht).
+
 ## Datenmodell und Migrationen
 
 | Tabelle               | Schema                                     | Wofür                                                                                                      |
