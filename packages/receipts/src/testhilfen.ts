@@ -83,6 +83,7 @@ export function sendFacts(inputChars = 812) {
     conversationExists: true,
     runActive: false,
     killSwitch: false,
+    botPaused: false,
   };
 }
 

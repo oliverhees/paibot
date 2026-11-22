@@ -17,32 +17,24 @@
 -- lässt sich nicht entfernen (`conversations.team_id`); fällt ein Bot oder Team weg, werden
 -- `teams.lead_bot_id`, `bots.team_id` und `bots.aus_entwurf_id` leer.
 
--- Die Liste „fertig, wenn“ eines Fadens: höchstens 12 Punkte, je ein Text von 1 bis 200 Zeichen. Eine
--- CHECK-Regel darf keine Unterabfrage enthalten, deshalb steht die Prüfung in dieser Funktion.
-CREATE FUNCTION paibot_fertig_wenn_ok(liste jsonb) RETURNS boolean
-LANGUAGE sql IMMUTABLE
-SET search_path = pg_catalog, public
-AS $$
-  SELECT CASE
-    WHEN jsonb_typeof(liste) <> 'array' THEN false
-    ELSE jsonb_array_length(liste) <= 12 AND NOT EXISTS (
-      SELECT 1 FROM jsonb_array_elements(liste) AS p(wert)
-      WHERE jsonb_typeof(p.wert) <> 'string' OR char_length(p.wert #>> '{}') NOT BETWEEN 1 AND 200
-    )
-  END
-$$;
+CREATE TABLE "public"."faden_punkte" (
+	"conversation_id" text NOT NULL,
+	"pos" integer NOT NULL,
+	"text" text NOT NULL,
+	CONSTRAINT "faden_punkte_conversation_id_pos_pk" PRIMARY KEY("conversation_id","pos"),
+	CONSTRAINT "faden_punkte_pos_bereich" CHECK ("public"."faden_punkte"."pos" between 0 and 11),
+	CONSTRAINT "faden_punkte_text_laenge" CHECK (char_length("public"."faden_punkte"."text") between 1 and 200)
+);
 --> statement-breakpoint
 CREATE TABLE "public"."faeden" (
 	"conversation_id" text PRIMARY KEY NOT NULL,
 	"ziel" text NOT NULL,
-	"fertig_wenn" jsonb NOT NULL,
 	"abnahme" text NOT NULL,
 	"herkunft" text NOT NULL,
 	"action_id" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "faeden_ziel_laenge" CHECK (char_length("public"."faeden"."ziel") between 1 and 2000),
-	CONSTRAINT "faeden_fertig_wenn_liste" CHECK (paibot_fertig_wenn_ok("public"."faeden"."fertig_wenn")),
 	CONSTRAINT "faeden_abnahme_werte" CHECK ("public"."faeden"."abnahme" in ('leitung', 'besitzer', 'ohne')),
 	CONSTRAINT "faeden_herkunft_werte" CHECK ("public"."faeden"."herkunft" in ('besitzer')),
 	CONSTRAINT "faeden_action_id_format" CHECK ("public"."faeden"."action_id" ~ '^akt_[0-7][0-9a-hjkmnp-tv-z]{25}$')
@@ -113,6 +105,7 @@ ALTER TABLE "public"."bots" ADD COLUMN "aus_entwurf_id" text;--> statement-break
 ALTER TABLE "public"."settings" ADD COLUMN "stabschef_erlaubt" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "public"."conversations" ADD COLUMN "kind" text DEFAULT 'direkt' NOT NULL;--> statement-breakpoint
 ALTER TABLE "public"."conversations" ADD COLUMN "team_id" text;--> statement-breakpoint
+ALTER TABLE "public"."faden_punkte" ADD CONSTRAINT "faden_punkte_conversation_id_faeden_conversation_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."faeden"("conversation_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "public"."faeden" ADD CONSTRAINT "faeden_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "public"."team_anlagen" ADD CONSTRAINT "team_anlagen_entwurf_id_team_entwuerfe_id_fk" FOREIGN KEY ("entwurf_id") REFERENCES "public"."team_entwuerfe"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "public"."teams" ADD CONSTRAINT "teams_lead_bot_id_bots_id_fk" FOREIGN KEY ("lead_bot_id") REFERENCES "public"."bots"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint

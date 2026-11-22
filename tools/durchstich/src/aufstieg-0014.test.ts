@@ -180,10 +180,13 @@ const STAND_TEST_GEHEIMNIS = createHash("sha256")
   .update("PaiBot Bestandsdaten nur für Tests")
   .digest("base64");
 
-/** Neue Spalten der Migration 0014 je Tabelle. */
+/** Neue Spalten der Migrationen 0014 und 0017 je Tabelle. */
 const NEUE_SPALTEN: Readonly<Record<string, readonly string[]>> = {
   messages: ["step", "origin", "untrusted"],
+  bots: ["role", "paused", "team_id", "aus_entwurf_id"],
+  conversations: ["kind", "team_id"],
   settings: [
+    "stabschef_erlaubt",
     "max_steps_per_run",
     "max_tool_calls_per_step",
     "max_tool_calls_per_run",
@@ -259,6 +262,7 @@ async function neueEntscheidungen(u: Umgebung) {
   const conversationId = zeile?.unterhaltung as ConversationId;
   const runId = newId("run");
   const werkzeug = (toolKey: string) => ({
+    botPaused: false,
     botOfConversation: true,
     runRunning: true,
     toolName: "doku_nachschlagen",
@@ -309,6 +313,7 @@ async function neueEntscheidungen(u: Umgebung) {
       credential: "sitzung",
       inputChars: 20,
       maxInputChars: 32000,
+      botPaused: false,
       conversationExists: true,
       runActive: false,
       killSwitch: false,
@@ -374,7 +379,8 @@ for (const umgebung of umgebungen) {
           await u.migrieren();
 
           const zeilen = await zeilenJeTabelle(u);
-          // Dazu kommen die Regeln R-010 und R-014 und die drei leeren Tabellen für Apps.
+          // Dazu kommen die Regeln R-010 und R-014, die drei leeren Tabellen für Apps und die fünf
+          // leeren Tabellen für Teams (Migration 0017).
           const vorherZeilen = {
             ...Object.fromEntries(
               Object.entries(vorher).map(([t, z]) => [t, z.length + (t === "rules" ? 2 : 0)]),
@@ -382,6 +388,11 @@ for (const umgebung of umgebungen) {
             app_tools: 0,
             apps: 0,
             bot_app_grants: 0,
+            faden_punkte: 0,
+            faeden: 0,
+            team_anlagen: 0,
+            team_entwuerfe: 0,
+            teams: 0,
           };
           expect(zeilen).toEqual(vorherZeilen);
           const nachher = await inhalt(u);
@@ -479,6 +490,7 @@ describe("Startwert der Token-Grenze im Tor (Bestandsdaten)", () => {
             },
           },
           {
+            botPaused: false,
             botOfConversation: true,
             providerId: newId("provider"),
             providerEnabled: true,

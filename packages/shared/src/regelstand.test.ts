@@ -143,11 +143,22 @@ describe("Fassungen der Standard-Regeln", () => {
 
 describe("Vorbedingungen", () => {
   it("haben fortlaufende IDs, eindeutige Namen und gültige Fehlercodes", () => {
-    // V-01 bis V-14 fortlaufend, danach die Nummern der Vorbedingungen für Apps.
+    // V-01 bis V-14 fortlaufend, danach die Nummern der Vorbedingungen für Apps (V-19, V-38) und
+    // für Teams (Fassung 4; die Nummern sind nicht lückenlos).
     expect(PRECONDITION_IDS).toEqual([
       ...Array.from({ length: 14 }, (_, i) => `V-${String(i + 1).padStart(2, "0")}`),
       "V-19",
       "V-38",
+      "V-25",
+      "V-27",
+      "V-28",
+      "V-29",
+      "V-30",
+      "V-31",
+      "V-37",
+      "V-42",
+      "V-43",
+      "V-44",
     ]);
     const names = PRECONDITION_IDS.map((id) => PRECONDITIONS[id].name);
     expect(new Set(names).size).toBe(names.length);

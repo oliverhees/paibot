@@ -35,12 +35,18 @@ const ERLAUBT_WERKZEUG: RuleDefinition = {
 
 type Typ = "modell.anfragen" | "werkzeug.aufrufen";
 
+/** Fakten der Beispiele ohne `botPaused`: Der Fakt gehört erst zu Fassung 4, Fassung 2 kennt ihn nicht. */
+function fakten2(type: Typ): Record<string, unknown> {
+  const { botPaused: _botPaused, ...rest } = sampleFacts(type) as Record<string, unknown>;
+  return rest;
+}
+
 function entscheide(
   type: Typ,
   change: Record<string, unknown>,
   rules: RuleDefinition[] = [...ACTIVE_STANDARD_RULES],
 ) {
-  const facts = { ...sampleFacts(type), ...change };
+  const facts = { ...fakten2(type), ...change };
   return GATE_FORMAT_2.evaluate(sampleAction(type), facts, rules);
 }
 
@@ -104,7 +110,7 @@ describe("Fehlercode einer Ablehnung in Fassung 2", () => {
 
   it("gedeckeltes fragen: Beleg regel_fehlt, als Werkzeug-Aufruf freigabe_noetig", async () => {
     const facts = {
-      ...sampleFacts("werkzeug.aufrufen"),
+      ...fakten2("werkzeug.aufrufen"),
       untrustedInput: true,
       toolKind: "schreiben",
     };
@@ -133,7 +139,8 @@ describe("Fehlercode einer Ablehnung in Fassung 2", () => {
       clock: { now: () => new Date(Date.UTC(2026, 10, 21, 12, 0, 0)) },
     });
     const error = await gate
-      .run(sampleAction("werkzeug.aufrufen"), facts as never, async () => {
+      // Das lebende Tor rechnet mit Fassung 4: dort gehört `botPaused` zu den Fakten des Aufrufs.
+      .run(sampleAction("werkzeug.aufrufen"), { ...facts, botPaused: false } as never, async () => {
         throw new Error("darf nicht laufen");
       })
       .catch((caught: unknown) => caught);
@@ -175,7 +182,7 @@ describe("Große Zahlen bei G-18", () => {
     expect(decision.outcome).toBe("deny");
     expect(decision.limits.every((l) => l.result === "entfaellt")).toBe(true);
     // Die Grenze selbst bleibt auch ohne Eingabeprüfung verletzt und ohne Wert.
-    const facts = { ...sampleFacts("modell.anfragen"), runTokens: MAX + 1 };
+    const facts = { ...fakten2("modell.anfragen"), runTokens: MAX + 1 };
     expect(limitLaufToken({ type: "modell.anfragen" }, facts)).toEqual({
       name: "lauf_token",
       result: "verletzt",
@@ -198,7 +205,7 @@ describe("Fälle außerhalb der festen Fälle", () => {
   });
 
   it("fehlt der Not-Aus bei einer betroffenen Aktion, gilt G-05 als verletzt", () => {
-    const { killSwitch: _, ...ohne } = sampleFacts("modell.anfragen");
+    const { killSwitch: _, ...ohne } = fakten2("modell.anfragen");
     const checks = GATE_FORMAT_2.checkLimits({ type: "modell.anfragen" }, ohne);
     expect(checks.find((c) => c.name === "not_aus")).toEqual({
       name: "not_aus",

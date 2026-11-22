@@ -162,6 +162,7 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
     };
     const facts: Facts<"modell.anfragen"> = {
       ...providerTargetFacts(providerId, baseUrl),
+      botPaused: false,
       botOfConversation: true,
       providerId,
       providerEnabled: true,
@@ -261,6 +262,7 @@ describe("rule_name in der Chat-Anfrage (resolveModel, direkt)", () => {
       request,
       {
         ...providerTargetFacts(providerId, baseUrl),
+        botPaused: false,
         botOfConversation: true,
         providerId,
         providerEnabled: true,

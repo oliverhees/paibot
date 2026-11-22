@@ -22,7 +22,7 @@ import {
   toolSourceSchema,
 } from "./objects";
 import { APP_ACTION_SHAPES, MCP_TOOL_CALL_FACTS } from "./tor-fassung-3";
-import { TEAM_ACTION_SHAPES, TEAM_ACTION_TYPES, type TeamActionType } from "./tor-fassung-4";
+import { BOT_PAUSED_FACTS, TEAM_ACTION_SHAPES, type TeamActionType } from "./tor-fassung-4";
 
 /** Wer eine Aktion auslöst: der Besitzer der Installation oder ein Bot. */
 export type Actor = "besitzer" | `bot:${BotId}`;
@@ -299,6 +299,8 @@ export const ACTIONS = {
       conversationExists: z.boolean(),
       runActive: z.boolean(),
       killSwitch: z.boolean(),
+      /** Der Bot der Unterhaltung ist pausiert (Grenze G-15, ab Fassung 4). */
+      ...BOT_PAUSED_FACTS,
     },
   ),
   "modell.anfragen": action(
@@ -341,6 +343,8 @@ export const ACTIONS = {
       /** Der Lauf hat schon fremde Inhalte gelesen. */
       untrustedInput: z.boolean(),
       trigger: runTriggerSchema,
+      /** Der Bot ist pausiert (Grenze G-15, ab Fassung 4). */
+      ...BOT_PAUSED_FACTS,
     },
   ),
   "lauf.abbrechen": action(
@@ -376,6 +380,8 @@ export const ACTIONS = {
       confirmedToolDigest: MCP_TOOL_CALL_FACTS.confirmedToolDigest.optional(),
       confirmedTargetDigest: MCP_TOOL_CALL_FACTS.confirmedTargetDigest.optional(),
       stepAppId: MCP_TOOL_CALL_FACTS.stepAppId.optional(),
+      /** Der Bot ist pausiert (Grenze G-15, ab Fassung 4). */
+      ...BOT_PAUSED_FACTS,
     },
   ),
   /**
@@ -525,9 +531,8 @@ export const ACTIONS = {
     APP_ACTION_SHAPES["app.trennen"].facts,
   ),
   /**
-   * Aktionen der Tor-Fassung 4 (Bots, Teams, Entwürfe, Fäden), alle nur vom Besitzer. Sie stehen
-   * in `UNSTORED_ACTION_TYPES`, bis die Datenbank sie speichert; das Tor entscheidet noch mit
-   * Fassung 3 und lehnt sie als ungültige Eingabe ab.
+   * Aktionen der Tor-Fassung 4 (Bots, Teams, Entwürfe, Fäden), alle nur vom Besitzer. Die
+   * Datenbank speichert sie ab Migration 0018 in Regeln und Belegen.
    */
   ...(Object.fromEntries(
     (Object.keys(TEAM_ACTION_SHAPES) as TeamActionType[]).map((type) => [
@@ -575,7 +580,6 @@ export const toolActionTypeSchema = z.enum(TOOL_ACTION_TYPES);
 export const UNSTORED_ACTION_TYPES = [
   "werkzeug.freigeben",
   "werkzeug.ausfuehren",
-  ...TEAM_ACTION_TYPES,
 ] as const satisfies readonly ActionType[];
 export type UnstoredActionType = (typeof UNSTORED_ACTION_TYPES)[number];
 

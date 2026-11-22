@@ -95,6 +95,7 @@ async function gateEnv() {
     target: { conversationId: env.conversationId, runId: lauf, botId: env.botId },
   };
   const facts: Facts<"werkzeug.aufrufen"> = {
+    botPaused: false,
     toolName: "test_lesen",
     toolSource: "eingebaut",
     toolKind: "lesen",

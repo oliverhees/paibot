@@ -66,7 +66,7 @@ const torFakten = {
   trigger: "chat",
 };
 
-const facts = { ...basisFakten, ...torFakten };
+const facts = { ...basisFakten, ...torFakten, botPaused: false };
 
 /** Quelle `mcp` mit allen Fakten der App (Tor-Fassung 3). */
 const mcpFakten = {
@@ -90,11 +90,9 @@ describe("Aktion werkzeug.aufrufen", () => {
   it("steht in ACTIONS; gespeichert werden alle Aktionen außer den noch nicht speicherbaren", () => {
     expect(TOOL_ACTION_TYPES).toEqual(["werkzeug.aufrufen", "werkzeug.ausfuehren"]);
     expect(ACTION_TYPES).toContain("werkzeug.aufrufen");
-    expect(UNSTORED_ACTION_TYPES).toEqual([
-      "werkzeug.freigeben",
-      "werkzeug.ausfuehren",
-      ...TEAM_ACTION_TYPES,
-    ]);
+    expect(UNSTORED_ACTION_TYPES).toEqual(["werkzeug.freigeben", "werkzeug.ausfuehren"]);
+    // Die Aktionen der Fassung 4 sind seit Migration 0018 gespeichert.
+    for (const type of TEAM_ACTION_TYPES) expect(STORED_ACTION_TYPES, type).toContain(type);
     expect(STORED_ACTION_TYPES).toEqual(
       ACTION_TYPES.filter((type) => !(UNSTORED_ACTION_TYPES as readonly string[]).includes(type)),
     );

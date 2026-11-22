@@ -58,7 +58,7 @@ const decision: ReceiptBody = {
   type: "decision",
   action,
   decision: {
-    gateFormat: 3,
+    gateFormat: 4,
     outcome: "allow",
     stage: "execute",
     rules: [{ id: "R-001", version: 1 }],
@@ -73,6 +73,7 @@ const decision: ReceiptBody = {
     conversationExists: true,
     runActive: false,
     killSwitch: false,
+    botPaused: false,
   },
   context: { digest: `hmac-sha256:${hex}` },
   prev: `sha256:${hex}`,

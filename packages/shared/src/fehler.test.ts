@@ -20,11 +20,35 @@ import {
   invalidInput,
   PaiBotError,
 } from "./errors";
+import { ERROR_STATUS_4 } from "./tor-fassung-4";
+
+describe("Fehlercodes der Tor-Fassung 4", () => {
+  // Gegenprobe: in `ERROR_STATUS_4` einen Status ändern (z. B. `bot_pausiert: 400`) → beide Tests rot.
+  it("stehen mit demselben HTTP-Status in den lebenden Fehlercodes wie im Vertrag", () => {
+    for (const [code, status] of Object.entries(ERROR_STATUS_4)) {
+      expect(ERROR_STATUS[code as keyof typeof ERROR_STATUS], code).toBe(status);
+    }
+  });
+
+  it("haben die festgelegten Status (Besitzer-Fehler 409, zu großer Entwurf 400)", () => {
+    expect(ERROR_STATUS_4).toEqual({
+      bot_pausiert: 409,
+      entwurf_veraltet: 409,
+      entwurf_name_vergeben: 409,
+      entwurf_modell_fehlt: 409,
+      entwurf_ansprechpartner_fehlt: 409,
+      entwurf_benutzt: 409,
+      standard_bot_bleibt: 409,
+      leitung_nicht_im_team: 409,
+      entwurf_zu_gross: 400,
+    });
+  });
+});
 
 describe("Fehlercodes", () => {
   it("haben die vorgegebene Schreibweise und Liste", () => {
     for (const code of [...ERROR_CODES, ...FIELD_CODES]) expect(code).toMatch(CODE_PATTERN);
-    expect(ERROR_CODES).toHaveLength(47);
+    expect(ERROR_CODES).toHaveLength(56);
     expect(ERROR_STATUS.regel_unbekannt).toBe(409);
     expect(ERROR_STATUS.freigabe_noetig).toBe(202);
     expect(ERROR_STATUS.werkzeug_unbekannt).toBe(400);

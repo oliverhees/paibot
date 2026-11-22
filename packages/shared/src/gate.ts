@@ -30,13 +30,14 @@ import {
 } from "./grundtypen";
 import { type ActionId, idSchema, type ReceiptId } from "./id";
 import { LIMITS_BY_ID_3, PRECONDITIONS_3, R014_V1 } from "./tor-fassung-3";
+import { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "./tor-fassung-4";
 
 /**
  * Fassung des Tor-Formats, mit der das Tor jetzt entscheidet und der Schreiber belegt. Jede
  * Änderung am Tor, die für gleiche Fakten ein anderes Ergebnis von `evaluate` geben kann, hebt
  * diese Zahl; eine Fassung selbst wird nie geändert.
  */
-export const GATE_FORMAT = 3;
+export const GATE_FORMAT = 4;
 
 /** Stufen einer Aktion: nachfragen, vorbereiten, ausführen (mit Beleg). */
 export const STAGES = ["ask", "prepare", "execute"] as const;
@@ -113,6 +114,8 @@ export const LIMITS_BY_ID = {
   "G-18": "lauf_token",
   /** Ab Fassung 3, nur bei App-Werkzeugen (siehe `LIMITS_BY_ID_3`). */
   ...LIMITS_BY_ID_3,
+  /** Ab Fassung 4: Bot bereit, Umfang und Zahl der Entwürfe, Bots gesamt (siehe `LIMITS_BY_ID_4`). */
+  ...LIMITS_BY_ID_4,
 } as const;
 export type LimitId = keyof typeof LIMITS_BY_ID;
 /** Name einer Grenze (alle Grenzen, die dieser Stand kennt). */
@@ -607,6 +610,8 @@ export const PRECONDITIONS = {
   },
   /** Ab Fassung 3: Adresse einer App beim Verbinden (V-19) und gesehener Abdruck (V-38). */
   ...PRECONDITIONS_3,
+  /** Ab Fassung 4: Vorbedingungen für Teams, Entwürfe, Bots und Fäden (siehe `PRECONDITIONS_4`). */
+  ...PRECONDITIONS_4,
 } as const satisfies Record<
   string,
   {

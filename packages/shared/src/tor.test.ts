@@ -50,6 +50,7 @@ const modelRequest: ActionRequest<"modell.anfragen"> = {
 };
 
 const modelFacts: Facts<"modell.anfragen"> = {
+  botPaused: false,
   botOfConversation: true,
   providerId,
   providerEnabled: true,
@@ -249,6 +250,10 @@ describe("Regeln", () => {
       "G-07",
       "G-08",
       "G-40",
+      "G-15",
+      "G-32",
+      "G-33",
+      "G-34",
     ]);
   });
 

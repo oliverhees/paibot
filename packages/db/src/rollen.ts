@@ -47,7 +47,8 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * - `team_entwuerfe`: lesen, anlegen, nur Stand, die beiden Aktionen und Zeit ändern; Inhalt und
  *   Abdruck eines Entwurfs ändert die App nie.
  * - `team_anlagen`: nur lesen und anhängen (Trigger lehnen Ändern und Löschen ab).
- * - `faeden`: nur lesen und anlegen; der Kopf eines Fadens geht nur mit seiner Unterhaltung weg.
+ * - `faeden` und `faden_punkte`: nur lesen und anlegen; Kopf und Punkte eines Fadens gehen nur mit
+ *   seiner Unterhaltung weg.
  * - Alle diese Tabellen schreibt dieselbe Rolle für die Web-App und den Worker: Die Datenbank trennt
  *   nicht, wer schreibt. Dass nur der Besitzer-Weg der Web-App `bots`, `teams`, `team_entwuerfe`
  *   und `faeden` ändert, prüft ein Quelltext-Test (`teams-nur-besitzer-weg.test.ts`).
@@ -73,6 +74,7 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   rate_limits: APP_DEFAULT_TABLE_RIGHTS,
   runs: "select, insert, update",
   faeden: "select, insert",
+  faden_punkte: "select, insert",
   sessions: APP_DEFAULT_TABLE_RIGHTS,
   settings: APP_DEFAULT_TABLE_RIGHTS,
   team_anlagen: "select, insert",

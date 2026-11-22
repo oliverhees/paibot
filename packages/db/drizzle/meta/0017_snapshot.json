@@ -1,5 +1,5 @@
 {
-  "id": "3a175741-36bc-47d1-8cff-747a4db24a82",
+  "id": "5f96c1f8-9e47-41f3-94cc-90039f2fcc8e",
   "prevId": "d1dedb4f-886a-4275-899d-4e52fda01be8",
   "version": "7",
   "dialect": "postgresql",
@@ -1310,6 +1310,62 @@
       },
       "isRLSEnabled": false
     },
+    "public.faden_punkte": {
+      "name": "faden_punkte",
+      "schema": "public",
+      "columns": {
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pos": {
+          "name": "pos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "faden_punkte_conversation_id_faeden_conversation_id_fk": {
+          "name": "faden_punkte_conversation_id_faeden_conversation_id_fk",
+          "tableFrom": "faden_punkte",
+          "tableTo": "faeden",
+          "schemaTo": "public",
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["conversation_id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "faden_punkte_conversation_id_pos_pk": {
+          "name": "faden_punkte_conversation_id_pos_pk",
+          "columns": ["conversation_id", "pos"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "faden_punkte_pos_bereich": {
+          "name": "faden_punkte_pos_bereich",
+          "value": "\"public\".\"faden_punkte\".\"pos\" between 0 and 11"
+        },
+        "faden_punkte_text_laenge": {
+          "name": "faden_punkte_text_laenge",
+          "value": "char_length(\"public\".\"faden_punkte\".\"text\") between 1 and 200"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.faeden": {
       "name": "faeden",
       "schema": "public",
@@ -1323,12 +1379,6 @@
         "ziel": {
           "name": "ziel",
           "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fertig_wenn": {
-          "name": "fertig_wenn",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         },
@@ -1385,10 +1435,6 @@
         "faeden_ziel_laenge": {
           "name": "faeden_ziel_laenge",
           "value": "char_length(\"public\".\"faeden\".\"ziel\") between 1 and 2000"
-        },
-        "faeden_fertig_wenn_liste": {
-          "name": "faeden_fertig_wenn_liste",
-          "value": "paibot_fertig_wenn_ok(\"public\".\"faeden\".\"fertig_wenn\")"
         },
         "faeden_abnahme_werte": {
           "name": "faeden_abnahme_werte",

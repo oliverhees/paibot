@@ -156,14 +156,14 @@ describe("Belege vom Stand mit Fassung 1 mit dem Lese-Schema von vorher", () => 
   });
 });
 
-describe("Belege dieses Stands (Fassung 2) und Leser von vorher", () => {
-  it("jede Entscheidung trägt die aktuelle Fassung (3); ein Stand vor der Tor-Fassung erkennt sie nicht", async () => {
+describe("Belege dieses Stands (Fassung 4) und Leser von vorher", () => {
+  it("jede Entscheidung trägt die aktuelle Fassung (4); ein Stand vor der Tor-Fassung erkennt sie nicht", async () => {
     const { entries } = await ketteVomTor();
     const decisions = entries.filter((e) => e.body.type === "decision");
     expect(decisions.length).toBeGreaterThan(STORED_ACTION_TYPES.length - 1);
     for (const entry of decisions) {
       if (entry.body.type !== "decision") continue;
-      expect(entry.body.decision.gateFormat).toBe(3);
+      expect(entry.body.decision.gateFormat).toBe(4);
       expect(vorFassungReceiptEntrySchema.safeParse(entry).success, String(entry.seq)).toBe(false);
     }
     // Start und Schlüsselwechsel haben sich nicht geändert.

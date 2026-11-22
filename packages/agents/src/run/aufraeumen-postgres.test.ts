@@ -71,6 +71,7 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
       target: { conversationId: env.conversationId, runId, botId: env.botId, modelId: env.modelId },
     };
     const facts: Facts<"modell.anfragen"> = {
+      botPaused: false,
       botOfConversation: true,
       providerId: env.providerId,
       providerEnabled: true,
@@ -128,7 +129,7 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     const entscheidung = (await env.receipts()).find(
       (entry) => entry.body.type === "decision" && entry.body.action.actionId === action.actionId,
     )?.body;
-    expect(entscheidung).toMatchObject({ decision: { gateFormat: 3 } });
+    expect(entscheidung).toMatchObject({ decision: { gateFormat: 4 } });
     expect(
       entscheidung?.type === "decision" && Array.isArray(entscheidung.decision.preconditions),
     ).toBe(true);
@@ -190,6 +191,7 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     reach: "intern" | "nach_aussen",
   ): Facts<"werkzeug.aufrufen"> {
     return {
+      botPaused: false,
       botOfConversation: true,
       runRunning: true,
       toolName:

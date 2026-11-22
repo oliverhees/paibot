@@ -188,6 +188,7 @@ function kanonisch(value: JsonValue): string {
 function werkzeugFakten(call: ToolCall, werkzeug: Werkzeug): Facts<"werkzeug.aufrufen"> {
   const quelle = werkzeug.quelle ?? { source: "eingebaut" };
   return {
+    botPaused: false,
     botOfConversation: true,
     runRunning: true,
     toolName: call.name,
@@ -553,6 +554,7 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
     // Der Beleg nennt Werkzeug, Quelle und Art, die Argumente nur als Abdruck.
     const entscheidung = s.zugang.receipts.entries[decisionIndex];
     expect(entscheidung?.kind === "decision" && entscheidung.record.facts).toEqual({
+      botPaused: false,
       botOfConversation: true,
       runRunning: true,
       toolName: "wetter",

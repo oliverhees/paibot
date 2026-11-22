@@ -53,7 +53,7 @@ const VERGEBEN = [
   ...bereich("R", 15, 19, 3),
 ];
 
-/** Nummern, die Fassung 4 braucht (noch nicht in den lebenden Listen, siehe `tor-fassung-4`). */
+/** Nummern, die Fassung 4 braucht (sie stehen seit dem Inkraftsetzen in den lebenden Listen). */
 const FASSUNG_4 = [...Object.keys(LIMITS_BY_ID_4), ...Object.keys(PRECONDITIONS_4)];
 
 /** Nummern, die nie vergeben werden. */
@@ -106,18 +106,36 @@ describe("Nummern des Tors", () => {
       "G-07",
       "G-08",
       "G-40",
+      "G-15",
+      "G-32",
+      "G-33",
+      "G-34",
     ]);
-    expect(Object.keys(PRECONDITIONS)).toEqual([...bereich("V", 1, 14, 2), "V-19", "V-38"]);
+    expect(Object.keys(PRECONDITIONS)).toEqual([
+      ...bereich("V", 1, 14, 2),
+      "V-19",
+      "V-38",
+      "V-25",
+      "V-27",
+      "V-28",
+      "V-29",
+      "V-30",
+      "V-31",
+      "V-37",
+      "V-42",
+      "V-43",
+      "V-44",
+    ]);
     expect(Object.keys(CAPS)).toEqual(["D-01"]);
     expect(REGELN.sort()).toEqual([...bereich("R", 1, 8, 3), "R-010", "R-014", "R-999"].sort());
   });
 
-  it("Fassung 4: ihre Nummern sind weder vergeben noch doppelt noch schon in den lebenden Listen", () => {
+  it("Fassung 4: ihre Nummern sind weder vergeben noch doppelt und stehen in den lebenden Listen", () => {
     expect(new Set(FASSUNG_4).size).toBe(FASSUNG_4.length);
     for (const id of FASSUNG_4) {
       expect(VERGEBEN, id).not.toContain(id);
       expect(NIE_VERGEBEN, id).not.toContain(id);
-      expect(ALLE, id).not.toContain(id);
+      expect(ALLE, id).toContain(id);
     }
     expect(Object.keys(LIMITS_BY_ID_4)).toEqual(["G-15", "G-32", "G-33", "G-34"]);
     expect(Object.keys(PRECONDITIONS_4)).toEqual([

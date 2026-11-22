@@ -364,6 +364,8 @@ export function modelFacts(input: {
   tokensToday: number;
   /** Lauf-Fakten des Schritts (`schrittFakten`). */
   schritt: SchrittFakten;
+  /** Ob der Bot jetzt pausiert ist, frisch gelesen je Schritt (`readBotPaused`); fehlt er: `true`. */
+  botPaused: boolean;
 }): Facts<"modell.anfragen"> {
   const { context, route } = input;
   const { provider } = context.provider;
@@ -372,6 +374,7 @@ export function modelFacts(input: {
     target.targetOrigin = targetOrigin(input.schleuse.baseUrl);
   }
   return {
+    botPaused: input.botPaused,
     botOfConversation: context.run.botId === context.conversation.botId,
     providerId: provider.id,
     providerEnabled: provider.enabled,

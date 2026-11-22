@@ -52,6 +52,7 @@ import {
   rawToolName,
   reineKopie,
 } from "./bereinigen";
+import { readBotPaused } from "./bot-stand";
 import {
   codeEnvelope,
   contentChars,
@@ -423,7 +424,11 @@ function fehlendeAppFakten(appId: AppId, appToolId: AppToolId): AppAufrufFakten 
 export async function runToolCall(input: CallInput): Promise<CallOutcome & { chars: number }> {
   const { deps, call, run } = input;
   const db = deps.db;
-  const [settings, current] = await Promise.all([repo.settings.get(db), repo.runs.get(db, run.id)]);
+  const [settings, current, botPausiert] = await Promise.all([
+    repo.settings.get(db),
+    repo.runs.get(db, run.id),
+    readBotPaused(db, run.botId),
+  ]);
   if (settings === undefined) throw new PaiBotError("einrichtung_offen");
   const untrustedInput = await input.untrusted({
     runId: run.id,
@@ -461,6 +466,9 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         };
   const facts: Facts<"werkzeug.aufrufen"> = {
     ...appFaktenFuerTor,
+    // Pause des Bots: je Aufruf frisch aus der Datenbank (derselbe Stand wie bei `modell.anfragen`),
+    // nie vom Lauf-Start. Fehlt die Zeile des Bots, gilt er als pausiert: das Tor lehnt ab (G-15).
+    botPaused: botPausiert ?? true,
     ...(call.server === undefined ? {} : { toolServer: call.server }),
     toolName: call.name,
     toolSource: call.source,

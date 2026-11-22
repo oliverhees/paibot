@@ -84,6 +84,7 @@ async function nachschlagen(test: TestDb): Promise<string> {
       target: { conversationId: zeile?.unterhaltung as ConversationId, runId: newId("run"), botId },
     } as never,
     {
+      botPaused: false,
       botOfConversation: true,
       runRunning: true,
       toolName: "doku_nachschlagen",

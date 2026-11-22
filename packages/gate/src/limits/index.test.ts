@@ -167,6 +167,11 @@ describe("G-05 not_aus", () => {
       "entfaellt",
       "entfaellt",
       "entfaellt",
+      // Fassung 4: G-15 gilt auch beim Werkzeug-Aufruf (Bot nicht pausiert), die übrigen entfallen.
+      "ok",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
     ]);
   });
 });
@@ -187,6 +192,11 @@ describe("fehlende oder falsche Fakten lassen nichts durch", () => {
       "entfaellt",
       "entfaellt",
       "entfaellt",
+      // Fassung 4: ohne den Fakt `botPaused` ist G-15 verletzt, die anderen neuen entfallen.
+      "verletzt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
     ]);
   });
 
@@ -200,6 +210,14 @@ describe("fehlende oder falsche Fakten lassen nichts durch", () => {
     expect(limitNotAus(send, facts).result).toBe("verletzt");
   });
 });
+
+/** Aktionen der Fassung 4 mit einer eigenen Grenze (G-03 für den Zettel, G-32 bis G-34, G-05). */
+const MIT_EIGENER_GRENZE: readonly string[] = [
+  "bot.anlegen",
+  "team.entwurf_erstellen",
+  "team.entwurf_anlegen",
+  "faden.anlegen",
+];
 
 describe("checkLimits", () => {
   it.each(ACTION_TYPES)(
@@ -222,11 +240,26 @@ describe("checkLimits", () => {
         t !== "werkzeug.aufrufen" &&
         t !== "werkzeug.ausfuehren" &&
         // Neu erzeugen führt zu einem Lauf des Bots: der Not-Aus (G-05) gilt.
-        t !== "antwort.neu_erzeugen",
+        t !== "antwort.neu_erzeugen" &&
+        // Fassung 4: diese Aktionen des Besitzers haben je eine eigene Grenze (unten).
+        !MIT_EIGENER_GRENZE.includes(t),
     ),
   )("%s: keine Grenze betrifft die Verwaltungsaktion", (type) => {
     const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
     expect(checks.every((c) => c.result === "entfaellt")).toBe(true);
+  });
+
+  it.each([
+    ["bot.anlegen", { bots_gesamt: "ok" }],
+    ["team.entwurf_erstellen", { entwuerfe_je_tag: "ok", not_aus: "ok" }],
+    ["team.entwurf_anlegen", { entwurf_umfang: "ok", bots_gesamt: "ok", not_aus: "ok" }],
+    ["faden.anlegen", { laenge: "ok" }],
+  ] as const)("%s: nur die eigenen Grenzen gelten, die übrigen entfallen", (type, erwartet) => {
+    const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
+    const gelten = Object.fromEntries(
+      checks.filter((c) => c.result !== "entfaellt").map((c) => [c.name, c.result]),
+    );
+    expect(gelten).toEqual(erwartet);
   });
 
   it("Antwort neu erzeugen: Not-Aus (G-05) greift, sonst keine Grenze", () => {

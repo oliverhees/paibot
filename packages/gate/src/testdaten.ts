@@ -141,8 +141,10 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     conversationExists: true,
     runActive: false,
     killSwitch: false,
+    botPaused: false,
   },
   "modell.anfragen": {
+    botPaused: false,
     botOfConversation: true,
     providerId: ids.providerId,
     providerEnabled: true,
@@ -171,6 +173,7 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
   "lauf.abbrechen": { credential: "sitzung", runActive: true },
   "belege.exportieren": { credential: "sitzung", entries: 42 },
   "werkzeug.aufrufen": {
+    botPaused: false,
     botOfConversation: true,
     runRunning: true,
     toolName: "notiz_lesen",

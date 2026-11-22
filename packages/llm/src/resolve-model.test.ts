@@ -77,6 +77,7 @@ function request(target: Partial<Target> = {}): ActionRequest<"modell.anfragen">
 function facts(overrides: Partial<Facts<"modell.anfragen">> = {}): Facts<"modell.anfragen"> {
   return {
     ...providerTargetFacts(providerId, defaultBaseUrl()),
+    botPaused: false,
     botOfConversation: true,
     providerId,
     providerEnabled: true,

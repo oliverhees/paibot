@@ -61,6 +61,7 @@ async function facts(
   untrustedInput: boolean,
 ): Promise<Facts<"werkzeug.aufrufen">> {
   return {
+    botPaused: false,
     toolName: def.modelName,
     toolSource: def.source,
     toolKind: def.kind,

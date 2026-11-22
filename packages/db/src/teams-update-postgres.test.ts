@@ -146,6 +146,32 @@ describe.skipIf(BASE_URL === undefined)("Update von 0016 auf Teams A (Postgres)"
     expect(regeln.map((r) => r.id)).toContain("R-014");
   });
 
+  // Gegenprobe: eine der 13 Aktionen aus der Migration 0018 streichen → der Test wird rot.
+  it("die 13 Aktionen der Fassung 4 sind in den Werten der Regeln und der Belege erlaubt", async () => {
+    const defs = await owner`select conname, pg_get_constraintdef(oid) as def from pg_constraint
+      where conname in ('rules_action_werte', 'belege_action_werte')`;
+    expect(defs).toHaveLength(2);
+    for (const d of defs) {
+      for (const aktion of [
+        "bot.anlegen",
+        "bot.loeschen",
+        "bot.pausieren",
+        "team.anlegen",
+        "team.aendern",
+        "team.loeschen",
+        "bot.team_setzen",
+        "team.entwurf_erstellen",
+        "team.entwurf_verwerfen",
+        "team.entwurf_anlegen",
+        "team.entwurf_zuruecknehmen",
+        "faden.anlegen",
+        "einstellung.stabschef_setzen",
+      ]) {
+        expect(String(d.def), `${d.conname}: ${aktion}`).toContain(`'${aktion}'`);
+      }
+    }
+  });
+
   // Gegenprobe: `runs.bot_id` wieder mit Kaskade → der Bot ist weg, der Lauf auch (Test rot).
   it("ein Bot mit Läufen lässt sich nicht löschen, die Daten bleiben", async () => {
     // `bot2` ist nicht der Standard-Bot: Nur die Läufe halten ihn.
@@ -199,9 +225,29 @@ describe.skipIf(BASE_URL === undefined)("Update von 0016 auf Teams A (Postgres)"
       const faden = newId("conversation");
       await app`insert into conversations (id, bot_id, title, kind, team_id)
         values (${faden}, null, 'Ein Faden', 'faden', ${team})`;
-      await app`insert into faeden (conversation_id, ziel, fertig_wenn, abnahme, herkunft, action_id)
-        values (${faden}, 'Etwas tun', '["fertig"]'::jsonb, 'leitung', 'besitzer', ${newId("action")})`;
+      await app`insert into faeden (conversation_id, ziel, abnahme, herkunft, action_id)
+        values (${faden}, 'Etwas tun', 'leitung', 'besitzer', ${newId("action")})`;
+      await app`insert into faden_punkte (conversation_id, pos, text) values (${faden}, 0, 'fertig')`;
       expect(await codeOf(app`delete from faeden where conversation_id = ${faden}`)).toBe(RECHTE);
+      expect(await codeOf(app`delete from faden_punkte where conversation_id = ${faden}`)).toBe(
+        RECHTE,
+      );
+      // Höchstens zwölf Punkte (Stelle 0 bis 11), jeder Text 1 bis 200 Zeichen.
+      expect(
+        await codeOf(
+          app`insert into faden_punkte (conversation_id, pos, text) values (${faden}, 12, 'x')`,
+        ),
+      ).toBe(CHECK);
+      expect(
+        await codeOf(
+          app`insert into faden_punkte (conversation_id, pos, text) values (${faden}, 1, '')`,
+        ),
+      ).toBe(CHECK);
+      expect(
+        await codeOf(
+          app`insert into faden_punkte (conversation_id, pos, text) values (${faden}, 2, ${"x".repeat(201)})`,
+        ),
+      ).toBe(CHECK);
       expect(
         await codeOf(app`update faeden set ziel = 'anders' where conversation_id = ${faden}`),
       ).toBe(RECHTE);
@@ -209,6 +255,9 @@ describe.skipIf(BASE_URL === undefined)("Update von 0016 auf Teams A (Postgres)"
       expect(await codeOf(app`delete from teams where id = ${team}`)).toBe(FREMDSCHLUESSEL);
       await app`delete from conversations where id = ${faden}`;
       expect(await app`select 1 from faeden where conversation_id = ${faden}`).toHaveLength(0);
+      expect(await app`select 1 from faden_punkte where conversation_id = ${faden}`).toHaveLength(
+        0,
+      );
       await app`delete from teams where id = ${team}`;
     });
   });

@@ -149,8 +149,6 @@ export const faeden = pgTable(
       .primaryKey()
       .references(() => conversations.id, { onDelete: "cascade" }),
     goal: text("ziel").notNull(),
-    /** Liste der Punkte, an denen der Faden fertig ist (höchstens 12, je höchstens 200 Zeichen). */
-    doneWhen: jsonb("fertig_wenn").notNull(),
     acceptance: text("abnahme").$type<(typeof FADEN_ABNAHMEN)[number]>().notNull(),
     origin: text("herkunft").$type<(typeof FADEN_HERKUENFTE)[number]>().notNull(),
     actionId: text("action_id").$type<ActionId>().notNull(),
@@ -159,10 +157,32 @@ export const faeden = pgTable(
   },
   (t) => [
     check("faeden_ziel_laenge", sql`char_length(${t.goal}) between 1 and 2000`),
-    check("faeden_fertig_wenn_liste", sql`paibot_fertig_wenn_ok(${t.doneWhen})`),
     inListCheck("faeden_abnahme_werte", t.acceptance, FADEN_ABNAHMEN),
     inListCheck("faeden_herkunft_werte", t.origin, FADEN_HERKUENFTE),
     idCheck("faeden_action_id_format", t.actionId, "action"),
+  ],
+);
+
+/**
+ * Die Punkte „fertig, wenn“ eines Fadens: höchstens zwölf, je ein Text von 1 bis 200 Zeichen, in
+ * fester Reihenfolge (`pos` von 0 bis 11). Eine Zeile je Punkt statt einer Liste in einer Spalte, damit
+ * die Grenzen mit einfachen CHECK-Regeln gelten (die Sicherung erlaubt in Prüfregeln keine eigenen
+ * Funktionen). Nur anlegen: Die Punkte eines Fadens ändern sich nicht.
+ */
+export const fadenPunkte = pgTable(
+  "faden_punkte",
+  {
+    conversationId: text("conversation_id")
+      .$type<ConversationId>()
+      .notNull()
+      .references(() => faeden.conversationId, { onDelete: "cascade" }),
+    pos: integer("pos").notNull(),
+    text: text("text").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.conversationId, t.pos] }),
+    check("faden_punkte_pos_bereich", sql`${t.pos} between 0 and 11`),
+    check("faden_punkte_text_laenge", sql`char_length(${t.text}) between 1 and 200`),
   ],
 );
 
@@ -170,3 +190,4 @@ export type Team = typeof teams.$inferSelect;
 export type TeamEntwurf = typeof teamEntwuerfe.$inferSelect;
 export type TeamAnlage = typeof teamAnlagen.$inferSelect;
 export type Faden = typeof faeden.$inferSelect;
+export type FadenPunkt = typeof fadenPunkte.$inferSelect;

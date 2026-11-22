@@ -29,6 +29,7 @@ const TABLES = [
   "bots",
   "conversation_events",
   "conversations",
+  "faden_punkte",
   "faeden",
   "geraete",
   "installation_keys",

@@ -105,6 +105,7 @@ function choice(region: Region = "eu", withKey = true): ModelChoice {
 function facts(region: Region = "eu"): Facts<"modell.anfragen"> {
   return {
     ...providerTargetFacts(providerId, PROVIDER_URL),
+    botPaused: false,
     botOfConversation: true,
     providerId,
     providerEnabled: true,

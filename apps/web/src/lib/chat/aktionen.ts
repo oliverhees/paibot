@@ -211,6 +211,10 @@ export function nachrichtSenden(einreihen: Einreihen): RoutenAktion<"nachrichtSe
       if (schleuse !== vorher) unterhaltung = await schleuseUmschalten(k, id, schleuse, vorher);
     }
     const aktiv = unterhaltung === undefined ? undefined : await repo.runs.getActive(k.db, id);
+    // Pause des Bots der Unterhaltung, frisch aus der Datenbank vor dem Tor. Fehlt die Zeile (oder die
+    // Unterhaltung), gilt der Bot als pausiert: Das Tor lehnt ab, nie „nicht pausiert“ aus Mangel an Daten.
+    const bot =
+      unterhaltung?.botId === undefined ? undefined : await repo.bots.get(k.db, unterhaltung.botId);
     const messageId = newId("message");
     await einreihen.bereit();
     const ergebnis = await k.tor(
@@ -222,6 +226,7 @@ export function nachrichtSenden(einreihen: Einreihen): RoutenAktion<"nachrichtSe
         conversationExists: unterhaltung !== undefined,
         runActive: aktiv !== undefined,
         killSwitch: settings?.killSwitch ?? false,
+        botPaused: bot?.paused ?? true,
       },
       async () => {
         const botId = unterhaltung?.botId;

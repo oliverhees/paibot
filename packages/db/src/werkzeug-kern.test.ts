@@ -1100,7 +1100,7 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     const migrationen = await test.client.query<{ n: number }>(
       "select count(*)::int as n from drizzle.__drizzle_migrations",
     );
-    expect(migrationen.rows[0]?.n).toBe(18);
+    expect(migrationen.rows[0]?.n).toBe(19);
     // Nach dem Aufstieg ist ein neuer Wechsel mit fremder Entscheidung nicht mehr möglich.
     const neu = toolCallRow(ids, { position: 9, callId: "neu" });
     await test.db.insert(toolCalls).values(neu);

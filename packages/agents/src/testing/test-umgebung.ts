@@ -177,6 +177,7 @@ export function modelAccess(options: ModelAccessOptions): ModelAccess {
     ...(options.baseFetch === undefined ? {} : { baseFetch: options.baseFetch }),
   };
   const facts: Facts<"modell.anfragen"> = {
+    botPaused: false,
     botOfConversation: true,
     providerId,
     providerEnabled: true,

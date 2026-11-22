@@ -57,7 +57,7 @@ const ohneKommentare = (t: string) =>
   t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
 
 /** Fundstellen im Text: Aufrufe von `repo.<funktion>` und Importe der Tabellen-Objekte. */
-export function verbotenes(text: string): string[] {
+function verbotenes(text: string): string[] {
   const code = ohneKommentare(text);
   const funde: string[] = [];
   for (const f of SCHREIBFUNKTIONEN) {

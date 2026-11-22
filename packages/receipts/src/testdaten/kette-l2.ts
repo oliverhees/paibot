@@ -20,6 +20,7 @@ import {
   type RuleDefinition,
   type RuleSnapshot,
 } from "@paibot/shared/tor";
+import { TEAM_ACTION_TYPES } from "@paibot/shared/tor-fassung-4";
 import { sampleAction, sampleFacts } from "../../../gate/src/testdaten";
 import { digestBytes, hashReceipt } from "../hash";
 import { exportJsonl } from "../jsonl";
@@ -66,18 +67,27 @@ type Schritt = {
   result: Record<string, unknown>;
 };
 
-function schritte(): Schritt[] {
-  // Die Aktionen für Apps gehören zu Fassung 3; diese Kette zeigt, was ein Stand mit Fassung 1 liest.
-  const list: Schritt[] = STORED_ACTION_TYPES.filter((type) => !type.startsWith("app.")).map(
-    (type) => ({
-      type,
-      facts: sampleFacts(type) as Record<string, unknown>,
-      result: { status: "ok" },
-    }),
-  );
+/** Fakten der Beispiele; die rohe Kette (Fassung 2) kennt `botPaused` noch nicht (Fassung 4). */
+function beispielFakten(type: ActionType, roh: boolean): Record<string, unknown> {
+  const fakten = sampleFacts(type) as Record<string, unknown>;
+  if (!roh) return fakten;
+  const { botPaused: _botPaused, ...ohne } = fakten;
+  return ohne;
+}
+
+function schritte(roh: boolean): Schritt[] {
+  // Die Aktionen für Apps (Fassung 3) und für Teams (Fassung 4) gehören zu späteren Fassungen; diese
+  // Kette zeigt, was ein Stand mit Fassung 1 liest.
+  const list: Schritt[] = STORED_ACTION_TYPES.filter(
+    (type) => !type.startsWith("app.") && !(TEAM_ACTION_TYPES as readonly string[]).includes(type),
+  ).map((type) => ({
+    type,
+    facts: beispielFakten(type, roh),
+    result: { status: "ok" },
+  }));
   list.push({
     type: "modell.anfragen",
-    facts: sampleFacts("modell.anfragen") as Record<string, unknown>,
+    facts: beispielFakten("modell.anfragen", roh),
     result: {
       status: "ok",
       digest: `hmac-sha256:${"3c".repeat(32)}`,
@@ -89,7 +99,7 @@ function schritte(): Schritt[] {
   list.push({
     type: "werkzeug.aufrufen",
     facts: {
-      ...(sampleFacts("werkzeug.aufrufen") as Record<string, unknown>),
+      ...beispielFakten("werkzeug.aufrufen", roh),
       toolKey: DOKU_KENNUNG,
     },
     result: {
@@ -103,7 +113,7 @@ function schritte(): Schritt[] {
     deckel: true,
     type: "werkzeug.aufrufen",
     facts: {
-      ...(sampleFacts("werkzeug.aufrufen") as Record<string, unknown>),
+      ...beispielFakten("werkzeug.aufrufen", roh),
       untrustedInput: true,
       toolKind: "schreiben",
     },
@@ -198,7 +208,7 @@ export async function ketteL2(art: "tor" | "roh"): Promise<KetteL2> {
     },
   });
 
-  for (const schritt of schritte()) {
+  for (const schritt of schritte(art === "roh")) {
     const action = sampleAction(schritt.type) as ActionRequest;
     if (art === "tor" && !schritt.deckel) {
       const execute: Execute<never, string> = async () => ({

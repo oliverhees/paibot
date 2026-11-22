@@ -5,9 +5,9 @@
  *   Entscheidung; die neuen Grenzen stehen dahinter und entfallen);
  * - jede Bedingung von R-014 wirkt (ohne sie ändert sich ein fester Fall bzw., bei Akteur und
  *   Quelle, die Auswertung der Regel selbst);
- * - sie ist in Kraft: Das Tor entscheidet mit Fassung 3, R-014 steht in den Standard-Regeln, ein
- *   erlaubter Aufruf eines App-Werkzeugs läuft durch das echte Tor; mit Fassung 2 bleibt er
- *   ungültig.
+ * - sie steht unter dem Tor der Fassung 4 weiter in der Liste: R-014 steht in den Standard-Regeln,
+ *   ein erlaubter Aufruf eines App-Werkzeugs läuft (mit den Fakten der Fassung 4) durch das echte
+ *   Tor; mit Fassung 2 bleibt er ungültig.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -326,22 +326,43 @@ describe("Bedingungen Akteur und Quelle von R-014, direkt an der Regel-Auswertun
   });
 });
 
-describe("Fassung 3 ist in Kraft", () => {
+describe("Fassung 3 unter dem Tor der Fassung 4", () => {
   const verbinden = K3.cases.find((fall) => fall.name === "aktion app.verbinden") as Fall;
-  const appAufruf = K3.cases.find((fall) => fall.name === "R-014 passt") as Fall;
+  const appAufrufFassung3 = K3.cases.find((fall) => fall.name === "R-014 passt") as Fall;
+  // Das lebende Tor rechnet mit Fassung 4: Ein Aufruf trägt dort zusätzlich `botPaused`.
+  const appAufruf: Fall = {
+    ...appAufrufFassung3,
+    facts: { ...appAufrufFassung3.facts, botPaused: false },
+  };
 
-  it("das Tor entscheidet mit Fassung 3, der höchsten bekannten", () => {
-    expect(GATE_FORMAT).toBe(3);
-    expect(currentGateFormat()).toBe(GATE_FORMAT_3);
-    expect(KNOWN_GATE_FORMAT).toBe(3);
-    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3"]);
+  it("Fassung 3 steht weiter in der Liste; das Tor entscheidet mit einer höheren", () => {
+    expect(GATE_FORMAT).toBe(4);
+    expect(currentGateFormat()).not.toBe(GATE_FORMAT_3);
+    expect(KNOWN_GATE_FORMAT).toBe(4);
+    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3", "4"]);
     expect(gateFormatSpec(3)).toBe(GATE_FORMAT_3);
-    expect(gateFormatSpec(4)).toBeUndefined();
+    expect(gateFormatSpec(5)).toBeUndefined();
     expect(() =>
       evaluate(appAufruf.action as never, appAufruf.facts as never, ACTIVE_STANDARD_RULES, {
-        format: 4,
+        format: 5,
       }),
     ).toThrow(RangeError);
+  });
+
+  it("Fassung 3 rechnet den Aufruf ohne botPaused, mit botPaused ist er für sie ungültig", () => {
+    const alt = GATE_FORMAT_3.evaluate(
+      appAufrufFassung3.action as never,
+      appAufrufFassung3.facts as never,
+      ACTIVE_STANDARD_RULES,
+    );
+    expect(alt.outcome).toBe("allow");
+    const mitPause = GATE_FORMAT_3.evaluate(
+      appAufruf.action as never,
+      appAufruf.facts as never,
+      ACTIVE_STANDARD_RULES,
+    );
+    expect(mitPause.outcome).toBe("deny");
+    expect(mitPause.matchedRules).toEqual([]);
   });
 
   it("die lebenden Standard-Regeln enthalten R-014 genau wie der Vertrag", () => {
@@ -433,7 +454,7 @@ describe("Fassung 3 ist in Kraft", () => {
     throw new Error("kein Fehler geworfen");
   }
 
-  it("ein erlaubter App-Aufruf läuft durch das echte Tor: Beleg-Paar mit Fassung 3, ausgeführt", async () => {
+  it("ein erlaubter App-Aufruf läuft durch das echte Tor: Beleg-Paar mit Fassung 4, ausgeführt", async () => {
     const p = ports(ACTIVE_STANDARD_RULES);
     let ausgefuehrt = false;
     await createGate(p).run(appAufruf.action as never, appAufruf.facts as never, async () => {
@@ -442,7 +463,7 @@ describe("Fassung 3 ist in Kraft", () => {
     });
     expect(ausgefuehrt).toBe(true);
     expect(p.belege).toEqual(["decision", "result"]);
-    expect(p.entscheidungen).toEqual([{ gateFormat: 3, outcome: "allow" }]);
+    expect(p.entscheidungen).toEqual([{ gateFormat: 4, outcome: "allow" }]);
   });
 
   it("derselbe Aufruf mit geändertem Abdruck wird abgelehnt: nichts ausgeführt, Beleg mit Ablehnung", async () => {
@@ -469,7 +490,7 @@ describe("Fassung 3 ist in Kraft", () => {
       value: 1,
       result: { status: "ok" },
     }));
-    expect(p.entscheidungen).toEqual([{ gateFormat: 3, outcome: "allow" }]);
+    expect(p.entscheidungen).toEqual([{ gateFormat: 4, outcome: "allow" }]);
   });
 
   it("Fakten einer App ohne alle App-Fakten (nur ein Teil) sind ungültig: kein Beleg", async () => {

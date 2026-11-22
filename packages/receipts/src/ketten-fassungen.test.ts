@@ -1,7 +1,8 @@
 /**
- * PaiBot – Test: Belege der Tor-Fassungen 1, 2 und 3 in einer Kette sind gültig, neue Entscheidungen
- * hängen an, und der Stand mit Fassung 2 liest die Belege der Fassung 3 (geschlossene Kopie seines
- * Lese-Schemas `testdaten/lese-schema-l2.ts`).
+ * PaiBot – Test: Belege der Tor-Fassungen 1, 2, 3 und 4 in einer Kette sind gültig (auch eine Kette,
+ * die bei Fassung 3 endet, für den Stand mit Fassung 4), neue Entscheidungen hängen an, und der
+ * Stand mit Fassung 2 liest die Belege der Fassungen 3 und 4 (geschlossene Kopie seines Lese-Schemas
+ * `testdaten/lese-schema-l2.ts`).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -33,16 +34,18 @@ async function pruefe(kette: GemischteKette) {
   return verifyChain(kette.entries, { rules: kette.regeln });
 }
 
-describe("Belege der Fassungen 1, 2 und 3 in einer Kette", () => {
-  it("Fassung 1, 2 und 3 stehen in der Reihenfolge ihres Inkrafttretens in der Kette", async () => {
+describe("Belege der Fassungen 1, 2, 3 und 4 in einer Kette", () => {
+  it("Fassung 1, 2, 3 und 4 stehen in der Reihenfolge ihres Inkrafttretens in der Kette", async () => {
     const kette = await ketteGemischt();
-    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3]);
+    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3, 4, 4]);
     const typen = kette.entries
       .filter((entry) => entry.body.type === "decision")
       .map((entry) => (entry.body as { action: { type: string } }).action.type);
     expect(typen).toEqual([
       "nachricht.senden",
       "nachricht.senden",
+      "nachricht.senden",
+      "app.verbinden",
       "nachricht.senden",
       "app.verbinden",
     ]);
@@ -66,7 +69,21 @@ describe("Belege der Fassungen 1, 2 und 3 in einer Kette", () => {
       const neu = reevaluate(entry, kette.regeln);
       expect(neu.status, String(entry.seq)).toBe("ok");
     }
-    expect(formate).toEqual([1, 2, 3, 3]);
+    expect(formate).toEqual([1, 2, 3, 3, 4, 4]);
+  });
+
+  // Gegenprobe: das Tor mit Fassung 4 liest Belege der Fassung 3 nicht mehr (Fassung 3 aus
+  // `GATE_FORMATS` nehmen) → die Kette ist nicht mehr vertrauenswürdig (rot).
+  it("eine Kette, die bei Fassung 3 endet, bleibt für den Stand mit Fassung 4 vertrauenswürdig", async () => {
+    const kette = await ketteGemischt(3);
+    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3]);
+    const report = await pruefe(kette);
+    expect(report.firstFailure).toBeUndefined();
+    expect(report.verdict).toStrictEqual({
+      level: "vertrauenswuerdig",
+      findings: [],
+      anchor: "fehlt",
+    });
   });
 
   it("neue Entscheidungen hängen an die gemischte Kette an, sie bleibt vertrauenswürdig", async () => {
@@ -75,7 +92,7 @@ describe("Belege der Fassungen 1, 2 und 3 in einer Kette", () => {
     await kette.tor("nachricht.senden");
     await kette.tor("app.trennen");
     expect(kette.entries.length).toBeGreaterThan(vorher + 2);
-    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3, 3, 3]);
+    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3, 4, 4, 4, 4]);
     const report = await pruefe(kette);
     expect(report.firstFailure).toBeUndefined();
     expect(report.verdict.level).toBe("vertrauenswuerdig");
@@ -101,13 +118,13 @@ describe("Belege der Fassungen 1, 2 und 3 in einer Kette", () => {
   });
 });
 
-describe("Stand mit Fassung 2 liest Belege der Fassung 3", () => {
+describe("Stand mit Fassung 2 liest Belege der Fassungen 3 und 4", () => {
   it("jeder Beleg der gemischten Kette besteht das Lese-Schema von damals, auch die Aktion für Apps", async () => {
     const kette = await ketteGemischt();
     const apps = kette.entries.filter(
       (entry) => entry.body.type === "decision" && entry.body.action.type === "app.verbinden",
     );
-    expect(apps).toHaveLength(1);
+    expect(apps).toHaveLength(2);
     for (const entry of kette.entries) {
       expect(l2ReceiptEntryReadSchema.safeParse(entry).success, String(entry.seq)).toBe(true);
     }

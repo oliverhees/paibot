@@ -369,6 +369,31 @@ describe("Nachricht senden", () => {
     expect(await belegTypen(e.u, 1)).not.toContain("decision:nachricht.senden");
   });
 
+  // Gegenprobe: `botPaused: bot?.paused ?? true` durch `false` ersetzen → die Nachricht geht durch,
+  // Lauf und Auftrag entstehen trotz Pause (rot).
+  it("Bot pausiert: 409 bot_pausiert vom Tor, keine Nachricht, kein Lauf, Beleg mit Ablehnung", async () => {
+    const e = await eingerichtet();
+    const id = await neueUnterhaltung(e);
+    const [bot] = await repo.bots.list(e.u.db);
+    await repo.bots.setPaused(e.u.db, (bot as unknown as { id: never }).id, true);
+    const r = await senden(e, id);
+    expect(r.status).toBe(409);
+    expect(r.body.fehler?.code).toBe("bot_pausiert");
+    expect(await repo.messages.listForConversation(e.u.db, id as never)).toEqual([]);
+    expect(await repo.runs.getActive(e.u.db, id as never)).toBeUndefined();
+    expect(e.einreihen.jobs).toEqual([]);
+    const beleg = (await repo.belege.listPage(e.u.db, { limit: 5 })).items.find(
+      (b) => b.body.type === "decision" && b.body.action.type === "nachricht.senden",
+    );
+    expect(beleg?.body.type === "decision" && beleg.body.decision.outcome).toBe("deny");
+    expect(
+      beleg?.body.type === "decision" && (beleg.body.facts as { botPaused?: boolean }).botPaused,
+    ).toBe(true);
+    // Mit aufgehobener Pause geht es wieder.
+    await repo.bots.setPaused(e.u.db, (bot as unknown as { id: never }).id, false);
+    expect((await senden(e, id)).status).toBe(202);
+  });
+
   it("Länge: leer und über der Grenze abgewiesen, genau an der Grenze erlaubt", async () => {
     const e = await eingerichtet();
     const id = await neueUnterhaltung(e);

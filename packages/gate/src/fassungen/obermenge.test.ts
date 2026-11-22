@@ -16,6 +16,7 @@ import type { RuleDefinition } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
 import korpus from "./fassung-1.korpus.json";
 import { GATE_FORMAT_2 } from "./fassung-2";
+import { GATE_FORMAT_4 } from "./fassung-4";
 
 interface Pruefung {
   name: string;
@@ -164,4 +165,71 @@ describe("Obermenge: Korpus der Fassung 1 unter Fassung 2", () => {
       });
     });
   }
+});
+
+/**
+ * Korpus 1 unter Fassung 4, über die Füllwerte der Fassung 2 und den Füllwert `botPaused: false`:
+ * Entscheidung, Stufe und gewinnende Regeln sind wie unter Fassung 2. Ausnahmen: die fünf Fälle,
+ * die schon Fassung 2 nicht annimmt (siehe oben), und die Fälle mit Quelle `mcp`, die Fassung 3 und
+ * damit Fassung 4 ausdrücklich nicht mehr annehmen (geerbt von Fassung 3).
+ */
+const BOT_BEREIT = ["modell.anfragen", "nachricht.senden", "werkzeug.aufrufen"];
+const MCP_AUSNAHMEN = ["werkzeug mcp mit server"];
+
+function rechne4(fall: Fall, facts: unknown) {
+  const action = fall.action as never;
+  const decision =
+    fall.stand === undefined
+      ? GATE_FORMAT_4.evaluate(action, facts as never, fall.rules)
+      : GATE_FORMAT_4.evaluate(action, facts as never, {
+          stand: fall.stand,
+          rules: fall.rules as never,
+        });
+  return decision as unknown as {
+    outcome: string;
+    stage: string;
+    matchedRules: unknown;
+    limits: Pruefung[];
+  };
+}
+
+describe("Obermenge: Korpus der Fassung 1 unter Fassung 4", () => {
+  const faelle4 = FAELLE.filter((fall) => !MCP_AUSNAHMEN.includes(fall.name));
+
+  it("Zahl der Fälle und die geerbte Ausnahme (Quelle mcp)", () => {
+    expect(FAELLE.map((fall) => fall.name).filter((name) => MCP_AUSNAHMEN.includes(name))).toEqual(
+      MCP_AUSNAHMEN,
+    );
+    expect(faelle4).toHaveLength(FAELLE.length - MCP_AUSNAHMEN.length);
+  });
+
+  for (const fall of faelle4) {
+    it(fall.name, () => {
+      const type = fall.action?.type;
+      const gefuellt = fuellen(type, fall.facts) as Record<string, unknown> | null;
+      const f2 = rechne(fall, gefuellt);
+      const f4facts =
+        gefuellt !== null && type !== undefined && BOT_BEREIT.includes(type)
+          ? { ...gefuellt, botPaused: false }
+          : gefuellt;
+      const f4 = rechne4(fall, f4facts);
+      expect({ outcome: f4.outcome, stage: f4.stage, matchedRules: f4.matchedRules }).toStrictEqual(
+        {
+          outcome: f2.outcome,
+          stage: f2.stage,
+          matchedRules: f2.matchedRules,
+        },
+      );
+    });
+  }
+
+  it("die geerbte Ausnahme: Fälle mit Quelle mcp sind unter Fassung 4 ungültig", () => {
+    for (const name of MCP_AUSNAHMEN) {
+      const fall = FAELLE.find((x) => x.name === name) as Fall;
+      const gefuellt = fuellen(fall.action?.type, fall.facts) as Record<string, unknown>;
+      const f4 = rechne4(fall, { ...gefuellt, botPaused: false });
+      expect(f4.outcome, name).toBe("deny");
+      expect(f4.matchedRules, name).toEqual([]);
+    }
+  });
 });

@@ -92,8 +92,8 @@ describe("Vertrag der Fassung 3: Nummern", () => {
 });
 
 describe("Vertrag der Fassung 3: in Kraft", () => {
-  it("das Tor entscheidet mit Fassung 3; die lebenden Listen enthalten alles aus dem Vertrag", () => {
-    expect(GATE_FORMAT).toBe(FORMAT_3);
+  it("das Tor entscheidet mit Fassung 3 oder einer späteren; die lebenden Listen enthalten alles aus dem Vertrag", () => {
+    expect(GATE_FORMAT).toBeGreaterThanOrEqual(FORMAT_3);
     for (const type of APP_ACTION_TYPES) expect(Object.keys(ACTIONS), type).toContain(type);
     for (const id of Object.keys(LIMITS_BY_ID_3))
       expect(Object.keys(LIMITS_BY_ID), id).toContain(id);

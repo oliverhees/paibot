@@ -591,6 +591,7 @@ describe("failStaleRuns", () => {
       target: { conversationId: env.conversationId, runId, botId: env.botId, modelId: env.modelId },
     };
     const facts: Facts<"modell.anfragen"> = {
+      botPaused: false,
       botOfConversation: true,
       providerId: env.providerId,
       providerEnabled: true,

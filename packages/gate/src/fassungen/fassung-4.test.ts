@@ -1,11 +1,10 @@
 /**
  * PaiBot – Tests der Tor-Fassung 4: setzt genau den Vertrag um, ist eine Obermenge von
  * Fassung 3 (Korpus 3 und 2 unter Fassung 4 mit gleichem Ergebnis, nur mit den Füllwerten und den
- * neuen Einträgen), und ist noch nicht in Kraft.
+ * neuen Einträgen), und ist in Kraft: Das Tor entscheidet mit ihr, ihre Aktionen sind gespeichert.
  *
- * Fassung 4 ist noch nicht eingefroren. Korpus 1 läuft hier nicht noch einmal: Er ist eine
- * Teilmenge von Korpus 2 (Obermenge-Test der Fassung 2) und dieser von Korpus 3 (Obermenge-Test der
- * Fassung 3); jeder Schritt ist für sich geprüft.
+ * Fassung 4 ist eingefroren (`unveraendert.test.ts`). Korpus 1 läuft unter Fassung 4 in
+ * `obermenge.test.ts`, mit der von Fassung 3 geerbten Ausnahme (Quelle `mcp`).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -14,7 +13,7 @@
  * @since     2026-11-22
  */
 
-import { UNSTORED_ACTION_TYPES } from "@paibot/shared/aktionen";
+import { STORED_ACTION_TYPES, UNSTORED_ACTION_TYPES } from "@paibot/shared/aktionen";
 import { ACTIVE_STANDARD_RULES, GATE_FORMAT, type RuleDefinition } from "@paibot/shared/tor";
 import {
   BOT_PAUSED_FACTS,
@@ -422,16 +421,18 @@ describe("Obermenge: Korpus der Fassung 2 unter Fassung 4", () => {
   }
 });
 
-describe("Fassung 4 ist noch nicht in Kraft", () => {
-  it("das Tor entscheidet weiter mit Fassung 3; Fassung 4 steht nicht in der Liste", () => {
-    expect(GATE_FORMAT).toBe(3);
-    expect(KNOWN_GATE_FORMAT).toBe(3);
-    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3"]);
+describe("Fassung 4 ist in Kraft", () => {
+  it("das Tor entscheidet mit Fassung 4, der höchsten bekannten; sie steht in der Liste", () => {
+    expect(GATE_FORMAT).toBe(4);
+    expect(KNOWN_GATE_FORMAT).toBe(4);
+    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3", "4"]);
+    expect(GATE_FORMATS[4]).toBe(GATE_FORMAT_4);
   });
 
-  it("die neuen Aktionen stehen in ACTIONS, aber unter den noch nicht speicherbaren", () => {
+  it("die neuen Aktionen sind gespeichert (Regeln und Belege kennen sie), nicht mehr unter den ungespeicherten", () => {
     for (const type of TEAM_ACTION_TYPES) {
-      expect(UNSTORED_ACTION_TYPES as readonly string[], type).toContain(type);
+      expect(UNSTORED_ACTION_TYPES as readonly string[], type).not.toContain(type);
+      expect(STORED_ACTION_TYPES as readonly string[], type).toContain(type);
     }
   });
 

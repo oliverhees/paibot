@@ -126,6 +126,8 @@ export function alsFassung1(body: Roh): void {
   const decision = body.decision as Roh;
   delete decision.gateFormat;
   decision.limits = (decision.limits as unknown[]).slice(0, 5);
+  // `botPaused` kennt erst Fassung 4.
+  if (body.facts !== undefined) delete (body.facts as Roh).botPaused;
 }
 
 /** Setzt `decision.gateFormat` und ein Feld, das Fassung 1 nicht kennt. */

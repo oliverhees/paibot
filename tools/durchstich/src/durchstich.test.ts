@@ -150,6 +150,7 @@ async function modelRequest(): Promise<{
       target: { conversationId: conversation.id, runId: run.id, botId: bot.id, modelId: model.id },
     },
     facts: {
+      botPaused: false,
       botOfConversation: conversation.botId === bot.id,
       providerId: provider.id,
       providerEnabled: provider.enabled,

@@ -49,6 +49,7 @@ function sendFacts() {
     conversationExists: true,
     runActive: false,
     killSwitch: false,
+    botPaused: false,
   };
 }
 

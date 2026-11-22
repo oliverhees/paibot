@@ -19,6 +19,7 @@ import {
   type RuleCondition,
   type RuleDefinition,
 } from "@paibot/shared/tor";
+import { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "@paibot/shared/tor-fassung-4";
 
 export interface RegelZeile {
   nr: string;
@@ -110,9 +111,27 @@ export function regelEintraege(regeln: readonly RuleDefinition[]): RegelZeile[] 
  */
 export const NUR_WERKZEUG_GRENZEN: readonly string[] = ["G-17", "G-06", "G-07", "G-08", "G-40"];
 
-/** Die festen Grenzen (ohne die reinen Werkzeug-Grenzen). */
+/**
+ * Nummern der Tor-Fassung 4 (Bot bereit, Entwürfe, Teams): Die Seite zeigt sie nicht, solange man
+ * Bots und Teams noch nicht anlegen, pausieren oder ändern kann. Sie kommen mit der Bedienung.
+ */
+export const NOCH_NICHT_BEDIENBAR: readonly string[] = [
+  ...Object.keys(LIMITS_BY_ID_4),
+  ...Object.keys(PRECONDITIONS_4),
+];
+
+type SichtbareGrenze = Exclude<(typeof LIMIT_IDS)[number], keyof typeof LIMITS_BY_ID_4>;
+type SichtbareVorbedingung = Exclude<
+  (typeof PRECONDITION_IDS)[number],
+  keyof typeof PRECONDITIONS_4
+>;
+
+/** Die festen Grenzen (ohne die reinen Werkzeug-Grenzen und die der Teams). */
 export function grenzenEintraege(): RegelZeile[] {
-  return LIMIT_IDS.filter((id) => !NUR_WERKZEUG_GRENZEN.includes(id)).map((id) => ({
+  return LIMIT_IDS.filter(
+    (id): id is SichtbareGrenze =>
+      !NUR_WERKZEUG_GRENZEN.includes(id) && !NOCH_NICHT_BEDIENBAR.includes(id),
+  ).map((id) => ({
     nr: id,
     titel: regelName(id, id),
     wirkung: t("regeln.wirkung.grenze"),
@@ -122,10 +141,12 @@ export function grenzenEintraege(): RegelZeile[] {
 
 /** Vorbedingungen der Aktionen, die es in dieser Fassung gibt (ohne Werkzeug-Freigaben). */
 export function vorbedingungenEintraege(): RegelZeile[] {
-  return PRECONDITION_IDS.filter((id) =>
-    (PRECONDITIONS[id].actions as readonly ActionType[]).some(
-      (a) => !a.startsWith("werkzeug.") && !a.startsWith("app."),
-    ),
+  return PRECONDITION_IDS.filter(
+    (id): id is SichtbareVorbedingung =>
+      !NOCH_NICHT_BEDIENBAR.includes(id) &&
+      (PRECONDITIONS[id].actions as readonly ActionType[]).some(
+        (a) => !a.startsWith("werkzeug.") && !a.startsWith("app."),
+      ),
   ).map((id) => ({
     nr: id,
     titel: regelName(id, id),

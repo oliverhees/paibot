@@ -301,6 +301,7 @@ async function befuellen(appUrl: string) {
         target: { conversationId: fertig.id, runId: lauf.id, botId: bot.id, modelId: model.id },
       },
       {
+        botPaused: false,
         botOfConversation: true,
         providerId,
         providerEnabled: provider.enabled,
@@ -371,6 +372,7 @@ async function befuellen(appUrl: string) {
             target: { conversationId: fertig.id, runId: lauf.id, botId: bot.id },
           },
           {
+            botPaused: false,
             botOfConversation: true,
             runRunning: true,
             toolName: "doku_nachschlagen",
@@ -811,7 +813,7 @@ describe.skipIf(bereit.grund !== undefined)(
         await runMigrations(ziel.url, MIGRATIONS_FOLDER);
         const neu = await zaehlen(ziel.url);
         expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 2);
-        expect(neu["drizzle.__drizzle_migrations"]).toBe(17);
+        expect(neu["drizzle.__drizzle_migrations"]).toBe(19);
         for (const tabelle of Object.keys(altZeilen).filter(
           (t) => t !== "public.rules" && t !== "drizzle.__drizzle_migrations",
         )) {
@@ -829,15 +831,16 @@ describe.skipIf(bereit.grund !== undefined)(
     it("Gegenprobe: eine Abweichung nach dem Einspielen meldet der Vergleich", async () => {
       const sql = verbinden(frisch.url);
       try {
-        const [bot] = await sql<{ id: string }[]>`select id from public.bots limit 1`;
-        await sql`delete from public.bots where id = ${bot?.id ?? ""}`;
+        // Ein Bot mit Läufen lässt sich nicht löschen; die Abweichung ist deshalb ein Bot mehr.
+        await sql`insert into public.bots (id, name, avatar_shape, color)
+          values (${newId("bot")}, 'Zusatz nach dem Einspielen', 'blatt', 'blau')`;
       } finally {
         await sql.end({ timeout: 2 });
       }
       const vergleich = skript(frisch.url, "vergleichen", begleit).stdout.toString().trim();
       const bots = vergleich.split("\n").find((z) => z.startsWith("T|public.bots|"));
       expect(bots).toBe(
-        `T|public.bots|${vorher["public.bots"]}|${(vorher["public.bots"] ?? 0) - 1}`,
+        `T|public.bots|${vorher["public.bots"]}|${(vorher["public.bots"] ?? 0) + 1}`,
       );
     });
   },

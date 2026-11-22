@@ -38,6 +38,9 @@ const EINGEFROREN: Readonly<Record<string, string>> = {
   "./fassung-2.korpus.json": "41263028e1219cd4ee01a8778544a9697f379a66471f9ea1ec44bf94ee727653",
   "./fassung-3.ts": "2160046e50c9262cccb12419a5e7a36405ac7f21f7fca202c27c49b7582196fd",
   "./fassung-3.korpus.json": "2f345c2787ca57684601959c4ea11002b2888b98045c5d82cfc3f2ec1bbee84a",
+  // Fassung 4: eingefroren mit dem Inkraftsetzen (Migration 0018, `GATE_FORMAT = 4`).
+  "./fassung-4.ts": "0222d6f8cdef34a330308d22b1610e322f6ebbbe6371b992e1e50322371b09bf",
+  "./fassung-4.korpus.json": "99cb57cadaf96489ac077967ee72ac25645b7cd55a34b46e3e50021d7577bf75",
   "../../../receipts/src/testdaten/kette-vor-fassung.jsonl":
     "9ad3e785369d054078213238428d7cbfbda5212758d66ec39c093cfba100b295",
   "../../../receipts/src/testdaten/kette-l1.jsonl":

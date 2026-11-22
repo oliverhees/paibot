@@ -153,6 +153,21 @@ const VIOLATIONS: Record<GateLimitName, Partial<Record<ActionType, Record<string
   werkzeug_bestaetigt: {},
   app_ziel: {},
   eine_app_je_schritt: {},
+  // Die Grenzen der Fassung 4 prüfen die festen Fälle in `fassungen/fassung-4.korpus.test.ts`; hier
+  // stehen die Verletzungen, die mit den Fakten der Beispiele gleich zu bilden sind.
+  bot_bereit: {
+    "nachricht.senden": [{ botPaused: true }],
+    "modell.anfragen": [{ botPaused: true }],
+    "werkzeug.aufrufen": [{ botPaused: true }],
+  },
+  entwurf_umfang: { "team.entwurf_anlegen": [{ draftBots: 7 }] },
+  bots_gesamt: {
+    "bot.anlegen": [{ botsAfter: 51 }],
+    "team.entwurf_anlegen": [{ botsAfter: 51 }],
+  },
+  entwuerfe_je_tag: {
+    "team.entwurf_erstellen": [{ offeneEntwuerfe: 5 }, { entwuerfeHeute: 20 }],
+  },
 };
 
 const LIMIT_ID_BY_NAME = Object.fromEntries(

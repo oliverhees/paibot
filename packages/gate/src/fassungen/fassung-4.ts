@@ -3,9 +3,9 @@
  * Aktionen des Besitzers für Bots, Teams, Entwürfe und Fäden, der Fakt `botPaused` an
  * `modell.anfragen`, `nachricht.senden` und `werkzeug.aufrufen`, die Grenzen G-15, G-32, G-33 und
  * G-34 (und G-03 für den Zettel eines Fadens) und die Vorbedingungen V-25, V-27 bis V-31, V-37 und
- * V-42 bis V-44.
- * Noch nicht eingefroren und nicht in Kraft: `GATE_FORMAT` bleibt 3, und diese Fassung steht nicht
- * in `GATE_FORMATS`.
+ * V-42 bis V-44. Der Fakt `botPaused` gehört zu `modell.anfragen`, `nachricht.senden` und
+ * `werkzeug.aufrufen`; G-15 gilt an allen dreien.
+ * Diese Datei wird nie mehr geändert.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de

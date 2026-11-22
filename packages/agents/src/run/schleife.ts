@@ -35,6 +35,7 @@ import { buildSystemPrompt } from "../prompt";
 import { emptyToolRegistry, type RegisteredTool, type ToolRegistry } from "../werkzeuge/register";
 import { ladeAppWerkzeuge } from "./app-werkzeuge";
 import { cancelCall, type PreparedCall, prepareCalls, runToolCall } from "./aufruf";
+import { readBotPaused } from "./bot-stand";
 import { createDraftStream, pieces } from "./entwurf";
 import { plainText } from "./huelle";
 import {
@@ -213,6 +214,9 @@ export async function runLoop(
 
   for (let step = 0; ; step++) {
     const settings = step === 0 ? context.settings : await write(() => freshSettings(db));
+    // Pause des Bots: je Schritt frisch aus der Datenbank, nie vom Lauf-Start. Fehlt die Zeile des
+    // Bots, gilt er als pausiert: Das Tor lehnt ab (G-15), nie „nicht pausiert“ aus Mangel an Daten.
+    const botPaused = (await write(() => readBotPaused(db, run.botId))) ?? true;
     const last = step >= settings.maxStepsPerRun - 1;
     const offered: readonly RegisteredTool[] = mode === "mit_werkzeugen" && !last ? werkzeuge : [];
     const schleuseStatus =
@@ -236,6 +240,7 @@ export async function runLoop(
       inputChars,
     });
     const facts = modelFacts({
+      botPaused,
       context: { ...context, settings },
       route,
       schleuse: deps.schleuse,

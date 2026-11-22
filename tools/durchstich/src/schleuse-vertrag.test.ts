@@ -160,6 +160,7 @@ function mitZugang<R>(
   const botId = newId("bot");
   const facts: Facts<"modell.anfragen"> = {
     ...providerTargetFacts(providerId, ANBIETER_URL),
+    botPaused: false,
     botOfConversation: true,
     providerId,
     providerEnabled: true,

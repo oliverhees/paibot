@@ -124,8 +124,15 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1795385408687,
+      "when": 1795388443239,
       "tag": "0017_teams_a",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795388444129,
+      "tag": "0018_fassung_4_aktionen",
       "breakpoints": true
     }
   ]

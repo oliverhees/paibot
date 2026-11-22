@@ -67,6 +67,7 @@ function row(baseUrl: string, apiKeyEnc = encFor(legit())): ModelChoice {
 /** Fakten, wie die Lauf-Steuerung sie zum Zeitpunkt der Entscheidung gebildet hat. */
 function decidedFor(baseUrl: string): Facts<"modell.anfragen"> {
   return {
+    botPaused: false,
     botOfConversation: true,
     providerId,
     providerEnabled: true,

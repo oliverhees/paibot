@@ -143,7 +143,8 @@ describe("Lese-Form", () => {
     expect(receiptBodyWriteSchema.safeParse(mitFeld).success).toBe(false);
     const zwei = {
       ...decision,
-      decision: { ...decision.decision, gateFormat: 3, preconditions: [] },
+      facts: { ...decision.facts, botPaused: false },
+      decision: { ...decision.decision, gateFormat: 4, preconditions: [] },
     };
     expect(receiptBodyReadSchema.safeParse(zwei).success).toBe(true);
     expect(receiptBodyWriteSchema.safeParse(zwei).success).toBe(true);
