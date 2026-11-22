@@ -86,6 +86,12 @@ export function kurzStand(version: string, pruefsumme: string): string {
   return `${version}+${pruefsumme.slice("sha256:".length, "sha256:".length + 12)}`;
 }
 
+/**
+ * Form eines vollständigen Doku-Stands: Version, „+“, 12 Hex-Zeichen der Prüfsumme (wie
+ * `kurzStand`). Ein beim Kürzen der Hülle beschnittener Stand passt nicht mehr.
+ */
+export const STAND_MUSTER = /^\d{1,6}\.\d{1,6}\.\d{1,6}(?:-[0-9A-Za-z.-]{1,40})?\+[0-9a-f]{12}$/;
+
 /** Klein, Umlaute und ß ausgeschrieben; ohne Bereinigen (das macht `woerter`). */
 function klein(text: string): string {
   return text

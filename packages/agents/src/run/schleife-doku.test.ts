@@ -526,6 +526,32 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     expect(nachrichten.some((m) => m.origin === "fest")).toBe(false);
   });
 
+  // Bleibt im Schritt kaum Platz, kürzt das Kürzen der Hülle auch den Doku-Stand. Eine solche Hülle
+  // zählt nicht als Ergebnis des Nachschlagens: kein Doku-Stand und keine Fundstellen im Beleg.
+  // Gegenprobe: in `dokuAusHuelle` (`beleg-felder.ts`) die Prüfung `STAND_MUSTER` bei gekürzter
+  // Hülle entfernen → der Beleg trägt den beschnittenen Stand „0.3.0-de“ mit Fundstellen 0.
+  it("knapper Platz im Schritt: ein beschnittener Doku-Stand steht weder im Beleg noch zählt die Hülle", async () => {
+    const env = await setup(DOKU_SCRIPTS.einerTrifft);
+    // Der erste Aufruf braucht rund 1 000 Zeichen; für den zweiten bleiben 170 Zeichen Platz.
+    await env.db
+      .update(settingsTable)
+      .set({ toolResultMaxChars: 1000, toolResultsMaxCharsPerStep: 1170 });
+    const { runId } = await env.ask(FRAGE_FALLE);
+    const [, zweiter] = await repo.toolCalls.listForRun(env.db, runId);
+    const gespeichert = zweiter?.output as ToolEnvelope & { gekuerzt?: boolean };
+    expect(gespeichert).toMatchObject({ status: "ok", gekuerzt: true });
+    const stand = (gespeichert as { inhalt: { stand: string } }).inhalt.stand;
+    expect(stand).not.toBe(echt.stand);
+    expect(echt.stand.startsWith(stand)).toBe(true);
+    const ergebnisse = results(await env.receipts(), "werkzeug.aufrufen");
+    expect(ergebnisse).toHaveLength(2);
+    expect(ergebnisse[0]?.result).toMatchObject({ status: "ok", found: 4, docStand: echt.stand });
+    expect(ergebnisse[1]?.result).toMatchObject({ status: "ok" });
+    expect(ergebnisse[1]?.result).not.toHaveProperty("docStand");
+    expect(ergebnisse[1]?.result).not.toHaveProperty("found");
+    expect(await env.verify()).toMatchObject({ ok: true });
+  });
+
   it("eine Frage trifft, eine nicht: der Lauf geht weiter", async () => {
     const env = await setup(DOKU_SCRIPTS.einerTrifft);
     const { runId } = await env.ask(FRAGE_FALLE);
