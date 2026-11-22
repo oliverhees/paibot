@@ -9,6 +9,7 @@
  * @since     2026-11-20
  */
 
+export * from "./app-anschluss";
 export { closeOpenRunWork, failStaleRuns, type StaleRunOptions } from "./aufraeumen";
 export { executeRun } from "./ausfuehren";
 export { REQUEST_DIGEST_PREFIX, readSchleuseStatus } from "./kontext";

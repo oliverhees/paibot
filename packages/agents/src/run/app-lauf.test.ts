@@ -621,6 +621,19 @@ describe("Werkzeuge aus Apps: Änderungen und Grenzen", () => {
     ]);
   });
 
+  it("liefert der Server dasselbe Werkzeug zweimal, bietet der Lauf nichts davon an und der nächste Lauf-Start schlägt nicht fehl", async () => {
+    const env = await setup(eineAntwort, async (e) => [await notizen(e)], {
+      anschluss: { doppelt: true },
+    });
+    expect((await env.ask()).outcome).toMatchObject({ status: "succeeded" });
+    expect((await env.ask()).outcome).toMatchObject({ status: "succeeded" });
+    expect(env.anschluss.protokoll.listen).toEqual(["notizen", "notizen"]);
+    expect(env.anschluss.protokoll.aufrufe).toEqual([]);
+    // In der Datenbank steht weiter jedes Werkzeug genau einmal, mit nicht leerem Namen.
+    const zeilen = await repo.apps.currentTools(env.db, env.apps[0]?.id as AppId);
+    expect(zeilen.map((z) => z.modelName).sort()).toEqual(["notizen__anlegen", "notizen__suche"]);
+  });
+
   it("eine nicht erreichbare App trägt nichts bei, der Lauf endet normal und nichts vom Fehler geht an das Modell", async () => {
     const env = await setup(eineAntwort, async (e) => [await notizen(e)], {
       anschluss: { listeFehler: new Error("GEHEIM-4711 connect ECONNREFUSED") },

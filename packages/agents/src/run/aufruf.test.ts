@@ -691,3 +691,32 @@ describe("Wert, der sich beim Lesen ändert", () => {
     expect(["ok", "fehler"]).toContain(huelle.status);
   });
 });
+
+// Gegenprobe: `reineKopie` für die Eingabe in `prepareCalls` entfernen und den Wert direkt prüfen →
+// der Getter wird mehrfach gelesen, geprüft wird ein anderer Wert als der, der weiterläuft; rot.
+describe("Die Eingabe des Modells wird genau einmal in eine reine Kopie gelesen", () => {
+  it("ein Getter, der bei jedem Lesen etwas anderes liefert, wird nur einmal gelesen; weiter geht, was geprüft wurde", async () => {
+    let lesungen = 0;
+    const eingabe = {
+      get q() {
+        lesungen += 1;
+        return lesungen === 1 ? "erste Lesung" : "ZWEITE LESUNG";
+      },
+    };
+    const [call] = await prepare([wish({ input: eingabe as never })]);
+    expect(lesungen).toBe(1);
+    expect(call?.inputValid).toBe(true);
+    expect(call?.storedInput).toEqual({ q: "erste Lesung" });
+  });
+
+  it("ein Getter, der wirft, macht die Eingabe ungültig und lässt keinen Text heraus", async () => {
+    const eingabe = {
+      get q(): string {
+        throw new Error("GEHEIM-4711");
+      },
+    };
+    const [call] = await prepare([wish({ input: eingabe as never })]);
+    expect(call?.inputValid).toBe(false);
+    expect(JSON.stringify(call?.storedInput)).not.toContain("GEHEIM-4711");
+  });
+});

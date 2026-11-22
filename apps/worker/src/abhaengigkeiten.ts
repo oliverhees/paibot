@@ -32,6 +32,7 @@ import { createReceiptWriter } from "@paibot/receipts";
 import { secretAad, signingKeySecretBinding } from "@paibot/shared/bindung";
 import { PaiBotError } from "@paibot/shared/fehler";
 import type { KeyId } from "@paibot/shared/ids";
+import { baueAppAnschluss } from "./app-anschluss";
 import { realSchleuseCheck } from "./schleuse-meldung";
 import type { DatabaseHandle, RunDepsSource, WorkerDeps } from "./worker";
 
@@ -108,6 +109,8 @@ export function buildRunDeps(db: Database, env: Env): RunDepsSource {
     schleuseStatus: () => readSchleuseStatus(schleuse),
     receipts,
   };
+  // Anschluss an die Apps (MCP): Hülle und Zugang entstehen erst beim Abruf bzw. Aufruf.
+  base.apps = baueAppAnschluss({ db, secretsKey: base.keys.secrets });
 
   // Register der Werkzeuge: einmal je Prozess gebaut und geprüft (bricht bei einem Fehler ab).
   // Dazu gehört der Doku-Index der installierten Version: Fehlt er oder ist er ungültig, wirft

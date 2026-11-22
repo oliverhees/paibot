@@ -70,6 +70,8 @@ export function erzeugeTestAnschluss(
     beimListe?: (app: AppInfo) => Promise<void> | void;
     /** `holeListe` wirft diesen Fehler (statt eine Liste zu liefern). */
     listeFehler?: Error;
+    /** Der Server nennt das erste Werkzeug zweimal (zwei gleichnamige Werkzeuge). */
+    doppelt?: boolean;
   } = {},
 ): TestAnschluss {
   const protokoll: AnschlussProtokoll = { listen: [], aufrufe: [], ausgeschlossen: [] };
@@ -84,7 +86,11 @@ export function erzeugeTestAnschluss(
           if (optionen.listeFehler !== undefined) throw optionen.listeFehler;
           const test = apps.find((a) => a.id === app.id);
           if (test === undefined) throw new Error("App unbekannt");
-          return test.werkzeuge.map(
+          const gemeldet =
+            optionen.doppelt === true
+              ? [...test.werkzeuge, ...test.werkzeuge.slice(0, 1)]
+              : test.werkzeuge;
+          return gemeldet.map(
             (w): AppListeEintrag => ({
               originalName: w.name,
               abdruck: abdruck(test.version.get(w.name) ?? "1"),

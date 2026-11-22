@@ -42,6 +42,7 @@ import {
   cleanJson,
   cleanText,
   ERGEBNIS_PRUEFUNG_GRENZEN,
+  JSON_PRUEFUNG_GRENZEN,
   jsonHasKeyClash,
   jsonHasNonInteger,
   jsonHasNonJson,
@@ -162,9 +163,17 @@ export function prepareCalls(
     let issue: PreparedCall["issue"];
     let accepted: JsonValue | undefined;
     // Als Allererstes, vor jedem rekursiven Prüfen oder Bereinigen: zu tief oder zu groß → ungültig.
-    const oversize = call.rawInput === undefined && jsonUeberGrenzen(call.input);
-    if (call.rawInput === undefined && !oversize && isPlainObject(call.input)) {
-      const value = call.input;
+    // Die Eingabe des Modells wird genau einmal in eine reine Kopie gelesen (wie das Ergebnis eines
+    // Werkzeugs); die Kopie prüft dieselben Grenzen (Tiefe, Größe, Kreise) und weist alles ab, was
+    // kein JSON ist. Alles Weitere rechnet nur auf der Kopie: Ein Getter oder Proxy kann so nicht
+    // beim Prüfen etwas anderes zeigen als beim Weitergeben, und ein Lesefehler macht die Eingabe
+    // ungültig, ohne dass sein Text irgendwohin kommt.
+    const objekt = call.rawInput === undefined && isPlainObject(call.input);
+    const kopie = objekt ? reineKopie(call.input, JSON_PRUEFUNG_GRENZEN) : undefined;
+    const oversize =
+      call.rawInput === undefined && (objekt ? kopie === undefined : jsonUeberGrenzen(call.input));
+    if (kopie !== undefined && isPlainObject(kopie)) {
+      const value = kopie;
       if (jsonHasUnwanted(value) || jsonHasNonInteger(value)) {
         inputValid = false;
       } else if (def !== undefined) {
@@ -191,21 +200,27 @@ export function prepareCalls(
     const toolKey = tool?.definition.key ?? placeholder.toolKey;
     const toolDigest = tool?.toolDigest ?? placeholder.toolDigest;
     // Ein zu tiefer oder zu großer Wert wird nicht zu Text gemacht (`JSON.stringify` würde werfen).
-    const fullText = oversize ? "" : inputText(call);
-    let args: JsonValue = inputValid && accepted !== undefined ? accepted : { roh: fullText };
+    // Nur bei einer ungültigen Eingabe gebraucht; bei einer gültigen wird das Original nicht noch
+    // einmal gelesen (ein Getter könnte dann etwas anderes zeigen als die geprüfte Kopie).
+    let fullTextCache: string | undefined;
+    const fullText = (): string => {
+      fullTextCache ??= oversize ? "" : inputText(call);
+      return fullTextCache;
+    };
+    let args: JsonValue = inputValid && accepted !== undefined ? accepted : { roh: fullText() };
     let argsDigest: HmacDigest;
     try {
       argsDigest = digestOf(input, actionId, args, toolDigest, toolKey);
     } catch {
       // Der Abdruck wirft z. B. bei Gleitkommazahlen; dann gilt die Eingabe als ungültig.
       inputValid = false;
-      args = { roh: fullText };
+      args = { roh: fullText() };
       argsDigest = digestOf(input, actionId, args, toolDigest, toolKey);
     }
     const storedInput: JsonValue = deepFreeze(
       inputValid && accepted !== undefined
         ? accepted
-        : { roh: Array.from(cleanText(fullText)).slice(0, MAX_STORED_RAW_INPUT_CHARS).join("") },
+        : { roh: Array.from(cleanText(fullText())).slice(0, MAX_STORED_RAW_INPUT_CHARS).join("") },
     );
 
     return {
