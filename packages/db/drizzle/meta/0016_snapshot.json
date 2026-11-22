@@ -783,7 +783,7 @@
         },
         "apps_url_format": {
           "name": "apps_url_format",
-          "value": "char_length(\"public\".\"apps\".\"url\") <= 2000 and \"public\".\"apps\".\"url\" ~ '^[!-~]+$' and \"public\".\"apps\".\"url\" ~ '^https://[^/?#@\\s]+(/[^?#\\s\"\\\\]*)?$' and not (\"public\".\"apps\".\"url\" ~ '/$')"
+          "value": "char_length(\"public\".\"apps\".\"url\") <= 2000 and \"public\".\"apps\".\"url\" ~ '^[!-~]+$' and \"public\".\"apps\".\"url\" ~ '^https://[^/?#@\\s\"\\\\]+(/[^?#\\s\"\\\\]*)?$' and not (\"public\".\"apps\".\"url\" ~ '/$')"
         },
         "apps_auth_kind_werte": {
           "name": "apps_auth_kind_werte",
