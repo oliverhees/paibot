@@ -254,6 +254,15 @@ describe("Differenz: Schema fürs Modell gegen die Texte der Oberfläche", () =>
       additionalItems: { description: MARKE },
       unevaluatedProperties: { description: MARKE },
       unevaluatedItems: { description: MARKE },
+      minContains: 1,
+      maxContains: 3,
+      $anchor: MARKE,
+      $dynamicRef: `#${MARKE}`,
+      $dynamicAnchor: MARKE,
+      $recursiveRef: "#",
+      $vocabulary: { [`https://${MARKE}.example/`]: true },
+      dependencies: { a: [MARKE] },
+      contentSchema: { description: MARKE },
     };
 
     /**
@@ -305,6 +314,39 @@ describe("Differenz: Schema fürs Modell gegen die Texte der Oberfläche", () =>
         }
       });
     }
+
+    // Gegenprobe: in `schema.ts` ein `case "fantasie":` samt Eintrag in `ANDERS_GEZEIGT` anlegen → rot.
+    it("jeder `case` in `verarbeite` und jeder Eintrag in `ANDERS_GEZEIGT` kommt im Korpus der Stichwörter vor", () => {
+      const quelle = readFileSync(SCHEMA_QUELLE, "utf8");
+      const anfang = quelle.indexOf("function verarbeite(");
+      const ende = quelle.indexOf("\n}\n", anfang);
+      expect(anfang).toBeGreaterThan(-1);
+      const faelle = [...quelle.slice(anfang, ende).matchAll(/case "([A-Za-z$]+)":/g)].map(
+        (m) => m[1] as string,
+      );
+      const anders = /ANDERS_GEZEIGT: readonly string\[\] = \[([^\]]*)\]/.exec(quelle)?.[1];
+      expect(anders).toBeDefined();
+      const ersatz = [...(anders ?? "").matchAll(/"([A-Za-z$]+)"/g)].map((m) => m[1] as string);
+      expect(faelle.length).toBeGreaterThan(10);
+      expect(ersatz.length).toBeGreaterThan(0);
+      const bekannt = new Set<string>(Object.keys(STICHWORTE));
+      const sammle = (k: unknown) => {
+        if (Array.isArray(k)) return k.forEach(sammle);
+        if (!istObjekt(k)) return;
+        for (const [s, w] of Object.entries(k)) {
+          bekannt.add(s);
+          if (s === "properties" && istObjekt(w)) Object.values(w).forEach(sammle);
+          else sammle(w);
+        }
+      };
+      for (const roh of Object.values(KORPUS)) sammle(roh);
+      for (const name of [...faelle, ...ersatz]) {
+        expect(
+          bekannt.has(name),
+          `„${name}“ steht in schema.ts, aber in keinem Fall dieses Tests`,
+        ).toBe(true);
+      }
+    });
 
     it("die Probe erkennt einen Text, den die Oberfläche nicht zeigt (Selbstprüfung der Prüfung)", () => {
       const modell = {
