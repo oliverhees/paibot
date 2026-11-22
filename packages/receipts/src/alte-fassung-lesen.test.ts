@@ -14,7 +14,7 @@
 
 import { readFileSync } from "node:fs";
 import { createGate, type Execute, ruleSnapshot } from "@paibot/gate";
-import { ACTION_TYPES } from "@paibot/shared/aktionen";
+import { ACTION_TYPES, STORED_ACTION_TYPES } from "@paibot/shared/aktionen";
 import { RECEIPT_CHAIN_FORMAT, type ReceiptEntry } from "@paibot/shared/belege";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { ACTIVE_STANDARD_RULES, UNSTORED_STANDARD_RULE_VERSIONS } from "@paibot/shared/tor";
@@ -160,7 +160,7 @@ describe("Belege dieses Stands (Fassung 2) und Leser von vorher", () => {
   it("jede Entscheidung trägt die aktuelle Fassung (3); ein Stand vor der Tor-Fassung erkennt sie nicht", async () => {
     const { entries } = await ketteVomTor();
     const decisions = entries.filter((e) => e.body.type === "decision");
-    expect(decisions.length).toBeGreaterThan(ACTION_TYPES.length - 3);
+    expect(decisions.length).toBeGreaterThan(STORED_ACTION_TYPES.length - 1);
     for (const entry of decisions) {
       if (entry.body.type !== "decision") continue;
       expect(entry.body.decision.gateFormat).toBe(3);
