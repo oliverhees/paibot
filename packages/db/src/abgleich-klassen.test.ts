@@ -17,16 +17,26 @@ import { describe, expect, it } from "vitest";
 import { APP_TABLE_RIGHTS, QUEUE_SCHEMA_NAME } from "./rollen";
 import * as schema from "./schema";
 import {
+  ABGLEICH_GEHEIM_WERTE,
   ABGLEICH_KLASSEN,
   ABGLEICH_KLASSEN_FREMDE_SCHEMAS,
   ABGLEICH_KLASSEN_WERTE,
   type AbgleichEintrag,
+  abgleichGeheimFehler,
   abgleichKlassenFehler,
+  GEHEIMNIS_SPALTE,
 } from "./schema/abgleich-klassen";
 
-const TABELLEN = (Object.values(schema) as unknown[])
+const KONFIGURATIONEN = (Object.values(schema) as unknown[])
   .filter((wert): wert is PgTable => is(wert, PgTable))
-  .map((tabelle) => getTableConfig(tabelle).name);
+  .map((tabelle) => getTableConfig(tabelle));
+const TABELLEN = KONFIGURATIONEN.map((konfiguration) => konfiguration.name);
+const SPALTEN_JE_TABELLE = Object.fromEntries(
+  KONFIGURATIONEN.map((konfiguration) => [
+    konfiguration.name,
+    konfiguration.columns.map((spalte) => spalte.name),
+  ]),
+);
 
 describe("Abgleich-Klassen der Tabellen", () => {
   it("das Schema hat Tabellen (der Test sieht etwas)", () => {
@@ -72,10 +82,68 @@ describe("Abgleich-Klassen der Tabellen", () => {
   });
 });
 
+describe("Kennzeichnung der Geheimnisse", () => {
+  it("jede Spalte mit `_enc`, `_hash` oder `token` am Ende ist gekennzeichnet, jede genannte Spalte gibt es", () => {
+    expect(abgleichGeheimFehler(SPALTEN_JE_TABELLE, ABGLEICH_KLASSEN)).toEqual([]);
+  });
+
+  it("der Test sieht Spalten dieser Art im echten Schema", () => {
+    const gefunden = Object.entries(SPALTEN_JE_TABELLE).flatMap(([tabelle, spalten]) =>
+      spalten
+        .filter((spalte) => GEHEIMNIS_SPALTE.test(spalte))
+        .map((spalte) => `${tabelle}.${spalte}`),
+    );
+    expect(gefunden).toEqual(
+      expect.arrayContaining([
+        "installation_keys.private_key_enc",
+        "geraete.token_hash",
+        "owner.password_hash",
+        "providers.api_key_enc",
+        "providers.management_key_enc",
+        "apps.token_enc",
+        "settings.setup_code_hash",
+        "belege.prev_hash",
+      ]),
+    );
+  });
+
+  it("Signaturschlüssel, Sitzungen und Geräte verlassen den Ort nie (Klasse C, Kennzeichnung nie)", () => {
+    for (const name of ["installation_keys", "sessions", "geraete"]) {
+      expect(ABGLEICH_KLASSEN[name]?.klasse, name).toBe("C");
+      expect(ABGLEICH_KLASSEN[name]?.geheim, name).toBe("nie");
+    }
+    expect(ABGLEICH_KLASSEN.installation_keys?.spalten).toEqual(["private_key_enc"]);
+    expect(ABGLEICH_KLASSEN.sessions?.spalten).toEqual(["id"]);
+    expect(ABGLEICH_KLASSEN.geraete?.spalten).toEqual(["token_hash"]);
+  });
+
+  it("Besitzer, Anbieter, Apps und Einstellungen sind gekennzeichnet", () => {
+    expect(ABGLEICH_KLASSEN.owner).toMatchObject({ geheim: "nie", spalten: ["password_hash"] });
+    expect(ABGLEICH_KLASSEN.settings).toMatchObject({
+      geheim: "nie",
+      spalten: ["setup_code_hash"],
+    });
+    expect(ABGLEICH_KLASSEN.providers).toMatchObject({
+      geheim: "je-ort-neu-verschluesselt",
+      spalten: ["api_key_enc", "management_key_enc"],
+    });
+    expect(ABGLEICH_KLASSEN.apps).toMatchObject({
+      geheim: "je-ort-neu-verschluesselt",
+      spalten: ["token_enc"],
+    });
+  });
+
+  it("jeder Eintrag hat eine bekannte Kennzeichnung", () => {
+    for (const [name, eintrag] of Object.entries(ABGLEICH_KLASSEN)) {
+      expect(ABGLEICH_GEHEIM_WERTE as readonly string[], name).toContain(eintrag.geheim);
+    }
+  });
+});
+
 describe("Gegenproben der Prüfung", () => {
   const ZUORDNUNG: Record<string, AbgleichEintrag> = {
-    eins: { klasse: "A", grund: "Beispiel, nur anhängen." },
-    zwei: { klasse: "B", grund: "Beispiel, letzter Stand." },
+    eins: { klasse: "A", geheim: "nein", grund: "Beispiel, nur anhängen." },
+    zwei: { klasse: "B", geheim: "nein", grund: "Beispiel, letzter Stand." },
   };
 
   it("eine Zuordnung zu genau den Tabellen ist in Ordnung", () => {
@@ -96,8 +164,8 @@ describe("Gegenproben der Prüfung", () => {
 
   it("unbekannte Klasse und leere Begründung: Meldung", () => {
     const schlecht = {
-      eins: { klasse: "D", grund: "Beispiel." },
-      zwei: { klasse: "B", grund: "  " },
+      eins: { klasse: "D", geheim: "nein", grund: "Beispiel." },
+      zwei: { klasse: "B", geheim: "nein", grund: "  " },
     } as unknown as Record<string, AbgleichEintrag>;
     expect(abgleichKlassenFehler(["eins", "zwei"], schlecht)).toEqual([
       "Tabelle eins: unbekannte Klasse D.",
@@ -109,5 +177,61 @@ describe("Gegenproben der Prüfung", () => {
     expect(abgleichKlassenFehler(["toString"], ZUORDNUNG)).toContain(
       "Tabelle toString hat keine Abgleich-Klasse.",
     );
+  });
+
+  describe("Kennzeichnung der Geheimnisse", () => {
+    const SPALTEN = { eins: ["id", "key_enc", "pw_hash", "token", "api_token", "tokens"] };
+
+    it("Spalten, die nach einem Geheimnis aussehen, ohne Kennzeichnung: Meldung je Spalte", () => {
+      expect(abgleichGeheimFehler(SPALTEN, ZUORDNUNG)).toEqual([
+        "Spalte eins.key_enc sieht nach einem Geheimnis aus und ist nicht gekennzeichnet.",
+        "Spalte eins.pw_hash sieht nach einem Geheimnis aus und ist nicht gekennzeichnet.",
+        "Spalte eins.token sieht nach einem Geheimnis aus und ist nicht gekennzeichnet.",
+        "Spalte eins.api_token sieht nach einem Geheimnis aus und ist nicht gekennzeichnet.",
+      ]);
+    });
+
+    it("gekennzeichnete Spalten (Geheimnis oder öffentlich) sind in Ordnung; `tokens` ist kein Treffer", () => {
+      const zuordnung = {
+        ...ZUORDNUNG,
+        eins: {
+          klasse: "A",
+          geheim: "nie",
+          grund: "Beispiel.",
+          spalten: ["key_enc", "token", "api_token"],
+          oeffentlich: ["pw_hash"],
+        },
+      } as Record<string, AbgleichEintrag>;
+      expect(abgleichGeheimFehler(SPALTEN, zuordnung)).toEqual([]);
+    });
+
+    it("genannte Spalte, die es nicht gibt: Meldung", () => {
+      const zuordnung = {
+        eins: { klasse: "A", geheim: "nie", grund: "Beispiel.", spalten: ["gibt_es_nicht_enc"] },
+      } as Record<string, AbgleichEintrag>;
+      expect(abgleichGeheimFehler({ eins: ["id"] }, zuordnung)).toEqual([
+        "Spalte eins.gibt_es_nicht_enc gibt es nicht.",
+      ]);
+    });
+
+    it("`nein` mit Spalten und Geheimnis ohne Spalten: Meldung", () => {
+      const zuordnung = {
+        eins: { klasse: "A", geheim: "nein", grund: "Beispiel.", spalten: ["id"] },
+        zwei: { klasse: "B", geheim: "nie", grund: "Beispiel." },
+      } as Record<string, AbgleichEintrag>;
+      expect(abgleichGeheimFehler({ eins: ["id"], zwei: ["id"] }, zuordnung)).toEqual([
+        "Tabelle eins: Spalten mit Geheimnis, aber geheim ist nein.",
+        "Tabelle zwei: geheim ist nie, aber es sind keine Spalten genannt.",
+      ]);
+    });
+
+    it("unbekannte Kennzeichnung: Meldung", () => {
+      const zuordnung = {
+        eins: { klasse: "A", geheim: "vielleicht", grund: "Beispiel." },
+      } as unknown as Record<string, AbgleichEintrag>;
+      expect(abgleichGeheimFehler({ eins: ["id"] }, zuordnung)).toEqual([
+        "Tabelle eins: unbekannte Kennzeichnung vielleicht.",
+      ]);
+    });
   });
 });
