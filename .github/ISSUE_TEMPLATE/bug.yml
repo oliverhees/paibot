@@ -50,8 +50,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Version oder Folge
-      placeholder: z. B. folge-02 oder Commit-Hash
+      label: Version
+      placeholder: z. B. 0.3.0 oder Commit-Hash
   - type: textarea
     id: logs
     attributes:
