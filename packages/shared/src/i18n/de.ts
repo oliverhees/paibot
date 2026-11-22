@@ -23,6 +23,7 @@ export const de = {
   "seite.modelle": "Modell und Anbieter",
   "seite.datenschleuse": "Datenschleuse",
   "seite.apps": "Apps",
+  "chat.link.fremd": "Link aus einer fremden Quelle, nicht anklickbar. Ziel:",
   "seite.belege": "Belege",
   "seite.einstellungen": "Einstellungen",
   "seite.info": "Info",

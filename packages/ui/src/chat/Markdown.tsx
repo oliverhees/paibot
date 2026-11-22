@@ -8,6 +8,7 @@
  * @since     2026-11-20
  */
 
+import { t } from "@paibot/shared/texte";
 import type { ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -80,9 +81,31 @@ function SichtbarerLink({
   );
 }
 
+/**
+ * Link aus fremder Quelle: nicht anklickbar, das ganze Ziel (mit Abfrage-Teil) steht als Text da.
+ * Wer es öffnen will, kopiert es bewusst.
+ */
+function FremderLink({ ziel, children }: { ziel: string; children: ReactNode }) {
+  return (
+    <>
+      <span>{children}</span>
+      <span className={styles.ziel}>
+        {" "}
+        ({t("chat.link.fremd")} <code>{ziel}</code>)
+      </span>
+    </>
+  );
+}
+
 export interface MarkdownProps {
   /** Antworttext des Bots in Markdown. */
   text: string;
+  /**
+   * Der Text stützt sich auf Inhalte aus einer fremden Quelle (etwa einer App): Links und Bilder
+   * sind dann nicht anklickbar und zeigen ihr volles Ziel samt Abfrage-Teil, damit nichts
+   * unbemerkt an eine fremde Adresse geht.
+   */
+  fremd?: boolean;
   /** Texte für abgesetzte Blöcke (Etikett, Kopieren, Kopiert). */
   blockTexte: EntwurfTexte;
   /** Ein abgesetzter Block wurde kopiert. */
@@ -94,11 +117,12 @@ export interface MarkdownProps {
  * bzw. Text und nie geladen), Links nur mit http/https, mit `rel="noopener noreferrer nofollow"`
  * und sichtbarem Ziel.
  */
-export function Markdown({ text, blockTexte, onKopiert }: MarkdownProps) {
+export function Markdown({ text, blockTexte, onKopiert, fremd = false }: MarkdownProps) {
   const komponenten: Components = {
     a: ({ href, children, node }) => {
       const ziel = sichereUrl(href);
       if (!ziel) return <span>{children}</span>;
+      if (fremd) return <FremderLink ziel={ziel}>{children}</FremderLink>;
       return (
         <SichtbarerLink ziel={ziel} text={textVon(node as unknown as HastKnoten)}>
           {children}
@@ -109,6 +133,7 @@ export function Markdown({ text, blockTexte, onKopiert }: MarkdownProps) {
       const ziel = sichereUrl(typeof src === "string" ? src : undefined);
       const beschriftung = alt || ziel || "";
       if (!ziel) return <span>{beschriftung}</span>;
+      if (fremd) return <FremderLink ziel={ziel}>{beschriftung}</FremderLink>;
       return (
         <SichtbarerLink ziel={ziel} text={beschriftung}>
           {beschriftung}

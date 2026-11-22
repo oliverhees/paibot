@@ -929,6 +929,7 @@ export function ChatSeite({
           <Markdown
             text={n.text}
             blockTexte={BLOCK_TEXTE}
+            fremd={n.fremd === true}
             onKopiert={() => avatar.ausdruck("zwinkern")}
           />
         )}

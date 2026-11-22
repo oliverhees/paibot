@@ -48,6 +48,12 @@ export interface AnsichtNachricht {
    */
   herkunft?: "fest";
   /**
+   * Die Antwort stützt sich auf Inhalte aus einer fremden Quelle (etwa einer App): Links darin
+   * sind nicht anklickbar und zeigen ihr volles Ziel. Gesetzt wird es erst, wenn die Schnittstelle
+   * das Kennzeichen der Nachricht liefert; bis dahin bleibt es ungesetzt.
+   */
+  fremd?: true;
+  /**
    * Die Antwort kam über den Strom, ihr Lauf hatte Schritte, und ihre Herkunft ist noch nicht aus
    * dem Lesestand bestätigt (das Ereignis „angelegt“ nennt sie nicht).
    */
