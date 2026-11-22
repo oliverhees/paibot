@@ -1155,6 +1155,8 @@
                   "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
                   "@paibot/web": "Kein Paket importiert aus apps/*.",
                   "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "node:module": "Die Web-App lädt keine Pakete über createRequire; Pakete nur über ihren Namen importieren.",
+                  "module": "Die Web-App lädt keine Pakete über createRequire; Pakete nur über ihren Namen importieren.",
                   "@paibot/mcp": {
                     "message": "Die Web-App holt nur die Liste der Werkzeuge: aus der MCP-Schicht darf sie nur die Namen der Liste und die Typen importieren, nie den Aufruf und nie den ganzen Namensraum.",
                     "allowImportNames": [
@@ -1189,9 +1191,13 @@
                       "!**/lib/apps/**",
                       "!./apps/*",
                       "**/apps/worker/**",
-                      "**/worker/src/**"
+                      "**/worker/**"
                     ],
                     "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["**/packages/**"],
+                    "message": "Pakete nur über ihren Namen importieren, nie über einen relativen Pfad in packages/*."
                   },
                   {
                     "group": ["@paibot/*/src", "@paibot/*/src/**"],

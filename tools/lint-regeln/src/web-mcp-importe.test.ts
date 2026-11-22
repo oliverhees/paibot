@@ -69,6 +69,14 @@ describe("Web-App: Importe aus der MCP-Schicht (muss rot sein)", () => {
       'import type * as mcp from "@paibot/mcp";\nexport type A = typeof mcp;\n',
     "Verbindung öffnen":
       'import { oeffneVerbindung } from "@paibot/mcp";\nexport const a = oeffneVerbindung;\n',
+    "relativer Pfad in packages/mcp":
+      'import { rufeWerkzeugAuf } from "../../../../../../packages/mcp/src/verbindung";\nexport const a = rufeWerkzeugAuf;\n',
+    "relativer Pfad in packages/mcp, nur ein harmloser Name":
+      'import { holeWerkzeuge } from "../../../../../../packages/mcp/src/verbindung";\nexport const a = holeWerkzeuge;\n',
+    "createRequire aus node:module":
+      'import { createRequire } from "node:module";\nexport const a = createRequire(import.meta.url)("@paibot/mcp");\n',
+    "createRequire aus module":
+      'import { createRequire } from "module";\nexport const a = createRequire(import.meta.url)("@paibot/mcp");\n',
     "Typ der Verbindung":
       'import type { McpVerbindung } from "@paibot/mcp";\nexport type A = McpVerbindung;\n',
   };
@@ -116,6 +124,20 @@ describe("Web-App: Importe aus apps/* (nur der eigene Ordner lib/apps ist erlaub
   for (const [name, ziel] of Object.entries(ROT)) {
     it(`${name}: gemeldet`, () => {
       const quelle = `import a from "${von(ORDNER, ziel)}";\nexport default a;\n`;
+      expect(importMeldungen(ORDNER, quelle).length).toBeGreaterThan(0);
+    });
+  }
+
+  // `path.relative` glättet `./` und `//`; diese Schreibweisen löst der Bündler trotzdem auf.
+  const SCHREIBWEISEN: Record<string, string> = {
+    "Worker mit ./ im Pfad": "/worker/./src/",
+    "Worker mit // im Pfad": "/worker//src/",
+  };
+  for (const [name, ersatz] of Object.entries(SCHREIBWEISEN)) {
+    it(`${name}: gemeldet`, () => {
+      const pfad = von(ORDNER, "apps/worker/src/lauf").replace("/worker/src/", ersatz);
+      expect(pfad).toContain(ersatz);
+      const quelle = `import a from "${pfad}";\nexport default a;\n`;
       expect(importMeldungen(ORDNER, quelle).length).toBeGreaterThan(0);
     });
   }
