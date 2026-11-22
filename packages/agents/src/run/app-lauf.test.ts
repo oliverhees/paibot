@@ -724,6 +724,41 @@ describe("Werkzeuge aus Apps: Änderungen und Grenzen", () => {
     expect(antworten).toEqual([true]);
   });
 
+  // Gegenprobe: in `saveLiveStep` das Feld `untrusted` nicht in den Abschluss übernehmen → der Trigger
+  // der Test-Datenbank lässt das spätere Kennzeichnen nicht zu, die Antwort bleibt ohne Kennzeichen, rot.
+  it("auch ohne angebotene Werkzeuge (Text live): das Kennzeichen steht im selben Schreibvorgang wie der Abschluss der Antwort", async () => {
+    const env = await setup(
+      { steps: [{ toolCalls: [aufruf("notizen__suche")] }, { text: ANSWER_TEXT }] },
+      async (e) => [await notizen(e)],
+    );
+    await env.ask("Lauf 1");
+    // Der Bot verliert den Zugriff: Lauf 2 bekommt keine Werkzeuge und schreibt seine Antwort live,
+    // die Anfrage ist aber fremd, weil die Antwort aus Lauf 1 im Verlauf steht.
+    await setzeZugriff(env, env.apps[0]?.id as AppId, env.botId, "keiner");
+    provider.configure({ reply: ANSWER_TEXT, script: eineAntwort });
+    await env.client.exec(`
+      create function test_nur_im_abschluss() returns trigger language plpgsql as $$
+      begin
+        if new.untrusted and not old.untrusted and old.status = 'complete' then
+          raise exception 'Kennzeichen nach dem Abschluss';
+        end if;
+        return new;
+      end $$;
+      create trigger test_nur_im_abschluss before update on messages
+        for each row execute function test_nur_im_abschluss();
+    `);
+    const { runId, outcome } = await env.ask("Lauf 2");
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    // Lauf 2 hat in diesem Fall wirklich keine Werkzeuge angeboten bekommen.
+    const anfragen = provider.requests.filter((r) => r.path.endsWith("/chat/completions"));
+    const letzte = anfragen.at(-1)?.body as { tools?: unknown } | undefined;
+    expect(letzte?.tools).toBeUndefined();
+    const antworten = (await env.db.select().from(messagesTable))
+      .filter((m) => m.runId === runId && m.role === "assistant")
+      .map((m) => m.untrusted);
+    expect(antworten).toEqual([true]);
+  });
+
   it("eine neue Runde: steht keine gekennzeichnete Antwort mehr im gesendeten Verlauf, ist die Anfrage nicht mehr fremd", async () => {
     const env = await setup(
       { steps: [{ toolCalls: [aufruf("notizen__suche")] }, { text: ANSWER_TEXT }] },
