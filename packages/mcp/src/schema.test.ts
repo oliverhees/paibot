@@ -82,6 +82,7 @@ describe("Schema für das Modell", () => {
     expect(ergebnis.modell).toEqual({
       type: "object",
       properties: { frage: { type: "string", description: "Text" } },
+      additionalProperties: false,
     });
     const erlaubt = new Set([...MODELL_STICHWORTE, "frage"]);
     for (const schluessel of alleSchluessel(ergebnis.modell))
@@ -279,21 +280,20 @@ describe("Prüf-Schema für Argumente", () => {
     expect(mitVorgabe.pruefer({})).toEqual({ ok: true, wert: {} });
   });
 
-  it("prüft anyOf, const und exklusive Grenzen, obwohl sie nicht ans Modell gehen", () => {
+  it("prüft const und exklusive Grenzen, obwohl sie nicht ans Modell gehen", () => {
     const schema = gut({
       type: "object",
       properties: {
-        a: { anyOf: [{ type: "string" }, { type: "null" }] },
         b: { const: "fest" },
         c: { type: "integer", exclusiveMinimum: 0 },
       },
     });
     expect(schema.modell).toEqual({
       type: "object",
-      properties: { a: {}, b: {}, c: { type: "integer" } },
+      properties: { b: {}, c: { type: "integer" } },
+      additionalProperties: false,
     });
-    expect(schema.pruefer({ a: null, b: "fest", c: 1 }).ok).toBe(true);
-    expect(schema.pruefer({ a: 5 }).ok).toBe(false);
+    expect(schema.pruefer({ b: "fest", c: 1 }).ok).toBe(true);
     expect(schema.pruefer({ b: "anders" }).ok).toBe(false);
     expect(schema.pruefer({ c: 0 }).ok).toBe(false);
   });
@@ -302,5 +302,113 @@ describe("Prüf-Schema für Argumente", () => {
     const schema = gut({ type: "object", properties: { a: { type: ["string", "null"] } } });
     expect(schema.pruefer({ a: null }).ok).toBe(true);
     expect(schema.pruefer({ a: 1 }).ok).toBe(false);
+  });
+});
+
+describe("Das Prüf-Schema ist nie lockerer als die Rohform", () => {
+  const A = { type: "string" };
+
+  it.each([
+    [
+      "anyOf neben additionalProperties false",
+      {
+        type: "object",
+        properties: { a: A },
+        additionalProperties: false,
+        anyOf: [{ type: "object" }],
+      },
+    ],
+    [
+      "anyOf mit required-Zweigen",
+      {
+        type: "object",
+        properties: { a: A, b: A },
+        anyOf: [{ required: ["a"] }, { required: ["b"] }],
+      },
+    ],
+    [
+      "anyOf in einer Eigenschaft",
+      { type: "object", properties: { a: { anyOf: [{ type: "string" }, { type: "null" }] } } },
+    ],
+    [
+      "anyOf in items",
+      { type: "object", properties: { a: { type: "array", items: { anyOf: [A] } } } },
+    ],
+  ])("weist %s ab (nicht bestätigbar)", (_name, schema) => {
+    expect(problem(schema)).toBe("stichwort_nicht_pruefbar");
+  });
+
+  it.each([
+    [
+      "required nennt einen Namen ohne Eigenschaft",
+      { type: "object", properties: { a: A }, required: ["b"] },
+    ],
+    ["required ohne properties", { type: "object", required: ["a"] }],
+    [
+      "required teils außerhalb",
+      { type: "object", properties: { a: A }, required: ["a", "zusatz"] },
+    ],
+    [
+      "required in einer Eigenschaft",
+      {
+        type: "object",
+        properties: { o: { type: "object", properties: { a: A }, required: ["b"] } },
+      },
+    ],
+  ])("weist %s ab (nicht bestätigbar)", (_name, schema) => {
+    expect(problem(schema)).toBe("form_ungueltig");
+  });
+
+  it("nimmt required mit Namen aus properties an", () => {
+    const schema = gut({ type: "object", properties: { a: A, b: A }, required: ["a"] });
+    expect(schema.pruefer({}).ok).toBe(false);
+    expect(schema.pruefer({ a: "x" }).ok).toBe(true);
+  });
+
+  it.each([
+    ["ohne additionalProperties", { type: "object", properties: { a: A } }],
+    [
+      "mit additionalProperties false",
+      { type: "object", properties: { a: A }, additionalProperties: false },
+    ],
+    ["Objekt ohne properties", { type: "object" }],
+  ])("weist zusätzliche Felder ab: Wurzel %s", (_name, schema) => {
+    const geprueft = gut(schema);
+    expect(geprueft.pruefer({ a: "x", geheim: "1" }).ok).toBe(false);
+    expect(geprueft.pruefer({ geheim: "1" }).ok).toBe(false);
+    expect((geprueft.modell as { additionalProperties?: unknown }).additionalProperties).toBe(
+      false,
+    );
+  });
+
+  it("weist zusätzliche Felder auch in verschachtelten Objekten und in Listen ab", () => {
+    const geprueft = gut({
+      type: "object",
+      properties: {
+        o: { type: "object", properties: { x: A } },
+        liste: { type: "array", items: { type: "object", properties: { y: A } } },
+      },
+    });
+    expect(geprueft.pruefer({ o: { x: "1" }, liste: [{ y: "1" }] }).ok).toBe(true);
+    expect(geprueft.pruefer({ o: { x: "1", geheim: "1" } }).ok).toBe(false);
+    expect(geprueft.pruefer({ liste: [{ y: "1", geheim: "1" }] }).ok).toBe(false);
+  });
+
+  it("lässt zusätzliche Felder nur bei ausdrücklichem additionalProperties true zu (wie die Rohform)", () => {
+    const geprueft = gut({ type: "object", properties: { a: A }, additionalProperties: true });
+    expect(geprueft.pruefer({ a: "x", mehr: 1 }).ok).toBe(true);
+    expect((geprueft.modell as { additionalProperties?: unknown }).additionalProperties).toBe(true);
+  });
+
+  it("das Schema, das das Modell sieht, nennt additionalProperties false: gezeigte und geprüfte Form gleichen sich", () => {
+    const geprueft = gut({
+      type: "object",
+      properties: { a: { type: "object", properties: { x: A } } },
+    });
+    expect(geprueft.modell).toEqual({
+      type: "object",
+      properties: { a: { type: "object", properties: { x: A }, additionalProperties: false } },
+      additionalProperties: false,
+    });
   });
 });

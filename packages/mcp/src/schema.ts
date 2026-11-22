@@ -77,7 +77,7 @@ export const MODELL_STICHWORTE: readonly string[] = [
 ];
 
 /** Stichwörter, die nur prüfen (nicht ans Modell gehen). */
-const NUR_PRUEFEN: readonly string[] = ["const", "anyOf", "exclusiveMinimum", "exclusiveMaximum"];
+const NUR_PRUEFEN: readonly string[] = ["const", "exclusiveMinimum", "exclusiveMaximum"];
 
 /** Beschreibende Stichwörter ohne Wirkung auf die Prüfung; sie fallen überall weg. */
 const IGNORIERT: ReadonlySet<string> = new Set([
@@ -105,7 +105,6 @@ const ERLAUBTE_TYPEN: ReadonlySet<string> = new Set([
 ]);
 
 const MAX_EINTRAEGE = 100;
-const MAX_ZWEIGE = 10;
 const MAX_NAME = 64;
 
 class Abweisung extends Error {
@@ -253,13 +252,6 @@ function verarbeite(schema: unknown, ebene: number, zustand: Zustand): Teil {
         pruef.const = wert;
         break;
       }
-      case "anyOf": {
-        if (!Array.isArray(wert) || wert.length === 0 || wert.length > MAX_ZWEIGE) {
-          throw new Abweisung("form_ungueltig");
-        }
-        pruef.anyOf = wert.map((zweig) => verarbeite(zweig, ebene + 1, zustand).pruef);
-        break;
-      }
       case "additionalProperties": {
         if (typeof wert !== "boolean") throw new Abweisung("stichwort_nicht_pruefbar");
         modell.additionalProperties = wert;
@@ -292,7 +284,33 @@ function verarbeite(schema: unknown, ebene: number, zustand: Zustand): Teil {
         throw new Abweisung("stichwort_nicht_pruefbar");
     }
   }
+  schliesseObjektAb(modell, pruef);
   return { modell, pruef };
+}
+
+/**
+ * Macht aus einem Objekt-Schema die strenge Form: Jeder Name in `required` muss unter `properties`
+ * stehen (sonst ist das Werkzeug nicht bestätigbar), und zusätzliche Felder sind verboten, außer
+ * das Schema erlaubt sie ausdrücklich mit `additionalProperties: true`. Das Prüf-Schema ist damit
+ * nie lockerer als das Rohschema; dasselbe `additionalProperties` steht auch im Schema, das das
+ * Modell sieht, damit gezeigte, bestätigte und geprüfte Form gleich bleiben.
+ */
+function schliesseObjektAb(modell: Record<string, unknown>, pruef: Record<string, unknown>): void {
+  const typen = Array.isArray(pruef.type) ? pruef.type : [pruef.type];
+  const istObjektSchema = typen.includes("object") || pruef.properties !== undefined;
+  const required = pruef.required;
+  if (Array.isArray(required)) {
+    const eigenschaften = istObjekt(pruef.properties) ? pruef.properties : {};
+    for (const name of required) {
+      if (typeof name !== "string" || !Object.hasOwn(eigenschaften, name)) {
+        throw new Abweisung("form_ungueltig");
+      }
+    }
+  }
+  if (istObjektSchema && pruef.additionalProperties === undefined) {
+    modell.additionalProperties = false;
+    pruef.additionalProperties = false;
+  }
 }
 
 /**
