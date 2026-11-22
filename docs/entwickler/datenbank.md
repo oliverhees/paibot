@@ -33,11 +33,11 @@ Die drei Klassen:
 
 Keine eigene Tabelle, keine Migration: Die Zuordnung ist reiner Code. Die Klassen im Überblick (die Begründung je Tabelle steht in `packages/db/src/schema/abgleich-klassen.ts`):
 
-| Klasse | Tabellen                                                                                                                                       |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| A      | `belege`, `rules`, `installation_keys`, `app_tools`, `bot_app_grants`, `conversation_events`                                                   |
-| B      | `settings`, `providers`, `models`, `bots`, `conversations`, `messages`, `runs`, `tool_calls`, `apps`, `owner`                                  |
-| C      | `sessions`, `geraete`, `rate_limits`, `schleuse_zustand`; außerhalb des Schemas `pgboss` (Warteschlange) und `drizzle` (Stand der Migrationen) |
+| Klasse | Tabellen                                                                                                                                                            |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A      | `belege`, `rules`, `app_tools`, `bot_app_grants`, `conversation_events`                                                                                             |
+| B      | `settings`, `providers`, `models`, `bots`, `conversations`, `messages`, `runs`, `tool_calls`, `apps`, `owner`                                                       |
+| C      | `installation_keys`, `sessions`, `geraete`, `rate_limits`, `schleuse_zustand`; außerhalb des Schemas `pgboss` (Warteschlange) und `drizzle` (Stand der Migrationen) |
 
 **Regel für jede neue Migration:** Legt sie eine Tabelle an, trägt dieselbe Änderung die Tabelle mit Klasse und einem Satz Begründung in `ABGLEICH_KLASSEN` ein. Sonst ist `packages/db/src/abgleich-klassen.test.ts` rot. Wird eine Tabelle entfernt, fällt auch ihr Eintrag weg (der Test meldet eine Klasse ohne Tabelle).
 
@@ -54,7 +54,7 @@ Alles steht auch im Index von `@paibot/db` (`packages/db/src/schema/index.ts`). 
 ## Sicherheit
 
 - Die Klasse ändert nichts an den Rechten: Welche Rolle eine Tabelle ändern darf, steht weiter in `packages/db/src/rollen.ts#APP_TABLE_RIGHTS` und in den Triggern der Migrationen. Der Test verlangt nur, dass Tabellen, in denen die App-Rolle laut `APP_TABLE_RIGHTS` nur lesen und anlegen darf, Klasse A haben.
-- Tabellen mit verschlüsselten Geheimnissen (`providers`, `apps`, `installation_keys`, `owner`) tragen eine Klasse wie die übrigen. Ob und wie ein Abgleich sie überträgt, ist damit nicht entschieden; das gehört zum Abgleich selbst.
+- `installation_keys` ist Klasse C: Der private Signaturschlüssel verlässt den Ort nie; der öffentliche Teil wird später über die Tabelle der Orte verteilt. Die übrigen Tabellen mit verschlüsselten Geheimnissen (`providers`, `apps`, `owner`) tragen eine Klasse wie die anderen; ob und wie ein Abgleich sie überträgt, ist damit nicht entschieden.
 
 ## Tests
 

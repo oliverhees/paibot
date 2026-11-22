@@ -47,11 +47,6 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     grund:
       "Regeln des Tors, nur anhängen; jede Änderung ist eine neue Zeile mit höherer Fassung (Trigger).",
   },
-  installation_keys: {
-    klasse: "A",
-    grund:
-      "Signaturschlüssel der Installation; Schlüssel kommen dazu, nur `retired_at` wird einmal gesetzt (verschlüsselter privater Teil).",
-  },
   app_tools: {
     klasse: "A",
     grund: "Fassungen der Werkzeuge einer App, nur anhängen (Trigger); gültig ist die neueste.",
@@ -109,6 +104,11 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
   },
 
   // C: bleibt am Ort
+  installation_keys: {
+    klasse: "C",
+    grund:
+      "Signaturschlüssel der Installation; der private Teil verlässt den Ort nie. Der öffentliche Teil wird später über die Tabelle der Orte verteilt.",
+  },
   sessions: { klasse: "C", grund: "Angemeldete Sitzungen eines Ortes; gelten nur dort." },
   geraete: {
     klasse: "C",
