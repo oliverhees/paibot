@@ -320,7 +320,6 @@ export function ChatSeite({
   const nachfrageSchluessel = nachfragen.map((n) => n.schluessel).join("§");
   const [versuche, setVersuche] = useState({ schluessel: "", n: 0 });
   const versuch = versuche.schluessel === nachfrageSchluessel ? versuche.n : 0;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `nachfragenRef` gehört zum Schlüssel
   useEffect(() => {
     if (id === undefined || nachfrageSchluessel === "" || loescht) return;
     let aktiv = true;
