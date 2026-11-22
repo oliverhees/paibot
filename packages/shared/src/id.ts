@@ -25,6 +25,10 @@ export const ID_PREFIX = {
   installation: "ins",
   rule: "reg",
   device: "ger",
+  /** Eine verbundene App (MCP-Server), ab Tor-Fassung 3. */
+  app: "app",
+  /** Ein Werkzeug einer verbundenen App, ab Tor-Fassung 3. */
+  tool: "wzg",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIX;
@@ -46,6 +50,8 @@ export type KeyId = Id<"key">;
 export type InstallationId = Id<"installation">;
 export type RuleRecordId = Id<"rule">;
 export type DeviceId = Id<"device">;
+export type AppId = Id<"app">;
+export type AppToolId = Id<"tool">;
 
 /** Gesamtlänge einer ID: drei Zeichen Präfix, Unterstrich, 26 Zeichen. */
 export const ID_LENGTH = 30;

@@ -30,6 +30,13 @@ import {
   t,
   tList,
 } from "./i18n";
+import {
+  APP_ACTION_TYPES,
+  ERROR_CODES_3,
+  LIMITS_BY_ID_3,
+  PRECONDITIONS_3,
+  STANDARD_RULE_VERSIONS_3,
+} from "./tor-fassung-3";
 
 declare global {
   interface ImportMeta {
@@ -60,8 +67,8 @@ describe("Text-Schlüssel", () => {
     }
   });
 
-  it("es gibt keine Fehlertexte ohne Fehlercode", () => {
-    const codes = new Set<string>(ERROR_CODES);
+  it("es gibt keine Fehlertexte ohne Fehlercode (heute oder im Vertrag der Fassung 3)", () => {
+    const codes = new Set<string>([...ERROR_CODES, ...ERROR_CODES_3]);
     for (const key of TEXT_KEYS.filter((key) => key.startsWith("fehler."))) {
       expect(codes.has(key.replace(/^fehler\./, "").replace(/\.ausweg$/, ""))).toBe(true);
     }
@@ -74,6 +81,17 @@ describe("Text-Schlüssel", () => {
     for (const rule of [...ACTIVE_STANDARD_RULES, ...UNSTORED_STANDARD_RULE_VERSIONS]) {
       expect(t(`regel.${rule.id}` as "regel.R-001")).toBe(rule.title);
     }
+  });
+
+  it("Vertrag der Fassung 3: jede neue Aktion, Regel, Grenze, Vorbedingung und jeder Fehlercode hat einen Text", () => {
+    for (const type of APP_ACTION_TYPES) expect(isTextKey(`aktion.${type}`), type).toBe(true);
+    for (const id of [...Object.keys(LIMITS_BY_ID_3), ...Object.keys(PRECONDITIONS_3)]) {
+      expect(isTextKey(`regel.${id}`), id).toBe(true);
+    }
+    for (const rule of STANDARD_RULE_VERSIONS_3) {
+      expect(t(`regel.${rule.id}` as "regel.R-001")).toBe(rule.title);
+    }
+    for (const code of ERROR_CODES_3) expect(isTextKey(`fehler.${code}`), code).toBe(true);
   });
 
   it("nennen die Bauart statt fremder Programme; Coolify nur als dokumentierter Installationsweg", () => {
@@ -92,8 +110,11 @@ describe("Text-Schlüssel", () => {
   });
 
   it("es gibt keine Bezeichnungen für unbekannte Aktionen oder Regeln", () => {
-    const actions = new Set<string>(ACTION_TYPES);
+    const actions = new Set<string>([...ACTION_TYPES, ...APP_ACTION_TYPES]);
     const rules = new Set<string>([
+      ...STANDARD_RULE_VERSIONS_3.map((rule) => rule.id),
+      ...Object.keys(LIMITS_BY_ID_3),
+      ...Object.keys(PRECONDITIONS_3),
       ...STANDARD_RULE_IDS,
       ...UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id),
       ...LIMIT_IDS,

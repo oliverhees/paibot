@@ -10,7 +10,7 @@
  * @since     2026-11-20
  */
 
-import type { KeyId, ProviderId } from "./id";
+import type { AppId, KeyId, ProviderId } from "./id";
 
 /** Erste Zeile der Zusatzdaten (AAD) eines verschlüsselten Werts im Format `v2`. */
 export const SECRET_AAD_PREFIX = "pb-geheimnis/v2";
@@ -26,10 +26,14 @@ export const SECRET_AAD_PREFIX = "pb-geheimnis/v2";
  *   Anbieter-Schlüssel, aber Zweck `management_key`; beide Werte lassen sich nicht vertauschen.
  * - Signaturschlüssel: Tabelle `installation_keys`, ID des Schlüssels, Zweck `private_key`,
  *   Zusatz = öffentlicher Schlüssel (base64url).
+ * - Token einer App (ab Tor-Fassung 3, noch nicht in Gebrauch): Tabelle `apps`, ID der App, Zweck
+ *   `token`, Zusatz = die volle Adresse der App (`normalizedAppUrl`). Eine andere Adresse, auch
+ *   nur ein anderer Pfad, macht den Token unbrauchbar.
  */
 export type SecretBinding =
   | { table: "providers"; id: ProviderId; purpose: "api_key" | "management_key"; extra: string }
-  | { table: "installation_keys"; id: KeyId; purpose: "private_key"; extra: string };
+  | { table: "installation_keys"; id: KeyId; purpose: "private_key"; extra: string }
+  | { table: "apps"; id: AppId; purpose: "token"; extra: string };
 
 /**
  * Zusatzdaten (AAD) für AES-GCM im Format `v2` als Text; verschlüsselt werden ihre UTF-8-Bytes.
@@ -111,6 +115,21 @@ export function providerManagementKeyBinding(
   };
 }
 
+/**
+ * Einheitliche Form der Adresse einer App (ab Tor-Fassung 3): wie `normalizedBaseUrl`, aber nur
+ * `https`. Wirft `TypeError` bei allem anderen, auch bei Zugangsdaten, Anfrage-Teil oder Anker.
+ */
+export function normalizedAppUrl(url: string): string {
+  const normalized = normalizedBaseUrl(url);
+  if (!normalized.startsWith("https://")) throw new TypeError("Ungültige Adresse der App");
+  return normalized;
+}
+
+/** Bindung des Tokens einer App an ihren Datensatz und ihre volle Adresse (`normalizedAppUrl`). */
+export function appTokenBinding(appId: AppId, url: string): SecretBinding {
+  return { table: "apps", id: appId, purpose: "token", extra: normalizedAppUrl(url) };
+}
+
 /** Bindung des privaten Signaturschlüssels an seinen Datensatz und seinen öffentlichen Teil. */
 export function signingKeySecretBinding(keyId: KeyId, publicKey: string): SecretBinding {
   return { table: "installation_keys", id: keyId, purpose: "private_key", extra: publicKey };
@@ -128,6 +147,20 @@ export const TARGET_DIGEST_PREFIX = "pb-ziel/v1\n";
  */
 export function targetDigestInput(providerId: ProviderId, baseUrl: string): string {
   return `${TARGET_DIGEST_PREFIX}${JSON.stringify({ baseUrl: normalizedBaseUrl(baseUrl), providerId })}`;
+}
+
+/** Präfix vor dem Abdruck des Ziels einer App (ab Tor-Fassung 3). */
+export const APP_TARGET_DIGEST_PREFIX = "pb-appziel/v1\n";
+
+/**
+ * Text, über den der Abdruck des Ziels einer App gebildet wird (Fakten `targetDigest` und
+ * `confirmedTargetDigest`, Grenze G-08): `APP_TARGET_DIGEST_PREFIX`, danach das kanonische JSON
+ * von `{ appId, url }` mit `url` in der Form von `normalizedAppUrl`. Abdruck = `sha256:` + Hex
+ * klein von SHA-256 über die UTF-8-Bytes dieses Texts. Wirft `TypeError` bei einer ungültigen
+ * Adresse.
+ */
+export function appTargetDigestInput(appId: AppId, url: string): string {
+  return `${APP_TARGET_DIGEST_PREFIX}${JSON.stringify({ appId, url: normalizedAppUrl(url) })}`;
 }
 
 /**
