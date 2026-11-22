@@ -90,6 +90,20 @@ function isStrictObject(schema: unknown): boolean {
   return catchall?._zod?.def?.type === "never";
 }
 
+/** Namen, die jedes Objekt über seinen Prototyp schon „hat“ (`constructor`, `toString`, `__proto__` …). */
+const PROTOTYPE_NAMES: ReadonlySet<string> = new Set(Object.getOwnPropertyNames(Object.prototype));
+
+/**
+ * Hat das Schema auf oberster Ebene ein Feld mit einem Namen aus `Object.prototype`? zod liest ein
+ * fehlendes Feld über den Prototyp: `z.object({ constructor: z.unknown() }).safeParse({})` gelingt
+ * mit einer Funktion als Wert. Ein Objekt-Schema wird über seine Felder gelesen; andere Schemas
+ * (Liste, Vereinigung, Umhüllung) kann das Register nicht sicher lesen und lässt sie unberührt.
+ */
+function hasPrototypeField(schema: unknown): boolean {
+  if (!(schema instanceof z.ZodObject)) return false;
+  return Object.getOwnPropertyNames(schema.shape).some((name) => PROTOTYPE_NAMES.has(name));
+}
+
 function check(def: ToolDefinition<JsonValue, JsonValue>): void {
   if (!toolKeySchema.safeParse(def.key).success) throw new ToolRegistryError("Kennung ungültig");
   if (def.key === PLACEHOLDER_TOOL_KEY) throw new ToolRegistryError("Kennung des Platzhalters");
@@ -107,6 +121,9 @@ function check(def: ToolDefinition<JsonValue, JsonValue>): void {
     throw new ToolRegistryError("Aktion des Tors unbekannt");
   }
   if (!isStrictObject(def.input)) throw new ToolRegistryError("Eingabe ist kein strenges Objekt");
+  if (hasPrototypeField(def.input) || hasPrototypeField(def.output)) {
+    throw new ToolRegistryError("Feldname aus Object.prototype");
+  }
   if (!Number.isSafeInteger(def.version) || def.version < 1) {
     throw new ToolRegistryError("Fassung ungültig");
   }
@@ -121,7 +138,8 @@ function check(def: ToolDefinition<JsonValue, JsonValue>): void {
  * Baut ein Register aus Beschreibungen. Wirft (`ToolRegistryError`) bei doppelter Kennung oder
  * doppeltem Namen, ungültigem Namen oder Namen mit „__“, ungültiger Beschreibung (leer, über
  * 1 000 Zeichen, Steuer-, Bidi- oder unsichtbare Zeichen), unbekannter Aktion des Tors, Eingabe
- * ohne strenges Objekt und bei der Kennung des Platzhalters. Der Abdruck jeder Beschreibung wird
+ * ohne strenges Objekt, bei einem Feld in Eingabe- oder Ausgabe-Schema (oberste Ebene), das wie
+ * ein Name aus `Object.prototype` heißt, und bei der Kennung des Platzhalters. Der Abdruck jeder Beschreibung wird
  * hier einmal gerechnet; Beschreibung, Grenzen und Angebot sind danach eingefroren.
  */
 export async function createToolRegistry(
