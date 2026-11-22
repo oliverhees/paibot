@@ -217,3 +217,16 @@ describe("schrittFakten", () => {
     ).toBe(1000);
   });
 });
+
+// Die Gegenprobe im Kommentar ist die Änderung, die den Fall rot machen muss.
+describe("Nahtstelle 5 nach dem Nachschlagen in der Doku", () => {
+  it.todo("ein ausgeführter Doku-Aufruf ohne Treffer: festes Ende mit dem Satz und der Version");
+  it.todo("zwei ausgeführte Doku-Aufrufe ohne Treffer: festes Ende");
+  // Gegenprobe: nur prüfen, ob irgendein Aufruf nichts fand → hier festes Ende.
+  it.todo("einer findet etwas, einer nicht: weiter");
+  it.todo("abgelehnter Aufruf (V-13, V-14, G-17, Not-Aus) und einer ohne Treffer: festes Ende");
+  // Gegenprobe: abgelehnte Aufrufe als „nichts gefunden“ zählen → hier festes Ende.
+  it.todo("nur abgelehnte Doku-Aufrufe: weiter");
+  it.todo("Doku-Aufruf mit Werkzeug-Fehler oder Zeitgrenze: weiter");
+  it.todo("ohne Doku-Aufruf: weiter wie bisher");
+});

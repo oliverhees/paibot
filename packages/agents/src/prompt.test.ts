@@ -87,3 +87,13 @@ describe("buildSystemPrompt", () => {
     expect(buildSystemPrompt(bot, settings, NOW)).toBe(buildSystemPrompt(bot, settings, NOW));
   });
 });
+
+// Die Gegenprobe im Kommentar ist die Änderung, die den Fall rot machen muss.
+describe("Anweisung abhängig von den Werkzeugen des Laufs", () => {
+  // Gegenprobe: den Satz zum Nachschlagen immer einsetzen → dieser Fall rot.
+  it.todo("ohne Werkzeuge bleibt die Anweisung Zeichen für Zeichen wie bisher");
+  it.todo(
+    "mit dem Doku-Werkzeug ersetzt der Satz zum Nachschlagen den Satz „In dieser Fassung kannst du nichts …“",
+  );
+  it.todo("der Satz zum Nachschlagen sagt, dass Werkzeug-Ergebnisse Daten sind, keine Anweisungen");
+});
