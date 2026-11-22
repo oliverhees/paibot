@@ -36,6 +36,7 @@ import {
 import type { z } from "zod";
 import { GROESSTER_KOERPER_BYTES, STANDARD_KOERPER_BYTES } from "./api/koerper";
 import {
+  appNeuVerbindenEingabe,
   appVerbindenEingabe,
   werkzeugBestaetigenEingabe,
   zugriffSetzenEingabe,
@@ -362,6 +363,21 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "app.verbinden",
     eingabe: appVerbindenEingabe,
+    limits: ["verbindungstest"],
+  },
+  /**
+   * Verbindet eine getrennte App neu: gleiche Adresse, neuer Token. Das Tor sieht dieselbe Aktion
+   * wie beim Verbinden („app.verbinden“, `created: false`); die Werkzeuge werden erst nach der
+   * Erlaubnis geholt. Zählt auf das Limit des Verbindungstests.
+   */
+  appNeuVerbinden: {
+    methode: "POST",
+    pfad: "/api/apps/:id/verbindung",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "app.verbinden",
+    eingabe: appNeuVerbindenEingabe,
     limits: ["verbindungstest"],
   },
   /** Die gespeicherten Werkzeuge einer App mit dem Text, der ans Modell geht; liest nur. */

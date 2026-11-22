@@ -25,6 +25,15 @@ export const appVerbindenEingabe = z.strictObject({
 });
 export type AppVerbindenEingabe = z.infer<typeof appVerbindenEingabe>;
 
+/**
+ * Eine getrennte App neu verbinden: nur der Token (bei Anmeldung „token“ nötig, sonst nicht
+ * erlaubt). Eine neue Adresse gibt es nicht; es gilt die gespeicherte.
+ */
+export const appNeuVerbindenEingabe = z.strictObject({
+  token: z.string().max(MAX_TOKEN_ZEICHEN).optional(),
+});
+export type AppNeuVerbindenEingabe = z.infer<typeof appNeuVerbindenEingabe>;
+
 /** Ein Werkzeug einstufen: die Klasse und der Abdruck, den der Besitzer gesehen hat. */
 export const werkzeugBestaetigenEingabe = z.strictObject({
   klasse: z.enum(APP_TOOL_CLASSES),

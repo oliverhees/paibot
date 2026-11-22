@@ -549,6 +549,18 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
     },
     aufruf: async (s) => ({ params: { id: await appId(s) } }),
   },
+  appNeuVerbinden: {
+    // Eine getrennte App, die wieder verbunden wird: gleiche Aktion wie beim Verbinden.
+    vorher: async () => {
+      const s = await mitApp();
+      await rufe(s, "appTrennen", { params: { id: await appId(s) } });
+      return s;
+    },
+    aufruf: async (s) => ({
+      params: { id: await appId(s) },
+      koerper: { token: "tok-Zweiter-0123456789" },
+    }),
+  },
   appWerkzeugBestaetigen: {
     vorher: mitApp,
     aufruf: async (s) => {

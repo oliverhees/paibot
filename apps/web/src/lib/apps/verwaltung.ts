@@ -177,6 +177,65 @@ export async function appVerbinden(k: RoutenKontext<"appVerbinden">) {
   return { daten: { app: appAnsicht(app), ...abgleichAnsicht(abgleich) }, status: 201 };
 }
 
+/**
+ * `POST /api/apps/:id/verbindung`: verbindet eine getrennte App neu, mit der gespeicherten Adresse.
+ * Bei Anmeldung „token“ ist ein neuer Token nötig (der alte wurde beim Trennen gelöscht), sonst ist
+ * keiner erlaubt. Das Tor sieht dieselbe Aktion wie beim Verbinden („app.verbinden“, `created:
+ * false`) und prüft die Adresse erneut. Erst nach der Erlaubnis geht `tools/list` hinaus. Der
+ * Zustand ändert sich nur, wenn die Liste da ist: Wiederverbinden und Abgleich laufen in einer
+ * Transaktion, sonst bleibt die App getrennt. Die Verbindungsnummer steigt; frühere Zugriffe der
+ * Bots gelten nicht mehr, alle Werkzeuge sind wieder „neu“.
+ */
+export async function appNeuVerbinden(k: RoutenKontext<"appNeuVerbinden">) {
+  const app = await appVon(k.db, k.params.id);
+  if (app.state !== "getrennt") throw new PaiBotError("nicht_gefunden");
+  const token = k.eingabe.token;
+  if (app.authKind === "token") {
+    if (token === undefined) throw feldFehler("token");
+    tokenPruefen(token);
+  } else if (token !== undefined) {
+    throw feldFehler("token");
+  }
+  const ziel = zielAus(app.url, app.id);
+  const ergebnis = await mitAdressGrund(ziel.fakten, () =>
+    k.tor(
+      k.nachweis,
+      { type: "app.verbinden", target: { appId: app.id } },
+      {
+        created: false,
+        authKind: app.authKind,
+        tokenSet: token !== undefined,
+        targetOrigin: ziel.origin,
+        targetDigest: ziel.digest,
+        ...ziel.fakten,
+      },
+      async () => {
+        try {
+          const abruf = await listeAbrufen(k.db, app, {
+            adresse: app.url,
+            ...(token === undefined ? {} : { token }),
+          });
+          const gespeichert = await repo.withTransaction(k.db, async (tx) => {
+            const neu = await repo.apps.reconnect(tx, app.id, {
+              authKind: app.authKind,
+              ...(token === undefined
+                ? {}
+                : { tokenEnc: tokenVerschluesseln(k.dienste, app.id, app.url, token) }),
+            });
+            if (neu === undefined) throw new PaiBotError("nicht_gefunden");
+            return { app: neu, abgleich: await abgleichen(tx, app.id, abruf) };
+          });
+          return { value: gespeichert, result: { status: "ok" } };
+        } catch (fehler) {
+          throw fehlerOhneFremdtext(fehler);
+        }
+      },
+    ),
+  );
+  const { app: neu, abgleich } = ergebnis.value;
+  return { daten: { app: appAnsicht(neu), ...abgleichAnsicht(abgleich) } };
+}
+
 /** `GET /api/apps/:id/werkzeuge`: gespeicherte Werkzeuge mit dem Text, der ans Modell geht. */
 export async function appWerkzeuge(k: RoutenKontext<"appWerkzeuge">) {
   const app = await appVon(k.db, k.params.id);

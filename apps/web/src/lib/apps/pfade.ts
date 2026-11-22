@@ -14,6 +14,7 @@ const teil = encodeURIComponent;
 export const APP_PFADE = {
   liste: () => "/api/apps",
   verbinden: () => "/api/apps",
+  neuVerbinden: (id: string) => `/api/apps/${teil(id)}/verbindung`,
   werkzeuge: (id: string) => `/api/apps/${teil(id)}/werkzeuge`,
   werkzeugEinstufen: (id: string, werkzeug: string) =>
     `/api/apps/${teil(id)}/werkzeuge/${teil(werkzeug)}`,

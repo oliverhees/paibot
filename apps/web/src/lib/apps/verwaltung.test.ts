@@ -16,12 +16,14 @@ import { repo } from "@paibot/db";
 import { bereiteWerkzeugeAuf, McpSchichtFehler, type McpWerkzeugRoh } from "@paibot/mcp";
 import { appTokenBinding, secretAad } from "@paibot/shared/bindung";
 import { PaiBotError } from "@paibot/shared/fehler";
-import type { AppId, BotId } from "@paibot/shared/ids";
+import { type AppId, type BotId, newId } from "@paibot/shared/ids";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { belegeAlsText, belegeSeit, eingerichtet, letzteNummer } from "../modelle/testing";
+import { API_ROUTEN } from "../routen";
 import { bekannteNamenVon, MAX_BEKANNTE_NAMEN } from "./abgleich";
 import { _ersetzeAppDienste, type AppAbruf } from "./dienste";
 import {
+  appNeuVerbinden,
   appsListe,
   appTrennen,
   appVerbinden,
@@ -90,6 +92,7 @@ async function umgebung() {
     bestaetigen: e.u.handler("appWerkzeugBestaetigen", appWerkzeugBestaetigen),
     zugriff: e.u.handler("appZugriffSetzen", appZugriffSetzen),
     trennen: e.u.handler("appTrennen", appTrennen),
+    neu: e.u.handler("appNeuVerbinden", appNeuVerbinden),
   };
   const bot = await repo.bots.getDefault(e.u.db);
   if (bot === undefined) throw new Error("kein Bot");
@@ -710,6 +713,144 @@ describe("App trennen", () => {
     });
     expect(nochmal.status).toBe(404);
     await ohneToken(u);
+  });
+});
+
+describe("App neu verbinden", () => {
+  const TOKEN2 = "tok-Zweiter-0123456789abcdef";
+
+  /** Verbunden, ein Werkzeug bestätigt, ein Bot mit Zugriff, dann getrennt. */
+  async function getrennt(u: Umgebung) {
+    const d = daten(await verbinden(u));
+    const echo = d.werkzeuge.find((w) => w.modellText.name.endsWith("__echo"));
+    await u.e.rufe(u.h.bestaetigen, "PUT", `/api/apps/${d.app.id}/werkzeuge/${echo?.id}`, {
+      params: { id: d.app.id, werkzeug: echo?.id as string },
+      koerper: { klasse: "lesen", gesehenerAbdruck: echo?.abdruck },
+    });
+    await u.e.rufe(u.h.zugriff, "PUT", `/api/apps/${d.app.id}/zugriff/${u.botId}`, {
+      params: { id: d.app.id, bot: u.botId },
+      koerper: { zugriff: "lesen" },
+    });
+    await u.e.rufe(u.h.trennen, "DELETE", `/api/apps/${d.app.id}`, { params: { id: d.app.id } });
+    u.zustand.aufrufe.length = 0;
+    return d.app.id;
+  }
+  const neu = (u: Umgebung, id: AppId, koerper: Record<string, unknown> = { token: TOKEN2 }) =>
+    u.e.rufe(u.h.neu, "POST", `/api/apps/${id}/verbindung`, { params: { id }, koerper });
+
+  it("verbindet eine getrennte App: Verbindungsnummer +1, Werkzeuge wieder „neu“, Zugriff „keiner“, neuer Token gebunden, Beleg-Paar „app.verbinden“", async () => {
+    const u = await umgebung();
+    const id = await getrennt(u);
+    const vorher = await letzteNummer(u.e.u);
+    const r = await neu(u, id);
+    expect(r.status).toBe(200);
+    expect(daten(r).app).toMatchObject({ id, zustand: "verbunden", tokenGesetzt: true });
+    expect(daten(r).werkzeuge.map((w) => w.stand)).toEqual(["neu", "neu"]);
+    expect(daten(r).werkzeuge.map((w) => w.klasse)).toEqual(["schreiben", "schreiben"]);
+    const app = await repo.apps.get(u.e.u.db, id);
+    expect(app?.connectionNo).toBe(2);
+    expect(await repo.apps.currentAccess(u.e.u.db, id, u.botId)).toBe("keiner");
+    expect(u.zustand.aufrufe).toHaveLength(1);
+    expect(u.zustand.aufrufe[0]?.token).toBe(TOKEN2);
+    const enc = await repo.apps.getTokenEnc(u.e.u.db, id);
+    expect(enc).toBeDefined();
+    const klar = decryptSecret(enc as string, u.e.u.dienste.schluessel().geheimnisse, {
+      aad: secretAad(appTokenBinding(id, URL_APP)),
+    });
+    expect(klar).toBe(TOKEN2);
+    // Der Beleg-Typ bleibt „app.verbinden“; das Tor sieht „created: false“.
+    const belege = await belegeSeit(u.e.u, vorher);
+    expect(belege.map((b) => [b.typ, b.aktion])).toEqual([
+      ["decision", "app.verbinden"],
+      ["result", "app.verbinden"],
+    ]);
+    await ohneToken(u);
+  });
+
+  it("eine App, die nicht getrennt ist (oder unbekannt): nicht gefunden, kein Abruf", async () => {
+    const u = await umgebung();
+    const d = daten(await verbinden(u));
+    u.zustand.aufrufe.length = 0;
+    const r = await neu(u, d.app.id);
+    expect(r.status).toBe(404);
+    expect(u.zustand.aufrufe).toHaveLength(0);
+    const fremd = await neu(u, "app_00000000000000000000000000" as AppId);
+    expect(fremd.status).toBe(404);
+    expect((await repo.apps.get(u.e.u.db, d.app.id))?.connectionNo).toBe(1);
+  });
+
+  it("ohne Token bei Anmeldung „token“, ein Token ohne Anmeldung, ein ungültiger Token: abgewiesen am Feld token, App bleibt getrennt, kein Abruf", async () => {
+    const u = await umgebung();
+    const id = await getrennt(u);
+    for (const koerper of [{}, { token: "mit Leerzeichen" }, { token: "x".repeat(5000) }]) {
+      const r = await neu(u, id, koerper);
+      expect(r.status).toBe(400);
+    }
+    expect(u.zustand.aufrufe).toHaveLength(0);
+    expect((await repo.apps.get(u.e.u.db, id))?.state).toBe("getrennt");
+    // Eine App ohne Anmeldung nimmt keinen Token an.
+    const offen = daten(
+      await verbinden(u, { token: undefined, url: "https://offen.beispiel.de/mcp" }),
+    );
+    await u.e.rufe(u.h.trennen, "DELETE", `/api/apps/${offen.app.id}`, {
+      params: { id: offen.app.id },
+    });
+    u.zustand.aufrufe.length = 0;
+    const mit = await neu(u, offen.app.id, { token: TOKEN2 });
+    expect(mit.status).toBe(400);
+    expect(u.zustand.aufrufe).toHaveLength(0);
+    const ohne = await neu(u, offen.app.id, {});
+    expect(ohne.status).toBe(200);
+    expect(daten(ohne).app.tokenGesetzt).toBe(false);
+    await ohneToken(u);
+  });
+
+  it("lehnt das Tor die gespeicherte Adresse ab: kein Abruf, die App bleibt getrennt, Beleg-Paar", async () => {
+    const u = await umgebung();
+    // Eine App, deren gespeicherte Adresse das Tor nicht erlaubt (am Verbinden vorbei angelegt).
+    const id = newId("app") as AppId;
+    await repo.apps.create(u.e.u.db, {
+      id,
+      shortName: "intern",
+      name: "intern",
+      url: "https://127.0.0.1/mcp",
+      authKind: "keine",
+    });
+    await repo.apps.disconnect(u.e.u.db, id);
+    const vorher = await letzteNummer(u.e.u);
+    const r = await neu(u, id, {});
+    expect(r.body.fehler?.code).toBe("app_adresse_unzulaessig");
+    expect(u.zustand.aufrufe).toHaveLength(0);
+    const app = await repo.apps.get(u.e.u.db, id);
+    expect(app).toMatchObject({ state: "getrennt", connectionNo: 1 });
+    expect((await belegeSeit(u.e.u, vorher)).map((b) => [b.typ, b.aktion])).toEqual([
+      ["decision", "app.verbinden"],
+      ["result", "app.verbinden"],
+    ]);
+  });
+
+  it("scheitert der Abruf (auch mit dem Token im Text): die App bleibt getrennt, nichts verändert, Token nirgends", async () => {
+    const u = await umgebung();
+    const id = await getrennt(u);
+    u.zustand.fehler = new Error(`401 Bearer ${TOKEN2}`);
+    const r = await neu(u, id);
+    expect(r.status).toBeGreaterThanOrEqual(400);
+    const app = await repo.apps.get(u.e.u.db, id);
+    expect(app).toMatchObject({ state: "getrennt", connectionNo: 1, tokenSet: false });
+    expect(await repo.apps.getTokenEnc(u.e.u.db, id)).toBeUndefined();
+    expect(JSON.stringify(r.body)).not.toContain(TOKEN2);
+    // Danach klappt es.
+    u.zustand.fehler = undefined;
+    expect((await neu(u, id)).status).toBe(200);
+    await ohneToken(u);
+    for (const stelle of [...u.e.antworten, ...u.e.u.log]) expect(stelle).not.toContain(TOKEN2);
+  });
+
+  it("Neu verbinden zählt auf das Limit des Verbindungstests wie Verbinden und Erneut testen", () => {
+    expect(API_ROUTEN.appNeuVerbinden.limits).toEqual(API_ROUTEN.appVerbinden.limits);
+    expect(API_ROUTEN.appNeuVerbinden.limits).toEqual(API_ROUTEN.appWerkzeugeAbrufen.limits);
+    expect(API_ROUTEN.appNeuVerbinden.aktion).toBe("app.verbinden");
+    expect(API_ROUTEN.appNeuVerbinden.pfad).toBe("/api/apps/:id/verbindung");
   });
 });
 
