@@ -813,7 +813,7 @@ describe("Weiterleitung auf eine zweite App (kein Byte dort)", () => {
   );
 });
 
-describe("Die Ausgangs-Hülle des Systems (S8, Größe, Weiterleitung)", () => {
+describe("Die Ausgangs-Hülle des Systems (Adressen, Größe, Weiterleitung)", () => {
   function huelle(
     erlaubt: string[],
     optionen: Parameters<typeof createEgressFetch>[2] = {},
