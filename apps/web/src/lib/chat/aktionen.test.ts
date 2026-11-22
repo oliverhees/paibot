@@ -394,6 +394,25 @@ describe("Nachricht senden", () => {
     expect((await senden(e, id)).status).toBe(202);
   });
 
+  // Gegenprobe: `botPaused: bot?.paused ?? true` durch `?? false` ersetzen → der Fakt steht als false im
+  // Beleg und `bot_bereit` ist nicht verletzt (rot).
+  it("Bot-Zeile fehlt (Unterhaltung unbekannt): Beleg mit botPaused = true und bot_bereit verletzt (G-15)", async () => {
+    const e = await eingerichtet();
+    const r = await senden(e, newId("conversation"));
+    expect(r.status).toBeGreaterThanOrEqual(400);
+    const beleg = (await repo.belege.listPage(e.u.db, { limit: 5 })).items.find(
+      (b) => b.body.type === "decision" && b.body.action.type === "nachricht.senden",
+    );
+    expect(beleg?.body.type === "decision" && beleg.body.decision.outcome).toBe("deny");
+    expect(
+      beleg?.body.type === "decision" && (beleg.body.facts as { botPaused?: boolean }).botPaused,
+    ).toBe(true);
+    expect(
+      beleg?.body.type === "decision" &&
+        beleg.body.decision.limits.filter((l) => l.result === "verletzt").map((l) => l.name),
+    ).toContain("bot_bereit");
+  });
+
   it("Länge: leer und über der Grenze abgewiesen, genau an der Grenze erlaubt", async () => {
     const e = await eingerichtet();
     const id = await neueUnterhaltung(e);
