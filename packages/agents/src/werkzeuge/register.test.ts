@@ -48,6 +48,10 @@ describe("Register der Werkzeuge", () => {
     await expect(createToolRegistry([mit({ description: "x".repeat(1001) })])).rejects.toThrow();
     await expect(createToolRegistry([mit({ description: "a\u202eb" })])).rejects.toThrow();
     await expect(createToolRegistry([mit({ description: "a\u0007b" })])).rejects.toThrow();
+    // auch die Zeichen, die Unicode als „standardmäßig unsichtbar“ führt (dieselbe Liste wie beim Bereinigen)
+    for (const zeichen of ["\u180b", "\u{e0000}", "\u17b4", "\u2065"]) {
+      await expect(createToolRegistry([mit({ description: `a${zeichen}b` })])).rejects.toThrow();
+    }
   });
 
   it("wirft bei gateAction außerhalb von TOOL_GATE_ACTIONS und bei Eingabe, die kein strictObject ist", async () => {

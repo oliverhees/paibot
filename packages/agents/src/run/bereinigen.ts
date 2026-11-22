@@ -24,14 +24,28 @@ import type { JsonValue } from "@paibot/shared/motor";
  *   Darstellung eines sichtbaren Zeichens (etwa ein Herz als Bild statt als Schrift), das Zeichen
  *   selbst bleibt; eine Reihe solcher Wähler kann aber unsichtbar Daten tragen;
  * - der unsichtbare Verbinder U+034F und die Füllzeichen U+115F, U+1160, U+3164, U+FFA0;
+ * - alle Zeichen, die Unicode als „standardmäßig unsichtbar“ führt (`Default_Ignorable_Code_Point`):
+ *   der ganze Block der Tag-Zeichen U+E0000–U+E0FFF (auch nicht vergebene Stellen), die
+ *   mongolischen Variationswähler U+180B–U+180D und U+180F, die Khmer-Zeichen U+17B4 und U+17B5,
+ *   nicht vergebene Stellen wie U+2065 und U+FFF0–U+FFF8 sowie die oben genannten Format- und
+ *   Füllzeichen;
  * - Zeilen- und Absatztrenner U+2028, U+2029 (Zeilenumbruch bleibt U+000A).
  *
- * Sichtbare Zeichen (Umlaute, Emoji, chinesische oder japanische Schrift) bleiben.
+ * Sichtbare Zeichen (Umlaute, Emoji, chinesische oder japanische Schrift) bleiben. Weil alle
+ * Format-Zeichen fallen, ändert sich in seltenen Fällen, wie ein Text aussieht (siehe
+ * `docs/entwickler/werkzeug-kern.md`, „Bekannte Schwächen“).
  */
 const UNWANTED_SOURCE =
-  "[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\p{Cf}\\u034f\\u115f\\u1160\\u180e\\u2028\\u2029\\u3164\\ufe00-\\ufe0f\\uffa0\\u{e0100}-\\u{e01ef}]";
+  "[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\p{Cf}\\p{Default_Ignorable_Code_Point}\\u034f\\u115f\\u1160\\u180e\\u2028\\u2029\\u3164\\ufe00-\\ufe0f\\uffa0\\u{e0100}-\\u{e01ef}]";
 const UNWANTED = new RegExp(UNWANTED_SOURCE, "gu");
 const HAS_UNWANTED = new RegExp(UNWANTED_SOURCE, "u");
+
+/**
+ * Zusätzlich im rohen Namen eines Werkzeugs: das leere Braille-Muster U+2800 und Zeichen für den
+ * privaten Gebrauch (`\p{Co}`). In einem Text können sie sichtbar sein (etwa Symbol-Schriften),
+ * in einem Namen haben sie nichts zu suchen.
+ */
+const RAW_NAME_EXTRA = /[\u2800\p{Co}]/gu;
 
 /** Höchstlänge eines gespeicherten rohen Namens (`tool_calls.raw_name`). */
 export const RAW_NAME_MAX_CHARS = 64;
@@ -133,10 +147,13 @@ export function jsonHasNonInteger(value: JsonValue): boolean {
 }
 
 /**
- * Roher Name des Modells für `tool_calls.raw_name`: bereinigt, höchstens 64 Zeichen (nach
+ * Roher Name des Modells für `tool_calls.raw_name`: bereinigt (zusätzlich ohne U+2800 und Zeichen
+ * für den privaten Gebrauch), höchstens 64 Zeichen (nach
  * Codepunkten, nie mitten in einem Zeichen); leer → `undefined`. Er ist und bleibt reiner Text.
  */
 export function rawToolName(name: string): string | undefined {
-  const cleaned = Array.from(cleanText(name)).slice(0, RAW_NAME_MAX_CHARS).join("");
+  const cleaned = Array.from(cleanText(name).replace(RAW_NAME_EXTRA, ""))
+    .slice(0, RAW_NAME_MAX_CHARS)
+    .join("");
   return cleaned === "" ? undefined : cleaned;
 }
