@@ -1934,10 +1934,11 @@ export const de = {
   "aktion.app.trennen": "App getrennt",
   "regel.R-014": "Bot liest in Apps mit Lese-Zugriff",
   // Zusatz nur auf der Seite „Was dein Bot darf“, nie in Belegen, Schritten und der Tor-Seite: Dort
-  // bleibt der Titel der Regel, wie er ist. Solange sich Apps nicht verbinden lassen, soll die Seite
-  // keine Erlaubnis für etwas zeigen, das niemand benutzen kann. Mit der Oberfläche für Apps entfällt
+  // bleibt der Titel der Regel, wie er ist. Solange es für Apps keine Oberfläche gibt, soll die Seite
+  // keine Erlaubnis für etwas zeigen, das niemand benutzen kann. Mit „in der Oberfläche“ ist gemeint:
+  // nicht überhaupt (die Routen gibt es), sondern für dich in PaiBot. Mit der Oberfläche für Apps entfällt
   // der Zusatz wieder (mit seinem Eintrag in `apps/web/src/lib/bot/bot.ts`).
-  "bot.darf.zusatz.R-014": "Apps lassen sich in dieser Version noch nicht verbinden",
+  "bot.darf.zusatz.R-014": "Apps lassen sich in der Oberfläche noch nicht verbinden",
   "regel.G-06": "Zugriff des Bots auf die App",
   "regel.G-07": "Werkzeug bestätigt und unverändert",
   "regel.G-08": "Adresse der App unverändert",

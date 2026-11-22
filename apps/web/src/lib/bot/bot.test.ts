@@ -120,10 +120,10 @@ describe("Was dein Bot darf", () => {
     // Werkzeug greift sie nie; das sichern die Grenzen G-06 bis G-08 des Tors, nicht diese Seite.
     expect(rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010", "R-014"]);
     expect(rechte.erlaubt[1]?.text).toBe("Bot liest in der Doku seiner Version");
-    // Auf der Seite mit Zusatz, der heute stimmt: Apps lassen sich noch nicht verbinden. Der Titel der
+    // Auf der Seite mit Zusatz, der heute stimmt: Apps lassen sich in der Oberfläche noch nicht verbinden. Der Titel der
     // Regel selbst (Belege, Tor-Seite, Schritte im Chat) bleibt, wie er ist.
     expect(rechte.erlaubt[2]?.text).toBe(
-      "Bot liest in Apps mit Lese-Zugriff (Apps lassen sich in dieser Version noch nicht verbinden)",
+      "Bot liest in Apps mit Lese-Zugriff (Apps lassen sich in der Oberfläche noch nicht verbinden)",
     );
     expect(rechte.erlaubt[2]?.text.startsWith(t("regel.R-014"))).toBe(true);
     expect(t("regel.R-014")).toBe("Bot liest in Apps mit Lese-Zugriff");
