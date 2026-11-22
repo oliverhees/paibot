@@ -720,6 +720,12 @@ export function ereignisAnwenden(
           zustand: e.type === "run.cancelled" ? "abgebrochen" : "fehler",
           fehlerCode: e.data.code,
           fehlerText: e.data.text,
+          // Auch der Teiltext eines abgebrochenen oder gescheiterten Laufs kann sich auf fremde
+          // Inhalte stützen: Das Kennzeichen steht erst im Lesestand, also fragt die Ansicht nach,
+          // und bis dahin sind Links Text.
+          ...(n.herkunft === undefined && n.runId !== undefined
+            ? { herkunftOffen: true as const }
+            : {}),
         }));
       } else {
         if (antwort !== undefined) eintraege = eintraege.filter((x) => x !== antwort);
@@ -945,4 +951,15 @@ export function belegZurAntwort(belege: readonly BelegKurz[], runId: string | un
 /** Darf gerade gesendet werden? Nicht, solange ein Lauf aktiv ist. */
 export function sendenGesperrt(a: ChatAnsicht): boolean {
   return a.lauf !== undefined;
+}
+
+/**
+ * Sind Links in dieser Antwort nur Text? Ja, wenn sie als fremd gekennzeichnet ist, solange sie noch
+ * streamt und solange das Kennzeichen noch aussteht (Nachfrage zum Lauf offen). Erst die Antwort
+ * der Nachfrage macht Links einer Antwort ohne fremden Inhalt anklickbar.
+ */
+export function linksNurText(
+  n: Pick<AnsichtNachricht, "fremd" | "zustand" | "herkunftOffen">,
+): boolean {
+  return n.fremd === true || n.zustand === "streamt" || n.herkunftOffen === true;
 }

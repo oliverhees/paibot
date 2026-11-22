@@ -71,6 +71,7 @@ import {
   gesendet,
   kopfModell as kopfModellVon,
   leereAnsicht,
+  linksNurText,
   nachfrageUebernehmen,
   neuErzeugbar,
   neuErzeugt,
@@ -929,7 +930,7 @@ export function ChatSeite({
           <Markdown
             text={n.text}
             blockTexte={BLOCK_TEXTE}
-            fremd={n.fremd === true || n.zustand === "streamt" || n.herkunftOffen === true}
+            fremd={linksNurText(n)}
             onKopiert={() => avatar.ausdruck("zwinkern")}
           />
         )}

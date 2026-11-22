@@ -28,6 +28,7 @@ import {
   gesendet,
   kopfModell,
   leereAnsicht,
+  linksNurText,
   nachfrageUebernehmen,
   neuErzeugbar,
   neuErzeugt,
@@ -390,6 +391,52 @@ describe("Links in Antworten, bevor das Kennzeichen „fremder Inhalt“ festste
     expect(danach.eintraege.find((e) => e.art === "nachricht" && e.id === g.antwort)).toMatchObject(
       { fremd: true },
     );
+  });
+});
+
+describe("Links nach Abbruch oder Fehler (Teiltext)", () => {
+  // Gegenprobe: `herkunftOffen` im Zweig run.cancelled/run.failed nicht setzen → die Ausdrücke bleiben falsch.
+  it.each([
+    ["run.cancelled", { code: "unterbrochen", text: "Die Antwort wurde unterbrochen." }],
+    [
+      "run.failed",
+      { code: "anbieter_nicht_erreichbar", text: "Der Anbieter hat nicht geantwortet." },
+    ],
+  ] as const)(
+    "%s mit schon geschriebenem Text: Links bleiben Text und die Ansicht fragt nach",
+    (art, daten) => {
+      const ev = folge();
+      const g = glueck(ev, "Hier: [Klick](https://sammler.example/x?k=1)");
+      let a = ereignisseAnwenden(leereAnsicht(), g.liste.slice(0, 6), KONTEXT);
+      a = ereignisseAnwenden(a, [ev(art, { runId: g.runId, ...daten }, g.runId)]);
+      const antwort = a.eintraege.find((e) => e.art === "nachricht" && e.id === g.antwort);
+      if (antwort?.art !== "nachricht") throw new Error("keine Antwort");
+      expect(antwort.zustand === "abgebrochen" || antwort.zustand === "fehler").toBe(true);
+      expect(antwort.text).not.toBe("");
+      // Der Ausdruck aus der Seite: Links nur Text.
+      expect(linksNurText(antwort)).toBe(true);
+      expect(offeneNachfragen(a).map((n) => n.runId)).toEqual([g.runId]);
+      // Sagt der Lesestand „nicht fremd“, werden Links wieder anklickbar; „fremd“ bleibt Text.
+      const frei = nachfrageUebernehmen(a, g.runId, { werkzeuge: [], feste: [], fremde: [] });
+      const freiAntwort = frei.eintraege.find((e) => e.art === "nachricht" && e.id === g.antwort);
+      if (freiAntwort?.art !== "nachricht") throw new Error("keine Antwort");
+      expect(linksNurText(freiAntwort)).toBe(false);
+      const fremd = nachfrageUebernehmen(a, g.runId, {
+        werkzeuge: [],
+        feste: [],
+        fremde: [g.antwort],
+      });
+      const fremdAntwort = fremd.eintraege.find((e) => e.art === "nachricht" && e.id === g.antwort);
+      if (fremdAntwort?.art !== "nachricht") throw new Error("keine Antwort");
+      expect(linksNurText(fremdAntwort)).toBe(true);
+    },
+  );
+
+  it("linksNurText: Strom, offene Herkunft und fremd sind Text; eine fertige Antwort ohne das alles nicht", () => {
+    expect(linksNurText({ zustand: "streamt" })).toBe(true);
+    expect(linksNurText({ zustand: "fertig", herkunftOffen: true })).toBe(true);
+    expect(linksNurText({ zustand: "fertig", fremd: true })).toBe(true);
+    expect(linksNurText({ zustand: "fertig" })).toBe(false);
   });
 });
 
