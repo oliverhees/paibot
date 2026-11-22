@@ -128,7 +128,7 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     const entscheidung = (await env.receipts()).find(
       (entry) => entry.body.type === "decision" && entry.body.action.actionId === action.actionId,
     )?.body;
-    expect(entscheidung).toMatchObject({ decision: { gateFormat: 2 } });
+    expect(entscheidung).toMatchObject({ decision: { gateFormat: 3 } });
     expect(
       entscheidung?.type === "decision" && Array.isArray(entscheidung.decision.preconditions),
     ).toBe(true);
