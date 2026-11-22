@@ -2371,7 +2371,7 @@ export const de = {
   "apps.werkzeug.feld.hinweise": "Angaben der App zum Verhalten",
   "apps.schema.titel": "Das geht ans Modell",
   "apps.schema.hinweis":
-    "Neben Name und Beschreibung geht dieser Text aus der Beschreibung der Eingaben mit. Du bestätigst genau diese Fassung.",
+    "Neben Name und Beschreibung geht auch der Aufbau der Eingaben ans Modell: Feldnamen, Beschreibungen, Auswahlwerte, Typen, Pflichtfelder und Grenzen. Du bestätigst genau diese Fassung.",
   "apps.schema.alle": "Alle {anzahl} Texte zeigen",
   "apps.schema.weniger": "Weniger zeigen",
   "apps.schema.art.feldname": "Feldname",

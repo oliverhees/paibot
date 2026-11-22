@@ -4404,6 +4404,48 @@
         }
       ],
       "beschreibung": "Seite „Apps“ auf dem Handy, eine App aufgeklappt"
+    },
+    {
+      "name": "apps-neu-verbinden",
+      "pfad": "/apps",
+      "zustand": "mit-apps",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Trennen: Notizen"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog']"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Trennen",
+            "genau": true
+          }
+        },
+        {
+          "warteAufText": "Getrennte Apps"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Neu verbinden: Notizen"
+          }
+        },
+        {
+          "warteAuf": "form[data-neu-verbinden]"
+        }
+      ],
+      "ausschnitt": "section[aria-labelledby='getrennte-apps']",
+      "verdecke": ["span:has-text('getrennt am')"],
+      "beschreibung": "Eine getrennte App neu verbinden: die gespeicherte Adresse als Text und das Feld für den neuen Token (in dieser Aufnahme wird die Beispiel-App „Notizen“ getrennt; sie steht deshalb als letzte der Aufnahmen mit Beispiel-Apps)"
     }
   ]
 }

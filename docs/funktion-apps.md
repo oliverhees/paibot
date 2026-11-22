@@ -34,7 +34,7 @@ Du willst, dass dein Bot im Chat etwas nachschlagen kann, das in einer anderen A
 6. Klick bei einer App auf **Werkzeuge ansehen**. Du siehst jedes Werkzeug mit dem Text, der ans Modell gehen würde, und darunter den **Zugriff der Bots**. Ein neues Werkzeug gilt als „schreibt“, bis du es einstufst. Die Angabe „laut App: nur lesend“ ist nur eine Auskunft der App und ändert nichts.
 
    ![Eine aufgeklappte App: Werkzeuge mit Beschreibung und „laut App“-Hinweis, darunter der Zugriff der Bots](assets/screenshots/apps-werkzeuge.png)
-7. Klick bei einem Werkzeug auf **Einstufen**. Dort steht der volle Text, den das Modell sähe (Beschreibung, Feldnamen, Beschreibungen der Felder und – unter „(Werkzeug)“ – die Beschreibung des ganzen Eingabe-Schemas, Auswahlwerte, Vorgaben, Beispiele). Wähle **Liest nur**, **Schreibt** oder **Gesperrt** und klick auf **Bestätigen**. Mit „Liest nur“ sagst du, dass das Werkzeug nichts verändert; das entscheidest du, nicht die App.
+7. Klick bei einem Werkzeug auf **Einstufen**. Dort steht der volle Text, den das Modell sähe (Beschreibung, Feldnamen, Beschreibungen der Felder und – unter „(Werkzeug)“ – die Beschreibung des ganzen Eingabe-Schemas, Auswahlwerte, Vorgaben, Beispiele, dazu Typen, Pflichtfelder, Zahlen- und Längengrenzen und ob weitere Felder erlaubt sind). Wähle **Liest nur**, **Schreibt** oder **Gesperrt** und klick auf **Bestätigen**. Mit „Liest nur“ sagst du, dass das Werkzeug nichts verändert; das entscheidest du, nicht die App.
 
    ![Ein Werkzeug wird eingestuft: voller Text, gewählt „Liest nur“, Hinweis vor dem Bestätigen](assets/screenshots/apps-einstufen.png)
 8. Nach dem Bestätigen gilt die Einstufung für genau die Fassung, die du gesehen hast. Ein als „liest“ eingestuftes Werkzeug wird angeboten; alle anderen nicht.
@@ -48,6 +48,8 @@ Du willst, dass dein Bot im Chat etwas nachschlagen kann, das in einer anderen A
 
     ![Rückfrage „App trennen?“ mit dem Namen der App und den Knöpfen „Abbrechen“ und „Trennen“](assets/screenshots/apps-trennen.png)
 12. **Neu verbinden:** Bei einer getrennten App klickst du unter „Getrennte Apps“ auf **Neu verbinden**. PaiBot verbindet sich nur mit der gespeicherten Adresse. Hatte die App einen Token, trägst du einen neuen ein (der alte wurde beim Trennen gelöscht). Danach sind alle Werkzeuge wieder „neu“ (sie gelten als „schreibt“), und kein Bot hat Zugriff, bis du es wieder erlaubst; die Einstufungen der früheren Verbindung gelten nicht mehr. Willst du eine andere Adresse, verbindest du eine neue App.
+
+    ![Eine getrennte App unter „Getrennte Apps“ mit dem Formular „Neu verbinden“: die gespeicherte Adresse als Text und das Feld „Neuer Token“](assets/screenshots/apps-neu-verbinden.png)
 
 ## So sieht es aus
 
