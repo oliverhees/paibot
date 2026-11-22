@@ -29,7 +29,7 @@ export function fehlerOhneFremdtext(fehler: unknown): PaiBotError {
     if (fehler.code === "namen_ungueltig") {
       return new PaiBotError("intern", {
         text: "Die gespeicherten Werkzeug-Namen dieser App sind unbrauchbar, oder die App hat zu viele Werkzeuge gemeldet.",
-        ausweg: "Trenne die App und verbinde sie neu.",
+        ausweg: "Trenne die App und trag sie als neue App ein.",
       });
     }
     const code = (ERROR_CODES as readonly string[]).includes(fehler.code)

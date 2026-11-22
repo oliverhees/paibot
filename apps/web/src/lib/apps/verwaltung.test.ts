@@ -267,7 +267,7 @@ describe("App verbinden", () => {
     // Ehrlich und mit Ausweg, ohne die Art des Fehlers zu ändern.
     const fehler = (r.body as { fehler?: { text?: string; ausweg?: string } }).fehler;
     expect(fehler?.text).toContain("zu viele Werkzeuge gemeldet");
-    expect(fehler?.ausweg).toBe("Trenne die App und verbinde sie neu.");
+    expect(fehler?.ausweg).toBe("Trenne die App und trag sie als neue App ein.");
   });
 
   it("entfernte Werkzeuge füllen die Namen nicht auf: alle übrigen Namen und die jüngsten entfernten, höchstens MAX_BEKANNTE_NAMEN", async () => {
