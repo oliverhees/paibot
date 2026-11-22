@@ -92,9 +92,13 @@ function projekt(seiten: Record<string, string>): string {
 const A = ["docs/funktion-*.md"];
 
 describe("Bereinigung (L4-1)", () => {
-  const unsichtbar = [0x202e, 0x200b, 0x200f, 0xfeff, 0x2066, 0x0007].map((c) =>
-    String.fromCodePoint(c),
-  );
+  // Dazu die Klassen, die der Lader des Index ebenfalls ablehnt: Tag-Zeichen, weiches
+  // Trennzeichen, Wortverbinder, Variationswähler, Füllzeichen, Zeilen- und Absatztrenner.
+  // Gegenprobe: `istUnsichtbar` auf die alte, schmale Liste → rot.
+  const unsichtbar = [
+    0x202e, 0x200b, 0x200f, 0xfeff, 0x2066, 0x0007, 0xe0041, 0xe0001, 0xad, 0x2060, 0x180b, 0xfe0f,
+    0xe0100, 0x3164, 0xffa0, 0x2028, 0x2029, 0x34f,
+  ].map((c) => String.fromCodePoint(c));
 
   function indexMitZeichen(): Index {
     const dir = kopie("bereinigung");

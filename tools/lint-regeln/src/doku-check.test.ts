@@ -560,9 +560,6 @@ describe("doku:check", () => {
 });
 
 const KOPF = "<!--\nPaiBot – Kopf.\n-->\n\n";
-const BIDI = String.fromCodePoint(0x202e);
-const NULLBREITE = String.fromCodePoint(0x200b);
-const STEUER = String.fromCodePoint(0x07);
 
 /** Die Seite mit einem Satz mehr im Abschnitt „Wofür“. */
 function seiteMit(satz: string): string {
@@ -600,18 +597,52 @@ describe("doku:check – versteckte Teile (L4-5)", () => {
     expect(code).toBe(1);
   });
 
-  it.each([
-    ["ein Bidi-Zeichen (U+202E)", BIDI, "U+202E"],
-    ["ein Zeichen ohne Breite (U+200B)", NULLBREITE, "U+200B"],
-    ["ein Steuerzeichen (U+0007)", STEUER, "U+0007"],
-  ])("%s in einer beliebigen Seite ist ein Fehler", (_name, zeichen, code) => {
+  // Je Klasse ein Fall. Gegenprobe: `istUnsichtbar` in `scripts/doku-index/hilfen.mjs` auf die
+  // alte, schmale Liste (C0/C1, U+200B–U+200F, U+202A–U+202E, U+2066–U+2069, U+FEFF) → die
+  // Fälle außerhalb davon werden rot.
+  it.each(
+    [
+      ["ein Bidi-Zeichen", 0x202e],
+      ["ein Zeichen ohne Breite", 0x200b],
+      ["ein Steuerzeichen", 0x07],
+      ["ein Tag-Zeichen (Versteck für Text)", 0xe0041],
+      ["das Tag-Zeichen für den Beginn", 0xe0001],
+      ["das weiche Trennzeichen", 0xad],
+      ["ein anderes Format-Zeichen (Wortverbinder)", 0x2060],
+      ["ein mongolischer Variationswähler", 0x180b],
+      ["ein Variationswähler", 0xfe0f],
+      ["ein Variationswähler aus dem ergänzenden Bereich", 0xe0100],
+      ["ein Füllzeichen (Hangul)", 0x3164],
+      ["ein Füllzeichen (halbbreit)", 0xffa0],
+      ["der Zeilentrenner", 0x2028],
+      ["der Absatztrenner", 0x2029],
+      ["der unsichtbare Verbinder", 0x34f],
+      ["eine nicht vergebene, aber unsichtbare Stelle", 0x2065],
+    ].map(([name, cp]) => [
+      `${name} (U+${(cp as number).toString(16).toUpperCase().padStart(4, "0")})`,
+      cp,
+    ]),
+  )("%s in einer beliebigen Seite ist ein Fehler mit Datei, Zeile und Zeichen", (_name, cp) => {
+    const zeichen = String.fromCodePoint(cp as number);
+    const code = `U+${(cp as number).toString(16).toUpperCase().padStart(4, "0")}`;
     for (const datei of ["docs/funktion-beispiel.md", "docs/entwickler/beispiel.md"]) {
       const inhalt = (grundstock()[datei] ?? "").replace("Zum Testen.", `Zum Test${zeichen}en.`);
+      const zeile = inhalt.split("\n").findIndex((z) => z.includes(zeichen)) + 1;
       const ergebnis = pruefe(mit({ [datei]: inhalt }));
       expect(ergebnis.code).toBe(1);
-      expect(ergebnis.ausgabe).toContain(`Zeile`);
-      expect(ergebnis.ausgabe).toContain(code);
+      expect(ergebnis.ausgabe).toContain(
+        `${datei}: Zeile ${zeile}: Ein unsichtbares Zeichen (${code})`,
+      );
     }
+  });
+
+  it("sichtbare Zeichen (Umlaute, Euro, Emoji, CJK, leeres Braille-Zeichen im Text) bestehen den Check", () => {
+    const sichtbar = "Größe 5 € 😀 中文 \u2800 und ein Tabulator\tdazwischen.";
+    const inhalt = (grundstock()["docs/funktion-beispiel.md"] ?? "").replace(
+      "Zum Testen.",
+      sichtbar,
+    );
+    expect(pruefe(mit({ "docs/funktion-beispiel.md": inhalt }), true).code).toBe(0);
   });
 
   it("Windows-Zeilenenden sind kein Fehler", () => {
