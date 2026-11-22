@@ -66,6 +66,7 @@ const browser = await chromium.launch({ ignoreDefaultArgs: ["--hide-scrollbars"]
 async function oeffne(szene, breite = 1400, hoehe = 900, thema = "dunkel") {
   const kontext = await browser.newContext({ viewport: { width: breite, height: hoehe } });
   const seite = await kontext.newPage();
+  seite.setDefaultTimeout(5000);
   const antwort = await seite.goto(
     `${BASIS}/_komponenten/faden?szene=${szene}${thema === "hell" ? "&thema=hell" : ""}`,
   );
@@ -85,10 +86,19 @@ async function oeffne(szene, breite = 1400, hoehe = 900, thema = "dunkel") {
   return { kontext, seite };
 }
 
+/** Ein Abschnitt, der abstürzt (Knopf fehlt, Zeit um), ist ein Fehlerfall, kein Abbruch des ganzen Laufs. */
+async function abschnitt(titel, fn) {
+  try {
+    await fn();
+  } catch (e) {
+    pruefe(`Abschnitt „${titel}“ lief durch`, false, String(e?.message ?? e).split("\n")[0]);
+  }
+}
+
 const anzahl = (seite, name) => seite.getByRole("button", { name }).count();
 
 // --- Kopf auf und zu ----------------------------------------------------------------------------
-{
+await abschnitt("Kopf auf und zu", async () => {
   const { kontext, seite } = await oeffne("arbeitet");
   const zu = seite.getByRole("button", { name: "Kopf einklappen" });
   pruefe(
@@ -111,30 +121,37 @@ const anzahl = (seite, name) => seite.getByRole("button", { name }).count();
   await seite.waitForTimeout(600);
   pruefe("Leertaste klappt den Kopf zu", (await anzahl(seite, /^Kopf ausklappen/)) === 1);
   await kontext.close();
-}
+});
 
-// --- Schwellen: groß startet zu, klein startet auf -------------------------------------------
-{
+// --- Schwellen: groß startet zu, klein startet auf (Zahlen der Schwelle: Unit-Test `kopfForm`) -------------------------------------------
+await abschnitt("Schwellen: groß startet zu, klein startet auf", async () => {
   const gross = await oeffne("gross");
   pruefe(
     "Großer Faden (9 Ziele, 8 Mitglieder) startet zugeklappt",
     (await anzahl(gross.seite, /^Kopf ausklappen/)) === 1,
   );
   await gross.kontext.close();
-  for (const szene of ["arbeitet", "wartet", "fertig"]) {
+  for (const szene of ["arbeitet", "wartet", "angehalten"]) {
     const klein = await oeffne(szene);
-    const offen = await anzahl(klein.seite, "Kopf einklappen");
-    const zu = await anzahl(klein.seite, /^Kopf ausklappen/);
     pruefe(
-      `Szene „${szene}“ hat einen Kopf mit Knopf (aufgeklappt oder zugeklappt)`,
-      offen + zu === 1,
+      `Kleine Szene „${szene}“ startet mit aufgeklapptem Kopf`,
+      (await anzahl(klein.seite, "Kopf einklappen")) === 1 &&
+        (await anzahl(klein.seite, /^Kopf ausklappen/)) === 0,
     );
     await klein.kontext.close();
   }
-}
+  const fertig = await oeffne("fertig");
+  pruefe(
+    "Szene „fertig“ hat einen Kopf mit Knopf (Ergebnis-Karte; aufgeklappt oder zugeklappt)",
+    (await anzahl(fertig.seite, "Kopf einklappen")) +
+      (await anzahl(fertig.seite, /^Kopf ausklappen/)) ===
+      1,
+  );
+  await fertig.kontext.close();
+});
 
 // --- Eingabe ----------------------------------------------------------------------------------
-{
+await abschnitt("Eingabe", async () => {
   const { kontext, seite } = await oeffne("arbeitet");
   const feld = seite.getByRole("combobox").last();
   await feld.fill("Hallo Team");
@@ -178,10 +195,10 @@ const anzahl = (seite, name) => seite.getByRole("button", { name }).count();
   await seite.keyboard.press("Escape");
   pruefe("Escape schließt die Auswahl", (await seite.getByRole("listbox").count()) === 0);
   await kontext.close();
-}
+});
 
 // --- Antwort-Vorschlag füllt nur die Eingabe ------------------------------------------------
-{
+await abschnitt("Antwort-Vorschlag füllt nur die Eingabe", async () => {
   const { kontext, seite } = await oeffne("wartet");
   const feld = seite.getByRole("combobox").last();
   const vorher = await seite.getByText("Nein", { exact: true }).count();
@@ -195,7 +212,7 @@ const anzahl = (seite, name) => seite.getByRole("button", { name }).count();
     `Feld: ${JSON.stringify(wert)}`,
   );
   await kontext.close();
-}
+});
 
 // --- Knöpfe, die es nur an einer Stelle geben darf -------------------------------------------
 for (const szene of SZENEN) {
@@ -215,24 +232,30 @@ for (const szene of SZENEN) {
 }
 
 // --- Not-Aus -----------------------------------------------------------------------------------
-{
+await abschnitt("Not-Aus", async () => {
   const { kontext, seite } = await oeffne("angehalten");
-  const senden = seite.getByRole("button", { name: "Senden" });
-  const eingabe = await seite.getByRole("combobox").count();
+  const gesperrt = seite.locator('[data-baustein="eingabe"][data-gesperrt="true"]');
   pruefe(
     "Angehalten: kein „Faden anhalten“ mehr, dafür „Fortsetzen“",
     (await anzahl(seite, "Faden anhalten")) === 0 && (await anzahl(seite, "Fortsetzen")) >= 1,
   );
   pruefe(
-    "Angehalten: Eingabe gesperrt (kein Feld oder kein aktiver Senden-Knopf)",
-    eingabe === 0 || (await senden.count()) === 0 || (await senden.isDisabled()),
-    `Felder ${eingabe}`,
+    "Angehalten: Eingabe gesperrt (Sperr-Hinweis da, keine Eingabe zum Tippen)",
+    (await gesperrt.count()) === 1 && (await seite.locator("textarea").count()) === 0,
+    `Sperr-Hinweise ${await gesperrt.count()}, Felder ${await seite.locator("textarea").count()}`,
   );
+  const frei = await oeffne("arbeitet");
+  pruefe(
+    "Läuft der Faden, ist die Eingabe nicht gesperrt (Gegenstück)",
+    (await frei.seite.locator('[data-baustein="eingabe"][data-gesperrt="true"]').count()) === 0 &&
+      (await frei.seite.locator("textarea").count()) >= 1,
+  );
+  await frei.kontext.close();
   await kontext.close();
-}
+});
 
 // --- Leiste: Reiter mit Pfeiltasten -----------------------------------------------------------
-{
+await abschnitt("Leiste: Reiter mit Pfeiltasten", async () => {
   const { kontext, seite } = await oeffne("gross");
   const reiter = seite.getByRole("tab");
   const n = await reiter.count();
@@ -247,7 +270,7 @@ for (const szene of SZENEN) {
     pruefe("Ende wählt den letzten Reiter", letzter);
   }
   await kontext.close();
-}
+});
 
 // --- Handy ------------------------------------------------------------------------------------
 async function scrollbalken(seite) {
@@ -299,7 +322,7 @@ for (const thema of ["dunkel", "hell"]) {
     await kontext.close();
   }
 }
-{
+await abschnitt("Handy", async () => {
   const { kontext, seite } = await oeffne("gross", 1400, 900);
   const balken = await scrollbalken(seite);
   pruefe(
@@ -308,8 +331,8 @@ for (const thema of ["dunkel", "hell"]) {
     balken.slice(0, 4).join("; "),
   );
   await kontext.close();
-}
-{
+});
+await abschnitt("Handy", async () => {
   const { kontext, seite } = await oeffne("gross", 390, 844);
   const knopf = seite.getByRole("button", { name: "Faden-Leiste" });
   const gefunden = (await knopf.count()) === 1;
@@ -341,17 +364,17 @@ for (const thema of ["dunkel", "hell"]) {
     );
   }
   await kontext.close();
-}
+});
 
 // --- hell / dunkel -----------------------------------------------------------------------------
-{
+await abschnitt("hell / dunkel", async () => {
   const { kontext, seite } = await oeffne("arbeitet");
   const vor = await seite.evaluate(() => document.documentElement.getAttribute("data-theme"));
   await seite.getByRole("button", { name: "Hell" }).click();
   const nach = await seite.evaluate(() => document.documentElement.getAttribute("data-theme"));
   pruefe("„Hell“ schaltet das Thema um", vor === "dark" && nach === "light", `${vor} -> ${nach}`);
   await kontext.close();
-}
+});
 
 await browser.close();
 console.log(fehler === 0 ? "\nAlle Fälle ok." : `\n${fehler} Fehler.`);
