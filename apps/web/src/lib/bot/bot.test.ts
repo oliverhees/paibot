@@ -120,14 +120,10 @@ describe("Was dein Bot darf", () => {
     // Werkzeug greift sie nie; das sichern die Grenzen G-06 bis G-08 des Tors, nicht diese Seite.
     expect(rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010", "R-014"]);
     expect(rechte.erlaubt[1]?.text).toBe("Bot liest in der Doku seiner Version");
-    // Auf der Seite mit Zusatz, der heute stimmt: Apps lassen sich in der Oberfläche noch nicht verbinden. Der Titel der
-    // Regel selbst (Belege, Tor-Seite, Schritte im Chat) bleibt, wie er ist.
-    expect(rechte.erlaubt[2]?.text).toBe(
-      "Bot liest in Apps mit Lese-Zugriff (Apps lassen sich in der Oberfläche noch nicht verbinden)",
-    );
-    expect(rechte.erlaubt[2]?.text.startsWith(t("regel.R-014"))).toBe(true);
-    expect(t("regel.R-014")).toBe("Bot liest in Apps mit Lese-Zugriff");
-    // Die anderen Zeilen bekommen keinen Zusatz.
+    // Mit der Oberfläche für Apps steht die Regel ohne Zusatz da, wie überall sonst.
+    expect(rechte.erlaubt[2]?.text).toBe("Bot liest in Apps mit Lese-Zugriff");
+    expect(rechte.erlaubt[2]?.text).toBe(t("regel.R-014"));
+    expect(rechte.erlaubt[2]?.text).not.toContain("(");
     expect(rechte.erlaubt[0]?.text).toBe(t("regel.R-002"));
     expect(rechte.erlaubt[1]?.text).toBe("Bot liest in der Doku seiner Version");
     expect(rechte.fragt.map((r) => r.id)).not.toContain("R-014");
@@ -176,10 +172,13 @@ describe("Was dein Bot darf", () => {
 });
 
 describe("Text zum Werkzeug auf der Seite „Was dein Bot darf“", () => {
-  it("verspricht nichts über andere Werkzeuge: Der Besitzer kann weitere noch nicht einschalten", () => {
+  it("nennt die Werkzeuge aus Apps als das, was der Besitzer selbst freigibt, und nur lesende", () => {
     const text = t("bot.darf.werkzeug_doku", { name: "Pai" });
-    expect(text).toContain("Weitere Werkzeuge kannst du noch nicht einschalten.");
-    // Der Lauf kann bestätigte App-Werkzeuge nutzen; „hat keine anderen Werkzeuge“ stimmte nicht mehr.
+    expect(text).toContain(
+      "Weitere Werkzeuge bekommt Pai nur aus Apps, die du verbunden, eingestuft und freigegeben hast, und nur lesende.",
+    );
+    // „Noch nicht einschalten“ und „hat keine anderen“ stimmen mit der Oberfläche für Apps nicht mehr.
+    expect(text).not.toContain("noch nicht einschalten");
     expect(text).not.toContain("Andere Werkzeuge hat");
   });
 });
