@@ -1274,7 +1274,7 @@ describe("Änderung der Liste zwischen zwei Abrufen", () => {
 // Der Test-Schalter für `http`-Adressen ist von außen nicht erreichbar: Eine Option `erlaubeHttp`
 // aus einer Eingabe (JSON, Spread) wirkt nicht, und `pruefeAdresse` nimmt keinen zweiten Wert.
 // Gegenprobe: die Option wieder als Text-Schlüssel `erlaubeHttp` lesen → die Fälle werden rot.
-describe("Test-Schalter für Adressen (nicht umgehbar)", () => {
+describe("Test-Schalter für Adressen (nicht aus den Optionen lesbar)", () => {
   const nieAufgerufen: McpFetch = async () => {
     throw new Error("darf nicht verbinden");
   };
