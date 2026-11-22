@@ -56,6 +56,7 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 ### Geändert
 
 - Die Lauf-Steuerung kann mehrere Schritte je Antwort machen; jeder Schritt und jeder spätere Werkzeug-Aufruf geht einzeln durchs Tor, mit den Grenzen aus den Einstellungen. In dieser Version gibt es noch kein Werkzeug, eine Antwort macht also weiter genau einen Schritt ([Chat](docs/funktion-chat.md), [Das Tor](docs/funktion-tor.md))
+- Verlauf, Suche, „Neu erzeugen“ und die gesicherte Datei zeigen nur deine Nachrichten und die End-Antworten, nie Zwischentexte eines Laufs mit Werkzeugen
 - Die Länge einer Antwort folgt zusätzlich der Grenze „Token je Antwort“ ([Chat](docs/funktion-chat.md#grenzen))
 - Wünscht ein Modell ein Werkzeug, das es nicht gibt, ist jeder Wunsch mit Beleg abgelehnt; die Antwort endet mit „Dieses Werkzeug gibt es hier nicht.“
 - Die Datenbank hat getrennte Rollen für Migrationen und für die App; die App läuft mit der eingeschränkten Rolle ([Installation](docs/installation.md))
@@ -70,6 +71,7 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 - Der Start bricht im Betrieb ab, wenn Pflichtwerte fehlen, zu schwach sind oder die Datenbank-Rechte zu weit gehen
 - Die Web-App sendet Schutz-Kopfzeilen mit strenger Content-Security-Policy
 - Gespeicherte Schlüssel sind an ihren Datensatz gebunden; Anfragen an das Modell gehen nur an die freigegebene Adresse
+- Die Bereinigung der Ein- und Ausgaben von Werkzeugen entfernt alle Zeichen, die Unicode als standardmäßig unsichtbar führt, und behandelt den Schlüssel `__proto__` sicher
 
 ### Behoben
 

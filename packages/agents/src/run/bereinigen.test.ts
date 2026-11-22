@@ -216,3 +216,32 @@ describe("Alle standardmäßig unsichtbaren Zeichen", () => {
     }
   });
 });
+
+// Diese Fälle belegen den Absatz „Sichtbare Folgen des Entfernens“ in `docs/entwickler/werkzeug-kern.md`.
+describe("Sichtbare Folgen des Entfernens", () => {
+  it("ZWNJ und ZWJ fallen weg; Emoji-Folgen zerfallen in ihre Teile", () => {
+    expect(cleanText("\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645")).toBe(
+      "\u0645\u06cc\u062e\u0648\u0627\u0647\u0645",
+    );
+    // Familie: Mann, Frau, Mädchen mit Verbindern → drei Personen
+    expect(cleanText("\u{1f468}\u200d\u{1f469}\u200d\u{1f467}")).toBe(
+      "\u{1f468}\u{1f469}\u{1f467}",
+    );
+    // Regenbogenflagge: Flagge, Wähler, Verbinder, Regenbogen → Flagge und Regenbogen
+    expect(cleanText("\u{1f3f3}\ufe0f\u200d\u{1f308}")).toBe("\u{1f3f3}\u{1f308}");
+    // Flagge aus Tag-Zeichen (England) → schwarze Flagge
+    expect(cleanText("\u{1f3f4}\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}")).toBe(
+      "\u{1f3f4}",
+    );
+  });
+
+  it("die sichtbaren Format-Zeichen U+0600 und U+06DD verschwinden", () => {
+    expect(cleanText("a\u0600\u06ddb")).toBe("ab");
+  });
+
+  it("Umlaute, ß, €, Pfeile, Häkchen und Emoji mit Hautton bleiben", () => {
+    const sichtbar = "\u00e4\u00f6\u00fc\u00df \u20ac \u2192\u2190 \u2713\u2714 \u{1f44d}\u{1f3fd}";
+    expect(cleanText(sichtbar)).toBe(sichtbar);
+    expect(hasUnwanted(sichtbar)).toBe(false);
+  });
+});
