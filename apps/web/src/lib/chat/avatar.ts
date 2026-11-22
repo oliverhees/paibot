@@ -38,13 +38,18 @@ export const STAUNEN_AB_TOKEN = 1500;
 /** So lange bleibt „fertig“ stehen, danach geht der Avatar auf „ruhig“ zurück. */
 export const FERTIG_MS = 1800;
 
-/** Hat die Antwort des aktiven Laufs schon Text? Erst dann „schreibt“ der Bot. */
+/**
+ * Hat der aktive Lauf schon Text? Die Antwort oder der Schritt, der gerade vorläufigen Text
+ * schreibt: erst dann „schreibt“ der Bot.
+ */
 export function antwortHatText(ansicht: ChatAnsicht): boolean {
   const lauf = ansicht.lauf;
   if (lauf === undefined) return false;
-  return ansicht.eintraege.some(
-    (e): e is AnsichtNachricht =>
-      e.art === "nachricht" && e.rolle === "bot" && e.runId === lauf.id && e.text !== "",
+  return (
+    ansicht.eintraege.some(
+      (e): e is AnsichtNachricht =>
+        e.art === "nachricht" && e.rolle === "bot" && e.runId === lauf.id && e.text !== "",
+    ) || ansicht.schritte.some((x) => x.runId === lauf.id && x.ende === "laeuft" && x.text !== "")
   );
 }
 
@@ -139,7 +144,7 @@ export interface AvatarAktion {
 
 /**
  * Ereignis des Lauf-Stroms → Aktion am Avatar:
- * - `text.delta`: Mund bewegt sich um die Länge des Stücks
+ * - `text.delta` und `draft.delta`: Mund bewegt sich um die Länge des Stücks
  * - `message.completed`: „fertig“, bei mindestens `STAUNEN_AB_TOKEN` Ausgabe-Token auch „staunen“
  * - `run.cancelled` durch den Besitzer: „einverstanden“, kein Fehler; mit Code `angehalten`
  *   (Not-Aus) nichts, den Zustand liefert der Not-Aus selbst
@@ -149,6 +154,7 @@ export interface AvatarAktion {
 export function avatarAufEreignis(e: ConversationEvent): AvatarAktion {
   switch (e.type) {
     case "text.delta":
+    case "draft.delta":
       return { textStueck: e.data.text.length };
     case "message.completed":
       return e.data.tokens.output >= STAUNEN_AB_TOKEN

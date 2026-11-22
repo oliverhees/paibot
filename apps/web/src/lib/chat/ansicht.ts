@@ -13,7 +13,16 @@ import type { ConversationEvent } from "@paibot/shared/ereignisse";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import type { ServedBy } from "@paibot/shared/grundtypen";
 import type { Message, Route, Run } from "@paibot/shared/objekte";
-import type { BelegKurz, ChatVerlauf, ModellInfo } from "./typen";
+import type {
+  BelegKurz,
+  ChatVerlauf,
+  LaufWerkzeuge,
+  ModellInfo,
+  QuelleAnzeige,
+  WerkzeugAnzeige,
+  WerkzeugAnzeigeStatus,
+} from "./typen";
+import { WERKZEUG_DOKU } from "./werkzeug-anzeige";
 
 export type NachrichtZustand = "fertig" | "streamt" | "abgebrochen" | "fehler";
 
@@ -33,6 +42,16 @@ export interface AnsichtNachricht {
   fehlerCode?: ErrorCode;
   /** Satz zum Fehler aus dem Ereignis (sonst gilt der Text zum Code). */
   fehlerText?: string;
+  /**
+   * `fest`: PaiBot hat diese Antwort selbst gegeben, nicht das Modell. Kommt nur aus der
+   * gespeicherten Herkunft der Nachricht, nie aus ihrem Text.
+   */
+  herkunft?: "fest";
+  /**
+   * Die Antwort kam über den Strom, ihr Lauf hatte Schritte, und ihre Herkunft ist noch nicht aus
+   * dem Lesestand bestätigt (das Ereignis „angelegt“ nennt sie nicht).
+   */
+  herkunftOffen?: true;
 }
 
 /** Ein Lauf endete ohne Antwort (abgelehnt, fehlgeschlagen oder vor dem ersten Wort abgebrochen). */
@@ -49,10 +68,61 @@ export interface AnsichtLaufEnde {
 
 export type AnsichtEintrag = AnsichtNachricht | AnsichtLaufEnde;
 
+/**
+ * Wie ein Schritt eines Laufs mit Werkzeugen steht: `laeuft` (Text kommt noch), `antwort` (zu
+ * Ende, der Text wird zur Antwort), `zwischentext` (zu Ende, danach folgte ein Werkzeug),
+ * `verworfen` (ein späteres Ereignis hat den Text verworfen) oder `abgebrochen` (der Lauf endete
+ * mitten im Schritt).
+ */
+export type SchrittEnde = "laeuft" | "antwort" | "zwischentext" | "verworfen" | "abgebrochen";
+
+/** Ein Werkzeug-Aufruf eines Schritts. */
+export interface AnsichtWerkzeug {
+  actionId: string;
+  key: string;
+  /** Name des Werkzeugs, wie das Modell ihn nannte (geprüft). */
+  name: string;
+  /** Reihenfolge im Schritt. */
+  position: number;
+  /** Zustand nur aus `tool.finished` bzw. dem gespeicherten Aufruf, nie aus der Reihenfolge der Ereignisse. */
+  status: WerkzeugAnzeigeStatus;
+  code?: ErrorCode;
+  /** Zustand, mit dem der gespeicherte Aufruf zuletzt gelesen wurde. */
+  geladen?: WerkzeugAnzeigeStatus;
+  quellen?: QuelleAnzeige[];
+  nichtsGefunden?: boolean;
+  eingabeKurz?: string;
+  nameVomModell?: string;
+  entscheidungBelegId?: string;
+  belegId?: string;
+}
+
+/**
+ * Ein Schritt eines Laufs mit Werkzeugen: sein vorläufiger Text und seine Werkzeug-Aufrufe. Er ist
+ * nie ein Eintrag des Verlaufs und nie eine Antwort; die Antwort-Blase füllt sich nur aus
+ * `text.delta` bzw. der gespeicherten Antwort.
+ */
+export interface AnsichtSchritt {
+  runId: string;
+  step: number;
+  text: string;
+  ende: SchrittEnde;
+  /** Der Text stammt aus der gespeicherten Nachricht des Schritts; `draft.delta` ändert ihn nicht mehr. */
+  gespeichert: boolean;
+  /** ISO-Zeit. */
+  zeit: string;
+  werkzeuge: AnsichtWerkzeug[];
+  servedBy?: ServedBy;
+  /** Modell, das der Anbieter für diesen Schritt gemeldet hat. */
+  modelReported?: string;
+  /** Modell des Schritts, wenn die gespeicherte Nachricht es nennt. */
+  modell?: ModellInfo;
+}
+
 export interface AktiverLauf {
   id: string;
-  /** wartet: in der Schlange; schreibt: der Bot arbeitet. */
-  phase: "wartet" | "schreibt";
+  /** wartet: in der Schlange; schreibt: der Bot arbeitet; schlaegt_nach: ein Aufruf des Nachschlagens läuft. */
+  phase: "wartet" | "schreibt" | "schlaegt_nach";
   /** Stopp wurde angefragt. */
   abbruch: boolean;
 }
@@ -61,6 +131,8 @@ export interface ChatAnsicht {
   /** Höchste verarbeitete Nummer im Ereignis-Strom. */
   letzteSeq: number;
   eintraege: AnsichtEintrag[];
+  /** Schritte von Läufen mit Werkzeugen (leer, solange kein Werkzeug eingeschaltet ist). */
+  schritte: AnsichtSchritt[];
   lauf?: AktiverLauf;
   /** Läufe, die schon beendet sind (eine späte Antwort der Route belebt sie nicht wieder). */
   beendet: string[];
@@ -152,12 +224,221 @@ function ausNachricht(m: Message, modelle: Record<string, ModellInfo>): AnsichtN
     ...(modell === undefined ? {} : { modell }),
     ...(m.servedBy === undefined ? {} : { servedBy: m.servedBy }),
     ...(m.errorCode === undefined ? {} : { fehlerCode: m.errorCode }),
+    ...(m.origin === "fest" ? { herkunft: "fest" as const } : {}),
+  };
+}
+
+/** Ein Zwischentext (Nachricht mit `step`) als Schritt der Ansicht. */
+function schrittAus(m: Message, modelle: Record<string, ModellInfo>): AnsichtSchritt | null {
+  if (m.role === "system" || m.step === undefined || m.runId === undefined) return null;
+  const info = m.modelId === undefined ? undefined : modelle[m.modelId];
+  const modell = info === undefined ? undefined : modellZurAntwort(info, m.createdAt);
+  return {
+    runId: m.runId,
+    step: m.step,
+    text: m.content,
+    ende:
+      m.status === "complete"
+        ? "zwischentext"
+        : m.status === "streaming"
+          ? "laeuft"
+          : "abgebrochen",
+    gespeichert: true,
+    zeit: m.createdAt,
+    werkzeuge: [],
+    ...(m.servedBy === undefined ? {} : { servedBy: m.servedBy }),
+    ...(modell === undefined ? {} : { modell }),
+  };
+}
+
+const WERKZEUG_STATUS: Record<
+  "succeeded" | "failed" | "denied" | "cancelled",
+  WerkzeugAnzeigeStatus
+> = {
+  succeeded: "fertig",
+  failed: "fehlgeschlagen",
+  denied: "abgelehnt",
+  cancelled: "abgebrochen",
+};
+
+/** Ein gelesener Aufruf als Werkzeug der Ansicht; `geladen` = sein Zustand beim Lesen. */
+function werkzeugAus(w: WerkzeugAnzeige): AnsichtWerkzeug {
+  return {
+    actionId: w.actionId,
+    key: w.key,
+    name: w.name,
+    position: w.position,
+    status: w.status,
+    geladen: w.status,
+    ...(w.code === undefined ? {} : { code: w.code }),
+    ...(w.quellen === undefined ? {} : { quellen: w.quellen }),
+    ...(w.nichtsGefunden === undefined ? {} : { nichtsGefunden: w.nichtsGefunden }),
+    ...(w.eingabeKurz === undefined ? {} : { eingabeKurz: w.eingabeKurz }),
+    ...(w.nameVomModell === undefined ? {} : { nameVomModell: w.nameVomModell }),
+    ...(w.entscheidungBelegId === undefined ? {} : { entscheidungBelegId: w.entscheidungBelegId }),
+    ...(w.belegId === undefined ? {} : { belegId: w.belegId }),
   };
 }
 
 /** Leere Ansicht (neue Unterhaltung). */
 export function leereAnsicht(): ChatAnsicht {
-  return { letzteSeq: 0, eintraege: [], beendet: [], belege: [], schleuseBlockiert: false };
+  return {
+    letzteSeq: 0,
+    eintraege: [],
+    schritte: [],
+    beendet: [],
+    belege: [],
+    schleuseBlockiert: false,
+  };
+}
+
+// ---------------------------------------------------------------- Schritte
+
+/** Schritt `(runId, step)`; gibt es ihn nicht, entsteht er leer und „läuft“. */
+function mitSchritt(
+  a: ChatAnsicht,
+  runId: string,
+  step: number,
+  zeit: string,
+  aendern: (s: AnsichtSchritt) => AnsichtSchritt,
+): ChatAnsicht {
+  const stelle = a.schritte.findIndex((x) => x.runId === runId && x.step === step);
+  if (stelle < 0) {
+    const neu: AnsichtSchritt = {
+      runId,
+      step,
+      text: "",
+      ende: "laeuft",
+      gespeichert: false,
+      zeit,
+      werkzeuge: [],
+    };
+    return { ...a, schritte: [...a.schritte, aendern(neu)] };
+  }
+  return { ...a, schritte: a.schritte.map((x, i) => (i === stelle ? aendern(x) : x)) };
+}
+
+/** Wendet `aendern` auf den Aufruf `actionId` an, in welchem Schritt er auch steht. */
+function mitWerkzeug(
+  a: ChatAnsicht,
+  actionId: string,
+  aendern: (w: AnsichtWerkzeug) => AnsichtWerkzeug,
+): ChatAnsicht {
+  if (!a.schritte.some((x) => x.werkzeuge.some((w) => w.actionId === actionId))) return a;
+  return {
+    ...a,
+    schritte: a.schritte.map((x) =>
+      x.werkzeuge.some((w) => w.actionId === actionId)
+        ? { ...x, werkzeuge: x.werkzeuge.map((w) => (w.actionId === actionId ? aendern(w) : w)) }
+        : x,
+    ),
+  };
+}
+
+/** Hat der Schritt etwas zu zeigen: Text oder einen Aufruf? */
+export function schrittSichtbar(x: AnsichtSchritt): boolean {
+  return x.text !== "" || x.werkzeuge.length > 0;
+}
+
+/** Die Schritte eines Laufs, nach ihrer Nummer. */
+export function schritteVon(a: ChatAnsicht, runId: string): AnsichtSchritt[] {
+  return a.schritte.filter((x) => x.runId === runId).sort((x, y) => x.step - y.step);
+}
+
+/** Der Lauf endete ohne Antwort: Schritte mitten im Text und Aufrufe, die noch liefen, gelten als abgebrochen. */
+function schritteAbbrechen(a: ChatAnsicht, runId: string): ChatAnsicht {
+  if (!a.schritte.some((x) => x.runId === runId)) return a;
+  return {
+    ...a,
+    schritte: a.schritte.map((x) =>
+      x.runId !== runId
+        ? x
+        : {
+            ...x,
+            ende: x.ende === "laeuft" || x.ende === "antwort" ? "abgebrochen" : x.ende,
+            werkzeuge: x.werkzeuge.map((w) =>
+              w.status === "laeuft" ? { ...w, status: "abgebrochen" as const } : w,
+            ),
+          },
+    ),
+  };
+}
+
+/** Die Antwort des Laufs steht da: der vorläufige Text ihres Schritts hat seinen Zweck erfüllt. */
+function antwortSchrittEntfernen(a: ChatAnsicht, runId: string): ChatAnsicht {
+  if (!a.schritte.some((x) => x.runId === runId && x.ende === "antwort")) return a;
+  return { ...a, schritte: a.schritte.filter((x) => !(x.runId === runId && x.ende === "antwort")) };
+}
+
+/**
+ * Was die Anzeige beim Server nachfragen muss: der Lauf und ein Schlüssel, der sich ändert, wenn
+ * es etwas Neues zu holen gibt. Nachfragen heißt: die Aufrufe eines Laufs lesen, deren Zustand
+ * seit dem letzten Lesen anders ist, bzw. die Herkunft von Antworten, die über den Strom kamen.
+ * Der Schlüssel enthält nur die noch offenen Dinge; wer ihn schon abgefragt hat, fragt nicht noch
+ * einmal, auch wenn der Server keine bessere Antwort hatte.
+ */
+export function offeneNachfrage(a: ChatAnsicht): { runId: string; schluessel: string } | undefined {
+  const laeufe = new Set<string>();
+  for (const x of a.schritte)
+    if (x.werkzeuge.some((w) => w.geladen !== w.status)) laeufe.add(x.runId);
+  for (const e of a.eintraege) {
+    if (e.art === "nachricht" && e.herkunftOffen === true && e.runId !== undefined) {
+      laeufe.add(e.runId);
+    }
+  }
+  const runId = [...laeufe][0];
+  if (runId === undefined) return undefined;
+  const offeneAufrufe = a.schritte
+    .filter((x) => x.runId === runId)
+    .flatMap((x) => x.werkzeuge.filter((w) => w.geladen !== w.status))
+    .map((w) => `${w.actionId}:${w.status}`);
+  const offeneAntworten = a.eintraege
+    .filter((e) => e.art === "nachricht" && e.runId === runId && e.herkunftOffen === true)
+    .map((e) => (e.art === "nachricht" ? e.id : ""));
+  return { runId, schluessel: [runId, ...offeneAufrufe, ...offeneAntworten].join("|") };
+}
+
+/**
+ * Übernimmt, was der Server zu einem Lauf gelesen hat: Fundstellen, Frage, Belege und den
+ * gespeicherten Zustand der Aufrufe (ein gespeicherter Zustand „läuft“ überschreibt kein schon
+ * gemeldetes Ende) sowie die feste Herkunft von Antworten des Laufs.
+ */
+export function nachfrageUebernehmen(
+  a: ChatAnsicht,
+  runId: string,
+  antwort: LaufWerkzeuge,
+): ChatAnsicht {
+  let stand = a;
+  for (const w of antwort.werkzeuge) {
+    if (w.runId !== runId) continue;
+    stand = mitSchritt(stand, runId, w.step, "", (x) => {
+      const bekannt = x.werkzeuge.some((k) => k.actionId === w.actionId);
+      const gelesen = werkzeugAus(w);
+      if (!bekannt) return { ...x, werkzeuge: [...x.werkzeuge, gelesen] };
+      return {
+        ...x,
+        werkzeuge: x.werkzeuge.map((k) =>
+          k.actionId !== w.actionId
+            ? k
+            : {
+                ...gelesen,
+                status: w.status === "laeuft" ? k.status : w.status,
+                key: k.key !== "" ? k.key : gelesen.key,
+                position: k.position,
+              },
+        ),
+      };
+    });
+  }
+  const feste = new Set(antwort.feste);
+  return {
+    ...stand,
+    eintraege: stand.eintraege.map((e) => {
+      if (e.art !== "nachricht" || e.runId !== runId || e.herkunftOffen !== true) return e;
+      const { herkunftOffen: _weg, ...rest } = e;
+      return feste.has(e.id) ? { ...rest, herkunft: "fest" as const } : rest;
+    }),
+  };
 }
 
 function sortiereBelege(belege: BelegKurz[]): BelegKurz[] {
@@ -178,7 +459,10 @@ export function ansichtAus(verlauf: ChatVerlauf, kontext: AnsichtKontext = {}): 
     verlauf.ereignisse.flatMap((e) => (e.type === "text.delta" ? [e.data.messageId] : [])),
   );
   const eintraege: AnsichtEintrag[] = [];
+  const schritte: AnsichtSchritt[] = [];
   for (const m of verlauf.nachrichten) {
+    const schritt = schrittAus(m, verlauf.modelle);
+    if (schritt !== null) schritte.push(schritt);
     const e = ausNachricht(m, verlauf.modelle);
     if (e === null) continue;
     eintraege.push(e.zustand === "streamt" && ausStrom.has(e.id) ? { ...e, text: "" } : e);
@@ -220,6 +504,7 @@ export function ansichtAus(verlauf: ChatVerlauf, kontext: AnsichtKontext = {}): 
   let ansicht: ChatAnsicht = {
     letzteSeq: 0,
     eintraege,
+    schritte,
     beendet,
     belege: sortiereBelege(verlauf.belege),
     schleuseBlockiert:
@@ -233,10 +518,32 @@ export function ansichtAus(verlauf: ChatVerlauf, kontext: AnsichtKontext = {}): 
       abbruch: aktiv.cancelRequestedAt !== undefined,
     };
   }
+  // Aufrufe der gespeicherten Schritte, wie sie der Server gelesen hat.
+  for (const w of verlauf.werkzeuge ?? []) {
+    ansicht = mitSchritt(ansicht, w.runId, w.step, "", (x) => ({
+      ...x,
+      werkzeuge: [...x.werkzeuge, werkzeugAus(w)],
+    }));
+  }
+  // Läufe, die ohne Antwort endeten: Aufrufe, die noch „liefen“, gelten als abgebrochen.
+  for (const lauf of verlauf.laeufe) {
+    if (LAUF_ENDE[lauf.status] !== undefined) ansicht = schritteAbbrechen(ansicht, lauf.id);
+  }
   const erste = verlauf.ereignisse[0]?.seq;
   if (erste !== undefined) ansicht.letzteSeq = erste - 1;
   for (const ereignis of verlauf.ereignisse) ansicht = ereignisAnwenden(ansicht, ereignis, kontext);
   ansicht.letzteSeq = Math.max(ansicht.letzteSeq, verlauf.letzteSeq);
+  // Steht die Antwort eines Laufs da, braucht ihr vorläufiger Text keinen Platz mehr.
+  const fertigeLaeufe = new Set(
+    ansicht.eintraege.flatMap((e) =>
+      e.art === "nachricht" && e.rolle === "bot" && e.zustand !== "streamt" && e.runId !== undefined
+        ? [e.runId]
+        : [],
+    ),
+  );
+  ansicht.schritte = ansicht.schritte.filter(
+    (x) => !(x.ende === "antwort" && fertigeLaeufe.has(x.runId)),
+  );
   delete ansicht.fertigeAntwort;
   return ansicht;
 }
@@ -345,15 +652,20 @@ export function ereignisAnwenden(
         name: e.data.modelLabel,
       };
       const servedBy = e.data.servedBy;
+      const lauf = runId ?? nachricht?.runId;
+      // Hatte der Lauf Schritte, ist die Herkunft der Antwort (Modell oder PaiBot) erst aus dem
+      // Lesestand zu bestätigen: Das Ereignis „angelegt“ nennt sie nicht.
+      const mitSchritten = lauf !== undefined && weiter.schritte.some((x) => x.runId === lauf);
       const eintraege = ersetze(weiter.eintraege, e.data.messageId, (n) => ({
         ...n,
         zustand: "fertig",
         route: e.data.route,
         modell,
         ...(servedBy === undefined ? {} : { servedBy }),
+        ...(mitSchritten && n.herkunft === undefined ? { herkunftOffen: true as const } : {}),
       }));
-      const lauf = runId ?? nachricht?.runId;
-      const mit = { ...weiter, eintraege, fertigeAntwort: e.data.messageId };
+      const ohneVorlaeufig = lauf === undefined ? weiter : antwortSchrittEntfernen(weiter, lauf);
+      const mit = { ...ohneVorlaeufig, eintraege, fertigeAntwort: e.data.messageId };
       return lauf === undefined ? mit : laufBeenden(mit, lauf);
     }
     case "run.cancelled":
@@ -396,7 +708,10 @@ export function ereignisAnwenden(
         ];
       }
       const blockiert = weiter.schleuseBlockiert || e.data.code === "schleuse_blockiert";
-      return laufBeenden({ ...weiter, eintraege, schleuseBlockiert: blockiert }, e.data.runId);
+      return laufBeenden(
+        schritteAbbrechen({ ...weiter, eintraege, schleuseBlockiert: blockiert }, e.data.runId),
+        e.data.runId,
+      );
     }
     case "schleuse.blockiert": {
       // Der Grund wird vorgemerkt und erscheint mit dem Ende des Laufs.
@@ -433,6 +748,76 @@ export function ereignisAnwenden(
         ...(e.data.messageId === undefined ? {} : { messageId: e.data.messageId }),
       };
       return { ...weiter, belege: sortiereBelege([neu, ...weiter.belege]) };
+    }
+    case "draft.delta": {
+      // Vorläufiger Text: nur im Schritt, nie in einer Nachricht. Ein gespeicherter Schritt trägt
+      // seinen ganzen Text schon (Lesestand zwischen Speichern und Ende des Laufs).
+      const mitText = mitSchritt(weiter, e.data.runId, e.data.step, e.time, (x) =>
+        x.gespeichert || x.ende !== "laeuft" ? x : { ...x, text: x.text + e.data.text },
+      );
+      return weiter.lauf?.id === e.data.runId && weiter.lauf.phase === "schlaegt_nach"
+        ? { ...mitText, lauf: { ...weiter.lauf, phase: "schreibt" } }
+        : mitText;
+    }
+    case "step.finished": {
+      // Das letzte Ende eines Schritts gilt; ein abgebrochener Schritt bleibt abgebrochen.
+      const ende: SchrittEnde =
+        e.data.ending === "antwort"
+          ? "antwort"
+          : e.data.ending === "verworfen"
+            ? "verworfen"
+            : "zwischentext";
+      // Ohne Text und ohne Aufruf davor gibt es nichts zu zeigen: ein Lauf ohne Werkzeuge meldet
+      // das Ende seiner Antwort auch, aber hat keinen Schritt.
+      if (
+        ende === "antwort" &&
+        !weiter.schritte.some((x) => x.runId === e.data.runId && x.step === e.data.step)
+      ) {
+        return weiter;
+      }
+      return mitSchritt(weiter, e.data.runId, e.data.step, e.time, (x) => ({
+        ...x,
+        ende: x.ende === "abgebrochen" ? x.ende : ende,
+        ...(e.data.servedBy === undefined ? {} : { servedBy: e.data.servedBy }),
+        ...(e.data.modelReported === undefined ? {} : { modelReported: e.data.modelReported }),
+      }));
+    }
+    case "tool.requested": {
+      return mitSchritt(weiter, e.data.runId, e.data.step, e.time, (x) =>
+        x.werkzeuge.some((w) => w.actionId === e.data.actionId)
+          ? x
+          : {
+              ...x,
+              werkzeuge: [
+                ...x.werkzeuge,
+                {
+                  actionId: e.data.actionId,
+                  key: e.data.key,
+                  name: e.data.name,
+                  position: x.werkzeuge.length,
+                  status: "laeuft",
+                },
+              ],
+            },
+      );
+    }
+    case "tool.started": {
+      const werkzeug = weiter.schritte
+        .flatMap((x) => x.werkzeuge)
+        .find((w) => w.actionId === e.data.actionId);
+      if (werkzeug?.key !== WERKZEUG_DOKU || weiter.lauf?.id !== e.data.runId) return weiter;
+      return { ...weiter, lauf: { ...weiter.lauf, phase: "schlaegt_nach" } };
+    }
+    case "tool.finished": {
+      const status = WERKZEUG_STATUS[e.data.status];
+      const geaendert = mitWerkzeug(weiter, e.data.actionId, (w) => ({
+        ...w,
+        status,
+        ...(e.data.code === undefined ? {} : { code: e.data.code }),
+      }));
+      return geaendert.lauf?.id === e.data.runId && geaendert.lauf.phase === "schlaegt_nach"
+        ? { ...geaendert, lauf: { ...geaendert.lauf, phase: "schreibt" } }
+        : geaendert;
     }
     default:
       return weiter;

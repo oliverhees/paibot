@@ -120,7 +120,7 @@ describe("Verlauf und Lese-Route", () => {
 
   it("ladeVerlauf mit Schritten: auch die Zwischentexte; die Ansicht trennt sie von den Antworten", async () => {
     const e = await eingerichtet();
-    const { id } = await mitZwischentexten(e, { laeufe: zweiFragen() });
+    const { id, laeufe } = await mitZwischentexten(e, { laeufe: zweiFragen() });
     const v = await ladeVerlauf(e.u.db, id, { mitSchritten: true });
     expect(v?.nachrichten.map((m) => m.content)).toEqual([
       "Frage 1",
@@ -131,9 +131,13 @@ describe("Verlauf und Lese-Route", () => {
       "ZWISCHEN-B0",
     ]);
     if (v === undefined) throw new Error("kein Verlauf");
-    // Die Ansicht zeigt weiter nur die Antworten.
+    const a = ansichtAus(v);
+    // Die Zwischentexte sind Schritte der Ansicht, keine Einträge.
     expect(texte(v)).toEqual(["du:Frage 1", "bot:Antwort A", "du:Frage 2", "ende:abgebrochen"]);
-    expect(JSON.stringify(ansichtAus(v).eintraege)).not.toContain("ZWISCHEN");
+    expect(JSON.stringify(a.eintraege)).not.toContain("ZWISCHEN");
+    expect(
+      a.schritte.map((x) => `${x.runId === laeufe[0]?.runId ? "A" : "B"}${x.step}:${x.ende}`),
+    ).toEqual(["A0:zwischentext", "A1:abgebrochen", "B0:abgebrochen"]);
     // Ohne die Option liest der Lesestand weiter nur End-Antworten (Datei, Suche und alle anderen).
     const ohne = await verlaufVon(e, id);
     expect(ohne.nachrichten.map((m) => m.content)).toEqual(["Frage 1", "Antwort A", "Frage 2"]);
