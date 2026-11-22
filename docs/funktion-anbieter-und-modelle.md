@@ -136,7 +136,7 @@ Mit dem normalen Schlüssel kann PaiBot nicht lesen, was eine Regel vorgibt. Mit
 
     ![Nach „Alle Regeln erneut prüfen“: Meldung „Erneut gelesen. Aktualisiert: 1.“](assets/screenshots/modelle-regel-neu-pruefen.png)
 35. Kann eine Regel ausweichen, sagt PaiBot es: „Kann auf … ausweichen“, wenn die Regel Ausweich-Modelle nennt, oder „Kann ausweichen“, wenn sie es erlaubt. Wer tatsächlich antwortet, steht an jeder Antwort. Dieselbe Regel hat in echten Aufrufen schon von verschiedenen Anbietern geantwortet.
-36. Wähle die Regel und klicke „Modell übernehmen“. Im Chat steht die Marke im Kopf und in der Zeile unter der Antwort, mit dem Datum.
+36. Wähle die Regel und klicke „Modell übernehmen“. Im Chat steht die Marke im Kopf und in der Zeile unter der Antwort, mit dem Datum. Der Name der Regel steht dort als schlichter Text in Anführungszeichen; die Kennzeichnung ist ein eigenes Element mit eigenem Rahmen. Was in Anführungszeichen steht, hast du vergeben, die Kennzeichnung kommt von PaiBot.
 
     ![Karte „Routing-Regel“ nach „Modell übernehmen“: „Pai arbeitet jetzt mit Beispiel-Regel.“](assets/screenshots/modelle-regel-uebernommen.png)
 
@@ -248,10 +248,12 @@ Ungewöhnliche Schreibweisen von IP-Adressen (dezimal, hexadezimal, oktal, gekü
 - Die Vorgaben einer Regel gelten für den Zeitpunkt der Prüfung. Ändert jemand die Regel danach in deinem Konto, merkt PaiBot das erst nach „Erneut prüfen“.
 - PaiBot kann nicht prüfen, ob der normale Schlüssel und der zweite Schlüssel zum selben Konto gehören. Eine gelesene Vorgabe hängt nur am Namen der Regel. Deshalb löscht PaiBot alle gelesenen Vorgaben eines Eintrags, sobald du den normalen Schlüssel ersetzt oder entfernst oder den zweiten Schlüssel ersetzt oder entfernst. Die Kennzeichnung fehlt dann, bis du „Erneut prüfen“ wählst. Trag beide Schlüssel aus demselben Konto ein; ob das stimmt, bleibt deine Sache.
 - Ein Regel-Name, der den Wortlaut der Kennzeichnung enthält („… laut Regel …“), wird nicht angenommen und nicht aus der Liste des Kontos angeboten: Er sähe neben dem Namen wie die echte Kennzeichnung aus. Benenn die Regel in deinem Konto um.
+- Auch ein Name, der durchkommt, sieht nie wie die Kennzeichnung aus: Der Name steht schlicht in Anführungszeichen, die Kennzeichnung ist ein eigenes Element, und es gibt sie nur, wenn die gelesene Vorgabe „EU“ trägt.
+- Unter einer älteren Antwort steht die Kennzeichnung nur, wenn die Vorgabe der Regel nachweislich schon zur Zeit der Antwort galt: Die Antwort nennt ihr Modell, und die Prüfung der Vorgabe liegt vor der Antwort. Sonst steht dort nur, wer laut Anbieter geantwortet hat. Liest du die Vorgaben mit „Erneut prüfen“ neu, tragen deshalb ältere Antworten keine Kennzeichnung mehr. Eine Antwort, die gerade fertig wird, bekommt ihre Kennzeichnung, sobald du die Seite neu lädst.
 - Kommt ein Regel-Name in der Liste deines Kontos mehrfach vor (eingeschaltet), kann PaiBot nicht sagen, welche Regel gilt. Der Name bekommt dann keine Kennzeichnung und den Hinweis „Name nicht eindeutig“. Gib den Regeln im Konto verschiedene Namen.
 - Ausweichen: Die Angaben `models` und `allow_fallbacks` der Regel nennt PaiBot nur. Was EUrouter daraus im Einzelfall macht, steht an der Antwort („Antwort von …“).
 - Jede Prüfung einer Regel ist eine echte Anfrage und kostet bei EUrouter wenige Token.
-- Eine Regel, die es bei EUrouter nicht mehr gibt, fällt erst bei der nächsten Antwort auf; der Chat sagt es dann mit dem Weg „Regel neu wählen“. Bei „Regeln aus meinem Konto zeigen“ siehst du es vorher.
+- Eine Regel, die es bei EUrouter nicht mehr gibt, fällt erst bei der nächsten Antwort auf; der Chat sagt es dann mit dem Weg „Regel neu wählen“. Bei „Regeln aus meinem Konto zeigen“ siehst du es vorher. Sobald ein Lauf deswegen endet, verschwindet die Marke im Chat-Kopf sofort; gelöscht werden die gespeicherten Vorgaben erst bei „Erneut prüfen“.
 - Über die Datenschleuse lässt sich eine Routing-Regel nicht benutzen.
 - Mistral AI ist mit einem echten Konto nicht ausprobiert; PaiBot folgt der Beschreibung von Mistral. Ob es passt, zeigt der Verbindungstest mit deinem Schlüssel.
 - Ein bestehender „lokaler“ Anbieter mit einer öffentlichen Adresse wird nicht mehr benutzt; der Test meldet „nicht lokal“. Ändere Ort oder Adresse.
