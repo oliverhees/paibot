@@ -41,6 +41,7 @@ import {
   jsonHasUnwanted,
   jsonUeberGrenzen,
   rawToolName,
+  reineKopie,
 } from "./bereinigen";
 import {
   codeEnvelope,
@@ -618,16 +619,18 @@ export function outcomeEnvelope(
   const checked = tool.definition.output.safeParse(outcome.output);
   if (!checked.success)
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
-  // Dasselbe für den Wert, der wirklich weiterläuft: Ein Schema mit `transform` oder ein
-  // Getter kann ihn anders machen als die Ausgabe. Dazu kein Wert, der kein JSON ist, etwa eine
-  // Funktion aus `Object.prototype`, die zod bei einem fehlenden Feld liefert.
-  if (jsonUeberGrenzen(checked.data, ERGEBNIS_PRUEFUNG_GRENZEN) || jsonHasNonJson(checked.data))
+  // Den Wert, der wirklich weiterläuft, genau einmal lesen und in eine reine Kopie überführen: Ein
+  // Schema mit `transform` oder ein Getter kann ihn anders machen als die Ausgabe, und zod liest
+  // ein fehlendes Feld über den Prototyp (eine Funktion aus `Object.prototype`). Die Kopie prüft
+  // dieselben Grenzen und weist alles ab, was kein JSON ist; alles Weitere rechnet nur auf ihr.
+  const rein = reineKopie(checked.data);
+  if (rein === undefined)
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   // Kein stilles Überschreiben und nie ein Schlüssel `__proto__` (auch nicht erst durch das
   // Bereinigen): so ein Ergebnis geht nicht an das Modell.
-  if (jsonHasKeyClash(checked.data as JsonValue))
+  if (jsonHasKeyClash(rein))
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
-  const cleaned = cleanJson(checked.data as JsonValue);
+  const cleaned = cleanJson(rein);
   if (jsonHasProtoKey(cleaned))
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   const limit = Math.max(

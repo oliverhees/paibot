@@ -565,94 +565,128 @@ describe("Vorprüfung auch für den Wert nach dem Schema", () => {
   });
 });
 
-/** Schemas, die `{}` mit einer Funktion aus `Object.prototype` als Wert annehmen (zod 4). */
-const SCHEMAS_MIT_PROTOTYP_FELD: {
-  name: string;
-  schema: z.ZodType;
-  wert: unknown;
-  nurAusgabe?: boolean;
-}[] = [
-  {
-    name: "verschachtelt",
-    schema: z.strictObject({ a: z.object({ constructor: z.unknown() }) }),
-    wert: { a: {} },
-  },
-  {
-    name: "optional",
-    schema: z.strictObject({ a: z.object({ constructor: z.unknown() }).optional() }),
-    wert: { a: {} },
-  },
-  {
-    name: "Liste",
-    schema: z.strictObject({ a: z.array(z.object({ hasOwnProperty: z.unknown() })) }),
-    wert: { a: [{}] },
-  },
-  {
-    name: "Vereinigung",
-    schema: z.strictObject({ a: z.union([z.object({ valueOf: z.unknown() }), z.string()]) }),
-    wert: { a: {} },
-  },
-  {
-    name: "Schnitt",
-    schema: z.strictObject({
-      a: z.intersection(z.object({ constructor: z.unknown() }), z.object({})),
-    }),
-    wert: { a: {} },
-    // Das JSON-Schema des Schnitts enthält einen leeren Wert; schon der Aufbau des Registers wirft.
-    nurAusgabe: true,
-  },
-  {
-    name: "lazy",
-    schema: z.strictObject({ a: z.lazy(() => z.object({ toString: z.unknown() })) }),
-    wert: { a: {} },
-  },
-];
+// Schemas mit Feldern aus `Object.prototype` (auch verschachtelt, auch feste Schlüsselnamen in einer
+// Schlüssel-Wert-Liste) lehnt schon das Register beim Aufbau ab (`werkzeuge/register.test.ts`).
+// Hier geht es um Werte, die kein JSON sind und die ein registriertes Schema trotzdem liefern kann
+// (`Date`, `Map`, Klassen). Ein `Date`, eine `Map` oder eine Klasse sind keine Funktion: Der Abdruck
+// und die Hülle würden sie nicht abweisen, `cleanJson` machte daraus still `{}`, und das Modell
+// bekäme ein leeres Objekt statt des Werts.
+// Gegenprobe für Ergebnisse: In `reineKopie` die Prüfung auf Prototyp und Typ entfernen → die Fälle
+// unten werden rot. Für Eingaben ruft `prepareCalls` `jsonHasNonJson` auf den Wert nach dem Schema
+// auf; auch von einem registrierten Werkzeug aus kann er erreicht werden (früher z. B. mit einem
+// Schlüssel-Wert-Schema mit festem Namen `constructor`, das das Register jetzt abweist). Der Fall
+// „Eingabe“ unten sichert den Aufruf mit einem Spy und einem von Hand gebauten Register.
+describe("Werte, die kein JSON sind, erreichen nie Werkzeug oder Modell", () => {
+  class Eigene {
+    wert = 1;
+  }
+  const NICHT_JSON: [string, () => unknown][] = [
+    ["Date", () => new Date(0)],
+    ["Map", () => new Map([["a", "b"]])],
+    ["Set", () => new Set(["a"])],
+    ["Klasse", () => new Eigene()],
+    ["Objekt mit eigenem Prototyp", () => Object.create({ geerbt: 1 })],
+    ["Date in einer Liste", () => [new Date(0)]],
+  ];
 
-// Hinweis: Diese Fälle würden ohne `jsonHasNonJson` NICHT rot. Schon der Abdruck der Eingabe (wirft,
-// die Eingabe gilt als ungültig) und die Hülle des Ergebnisses weisen die Funktion ab. Hier steht
-// das Verhalten fest, nicht der Schutz am Ursprung; den sichert der Test der Hilfsfunktion in
-// `bereinigen.test.ts`. Ein Test, der genau diese beiden Aufrufstellen sichert, fehlt noch.
-describe("Prototyp-Felder in verschachtelten Schemas", () => {
-  for (const { name, schema, wert, nurAusgabe } of SCHEMAS_MIT_PROTOTYP_FELD) {
-    it(`Ergebnis (${name}): Hülle fehler, die Funktion wird nie Teil des Werts`, async () => {
-      const { tool } = await werkzeugMitSchemas({ output: schema });
-      // Vorbedingung: Das Schema nimmt `{}` wirklich mit einer Funktion an (sonst prüft der Test nichts).
-      const roh = schema.safeParse(wert);
-      expect(roh.success).toBe(true);
-      expect(bereinigen.jsonHasNonJson(roh.data)).toBe(true);
-      const envelope = huelleAus(tool, wert);
+  for (const [name, bau] of NICHT_JSON) {
+    it(`Ergebnis (${name}): Hülle fehler statt eines stillen leeren Objekts`, async () => {
+      const { tool } = await werkzeugMitSchemas({ output: z.unknown() });
+      const envelope = huelleAus(tool, { a: bau() });
       expect(envelope.status).toBe("fehler");
       expect(envelope).toMatchObject({ code: "werkzeug_fehler" });
     });
-
-    it.skipIf(nurAusgabe === true)(
-      `Eingabe (${name}): ungültig, das Werkzeug läuft nicht mit der Funktion`,
-      async () => {
-        const { registry } = await werkzeugMitSchemas({ input: schema });
-        const [call] = prepareCalls([wish({ input: wert as never })], {
-          registry,
-          offered: new Set(["test_lesen"]),
-          contextKey,
-          runId,
-          conversationId,
-        });
-        expect(call?.inputValid).toBe(false);
-      },
-    );
   }
 
-  it("Gegenprobe: gleiche Schemas mit unverdächtigen Feldnamen bleiben gültig", async () => {
-    const schema = z.strictObject({ a: z.object({ name: z.string() }), b: z.array(z.string()) });
-    const { registry, tool } = await werkzeugMitSchemas({ input: schema, output: schema });
-    const gut = { a: { name: "x" }, b: ["y"] };
-    const [call] = prepareCalls([wish({ input: gut })], {
-      registry,
-      offered: new Set(["test_lesen"]),
-      contextKey,
-      runId,
-      conversationId,
+  it("Ergebnis: Ein Schema, das erst beim Prüfen ein Date erzeugt, wird abgewiesen", async () => {
+    const { tool } = await werkzeugMitSchemas({
+      output: z.strictObject({ wann: z.coerce.date() }),
     });
-    expect(call?.inputValid).toBe(true);
-    expect(huelleAus(tool, gut).status).toBe("ok");
+    expect(huelleAus(tool, { wann: "2024-01-01" }).status).toBe("fehler");
+  });
+
+  it("Eingabe: Was das Schema liefert, wird noch einmal auf JSON und Grenzen geprüft", async () => {
+    // Ein von Hand gebautes Werkzeug, dessen Schema nach dem Prüfen eine Funktion liefert: Solche
+    // Schemas (etwa ein Schlüssel-Wert-Schema mit festem Namen `constructor`) kommen heute nicht mehr
+    // ins Register, der Aufruf in `prepareCalls` bleibt die zweite Hürde. Gegenprobe: den Aufruf
+    // in `prepareCalls` entfernen.
+    const { registry, tool } = await werkzeugMitSchemas({
+      input: z.strictObject({ q: z.string() }),
+    });
+    const nachPruefung = { q: () => "x" };
+    const falsch = {
+      ...tool,
+      definition: {
+        ...tool.definition,
+        input: { safeParse: () => ({ success: true, data: nachPruefung }) },
+      },
+    };
+    const eigenes = { ...registry, byModelName: () => falsch } as unknown as typeof registry;
+    const geprueft = vi.spyOn(bereinigen, "jsonHasNonJson");
+    try {
+      const [call] = prepareCalls([wish({ input: { q: "x" } })], {
+        registry: eigenes,
+        offered: new Set(["test_lesen"]),
+        contextKey,
+        runId,
+        conversationId,
+      });
+      expect(geprueft).toHaveBeenCalledWith(nachPruefung);
+      expect(call?.inputValid).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("Gegenprobe: reines JSON mit Umlauten, null und verschachtelten Listen bleibt gültig", async () => {
+    const { tool } = await werkzeugMitSchemas({ output: z.unknown() });
+    const gut = { a: [1, "ä", null, { b: true }] };
+    const envelope = huelleAus(tool, gut);
+    expect(envelope.status).toBe("ok");
+    expect(envelope).toMatchObject({ inhalt: gut });
+  });
+});
+
+// Gegenprobe: Nach der ersten Prüfung weiter auf dem Wert des Werkzeugs rechnen (statt auf einer
+// reinen Kopie) → je nachdem, wie oft der Code liest, rechnet er an der großen Form über eine
+// Sekunde. Der Getter liefert die ersten N Lesungen etwas Kleines und danach etwas Riesiges.
+describe("Wert, der sich beim Lesen ändert", () => {
+  const gross = Object.fromEntries(Array.from({ length: 120_000 }, (_, i) => [`k${i}`, "x"]));
+
+  it("jedes Lesen nach der Kopie ist egal: höchstens 400 ms, nie ein Wurf, Hülle ok oder fehler", async () => {
+    const { tool } = await werkzeugMitSchemas({ output: z.unknown() });
+    const zeiten: number[] = [];
+    for (let lesungen = 1; lesungen <= 12; lesungen += 1) {
+      let gelesen = 0;
+      const wert = {
+        get a() {
+          gelesen += 1;
+          return gelesen <= lesungen ? 1 : gross;
+        },
+      };
+      const start = performance.now();
+      const huelle = huelleAus(tool, wert);
+      const dauer = performance.now() - start;
+      zeiten.push(Math.round(dauer));
+      expect(["ok", "fehler"], `Lesungen ${lesungen}`).toContain(huelle.status);
+      expect(dauer, `Lesungen ${lesungen}: ${zeiten.join(", ")} ms`).toBeLessThan(400);
+    }
+  });
+
+  it("ein Proxy, der bei jedem Lesen etwas anderes liefert, endet in ok oder fehler", async () => {
+    const { tool } = await werkzeugMitSchemas({ output: z.unknown() });
+    let zaehler = 0;
+    const proxy = new Proxy(
+      {},
+      {
+        ownKeys: () => (zaehler++ % 2 === 0 ? ["a"] : Object.keys(gross)),
+        getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true, value: 1 }),
+        get: () => 1,
+      },
+    );
+    const start = performance.now();
+    const huelle = huelleAus(tool, proxy);
+    expect(performance.now() - start).toBeLessThan(400);
+    expect(["ok", "fehler"]).toContain(huelle.status);
   });
 });
