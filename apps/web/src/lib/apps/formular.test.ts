@@ -81,3 +81,21 @@ describe("Karte mit „Was sich geändert hat“", () => {
     expect(karte("neu")).not.toMatch(/data-status="geaendert"/);
   });
 });
+
+describe("Karte, wenn der Vergleich unvollständig ist", () => {
+  const karte = (status: "neu" | "geaendert" | "bestaetigt", unvollstaendig: boolean) =>
+    renderToStaticMarkup(
+      h(WerkzeugKarte, { name: "notiz_suchen", status, vergleichUnvollstaendig: unvollstaendig }),
+    );
+
+  // Gegenprobe: den Hinweis weglassen → rot.
+  it("sagt es mit einem festen Satz bei „geändert“ und „neu“, sonst nicht", () => {
+    for (const status of ["geaendert", "neu"] as const) {
+      expect(karte(status, true), status).toContain(
+        "Seit der letzten Bestätigung hat sich das Werkzeug mehrfach geändert, der Vergleich ist nicht vollständig.",
+      );
+      expect(karte(status, false), status).not.toContain("Vergleich ist nicht vollständig");
+    }
+    expect(karte("bestaetigt", true)).not.toContain("Vergleich ist nicht vollständig");
+  });
+});

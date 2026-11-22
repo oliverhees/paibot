@@ -23,12 +23,7 @@ import { appDienste } from "./dienste";
 import { fehlerOhneFremdtext, pruefbedingungAlsFeld } from "./fehler";
 import { mitSperrzeit, sperrfehlerAlsLimit } from "./sperre";
 import { tokenLesen, tokenPruefen, tokenVerschluesseln } from "./token";
-import {
-  brauchtVergleich,
-  MAX_FASSUNGEN,
-  vergleichsFassung,
-  werkzeugeMitVergleich,
-} from "./verlauf";
+import { ladeVerlauf, MAX_FASSUNGEN, vergleichFuer, werkzeugeMitVergleich } from "./verlauf";
 
 type App = repo.apps.App;
 
@@ -262,12 +257,11 @@ export async function appWerkzeugVerlauf(k: RoutenKontext<"appWerkzeugVerlauf">)
   const toolId: AppToolId = k.params.werkzeug;
   const aktuell = await repo.apps.currentTool(k.db, toolId);
   if (aktuell === undefined || aktuell.appId !== app.id) throw new PaiBotError("nicht_gefunden");
-  const verlauf = await repo.apps.toolHistory(k.db, toolId);
-  const fassungen = verlauf
-    .slice(-MAX_FASSUNGEN)
-    .map((f) =>
-      werkzeugAnsicht(f, brauchtVergleich(f) ? vergleichsFassung(verlauf, f) : undefined),
-    );
+  const { verlauf, abgeschnitten } = await ladeVerlauf(k.db, toolId);
+  const fassungen = verlauf.slice(-MAX_FASSUNGEN).map((f) => {
+    const { frueher, unvollstaendig } = vergleichFuer(verlauf, f, abgeschnitten);
+    return werkzeugAnsicht(f, frueher, unvollstaendig);
+  });
   return { daten: { app: appAnsicht(app), fassungen } };
 }
 

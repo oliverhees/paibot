@@ -2363,6 +2363,8 @@ export const de = {
   "apps.werkzeug.aenderung.vorher": "Vorher",
   "apps.werkzeug.aenderung.nachher": "Jetzt",
   "apps.werkzeug.aenderung.leer": "nichts",
+  "apps.werkzeug.aenderung.unvollstaendig":
+    "Seit der letzten Bestätigung hat sich das Werkzeug mehrfach geändert, der Vergleich ist nicht vollständig.",
   "apps.werkzeug.feld.name": "Name",
   "apps.werkzeug.feld.titel": "Titel",
   "apps.werkzeug.feld.beschreibung": "Beschreibung",

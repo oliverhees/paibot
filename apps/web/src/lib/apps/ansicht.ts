@@ -36,6 +36,8 @@ export interface WerkzeugAntwort {
    * entsteht „Was hat sich geändert“.
    */
   frueher?: FassungAntwort;
+  /** Die zuletzt bestätigte Fassung liegt außerhalb der geladenen Fassungen: Der Vergleich fehlt. */
+  vergleichUnvollstaendig?: true;
 }
 
 /** Eine frühere Fassung eines Werkzeugs, wie sie zum Vergleichen gebraucht wird. */
@@ -95,6 +97,9 @@ export function werkzeugEintrag(w: WerkzeugAntwort): WerkzeugListeEintrag {
     ...(w.frueher === undefined || (w.stand !== "geaendert" && w.stand !== "neu")
       ? {}
       : { bisher: bisherigeArt(w.frueher.klasse), aenderungen: aenderungenZwischen(w.frueher, w) }),
+    ...(w.vergleichUnvollstaendig === true && (w.stand === "geaendert" || w.stand === "neu")
+      ? { vergleichUnvollstaendig: true }
+      : {}),
   };
 }
 

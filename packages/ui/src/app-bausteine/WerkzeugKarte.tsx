@@ -53,6 +53,11 @@ export interface WerkzeugKarteProps {
   /** Bei `status="geaendert"`: was sich gegenüber der bestätigten Fassung geändert hat. */
   aenderungen?: readonly WerkzeugAenderung[];
   /**
+   * Die zuletzt bestätigte Fassung liegt außerhalb der geladenen Fassungen: Es gibt keinen
+   * vollständigen Vergleich. Die Karte sagt das; sie behauptet nie, es sei nichts geändert.
+   */
+  vergleichUnvollstaendig?: boolean;
+  /**
    * Alles Lesbare aus dem Schema, das mit dem Werkzeug ans Modell ginge (Feldnamen,
    * Feldbeschreibungen, Auswahlwerte, Vorgaben, Beispiele). Wird beim Bestätigen mit gezeigt.
    */
@@ -127,6 +132,7 @@ export function WerkzeugKarte({
   serverHinweis,
   schemaPruefbar = true,
   aenderungen = [],
+  vergleichUnvollstaendig = false,
   schemaTexte = [],
   speichert = false,
   onEinstufen,
@@ -258,6 +264,12 @@ export function WerkzeugKarte({
         <p className={styles.sperre}>
           <Icon name="schloss" groesse={16} />
           <span>{t("apps.werkzeug.gesperrt.grund")}</span>
+        </p>
+      )}
+      {(status === "geaendert" || status === "neu") && vergleichUnvollstaendig && (
+        <p className={styles.hinweis} data-vergleich="unvollstaendig">
+          <Icon name="info" groesse={14} />
+          <span>{t("apps.werkzeug.aenderung.unvollstaendig")}</span>
         </p>
       )}
       {(status === "geaendert" || status === "neu") && aenderungen.length > 0 && (

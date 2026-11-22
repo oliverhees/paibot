@@ -1009,6 +1009,64 @@ describe("Was hat sich geändert", () => {
     expect(f[f.length - 1]?.frueher).toBeUndefined();
   });
 
+  // Gegenprobe: in `ladeVerlauf` nur `grenze` statt `grenze + 1` laden → kein Hinweis, rot.
+  it("liegt die bestätigte Fassung außerhalb der geladenen 200: fester Hinweis statt Vergleich, nie „unverändert“; die Antwort trägt höchstens 50", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u, 0);
+    const alt = fassungen(await verlauf(u, g.id, g.werkzeug)).at(-1);
+    for (let i = 0; i < repo.apps.MAX_TOOL_HISTORY + 5; i++) {
+      await repo.apps.sehen(u.e.u.db, g.id as AppId, [
+        {
+          originalName: "echo",
+          toolDigest: `sha256:${i.toString(16).padStart(64, "a")}` as never,
+          description: `Gibt Text zurück. Änderung ${i}.`,
+          inputSchema: alt?.modellText.schema,
+          hintReadOnly: true,
+          hintDestructive: false,
+        },
+      ]);
+    }
+    const r = await verlauf(u, g.id, g.werkzeug);
+    const f = fassungen(r) as (Fassung & { vergleichUnvollstaendig?: boolean })[];
+    expect(f).toHaveLength(50);
+    const neueste = f[f.length - 1];
+    expect(neueste?.stand).toBe("geaendert");
+    expect(neueste?.vergleichUnvollstaendig).toBe(true);
+    expect(neueste?.frueher).toBeUndefined();
+    const seite = await appsSeitenDaten(u.e.u.db);
+    const ws = seite.apps[0]?.werkzeuge as unknown as (Fassung & {
+      id: string;
+      vergleichUnvollstaendig?: boolean;
+    })[];
+    const echo = ws.find((x) => x.id === g.werkzeug);
+    expect(echo?.vergleichUnvollstaendig).toBe(true);
+    expect(echo?.frueher).toBeUndefined();
+  }, 120_000);
+
+  it("die Antwort trägt höchstens die jüngsten 50 Fassungen, älteste zuerst", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u, 0);
+    const alt = fassungen(await verlauf(u, g.id, g.werkzeug)).at(-1);
+    for (let i = 0; i < 55; i++) {
+      await repo.apps.sehen(u.e.u.db, g.id as AppId, [
+        {
+          originalName: "echo",
+          toolDigest: `sha256:${i.toString(16).padStart(64, "b")}` as never,
+          description: `Fassung ${i}.`,
+          inputSchema: alt?.modellText.schema,
+        },
+      ]);
+    }
+    const f = fassungen(await verlauf(u, g.id, g.werkzeug));
+    expect(f).toHaveLength(50);
+    const nummern = f.map((x) => x.version);
+    expect(nummern).toEqual([...nummern].sort((a, b) => a - b));
+    // Fassung 1 (neu), 2 (bestätigt) und 55 Änderungen: die jüngste ist die 57.
+    expect(nummern.at(-1)).toBe(57);
+    // Die jüngste ist die neueste, die älteste dieser 50 nicht die erste Fassung.
+    expect(nummern[0]).toBeGreaterThan(1);
+  }, 120_000);
+
   it("der Vergleich ändert nicht, was bestätigt wird: nur der Abdruck der neuen Fassung gilt", async () => {
     const u = await umgebung();
     const g = await geaendert(u);

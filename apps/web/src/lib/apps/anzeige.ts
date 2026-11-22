@@ -37,7 +37,7 @@ export function appAnsicht(app: App) {
  * (Name, Beschreibung, Schema), nicht die Rohform des Servers. Die Hinweise des Servers sind nur
  * Anzeige („laut App“); die Einstufung `klasse` kommt allein aus der Bestätigung des Besitzers.
  */
-export function werkzeugAnsicht(tool: AppTool, frueher?: AppTool) {
+export function werkzeugAnsicht(tool: AppTool, frueher?: AppTool, vergleichUnvollstaendig = false) {
   return {
     id: tool.toolId,
     version: tool.version,
@@ -51,6 +51,7 @@ export function werkzeugAnsicht(tool: AppTool, frueher?: AppTool) {
     },
     hinweiseLautApp: { nurLesend: tool.hintReadOnly, destruktiv: tool.hintDestructive },
     ...(frueher === undefined ? {} : { frueher: fassungAnsicht(frueher) }),
+    ...(vergleichUnvollstaendig ? { vergleichUnvollstaendig: true as const } : {}),
   };
 }
 

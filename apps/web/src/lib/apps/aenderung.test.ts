@@ -155,6 +155,19 @@ describe("werkzeugEintrag mit früherer Fassung", () => {
     expect(e.aenderungen?.map((a) => a.feld)).toContain("beschreibung");
   });
 
+  it("der Hinweis „Vergleich unvollständig“ geht nur bei geänderter oder neuer Fassung an die Karte", () => {
+    for (const stand of ["geaendert", "neu"] as const) {
+      expect(werkzeugEintrag(antwort({ stand, vergleichUnvollstaendig: true }))).toMatchObject({
+        vergleichUnvollstaendig: true,
+      });
+      expect(werkzeugEintrag(antwort({ stand })).vergleichUnvollstaendig).toBeUndefined();
+    }
+    expect(
+      werkzeugEintrag(antwort({ stand: "bestaetigt", vergleichUnvollstaendig: true }))
+        .vergleichUnvollstaendig,
+    ).toBeUndefined();
+  });
+
   it("nur eine geänderte oder neue Fassung zeigt Änderungen: bestätigt oder entfernt (auch mit früherer Fassung) nicht", () => {
     for (const stand of ["bestaetigt", "entfernt"] as const) {
       const e = werkzeugEintrag(antwort({ stand, frueher: fassung() }));
