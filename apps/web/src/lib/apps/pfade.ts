@@ -18,6 +18,8 @@ export const APP_PFADE = {
   werkzeuge: (id: string) => `/api/apps/${teil(id)}/werkzeuge`,
   werkzeugEinstufen: (id: string, werkzeug: string) =>
     `/api/apps/${teil(id)}/werkzeuge/${teil(werkzeug)}`,
+  werkzeugVerlauf: (id: string, werkzeug: string) =>
+    `/api/apps/${teil(id)}/werkzeuge/${teil(werkzeug)}/verlauf`,
   zugriff: (id: string, bot: string) => `/api/apps/${teil(id)}/zugriff/${teil(bot)}`,
   trennen: (id: string) => `/api/apps/${teil(id)}`,
 } as const;

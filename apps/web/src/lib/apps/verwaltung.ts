@@ -23,12 +23,13 @@ import { appDienste } from "./dienste";
 import { fehlerOhneFremdtext, pruefbedingungAlsFeld } from "./fehler";
 import { mitSperrzeit, sperrfehlerAlsLimit } from "./sperre";
 import { tokenLesen, tokenPruefen, tokenVerschluesseln } from "./token";
+import { MAX_FASSUNGEN, vergleichsFassung, werkzeugeMitVergleich } from "./verlauf";
 
 type App = repo.apps.App;
 
 function abgleichAnsicht(a: AbgleichErgebnis) {
   return {
-    werkzeuge: a.werkzeuge.map(werkzeugAnsicht),
+    werkzeuge: a.werkzeuge.map((w) => werkzeugAnsicht(w)),
     nichtPruefbar: a.nichtPruefbar,
     abgeschnitten: a.abgeschnitten,
   };
@@ -240,7 +241,29 @@ export async function appNeuVerbinden(k: RoutenKontext<"appNeuVerbinden">) {
 export async function appWerkzeuge(k: RoutenKontext<"appWerkzeuge">) {
   const app = await appVon(k.db, k.params.id);
   const werkzeuge = await repo.apps.currentTools(k.db, app.id);
-  return { daten: { app: appAnsicht(app), werkzeuge: werkzeuge.map(werkzeugAnsicht) } };
+  return {
+    daten: { app: appAnsicht(app), werkzeuge: await werkzeugeMitVergleich(k.db, werkzeuge) },
+  };
+}
+
+/**
+ * `GET /api/apps/:id/werkzeuge/:werkzeug/verlauf`: alle Fassungen eines Werkzeugs, älteste zuerst
+ * (höchstens die jüngsten `MAX_FASSUNGEN`). Eine geänderte Fassung trägt die Fassung, die der
+ * Besitzer zuletzt bestätigt hatte. Liest nur; nichts geht nach draußen.
+ */
+export async function appWerkzeugVerlauf(k: RoutenKontext<"appWerkzeugVerlauf">) {
+  const app = verbunden(await appVon(k.db, k.params.id));
+  if (!isId("tool", k.params.werkzeug)) throw new PaiBotError("nicht_gefunden");
+  const toolId: AppToolId = k.params.werkzeug;
+  const aktuell = await repo.apps.currentTool(k.db, toolId);
+  if (aktuell === undefined || aktuell.appId !== app.id) throw new PaiBotError("nicht_gefunden");
+  const verlauf = await repo.apps.toolHistory(k.db, toolId);
+  const fassungen = verlauf
+    .slice(-MAX_FASSUNGEN)
+    .map((f) =>
+      werkzeugAnsicht(f, f.status === "geaendert" ? vergleichsFassung(verlauf, f) : undefined),
+    );
+  return { daten: { app: appAnsicht(app), fassungen } };
 }
 
 /**

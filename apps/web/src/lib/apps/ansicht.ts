@@ -15,6 +15,7 @@ import type {
   AppFehlerArt,
   SchemaText,
   ServerHinweis,
+  WerkzeugAenderung,
   WerkzeugArt,
   WerkzeugListeEintrag,
   WerkzeugStatus,
@@ -30,7 +31,18 @@ export interface WerkzeugAntwort {
   abdruck: string;
   modellText: { name: string; beschreibung: string; schema: unknown };
   hinweiseLautApp: { nurLesend: boolean | null; destruktiv: boolean | null };
+  /**
+   * Bei einer geänderten Fassung: die Fassung, die der Besitzer zuletzt bestätigt hatte. Daraus
+   * entsteht „Was hat sich geändert“.
+   */
+  frueher?: FassungAntwort;
 }
+
+/** Eine frühere Fassung eines Werkzeugs, wie sie zum Vergleichen gebraucht wird. */
+export type FassungAntwort = Pick<
+  WerkzeugAntwort,
+  "version" | "klasse" | "abdruck" | "modellText" | "hinweiseLautApp"
+>;
 
 /** Zugriff eines Bots auf eine App, wie die Liste ihn liefert. */
 export interface ZugriffAntwort {
@@ -80,7 +92,64 @@ export function werkzeugEintrag(w: WerkzeugAntwort): WerkzeugListeEintrag {
     schemaPruefbar: schema.vollstaendig,
     schemaTexte: schema.texte,
     ...(hinweis === undefined ? {} : { serverHinweis: hinweis }),
+    ...(w.frueher === undefined || w.stand !== "geaendert"
+      ? {}
+      : { bisher: bisherigeArt(w.frueher.klasse), aenderungen: aenderungenZwischen(w.frueher, w) }),
   };
+}
+
+/** Einstufung der Oberfläche zur Klasse einer früher bestätigten Fassung. */
+export function bisherigeArt(klasse: WerkzeugAntwort["klasse"]): WerkzeugArt {
+  return ART[klasse];
+}
+
+function hinweisText(h: FassungAntwort["hinweiseLautApp"]): string {
+  if (h.destruktiv === true) return "laut App: verändert Daten";
+  if (h.nurLesend === true) return "laut App: nur lesend";
+  return "laut App: keine Angabe";
+}
+
+function schemaZeilen(schema: unknown): string[] {
+  return schemaTexteVollstaendig(schema).texte.map((e) => `${e.pfad} (${e.art}): ${e.text}`);
+}
+
+/**
+ * Was sich zwischen zwei Fassungen eines Werkzeugs geändert hat: Name, Beschreibung, Texte der
+ * Eingabe und Hinweise der App, jeweils vorher und nachher in voller Länge (es ist der Text, der
+ * ans Modell ginge). Beim Schema stehen nur die Zeilen, die abweichen. Ändert sich nur die Form
+ * des Schemas (Typ, Pflichtfeld), ohne dass sich ein Text ändert, stehen beide Fassungen im Ganzen
+ * da, damit nichts unsichtbar bleibt.
+ */
+export function aenderungenZwischen(
+  alt: Pick<FassungAntwort, "modellText" | "hinweiseLautApp">,
+  neu: Pick<FassungAntwort, "modellText" | "hinweiseLautApp">,
+): WerkzeugAenderung[] {
+  const aus: WerkzeugAenderung[] = [];
+  if (alt.modellText.name !== neu.modellText.name) {
+    aus.push({ feld: "name", vorher: alt.modellText.name, nachher: neu.modellText.name });
+  }
+  if (alt.modellText.beschreibung !== neu.modellText.beschreibung) {
+    aus.push({
+      feld: "beschreibung",
+      vorher: alt.modellText.beschreibung,
+      nachher: neu.modellText.beschreibung,
+    });
+  }
+  const vorherZeilen = schemaZeilen(alt.modellText.schema);
+  const nachherZeilen = schemaZeilen(neu.modellText.schema);
+  const nurAlt = vorherZeilen.filter((z) => !nachherZeilen.includes(z));
+  const nurNeu = nachherZeilen.filter((z) => !vorherZeilen.includes(z));
+  if (nurAlt.length > 0 || nurNeu.length > 0) {
+    aus.push({ feld: "eingabe", vorher: nurAlt.join("\n"), nachher: nurNeu.join("\n") });
+  } else {
+    const a = JSON.stringify(alt.modellText.schema);
+    const n = JSON.stringify(neu.modellText.schema);
+    if (a !== n) aus.push({ feld: "eingabe", vorher: a, nachher: n });
+  }
+  const ha = hinweisText(alt.hinweiseLautApp);
+  const hn = hinweisText(neu.hinweiseLautApp);
+  if (ha !== hn) aus.push({ feld: "hinweise", vorher: ha, nachher: hn });
+  return aus;
 }
 
 /**

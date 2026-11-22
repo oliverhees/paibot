@@ -14,7 +14,8 @@ import { type Database, repo } from "@paibot/db";
 import type { BotId } from "@paibot/shared/ids";
 import { notAusAn } from "../notaus/notaus";
 import type { WerkzeugAntwort, ZugriffAntwort } from "./ansicht";
-import { appAnsicht, werkzeugAnsicht } from "./anzeige";
+import { appAnsicht } from "./anzeige";
+import { werkzeugeMitVergleich } from "./verlauf";
 
 export interface AppSeitenEintrag extends ReturnType<typeof appAnsicht> {
   zugriff: ZugriffAntwort[];
@@ -41,7 +42,7 @@ export async function appsSeitenDaten(db: Database): Promise<AppsSeitenDaten> {
     }
     const werkzeuge =
       app.state === "verbunden"
-        ? (await repo.apps.currentTools(db, app.id)).map(werkzeugAnsicht)
+        ? await werkzeugeMitVergleich(db, await repo.apps.currentTools(db, app.id))
         : [];
     apps.push({ ...appAnsicht(app), zugriff, werkzeuge });
   }

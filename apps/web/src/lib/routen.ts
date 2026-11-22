@@ -388,6 +388,14 @@ export const API_ROUTEN = {
     antwort: "json",
     veraendernd: false,
   },
+  /** Alle Fassungen eines Werkzeugs; eine geänderte trägt die zuletzt bestätigte. Liest nur. */
+  appWerkzeugVerlauf: {
+    methode: "GET",
+    pfad: "/api/apps/:id/werkzeuge/:werkzeug/verlauf",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
   /**
    * Holt die Liste der Werkzeuge einer verbundenen App neu (nur lesend, `tools/list`) und gleicht
    * sie mit den gespeicherten Fassungen ab: erneut testen. Zählt auf das Limit des Verbindungstests.

@@ -24,6 +24,10 @@ describe("APP_PFADE", () => {
     expect(APP_PFADE.werkzeugEinstufen(id, werkzeug)).toBe(
       routenPfad("appWerkzeugBestaetigen", { id, werkzeug }),
     );
+    expect(APP_PFADE.neuVerbinden(id)).toBe(routenPfad("appNeuVerbinden", { id }));
+    expect(APP_PFADE.werkzeugVerlauf(id, werkzeug)).toBe(
+      routenPfad("appWerkzeugVerlauf", { id, werkzeug }),
+    );
     expect(APP_PFADE.zugriff(id, bot)).toBe(routenPfad("appZugriffSetzen", { id, bot }));
     expect(APP_PFADE.trennen(id)).toBe(routenPfad("appTrennen", { id }));
     expect(API_ROUTEN.appsListe.methode).toBe("GET");
@@ -32,5 +36,7 @@ describe("APP_PFADE", () => {
     expect(API_ROUTEN.appWerkzeugBestaetigen.methode).toBe("PUT");
     expect(API_ROUTEN.appZugriffSetzen.methode).toBe("PUT");
     expect(API_ROUTEN.appTrennen.methode).toBe("DELETE");
+    expect(API_ROUTEN.appNeuVerbinden.methode).toBe("POST");
+    expect(API_ROUTEN.appWerkzeugVerlauf.methode).toBe("GET");
   });
 });

@@ -739,6 +739,15 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
     vorher: mitApp,
     aufruf: async (s) => ({ params: { id: await appId(s) } }),
   },
+  appWerkzeugVerlauf: {
+    vorher: mitApp,
+    aufruf: async (s) => {
+      const id = await appId(s);
+      const [tool] = await repo.apps.currentTools(s.u.db, id as never);
+      if (tool === undefined) throw new Error("kein Werkzeug");
+      return { params: { id, werkzeug: tool.toolId } };
+    },
+  },
   anbieterListe: { vorher: einrichten, aufruf: async () => ({}) },
   anbieterVerbindungstest: {
     vorher: einrichten,

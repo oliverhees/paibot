@@ -22,6 +22,7 @@ import { belegeAlsText, belegeSeit, eingerichtet, letzteNummer } from "../modell
 import { API_ROUTEN } from "../routen";
 import { bekannteNamenVon, MAX_BEKANNTE_NAMEN } from "./abgleich";
 import { _ersetzeAppDienste, type AppAbruf } from "./dienste";
+import { appsSeitenDaten } from "./seite";
 import {
   appNeuVerbinden,
   appsListe,
@@ -30,6 +31,7 @@ import {
   appWerkzeugBestaetigen,
   appWerkzeuge,
   appWerkzeugeAbrufen,
+  appWerkzeugVerlauf,
   appZugriffSetzen,
 } from "./verwaltung";
 
@@ -93,6 +95,7 @@ async function umgebung() {
     zugriff: e.u.handler("appZugriffSetzen", appZugriffSetzen),
     trennen: e.u.handler("appTrennen", appTrennen),
     neu: e.u.handler("appNeuVerbinden", appNeuVerbinden),
+    verlauf: e.u.handler("appWerkzeugVerlauf", appWerkzeugVerlauf),
   };
   const bot = await repo.bots.getDefault(e.u.db);
   if (bot === undefined) throw new Error("kein Bot");
@@ -851,6 +854,137 @@ describe("App neu verbinden", () => {
     expect(API_ROUTEN.appNeuVerbinden.limits).toEqual(API_ROUTEN.appWerkzeugeAbrufen.limits);
     expect(API_ROUTEN.appNeuVerbinden.aktion).toBe("app.verbinden");
     expect(API_ROUTEN.appNeuVerbinden.pfad).toBe("/api/apps/:id/verbindung");
+  });
+});
+
+describe("Was hat sich geändert", () => {
+  type Fassung = {
+    version: number;
+    stand: string;
+    abdruck: string;
+    klasse: string;
+    modellText: { name: string; beschreibung: string; schema: unknown };
+    frueher?: {
+      version: number;
+      klasse: string;
+      abdruck: string;
+      modellText: { beschreibung: string };
+    };
+  };
+  const fassungen = (r: { body: { daten?: unknown } }) =>
+    (r.body.daten as { fassungen: Fassung[] }).fassungen;
+
+  /** „echo“ ist bestätigt („liest“), danach ändert der Server die Beschreibung (n Mal). */
+  async function geaendert(u: Umgebung, aenderungen = 1) {
+    const d = daten(await verbinden(u));
+    const echo = d.werkzeuge.find((w) => w.modellText.name.endsWith("__echo"));
+    await u.e.rufe(u.h.bestaetigen, "PUT", `/api/apps/${d.app.id}/werkzeuge/${echo?.id}`, {
+      params: { id: d.app.id, werkzeug: echo?.id as string },
+      koerper: { klasse: "lesen", gesehenerAbdruck: echo?.abdruck },
+    });
+    for (let i = 1; i <= aenderungen; i++) {
+      u.zustand.liste = [{ ...ECHO, description: `Gibt Text zurück. Änderung ${i}.` }, SUCHE];
+      await u.e.rufe(u.h.abrufen, "POST", `/api/apps/${d.app.id}/werkzeuge`, {
+        params: { id: d.app.id },
+      });
+    }
+    return { id: d.app.id, werkzeug: echo?.id as string, abdruckAlt: echo?.abdruck as string };
+  }
+  const verlauf = (u: Umgebung, id: string, werkzeug: string) =>
+    u.e.rufe(u.h.verlauf, "GET", `/api/apps/${id}/werkzeuge/${werkzeug}/verlauf`, {
+      params: { id, werkzeug },
+    });
+
+  it("der Verlauf liefert alle Fassungen, älteste zuerst; die geänderte trägt die zuletzt bestätigte als „frueher“", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u);
+    const r = await verlauf(u, g.id, g.werkzeug);
+    expect(r.status).toBe(200);
+    const f = fassungen(r);
+    expect(f.map((x) => [x.version, x.stand])).toEqual([
+      [1, "neu"],
+      [2, "bestaetigt"],
+      [3, "geaendert"],
+    ]);
+    expect(f[2]?.frueher?.version).toBe(2);
+    expect(f[2]?.frueher?.klasse).toBe("lesen");
+    expect(f[2]?.frueher?.abdruck).toBe(g.abdruckAlt);
+    expect(f[2]?.frueher?.modellText.beschreibung).toBe("Gibt Text zurück.");
+    expect(f[2]?.modellText.beschreibung).toContain("Änderung 1.");
+    // Fassungen ohne Änderung tragen keinen Vergleich.
+    expect(f[0]?.frueher).toBeUndefined();
+    expect(f[1]?.frueher).toBeUndefined();
+    await ohneToken(u);
+  });
+
+  it("ändert der Server mehrmals vor dem Bestätigen, bleibt die zuletzt BESTÄTIGTE Fassung der Vergleich", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u, 2);
+    const f = fassungen(await verlauf(u, g.id, g.werkzeug));
+    const neueste = f[f.length - 1];
+    expect(neueste?.stand).toBe("geaendert");
+    expect(neueste?.modellText.beschreibung).toContain("Änderung 2.");
+    expect(neueste?.frueher?.abdruck).toBe(g.abdruckAlt);
+    expect(neueste?.frueher?.modellText.beschreibung).toBe("Gibt Text zurück.");
+  });
+
+  it("die Liste der Werkzeuge und die Daten der Seite tragen den Vergleich nur bei geänderten Werkzeugen", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u);
+    const liste = await u.e.rufe(u.h.werkzeuge, "GET", `/api/apps/${g.id}/werkzeuge`, {
+      params: { id: g.id },
+    });
+    const w = daten(liste).werkzeuge as unknown as (Fassung & { id: string })[];
+    expect(w.find((x) => x.id === g.werkzeug)?.frueher?.abdruck).toBe(g.abdruckAlt);
+    expect(w.filter((x) => x.frueher !== undefined)).toHaveLength(1);
+    const seite = await appsSeitenDaten(u.e.u.db);
+    const ws = seite.apps[0]?.werkzeuge as unknown as (Fassung & { id: string })[];
+    expect(ws.find((x) => x.id === g.werkzeug)?.frueher?.abdruck).toBe(g.abdruckAlt);
+    expect(ws.filter((x) => x.frueher !== undefined)).toHaveLength(1);
+  });
+
+  it("der Vergleich ändert nicht, was bestätigt wird: nur der Abdruck der neuen Fassung gilt", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u);
+    const alt = await u.e.rufe(
+      u.h.bestaetigen,
+      "PUT",
+      `/api/apps/${g.id}/werkzeuge/${g.werkzeug}`,
+      {
+        params: { id: g.id, werkzeug: g.werkzeug },
+        koerper: { klasse: "lesen", gesehenerAbdruck: g.abdruckAlt },
+      },
+    );
+    expect(alt.status).toBeGreaterThanOrEqual(400);
+    const neu = fassungen(await verlauf(u, g.id, g.werkzeug)).at(-1);
+    const ok = await u.e.rufe(u.h.bestaetigen, "PUT", `/api/apps/${g.id}/werkzeuge/${g.werkzeug}`, {
+      params: { id: g.id, werkzeug: g.werkzeug },
+      koerper: { klasse: "lesen", gesehenerAbdruck: neu?.abdruck },
+    });
+    expect(ok.status).toBe(200);
+  });
+
+  it("ein Werkzeug einer anderen App, eine unbekannte Kennung oder eine getrennte App: nicht gefunden", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u);
+    const zweite = daten(await verbinden(u, { url: "https://mcp.zweite.de/mcp" }));
+    expect((await verlauf(u, zweite.app.id, g.werkzeug)).status).toBe(404);
+    expect((await verlauf(u, g.id, "tool_00000000000000000000000000")).status).toBe(404);
+    expect((await verlauf(u, g.id, "kein-id")).status).toBe(404);
+    await u.e.rufe(u.h.trennen, "DELETE", `/api/apps/${g.id}`, { params: { id: g.id } });
+    expect((await verlauf(u, g.id, g.werkzeug)).status).toBe(404);
+  });
+
+  it("die Route nur lesend: kein Beleg, kein Abruf nach draußen", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u);
+    const aufrufe = u.zustand.aufrufe.length;
+    const vorher = await letzteNummer(u.e.u);
+    await verlauf(u, g.id, g.werkzeug);
+    expect(u.zustand.aufrufe).toHaveLength(aufrufe);
+    expect(await belegeSeit(u.e.u, vorher)).toEqual([]);
+    expect(API_ROUTEN.appWerkzeugVerlauf.veraendernd).toBe(false);
+    expect("aktion" in API_ROUTEN.appWerkzeugVerlauf).toBe(false);
   });
 });
 
