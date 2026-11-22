@@ -12,6 +12,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    // Test-MCP-Server auf Loopback für die Ende-zu-Ende-Tests der Apps (nur Tests).
+    globalSetup: ["../../tools/test-mcp-server/src/vitest-global.ts"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },
