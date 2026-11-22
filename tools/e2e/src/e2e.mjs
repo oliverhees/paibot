@@ -287,6 +287,50 @@ async function abmeldenUeberDu(seite) {
   await seite.getByRole("menu", { name: "Du" }).getByRole("menuitem", { name: "Abmelden" }).click();
 }
 
+/**
+ * Anzahl der Belege einer Aktion, über die Schnittstelle gelesen (ohne die Seite zu wechseln).
+ * Wichtig: Jeder Aufruf der Seite „Modell und Anbieter“ gleicht die Modell-Liste ab und legt dafür
+ * selbst einen Beleg „Anbieter gespeichert“ an. Zähle deshalb nur zwischen zwei Handgriffen auf
+ * derselben Seite.
+ */
+async function belegeZaehlen(seite, app, aktion) {
+  const antwort = await seite.request.get(
+    `${app}/api/belege?action=${encodeURIComponent(aktion)}&limit=200`,
+  );
+  if (!antwort.ok()) throw new Error(`Belege lesen: Status ${antwort.status()}.`);
+  const koerper = await antwort.json();
+  const liste = koerper.daten?.items;
+  if (!Array.isArray(liste)) throw new Error("Belege lesen: unerwartete Antwort.");
+  return liste.length;
+}
+
+/** Öffnet den neuesten Beleg einer Aktion und prüft ihn: Die Prüfung meldet „stimmt“. */
+async function neuestenBelegPruefen(seite, app, aktion) {
+  await seite.goto(`${app}/belege?aktion=${encodeURIComponent(aktion)}`);
+  await seite
+    .getByRole("list", { name: "Belege, neueste zuerst" })
+    .getByRole("link")
+    .first()
+    .click();
+  await seite.getByRole("heading", { name: /^Beleg B-\d+$/ }).waitFor();
+  await seite.getByRole("button", { name: "Beleg prüfen" }).click();
+  await seite.getByRole("article").getByText("stimmt", { exact: true }).waitFor();
+}
+
+/** Schickt eine Nachricht in einer neuen Unterhaltung und wartet auf die Antwort des Test-Anbieters. */
+async function chatten(seite, app, text) {
+  await seite.goto(`${app}/`);
+  await seite.getByRole("textbox", { name: "Nachricht" }).fill(text);
+  await seite.getByRole("button", { name: "Senden" }).click();
+  await seite
+    .getByRole("log", { name: "Verlauf" })
+    .getByText(BEISPIEL_ANTWORT, { exact: true })
+    .waitFor({ timeout: 60_000 });
+}
+
+const FALSCHER_SCHLUESSEL_STATUS = 502;
+const ANWEISUNG = "Antworte immer in genau einem Satz.";
+
 async function main() {
   log(`Ausgabe: ${ausgabe}`);
   stack = await starteStack({
@@ -457,6 +501,169 @@ async function main() {
     await seite.getByRole("heading", { name: /^Beleg B-\d+$/ }).waitFor();
     await seite.getByRole("button", { name: "Beleg prüfen" }).click();
     await seite.getByRole("article").getByText("stimmt", { exact: true }).waitFor();
+  });
+
+  // ---- Seiten „Modell und Anbieter“ und „Bot“: ändern, speichern, prüfen, Beleg -------------------
+  const NEUER_SCHLUESSEL = `Beispiel-${randomBytes(12).toString("base64url")}`;
+  let anbieterPfad;
+  const letzteChatAnfrage = async () =>
+    (await stack.anbieter.anfragen()).filter((a) => a.path.includes("chat")).at(-1);
+  await schritt("Modell und Anbieter: falscher Schlüssel wird abgelehnt", seite, async () => {
+    const modelleAnfrage = seite.waitForRequest((r) =>
+      /\/api\/anbieter\/[^/]+\/modelle$/.test(r.url()),
+    );
+    await seite.goto(`${app}/modelle`);
+    anbieterPfad = new URL((await modelleAnfrage).url()).pathname.replace(/\/modelle$/, "");
+    // Erst wenn die Liste da ist, hat der Abgleich seinen Beleg geschrieben.
+    await seite.getByRole("radio", { name: /Beispiel-Modell Allrounder/ }).waitFor();
+    const belegeVorher = await belegeZaehlen(seite, app, "anbieter.speichern");
+    const anfragenVorher = (await stack.anbieter.anfragen()).length;
+    erwarte(anbieterPfad, FALSCHER_SCHLUESSEL_STATUS);
+    await seite.getByRole("button", { name: "Schlüssel ersetzen" }).click();
+    await seite
+      .getByLabel("Neuer Schlüssel für", { exact: false })
+      .fill("falscher-schluessel-0000");
+    await seite.getByRole("button", { name: "Schlüssel speichern" }).click();
+    await seite.locator('[data-art="fehler"]').first().waitFor();
+    if (await seite.getByText("Schlüssel gespeichert.", { exact: false }).count()) {
+      throw new Error("Ein falscher Schlüssel wurde als gespeichert gemeldet.");
+    }
+    // Gegenprobe: Beim Anbieter kommt nur die Prüfung mit dem falschen Schlüssel an (und wird
+    // abgelehnt), keine Chat-Anfrage; es entsteht kein Beleg „Anbieter gespeichert“.
+    const neu = (await stack.anbieter.anfragen()).slice(anfragenVorher);
+    if (neu.length === 0 || neu.some((a) => a.path.includes("chat"))) {
+      throw new Error(`Unerwartete Anfragen beim Anbieter: ${neu.map((a) => a.path).join(", ")}.`);
+    }
+    const belegeNachher = await belegeZaehlen(seite, app, "anbieter.speichern");
+    if (belegeNachher !== belegeVorher) {
+      throw new Error(
+        `Ein abgelehnter Schlüssel hat einen Beleg erzeugt (${belegeVorher} → ${belegeNachher}).`,
+      );
+    }
+  });
+  await schritt("Modell und Anbieter: Schlüssel ersetzen, wirkt, mit Beleg", seite, async () => {
+    // Der Anbieter wechselt seinen Schlüssel: Der gespeicherte gilt nicht mehr.
+    await stack.anbieter.verhalten({ apiKey: NEUER_SCHLUESSEL });
+    // Mit dem alten Schlüssel scheitern der Abgleich der Liste und der Test (absichtlich).
+    erwarte(`${anbieterPfad}/modelle`, FALSCHER_SCHLUESSEL_STATUS);
+    erwarte("/api/anbieter/verbindungstest", FALSCHER_SCHLUESSEL_STATUS);
+    await seite.goto(`${app}/modelle`);
+    await seite.getByRole("button", { name: "Liste neu laden" }).waitFor();
+    await seite.getByRole("button", { name: "Verbindung testen" }).click();
+    await seite.getByText("Verbindung fehlgeschlagen").first().waitFor();
+    const belegeVorher = await belegeZaehlen(seite, app, "anbieter.speichern");
+    await seite.getByRole("button", { name: "Schlüssel ersetzen" }).click();
+    await seite.getByLabel("Neuer Schlüssel für", { exact: false }).fill(NEUER_SCHLUESSEL);
+    await seite.getByRole("button", { name: "Schlüssel speichern" }).click();
+    await seite.getByText("Schlüssel gespeichert.", { exact: false }).waitFor();
+    const belegeNachher = await belegeZaehlen(seite, app, "anbieter.speichern");
+    if (belegeNachher <= belegeVorher) {
+      throw new Error(
+        `Kein neuer Beleg „Anbieter gespeichert“ (${belegeVorher} → ${belegeNachher}).`,
+      );
+    }
+    // Nach dem Neuladen: Schlüssel hinterlegt, Verbindung steht, die Seite verrät ihn nicht.
+    await seite.reload();
+    await seite.getByText("hinterlegt", { exact: false }).first().waitFor();
+    if ((await seite.content()).includes(NEUER_SCHLUESSEL)) {
+      throw new Error("Der neue Schlüssel steht im HTML der Seite.");
+    }
+    await seite.getByRole("button", { name: "Verbindung testen" }).click();
+    await seite.getByText("Verbindung steht").first().waitFor();
+    // Wirkung: Der Anbieter verlangt jetzt den neuen Schlüssel, und der Chat kommt durch.
+    await chatten(seite, app, "Geht es mit dem neuen Schlüssel?");
+    await neuestenBelegPruefen(seite, app, "anbieter.speichern");
+  });
+  await schritt("Modell und Anbieter: anderes Modell wählen, wirkt, mit Beleg", seite, async () => {
+    const vorher = await letzteChatAnfrage();
+    if (vorher?.body?.model !== "beispiel/allrounder") {
+      throw new Error(
+        `Vor dem Wechsel sollte „beispiel/allrounder“ laufen, war: ${vorher?.body?.model}.`,
+      );
+    }
+    await seite.goto(`${app}/modelle`);
+    const uebernehmen = seite.getByRole("button", { name: "Modell übernehmen" });
+    await uebernehmen.waitFor();
+    // Gegenprobe: Das schon gewählte Modell lässt sich nicht noch einmal „übernehmen“.
+    if (!(await uebernehmen.isDisabled())) {
+      throw new Error("„Modell übernehmen“ ist beim aktuellen Modell nicht gesperrt.");
+    }
+    const belegeVorher = await belegeZaehlen(seite, app, "modell.waehlen");
+    await seite.getByRole("radio", { name: /Beispiel-Modell Kompakt/ }).check();
+    await uebernehmen.click();
+    await seite
+      .getByText("arbeitet jetzt mit Beispiel-Modell Kompakt.", { exact: false })
+      .waitFor();
+    const belegeNachher = await belegeZaehlen(seite, app, "modell.waehlen");
+    if (belegeNachher <= belegeVorher) {
+      throw new Error(`Kein neuer Beleg „Modell gewählt“ (${belegeVorher} → ${belegeNachher}).`);
+    }
+    // Nach dem Neuladen steht das neue Modell als „aktuell“ da.
+    await seite.reload();
+    await seite
+      .locator("label", { has: seite.getByRole("radio", { name: /Beispiel-Modell Kompakt/ }) })
+      .getByText("aktuell", { exact: true })
+      .waitFor();
+    // Wirkung: Die nächste Anfrage an den Anbieter nennt das neue Modell.
+    await chatten(seite, app, "Welches Modell antwortet?");
+    const danach = await letzteChatAnfrage();
+    if (danach?.body?.model !== "beispiel/kompakt") {
+      throw new Error(
+        `Nach dem Wechsel sollte „beispiel/kompakt“ laufen, war: ${danach?.body?.model}.`,
+      );
+    }
+    await neuestenBelegPruefen(seite, app, "modell.waehlen");
+    // zurück auf das Modell der übrigen Schritte
+    await seite.goto(`${app}/modelle`);
+    await seite.getByRole("radio", { name: /Beispiel-Modell Allrounder/ }).check();
+    await seite.getByRole("button", { name: "Modell übernehmen" }).click();
+    await seite
+      .getByText("arbeitet jetzt mit Beispiel-Modell Allrounder.", { exact: false })
+      .waitFor();
+  });
+  await schritt("Bot: Name und Anweisung ändern, wirkt, mit Beleg", seite, async () => {
+    await seite.goto(`${app}/bot`);
+    const name = seite.getByLabel("Name", { exact: true });
+    const anweisung = seite.getByRole("textbox", { name: "Anweisung" });
+    const urspruenglich = await name.inputValue();
+    const belegeVorher = await belegeZaehlen(seite, app, "bot.aendern");
+    // Gegenprobe: Ein leerer Name wird erklärt und nicht gespeichert (kein Beleg).
+    await name.fill("");
+    await seite.getByRole("button", { name: "Speichern" }).click();
+    await seite.getByText("Gib deinem Bot einen Namen.").first().waitFor();
+    if ((await belegeZaehlen(seite, app, "bot.aendern")) !== belegeVorher) {
+      throw new Error("Ein leerer Name hat einen Beleg erzeugt.");
+    }
+    await name.fill("Pai Prüfstand");
+    await anweisung.fill(ANWEISUNG);
+    await seite.getByRole("button", { name: "Speichern" }).click();
+    await seite
+      .getByText("Gespeichert. Pai Prüfstand nutzt die neuen Angaben", { exact: false })
+      .waitFor();
+    const belegeNachher = await belegeZaehlen(seite, app, "bot.aendern");
+    if (belegeNachher <= belegeVorher) {
+      throw new Error(`Kein neuer Beleg „Bot geändert“ (${belegeVorher} → ${belegeNachher}).`);
+    }
+    // Nach dem Neuladen steht der neue Stand da.
+    await seite.reload();
+    if (
+      (await name.inputValue()) !== "Pai Prüfstand" ||
+      (await anweisung.inputValue()) !== ANWEISUNG
+    ) {
+      throw new Error("Name oder Anweisung stehen nach dem Neuladen nicht mehr da.");
+    }
+    // Wirkung: Die nächste Anfrage an den Anbieter trägt die neue Anweisung.
+    await chatten(seite, app, "Und jetzt?");
+    if (!JSON.stringify((await letzteChatAnfrage())?.body).includes(ANWEISUNG)) {
+      throw new Error("Die neue Anweisung kam nicht beim Anbieter an.");
+    }
+    await neuestenBelegPruefen(seite, app, "bot.aendern");
+    // zurück auf den Stand der übrigen Schritte
+    await seite.goto(`${app}/bot`);
+    await name.fill(urspruenglich);
+    await anweisung.fill("");
+    await seite.getByRole("button", { name: "Speichern" }).click();
+    await seite.getByText(`Gespeichert. ${urspruenglich} nutzt`, { exact: false }).waitFor();
   });
 
   // ---- Handy-Format: senden, Antwort streamt, Stopp, Beleg als Blatt ---------------------------
@@ -910,7 +1117,9 @@ async function main() {
     await seite.goto(`${app}${unterhaltung}`);
     const verlauf = seite.getByRole("log", { name: "Verlauf" });
     const vorher = (await stack.anbieter.anfragen()).length;
-    await verlauf.getByRole("button", { name: "Neu erzeugen" }).click();
+    // Nach dem Abgleich der Modell-Liste (Seite „Modell und Anbieter“) gibt es neben dem Knopf
+    // auch das Menü „Antwort neu erzeugen“ mit anderem Modell; hier zählt nur der Knopf.
+    await verlauf.getByRole("button", { name: "Neu erzeugen", exact: true }).click();
     await verlauf.getByText(ZWEITE, { exact: true }).waitFor({ timeout: 60_000 });
     await verlauf.getByText("Fassung 2 von 2").waitFor();
     if ((await stack.anbieter.anfragen()).length !== vorher + 1) {
