@@ -206,3 +206,21 @@ describe("Build-Kontext nach .dockerignore ergibt den Index am Laufzeit-Ort (ohn
     expect(ausgeschlossen(ohne, "docs/installation.md")).toBe(true);
   });
 });
+
+describe("CI: Doku-Index im Image prüfen", () => {
+  const ci = readFileSync(path.join(ROOT, ".github", "workflows", "ci.yml"), "utf8");
+  const start = ci.search(/^ {2}docker:\s*$/m);
+  const nachDocker = ci.slice(start);
+  const naechster = nachDocker.slice(1).search(/^ {2}[A-Za-z0-9_-]+:\s*$/m);
+  const job = naechster === -1 ? nachDocker : nachDocker.slice(0, naechster + 1);
+
+  it("der Job richtet pnpm und Node ein und installiert, bevor das Skript den Index baut", () => {
+    expect(start).toBeGreaterThan(-1);
+    const installieren = job.indexOf("pnpm install --frozen-lockfile");
+    const bauen = job.indexOf("node scripts/doku-index.mjs");
+    expect(installieren).toBeGreaterThan(-1);
+    expect(bauen).toBeGreaterThan(installieren);
+    expect(job.indexOf("pnpm/action-setup@")).toBeGreaterThan(-1);
+    expect(job.indexOf("actions/setup-node@")).toBeGreaterThan(-1);
+  });
+});
