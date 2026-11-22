@@ -142,6 +142,11 @@ describe("Web-App: Importe aus apps/* (nur der eigene Ordner lib/apps ist erlaub
     });
   }
 
+  it("die Testdaten der Belege dürfen Tests der Web-App weiter über den relativen Pfad laden", () => {
+    const quelle = `import a from "${von("apps/web/src/lib/belege", "packages/receipts/src/testdaten/fassung-ketten")}";\nexport default a;\n`;
+    expect(importMeldungen("apps/web/src/lib/belege", quelle)).toEqual([]);
+  });
+
   it("lib/apps der Web-App bleibt erlaubt", () => {
     const quelle = `import a from "${von(ORDNER, "apps/web/src/lib/apps/verwaltung")}";\nexport default a;\n`;
     expect(importMeldungen(ORDNER, quelle)).toEqual([]);

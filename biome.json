@@ -1196,7 +1196,7 @@
                     "message": "Kein Paket importiert aus apps/*."
                   },
                   {
-                    "group": ["**/packages/**"],
+                    "group": ["**/packages/**", "!**/packages/receipts/src/testdaten/**"],
                     "message": "Pakete nur über ihren Namen importieren, nie über einen relativen Pfad in packages/*."
                   },
                   {
