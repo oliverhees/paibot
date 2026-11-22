@@ -25,6 +25,8 @@ import {
   listeLeerAusweg,
   listeMoeglich,
   modelleFiltern,
+  regelImSatz,
+  regelnImSatz,
   SUCHE_AB,
   sucheZeigen,
 } from "./ansicht";
@@ -194,5 +196,30 @@ describe("Texte bei eigenem oder lokalem Anbieter", () => {
       t("einrichtung.schluessel.text", { anbieter: "EUrouter" }),
     );
     expect(einrichtungSchluesselText("EUrouter")).toContain("Konto bei EUrouter");
+  });
+});
+
+describe("Namen von Routing-Regeln in Sätzen", () => {
+  it("jeder Name steht in Anführungszeichen, eine Aufzählung bleibt auch mit Komma im Namen eindeutig", () => {
+    expect(regelImSatz("Beispiel-Regel")).toBe("„Beispiel-Regel“");
+    expect(regelnImSatz(["Regel A", "Regel B, schnell"])).toBe("„Regel A“, „Regel B, schnell“");
+    expect(regelnImSatz([])).toBe("");
+    expect(
+      t("verwaltung.neu.entfernt", { namen: regelnImSatz(["Regel A", "Regel B, schnell"]) }),
+    ).toContain("„Regel A“, „Regel B, schnell“");
+  });
+
+  it("Quelltext: Sätze mit Regel-Namen bekommen die Namen nur über regelnImSatz", () => {
+    const quelle = readFileSync(
+      new URL("../../app/(app)/modelle/RegelnKarte.tsx", import.meta.url),
+      "utf8",
+    );
+    const aufrufe = [...quelle.matchAll(/t\("verwaltung\.neu\.[a-z_]+",\s*\{[^}]*\}\)/g)].map(
+      (m) => m[0],
+    );
+    const mitNamen = aufrufe.filter((a) => a.includes("namen:"));
+    expect(mitNamen.length).toBe(3);
+    for (const a of mitNamen) expect(a, a).toMatch(/namen:\s*regelnImSatz\(/);
+    expect(quelle).not.toMatch(/namen:\s*[^,}]*\.join\(/);
   });
 });

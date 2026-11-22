@@ -18,6 +18,7 @@ import { Button, EmptyState, Karte, StatusChip, TestErgebnis, TextField } from "
 import { useId, useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
 import type { BotModell } from "../../../lib/bot/bot";
+import { regelnImSatz } from "../../../lib/modelle/ansicht";
 import type { AlterEintrag } from "../../../lib/modelle/seite";
 import type { KontoRegel } from "../../../lib/modelle/verwaltung";
 import {
@@ -149,13 +150,13 @@ export function RegelnKarte(props: RegelnKarteProps) {
     const v = antwort.daten.vorgaben;
     const teile = [t("verwaltung.neu.ok", { anzahl: v.aktualisiert.length })];
     if (v.entfernt.length > 0) {
-      teile.push(t("verwaltung.neu.entfernt", { namen: v.entfernt.join(", ") }));
+      teile.push(t("verwaltung.neu.entfernt", { namen: regelnImSatz(v.entfernt) }));
     }
     if (v.mehrdeutig.length > 0) {
-      teile.push(t("verwaltung.neu.mehrdeutig", { namen: v.mehrdeutig.join(", ") }));
+      teile.push(t("verwaltung.neu.mehrdeutig", { namen: regelnImSatz(v.mehrdeutig) }));
     }
     if (v.unveraendert.length > 0) {
-      teile.push(t("verwaltung.neu.unveraendert", { namen: v.unveraendert.join(", ") }));
+      teile.push(t("verwaltung.neu.unveraendert", { namen: regelnImSatz(v.unveraendert) }));
     }
     setNeuErgebnis({
       art: "ok",
