@@ -343,10 +343,10 @@ describe("Normalisieren", () => {
 });
 
 /** `{ a: { a: … 1 } }` mit `levels` Objekten ineinander (ohne Rekursion gebaut). */
-function nested(levels: number): Record<string, unknown> {
+function nested(levels: number): JsonValue {
   let value: unknown = 1;
   for (let i = 0; i < levels; i++) value = { a: value };
-  return value as Record<string, unknown>;
+  return value as JsonValue;
 }
 
 // Gegenprobe: Vorprüfung in `prepareCalls` und `outcomeEnvelope` ausbauen → bei 10 000 Ebenen wirft
@@ -385,7 +385,7 @@ describe("Vorprüfung vor dem Bereinigen", () => {
     const unwanted = vi.spyOn(bereinigen, "jsonHasUnwanted");
     try {
       for (const input of [wide, cycle]) {
-        const [call] = await prepare([wish({ input })]);
+        const [call] = await prepare([wish({ input: input as JsonValue })]);
         expect(call?.inputValid).toBe(false);
       }
       expect(unwanted).not.toHaveBeenCalled();
