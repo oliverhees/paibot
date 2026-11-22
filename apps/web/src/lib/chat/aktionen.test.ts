@@ -657,4 +657,34 @@ describe("Neuladen zwischen Speichern der Antwort und Ende des Laufs", () => {
       expect(texte(await ladeVerlauf(e.u.db, id as never))).toEqual(erwartet);
     },
   );
+
+  // Gegenprobe: `untrusted` in `toMessage` (packages/db) nicht übernehmen → die Antwort der Route kennt das Kennzeichen nicht.
+  it("die Nachrichten-Route liefert das Kennzeichen „fremder Inhalt“ nur an Antworten, die es tragen", async () => {
+    const e = await eingerichtet();
+    const id = await neueUnterhaltung(e);
+    const gesendet = await senden(e, id, "Frage");
+    const runId = (gesendet.body.daten as { runId: string }).runId as RunId;
+    const antwort = await repo.messages.insert(e.u.db, {
+      conversationId: id as never,
+      role: "assistant",
+      status: "streaming",
+      content: "",
+      runId,
+    });
+    await repo.messages.finalize(e.u.db, antwort.id, {
+      status: "complete",
+      content: "Antwort mit Inhalt aus einer App",
+      untrusted: true,
+    });
+    const r = await anfrage(e.u, e.h.nachrichten, "GET", `/api/unterhaltungen/${id}/nachrichten`, {
+      dose: e.dose,
+      params: { id },
+    });
+    expect(r.status).toBe(200);
+    const verlauf = r.body.daten as ChatVerlauf;
+    expect(verlauf.nachrichten.map((m) => [m.role, m.untrusted === true])).toEqual([
+      ["user", false],
+      ["assistant", true],
+    ]);
+  });
 });

@@ -146,4 +146,33 @@ describe("Nachrichten mit Schritten", () => {
     expect(await messages.anyUntrusted(db, [mit.id])).toBe(true);
     expect(await messages.anyUntrusted(db, [ohne.id])).toBe(false);
   });
+
+  // Gegenprobe: `untrusted` in `toMessage` nicht übernehmen → die Nachricht trägt das Kennzeichen nicht.
+  it("die Nachricht aus der Datenbank trägt das Kennzeichen „fremder Inhalt“ nur, wenn es gesetzt ist", async () => {
+    const eigene = (await conversations.create(db, { botId, title: "Kennzeichen sichtbar" })).id;
+    const frage = await messages.insert(db, { conversationId: eigene, role: "user", content: "f" });
+    const lauf = await runs.create(db, {
+      conversationId: eigene,
+      triggerMessageId: frage.id,
+      botId,
+    });
+    const antwort = await messages.insert(db, {
+      conversationId: eigene,
+      role: "assistant",
+      status: "streaming",
+      content: "",
+      runId: lauf.id,
+    });
+    expect(antwort).not.toHaveProperty("untrusted");
+    const fertig = await messages.finalize(db, antwort.id, {
+      status: "complete",
+      content: "a",
+      untrusted: true,
+    });
+    expect(fertig).toMatchObject({ untrusted: true });
+    expect(await messages.get(db, antwort.id)).toMatchObject({ untrusted: true });
+    expect(messageSchema.safeParse(await messages.get(db, antwort.id)).success).toBe(true);
+    // Die Frage der Person hat es nie.
+    expect(await messages.get(db, frage.id)).not.toHaveProperty("untrusted");
+  });
 });

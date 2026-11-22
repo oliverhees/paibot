@@ -91,6 +91,8 @@ export function toMessage(row: MessageRow): Message {
         }),
     ...wennGesetzt("step", row.step),
     origin: row.origin,
+    // Nur gesetzt, wenn es wahr ist (fehlt = falsch): Nachrichten ohne fremden Inhalt bleiben, wie sie waren.
+    ...(row.untrusted ? { untrusted: true as const } : {}),
     createdAt: toIsoTime(row.createdAt),
   };
 }

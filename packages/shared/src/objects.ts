@@ -165,6 +165,12 @@ export const messageSchema = z.strictObject({
   step: countSchema.optional(),
   /** Woher der Text stammt; fehlt = `modell`. */
   origin: messageOriginSchema.optional(),
+  /**
+   * Die Nachricht enthält oder stützt sich auf fremde Inhalte (etwa aus einer App). Fehlt das
+   * Feld, gilt `false`. Nur gesetzt, wenn es `true` ist; Altclients kennen es nicht und bleiben
+   * kompatibel.
+   */
+  untrusted: z.boolean().optional(),
   createdAt: isoTimeSchema,
 });
 export type Message = z.infer<typeof messageSchema>;

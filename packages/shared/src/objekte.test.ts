@@ -416,4 +416,27 @@ describe("Konstanten", () => {
     expect(RATE_LIMIT_KEYS.nachricht(ownerId)).toBe(`nachricht:${ownerId}`);
     expect(EVENT_NOTIFY_CHANNEL).toBe("paibot_ereignis");
   });
+
+  describe("Nachricht: Kennzeichen „fremder Inhalt“ (`untrusted`)", () => {
+    const basis = {
+      id: newId("message"),
+      conversationId,
+      role: "assistant",
+      content: "Hallo",
+      status: "complete",
+      createdAt: time,
+    } as const;
+
+    it("ist optional und ein Wahrheitswert: eine Nachricht ohne das Feld bleibt gültig (Altclients)", () => {
+      expect(messageSchema.safeParse(basis).success).toBe(true);
+      expect(messageSchema.safeParse({ ...basis, untrusted: true }).success).toBe(true);
+      expect(messageSchema.safeParse({ ...basis, untrusted: false }).success).toBe(true);
+    });
+
+    it("nimmt nur einen Wahrheitswert an und nichts Unbekanntes daneben", () => {
+      expect(messageSchema.safeParse({ ...basis, untrusted: "ja" }).success).toBe(false);
+      expect(messageSchema.safeParse({ ...basis, untrusted: 1 }).success).toBe(false);
+      expect(messageSchema.safeParse({ ...basis, untrusted: true, extra: 1 }).success).toBe(false);
+    });
+  });
 });
