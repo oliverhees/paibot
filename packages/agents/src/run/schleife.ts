@@ -46,13 +46,11 @@ import {
   requestDigest,
 } from "./kontext";
 import {
-  type AufrufErgebnis,
   addiereToken,
   ausgabeGrenze,
   kappeToken,
   kettenStand,
   laufAusloeser,
-  nachAufrufen,
   schrittFakten,
   tokensHeute,
   untrustedInput,
@@ -121,7 +119,7 @@ async function freshSettings(db: Database): Promise<Settings> {
   return settings;
 }
 
-/** Grenzen, deren Ablehnung in einem späteren Schritt mit einem festen Satz endet. */
+/** Grenzen, deren Ablehnung in einem späteren Schritt mit einer festen End-Antwort endet. */
 const LIMIT_END_NAMES = new Set(["laenge", "lauf_token", "lauf_schritte"]);
 
 /** Endet die Ablehnung eines späteren Schritts mit festem Satz (nur G-03, G-16, G-18 verletzt)? */
@@ -159,7 +157,13 @@ export async function runLoop(
   const mode: Mode = werkzeuge.length === 0 ? "ohne_werkzeuge" : "mit_werkzeugen";
   const stand = kettenStand(run);
   const startedAt = Date.now();
-  const system = buildSystemPrompt(context.bot, context.settings, deps.clock.now());
+  // Die Werkzeuge des Laufs (nicht die des Schritts): Die Anweisung bleibt im letzten Schritt gleich.
+  const system = buildSystemPrompt(
+    context.bot,
+    context.settings,
+    deps.clock.now(),
+    werkzeuge.map((tool) => tool.definition.key),
+  );
   const historyLimit =
     context.settings.historyTokenLimit === undefined
       ? Number.POSITIVE_INFINITY
@@ -306,7 +310,6 @@ export async function runLoop(
 
     // Wünsche des Schritts, je einzeln durchs Tor, nacheinander in der Reihenfolge des Modells.
     const results: ToolResult[] = [];
-    const outcomes: AufrufErgebnis[] = [];
     let stepChars = 0;
     for (const [i, call] of value.calls.entries()) {
       if (guard.reason !== undefined) {
@@ -334,10 +337,6 @@ export async function runLoop(
         return withMessage(stopEnd(guard.reason ?? "abbruch"));
       }
       results.push(outcome.result);
-      outcomes.push({
-        status: outcome.status,
-        ...(outcome.code === undefined ? {} : { code: outcome.code }),
-      });
     }
     stand.token = addiereToken(stand.token, addiereToken(value.tokens.input, value.tokens.output));
     stand.schritte += 1;
@@ -346,19 +345,14 @@ export async function runLoop(
       // Wunsch, obwohl keine Werkzeuge angeboten waren: alle sind belegt abgelehnt (V-12).
       return withMessage({ kind: "failed", code: "werkzeug_unbekannt" });
     }
-    const next = nachAufrufen(outcomes);
-    if (next.art === "fest" || last) {
+    if (last) {
       lastMessageId = await fixedAnswer(db, context, {
-        text: next.art === "fest" ? plainText(next.textKey) : t("lauf.schritte.antwort"),
+        text: t("lauf.schritte.antwort"),
         route: value.model.route,
         label: value.model.label,
         flushChars: tuning.deltaFlushChars,
       });
-      return withMessage(
-        next.art === "fest"
-          ? { kind: "succeeded", tokens: { input: 0, output: 0 } }
-          : { kind: "failed", code: "schritte_aufgebraucht" },
-      );
+      return withMessage({ kind: "failed", code: "schritte_aufgebraucht" });
     }
     runHistory.push(
       {
@@ -578,7 +572,7 @@ async function insertCalls(
 function stepFinished(
   run: Run,
   step: number,
-  ending: "antwort" | "zwischentext",
+  ending: "antwort" | "zwischentext" | "verworfen",
   servedBy?: ServedBy,
 ) {
   return {
@@ -777,7 +771,9 @@ async function announceAnswer(
   });
 }
 
-/** Feste End-Antwort von PaiBot (Herkunft `fest`), z. B. wenn eine Grenze mitten im Lauf greift. */
+/**
+ * Feste End-Antwort von PaiBot (Herkunft `fest`), z. B. wenn eine Grenze mitten im Lauf greift.
+ */
 async function fixedAnswer(
   db: Database,
   context: Ready,

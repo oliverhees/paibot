@@ -27,7 +27,6 @@ import {
   kettenStand,
   laufAusloeser,
   MAX_REPORTED_TOKENS,
-  nachAufrufen,
   schrittFakten,
   tokensHeute,
   untrustedInput,
@@ -37,14 +36,8 @@ import {
 const run = { id: newId("run") } as unknown as Run;
 
 describe("Nahtstellen", () => {
-  it("es gibt genau je eine Funktion werkzeugeFuerLauf, kettenStand, untrustedInput, nachFrage, nachAufrufen", () => {
-    for (const name of [
-      "werkzeugeFuerLauf",
-      "kettenStand",
-      "untrustedInput",
-      "nachFrage",
-      "nachAufrufen",
-    ]) {
+  it("es gibt genau je eine Funktion werkzeugeFuerLauf, kettenStand, untrustedInput, nachFrage", () => {
+    for (const name of ["werkzeugeFuerLauf", "kettenStand", "untrustedInput", "nachFrage"]) {
       expect(typeof (nahtstellen as Record<string, unknown>)[name]).toBe("function");
     }
     // Keine andere Quelle der Lauf-Steuerung definiert sie (Gegenprobe: zweite Definition → rot).
@@ -53,7 +46,7 @@ describe("Nahtstellen", () => {
       if (!existsSync(new URL(file, dir))) continue;
       const text = readFileSync(new URL(file, dir), "utf8");
       expect(text).not.toMatch(
-        /function (werkzeugeFuerLauf|kettenStand|untrustedInput|nachFrage|nachAufrufen|laufAusloeser|schrittFakten)\b/,
+        /function (werkzeugeFuerLauf|kettenStand|untrustedInput|nachFrage|laufAusloeser|schrittFakten)\b/,
       );
     }
   });
@@ -65,11 +58,7 @@ describe("Nahtstellen", () => {
     expect(kettenStand(run)).not.toBe(kettenStand(run));
   });
 
-  it("nachAufrufen liefert immer „weiter“, laufAusloeser chat", () => {
-    expect(nachAufrufen([])).toEqual({ art: "weiter" });
-    expect(nachAufrufen([{ status: "ok" }, { status: "abgelehnt", code: "abgelehnt" }])).toEqual({
-      art: "weiter",
-    });
+  it("laufAusloeser liefert chat", () => {
     expect(laufAusloeser(run)).toBe("chat");
   });
 });

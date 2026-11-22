@@ -23,7 +23,7 @@ import { decisionFormat, reevaluate } from "./nachrechnen";
 import { signedEntry, TEST_INSTALLATION, type TestKey, testKey, testSign } from "./testhilfen";
 import { verifyChain } from "./verify";
 
-/** Regel des Besitzers für Werkzeug-Aufrufe (ohne Standard-Regeln, nur in Tests). */
+/** Eigene Regel für Werkzeug-Aufrufe; nur für `evaluate` (das Tor lässt sie im Betrieb nie vor R-005 kommen). */
 const ERLAUBT_WERKZEUG: RuleDefinition = {
   id: "reg_01m7zempyq9rbb8ybyt536hjy0" as RuleDefinition["id"],
   version: 1,
@@ -308,7 +308,39 @@ describe("Aktionen, die Fassung 2 nicht kennt", () => {
 
 describe("Deckel D-01 im Beleg", () => {
   it("gedeckelte Entscheidung: fragen, Ergebnis abgelehnt mit regel_fehlt, nachrechnen ok", async () => {
+    // Im Betrieb steht R-005 („fragen“) vor jeder eigenen Regel, ein erlaubtes schreibendes
+    // Werkzeug gibt es dort nicht. Den Deckel zeigt deshalb die Entscheidung mit `evaluate` und
+    // eigenem Regelstand; die Belege werden roh angehängt (wie das Tor sie schriebe).
     const kette = await Kette.neu([ERLAUBT_WERKZEUG]);
+    const facts = {
+      ...sampleFacts("werkzeug.aufrufen"),
+      untrustedInput: true,
+      toolKind: "schreiben",
+    } as Roh;
+    const entscheidung = await kette.entscheidung("werkzeug.aufrufen", facts);
+    await kette.roh({
+      type: "result",
+      action: entscheidung.body.type === "decision" ? entscheidung.body.action : undefined,
+      result: { status: "denied", code: "regel_fehlt" },
+    });
+    const [decision, result] = kette.entries.slice(1).map((entry) => entry.body);
+    expect(decision?.type === "decision" && decision.decision).toMatchObject({
+      outcome: "ask",
+      stage: "ask",
+      caps: [{ name: "fremd_dann_fragen", result: "gedeckelt" }],
+    });
+    expect(result?.type === "result" && result.result).toEqual({
+      status: "denied",
+      code: "regel_fehlt",
+    });
+    expect(
+      reevaluate(kette.entries[1] as ReceiptEntry, (kette.snapshot as RuleSnapshot).rules),
+    ).toMatchObject({ status: "ok" });
+    expect((await kette.pruefe()).verdict.level).toBe("vertrauenswuerdig");
+  });
+
+  it("durch das Tor mit allen Standard-Regeln: R-005 fragt, nichts läuft, Ergebnis regel_fehlt, nachrechnen ok", async () => {
+    const kette = await Kette.neu(STANDARD);
     const facts = {
       ...sampleFacts("werkzeug.aufrufen"),
       untrustedInput: true,
@@ -323,8 +355,7 @@ describe("Deckel D-01 im Beleg", () => {
     const [decision, result] = kette.entries.slice(1).map((entry) => entry.body);
     expect(decision?.type === "decision" && decision.decision).toMatchObject({
       outcome: "ask",
-      stage: "ask",
-      caps: [{ name: "fremd_dann_fragen", result: "gedeckelt" }],
+      rules: [{ id: "R-005" }],
     });
     expect(result?.type === "result" && result.result).toEqual({
       status: "denied",

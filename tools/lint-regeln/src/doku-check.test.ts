@@ -32,6 +32,12 @@ const { pruefeDoku } = (await import(pathToFileURL(SCRIPT).href)) as {
   pruefeDoku: (optionen: { wurzel: string; streng?: boolean }) => Ergebnis;
 };
 
+const { findeRohesHtml } = (await import(
+  pathToFileURL(path.join(ROOT, "scripts", "doku-index", "hilfen.mjs")).href
+)) as {
+  findeRohesHtml: (text: string, erlaubt?: string[]) => { zeile: number; form: string }[];
+};
+
 const VORLAGE = [
   "# <Name>",
   "",
@@ -560,9 +566,6 @@ describe("doku:check", () => {
 });
 
 const KOPF = "<!--\nPaiBot – Kopf.\n-->\n\n";
-const BIDI = String.fromCodePoint(0x202e);
-const NULLBREITE = String.fromCodePoint(0x200b);
-const STEUER = String.fromCodePoint(0x07);
 
 /** Die Seite mit einem Satz mehr im Abschnitt „Wofür“. */
 function seiteMit(satz: string): string {
@@ -600,23 +603,136 @@ describe("doku:check – versteckte Teile (L4-5)", () => {
     expect(code).toBe(1);
   });
 
-  it.each([
-    ["ein Bidi-Zeichen (U+202E)", BIDI, "U+202E"],
-    ["ein Zeichen ohne Breite (U+200B)", NULLBREITE, "U+200B"],
-    ["ein Steuerzeichen (U+0007)", STEUER, "U+0007"],
-  ])("%s in einer beliebigen Seite ist ein Fehler", (_name, zeichen, code) => {
+  // Je Klasse ein Fall. Gegenprobe: `istUnsichtbar` in `scripts/doku-index/hilfen.mjs` auf die
+  // alte, schmale Liste (C0/C1, U+200B–U+200F, U+202A–U+202E, U+2066–U+2069, U+FEFF) → die
+  // Fälle außerhalb davon werden rot.
+  it.each(
+    [
+      ["ein Bidi-Zeichen", 0x202e],
+      ["ein Zeichen ohne Breite", 0x200b],
+      ["ein Steuerzeichen", 0x07],
+      ["ein Tag-Zeichen (Versteck für Text)", 0xe0041],
+      ["das Tag-Zeichen für den Beginn", 0xe0001],
+      ["das weiche Trennzeichen", 0xad],
+      ["ein anderes Format-Zeichen (Wortverbinder)", 0x2060],
+      ["ein mongolischer Variationswähler", 0x180b],
+      ["ein Variationswähler", 0xfe0f],
+      ["ein Variationswähler aus dem ergänzenden Bereich", 0xe0100],
+      ["ein Füllzeichen (Hangul)", 0x3164],
+      ["ein Füllzeichen (halbbreit)", 0xffa0],
+      ["der Zeilentrenner", 0x2028],
+      ["der Absatztrenner", 0x2029],
+      ["der unsichtbare Verbinder", 0x34f],
+      ["eine nicht vergebene, aber unsichtbare Stelle", 0x2065],
+    ].map(([name, cp]) => [
+      `${name} (U+${(cp as number).toString(16).toUpperCase().padStart(4, "0")})`,
+      cp,
+    ]),
+  )("%s in einer beliebigen Seite ist ein Fehler mit Datei, Zeile und Zeichen", (_name, cp) => {
+    const zeichen = String.fromCodePoint(cp as number);
+    const code = `U+${(cp as number).toString(16).toUpperCase().padStart(4, "0")}`;
     for (const datei of ["docs/funktion-beispiel.md", "docs/entwickler/beispiel.md"]) {
       const inhalt = (grundstock()[datei] ?? "").replace("Zum Testen.", `Zum Test${zeichen}en.`);
+      const zeile = inhalt.split("\n").findIndex((z) => z.includes(zeichen)) + 1;
       const ergebnis = pruefe(mit({ [datei]: inhalt }));
       expect(ergebnis.code).toBe(1);
-      expect(ergebnis.ausgabe).toContain(`Zeile`);
-      expect(ergebnis.ausgabe).toContain(code);
+      expect(ergebnis.ausgabe).toContain(
+        `${datei}: Zeile ${zeile}: Ein unsichtbares Zeichen (${code})`,
+      );
     }
+  });
+
+  it("sichtbare Zeichen (Umlaute, Euro, Emoji, CJK, leeres Braille-Zeichen im Text) bestehen den Check", () => {
+    const sichtbar = "Größe 5 € 😀 中文 \u2800 und ein Tabulator\tdazwischen.";
+    const inhalt = (grundstock()["docs/funktion-beispiel.md"] ?? "").replace(
+      "Zum Testen.",
+      sichtbar,
+    );
+    expect(pruefe(mit({ "docs/funktion-beispiel.md": inhalt }), true).code).toBe(0);
   });
 
   it("Windows-Zeilenenden sind kein Fehler", () => {
     const inhalt = (KOPF + SEITE).replace(/\n/g, "\r\n");
     expect(pruefe(mit({ "docs/funktion-beispiel.md": inhalt }), true).code).toBe(0);
+  });
+});
+
+describe("doku:check – rohes HTML und Überschriften (#85)", () => {
+  // Gegenprobe: `findeRohesHtml` im Aufruf von `checkVersteckt` (scripts/doku-check.mjs) weglassen
+  // → alle Fälle unten bestehen den Check, die Tests werden rot.
+  it.each([
+    ["ein Tag mit Verstecken-Attribut", "Text <span hidden>geheim</span> Ende."],
+    ["ein Tag mit Stil", 'Text <span style="display:none">geheim</span> Ende.'],
+    ["ein Tag über zwei Zeilen", "Text <span\nhidden>geheim</span> Ende."],
+    ["eine Erklärung der Form <!x …>", "Text <!x geheim> Ende."],
+    ["eine Verarbeitungsanweisung", "Text <?x geheim ?> Ende."],
+    ["ein CDATA-Abschnitt", "Text <![CDATA[ geheim ]]> Ende."],
+    ["ein schließendes Tag", "Text </div> Ende."],
+    ["ein Bild-Tag", '<img src="x.png" alt="x">'],
+  ])("%s im Fließtext ist ein Fehler", (_name, satz) => {
+    const { code, ausgabe } = pruefe(mit({ "docs/funktion-beispiel.md": seiteMit(satz) }));
+    expect(code).toBe(1);
+    expect(ausgabe).toMatch(/docs\/funktion-beispiel\.md: Zeile \d+: Rohes HTML im Fließtext/);
+  });
+
+  it("dasselbe in Inline-Code, im Codeblock und als Adress-Verweis ist erlaubt", () => {
+    const satz = [
+      "Schreibe `<span hidden>` oder `<!x y>` so.",
+      "",
+      "```html",
+      '<span style="display:none">x</span>',
+      "<![CDATA[ x ]]>",
+      "```",
+      "",
+      "Siehe <https://paibot.de/x> und <hi@paibot.de>. Auch 1 < 2 und 3 > 2.",
+    ].join("\n");
+    const { code, ergebnis } = pruefe(mit({ "docs/funktion-beispiel.md": seiteMit(satz) }), true);
+    expect(ergebnis.fehler).toEqual([]);
+    expect(code).toBe(0);
+  });
+
+  it("die Vorlagen mit ihren Platzhaltern in spitzen Klammern bleiben erlaubt", () => {
+    expect(pruefe(grundstock(), true).code).toBe(0);
+  });
+
+  it("erlaubte Tags: ohne Liste verboten, mit Liste erlaubt, aber nie mit hidden oder style", () => {
+    expect(findeRohesHtml("Ein <kbd>Strg</kbd> Test.").length).toBe(2);
+    expect(findeRohesHtml("Ein <kbd>Strg</kbd> Test.", ["kbd"])).toEqual([]);
+    expect(findeRohesHtml("Ein <KBD>x</KBD>.", ["kbd"])).toEqual([]);
+    for (const tag of [
+      "<kbd hidden>",
+      '<kbd style="x">',
+      "<kbd\nHIDDEN>",
+      '<kbd aria-hidden="true">',
+    ]) {
+      expect(findeRohesHtml(`A ${tag}x</kbd>`, ["kbd"]).length).toBe(1);
+    }
+    // Kommentare und `<!…>` sind nie erlaubt, auch nicht über die Liste
+    expect(findeRohesHtml("A <!x y>", ["!x", "x"]).length).toBe(1);
+  });
+
+  it("der Urheber-Kopf am Anfang zählt nicht als rohes HTML; die Zeilennummer stimmt", () => {
+    const funde = findeRohesHtml("<!--\nKopf <b>\n-->\n\nText\n<b>x</b>\n");
+    expect(funde.map((f) => f.zeile)).toEqual([6, 6]);
+  });
+
+  // Gegenprobe: `checkUeberschriften` aus `pruefeDoku` nehmen → die Fälle bestehen den Check.
+  it.each([
+    ["das leere Braille-Zeichen U+2800", "\u2800", "U+2800"],
+    ["ein Zeichen für den privaten Gebrauch U+E000", "\ue000", "U+E000"],
+    ["ein Tabulator", "\t", "U+0009"],
+  ])("%s in einer Überschrift der Anwender-Doku ist ein Fehler", (_name, zeichen, code) => {
+    const seite = seiteMit(`### Unter${zeichen}titel\n\nText.`);
+    const ergebnis = pruefe(mit({ "docs/funktion-beispiel.md": seite }));
+    expect(ergebnis.code).toBe(1);
+    expect(ergebnis.ausgabe).toContain(
+      `enthält das Zeichen ${code}, das in Titeln nicht erlaubt ist`,
+    );
+  });
+
+  it("gewöhnliche Überschriften mit Umlauten und Emoji bestehen", () => {
+    const seite = seiteMit("### Größe 😀 und Zähler\n\nText.");
+    expect(pruefe(mit({ "docs/funktion-beispiel.md": seite }), true).code).toBe(0);
   });
 });
 

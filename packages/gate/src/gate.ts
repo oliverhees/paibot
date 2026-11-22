@@ -404,10 +404,9 @@ function knownStandardHashes(): Promise<StandardHashes> {
  *   aus `ACTIVE_STANDARD_RULES` (oder aus `UNSTORED_STANDARD_RULE_VERSIONS`), mit Quelle `standard`;
  *   eine unbekannte Standard-Kennung zählt nie;
  * - ein eingeschalteter Vorschlag macht den Stand ungültig; ausgeschaltete Vorschläge fallen weg;
- * - enthält der Stand Standard-Regeln (wie jeder Stand aus der Datenbank), dann alle aus
- *   `ACTIVE_STANDARD_RULES`, und jede andere Regel liegt im Prioritäten-Band ihrer Quelle
- *   (`priorityFitsSource`). Ein Stand ganz ohne Standard-Regeln kommt nur aus Tests; die Datenbank
- *   liefert ihn nie (`rules.loadSnapshot` bricht dann ab).
+ * - immer, ohne Ausnahme: alle Regeln aus `ACTIVE_STANDARD_RULES` sind im Stand (auch der leere
+ *   Stand wird abgelehnt), keine Regel einer anderen Quelle trägt eine Kennung `R-NNN`, und jede
+ *   Regel liegt im Prioritäten-Band ihrer Quelle (`priorityFitsSource`).
  * Gibt den Regelstand ohne Vorschläge zurück.
  */
 export async function verifyRuleSnapshot(snapshot: RuleSnapshot): Promise<RuleSnapshot> {
@@ -416,7 +415,6 @@ export async function verifyRuleSnapshot(snapshot: RuleSnapshot): Promise<RuleSn
   if (!Array.isArray(rules)) failClosed();
   const known = await knownStandardHashes();
   const seen = new Set<string>();
-  let withStandard = false;
   for (const rule of snapshot.rules) {
     if (!Number.isSafeInteger(rule.seq) || rule.seq < 1 || rule.seq > stand) failClosed();
     if (!sha256DigestSchema.safeParse(rule.hash).success) failClosed();
@@ -430,16 +428,13 @@ export async function verifyRuleSnapshot(snapshot: RuleSnapshot): Promise<RuleSn
     if (rule.source === "standard" || standardId) {
       if (rule.source !== "standard") failClosed();
       if (known.active.get(rule.id) !== hash && known.unstored.get(rule.id) !== hash) failClosed();
-      withStandard = true;
     }
     if (rule.source === "proposal" && rule.enabled) failClosed();
   }
-  if (withStandard) {
-    for (const id of known.active.keys()) if (!seen.has(id)) failClosed();
-    for (const rule of snapshot.rules) {
-      if (rule.source !== "standard" && STANDARD_RULE_ID_PATTERN.test(rule.id)) failClosed();
-      if (!priorityFitsSource(rule.source, rule.priority)) failClosed();
-    }
+  for (const id of known.active.keys()) if (!seen.has(id)) failClosed();
+  for (const rule of snapshot.rules) {
+    if (rule.source !== "standard" && STANDARD_RULE_ID_PATTERN.test(rule.id)) failClosed();
+    if (!priorityFitsSource(rule.source, rule.priority)) failClosed();
   }
   const counted = snapshot.rules.filter((rule) => rule.source !== "proposal");
   return counted.length === snapshot.rules.length ? snapshot : { stand, rules: counted };

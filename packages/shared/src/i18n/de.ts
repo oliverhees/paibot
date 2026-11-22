@@ -2351,4 +2351,6 @@ export const de = {
   "schritte.antwort.schritt": "Schritt {n}",
   "schritte.antwort.werkzeug": "1 Werkzeug",
   "schritte.antwort.werkzeuge": "{n} Werkzeuge",
+  // Werkzeug „In der Doku nachschlagen“
+  "werkzeug.titel.doku_nachschlagen": "In der Doku nachschlagen",
 } as const satisfies Record<string, string | readonly string[]>;

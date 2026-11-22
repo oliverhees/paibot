@@ -73,9 +73,7 @@ Alle Befehle laufen auf dem Server im Ordner von PaiBot. Du brauchst nur Docker,
 
 10. Später jederzeit nachprüfen, ob der Stand der Sicherung noch vollständig da ist:
 
-    ```bash
-    sh deploy/sicherung.sh pruefen ~/paibot-sicherungen/paibot-sicherung-<Zeit>
-    ```
+    `sh deploy/sicherung.sh pruefen ~/paibot-sicherungen/paibot-sicherung-<Zeit>`
 
 **Mit Coolify** (noch nicht auf Coolify durchgespielt)
 

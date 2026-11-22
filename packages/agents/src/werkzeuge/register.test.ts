@@ -64,6 +64,41 @@ describe("Register der Werkzeuge", () => {
     await expect(createToolRegistry([mit({ input: z.string() as never })])).rejects.toThrow();
   });
 
+  // Gegenprobe: `hasPrototypeField` in `check` entfernen → Aufbau gelingt, Test rot.
+  it("wirft bei einem Feld in Eingabe oder Ausgabe, das wie ein Name aus Object.prototype heißt", async () => {
+    const namen = Object.getOwnPropertyNames(Object.prototype);
+    expect(namen).toEqual(expect.arrayContaining(["constructor", "toString", "__proto__"]));
+    for (const name of namen) {
+      // `__proto__` als Schlüssel nur als eigene Eigenschaft; sonst würde es den Prototyp setzen.
+      const shape: Record<string, z.ZodType> = {};
+      Object.defineProperty(shape, name, {
+        value: z.unknown(),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+      await expect(
+        createToolRegistry([mit({ input: z.strictObject(shape) as never })]),
+        `Eingabe ${name}`,
+      ).rejects.toThrow(ToolRegistryError);
+      await expect(
+        createToolRegistry([mit({ output: z.strictObject(shape) as never })]),
+        `Ausgabe ${name}`,
+      ).rejects.toThrow(ToolRegistryError);
+    }
+    // Ähnliche, aber andere Namen und verschachtelte Felder sind in Ordnung.
+    await expect(
+      createToolRegistry([
+        mit({
+          input: z.strictObject({
+            constructors: z.string(),
+            tief: z.object({ valueOf: z.string() }),
+          }) as never,
+        }),
+      ]),
+    ).resolves.toBeDefined();
+  });
+
   it("wirft für ein echtes Werkzeug mit der Platzhalter-Kennung eingebaut/unbekannt", async () => {
     await expect(createToolRegistry([mit({ key: PLACEHOLDER_TOOL_KEY })])).rejects.toThrow(
       ToolRegistryError,

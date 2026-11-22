@@ -1,7 +1,7 @@
 /**
  * PaiBot – Nahtstellen eines Laufs mit Werkzeugen und die Fakten je Schritt. Jeder dieser Werte
  * entsteht in genau einer Funktion hier; spätere Fassungen (Werkzeuge von Apps, Ketten über
- * mehrere Läufe, Freigaben, Kurzschluss nach einem Werkzeug) ändern nur diese Stellen.
+ * mehrere Läufe, Freigaben) ändern nur diese Stellen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -13,10 +13,8 @@
 import { type Database, repo } from "@paibot/db";
 import type { DeniedToolCall, GateDenied } from "@paibot/gate";
 import type { RunTrigger } from "@paibot/shared/aktionen";
-import type { ErrorCode } from "@paibot/shared/fehler";
 import type { RunId } from "@paibot/shared/ids";
 import type { Run, Settings } from "@paibot/shared/objekte";
-import type { TextKey } from "@paibot/shared/texte";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
 
 /** Zähler einer Kette: Schritte, Werkzeug-Aufrufe und Token (Eingabe plus Ausgabe). */
@@ -24,12 +22,6 @@ export interface ChainCounters {
   schritte: number;
   aufrufe: number;
   token: number;
-}
-
-/** Ausgang eines Werkzeug-Aufrufs, wie ihn `nachAufrufen` sieht. */
-export interface AufrufErgebnis {
-  status: "ok" | "fehler" | "abgelehnt";
-  code?: ErrorCode;
 }
 
 /** Nahtstelle 1: alle Werkzeuge, die dieser Lauf anbieten darf. In dieser Fassung: das Register. */
@@ -72,16 +64,6 @@ export async function untrustedInput(
 /** Nahtstelle 4: was nach „fragen“ des Tors geschieht. In dieser Fassung immer „abgelehnt“. */
 export function nachFrage(denied: GateDenied): { art: "abgelehnt"; decision: DeniedToolCall } {
   return { art: "abgelehnt", decision: denied.toolCallDecision() };
-}
-
-/**
- * Nahtstelle 5: nach allen Aufrufen eines Schritts weiter oder festes Ende. In dieser Fassung
- * immer „weiter“.
- */
-export function nachAufrufen(
-  _ergebnisse: readonly AufrufErgebnis[],
-): { art: "weiter" } | { art: "fest"; textKey: TextKey } {
-  return { art: "weiter" };
 }
 
 /** Auslöser des Laufs. In dieser Fassung gibt es nur den Chat. */

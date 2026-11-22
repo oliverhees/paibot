@@ -50,6 +50,20 @@ function unlessGone<T>(full: string, fn: (full: string) => T): T | undefined {
   }
 }
 
+/**
+ * Ist der Dateiname eine Quelle, die Code enthalten kann (alle üblichen Endungen von TypeScript und
+ * JavaScript), aber kein Test, keine Typ-Datei und keine Testhilfe?
+ */
+function istProduktionsQuelle(name: string): boolean {
+  return (
+    /\.(tsx?|jsx?|mjs|cjs|mts|cts)$/.test(name) &&
+    !/\.test\.(tsx?|jsx?|mjs|cjs|mts|cts)$/.test(name) &&
+    !/\.d\.(ts|mts|cts)$/.test(name) &&
+    name !== "testing.ts" &&
+    name !== "testhilfe.ts"
+  );
+}
+
 /** Produktions-Quellen (ohne Tests, Testhilfen und Testdaten) unter `dir`, relativ zum Projektstamm. */
 function sources(dir: string): string[] {
   const out: string[] = [];
@@ -61,13 +75,7 @@ function sources(dir: string): string[] {
       if (stat.isDirectory()) {
         if (SKIP_DIRS.has(name) || name.startsWith(".") || PROBE_DIR.test(name)) continue;
         walk(full);
-      } else if (
-        /\.(tsx?|mjs)$/.test(name) &&
-        !/\.test\.(tsx?|mjs)$/.test(name) &&
-        !name.endsWith(".d.ts") &&
-        name !== "testing.ts" &&
-        name !== "testhilfe.ts"
-      ) {
+      } else if (istProduktionsQuelle(name)) {
         out.push(path.relative(ROOT, full).split(path.sep).join("/"));
       }
     }
@@ -80,9 +88,41 @@ function sources(dir: string): string[] {
 const read = (file: string) =>
   unlessGone(path.join(ROOT, file), (full) => readFileSync(full, "utf8")) ?? "";
 
-/** Text ohne Block-Kommentare und ohne Zeilen, die nur aus einem Kommentar bestehen. */
+/**
+ * Text ohne Kommentare: Block-Kommentare und Zeilen-Kommentare, auch hinter Code
+ * (`{ limit: 5, // nurAntworten: true }`). Zeichenketten und Vorlagen-Texte bleiben unverändert,
+ * auch wenn `//` darin steht (etwa in einer Adresse). Ein Anführungszeichen gilt bis zum Zeilenende
+ * (außer Rückwärts-Apostroph), damit ein Apostroph in einem Text den Rest nicht verschluckt.
+ */
 function ohneKommentare(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  let out = "";
+  let quote: string | undefined;
+  let i = 0;
+  while (i < text.length) {
+    const c = text[i] as string;
+    const next = text[i + 1];
+    if (quote !== undefined) {
+      out += c;
+      if (c === "\\" && next !== undefined) {
+        out += next;
+        i += 2;
+        continue;
+      }
+      if (c === quote || (c === "\n" && quote !== "`")) quote = undefined;
+      i += 1;
+    } else if (c === "/" && next === "/") {
+      while (i < text.length && text[i] !== "\n") i += 1;
+    } else if (c === "/" && next === "*") {
+      const end = text.indexOf("*/", i + 2);
+      i = end < 0 ? text.length : end + 2;
+      out += " ";
+    } else {
+      if (c === '"' || c === "'" || c === "`") quote = c;
+      out += c;
+      i += 1;
+    }
+  }
+  return out;
 }
 
 /** So liest Code die Tabelle `messages` (Zugriffsfunktionen, Suche, Abfragen, Lesestand der Web-App). */
@@ -90,8 +130,19 @@ const LESER: readonly RegExp[] = [
   /\brepo\.messages\./,
   /\brepo\.search\.messageHits\b/,
   /\bquery\.messages\b/,
-  /\.from\(messages\)/,
   /\bladeVerlauf\(/,
+  // Tabelle unter eigenem Namen oder über das Schema: Import mit `as`, `schema.messages`,
+  // `.from(x.messages)`, `join(messages`
+  /\bmessages\s+as\s+\w+/,
+  /\b\w*[sS]chema\.messages\b/,
+  /\.from\(\s*(?:\w+\.)?messages\s*\)/,
+  /[jJ]oin\(\s*(?:\w+\.)?messages\b/,
+  // Zerlegen: `const { messages } = repo`, `const { messages: m } = repo`
+  /\{[^{}]*\bmessages\b\s*(?::\s*\w+\s*)?(?:,[^{}]*)?\}\s*=[^=>]/,
+  // Schreibweise mit Klammern: `repo["messages"]`
+  /\[\s*["']messages["']\s*\]/,
+  // rohes SQL: `from messages`, `join messages`, auch mit Schema-Namen oder Anführungszeichen
+  /\b(?:from|join)\s+(?:"?\w+"?\.)?"?messages\b/i,
 ];
 
 /** Dateien (aus `texte`: Pfad → Inhalt), die Nachrichten lesen, sortiert. */
@@ -195,5 +246,90 @@ describe("Wer Nachrichten liest", () => {
     ]);
     expect(leserDateien(probe)).toEqual(["a.ts", "b.ts", "c.ts", "e.ts", "f.ts", "g.ts"]);
     expect(ohneNurAntworten(probe).map((f) => f.split(":")[0])).toEqual(["a.ts", "b.ts"]);
+  });
+
+  // Gegenprobe: ein Muster aus `LESER` streichen → die zugehörige Schreibweise hier wird rot.
+  it("erkennt die Tabelle auch unter anderem Namen, zerlegt, als rohes SQL und im Schema", () => {
+    const proben: [string, string][] = [
+      [
+        "import-as",
+        'import { messages as nachr } from "@paibot/db/repo";\nawait db.select().from(nachr);',
+      ],
+      ["zerlegt", "const { messages } = repo;"],
+      ["zerlegt-umbenannt", "const { messages: m, runs } = repo;"],
+      ["sql", "await db.execute(sql`select content from messages where id = 1`);"],
+      ["sql-schema", 'await db.execute(sql`select 1 from public."messages"`);'],
+      ["sql-join", "sql`select * from runs join messages on messages.run_id = runs.id`"],
+      ["schema-from", "db.select().from(schema.messages);"],
+      ["from-name", "db.select().from(tabellen.messages);"],
+      ["join", "q.innerJoin(messages, eq(a, b));"],
+      ["join-schema", "q.leftJoin(schema.messages, eq(a, b));"],
+      ["klammern", 'await repo["messages"].get(db, id);'],
+    ];
+    for (const [name, code] of proben) {
+      expect(leserDateien(new Map([[`${name}.ts`, code]])), name).toEqual([`${name}.ts`]);
+    }
+  });
+
+  it("meldet nichts bei ähnlichem, das keine Nachrichten liest", () => {
+    const harmlos = new Map([
+      ["a.ts", "const fehler = 'Es gibt keine messages mehr';"],
+      ["b.ts", "const { runs } = repo; const o = { messages: 5 };"],
+      ["c.ts", "// const { messages } = repo;\n/* from messages */ const x = 1;"],
+      ["d.ts", "const text = 'Nachrichten from users';"],
+    ]);
+    expect(leserDateien(harmlos)).toEqual([]);
+  });
+
+  it("nimmt alle Endungen von TypeScript und JavaScript auf, aber weder Tests noch Typ-Dateien", () => {
+    for (const name of ["a.ts", "a.tsx", "a.js", "a.jsx", "a.mjs", "a.cjs", "a.mts", "a.cts"]) {
+      expect(istProduktionsQuelle(name), name).toBe(true);
+    }
+    for (const name of [
+      "a.test.ts",
+      "a.test.js",
+      "a.test.cjs",
+      "a.test.mts",
+      "a.d.ts",
+      "a.d.mts",
+      "a.d.cts",
+      "a.json",
+      "a.md",
+      "testing.ts",
+    ]) {
+      expect(istProduktionsQuelle(name), name).toBe(false);
+    }
+  });
+
+  // Gegenprobe: in `ohneKommentare` die Zeilen-Kommentare hinter Code nicht mehr entfernen → rot.
+  it("ein Filter, der nur im Kommentar steht, zählt nicht", () => {
+    const probe = new Map([
+      [
+        "a.ts",
+        "await repo.messages.listForConversation(tx, id, { limit: 5, // nurAntworten: true\n });",
+      ],
+      [
+        "b.ts",
+        "await repo.messages.listForConversation(tx, id, { limit: 5, /* nurAntworten: true */ });",
+      ],
+      [
+        "c.ts",
+        "await repo.messages.listForConversation(tx, id, { limit: 5,\n // nurAntworten: true\n });",
+      ],
+      [
+        "d.ts",
+        "await repo.messages.listForConversation(tx, id, { nurAntworten: true, limit: 5 }); // fertig",
+      ],
+      ["e.ts", 'await repo.messages.listForConversation(tx, "http://x", { nurAntworten: true });'],
+      ["f.ts", "await repo.messages.listForConversation(tx, it's, { nurAntworten: true });"],
+    ]);
+    expect(ohneNurAntworten(probe).map((f) => f.split(":")[0])).toEqual(["a.ts", "b.ts", "c.ts"]);
+  });
+
+  it("Kommentare werden entfernt, Zeichenketten mit // bleiben", () => {
+    expect(ohneKommentare("a // b\nc")).toBe("a \nc");
+    expect(ohneKommentare("a /* b */ c")).toBe("a   c");
+    expect(ohneKommentare('const u = "http://x"; // weg')).toBe('const u = "http://x"; ');
+    expect(ohneKommentare("const t = `a // b`;")).toBe("const t = `a // b`;");
   });
 });

@@ -33,6 +33,7 @@ interface Abschnitt {
   seite: string;
   anker: string;
   titel: string;
+  pfad: string[];
   text: string;
 }
 interface Index {
@@ -90,10 +91,25 @@ function projekt(seiten: Record<string, string>): string {
 
 const A = ["docs/funktion-*.md"];
 
+/** Kopie der echten Doku (ohne Bilder) und von package.json in einem eigenen Temp-Ordner. */
+function echteKopie(): string {
+  const dir = tmp();
+  cpSync(path.join(ROOT, "docs"), path.join(dir, "docs"), {
+    recursive: true,
+    filter: (src) => !src.includes(`${path.sep}assets`),
+  });
+  cpSync(path.join(ROOT, "package.json"), path.join(dir, "package.json"));
+  return dir;
+}
+
 describe("Bereinigung (L4-1)", () => {
-  const unsichtbar = [0x202e, 0x200b, 0x200f, 0xfeff, 0x2066, 0x0007].map((c) =>
-    String.fromCodePoint(c),
-  );
+  // Dazu die Klassen, die der Lader des Index ebenfalls ablehnt: Tag-Zeichen, weiches
+  // Trennzeichen, Wortverbinder, Variationswähler, Füllzeichen, Zeilen- und Absatztrenner.
+  // Gegenprobe: `istUnsichtbar` auf die alte, schmale Liste → rot.
+  const unsichtbar = [
+    0x202e, 0x200b, 0x200f, 0xfeff, 0x2066, 0x0007, 0xe0041, 0xe0001, 0xad, 0x2060, 0x180b, 0xfe0f,
+    0xe0100, 0x3164, 0xffa0, 0x2028, 0x2029, 0x34f,
+  ].map((c) => String.fromCodePoint(c));
 
   function indexMitZeichen(): Index {
     const dir = kopie("bereinigung");
@@ -138,9 +154,30 @@ describe("Bereinigung (L4-1)", () => {
       seite: "funktion-a.md",
       anker: "seite-a",
       titel: "Seite A",
+      pfad: ["Seite A"],
       text: "Einleitung TESTDATEN-MARKE-BEREINIGUNG bleibt stehen.",
     });
     expect(abschnitte[2]?.titel).toBe("Unterabschnitt: mit Satzzeichen!");
+  });
+
+  it("jeder Abschnitt kennt die Überschriften über sich: von der Seite abwärts bis zur eigenen", () => {
+    const { abschnitte } = indexMitZeichen() as Index;
+    expect(abschnitte.map((a) => a.pfad)).toEqual([
+      ["Seite A"],
+      ["Seite A", "Erster Abschnitt"],
+      ["Seite A", "Erster Abschnitt", "Unterabschnitt: mit Satzzeichen!"],
+      ["Seite A", "Zweiter Abschnitt"],
+    ]);
+    const dir = projekt({
+      "docs/funktion-a.md":
+        "# T\n\n## Eins\n\n### Unter\n\nText\n\n## Zwei\n\nText\n\n### Drei\n\nText\n",
+    });
+    const { abschnitte: b } = baueIndex({ wurzel: dir, liste: A }).index;
+    expect(b.map((a) => a.pfad)).toEqual([
+      ["T", "Eins", "Unter"],
+      ["T", "Zwei"],
+      ["T", "Zwei", "Drei"],
+    ]);
   });
 
   it("eine Zeile mit „#“ im Codeblock ist keine Überschrift", () => {
@@ -152,11 +189,27 @@ describe("Bereinigung (L4-1)", () => {
     expect(abschnitte[0]?.text).toContain("## nicht-ueberschrift");
   });
 
+  it("die Datei ist so formatiert, wie die Formatierung des Repos sie schreibt: kurzer Pfad in einer Zeile, langer je Titel eine Zeile", () => {
+    const lang = `Ein sehr langer Titel ${"x".repeat(60)}`;
+    const dir = projekt({
+      "docs/funktion-a.md": `# Kurz\n\nText\n\n## ${lang}\n\nText\n`,
+    });
+    const { index, text } = baueIndex({ wurzel: dir, liste: A });
+    expect(JSON.parse(text)).toEqual(index);
+    expect(text).toContain('      "pfad": ["Kurz"],\n');
+    expect(text).toContain(`      "pfad": [\n        "Kurz",\n        "${lang}"\n      ],\n`);
+    for (const zeile of text.split("\n")) {
+      if (zeile.includes('"pfad": [') && zeile.endsWith("],")) {
+        expect([...zeile].length).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
   it("Format und Stand: Schlüssel in fester Reihenfolge, Version aus package.json", () => {
     const { index, text } = baueIndex({ wurzel: kopie("bereinigung"), liste: A });
     expect(Object.keys(index)).toEqual(["format", "v", "stand", "abschnitte"]);
     expect(index.format).toBe("pb-doku-index");
-    expect(index.v).toBe(1);
+    expect(index.v).toBe(2);
     expect(index.stand.version).toBe("9.9.9");
     expect(index.stand.pruefsumme).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(Object.keys(index.abschnitte[0] ?? {})).toEqual([
@@ -164,6 +217,7 @@ describe("Bereinigung (L4-1)", () => {
       "seite",
       "anker",
       "titel",
+      "pfad",
       "text",
     ]);
     expect(text.endsWith("\n")).toBe(true);
@@ -242,11 +296,62 @@ describe("Abbruch beim Bau (L4-8)", () => {
   });
 
   it("Ausgang des Befehls ist 1 bei Abbruch und 0 beim Erfolg", () => {
-    // Erfolg nur mit allen Seiten der echten Liste: die echte Wurzel
-    const ok = lauf(ROOT);
+    // Erfolg nur mit allen Seiten der echten Liste: eine Kopie der echten Doku in einem eigenen
+    // Ordner unter dem Temp-Ordner (der Befehl schreibt `doku-index/` in seine Wurzel; im
+    // Arbeitsbaum soll dabei nichts entstehen).
+    const ok = lauf(echteKopie());
     expect(ok.code).toBe(0);
     expect(ok.ausgabe).toMatch(/^Doku-Index: \d+ Seiten, \d+ Abschnitte, \d+ Bytes/);
     expect(lauf(projekt({})).code).toBe(1);
+  });
+});
+
+describe("Reihenfolge der Bereinigung (#85)", () => {
+  // Gegenprobe: in `zerlege` (scripts/doku-index/hilfen.mjs) wieder erst `entferneKommentare`,
+  // dann `entferneUnsichtbares` aufrufen → der Kommentartext bleibt im Index stehen.
+  it("ein Kommentar, dessen Zeichen durch unsichtbare Zeichen getrennt sind, verschwindet ganz", async () => {
+    const { zerlege } = (await import(
+      pathToFileURL(path.join(ROOT, "scripts", "doku-index", "hilfen.mjs")).href
+    )) as { zerlege: (roh: string) => { text: string }[] };
+    for (const z of ["\u200b", "\u202e", "\u{e0041}", "\u00ad"]) {
+      for (const roh of [
+        `# T\n\n## A\n\nVor <!${z}-- GEHEIM -->nach.\n`,
+        `# T\n\n## A\n\nVor <!-${z}- GEHEIM -${z}->nach.\n`,
+        `# T\n\n## A\n\nVor <${z}!-- GEHEIM --${z}>nach.\n`,
+      ]) {
+        const text = JSON.stringify(zerlege(roh));
+        expect(text).not.toContain("GEHEIM");
+        expect(text).toContain("Vor nach.");
+      }
+    }
+  });
+});
+
+describe("Titel und Pfad: Zeichen, die dort nicht stehen dürfen", () => {
+  const seite = (kopf: string) => `# Seite\n\n## Erste\n\nText.\n\n${kopf}\n\nMehr Text.\n`;
+
+  // Gegenprobe: die Prüfung `findeUnerlaubtImTitel` in `baueIndex` entfernen → der Bau gelingt.
+  it.each([
+    ["leeres Braille-Zeichen U+2800", "### Unter\u{2800}titel"],
+    ["Zeichen für den privaten Gebrauch U+E000", "### Unter\u{E000}titel"],
+    ["Zeichen für den privaten Gebrauch U+F0000", "### Unter\u{F0000}titel"],
+  ])("%s in einer Überschrift: der Bau bricht mit Meldung und Zeichen ab", (_name, kopf) => {
+    const dir = projekt({ "docs/funktion-a.md": seite(kopf) });
+    expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(IndexFehler);
+    expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(/U\+(2800|E000|F0000)/);
+  });
+
+  it("ein Zeilenumbruch im Titel kann nicht entstehen: die Überschrift endet an der Zeile", () => {
+    const dir = projekt({ "docs/funktion-a.md": seite("### Eins\nZwei") });
+    const { index } = baueIndex({ wurzel: dir, liste: A });
+    expect(index.abschnitte.every((a) => !a.titel.includes("\n"))).toBe(true);
+    expect(index.abschnitte.flatMap((a) => a.pfad).every((t) => !t.includes("\n"))).toBe(true);
+  });
+
+  it("sichtbare Zeichen (Umlaute, Emoji, CJK) in Überschriften bleiben erlaubt", () => {
+    const dir = projekt({ "docs/funktion-a.md": seite("### Größe 😀 中文") });
+    const { index } = baueIndex({ wurzel: dir, liste: A });
+    expect(index.abschnitte.map((a) => a.titel)).toContain("Größe 😀 中文");
   });
 });
 
@@ -274,12 +379,7 @@ describe("Wiederholbar (L4-9)", () => {
   });
 
   it("der echte Befehl schreibt die Datei im Projektstamm und zweimal dieselbe", () => {
-    const dir = tmp();
-    cpSync(path.join(ROOT, "docs"), path.join(dir, "docs"), {
-      recursive: true,
-      filter: (src) => !src.includes(`${path.sep}assets`),
-    });
-    cpSync(path.join(ROOT, "package.json"), path.join(dir, "package.json"));
+    const dir = echteKopie();
     const lauf = () => spawnSync(process.execPath, [SCRIPT, "--wurzel", dir], { encoding: "utf8" });
     expect(lauf().status).toBe(0);
     const erste = readFileSync(path.join(dir, "doku-index", "doku-index.json"));

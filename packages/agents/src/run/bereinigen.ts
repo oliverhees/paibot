@@ -9,6 +9,7 @@
  * @since     2026-11-22
  */
 
+import { BOUNDED_JSON_LIMITS } from "@paibot/shared/belege";
 import type { JsonValue } from "@paibot/shared/motor";
 
 /**
@@ -75,6 +76,65 @@ export function setOwn(target: { [key: string]: JsonValue }, key: string, value:
     writable: true,
     configurable: true,
   });
+}
+
+/**
+ * Obergrenzen der Vorprüfung `jsonUeberGrenzen`, aus den festen Grenzen der Hülle
+ * (`BOUNDED_JSON_LIMITS`) abgeleitet und bewusst großzügig: Sie sollen nur verhindern, dass die
+ * rekursiven Funktionen unten an einem Riesenwert arbeiten, nicht den Inhalt bemessen (das tun
+ * später das Schema des Werkzeugs und `truncateContent`).
+ *
+ * - Tiefe: genau die feste Grenze (`depth`, 8 Ebenen); tiefer kann kein Wert in die Hülle.
+ * - Knoten (Werte und Schlüssel zusammen): Einträge einer Liste mal Schlüssel eines Objekts mal
+ *   Tiefe (256 · 64 · 8 = 131 072), weit mehr, als ein Werkzeug sinnvoll liefert.
+ * - Zeichen (Zeichenketten und Schlüssel zusammen): Einträge einer Liste mal Länge einer
+ *   Zeichenkette (256 · 4 000 = 1 024 000), ein Vielfaches des Ergebnis-Limits.
+ */
+export const JSON_PRUEFUNG_GRENZEN = {
+  depth: BOUNDED_JSON_LIMITS.depth,
+  nodes: BOUNDED_JSON_LIMITS.items * BOUNDED_JSON_LIMITS.keys * BOUNDED_JSON_LIMITS.depth,
+  chars: BOUNDED_JSON_LIMITS.items * BOUNDED_JSON_LIMITS.text,
+} as const;
+
+/**
+ * Vorprüfung ohne Rekursion: Überschreitet der Wert Tiefe, Knotenzahl oder Zeichenmenge der
+ * `JSON_PRUEFUNG_GRENZEN`? Sie läuft vor jedem Bereinigen und Prüfen einer Eingabe oder eines
+ * Ergebnisses, nutzt einen eigenen Stapel (kein Überlauf des Aufrufstapels) und bricht beim ersten
+ * Verstoß ab. Ein Kreis im Wert (ein Objekt, das sich selbst enthält) reißt die Tiefe und endet
+ * deshalb ebenfalls. Die Wurzel liegt auf Ebene 1; ein Objekt oder eine Liste auf Ebene 9 ist zu
+ * tief, ein einfacher Wert dort noch erlaubt (wie bei `boundedJsonSchema`).
+ */
+export function jsonUeberGrenzen(value: unknown): boolean {
+  const limits = JSON_PRUEFUNG_GRENZEN;
+  const stack: { value: unknown; depth: number }[] = [{ value, depth: 1 }];
+  let nodes = 0;
+  let chars = 0;
+  for (let top = stack.pop(); top !== undefined; top = stack.pop()) {
+    if (++nodes > limits.nodes) return true;
+    const current = top.value;
+    if (typeof current === "string") {
+      chars += current.length;
+      if (chars > limits.chars) return true;
+    } else if (current !== null && typeof current === "object") {
+      if (top.depth > limits.depth) return true;
+      if (Array.isArray(current)) {
+        // Auch Lücken zählen: eine Liste mit riesiger Länge bricht sofort ab.
+        if (nodes + current.length > limits.nodes) return true;
+        for (let i = 0; i < current.length; i++) {
+          stack.push({ value: current[i], depth: top.depth + 1 });
+        }
+      } else {
+        const keys = Object.keys(current);
+        if (nodes + keys.length > limits.nodes) return true;
+        for (const key of keys) {
+          chars += key.length;
+          if (chars > limits.chars) return true;
+          stack.push({ value: (current as Record<string, unknown>)[key], depth: top.depth + 1 });
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /** Jede Zeichenkette eines JSON-Werts (auch Schlüssel) bereinigt; die Form bleibt gleich. */

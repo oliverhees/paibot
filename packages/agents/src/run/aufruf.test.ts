@@ -17,12 +17,19 @@ import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { type ActionId, type ConversationId, newId, type RunId } from "@paibot/shared/ids";
 import type { JsonValue, ToolCall } from "@paibot/shared/motor";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createFakeMotor } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
 import { createTestTools } from "../testing/werkzeuge";
 import { createToolRegistry } from "../werkzeuge/register";
-import { abortCode, invokeTool, MAX_STORED_RAW_INPUT_CHARS, prepareCalls } from "./aufruf";
+import {
+  abortCode,
+  invokeTool,
+  MAX_STORED_RAW_INPUT_CHARS,
+  outcomeEnvelope,
+  prepareCalls,
+} from "./aufruf";
+import * as bereinigen from "./bereinigen";
 
 const contextKey = deriveKey(
   loadMasterSecret({ PAIBOT_SECRET: randomBytes(32).toString("base64") }),
@@ -332,5 +339,124 @@ describe("Normalisieren", () => {
     expect(abortCode({ kind: "lesen", reach: "intern" })).toBe("unterbrochen");
     expect(abortCode({ kind: "schreiben", reach: "intern" })).toBe("ausgang_unbekannt");
     expect(abortCode({ kind: "lesen", reach: "nach_aussen" })).toBe("ausgang_unbekannt");
+  });
+});
+
+/** `{ a: { a: … 1 } }` mit `levels` Objekten ineinander (ohne Rekursion gebaut). */
+function nested(levels: number): JsonValue {
+  let value: unknown = 1;
+  for (let i = 0; i < levels; i++) value = { a: value };
+  return value as JsonValue;
+}
+
+// Gegenprobe: Vorprüfung in `prepareCalls` und `outcomeEnvelope` ausbauen → bei 10 000 Ebenen wirft
+// die rekursive Prüfung einen RangeError, die Fälle hier werden rot.
+describe("Vorprüfung vor dem Bereinigen", () => {
+  it("Eingabe mit 10 000 Ebenen: ungültig, kein Wurf, Werkzeug-Schema und Bereinigen bleiben ungenutzt", async () => {
+    const registry = await createToolRegistry(createTestTools().tools);
+    const tool = registry.byModelName("test_lesen");
+    if (tool === undefined) throw new Error("fehlt");
+    const parse = vi.spyOn(tool.definition.input, "safeParse");
+    const clean = vi.spyOn(bereinigen, "cleanJson");
+    const unwanted = vi.spyOn(bereinigen, "jsonHasUnwanted");
+    try {
+      const [call] = prepareCalls([wish({ input: nested(10_000) })], {
+        registry,
+        offered: new Set(["test_lesen"]),
+        contextKey,
+        runId,
+        conversationId,
+      });
+      expect(call?.inputValid).toBe(false);
+      expect(call?.storedInput).toEqual({ roh: "" });
+      expect(parse).not.toHaveBeenCalled();
+      expect(clean).not.toHaveBeenCalled();
+      expect(unwanted).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("Eingabe mit einer Million Schlüsseln und mit Kreis: ungültig, schneller Abbruch ohne Bereinigen", async () => {
+    const wide: Record<string, number> = {};
+    for (let i = 0; i < 1_000_000; i++) wide[`k${i}`] = i;
+    const cycle: Record<string, unknown> = {};
+    cycle.q = cycle;
+    const unwanted = vi.spyOn(bereinigen, "jsonHasUnwanted");
+    try {
+      for (const input of [wide, cycle]) {
+        const [call] = await prepare([wish({ input: input as JsonValue })]);
+        expect(call?.inputValid).toBe(false);
+      }
+      expect(unwanted).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("Eingabe genau an der Grenze (8 Ebenen) wird weiter geprüft, eine Ebene mehr abgelehnt", async () => {
+    // Das Test-Werkzeug nimmt nur `q`; die Form ist hier ungültig, aber aus anderem Grund:
+    // entscheidend ist, ob die Vorprüfung durchlässt (Schema wird gefragt) oder nicht.
+    const registry = await createToolRegistry(createTestTools().tools);
+    const tool = registry.byModelName("test_lesen");
+    if (tool === undefined) throw new Error("fehlt");
+    const parse = vi.spyOn(tool.definition.input, "safeParse");
+    try {
+      const deps = {
+        registry,
+        offered: new Set(["test_lesen"]),
+        contextKey,
+        runId,
+        conversationId,
+      };
+      prepareCalls([wish({ input: { q: nested(7) } })], deps);
+      expect(parse).toHaveBeenCalledTimes(1);
+      parse.mockClear();
+      prepareCalls([wish({ input: { q: nested(8) } })], deps);
+      expect(parse).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("Ergebnis mit 10 000 Ebenen, mit Kreis oder mit einer Million Schlüsseln: Hülle fehler, kein Wurf", async () => {
+    const registry = await createToolRegistry(createTestTools().tools);
+    const tool = registry.byModelName("test_lesen");
+    if (tool === undefined) throw new Error("fehlt");
+    const cycle: Record<string, unknown> = {};
+    cycle.q = cycle;
+    const wide: Record<string, number> = {};
+    for (let i = 0; i < 1_000_000; i++) wide[`k${i}`] = i;
+    const parse = vi.spyOn(tool.definition.output, "safeParse");
+    try {
+      for (const output of [nested(10_000), cycle, wide]) {
+        const envelope = outcomeEnvelope(
+          { status: "ok", output: output as never },
+          tool,
+          { toolResultMaxChars: 16_000 },
+          16_000,
+          () => {},
+        );
+        expect(envelope.status).toBe("fehler");
+        expect(envelope).toMatchObject({ art: "daten", code: "werkzeug_fehler" });
+      }
+      expect(parse).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("gültiges Ergebnis bleibt unverändert: Hülle ok", async () => {
+    const registry = await createToolRegistry(createTestTools().tools);
+    const tool = registry.byModelName("test_lesen");
+    if (tool === undefined) throw new Error("fehlt");
+    const envelope = outcomeEnvelope(
+      { status: "ok", output: { antwort: "Hallo" } as never },
+      tool,
+      { toolResultMaxChars: 16_000 },
+      16_000,
+      () => {},
+    );
+    expect(envelope.status).toBe("ok");
   });
 });

@@ -313,8 +313,6 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
     "packages/receipts/src/testhilfen.ts": "Testhilfe (in der Regel ausgenommen)",
     "packages/receipts/src/testdaten/kette-l1-erzeugen.ts":
       "Testdaten: erzeugt eine feste Beleg-Kette (in der Regel ausgenommen)",
-    "packages/receipts/src/testdaten/kette-l2.ts":
-      "Testdaten: Regel-Bedingung in einer festen Kette",
     "packages/gate/src/testdaten.ts": "Testdaten für die Tor-Tests",
     "packages/db/src/testdaten.ts": "Testdaten für die Datenbank-Tests",
   };

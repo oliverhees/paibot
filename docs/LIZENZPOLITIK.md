@@ -12,14 +12,14 @@ Seit:      2026-11-07
 
 PaiBot steht unter der PaiBot Fair-Code-Lizenz, Version 1.1. Damit das so bleiben kann, gelten für Abhängigkeiten diese Regeln.
 
-| Lizenz                                     | Erlaubt?                 | Hinweis                                             |
-| ------------------------------------------ | ------------------------ | --------------------------------------------------- |
-| MIT, Apache-2.0, BSD-2/3-Clause, ISC, 0BSD | ✅ ja                    | Standard                                            |
-| LGPL                                       | ⚠️ nur dynamisch gelinkt | z. B. libvips über `sharp` in Next.js               |
-| MPL-2.0                                    | ⚠️ nach Prüfung          | Dateien unverändert lassen                          |
-| GPL, AGPL                                  | ❌ nicht im App-Code     | AGPL nur als separater Dienst (z. B. Datenschleuse) |
-| SSPL, BUSL, Elastic, Commons Clause        | ❌ nein                  | auch nicht als Bibliothek                           |
-| unbekannt / keine Lizenz                   | ❌ nein                  | –                                                   |
+| Lizenz                                     | Erlaubt?                | Hinweis                                             |
+| ------------------------------------------ | ----------------------- | --------------------------------------------------- |
+| MIT, Apache-2.0, BSD-2/3-Clause, ISC, 0BSD | ✅ ja                   | Standard                                            |
+| LGPL                                       | ⚠ nur dynamisch gelinkt | z. B. libvips über `sharp` in Next.js               |
+| MPL-2.0                                    | ⚠ nach Prüfung          | Dateien unverändert lassen                          |
+| GPL, AGPL                                  | ❌ nicht im App-Code    | AGPL nur als separater Dienst (z. B. Datenschleuse) |
+| SSPL, BUSL, Elastic, Commons Clause        | ❌ nein                 | auch nicht als Bibliothek                           |
+| unbekannt / keine Lizenz                   | ❌ nein                 | –                                                   |
 
 `pnpm licenses:check` prüft die Produktions-Abhängigkeiten in der CI. Ausnahmen werden in `scripts/check-licenses.mjs` mit Begründung eingetragen.
 

@@ -11,19 +11,45 @@
 // Gemeinsam benutzt von scripts/doku-index.mjs (Index bauen) und scripts/doku-check.mjs (Doku
 // prüfen). Nur Node-Bordmittel.
 
+/**
+ * Zeichen, die in der Doku nie stehen bleiben: Steuerzeichen außer Zeilenumbruch und Tabulator,
+ * alle Format-Zeichen (`\p{Cf}`: Bidi, Nullbreite, weiches Trennzeichen, Tag-Zeichen), alles, was
+ * Unicode als „standardmäßig unsichtbar“ führt (`Default_Ignorable_Code_Point`), Variationswähler
+ * und Füllzeichen, Zeilen- und Absatztrenner. Muss dieselbe Menge sein wie `UNWANTED_SOURCE` in
+ * `packages/agents/src/run/bereinigen.ts`, die der Lader des Index benutzt; der Test
+ * `packages/agents/src/werkzeuge/doku/unsichtbare-zeichen.test.ts` vergleicht beide für jeden
+ * Codepunkt und wird rot, sobald sie auseinanderlaufen.
+ */
+const UNSICHTBAR_QUELLE =
+  "[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\p{Cf}\\p{Default_Ignorable_Code_Point}\\u034f\\u115f\\u1160\\u180e\\u2028\\u2029\\u3164\\ufe00-\\ufe0f\\uffa0\\u{e0100}-\\u{e01ef}]";
+const UNSICHTBAR = new RegExp(UNSICHTBAR_QUELLE, "u");
+
 /** Unsichtbares, Bidi- und Steuerzeichen (außer Zeilenumbruch und Tabulator)? */
 export function istUnsichtbar(zeichen) {
-  const cp = zeichen.codePointAt(0);
-  if (cp === undefined) return false;
-  if (cp === 0x0a || cp === 0x09) return false;
-  return (
-    cp < 0x20 ||
-    (cp >= 0x7f && cp <= 0x9f) ||
-    (cp >= 0x200b && cp <= 0x200f) ||
-    (cp >= 0x202a && cp <= 0x202e) ||
-    (cp >= 0x2066 && cp <= 0x2069) ||
-    cp === 0xfeff
-  );
+  return UNSICHTBAR.test(zeichen);
+}
+
+/**
+ * Zusätzlich in Titeln, Überschriften-Pfaden und Kennungen (nicht im Fließtext): Zeilenumbruch,
+ * Tabulator, das leere Braille-Muster U+2800 und Zeichen für den privaten Gebrauch (`\p{Co}`).
+ * Dieselbe Menge prüft der Lader des Index (`index-laden.ts#unerlaubtImTitel`); der Test
+ * `unsichtbare-zeichen.test.ts` vergleicht beide.
+ */
+const TITEL_ZUSATZ = /[\n\t\u2800\p{Co}]/u;
+
+/** Darf dieses Zeichen nicht in einem Titel, Pfad oder einer Kennung stehen? */
+export function istUnerlaubtImTitel(zeichen) {
+  return istUnsichtbar(zeichen) || TITEL_ZUSATZ.test(zeichen);
+}
+
+/** Das erste Zeichen eines Titels, das dort nicht stehen darf, als „U+XXXX“; sonst `null`. */
+export function findeUnerlaubtImTitel(text) {
+  for (const zeichen of text) {
+    if (istUnerlaubtImTitel(zeichen)) {
+      return `U+${zeichen.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`;
+    }
+  }
+  return null;
 }
 
 /** Zeilenenden vereinheitlichen. */
@@ -93,15 +119,23 @@ const UEBERSCHRIFT = /^(#{1,3})[ \t]+(.+?)[ \t]*#*[ \t]*$/;
 /**
  * Zerlegt eine Seite in Abschnitte: Text unter der Überschrift erster Ebene (falls vorhanden) und je
  * eine Überschrift zweiter und dritter Ebene. Der Text ist bereinigt (siehe `bereinige`).
- * Rückgabe: [{ anker, titel, text }] ohne Abschnitte, die keinen Text oder keine Überschrift haben.
+ * Rückgabe: [{ anker, titel, pfad, text }] ohne Abschnitte, die keinen Text oder keine Überschrift
+ * haben. `pfad` sind die Titel der Überschriften von der Seite abwärts bis zur eigenen (erste bis
+ * dritte Ebene, die eigene zuletzt), bereinigt wie der Titel; eine Überschrift ohne Titel fehlt darin.
  */
 export function zerlege(roh) {
-  const text = entferneUnsichtbares(entferneKommentare(normalisiere(roh)));
+  // Erst Unsichtbares entfernen, dann Kommentare: Sonst bliebe ein Kommentar, dessen Zeichen
+  // (`<!` und `--`) durch ein unsichtbares Zeichen getrennt sind, als Text stehen.
+  const text = entferneKommentare(entferneUnsichtbares(normalisiere(roh)));
   const abschnitte = [];
   let aktuell = null;
   let zaun = null;
-  const neu = (titel) => {
-    aktuell = { titel, zeilen: [] };
+  /** Offene Überschriften über der aktuellen Stelle: [{ ebene, titel }], oberste zuerst. */
+  const offen = [];
+  const neu = (ebene, titel) => {
+    while (offen.length > 0 && offen[offen.length - 1].ebene >= ebene) offen.pop();
+    if (titel !== "") offen.push({ ebene, titel });
+    aktuell = { titel, pfad: offen.map((o) => o.titel), zeilen: [] };
     abschnitte.push(aktuell);
   };
   for (const zeile of text.split("\n")) {
@@ -125,7 +159,7 @@ export function zerlege(roh) {
     }
     const kopf = UEBERSCHRIFT.exec(zeile);
     if (kopf) {
-      neu(bereinigeZeile(kopf[2]).trim());
+      neu(kopf[1].length, bereinigeZeile(kopf[2]).trim());
       continue;
     }
     aktuell?.zeilen.push(bereinigeZeile(zeile));
@@ -134,6 +168,7 @@ export function zerlege(roh) {
   return abschnitte
     .map((a) => ({
       titel: a.titel,
+      pfad: a.pfad,
       anker: ankerVon(a.titel),
       text: a.zeilen
         .join("\n")
@@ -141,6 +176,74 @@ export function zerlege(roh) {
         .trim(),
     }))
     .filter((a) => a.titel !== "" && a.anker !== "" && a.text !== "");
+}
+
+/**
+ * Rohe HTML-Tags, die im Fließtext der Doku stehen dürfen (kleingeschrieben). Die Seiten unter
+ * `docs/` benutzen heute keine; die Liste ist deshalb leer. Auch ein erlaubtes Tag darf kein
+ * Attribut `hidden` oder `style` tragen.
+ */
+export const ERLAUBTE_TAGS = [];
+
+/**
+ * Ersetzt Codeblöcke und Code in Backticks durch Leerzeichen (Zeilenumbrüche bleiben), ebenso den
+ * Urheber-Kopf am Dateianfang. Die Codeblock-Erkennung ist dieselbe wie in `zerlege`.
+ */
+function ohneCode(roh) {
+  const leer = (t) => t.replace(/[^\n]/g, " ");
+  let text = normalisiere(roh);
+  if (text.startsWith("<!--")) {
+    const ende = text.indexOf("-->");
+    if (ende !== -1) text = leer(text.slice(0, ende + 3)) + text.slice(ende + 3);
+  }
+  let zaun = null;
+  return text
+    .split("\n")
+    .map((zeile) => {
+      const marke = FENCE.exec(zeile);
+      if (zaun) {
+        if (
+          marke &&
+          marke[1][0] === zaun[0] &&
+          marke[1].length >= zaun.length &&
+          !/\S/.test(zeile.slice(marke[0].length))
+        ) {
+          zaun = null;
+        }
+        return leer(zeile);
+      }
+      if (marke) {
+        zaun = marke[1];
+        return leer(zeile);
+      }
+      return zeile.replace(/`[^`\n]*`/g, leer);
+    })
+    .join("\n");
+}
+
+const AUTOLINK = /^<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>]+)>/;
+
+/**
+ * Findet rohes HTML im Fließtext (außerhalb von Codeblöcken, Inline-Code und dem Urheber-Kopf):
+ * jedes `<` vor Buchstabe, `/`, `!` oder `?` (Tags, Kommentare, `<!…>`, `<?…?>`, CDATA), außer
+ * Adress-Verweisen in spitzen Klammern und Tags aus `erlaubt`, die weder `hidden` noch `style`
+ * tragen. Gibt [{ zeile, form }] zurück, `form` ist der Anfang der Fundstelle.
+ */
+export function findeRohesHtml(text, erlaubt = ERLAUBTE_TAGS) {
+  const prosa = ohneCode(text);
+  const funde = [];
+  for (const treffer of prosa.matchAll(/<(?=[A-Za-z!?/])/g)) {
+    const ab = prosa.slice(treffer.index);
+    if (AUTOLINK.test(ab)) continue;
+    const ganz = /^<[^>]*>?/.exec(ab)[0];
+    const name = /^<\/?([A-Za-z][A-Za-z0-9-]*)/.exec(ganz)?.[1]?.toLowerCase();
+    if (name && erlaubt.includes(name) && !/\b(?:hidden|style)\b/i.test(ganz)) continue;
+    funde.push({
+      zeile: prosa.slice(0, treffer.index).split("\n").length,
+      form: ganz.replace(/\s+/g, " ").slice(0, 24),
+    });
+  }
+  return funde;
 }
 
 /**

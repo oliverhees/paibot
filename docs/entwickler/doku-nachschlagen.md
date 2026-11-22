@@ -1,0 +1,154 @@
+<!--
+PaiBot – Entwickler-Seite: das Werkzeug „In der Doku nachschlagen“ (Lader, Suche, Werkzeug, Kurzschluss, Anweisung, Belege).
+
+Autor:     Oliver Hees
+Website:   https://paibot.de
+Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+Seit:      2026-11-22
+-->
+
+# In der Doku nachschlagen – für Entwickler
+
+**Anwender-Doku:** noch keine. Das Werkzeug ist gebaut, in der Auslieferung aber noch nicht eingeschaltet (`packages/agents/src/werkzeuge/eingebaut.ts#builtinTools` liefert eine leere Liste); die Anwender-Seite kommt mit dem Einschalten. Grundlage ist der [Doku-Index im Image](doku-index.md); die Schleife beschreibt der [Werkzeug-Kern](werkzeug-kern.md).
+
+## Zweck und Entscheidung
+
+Pai soll Fragen zu PaiBot aus der Doku der installierten Version beantworten, ohne Internet. Das Werkzeug `doku_nachschlagen` sucht dafür im Doku-Index, der beim Bau des Images entsteht, und liefert höchstens vier Abschnitte mit Seite, Anker und Titel. Findet ein Aufruf nichts, geht das leere Ergebnis wie jedes andere an das Modell: Der Lauf geht weiter, und das Modell sagt in eigenen Worten, dass es in der Doku von PaiBot nichts dazu gefunden hat. PaiBot setzt dafür keinen festen Satz ein.
+
+Entscheidungen, wie sie im Code stehen:
+
+- **Index über die Fabrik, nicht über einen Anschluss:** `ToolPorts` ist leer (`packages/shared/src/werkzeug.ts#ToolPorts`). Der Index kommt deshalb als Argument von `dokuNachschlagen(index)` (`packages/agents/src/werkzeuge/doku/werkzeug.ts#dokuNachschlagen`); `run` liest nur ihn.
+- **Laden einmal, streng geprüft:** `ladeDokuIndex` (`packages/agents/src/werkzeuge/doku/index-laden.ts#ladeDokuIndex`) ist die einzige Datei des Werkzeugs, die eine Datei liest. Der Pfad kommt aus `PAIBOT_DOKU_INDEX`, sonst ist es die Datei `doku-index.json` im Ordner `doku-index` des Projektstamms (`dokuIndexPfad`; die Datei ist erzeugt und steht in `.gitignore`), nie aus einer Eingabe des Modells.
+- **Höchstens drei Suchanfragen je Aufruf:** die Frage (3 bis 200 Zeichen) und bis zu zwei andere Begriffe (je 1 bis 80), je Anfrage höchstens 12 Wörter (`packages/agents/src/werkzeuge/doku/werkzeug.ts#dokuEingabeSchema`, `packages/agents/src/werkzeuge/doku/suche.ts#MAX_WOERTER_JE_ANFRAGE`).
+- **Doku-Stand in Kurzform:** `<Version>+<erste 12 Hex der Prüfsumme>` (`packages/agents/src/werkzeuge/doku/suche.ts#kurzStand`); er passt in das Feld `docStand` des Belegs (höchstens 80 Zeichen, `packages/shared/src/receipts.ts#receiptResultSchema`).
+- **Kein Kurzschluss bei „nichts gefunden“:** Ein Ergebnis ohne Fundstelle ist ein Ergebnis wie jedes andere; die Schleife fragt das Modell danach wieder (`packages/agents/src/run/schleife.ts#runLoop`). Das leere Ergebnis nennt die Quelle „Doku von PaiBot“, den Doku-Stand und `gefunden: 0` (`packages/agents/src/werkzeuge/doku/werkzeug.ts#dokuErgebnisSchema`), und die Anweisung an das Modell sagt, es solle offen sagen, dass es nichts gefunden hat, und nichts über PaiBot erfinden (`packages/agents/src/prompt.ts#SATZ_DOKU`).
+- **Anweisung abhängig vom Werkzeug:** Nur wenn der Lauf das Werkzeug anbietet, ersetzt `SATZ_DOKU` den Satz `SATZ_OHNE_WERKZEUGE` (`packages/agents/src/prompt.ts#buildSystemPrompt`). Maßgeblich sind die Werkzeuge des Laufs, nicht die des Schritts; so ist die Anweisung im letzten Schritt (ohne angebotene Werkzeuge) dieselbe.
+
+## Aufbau
+
+| Datei                                                   | Aufgabe                                                                                                |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `packages/agents/src/werkzeuge/doku/index-laden.ts`     | Index laden und prüfen (`ladeDokuIndex`, `dokuIndexAusText`, `dokuPruefsumme`, `DokuIndexFehler`)      |
+| `packages/agents/src/werkzeuge/doku/suche.ts`           | Normalisieren (`woerter`), Vorbereiten (`bereiteIndexVor`), Suche (`sucheImIndex`), Ausschnitt         |
+| `packages/agents/src/werkzeuge/doku/gleiche-woerter.ts` | feste Listen `STOPPWOERTER` und `GLEICHE_WOERTER`                                                      |
+| `packages/agents/src/werkzeuge/doku/werkzeug.ts`        | Eintrag fürs Register (`dokuNachschlagen`), Schemas, Beschreibung, Quellen (`dokuQuellen`)             |
+| `packages/agents/src/werkzeuge/beleg-felder.ts`         | `docStand` und `found` aus der gespeicherten Hülle (`belegFelder`, `dokuAusHuelle`)                    |
+| `packages/agents/src/run/aufruf.ts`                     | setzt die Beleg-Felder in den Ergebnis-Beleg und meldet `ausgefuehrt` und `doku` an die Schleife       |
+| `packages/agents/src/run/schleife.ts`                   | gibt die Ergebnisse der Aufrufe an den nächsten Schritt, gibt die Werkzeuge des Laufs an die Anweisung |
+| `packages/agents/src/prompt.ts`                         | `SATZ_DOKU`, `SATZ_OHNE_WERKZEUGE`, `buildSystemPrompt` mit den Werkzeugen des Laufs                   |
+| `packages/agents/src/werkzeuge/eingebaut.ts`            | `builtinTools`: nimmt den Doku-Index entgegen, liefert in dieser Fassung keine Werkzeuge               |
+| `packages/shared/src/i18n/de.ts`                        | Text `werkzeug.titel.doku_nachschlagen`                                                                |
+
+Datenfluss eines Aufrufs (sobald das Werkzeug im Register steht):
+
+1. Das Modell wünscht `doku_nachschlagen`; die Schleife prüft Name und Eingabe (`packages/agents/src/run/aufruf.ts#prepareCalls`). Ungültige Eingabe endet abgelehnt mit `werkzeug_eingabe_ungueltig`, das Werkzeug läuft nicht.
+2. `gate.run("werkzeug.aufrufen")` mit allen Standard-Regeln. Erlaubt wird das Nachschlagen nur über R-010 (`packages/shared/src/gate.ts#ACTIVE_STANDARD_RULES`): Kennung „eingebaut/doku.nachschlagen“, Quelle `eingebaut`, `lesen`, `intern`, Bot der Unterhaltung.
+3. `run` ruft `sucheImIndex` mit der Frage und den anderen Begriffen auf und liefert `gefunden` mit Abschnitten oder `nichts_gefunden` mit Quelle und `gefunden: 0`, jeweils mit dem Doku-Stand.
+4. Die Schleife prüft das Ergebnis gegen `dokuErgebnisSchema`, bereinigt es, kürzt es auf die Grenzen und baut die Hülle (`packages/agents/src/run/aufruf.ts`). Der Ergebnis-Beleg trägt Abdruck, `docStand` und `found` aus genau dieser Hülle.
+5. Nach allen Aufrufen des Schritts geht der Lauf weiter: nächster Modell-Schritt mit der Hülle als Nachricht `role: "tool"`, auch wenn nichts gefunden wurde.
+
+### Suche
+
+Die Regel, wörtlich wie im Code (`packages/agents/src/werkzeuge/doku/suche.ts#sucheImIndex`):
+
+1. **Normalisieren** (Anfrage und Index gleich, `woerter`): bereinigen (`packages/agents/src/run/bereinigen.ts#cleanText`, NFC, ohne unsichtbare Zeichen), klein, `ä→ae`, `ö→oe`, `ü→ue`, `ß→ss`, alles außer Buchstaben und Ziffern trennt Wörter. Wörter unter 2 Zeichen und Stoppwörter fallen weg; ab 5 Zeichen wird höchstens eine Endung abgeschnitten (`-ungen`, `-ung`, `-en`, `-er`, `-es`, `-e`, `-n`, `-s`, die längste zuerst). Das Stoppwort wird vor und nach dem Abschneiden geprüft.
+2. **Begriffe:** je Anfrage höchstens die ersten 12 Wörter; ein Wort zählt mit allen Wörtern seiner Gruppe aus `GLEICHE_WOERTER` als ein Begriff. Ohne Begriff nach dem Normalisieren (nur Stoppwörter, nur Zeichen) gibt es keinen Treffer.
+3. **Treffen:** Ein Begriff trifft ein Wort des Index, wenn es gleich ist; ab 5 Zeichen auch, wenn das Wort mit ihm beginnt oder endet (`WORTTEIL_AB`).
+4. **Treffer:** Ein Abschnitt ist Treffer einer Anfrage, wenn **jeder** Begriff in ihm vorkommt. Je Begriff 3 Punkte, wenn er im Titel oder im Pfad der Überschriften darüber steht (`pfad` des Index, siehe [Doku-Index](doku-index.md)), sonst 1 Punkt für den Text (`PUNKTE_TITEL`, `PUNKTE_TEXT`); mindestens 1 Punkt (`SCHWELLE`). Je Abschnitt zählt die beste Anfrage.
+5. **Ordnung:** Punkte absteigend, dann Zahl der Begriffe im Titel absteigend, dann kürzerer Text, zuletzt die Reihenfolge im Index. Nichts Zufälliges, keine Zeit.
+6. **Auswahl:** höchstens 4 Abschnitte (`MAX_ABSCHNITTE`). Ein Text über 1 500 Zeichen wird ein Ausschnitt, der am Satz- bzw. Zeilenanfang vor dem ersten Treffer-Wort beginnt (liegt der mehr als 300 Zeichen davor, am Treffer-Wort), gekürzte Ränder tragen „…“ (`ausschnitt`). Titel und Texte zusammen höchstens 6 000 Zeichen und das Ergebnis als JSON höchstens die Ergebnis-Grenze des Werkzeugs (6 000); was nicht passt, fällt als ganzer Abschnitt von hinten weg.
+
+Keine regulären Ausdrücke aus der Eingabe, kein `eval`, keine Datei, kein Netz. Vorbereitet wird einmal beim Laden: je Wort die Abschnitte mit Titel- bzw. Text-Treffer, dazu die Wörter sortiert und rückwärts sortiert für „beginnt mit“ und „endet mit“ (`bereiteIndexVor`).
+
+Beleg am echten Index (`packages/agents/src/werkzeuge/doku/suche.test.ts`, Fragen in `packages/agents/src/werkzeuge/doku/testdaten/indizes.ts#GOLDEN_FAELLE`):
+
+| Frage                                             | erwartet unter den gelieferten Abschnitten                                  |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| Wie stelle ich das Tagesbudget ein?               | eine Seite `funktion-einstellungen.md`                                      |
+| Was macht der Not-Aus?                            | `funktion-tor.md#not-aus-alle-bots-anhalten`                                |
+| Was ist die Datenschleuse?                        | eine Seite `funktion-datenschleuse.md`                                      |
+| Wie stelle ich eine Sicherung wieder her?         | eine Seite `sicherung.md`                                                   |
+| Wie installiere ich die Web-App auf dem iPhone?   | `installation.md#auf-dem-iphone-und-ipad-safari`                            |
+| Wie prüfe ich meine Belege ohne PaiBot?           | `funktion-belege.md#exportieren-und-ohne-paibot-prüfen`                     |
+| Ich bin ausgesperrt, wie komme ich wieder hinein? | `funktion-einrichtung-und-zugang.md#ausgesperrt-so-kommst-du-wieder-hinein` |
+
+Fragen ohne Treffer (`FALLEN`): Telegram, WhatsApp, Outlook-Kalender, Sprachausgabe. Ihre Kern-Wörter stehen in keinem Abschnitt des Index; der Test prüft das am gebauten Index (`packages/agents/src/werkzeuge/doku/testdaten/indizes.test.ts`).
+
+## Datenmodell und Migrationen
+
+Keine eigenen Tabellen, keine Migration. R-010 steht seit der Migration für Werkzeug-Aufrufe in der Datenbank (`packages/db/drizzle/0014_werkzeug_kern.sql`). Gelesen und geschrieben werden die Tabellen des Werkzeug-Kerns: `tool_calls` (Zeile je Aufruf, `output` ist genau die gesendete Hülle), `messages` (Zwischentext und End-Antwort des Modells) und die Belege.
+
+Ergebnis an das Modell (`inhalt` der Hülle, `packages/agents/src/werkzeuge/doku/werkzeug.ts#dokuErgebnisSchema`):
+
+```ts
+type DokuErgebnis =
+  | {
+      status: "gefunden";
+      stand: string;
+      abschnitte: Array<{ id: string; seite: string; anker: string; titel: string; text: string }>;
+    }
+  | { status: "nichts_gefunden"; stand: string; quelle: "Doku von PaiBot"; gefunden: 0 };
+```
+
+## Schnittstellen
+
+| Art      | Name                                                                      | Datei                                               |
+| -------- | ------------------------------------------------------------------------- | --------------------------------------------------- |
+| Werkzeug | „eingebaut/doku.nachschlagen“ (Name `doku_nachschlagen`), `DOKU_TOOL_KEY` | `packages/agents/src/werkzeuge/doku/werkzeug.ts`    |
+| Aktion   | `werkzeug.aufrufen`                                                       | `packages/shared/src/actions.ts`                    |
+| Regel    | R-010 „Bot liest in der Doku seiner Version“                              | `packages/shared/src/gate.ts`                       |
+| Funktion | `ladeDokuIndex`, `dokuIndexPfad`, `INDEX_FASSUNG`                         | `packages/agents/src/werkzeuge/doku/index-laden.ts` |
+| Funktion | `sucheImIndex`, `bereiteIndexVor`, `kurzStand`                            | `packages/agents/src/werkzeuge/doku/suche.ts`       |
+| Funktion | `belegFelder`                                                             | `packages/agents/src/werkzeuge/beleg-felder.ts`     |
+| Beleg    | Ergebnis mit `docStand`, `found`                                          | `packages/shared/src/receipts.ts`                   |
+| Umgebung | `PAIBOT_DOKU_INDEX`                                                       | `apps/web/Dockerfile`                               |
+
+## Sicherheit
+
+- **Nur über R-010 erlaubt:** Mit allen Standard-Regeln entscheidet bei `werkzeug.aufrufen` eines Bots sonst R-005 („fragen“), und „fragen“ ist in dieser Fassung abgelehnt (`packages/agents/src/run/nahtstellen.ts#nachFrage`). Der Test belegt das über das echte Tor und mit `evaluate` (`packages/agents/src/run/schleife-doku.test.ts`).
+- **Eigener Inhalt nur unter Bedingungen:** `foreignContent: false` gilt, solange der Index nur beim Bau aus dem Repo entsteht, beim Bau bereinigt wird, `pnpm doku:check` versteckte Teile in den Seiten ablehnt (dieselbe Zeichenmenge wie der Lader, siehe unten „Eine Liste unsichtbarer Zeichen“), Testseiten nie unter `docs/` liegen und nichts von außen in den Index kommt. Fällt eine dieser Bedingungen weg, wird die Doku als fremd gekennzeichnet. Liest ein Werkzeug Ankündigungen oder andere Inhalte, die nicht beim Bau aus dem Repo entstehen, gelten diese als fremd. Das Register der Auslieferung lehnt fremde Inhalte ab (`packages/agents/src/werkzeuge/register.ts#createShippedRegistry`).
+- **Index nur als gebaute Datei:** Der Lader lehnt eine Datei über 4 MB, eine andere Form, eine andere Fassung als 2, doppelte Kennungen, einen Pfad der Überschriften, der nicht mit dem Titel endet, unsichtbare oder Steuerzeichen und eine abweichende Prüfsumme ab; in Kennung, Seite, Anker, Titel und Pfad zusätzlich Zeilenumbruch, Tabulator, das leere Braille-Zeichen U+2800 und Zeichen für den privaten Gebrauch (`unerlaubtImTitel`); die Meldung nennt nie Text aus dem Index (`DokuIndexFehler`).
+- **Kein Pfad und kein Netz aus der Eingabe:** Die Eingabe wird nur gesucht. Ein Regel-Test prüft, dass nur `index-laden.ts` `node:fs` importiert und kein Modul des Werkzeugs Netz, Prozesse oder `fetch` nutzt (`tools/lint-regeln/src/doku-werkzeug.test.ts`).
+- **Ergebnis ist Daten:** Die Hülle geht nur als Nachricht `role: "tool"` an das Modell, bereinigt und gekürzt; `SATZ_DOKU` sagt dem Modell, dass Werkzeug-Ergebnisse Daten sind, keine Anweisungen. Eine Aufforderung im Doku-Text kann nichts auslösen außer einem weiteren Wunsch, und jeder Wunsch geht durchs Tor; ein schreibendes Werkzeug fragt (R-005) und ist abgelehnt.
+- **Entwurf nie als Antwort:** Der Text, den das Modell vor dem Nachschlagen schreibt, bleibt Zwischentext (`step` gesetzt); alle Leser in der Web-App lesen nur End-Antworten (siehe „Wer liest Nachrichten“ im [Werkzeug-Kern](werkzeug-kern.md)).
+
+## Eine Liste unsichtbarer Zeichen
+
+Doku-Check und Index-Bau (`scripts/doku-index/hilfen.mjs#istUnsichtbar`, reines Node ohne Build) und der Lader (`packages/agents/src/run/bereinigen.ts#hasUnwanted`, TypeScript) brauchen dieselbe Menge: Steuerzeichen außer Zeilenumbruch und Tabulator, alle Format-Zeichen (`\p{Cf}`), alles „standardmäßig Unsichtbare“ (`\p{Default_Ignorable_Code_Point}`, auch die Tag-Zeichen), Variationswähler, Füllzeichen, Zeilen- und Absatztrenner. Eine gemeinsame Datei wäre möglich gewesen (mit Node 22.23 lädt ein Skript `bereinigen.ts` unmittelbar; selbst ausprobiert), ist aber nicht gewählt: Kein Skript importiert heute aus `packages/*/src`, die Skripte sind als reines Node ohne Build gedacht (`package.json` verlangt nur „node >=22“; ob jede 22er-Fassung TypeScript ohne Zusatz lädt, ist nicht geprüft), und das Paket würde an eine Datei außerhalb von `packages/` gebunden. Deshalb gibt es zwei Fassungen und einen Test, der beide für jeden Codepunkt von U+0000 bis U+10FFFF vergleicht (`packages/agents/src/werkzeuge/doku/unsichtbare-zeichen.test.ts`). Weicht eine ab, wird er rot. Dasselbe gilt für die zusätzliche Menge in Titeln und Pfaden (`hilfen.mjs#istUnerlaubtImTitel` gegen `index-laden.ts#unerlaubtImTitel`).
+
+## Tests
+
+| Test                                                             | Prüft                                                                                                                                                                                                      |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/agents/src/werkzeuge/doku/index-laden.test.ts`         | echter Index lädt; Größe, Form, Fassung, Felder, doppelte Kennung, Pfad, Prüfsumme, unsichtbare Zeichen; Meldungen ohne Index-Text                                                                         |
+| `packages/agents/src/werkzeuge/doku/unsichtbare-zeichen.test.ts` | Skripte und Lader erkennen für jeden Codepunkt dieselben unsichtbaren Zeichen, auch in Titeln und Pfaden                                                                                                   |
+| `packages/agents/src/werkzeuge/beleg-felder.test.ts`             | gekürzte Hülle zählt nur mit vollständigem Doku-Stand                                                                                                                                                      |
+| `tools/lint-regeln/src/doku-check.test.ts`, `doku-index.test.ts` | Doku-Check und Index-Bau lehnen versteckte Zeichen je Klasse ab (Probe-Seiten in einem temporären Ordner)                                                                                                  |
+| `packages/agents/src/werkzeuge/doku/suche.test.ts`               | feste Fragen und Fallen am echten Index, Wiederholbarkeit, Gleichstand, Bedingungen eines Treffers, Obergrenzen, Ausschnitt                                                                                |
+| `packages/agents/src/werkzeuge/doku/suche-zeit.test.ts`          | Suche über einen Index nahe 4 MB unter 50 ms (Median von 20 Läufen), Eingaben wie `(a+)+$`                                                                                                                 |
+| `packages/agents/src/werkzeuge/doku/werkzeug.test.ts`            | Eintrag, Schema an das Modell, Grenzen der Eingabe, Ergebnis und Quellen, kein Datei- oder Netzzugriff, Auslieferung ohne Werkzeug                                                                         |
+| `packages/agents/src/run/nahtstellen.test.ts`                    | Nahtstellen des Laufs                                                                                                                                                                                      |
+| `packages/agents/src/run/schleife-doku.test.ts`                  | Läufe über das echte Tor: R-010, Eingaben, Hülle nur als `role: "tool"`, Quellen, Abdruck, Belege, Bereinigung, Weiterlauf bei „nichts gefunden“, Anweisung, eingeschleuste Aufforderung, Chat ohne Wunsch |
+| `packages/agents/src/prompt.test.ts`                             | Anweisung ohne Werkzeug Zeichen für Zeichen wie bisher (Abdruck), mit Werkzeug `SATZ_DOKU`                                                                                                                 |
+| `tools/lint-regeln/src/doku-werkzeug.test.ts`                    | nur der Lader liest Dateien; kein Netz                                                                                                                                                                     |
+
+Ausführen:
+
+```bash
+pnpm --filter @paibot/agents exec vitest run src/werkzeuge src/run/schleife-doku.test.ts src/run/nahtstellen.test.ts src/prompt.test.ts
+pnpm --filter @paibot/lint-regeln exec vitest run src/doku-werkzeug.test.ts
+```
+
+## Bekannte Schwächen
+
+- **Gebaut, in der Auslieferung noch nicht eingeschaltet** (`packages/agents/src/werkzeuge/eingebaut.ts`). Der Worker lädt den Index noch nicht (`apps/worker/src/abhaengigkeiten.ts`).
+- **Wortsuche ohne Bedeutung:** Sie findet nur Wörter, die in der Doku stehen. Statt eines Wortstamms trifft ein Begriff ab 5 Zeichen auch Wörter, die mit ihm beginnen oder enden; gleiche Wörter kommen nur aus der festen Liste `GLEICHE_WOERTER`, Synonyme darüber hinaus gibt es nicht.
+- **Jeder Begriff muss vorkommen:** Ein Füllwort, das nicht in der Stoppwort-Liste steht, kann einen passenden Abschnitt verhindern; die Liste ist fest (`STOPPWOERTER`).
+- **Werkzeug-Fehler ohne Kurzschluss:** Meldet das Nachschlagen einen Fehler oder erreicht die Zeitgrenze, geht der Lauf weiter; das Modell sieht nur die Fehler-Hülle. Ein Lauf-Test deckt das ab (`packages/agents/src/run/schleife-doku.test.ts`).
+- **Ob das Modell ehrlich bleibt, kann PaiBot nicht erzwingen:** Bei „nichts gefunden“ sieht das Modell die Quelle, den Doku-Stand und `gefunden: 0` und hat die Anweisung, das offen zu sagen und nichts über PaiBot zu erfinden. Ein Modell kann sich trotzdem darüber hinwegsetzen oder aus seinem Wissen antworten; es gibt keine Prüfung des Antworttextes. Ob etwas gefunden wurde, hält der Beleg des Aufrufs mit `found` fest; eine Anzeige in der Oberfläche gibt es dafür in dieser Fassung nicht.
+- **Zahl der Fundstellen nach dem Kürzen:** `found` zählt die Abschnitte der gespeicherten Hülle. Das Kürzen entfernt Abschnitte erst, wenn alle Texte leer sind (`packages/agents/src/run/huelle.ts#truncateContent`); bei den Grenzen der Einstellungen bleibt die Zahl deshalb meist gleich, die Texte werden kürzer.
+- **Prüfsumme ist kein Nachweis der Herkunft:** Die Prüfsumme des Index erkennt Versehen und beschädigte Dateien. Wer die Datei ändern kann, kann auch die Prüfsumme neu rechnen. Die Version gehört nicht zur Prüfsumme (`packages/agents/src/werkzeuge/doku/index-laden.ts#dokuPruefsumme` rechnet nur über die Abschnitte); eine geänderte Version mit alter Prüfsumme lädt also. Ein Schutz gegen Fälschung ist das nicht, sondern der Schreibschutz der Datei im Betrieb.
+- **Knapper Platz im Schritt:** Bleibt für das Ergebnis kaum Platz, kürzt `truncateContent` die längste Zeichenkette zuerst, und das kann der Doku-Stand sein. Eine gekürzte Hülle zählt deshalb nur, wenn der Stand noch vollständig ist (`packages/agents/src/werkzeuge/beleg-felder.ts#dokuAusHuelle`); sonst steht kein Doku-Stand im Beleg, der Lauf geht weiter.
+- **Ob das Modell das Werkzeug nutzt und sich an die Abschnitte hält,** ist nicht garantiert und noch nicht gemessen.
+- **Test-Werkzeuge mit der Kennung von R-010:** Trägt ein Test-Werkzeug die Kennung „eingebaut/doku.nachschlagen“ (`packages/agents/src/testing/werkzeuge.ts#R010_TOOL_KEY`), bekommt sein Lauf ebenfalls `SATZ_DOKU` in der Anweisung.

@@ -14,13 +14,18 @@ import { type ActionRequest, type ActionType, STORED_ACTION_TYPES } from "@paibo
 import { RECEIPT_CHAIN_FORMAT, type ReceiptBody, type ReceiptEntry } from "@paibot/shared/belege";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
-import type { RuleDefinition, RuleSnapshot } from "@paibot/shared/tor";
+import { ACTIVE_STANDARD_RULES, type RuleDefinition, type RuleSnapshot } from "@paibot/shared/tor";
 import { sampleAction, sampleFacts } from "../../../gate/src/testdaten";
 import { digestBytes, hashReceipt } from "../hash";
 import { exportJsonl } from "../jsonl";
 import { keyInfo, signedEntry, TEST_INSTALLATION, testKey, testSign } from "../testhilfen";
 
-/** Regel des Besitzers für Werkzeug-Aufrufe (eigener Regelstand ohne Standard-Regeln). */
+/**
+ * Eigene Regel für den gedeckelten Werkzeug-Aufruf (schreibend, mit fremden Inhalten). Im Betrieb
+ * steht R-005 („fragen“) vor jeder eigenen Regel, das Tor entscheidet so nie „erlaubt“ und der
+ * Deckel greift nicht. Der Deckel steht deshalb am Ende der Kette, mit `evaluate` entschieden und
+ * roh angehängt. Die Regel liegt vor R-005 (Priorität 10), nur im Regelstand zum Nachrechnen.
+ */
 export const WERKZEUG_ERLAUBT: RuleDefinition = {
   id: "reg_01m7zempyq9rbb8ybyt536hjy0" as RuleDefinition["id"],
   version: 1,
@@ -28,35 +33,18 @@ export const WERKZEUG_ERLAUBT: RuleDefinition = {
   effect: "allow",
   stage: "execute",
   conditions: [{ fact: "akteur", op: "eq", value: "bot" }],
-  priority: 1000,
+  priority: 10,
   source: "owner",
   enabled: true,
   title: "Werkzeuge erlaubt",
   reason: "Test: Werkzeuge sind erlaubt.",
 };
 
-const BESITZER_ERLAUBT: RuleDefinition = {
-  ...WERKZEUG_ERLAUBT,
-  id: "reg_01m7zempyq9rbb8ybyt536hjy1" as RuleDefinition["id"],
-  action: "*",
-  conditions: [{ fact: "akteur", op: "eq", value: "besitzer" }],
-  title: "Besitzer erlaubt",
-  reason: "Test: Der Besitzer darf alles.",
-};
+/** Regelstand, durch den das Tor entscheidet: die aktiven Standard-Regeln, wie aus der Datenbank. */
+const REGELN_TOR: readonly RuleDefinition[] = ACTIVE_STANDARD_RULES;
 
-const MODELL_ERLAUBT: RuleDefinition = {
-  ...WERKZEUG_ERLAUBT,
-  id: "reg_01m7zempyq9rbb8ybyt536hjy2" as RuleDefinition["id"],
-  action: "modell.anfragen",
-  title: "Modell erlaubt",
-  reason: "Test: Der Bot darf das Modell fragen.",
-};
-
-/**
- * Regelstand der Kette: nur eigene Regeln, damit auch ein erlaubter Werkzeug-Aufruf vorkommt und
- * der Deckel greift (mit den Standard-Regeln fragt R-005 schon vorher).
- */
-const REGELN = [WERKZEUG_ERLAUBT, BESITZER_ERLAUBT, MODELL_ERLAUBT];
+/** Kennung, die R-010 erlaubt (lesend, intern, eingebaut). */
+const DOKU_KENNUNG = "eingebaut/doku.nachschlagen";
 
 /** Die Kette, ihr Export und die Regeln zum Nachrechnen. */
 export interface KetteL2 {
@@ -66,6 +54,8 @@ export interface KetteL2 {
 }
 
 type Schritt = {
+  /** Mit `evaluate` und `WERKZEUG_ERLAUBT` entschieden und roh angehängt (nie durch das Tor). */
+  deckel?: boolean;
   type: ActionType;
   facts: Record<string, unknown>;
   result: Record<string, unknown>;
@@ -77,15 +67,6 @@ function schritte(): Schritt[] {
     facts: sampleFacts(type) as Record<string, unknown>,
     result: { status: "ok" },
   }));
-  list.push({
-    type: "werkzeug.aufrufen",
-    facts: {
-      ...(sampleFacts("werkzeug.aufrufen") as Record<string, unknown>),
-      untrustedInput: true,
-      toolKind: "schreiben",
-    },
-    result: { status: "ok" },
-  });
   list.push({
     type: "modell.anfragen",
     facts: sampleFacts("modell.anfragen") as Record<string, unknown>,
@@ -99,13 +80,26 @@ function schritte(): Schritt[] {
   });
   list.push({
     type: "werkzeug.aufrufen",
-    facts: { ...(sampleFacts("werkzeug.aufrufen") as Record<string, unknown>) },
+    facts: {
+      ...(sampleFacts("werkzeug.aufrufen") as Record<string, unknown>),
+      toolKey: DOKU_KENNUNG,
+    },
     result: {
       status: "ok",
       digest: `hmac-sha256:${"4d".repeat(32)}`,
       docStand: "0.3.0",
       found: 3,
     },
+  });
+  list.push({
+    deckel: true,
+    type: "werkzeug.aufrufen",
+    facts: {
+      ...(sampleFacts("werkzeug.aufrufen") as Record<string, unknown>),
+      untrustedInput: true,
+      toolKind: "schreiben",
+    },
+    result: { status: "ok" },
   });
   return list;
 }
@@ -121,7 +115,9 @@ export async function ketteL2(art: "tor" | "roh"): Promise<KetteL2> {
   const entries: ReceiptEntry[] = [];
   let tick = 0;
   const time = () => new Date(Date.UTC(2026, 10, 21, 13, 0, 0, ++tick));
-  const current: RuleSnapshot = await ruleSnapshot(REGELN);
+  const current: RuleSnapshot = await ruleSnapshot(REGELN_TOR);
+  // Regelstand mit der eigenen Regel für den Deckel (Nummer 9, hinter dem Stand des Tors).
+  const mitDeckel: RuleSnapshot = await ruleSnapshot([...REGELN_TOR, WERKZEUG_ERLAUBT]);
 
   entries.push(
     await signedEntry(
@@ -196,7 +192,7 @@ export async function ketteL2(art: "tor" | "roh"): Promise<KetteL2> {
 
   for (const schritt of schritte()) {
     const action = sampleAction(schritt.type) as ActionRequest;
-    if (art === "tor") {
+    if (art === "tor" && !schritt.deckel) {
       const execute: Execute<never, string> = async () => ({
         value: "fertig",
         result: schritt.result as never,
@@ -208,7 +204,8 @@ export async function ketteL2(art: "tor" | "roh"): Promise<KetteL2> {
       }
       continue;
     }
-    const decided = evaluate(action, schritt.facts as never, current) as unknown as Record<
+    const regeln = schritt.deckel ? mitDeckel : current;
+    const decided = evaluate(action, schritt.facts as never, regeln) as unknown as Record<
       string,
       unknown
     >;
@@ -239,5 +236,5 @@ export async function ketteL2(art: "tor" | "roh"): Promise<KetteL2> {
   )) {
     text += line;
   }
-  return { entries, text, rules: current.rules };
+  return { entries, text, rules: mitDeckel.rules };
 }
