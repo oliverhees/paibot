@@ -11,19 +11,22 @@
 // Gemeinsam benutzt von scripts/doku-index.mjs (Index bauen) und scripts/doku-check.mjs (Doku
 // prüfen). Nur Node-Bordmittel.
 
+/**
+ * Zeichen, die in der Doku nie stehen bleiben: Steuerzeichen außer Zeilenumbruch und Tabulator,
+ * alle Format-Zeichen (`\p{Cf}`: Bidi, Nullbreite, weiches Trennzeichen, Tag-Zeichen), alles, was
+ * Unicode als „standardmäßig unsichtbar“ führt (`Default_Ignorable_Code_Point`), Variationswähler
+ * und Füllzeichen, Zeilen- und Absatztrenner. Muss dieselbe Menge sein wie `UNWANTED_SOURCE` in
+ * `packages/agents/src/run/bereinigen.ts`, die der Lader des Index benutzt; der Test
+ * `packages/agents/src/werkzeuge/doku/unsichtbare-zeichen.test.ts` vergleicht beide für jeden
+ * Codepunkt und wird rot, sobald sie auseinanderlaufen.
+ */
+const UNSICHTBAR_QUELLE =
+  "[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\p{Cf}\\p{Default_Ignorable_Code_Point}\\u034f\\u115f\\u1160\\u180e\\u2028\\u2029\\u3164\\ufe00-\\ufe0f\\uffa0\\u{e0100}-\\u{e01ef}]";
+const UNSICHTBAR = new RegExp(UNSICHTBAR_QUELLE, "u");
+
 /** Unsichtbares, Bidi- und Steuerzeichen (außer Zeilenumbruch und Tabulator)? */
 export function istUnsichtbar(zeichen) {
-  const cp = zeichen.codePointAt(0);
-  if (cp === undefined) return false;
-  if (cp === 0x0a || cp === 0x09) return false;
-  return (
-    cp < 0x20 ||
-    (cp >= 0x7f && cp <= 0x9f) ||
-    (cp >= 0x200b && cp <= 0x200f) ||
-    (cp >= 0x202a && cp <= 0x202e) ||
-    (cp >= 0x2066 && cp <= 0x2069) ||
-    cp === 0xfeff
-  );
+  return UNSICHTBAR.test(zeichen);
 }
 
 /** Zeilenenden vereinheitlichen. */
