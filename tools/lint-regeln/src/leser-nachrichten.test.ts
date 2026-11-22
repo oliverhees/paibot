@@ -219,6 +219,37 @@ function alleTexte(): Map<string, string> {
   return texte;
 }
 
+/** Dateien, die `ladeVerlauf` mit `mitSchritten: true` aufrufen (Zwischentexte und Aufrufe lesen). */
+function mitSchrittenAufrufer(texte: ReadonlyMap<string, string>): string[] {
+  return [...texte.entries()]
+    .filter(([, text]) =>
+      /\bladeVerlauf\([^;]*\bmitSchritten:\s*true\b/s.test(ohneKommentare(text)),
+    )
+    .map(([datei]) => datei)
+    .sort();
+}
+
+describe("Wer Zwischentexte liest", () => {
+  // Gegenprobe: in einer weiteren Datei der Web-App `ladeVerlauf(db, id, { mitSchritten: true })`
+  // aufrufen → rot (erwartet: genau die Chat-Seite und die Lese-Route).
+  it("nur die Chat-Seite und die Lese-Route `nachrichten` rufen `ladeVerlauf` mit `mitSchritten: true` auf", () => {
+    expect(mitSchrittenAufrufer(alleTexte())).toEqual([
+      "apps/web/src/app/(app)/chat/[id]/page.tsx",
+      "apps/web/src/lib/chat/aktionen.ts",
+    ]);
+  });
+
+  it("die Suche erkennt einen neuen Aufrufer (Gegenprobe im Test selbst)", () => {
+    const probe = new Map([
+      ["a.ts", "const v = await ladeVerlauf(db, id, { mitSchritten: true });"],
+      ["b.ts", "const v = await ladeVerlauf(\n db, id,\n { mitSchritten: true });"],
+      ["c.ts", "const v = await ladeVerlauf(db, id);"],
+      ["d.ts", "// ladeVerlauf(db, id, { mitSchritten: true })"],
+    ]);
+    expect(mitSchrittenAufrufer(probe)).toEqual(["a.ts", "b.ts"]);
+  });
+});
+
 describe("Wer Nachrichten liest", () => {
   // Gegenprobe: in `apps/web/src/lib/chat` eine Datei mit `repo.messages.listForConversation(db, id)` anlegen → rot.
   it("genau diese Dateien lesen die Tabelle der Nachrichten (neue Stelle: hier und in der Doku eintragen)", () => {

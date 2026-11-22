@@ -243,7 +243,8 @@ export function nachrichtSenden(einreihen: Einreihen): RoutenAktion<"nachrichtSe
 
 /**
  * `POST /api/unterhaltungen/:id/laeufe/:laufId/abbrechen`: Stopp. Der Worker sieht den Wunsch
- * binnen einer halben Sekunde und beendet den Lauf; der Teiltext bleibt. Ohne aktiven Lauf lehnt
+ * binnen einer halben Sekunde und beendet den Lauf. Der Teiltext des gestoppten Schritts bleibt als
+ * Zwischentext gespeichert und erscheint als „abgebrochen“, nie als Antwort. Ohne aktiven Lauf lehnt
  * das Tor ab (Vorbedingung „Lauf aktiv“, `nicht_gefunden`).
  */
 export const laufAbbrechen: RoutenAktion<"laufAbbrechen"> = async (k) => {

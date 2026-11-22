@@ -26,7 +26,7 @@ import {
   leereAnsicht,
   nachfrageUebernehmen,
   neuErzeugbar,
-  offeneNachfrage,
+  offeneNachfragen,
   schritteVon,
 } from "./ansicht";
 import { antwortHatText, avatarAufEreignis } from "./avatar";
@@ -333,7 +333,8 @@ describe("das letzte Ende eines Schritts gilt", () => {
 });
 
 describe("feste Antworten", () => {
-  const WORTLAUT = "Dazu steht nichts in der Doku dieser Version.";
+  const WORTLAUT =
+    "Für diese Frage hätte ich mehr Schritte gebraucht, als erlaubt sind. Ich habe aufgehört; frag gern enger nach.";
 
   // Gegenprobe: den Hinweis aus dem Wortlaut der Antwort ableiten → auch die Antwort des Modells trüge ihn.
   it("aus dem Lesestand: nur `origin = fest` bekommt die Kennzeichnung, ein Text mit gleichem Wortlaut nicht", () => {
@@ -372,7 +373,7 @@ describe("feste Antworten", () => {
     const antwort = a.eintraege.find((e) => e.art === "nachricht" && e.id === g.antwort);
     expect(antwort).toMatchObject({ herkunftOffen: true });
     expect(antwort).not.toHaveProperty("herkunft");
-    const frage = offeneNachfrage(a);
+    const frage = offeneNachfragen(a)[0];
     expect(frage?.runId).toBe(g.runId);
     // Der Server nennt die Antwort als fest: Kennzeichnung da, nichts mehr offen.
     const fest = nachfrageUebernehmen(a, g.runId, {
@@ -409,7 +410,7 @@ describe("feste Antworten", () => {
       ),
     ];
     const a = ereignisseAnwenden(leereAnsicht(), liste, KONTEXT);
-    expect(offeneNachfrage(a)).toBeUndefined();
+    expect(offeneNachfragen(a)).toEqual([]);
   });
 });
 
@@ -674,10 +675,10 @@ describe("Nachfragen und Übernehmen", () => {
   it("ein Aufruf aus dem Strom wird nachgefragt, bis sein Zustand gelesen ist, dann nie mehr", () => {
     const g = nachschlagen(folge());
     const a = ereignisseAnwenden(leereAnsicht(), g.liste.slice(0, 9), KONTEXT);
-    const frage = offeneNachfrage(a);
+    const frage = offeneNachfragen(a)[0];
     expect(frage?.runId).toBe(g.runId);
     const danach = nachfrageUebernehmen(a, g.runId, gelesen(g));
-    expect(offeneNachfrage(danach)).toBeUndefined();
+    expect(offeneNachfragen(danach)).toEqual([]);
     const w = schritteVon(danach, g.runId).flatMap((x) => x.werkzeuge)[0];
     expect(w).toMatchObject({
       status: "fertig",
@@ -693,7 +694,34 @@ describe("Nachfragen und Übernehmen", () => {
     const w = schritteVon(spaet, g.runId).flatMap((x) => x.werkzeuge)[0];
     expect(w?.status).toBe("fertig");
     // Der Schlüssel der Nachfrage ist derselbe wie vorher: Die Seite fragt kein zweites Mal.
-    expect(offeneNachfrage(spaet)?.schluessel).toBe(offeneNachfrage(a)?.schluessel);
+    expect(offeneNachfragen(spaet)[0]?.schluessel).toBe(offeneNachfragen(a)[0]?.schluessel);
+  });
+
+  // Gegenprobe: `offeneNachfragen` gibt nur den ersten offenen Lauf zurück bzw. wertet beendete Läufe
+  // nach dem Lesen weiter als offen → rot.
+  it("ein alter Lauf blockiert die Nachfrage für einen neuen Lauf nicht", () => {
+    const ev = folge();
+    const alt = nachschlagen(ev);
+    const neu = nachschlagen(ev);
+    // Der alte Lauf hängt in „läuft“ (der Server las ihn so): Er ist offen.
+    let a = ereignisseAnwenden(leereAnsicht(), alt.liste.slice(0, 9), KONTEXT);
+    a = nachfrageUebernehmen(a, alt.runId, gelesen(alt, { status: "laeuft" }));
+    const vorher = offeneNachfragen(a)[0]?.schluessel;
+    expect(offeneNachfragen(a).map((n) => n.runId)).toEqual([alt.runId]);
+    // Ein zweiter Lauf läuft an: Beide sind offen, jeder wird einzeln gefragt.
+    const beide = ereignisseAnwenden(a, neu.liste.slice(0, 9), KONTEXT);
+    expect(offeneNachfragen(beide).map((n) => n.runId)).toEqual([alt.runId, neu.runId]);
+    // Der alte Lauf endet; sein Schlüssel ändert sich, damit der Endzustand noch gelesen wird.
+    const beendet = ereignisseAnwenden(a, alt.liste.slice(9), KONTEXT);
+    const schluesselAlt = offeneNachfragen(beendet).find((n) => n.runId === alt.runId)?.schluessel;
+    expect(schluesselAlt).toBeDefined();
+    expect(schluesselAlt).not.toBe(vorher);
+    // Nach einer erfolgreichen Antwort gilt der beendete Lauf nicht mehr als offen, auch wenn der
+    // Server einen Aufruf noch als „läuft“ sah; ein neuer Lauf wird danach nachgefragt.
+    const gelesenAlt = nachfrageUebernehmen(beendet, alt.runId, gelesen(alt, { status: "laeuft" }));
+    expect(offeneNachfragen(gelesenAlt)).toEqual([]);
+    const spaeter = ereignisseAnwenden(gelesenAlt, neu.liste.slice(0, 9), KONTEXT);
+    expect(offeneNachfragen(spaeter).map((n) => n.runId)).toEqual([neu.runId]);
   });
 
   it("aus dem Lesestand: Aufrufe sind schon gelesen, es wird nichts nachgefragt", () => {
@@ -716,7 +744,7 @@ describe("Nachfragen und Übernehmen", () => {
       }),
       KONTEXT,
     );
-    expect(offeneNachfrage(a)).toBeUndefined();
+    expect(offeneNachfragen(a)).toEqual([]);
     expect(schritteVon(a, g.runId).flatMap((x) => x.werkzeuge)[0]).toMatchObject({
       status: "fertig",
       belegId: w.belegId,

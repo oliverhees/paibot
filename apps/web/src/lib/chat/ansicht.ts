@@ -371,13 +371,16 @@ function antwortSchrittEntfernen(a: ChatAnsicht, runId: string): ChatAnsicht {
 }
 
 /**
- * Was die Anzeige beim Server nachfragen muss: der Lauf und ein Schlüssel, der sich ändert, wenn
- * es etwas Neues zu holen gibt. Nachfragen heißt: die Aufrufe eines Laufs lesen, deren Zustand
- * seit dem letzten Lesen anders ist, bzw. die Herkunft von Antworten, die über den Strom kamen.
- * Der Schlüssel enthält nur die noch offenen Dinge; wer ihn schon abgefragt hat, fragt nicht noch
- * einmal, auch wenn der Server keine bessere Antwort hatte.
+ * Was die Anzeige beim Server nachfragen muss: je Lauf mit offenen Dingen ein Eintrag mit der
+ * Kennung des Laufs und einem Schlüssel, der sich ändert, wenn es etwas Neues zu holen gibt.
+ * Nachfragen heißt: die Aufrufe eines Laufs lesen, deren Zustand seit dem letzten Lesen anders
+ * ist, bzw. die Herkunft von Antworten, die über den Strom kamen. Jeder Lauf wird einzeln
+ * abgefragt, ein alter blockiert keinen neuen. Der Schlüssel enthält die noch offenen Dinge und
+ * ob der Lauf beendet ist (mit dem Ende ändert er sich, damit der Endzustand noch gelesen wird);
+ * wer ihn schon abgefragt hat, fragt nicht noch einmal, auch wenn der Server keine bessere
+ * Antwort hatte.
  */
-export function offeneNachfrage(a: ChatAnsicht): { runId: string; schluessel: string } | undefined {
+export function offeneNachfragen(a: ChatAnsicht): { runId: string; schluessel: string }[] {
   const laeufe = new Set<string>();
   for (const x of a.schritte)
     if (x.werkzeuge.some((w) => w.geladen !== w.status)) laeufe.add(x.runId);
@@ -386,16 +389,17 @@ export function offeneNachfrage(a: ChatAnsicht): { runId: string; schluessel: st
       laeufe.add(e.runId);
     }
   }
-  const runId = [...laeufe][0];
-  if (runId === undefined) return undefined;
-  const offeneAufrufe = a.schritte
-    .filter((x) => x.runId === runId)
-    .flatMap((x) => x.werkzeuge.filter((w) => w.geladen !== w.status))
-    .map((w) => `${w.actionId}:${w.status}`);
-  const offeneAntworten = a.eintraege
-    .filter((e) => e.art === "nachricht" && e.runId === runId && e.herkunftOffen === true)
-    .map((e) => (e.art === "nachricht" ? e.id : ""));
-  return { runId, schluessel: [runId, ...offeneAufrufe, ...offeneAntworten].join("|") };
+  return [...laeufe].map((runId) => {
+    const offeneAufrufe = a.schritte
+      .filter((x) => x.runId === runId)
+      .flatMap((x) => x.werkzeuge.filter((w) => w.geladen !== w.status))
+      .map((w) => `${w.actionId}:${w.status}`);
+    const offeneAntworten = a.eintraege
+      .filter((e) => e.art === "nachricht" && e.runId === runId && e.herkunftOffen === true)
+      .map((e) => (e.art === "nachricht" ? e.id : ""));
+    const ende = a.beendet.includes(runId) ? "ende" : "";
+    return { runId, schluessel: [runId, ende, ...offeneAufrufe, ...offeneAntworten].join("|") };
+  });
 }
 
 /**
@@ -429,6 +433,18 @@ export function nachfrageUebernehmen(
         ),
       };
     });
+  }
+  // Ein beendeter Lauf ändert sich nicht mehr: Was der Server zuletzt gelesen hat, gilt, auch wenn
+  // er einen Aufruf noch als „läuft“ sah oder mehr Aufrufe hat, als er nennt (Grenze der Route).
+  if (stand.beendet.includes(runId)) {
+    stand = {
+      ...stand,
+      schritte: stand.schritte.map((x) =>
+        x.runId !== runId
+          ? x
+          : { ...x, werkzeuge: x.werkzeuge.map((k) => ({ ...k, geladen: k.status })) },
+      ),
+    };
   }
   const feste = new Set(antwort.feste);
   return {

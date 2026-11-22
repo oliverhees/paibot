@@ -74,7 +74,7 @@ import {
   nachfrageUebernehmen,
   neuErzeugbar,
   neuErzeugt,
-  offeneNachfrage,
+  offeneNachfragen,
   ohneVorgabe,
   schritteVon,
   schrittSichtbar,
@@ -145,6 +145,10 @@ const BLOCK_TEXTE = {
 const ANKLEBEN_PX = 96;
 /** Wartezeit, bevor angekündigte Belege vollständig geholt werden (sie kommen oft paarweise). */
 const BELEGE_WARTEN_MS = 300;
+/** So oft wird das Lesen der Werkzeug-Aufrufe nach einem Fehlschlag neu versucht. */
+const NACHFRAGE_VERSUCHE = 3;
+/** Abstand vor dem ersten neuen Versuch; er verdoppelt sich je Versuch. */
+const NACHFRAGE_ABSTAND_MS = 1000;
 
 interface Gesendet {
   messageId: string;
@@ -306,24 +310,42 @@ export function ChatSeite({
     };
   }, [id, offeneBelege, loescht]);
 
-  // Werkzeug-Aufrufe eines Laufs holen (Fundstellen, Frage, Belege) und feste Antworten erkennen:
-  // einmal je Änderung am Zustand, nie in einer Schleife.
-  const nachfrage = useMemo(() => offeneNachfrage(ansicht), [ansicht]);
-  const nachfrageLauf = nachfrage?.runId;
-  const nachfrageSchluessel = nachfrage?.schluessel;
+  // Werkzeug-Aufrufe der Läufe holen (Fundstellen, Frage, Belege) und feste Antworten erkennen:
+  // jeden offenen Lauf einzeln, einmal je Änderung am Zustand. Scheitert das Lesen, wird begrenzt
+  // und mit wachsendem Abstand neu versucht (`NACHFRAGE_VERSUCHE`), nie in einer Schleife.
+  const nachfragen = useMemo(() => offeneNachfragen(ansicht), [ansicht]);
+  const nachfragenRef = useRef(nachfragen);
+  nachfragenRef.current = nachfragen;
+  const nachfrageSchluessel = nachfragen.map((n) => n.schluessel).join("§");
+  const [versuche, setVersuche] = useState({ schluessel: "", n: 0 });
+  const versuch = versuche.schluessel === nachfrageSchluessel ? versuche.n : 0;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `nachfragenRef` gehört zum Schlüssel
   useEffect(() => {
-    if (id === undefined || nachfrageLauf === undefined || nachfrageSchluessel === undefined)
-      return;
-    if (loescht) return;
+    if (id === undefined || nachfrageSchluessel === "" || loescht) return;
     let aktiv = true;
+    let zeitgeber: ReturnType<typeof setTimeout> | undefined;
     void (async () => {
-      const r = await apiFetch<LaufWerkzeuge>("GET", CHAT_PFADE.laufWerkzeuge(id, nachfrageLauf));
-      if (aktiv && r.ok) setAnsicht((a) => nachfrageUebernehmen(a, nachfrageLauf, r.daten));
+      let gescheitert = false;
+      for (const n of nachfragenRef.current) {
+        const r = await apiFetch<LaufWerkzeuge>("GET", CHAT_PFADE.laufWerkzeuge(id, n.runId));
+        if (!aktiv) return;
+        if (r.ok) setAnsicht((a) => nachfrageUebernehmen(a, n.runId, r.daten));
+        else gescheitert = true;
+      }
+      if (gescheitert && versuch < NACHFRAGE_VERSUCHE) {
+        zeitgeber = setTimeout(
+          () => {
+            if (aktiv) setVersuche({ schluessel: nachfrageSchluessel, n: versuch + 1 });
+          },
+          NACHFRAGE_ABSTAND_MS * 2 ** versuch,
+        );
+      }
     })();
     return () => {
       aktiv = false;
+      if (zeitgeber !== undefined) clearTimeout(zeitgeber);
     };
-  }, [id, nachfrageLauf, nachfrageSchluessel, loescht]);
+  }, [id, nachfrageSchluessel, versuch, loescht]);
 
   // Fertige Antwort im Live-Bereich ansagen (nicht jedes Stück); eine feste Antwort mit ihrem Hinweis.
   useEffect(() => {
