@@ -317,6 +317,7 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
       "Testdaten: erzeugt eine feste Beleg-Kette (in der Regel ausgenommen)",
     "packages/gate/src/testdaten.ts": "Testdaten für die Tor-Tests",
     "packages/db/src/testdaten.ts": "Testdaten für die Datenbank-Tests",
+    "packages/db/src/apps-testhilfe.ts": "Testhilfe für die Apps-Datenbank: Entscheidungen des Besitzers im Beleg",
   };
 
   function dateien(): string[] {
