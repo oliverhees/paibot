@@ -143,9 +143,16 @@ function giltFuerBot(regel: RuleDefinition): boolean {
   return regel.conditions.some((c) => c.fact === ACTOR_FACT && c.op === "eq" && c.value === "bot");
 }
 
+/**
+ * Text einer Regel auf der Seite „Was dein Bot darf“: der Titel der Regel, bei Bedarf mit einem
+ * kurzen Zusatz in Klammern (`bot.darf.zusatz.<Regel>`), der heute stimmt. Der Titel der Regel selbst
+ * bleibt überall sonst unverändert.
+ */
 function regelText(regel: RuleDefinition): string {
   const schluessel = `regel.${regel.id}`;
-  return isTextKey(schluessel) ? (t as (key: string) => string)(schluessel) : regel.title;
+  const titel = isTextKey(schluessel) ? (t as (key: string) => string)(schluessel) : regel.title;
+  const zusatz = `bot.darf.zusatz.${regel.id}`;
+  return isTextKey(zusatz) ? `${titel} (${(t as (key: string) => string)(zusatz)})` : titel;
 }
 
 /**

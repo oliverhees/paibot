@@ -135,12 +135,12 @@ G-16 und G-18 prüfen jeden Schritt einer Antwort mit den Werten aus den Einstel
 
 **Nummern:** Diese Nummern gibt es in dieser Fassung:
 
-| Art          | Nummern                       |
-| ------------ | ----------------------------- |
-| Regeln       | R-001 bis R-008, R-010, R-999 |
-| Vorbedingung | V-01 bis V-14                 |
-| Grenzen      | G-01 bis G-05, G-16 bis G-18  |
-| Deckel       | D-01                          |
+| Art          | Nummern                                                                |
+| ------------ | ---------------------------------------------------------------------- |
+| Regeln       | R-001 bis R-008, R-010, R-014 (Apps, siehe „Pai liest in Apps“), R-999 |
+| Vorbedingung | V-01 bis V-14                                                          |
+| Grenzen      | G-01 bis G-05, G-16 bis G-18                                           |
+| Deckel       | D-01                                                                   |
 
 Lücken in der Nummerierung sind Absicht: Jede Nummer wird nur einmal vergeben und nie neu belegt.
 
@@ -156,7 +156,7 @@ Mit Fassung 3 kommen vier Aktionen dazu, alle nur von dir: eine App verbinden (o
 | V-19   | Adresse der App erlaubt            | Vorbedingung: nur `https`, nur öffentliche Adressen, Port 443, ohne Benutzer-Teil, ohne Anfrage-Teil (`?…`) und ohne Anker (`#…`)                                                                                                                                                                                       | App verbinden                |
 | V-38   | Gesehene Fassung des Werkzeugs     | Vorbedingung: Du bestätigst genau die Fassung des Werkzeugs, die du gesehen hast. Hat die App das Werkzeug inzwischen geändert oder entfernt, wird nichts bestätigt                                                                                                                                                     | Werkzeug einer App einstufen |
 | G-06   | Zugriff des Bots auf die App       | Grenze: Der Bot hat „darf lesen“, und das Werkzeug ist als „liest“ bestätigt. Ist die App getrennt oder ihre Anmeldung nicht mehr gültig, zählt der Zugriff als „kein Zugriff“, und der Aufruf wird abgelehnt                                                                                                           | Werkzeug einer App aufrufen  |
-| G-07   | Werkzeug bestätigt und unverändert | Grenze: Das Werkzeug ist bestätigt, und es ist genau die Fassung, die du bestätigt hast. Ändert die App Beschreibung, Schema oder Hinweise, ist das Werkzeug gesperrt, bis du es neu bestätigst                                                                                                                         | Werkzeug einer App aufrufen  |
+| G-07   | Werkzeug bestätigt und unverändert | Grenze: Das Werkzeug ist bestätigt, und es ist genau die Fassung, die du bestätigt hast. Ändert die App Beschreibung, Schema oder Hinweise, wird das Werkzeug als „geändert“ gespeichert und nicht mehr aufgerufen, bis du es neu bestätigst                                                                            | Werkzeug einer App aufrufen  |
 | G-08   | Adresse der App unverändert        | Grenze: Der Aufruf geht genau an die Adresse, für die du bestätigt hast                                                                                                                                                                                                                                                 | Werkzeug einer App aufrufen  |
 | G-40   | Eine App je Schritt                | Grenze: In einem Schritt liest Pai nur in einer App, nämlich in der des ersten Aufrufs dieses Schritts. Ein Aufruf an eine zweite App wird abgelehnt                                                                                                                                                                    | Werkzeug einer App aufrufen  |
 

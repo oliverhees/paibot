@@ -1933,6 +1933,11 @@ export const de = {
   "aktion.app.zugriff_setzen": "Zugriff eines Bots auf eine App gesetzt",
   "aktion.app.trennen": "App getrennt",
   "regel.R-014": "Bot liest in Apps mit Lese-Zugriff",
+  // Zusatz nur auf der Seite „Was dein Bot darf“, nie in Belegen, Schritten und der Tor-Seite: Dort
+  // bleibt der Titel der Regel, wie er ist. Solange sich Apps nicht verbinden lassen, soll die Seite
+  // keine Erlaubnis für etwas zeigen, das niemand benutzen kann. Mit der Oberfläche für Apps entfällt
+  // der Zusatz wieder (mit seinem Eintrag in `apps/web/src/lib/bot/bot.ts`).
+  "bot.darf.zusatz.R-014": "Apps lassen sich in dieser Version noch nicht verbinden",
   "regel.G-06": "Zugriff des Bots auf die App",
   "regel.G-07": "Werkzeug bestätigt und unverändert",
   "regel.G-08": "Adresse der App unverändert",

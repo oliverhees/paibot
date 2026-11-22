@@ -202,6 +202,18 @@ describe("Vertrag der Fassung 3: Bindung und Ziel-Abdruck einer App", () => {
     }
   });
 
+  it("kein Anführungszeichen und kein Rückstrich in der ganzen Adresse (auch nicht im Host)", () => {
+    for (const bad of [
+      'https://mcp"beispiel.invalid/mcp',
+      "https://mcp\\beispiel.invalid/mcp",
+      "https://mcp%22beispiel.invalid/mcp",
+      'https://mcp.beispiel.invalid/a"b',
+      "https://mcp.beispiel.invalid/a\\b",
+    ]) {
+      expect(() => normalizedAppUrl(bad), bad).toThrow(TypeError);
+    }
+  });
+
   it("Ziel-Abdruck über App-Kennung und volle Adresse", () => {
     expect(appTargetDigestInput(APP, "https://mcp.beispiel.invalid/mcp/")).toBe(
       `${APP_TARGET_DIGEST_PREFIX}{"appId":"${APP}","url":"https://mcp.beispiel.invalid/mcp"}`,
