@@ -1,0 +1,442 @@
+/**
+ * PaiBot – Verbindung zu einem fremden MCP-Server, nur lesend angesprochen (Liste holen, ein
+ * Werkzeug aufrufen). Hier und nur hier wird die MCP-Bibliothek benutzt. Jede Anfrage geht über
+ * das hineingereichte `fetch` (die Ausgangs-Hülle), nie am Netz-Zugriff der Laufzeit vorbei; die
+ * Schicht erzwingt selbst: nur die eine Adresse der App, `redirect: "error"`, kein eigener
+ * Ereignis-Strom, Zeitgrenzen, Größengrenze, Abbruch, nach `schliesse()` keine Anfrage mehr.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-22
+ */
+
+import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
+import { bereinigeText } from "./bereinigen";
+import { ergebnisZuText, type McpErgebnis } from "./ergebnis";
+import { McpSchichtFehler, ordneFehlerZu } from "./fehler";
+import { type McpGrenzen, mitStandardGrenzen } from "./grenzen";
+import { bereiteWerkzeugeAuf, type McpWerkzeugBereinigt, type McpWerkzeugRoh } from "./werkzeug";
+
+/** Eine Anfrage nach draußen. Die Ausgangs-Hülle des Systems hat diese Form. */
+export type McpFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+export interface McpVerbindungOptionen {
+  /** Adresse des MCP-Endpunkts (`https://…`, ohne Benutzer-, Abfrage- und Fragment-Teil). */
+  adresse: string;
+  /** Alle Anfragen gehen hierüber; je App eine eigene Hülle mit genau einem erlaubten Ziel. */
+  fetch: McpFetch;
+  /** Persönlicher Zugang; geht nur als `Authorization: Bearer …` hinaus. */
+  token?: string;
+  grenzen?: Partial<McpGrenzen>;
+  /** Bricht die ganze Verbindung ab (z. B. Not-Aus des Laufs). */
+  signal?: AbortSignal;
+  /** Unverschlüsseltes `http` zulassen (nur für Tests und lokale Entwicklung). Standard: nein. */
+  erlaubeHttp?: boolean;
+}
+
+/** Ergebnis von `pruefeAdresse`. */
+export type AdressePruefung =
+  | { ok: true; url: URL }
+  | { ok: false; grund: "ungueltig" | "protokoll" | "zugangsdaten" | "abfrage" | "zu_lang" };
+
+const MAX_ADRESSE = 2_048;
+const MAX_TOKEN = 4_096;
+const CLIENT_NAME = "paibot";
+
+/**
+ * Prüft die Adresse einer App: nur `https` (mit `erlaubeHttp` auch `http`), kein Benutzer-Teil,
+ * kein Abfrage-Teil, kein Fragment. Ob das Ziel öffentlich ist, prüft die Ausgangs-Hülle.
+ */
+export function pruefeAdresse(adresse: string, erlaubeHttp = false): AdressePruefung {
+  if (adresse.length > MAX_ADRESSE) return { ok: false, grund: "zu_lang" };
+  let url: URL;
+  try {
+    url = new URL(adresse);
+  } catch {
+    return { ok: false, grund: "ungueltig" };
+  }
+  if (url.protocol !== "https:" && !(erlaubeHttp && url.protocol === "http:")) {
+    return { ok: false, grund: "protokoll" };
+  }
+  if (url.hostname === "") return { ok: false, grund: "ungueltig" };
+  if (url.username !== "" || url.password !== "") return { ok: false, grund: "zugangsdaten" };
+  if (url.search !== "" || url.hash !== "") return { ok: false, grund: "abfrage" };
+  return { ok: true, url };
+}
+
+/** Eine Seite oder alle Seiten der rohen Liste eines Servers. */
+export interface McpRohListe {
+  werkzeuge: McpWerkzeugRoh[];
+  seiten: number;
+  /** Es gab mehr Werkzeuge oder Seiten als erlaubt; der Rest wurde nicht geholt. */
+  abgeschnitten: boolean;
+}
+
+export interface McpVerbindung {
+  /** Origin der App (`https://host`), für Anzeige und Vergleich. */
+  readonly origin: string;
+  /** Bereinigter Name des Servers (nur Anzeige). */
+  readonly serverName: string;
+  /** Holt die rohe Werkzeug-Liste (höchstens `maxSeiten` Seiten und `maxWerkzeuge` Werkzeuge). */
+  listeRoh(optionen?: { signal?: AbortSignal }): Promise<McpRohListe>;
+  /** Ruft ein Werkzeug auf. Wirft `McpSchichtFehler` bei Netz-, Zeit- und Protokollfehlern. */
+  rufeAuf(
+    originalName: string,
+    argumente: Record<string, unknown>,
+    optionen?: { signal?: AbortSignal },
+  ): Promise<McpErgebnis>;
+  /** Schließt; danach geht keine Anfrage mehr hinaus. Mehrfacher Aufruf ist harmlos. */
+  schliesse(): Promise<void>;
+}
+
+type Phase = "offen" | "schliesst" | "zu";
+
+/** Führt `werk` mit einer Frist und einem Abbruch aus; beides wird an `werk` als Signal gegeben. */
+async function mitFrist<T>(
+  ms: number,
+  aussen: AbortSignal | undefined,
+  werk: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const abbruch = new AbortController();
+  const timer = setTimeout(() => abbruch.abort(new McpSchichtFehler("zeit_ueberschritten")), ms);
+  const vonAussen = () => abbruch.abort(new McpSchichtFehler("abgebrochen"));
+  if (aussen?.aborted === true) vonAussen();
+  else aussen?.addEventListener("abort", vonAussen, { once: true });
+  const abgebrochen = new Promise<never>((_, ablehnen) => {
+    const grund = () => ablehnen(abbruch.signal.reason);
+    if (abbruch.signal.aborted) grund();
+    else abbruch.signal.addEventListener("abort", grund, { once: true });
+  });
+  const lauf = werk(abbruch.signal);
+  lauf.catch(() => undefined);
+  try {
+    return await Promise.race([lauf, abgebrochen]);
+  } catch (fehler) {
+    // Hat die Frist oder der Abbruch zugeschlagen, gilt deren Grund, nicht der Folgefehler.
+    if (abbruch.signal.aborted && abbruch.signal.reason instanceof McpSchichtFehler) {
+      throw abbruch.signal.reason;
+    }
+    throw fehler;
+  } finally {
+    clearTimeout(timer);
+    aussen?.removeEventListener("abort", vonAussen);
+  }
+}
+
+/** Begrenzt die Bytes einer Antwort; darüber wird der Strom mit einem Fehler beendet. */
+function begrenzeAntwort(antwort: Response, maxBytes: number): Response {
+  const laenge = Number(antwort.headers.get("content-length"));
+  if (Number.isFinite(laenge) && laenge > maxBytes) {
+    void antwort.body?.cancel().catch(() => undefined);
+    throw new McpSchichtFehler("werkzeug_ergebnis_zu_gross");
+  }
+  if (antwort.body === null) return antwort;
+  let gelesen = 0;
+  const zaehler = new TransformStream<Uint8Array, Uint8Array>({
+    transform(stueck, steuerung) {
+      gelesen += stueck.byteLength;
+      if (gelesen > maxBytes) {
+        steuerung.error(new McpSchichtFehler("werkzeug_ergebnis_zu_gross"));
+        return;
+      }
+      steuerung.enqueue(stueck);
+    },
+  });
+  return new Response(antwort.body.pipeThrough(zaehler), {
+    status: antwort.status,
+    statusText: antwort.statusText,
+    headers: antwort.headers,
+  });
+}
+
+/**
+ * Das `fetch`, das die Bibliothek bekommt: alles Nötige wird hier erzwungen. Nur für die Schicht und
+ * ihre Tests; außerhalb gibt es `oeffneVerbindung`.
+ */
+export function baueSicheresFetch(
+  basis: McpFetch,
+  endpunkt: URL,
+  phase: () => Phase,
+  verbindungSignal: AbortSignal,
+  grenzen: McpGrenzen,
+): McpFetch {
+  return async (eingabe, init) => {
+    if (phase() === "zu") throw new McpSchichtFehler("verbindung_geschlossen");
+    const ziel =
+      typeof eingabe === "string" ? eingabe : eingabe instanceof URL ? eingabe.href : undefined;
+    if (ziel === undefined) throw new McpSchichtFehler("app_adresse_unzulaessig");
+    let url: URL;
+    try {
+      url = new URL(ziel);
+    } catch {
+      throw new McpSchichtFehler("app_adresse_unzulaessig");
+    }
+    // Nur genau der Endpunkt der App; weder eine andere Adresse noch ein anderer Pfad.
+    if (
+      url.origin !== endpunkt.origin ||
+      url.pathname !== endpunkt.pathname ||
+      url.search !== "" ||
+      url.username !== "" ||
+      url.password !== ""
+    ) {
+      throw new McpSchichtFehler("app_adresse_unzulaessig");
+    }
+    const methode = (init?.method ?? "GET").toUpperCase();
+    // Kein eigener Ereignis-Strom: Der Server bekommt keine Gelegenheit, dauerhaft zu senden.
+    if (methode === "GET") return new Response(null, { status: 405 });
+    if (phase() === "schliesst" && methode !== "DELETE") {
+      throw new McpSchichtFehler("verbindung_geschlossen");
+    }
+    const signale = [verbindungSignal];
+    if (init?.signal) signale.push(init.signal);
+    const antwort = await basis(url.href, {
+      ...init,
+      redirect: "error",
+      credentials: "omit",
+      signal: AbortSignal.any(signale),
+    });
+    return begrenzeAntwort(antwort, grenzen.maxAntwortBytes);
+  };
+}
+
+/** Prüft das Zugangsdatum: sichtbare ASCII-Zeichen ohne Leerzeichen, nicht zu lang. */
+function pruefeToken(token: string): void {
+  if (token.length === 0 || token.length > MAX_TOKEN || !/^[\x21-\x7E]+$/.test(token)) {
+    throw new McpSchichtFehler("app_zugang_ungueltig");
+  }
+}
+
+/**
+ * Öffnet eine Verbindung. Wirft `McpSchichtFehler` (feste Texte, nie ein Text des Servers und nie
+ * das Zugangsdatum).
+ */
+export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise<McpVerbindung> {
+  const grenzen = mitStandardGrenzen(optionen.grenzen);
+  const adresse = pruefeAdresse(optionen.adresse, optionen.erlaubeHttp === true);
+  if (!adresse.ok) throw new McpSchichtFehler("app_adresse_unzulaessig");
+  if (optionen.token !== undefined) pruefeToken(optionen.token);
+
+  let phase: Phase = "offen";
+  const verbindungAbbruch = new AbortController();
+  if (optionen.signal?.aborted === true) throw new McpSchichtFehler("abgebrochen");
+  optionen.signal?.addEventListener(
+    "abort",
+    () => verbindungAbbruch.abort(new McpSchichtFehler("abgebrochen")),
+    {
+      once: true,
+    },
+  );
+  const sicheresFetch = baueSicheresFetch(
+    optionen.fetch,
+    adresse.url,
+    () => phase,
+    verbindungAbbruch.signal,
+    grenzen,
+  );
+
+  let client: MCPClient;
+  try {
+    client = await mitFrist(grenzen.listeMs, verbindungAbbruch.signal, (signal) =>
+      createMCPClient({
+        transport: {
+          type: "http",
+          url: adresse.url.href,
+          ...(optionen.token === undefined
+            ? {}
+            : { headers: { Authorization: `Bearer ${optionen.token}` } }),
+          fetch: sicheresFetch,
+        },
+        clientName: CLIENT_NAME,
+        maxRetries: 0,
+        onUncaughtError: () => undefined,
+        initializationOptions: {
+          signal,
+          timeout: grenzen.listeMs,
+          maxTotalTimeout: grenzen.listeMs,
+        },
+      }),
+    );
+  } catch (fehler) {
+    phase = "zu";
+    verbindungAbbruch.abort(new McpSchichtFehler("verbindung_geschlossen"));
+    throw ordneFehlerZu(fehler);
+  }
+  const serverName = bereinigeText(String(client.serverInfo?.name ?? ""), {
+    maxZeichen: 100,
+    zeilenumbrueche: false,
+    kuerzungsMarke: "…",
+  }).text;
+
+  const pruefeOffen = () => {
+    if (phase !== "offen") throw new McpSchichtFehler("verbindung_geschlossen");
+  };
+
+  return {
+    origin: adresse.url.origin,
+    serverName,
+
+    async listeRoh(listenOptionen) {
+      pruefeOffen();
+      try {
+        return await mitFrist(
+          grenzen.listeMs,
+          mischeSignale(listenOptionen?.signal, verbindungAbbruch.signal),
+          async (signal) => {
+            const werkzeuge: McpWerkzeugRoh[] = [];
+            const gesehen = new Set<string>();
+            let cursor: string | undefined;
+            let seiten = 0;
+            let abgeschnitten = false;
+            while (seiten < grenzen.maxSeiten) {
+              const antwort = await client.listTools({
+                ...(cursor === undefined ? {} : { params: { cursor } }),
+                options: { signal, timeout: grenzen.listeMs, maxTotalTimeout: grenzen.listeMs },
+              });
+              seiten += 1;
+              const platz = grenzen.maxWerkzeuge - werkzeuge.length;
+              if (antwort.tools.length > platz) abgeschnitten = true;
+              for (const werkzeug of antwort.tools.slice(0, Math.max(0, platz))) {
+                werkzeuge.push(werkzeug as McpWerkzeugRoh);
+              }
+              const weiter = antwort.nextCursor;
+              if (weiter === undefined || weiter === "") break;
+              if (abgeschnitten || weiter.length > 4_096 || gesehen.has(weiter)) {
+                abgeschnitten = true;
+                break;
+              }
+              gesehen.add(weiter);
+              cursor = weiter;
+              if (seiten >= grenzen.maxSeiten) abgeschnitten = true;
+            }
+            return { werkzeuge, seiten, abgeschnitten };
+          },
+        );
+      } catch (fehler) {
+        throw ordneFehlerZu(fehler);
+      }
+    },
+
+    async rufeAuf(originalName, argumente, aufrufOptionen) {
+      pruefeOffen();
+      try {
+        const roh = await mitFrist(
+          grenzen.aufrufMs,
+          mischeSignale(aufrufOptionen?.signal, verbindungAbbruch.signal),
+          (signal) =>
+            client.callTool({
+              name: originalName,
+              arguments: argumente,
+              options: { signal, timeout: grenzen.aufrufMs, maxTotalTimeout: grenzen.aufrufMs },
+            }),
+        );
+        return ergebnisZuText(roh, grenzen);
+      } catch (fehler) {
+        throw ordneFehlerZu(fehler);
+      }
+    },
+
+    async schliesse() {
+      if (phase === "zu") return;
+      phase = "schliesst";
+      try {
+        await mitFrist(grenzen.schliessenMs, undefined, () => client.close());
+      } catch {
+        // Beim Schließen ist ein Fehler nicht mehr wichtig; danach geht ohnehin nichts mehr hinaus.
+      } finally {
+        phase = "zu";
+        verbindungAbbruch.abort(new McpSchichtFehler("verbindung_geschlossen"));
+      }
+    },
+  };
+}
+
+/** Ein Signal, das auslöst, sobald eines der beiden auslöst. */
+function mischeSignale(a: AbortSignal | undefined, b: AbortSignal): AbortSignal {
+  return a === undefined ? b : AbortSignal.any([a, b]);
+}
+
+export interface WerkzeugAbrufOptionen extends McpVerbindungOptionen {
+  /** Kurzname der App für die Namen der Modell-Werkzeuge. */
+  appKurzname: string;
+  /** Modell-Namen anderer Apps der Installation (für eindeutige Namen). */
+  bereitsVergeben?: ReadonlySet<string>;
+}
+
+export interface WerkzeugAbruf {
+  werkzeuge: McpWerkzeugBereinigt[];
+  serverName: string;
+  seiten: number;
+  abgeschnitten: boolean;
+}
+
+/**
+ * Verbindet, holt die ganze Liste, bereitet jedes Werkzeug auf und schließt wieder. Wirft
+ * `McpSchichtFehler`, wenn das Verbinden oder Holen scheitert.
+ */
+export async function holeWerkzeuge(optionen: WerkzeugAbrufOptionen): Promise<WerkzeugAbruf> {
+  const verbindung = await oeffneVerbindung(optionen);
+  try {
+    const liste = await verbindung.listeRoh();
+    return {
+      werkzeuge: bereiteWerkzeugeAuf(liste.werkzeuge, {
+        appKurzname: optionen.appKurzname,
+        ...(optionen.grenzen === undefined ? {} : { grenzen: optionen.grenzen }),
+        ...(optionen.bereitsVergeben === undefined
+          ? {}
+          : { bereitsVergeben: optionen.bereitsVergeben }),
+      }),
+      serverName: verbindung.serverName,
+      seiten: liste.seiten,
+      abgeschnitten: liste.abgeschnitten,
+    };
+  } finally {
+    await verbindung.schliesse();
+  }
+}
+
+export interface WerkzeugAufrufOptionen extends McpVerbindungOptionen {
+  /** Das Werkzeug aus `holeWerkzeuge` (frisch abgerufen und mit der Bestätigung abgeglichen). */
+  werkzeug: McpWerkzeugBereinigt;
+  /** Die Argumente, wie das Modell sie gewünscht hat; sie werden gegen das Prüf-Schema geprüft. */
+  argumente: unknown;
+}
+
+/**
+ * Prüft die Argumente, verbindet, ruft das Werkzeug auf und schließt wieder. Wirft nie: Jedes
+ * Problem kommt als `McpErgebnis` mit `status: "fehler"` und festem Satz zurück. Wird kein Netz-
+ * Zugriff gebraucht (nicht bestätigbares Werkzeug, ungültige Argumente), geht keine Anfrage hinaus.
+ */
+export async function rufeWerkzeugAuf(optionen: WerkzeugAufrufOptionen): Promise<McpErgebnis> {
+  const fehlerErgebnis = (code: McpSchichtFehler["code"]): McpErgebnis => ({
+    status: "fehler",
+    text: new McpSchichtFehler(code).message,
+    gekuerzt: false,
+    enthaeltFremdenText: false,
+    ausgelasseneTeile: 0,
+    fehlercode: code,
+  });
+  const werkzeug = optionen.werkzeug;
+  if (!werkzeug.bestaetigbar || werkzeug.pruefer === null) {
+    return fehlerErgebnis("werkzeug_schema_nicht_pruefbar");
+  }
+  const grenzen = mitStandardGrenzen(optionen.grenzen);
+  const geprueft = werkzeug.pruefer(optionen.argumente);
+  if (!geprueft.ok) return fehlerErgebnis("werkzeug_argumente_ungueltig");
+  let verbindung: McpVerbindung;
+  try {
+    verbindung = await oeffneVerbindung({ ...optionen, grenzen });
+  } catch (fehler) {
+    return fehlerErgebnis(ordneFehlerZu(fehler).code);
+  }
+  try {
+    return await verbindung.rufeAuf(werkzeug.originalName, geprueft.wert, {
+      ...(optionen.signal === undefined ? {} : { signal: optionen.signal }),
+    });
+  } catch (fehler) {
+    return fehlerErgebnis(ordneFehlerZu(fehler).code);
+  } finally {
+    await verbindung.schliesse();
+  }
+}
