@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "../client";
 import { createTestDb } from "../testing";
 import { bots, conversations, messages, search } from "./index";
+import { pruefeZwischentexte } from "./testhilfe";
 
 describe("search", () => {
   let db: Database;
@@ -98,5 +99,9 @@ describe("search", () => {
       "Punkt 1",
       "Punkt 0",
     ]);
+  });
+
+  it("findet keine Zwischentexte eines Laufs mit Werkzeugen; Blättern zählt nur Treffer", async () => {
+    await pruefeZwischentexte(db, botId);
   });
 });

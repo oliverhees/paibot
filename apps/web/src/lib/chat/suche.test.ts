@@ -17,7 +17,7 @@ import { anfrage, Keksdose } from "../zugang/testing";
 import type { SuchErgebnis } from "./such-typen";
 import { suchStand } from "./such-zustand";
 import { ausschnittAus, titelTeile, unterhaltungenSuchen } from "./suche";
-import { eingerichtet, neueUnterhaltung, type Umgebung } from "./testing";
+import { eingerichtet, mitZwischentexten, neueUnterhaltung, type Umgebung } from "./testing";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -139,6 +139,58 @@ describe("GET /api/suche", () => {
       zweite.nachrichten.map((n) => n.ausschnitt.vor + n.ausschnitt.treffer + n.ausschnitt.nach),
     ).toEqual(["Notiz Nummer 2", "Notiz Nummer 1", "Notiz Nummer 0"]);
     expect(zweite.weiter).toBeUndefined();
+  });
+
+  it("findet keine Zwischentexte; Blättern zählt nur Treffer", async () => {
+    const e = await eingerichtet();
+    // Ältere Treffer füllen die erste Seite fast: mit den drei Treffern der Unterhaltung unten
+    // gibt es genau eine Seite und einen Treffer mehr.
+    const alt = (await neueUnterhaltung(e, "Alt")) as ConversationId;
+    for (let i = 0; i < SEARCH_PAGE.size - 2; i++) {
+      await repo.messages.insert(e.u.db, {
+        conversationId: alt,
+        role: "user",
+        content: `Suchwort alt ${i}`,
+      });
+    }
+    await mitZwischentexten(e, {
+      titel: "Beet",
+      laeufe: [
+        {
+          frage: "Suchwort in der Frage",
+          zwischentexte: [
+            { text: "Suchwort im Zwischentext 1" },
+            { text: "Suchwort im Zwischentext 2" },
+          ],
+          antwort: "Suchwort in Antwort 1",
+          ende: "succeeded",
+        },
+        { antwort: "Suchwort in Antwort 2", ende: "succeeded" },
+        {
+          zwischentexte: [
+            { text: "Suchwort im Zwischentext 3", status: "cancelled" },
+            { text: "Suchwort im Zwischentext 4", status: "cancelled" },
+            { text: "Suchwort im Zwischentext 5", status: "cancelled" },
+          ],
+          ende: "cancelled",
+        },
+      ],
+    });
+    const such = e.u.handler("suche", unterhaltungenSuchen);
+    const erste = (await anfrage(e.u, such, "GET", "/api/suche?q=suchwort", { dose: e.dose })).body
+      .daten as SuchErgebnis;
+    expect(erste.nachrichten).toHaveLength(SEARCH_PAGE.size);
+    expect(erste.weiter).toBe(SEARCH_PAGE.size);
+    const zweite = (
+      await anfrage(e.u, such, "GET", `/api/suche?q=suchwort&ab=${erste.weiter}`, { dose: e.dose })
+    ).body.daten as SuchErgebnis;
+    expect(zweite.nachrichten).toHaveLength(1);
+    expect(zweite.weiter).toBeUndefined();
+    const alle = [...erste.nachrichten, ...zweite.nachrichten].map(
+      (n) => n.ausschnitt.vor + n.ausschnitt.treffer + n.ausschnitt.nach,
+    );
+    expect(alle.filter((t) => t.includes("Zwischentext"))).toEqual([]);
+    expect(alle.filter((t) => t.includes("Antwort"))).toHaveLength(2);
   });
 
   it("zählt auf ein Limit je Besitzer und sperrt darüber mit 429", async () => {

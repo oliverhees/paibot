@@ -17,7 +17,7 @@ import {
   type MessageRole,
   toIsoTime,
 } from "@paibot/shared";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { conversations, messages } from "../schema";
 
@@ -83,7 +83,8 @@ export async function titles(
 }
 
 /**
- * Nachrichten (deine und die Antworten des Bots), deren Text das Suchwort enthält, neueste zuerst,
+ * Nachrichten (deine und die End-Antworten des Bots, keine Zwischentexte eines Laufs mit
+ * Werkzeugen), deren Text das Suchwort enthält, neueste zuerst,
  * seitenweise: `offset` Treffer überspringen, höchstens `limit` liefern; `more` sagt, ob es weitere
  * gibt. Der Ausschnitt kommt schon in der Datenbank zugeschnitten, so geht nie der ganze Text
  * einer langen Nachricht über die Leitung.
@@ -109,7 +110,13 @@ export async function messageHits(
     })
     .from(messages)
     .innerJoin(conversations, eq(conversations.id, messages.conversationId))
-    .where(and(inArray(messages.role, ["user", "assistant"]), sql`${position} > 0`))
+    .where(
+      and(
+        inArray(messages.role, ["user", "assistant"]),
+        isNull(messages.step),
+        sql`${position} > 0`,
+      ),
+    )
     .orderBy(desc(messages.createdAt), desc(messages.id))
     .limit(options.limit + 1)
     .offset(options.offset);
