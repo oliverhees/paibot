@@ -156,6 +156,11 @@ describe("Dockerfile: Doku-Index", () => {
       "COPY --from=build --chown=root:root --chmod=0444 /app/doku-index/doku-index.json ./doku-index/doku-index.json",
     );
     expect(lauf).not.toContain("--chown=paibot:paibot /app/doku-index");
+    // Der Ordner muss vor der Kopie da sein und betretbar bleiben: Sonst bekommt er die Rechte
+    // der Datei (0444), und die App kann den Index nicht lesen.
+    const ordner = lauf.indexOf("RUN mkdir -p /app/doku-index && chmod 0555 /app/doku-index");
+    expect(ordner).toBeGreaterThan(-1);
+    expect(ordner).toBeLessThan(lauf.indexOf("--chmod=0444 /app/doku-index/doku-index.json"));
     // WORKDIR /app + Ziel der Kopie = Wert der Umgebungsvariable
     expect(lauf).toContain("WORKDIR /app");
   });
