@@ -90,6 +90,30 @@ async function weistAbOhneTrigger(row: object, code: string, constraint: string)
   }
 }
 
+/**
+ * Wie `weistAb`, aber nur ohne den Trigger `tool_calls_regeln` (Fremdschlüssel und eindeutige
+ * Indizes gelten weiter): Er lässt keine Belege beim Anlegen zu und weist fremde Belege schon
+ * selbst ab; so bleibt sichtbar, dass Fremdschlüssel und Index die zweite Schicht sind.
+ */
+async function weistAbOhneRegeln(row: object, code: string, constraint: string) {
+  await ctx.client.exec("alter table tool_calls disable trigger tool_calls_regeln");
+  try {
+    await weistAb(row, code, constraint);
+  } finally {
+    await ctx.client.exec("alter table tool_calls enable trigger tool_calls_regeln");
+  }
+}
+
+/** Setzt die Entscheidung „erlaubt“ genau dieser Aktion (angefragt → läuft). */
+async function entscheide(actionId: ActionId): Promise<ReceiptId> {
+  const decisionReceiptId = await beleg({ type: "decision", actionId, outcome: "allow" });
+  await ctx.db
+    .update(toolCalls)
+    .set({ status: "running", decisionReceiptId })
+    .where(eq(toolCalls.actionId, actionId));
+  return decisionReceiptId;
+}
+
 beforeEach(async () => {
   ctx = await createTestDb();
   const bot = botRow();
@@ -250,7 +274,8 @@ describe("tool_calls (Schema)", () => {
       FOREIGN_KEY,
       "tool_calls_conversation_id_conversations_id_fk",
     );
-    await weistAb(
+    // Ein neuer Aufruf hat noch keine Belege (Trigger); der Fremdschlüssel ist die zweite Schicht.
+    await weistAbOhneRegeln(
       toolCallRow(ids, { decisionReceiptId: newId("receipt") }),
       FOREIGN_KEY,
       "tool_calls_decision_receipt_id_belege_id_fk",
@@ -258,16 +283,18 @@ describe("tool_calls (Schema)", () => {
   });
 
   it("eindeutig: Stelle und Aufruf-Kennung je Antwort, Beleg je Aufruf", async () => {
-    const erster = toolCallRow(ids, { decisionReceiptId: belegIds[0] });
+    const erster = toolCallRow(ids);
     await ctx.db.insert(toolCalls).values(erster);
+    const belegDesErsten = await entscheide(erster.actionId);
     await weistAb(toolCallRow(ids, { callId: "anders" }), UNIQUE, "tool_calls_stelle_eindeutig");
     await weistAb(
       toolCallRow(ids, { position: 1, callId: erster.callId }),
       UNIQUE,
       "tool_calls_call_id_eindeutig",
     );
-    await weistAb(
-      toolCallRow(ids, { position: 2, decisionReceiptId: belegIds[0] }),
+    // Der Trigger weist einen fremden Beleg schon ab; der Index ist die zweite Schicht.
+    await weistAbOhneRegeln(
+      toolCallRow(ids, { position: 2, decisionReceiptId: belegDesErsten }),
       UNIQUE,
       "tool_calls_decision_receipt_id_eindeutig",
     );
@@ -279,10 +306,12 @@ describe("tool_calls (Schema)", () => {
   });
 
   it("verschwinden mit ihrer Unterhaltung, die Belege bleiben", async () => {
-    await ctx.db.insert(toolCalls).values(toolCallRow(ids, { decisionReceiptId: belegIds[0] }));
+    const row = toolCallRow(ids);
+    await ctx.db.insert(toolCalls).values(row);
+    await entscheide(row.actionId);
     await ctx.db.delete(conversations).where(eq(conversations.id, ids.conversationId));
     expect(await ctx.db.select().from(toolCalls)).toEqual([]);
-    expect(await ctx.db.select().from(belege)).toHaveLength(4);
+    expect(await ctx.db.select().from(belege)).toHaveLength(5);
   });
 });
 

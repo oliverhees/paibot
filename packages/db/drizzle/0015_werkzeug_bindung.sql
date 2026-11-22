@@ -1,7 +1,8 @@
 -- PaiBot – Werkzeug-Aufrufe an ihre Belege binden: Ein Aufruf läuft nur mit der Entscheidung
 -- „erlaubt“ genau dieser Aktion, wird nur mit einer Entscheidung dieser Aktion abgelehnt und endet
 -- nur mit einem Ergebnis-Beleg dieser Aktion. Einmal gesetzte Kennungen der Belege bleiben gleich.
--- Dazu feste Obergrenzen für Eingabe und Ergebnis eines Aufrufs.
+-- Ein neuer Aufruf hat noch keine Belege. Dazu feste Obergrenzen für Eingabe und Ergebnis eines
+-- Aufrufs.
 --
 -- Autor:     Oliver Hees
 -- Website:   https://paibot.de
@@ -28,6 +29,11 @@ BEGIN
     IF NEW.tool_key IS NULL OR NEW.tool_digest IS NULL OR NEW.reach IS NULL
       OR NEW.foreign_content IS NULL OR NEW.step IS NULL OR NEW.untrusted_input IS NULL THEN
       RAISE EXCEPTION 'Ein Werkzeug-Aufruf braucht Kennung, Abdruck, Wirkung, Herkunft, Schritt und Kennzeichen.'
+        USING ERRCODE = 'check_violation';
+    END IF;
+    IF NEW.decision_receipt_id IS NOT NULL OR NEW.result_receipt_id IS NOT NULL
+      OR NEW.result_status IS NOT NULL OR NEW.output IS NOT NULL OR NEW.finished_at IS NOT NULL THEN
+      RAISE EXCEPTION 'Ein neuer Werkzeug-Aufruf hat noch keine Belege und kein Ergebnis.'
         USING ERRCODE = 'check_violation';
     END IF;
     RETURN NEW;
@@ -100,13 +106,13 @@ BEGIN
     RAISE EXCEPTION 'Ein Werkzeug-Aufruf wird nur nach einer ablehnenden Entscheidung abgelehnt.'
       USING ERRCODE = 'restrict_violation';
   END IF;
-  -- Ergebnis: nur ein Beleg „Ergebnis“ genau dieser Aktion; erledigt nur mit ihm.
+  -- Ergebnis: nur ein Beleg „Ergebnis“ genau dieser Aktion; erledigt nur mit ihm. Geprüft wird bei
+  -- jeder Änderung einer Zeile mit Ergebnis-Beleg, nicht nur, wenn sich die Kennung ändert.
   IF NEW.status IN ('succeeded', 'failed') AND NEW.result_receipt_id IS NULL THEN
     RAISE EXCEPTION 'Ein erledigter Werkzeug-Aufruf braucht seinen Ergebnis-Beleg.'
       USING ERRCODE = 'restrict_violation';
   END IF;
   IF NEW.result_receipt_id IS NOT NULL
-    AND NEW.result_receipt_id IS DISTINCT FROM OLD.result_receipt_id
     AND NOT EXISTS (
       SELECT 1 FROM public.belege b
       WHERE b.id = NEW.result_receipt_id AND b.entry_type = 'result'

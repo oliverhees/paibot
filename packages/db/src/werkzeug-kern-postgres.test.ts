@@ -466,6 +466,89 @@ describe.skipIf(BASE_URL === undefined)("Werkzeug-Aufrufe mit der App-Rolle (Pos
       ).toBe(RESTRICT);
     });
 
+    /** Zeile direkt per SQL anlegen, mit zusätzlichen Spalten (z. B. schon gesetzten Belegen). */
+    const zeileRoh = (
+      sql: postgres.Sql,
+      l: Awaited<ReturnType<typeof lauf>>,
+      id: ActionId,
+      zusatz: Record<string, unknown>,
+    ) => {
+      const werte: Record<string, unknown> = {
+        action_id: id,
+        conversation_id: l.conversation.id,
+        run_id: l.run.id,
+        message_id: l.antwort.id,
+        position: 0,
+        call_id: "c0",
+        name: "doku_nachschlagen",
+        source: "eingebaut",
+        kind: "lesen",
+        input: JSON.stringify({ frage: "Not-Aus" }),
+        args_digest: hmacDigest(),
+        tool_key: "eingebaut/doku.nachschlagen",
+        tool_digest: sha256Digest(),
+        reach: "intern",
+        foreign_content: false,
+        step: 0,
+        untrusted_input: false,
+        ...zusatz,
+      };
+      const spalten = Object.keys(werte);
+      return sql.unsafe(
+        `insert into tool_calls (${spalten.join(", ")}) values (${spalten
+          .map((name, i) =>
+            name === "input" || name === "output" ? `$${i + 1}::jsonb` : `$${i + 1}`,
+          )
+          .join(", ")})`,
+        Object.values(werte) as never[],
+      );
+    };
+
+    // Gegenprobe: alter Rumpf (Belege beim Anlegen erlaubt, Ergebnis-Beleg nur bei Änderung
+    // geprüft) → Anlegen gelingt, rot.
+    it("Anlegen mit fremdem Ergebnis-Beleg, Entscheidung, Ergebnis oder Ende → Fehler", async () => {
+      const l = await lauf();
+      const id = newId("action");
+      const fremd = await belegFuer(newId("action"), "result");
+      expect(await codeOf(zeileRoh(app, l, id, { result_receipt_id: fremd }))).toBe(CHECK);
+      for (const [spalte, wert] of [
+        ["decision_receipt_id", beleg()],
+        ["result_status", "ok"],
+        ["output", JSON.stringify({ text: "x" })],
+        ["finished_at", new Date().toISOString()],
+      ] as const) {
+        expect(await codeOf(zeileRoh(app, l, id, { [spalte]: wert })), spalte).toBe(CHECK);
+      }
+      expect(await toolCalls.get(db, id)).toBeUndefined();
+    });
+
+    // Zweite Schicht: Steht ein fremder Ergebnis-Beleg doch an einer Zeile (etwa aus einem alten
+    // Stand), scheitert jede weitere Änderung. Gegenprobe: Prüfung nur bei Änderung → rot.
+    it("eine Zeile mit fremdem Ergebnis-Beleg kommt weder nach running noch nach cancelled", async () => {
+      const l = await lauf();
+      const id = newId("action");
+      const fremd = await belegFuer(newId("action"), "result");
+      const besitzer = postgres(database.url, { max: 1, onnotice: () => undefined });
+      try {
+        await besitzer.begin(async (tx) => {
+          await tx.unsafe("set local session_replication_role = replica");
+          await zeileRoh(tx as unknown as postgres.Sql, l, id, { result_receipt_id: fremd });
+        });
+      } finally {
+        await besitzer.end({ timeout: 2 });
+      }
+      expect(await codeOf(laufen(id, await belegFuer(id, "decision")))).toBe(RESTRICT);
+      expect((await toolCalls.get(db, id))?.status).toBe("requested");
+      expect(
+        await codeOf(
+          app.unsafe(
+            "update tool_calls set status = 'cancelled', result_status = 'error', finished_at = now() where action_id = $1",
+            [id],
+          ),
+        ),
+      ).toBe(RESTRICT);
+    });
+
     // Der Trigger meldet `check_violation`; das Repo übersetzt das in `eingabe_ungueltig`.
     it("Eingabe über 64 KiB bzw. Ergebnis über 256 KiB → Fehler", async () => {
       const l = await lauf();
