@@ -16,7 +16,7 @@ import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { type ActionId, type ConversationId, newId, type RunId } from "@paibot/shared/ids";
-import type { ToolCall } from "@paibot/shared/motor";
+import type { JsonValue, ToolCall } from "@paibot/shared/motor";
 import { describe, expect, it } from "vitest";
 import { createFakeMotor } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
@@ -49,67 +49,78 @@ const wish = (change: Partial<ToolCall>): ToolCall => ({
   ...change,
 });
 
-describe("Ausführung nur mit Berechtigung", () => {
-  async function gateEnv() {
-    const { db } = await createTestDb();
-    const env = await setupRun(
-      db,
-      {
-        createWriter: createReceiptWriter,
-        verify: (entries: Parameters<typeof verifyChain>[0], options: object) =>
-          verifyChain(entries, options as Parameters<typeof verifyChain>[1]),
-      },
-      {
-        providerBaseUrl: "http://127.0.0.1:9/v1",
-        providerKey: `sk-test-${"p".repeat(24)}`,
-        motor: createFakeMotor([]),
-      },
-    );
-    const tools = createTestTools({ allowedByR010: "test_lesen" });
-    const registry = await createToolRegistry(tools.tools);
-    const tool = registry.byModelName("test_lesen");
-    if (tool === undefined) throw new Error("fehlt");
-    const { runId: lauf } = await env.queueMessage("Hallo");
-    const action: ActionRequest<"werkzeug.aufrufen"> = {
-      actionId: newId("action") as ActionId,
-      type: "werkzeug.aufrufen",
-      actor: `bot:${env.botId}`,
-      target: { conversationId: env.conversationId, runId: lauf, botId: env.botId },
-    };
-    const facts: Facts<"werkzeug.aufrufen"> = {
-      toolName: "test_lesen",
-      toolSource: "eingebaut",
-      toolKind: "lesen",
-      toolKey: tool.definition.key,
-      toolDigest: tool.toolDigest,
-      toolReach: "intern",
-      toolForeign: false,
-      toolRegistered: true,
-      toolOffered: true,
-      inputValid: true,
-      untrustedInput: false,
-      step: 0,
-      callIndexInStep: 0,
-      maxCallsPerStep: 8,
-      callsInRun: 0,
-      maxCallsPerRun: 16,
-      killSwitch: false,
-      trigger: "chat",
-      botOfConversation: true,
-      runRunning: true,
-      argsDigest: `hmac-sha256:${"0".repeat(64)}`,
-    };
-    const ctx = (permit: unknown, actionId: ActionId) => ({
-      permit,
-      actionId,
-      signal: new AbortController().signal,
-      conversationId: env.conversationId,
-      runId: lauf,
-      botId: env.botId,
-    });
-    return { env, tools, tool, action, facts, ctx };
-  }
+/** Tor, Lauf und ein vorbereiteter Wunsch für `test_lesen` mit seinen Fakten. */
+async function gateEnv() {
+  const { db } = await createTestDb();
+  const env = await setupRun(
+    db,
+    {
+      createWriter: createReceiptWriter,
+      verify: (entries: Parameters<typeof verifyChain>[0], options: object) =>
+        verifyChain(entries, options as Parameters<typeof verifyChain>[1]),
+    },
+    {
+      providerBaseUrl: "http://127.0.0.1:9/v1",
+      providerKey: `sk-test-${"p".repeat(24)}`,
+      motor: createFakeMotor([]),
+    },
+  );
+  const tools = createTestTools({ allowedByR010: "test_lesen" });
+  const registry = await createToolRegistry(tools.tools);
+  const tool = registry.byModelName("test_lesen");
+  if (tool === undefined) throw new Error("fehlt");
+  const { runId: lauf } = await env.queueMessage("Hallo");
+  // Wunsch wie in der Schleife vorbereitet: Abdruck der Eingabe über Lauf und Unterhaltung.
+  const [prepared] = prepareCalls([wish({})], {
+    registry,
+    offered: new Set(["test_lesen"]),
+    contextKey: env.deps.keys.context,
+    runId: lauf,
+    conversationId: env.conversationId,
+  });
+  if (prepared === undefined) throw new Error("fehlt");
+  const action: ActionRequest<"werkzeug.aufrufen"> = {
+    actionId: prepared.actionId,
+    type: "werkzeug.aufrufen",
+    actor: `bot:${env.botId}`,
+    target: { conversationId: env.conversationId, runId: lauf, botId: env.botId },
+  };
+  const facts: Facts<"werkzeug.aufrufen"> = {
+    toolName: "test_lesen",
+    toolSource: "eingebaut",
+    toolKind: "lesen",
+    toolKey: tool.definition.key,
+    toolDigest: tool.toolDigest,
+    toolReach: "intern",
+    toolForeign: false,
+    toolRegistered: true,
+    toolOffered: true,
+    inputValid: true,
+    untrustedInput: false,
+    step: 0,
+    callIndexInStep: 0,
+    maxCallsPerStep: 8,
+    callsInRun: 0,
+    maxCallsPerRun: 16,
+    killSwitch: false,
+    trigger: "chat",
+    botOfConversation: true,
+    runRunning: true,
+    argsDigest: prepared.argsDigest,
+  };
+  const ctx = (permit: unknown, actionId: ActionId) => ({
+    permit,
+    actionId,
+    signal: new AbortController().signal,
+    conversationId: env.conversationId,
+    runId: lauf,
+    botId: env.botId,
+    contextKey: env.deps.keys.context,
+  });
+  return { env, tools, tool, action, facts, ctx, prepared };
+}
 
+describe("Ausführung nur mit Berechtigung", () => {
   // Gegenprobe: Prüfung in `invokeTool` entfernen → Werkzeug zählt 1, rot.
   it("nachgebaute Berechtigung: wirft, Werkzeug zählt 0", async () => {
     const { tools, tool, action, ctx } = await gateEnv();
@@ -153,6 +164,50 @@ describe("Ausführung nur mit Berechtigung", () => {
     );
     expect(isPaiBotError(late) && late.code).toBe("intern");
     expect(tools.protocol.count()).toBe(1);
+  });
+});
+
+describe("Eingabe gehört zur Entscheidung", () => {
+  // Gegenprobe: Vergleich mit `permit.facts.argsDigest` in `invokeTool` entfernen → Werkzeug
+  // zählt 1, rot.
+  it("andere Eingabe als die entschiedene: kein Start, Fehler intern, Werkzeug zählt 0", async () => {
+    const { env, tools, tool, action, facts, ctx, prepared } = await gateEnv();
+    await env.gate.run(action, facts, async (permit) => {
+      const andere: JsonValue[] = [{ q: "y" }, { q: "x", mehr: 1 }, { roh: "x" }];
+      for (const anders of andere) {
+        const error = await invokeTool(tool, anders, ctx(permit, action.actionId)).catch(
+          (e: unknown) => e,
+        );
+        expect(isPaiBotError(error) && error.code, JSON.stringify(anders)).toBe("intern");
+      }
+      expect(tools.protocol.count()).toBe(0);
+      await invokeTool(tool, prepared.storedInput, ctx(permit, action.actionId));
+      return { value: undefined, result: { status: "ok" } };
+    });
+    expect(tools.protocol.count()).toBe(1);
+  });
+
+  // Gegenprobe: `deepFreeze` weglassen → Änderung gelingt, rot.
+  it("die gespeicherte Eingabe ist tief eingefroren", async () => {
+    const [call] = await prepare([
+      // Ein Name ohne Werkzeug im Register: Die Eingabe bleibt verschachtelt gespeichert.
+      wish({ name: "gibt_es_nicht", input: { q: "x", liste: [{ a: "b" }] } }),
+    ]);
+    const value = call?.storedInput as { q: string; liste: { a: string }[] };
+    expect(Object.isFrozen(value)).toBe(true);
+    expect(Object.isFrozen(value.liste[0])).toBe(true);
+    expect(() => {
+      value.q = "y";
+    }).toThrow();
+  });
+
+  // Gegenprobe: erst prüfen, dann bereinigen → das Schema sieht die alte Form, rot.
+  it("erst bereinigen, dann prüfen: das Schema sieht die Form, die das Werkzeug bekommt", async () => {
+    // U+0958 wird bei NFC zu zwei Codepunkten; die Eingabe von test_lesen erlaubt höchstens 200.
+    const lang = "\u0958".repeat(150);
+    const [call] = await prepare([wish({ input: { q: lang } })]);
+    expect(lang.normalize("NFC").length).toBe(300);
+    expect(call?.inputValid).toBe(false);
   });
 });
 

@@ -149,8 +149,9 @@ export function prepareCalls(
       if (jsonHasUnwanted(value) || jsonHasNonInteger(value)) {
         inputValid = false;
       } else if (def !== undefined) {
-        const parsed = def.input.safeParse(value);
-        if (parsed.success) accepted = cleanJson(parsed.data as JsonValue);
+        // Erst bereinigen (NFC), dann prüfen: Das Werkzeug bekommt genau die geprüfte Form.
+        const parsed = def.input.safeParse(cleanJson(value));
+        if (parsed.success) accepted = parsed.data as JsonValue;
         else {
           inputValid = false;
           issue = parsed.error.issues[0];
@@ -177,10 +178,11 @@ export function prepareCalls(
       args = { roh: fullText };
       argsDigest = digestOf(input, actionId, args, toolDigest, toolKey);
     }
-    const storedInput: JsonValue =
+    const storedInput: JsonValue = deepFreeze(
       inputValid && accepted !== undefined
         ? accepted
-        : { roh: Array.from(cleanText(fullText)).slice(0, MAX_STORED_RAW_INPUT_CHARS).join("") };
+        : { roh: Array.from(cleanText(fullText)).slice(0, MAX_STORED_RAW_INPUT_CHARS).join("") },
+    );
 
     return {
       actionId,
@@ -204,6 +206,15 @@ export function prepareCalls(
       argsDigest,
     };
   });
+}
+
+/** Friert einen JSON-Wert samt allen Teilen ein (die Eingabe ändert sich nach der Prüfung nicht). */
+function deepFreeze<T extends JsonValue>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    for (const entry of Object.values(value)) deepFreeze(entry as JsonValue);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 function digestOf(
@@ -256,10 +267,21 @@ export async function invokeTool(
     conversationId: ConversationId;
     runId: RunId;
     botId: GatePermit<"werkzeug.aufrufen">["target"]["botId"];
+    contextKey: DerivedKey<"context-v1">;
   },
 ): ReturnType<RegisteredTool["definition"]["run"]> {
   const { permit } = context;
   if (!isGatePermit(permit, "werkzeug.aufrufen") || permit.actionId !== context.actionId) {
+    throw new PaiBotError("intern");
+  }
+  // Die Eingabe gehört zur Entscheidung: Abdruck unmittelbar vor dem Start neu rechnen.
+  let digest: HmacDigest | undefined;
+  try {
+    digest = digestOf(context, context.actionId, value, tool.toolDigest, tool.definition.key);
+  } catch {
+    digest = undefined;
+  }
+  if (digest === undefined || digest !== permit.facts.argsDigest) {
     throw new PaiBotError("intern");
   }
   return Promise.race([
@@ -415,6 +437,7 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
           conversationId: run.conversationId,
           runId: run.id,
           botId: run.botId,
+          contextKey: deps.keys.context,
         });
         if (input.guardSignal.aborted) throw abortError();
         envelope = outcomeEnvelope(outcome, tool, settings, input.stepCharsLeft, (t) => {
