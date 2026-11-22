@@ -342,29 +342,56 @@ describe("Aktionen, die Fassung 2 nicht kennt", () => {
     expect(report.verdict.findings).toContainEqual({ problem: "fassung_unpassend", seq: 2 });
   });
 
-  it("ein Werkzeug-Aufruf mit den Fakten einer App als gateFormat 2: fassung_unpassend, ungültig", async () => {
-    const kette = await Kette.neu(STANDARD);
+  // Gegenprobe: Fassung 2 prüft die Fakten nicht (`decisionFormat` ohne `factsSchema`) → rot. Die
+  // Entscheidung ist hier im Format der Fassung 2 gerechnet (wie das Tor der Fassung 2 sie schriebe);
+  // nur die Fakten tragen zusätzlich die Felder einer App.
+  it("ein Werkzeug-Aufruf, dessen Fakten nur um Felder einer App ergänzt sind, als gateFormat 2: fassung_unpassend, ungültig", async () => {
+    const APP_FELDER = [
+      "appId",
+      "appToolId",
+      "toolVersion",
+      "toolStatus",
+      "appAccess",
+      "targetDigest",
+      "confirmedToolDigest",
+      "confirmedTargetDigest",
+      "stepAppId",
+    ] as const;
     const fall = (
       korpus3 as unknown as { cases: { name: string; action: Roh; facts: Roh }[] }
     ).cases.find((entry) => entry.name === "R-014 passt");
     expect(fall).toBeDefined();
-    const { action, facts } = fall as { action: Roh; facts: Roh };
-    expect(facts.toolSource).toBe("mcp");
-    expect(facts.appId).toBeDefined();
-    const decided = evaluate(action as never, facts as never, kette.snapshot as RuleSnapshot, {
-      format: 3,
-    }) as unknown as Roh;
-    expect(decided.outcome).toBe("allow");
-    const { matchedRules, ...rest } = decided;
-    await kette.roh({
-      type: "decision",
-      action,
-      decision: { gateFormat: 2, ...rest, rules: matchedRules },
-      facts,
-    });
-    const report = await kette.pruefe();
-    expect(report.verdict.level).toBe("ungueltig");
-    expect(report.verdict.findings).toContainEqual({ problem: "fassung_unpassend", seq: 2 });
+    const appFakten = Object.fromEntries(
+      APP_FELDER.map((name) => [name, (fall as { facts: Roh }).facts[name]]),
+    );
+    for (const name of APP_FELDER) expect(appFakten[name], name).toBeDefined();
+    const action = sampleAction("werkzeug.aufrufen") as ActionRequest;
+    const basis = sampleFacts("werkzeug.aufrufen") as Roh;
+    for (const name of APP_FELDER) expect(Object.hasOwn(basis, name), name).toBe(false);
+
+    const rechne = async (facts: Roh) => {
+      const kette = await Kette.neu(STANDARD);
+      // Entscheidung nach Fassung 2, aus den Fakten ohne App-Felder.
+      const decided = evaluate(action, basis as never, kette.snapshot as RuleSnapshot, {
+        format: 2,
+      }) as unknown as Roh;
+      const { matchedRules, ...rest } = decided;
+      await kette.roh({
+        type: "decision",
+        action,
+        decision: { gateFormat: 2, ...rest, rules: matchedRules },
+        facts,
+      });
+      return kette.pruefe();
+    };
+
+    // Kontrolle: dieselbe Entscheidung mit den Fakten ohne App-Felder passt zu Fassung 2.
+    const ohne = await rechne(basis);
+    expect(ohne.verdict.findings).not.toContainEqual({ problem: "fassung_unpassend", seq: 2 });
+    // Nur die Fakten ändern sich: Felder einer App dazu.
+    const mit = await rechne({ ...basis, ...appFakten });
+    expect(mit.verdict.level).toBe("ungueltig");
+    expect(mit.verdict.findings).toContainEqual({ problem: "fassung_unpassend", seq: 2 });
   });
 });
 
