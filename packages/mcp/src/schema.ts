@@ -290,10 +290,11 @@ function verarbeite(schema: unknown, ebene: number, zustand: Zustand): Teil {
 
 /**
  * Macht aus einem Objekt-Schema die strenge Form: Jeder Name in `required` muss unter `properties`
- * stehen (sonst ist das Werkzeug nicht bestätigbar), und zusätzliche Felder sind verboten, außer
- * das Schema erlaubt sie ausdrücklich mit `additionalProperties: true`. Das Prüf-Schema ist damit
- * nie lockerer als das Rohschema; dasselbe `additionalProperties` steht auch im Schema, das das
- * Modell sieht, damit gezeigte, bestätigte und geprüfte Form gleich bleiben.
+ * stehen (sonst ist das Werkzeug nicht bestätigbar), und fehlt `additionalProperties`, wird
+ * `additionalProperties: false` eingetragen, sowohl im Schema für das Modell als auch im
+ * Prüf-Schema. Ob der Prüfer für Argumente das danach tatsächlich durchsetzt, hängt von der
+ * Umwandlung in `z.fromJSONSchema` ab: Bei einem Teilschema ohne `type` werden zusätzliche Felder
+ * trotzdem angenommen.
  */
 function schliesseObjektAb(modell: Record<string, unknown>, pruef: Record<string, unknown>): void {
   const typen = Array.isArray(pruef.type) ? pruef.type : [pruef.type];

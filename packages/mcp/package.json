@@ -2,7 +2,7 @@
   "name": "@paibot/mcp",
   "version": "0.0.0",
   "private": true,
-  "description": "MCP-Client, OAuth, Tool-Katalog und Tool-Suche (geplant)",
+  "description": "MCP-Schicht: Verbindung zu fremden MCP-Servern, Werkzeug-Liste aufbereiten, Argumente prüfen, Werkzeug aufrufen (nur lesend, kein OAuth)",
   "license": "SEE LICENSE IN ../../LICENSE",
   "type": "module",
   "exports": {
