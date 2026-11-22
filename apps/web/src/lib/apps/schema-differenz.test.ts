@@ -1,5 +1,5 @@
 /**
- * PaiBot – Differenztest: Was `verarbeiteSchema` ans Modell gibt, steht auch in der Oberfläche.
+ * PaiBot – Differenztest: Was die Schicht (`verarbeiteSchema`, über `bereiteWerkzeugeAuf`) ans Modell gibt, steht auch in der Oberfläche.
  * Jeder Wert im Schema für das Modell (Namen, Beschreibungen, Auswahlwerte, Typen, Pflichtfelder,
  * Zahlengrenzen, Längengrenzen, „weitere Felder“) muss in den Texten stehen, die der Besitzer vor
  * dem Einstufen sieht. Kommt ein Stichwort neu in die Positivliste, ohne dass die Oberfläche es
@@ -12,9 +12,38 @@
  * @since     2026-11-22
  */
 
-import { MODELL_STICHWORTE, STANDARD_GRENZEN, verarbeiteSchema } from "@paibot/mcp";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { bereiteWerkzeugeAuf } from "@paibot/mcp";
 import { describe, expect, it } from "vitest";
 import { schemaTexteVollstaendig } from "./ansicht";
+
+/** Die Positivliste der Schicht, aus dem Quelltext gelesen (die Web-App importiert sie nicht). */
+const SCHEMA_QUELLE = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../../../../packages/mcp/src/schema.ts",
+);
+function modellStichworte(): string[] {
+  const quelle = readFileSync(SCHEMA_QUELLE, "utf8");
+  const block = /MODELL_STICHWORTE: readonly string\[\] = \[([\s\S]*?)\];/.exec(quelle)?.[1];
+  if (block === undefined) throw new Error("MODELL_STICHWORTE nicht gefunden");
+  return [...block.matchAll(/"([A-Za-z]+)"/g)].map((m) => m[1] as string);
+}
+
+/** Das Schema fürs Modell, so wie die Schicht es für ein Werkzeug bildet; `undefined`, wenn abgewiesen. */
+function fuersModell(roh: unknown): Record<string, unknown> | undefined {
+  const [werkzeug] = bereiteWerkzeugeAuf(
+    [{ name: "probe", description: "Probe.", inputSchema: roh }],
+    {
+      appKurzname: "probe",
+      bekannteNamen: new Map(),
+    },
+  );
+  return werkzeug?.bestaetigbar === true && werkzeug.schemaFuerModell !== null
+    ? (werkzeug.schemaFuerModell as Record<string, unknown>)
+    : undefined;
+}
 
 type Erwartung = { pfad: string; art: string; wert: string };
 
@@ -131,16 +160,16 @@ const KORPUS: Record<string, unknown> = {
 describe("Differenz: Schema fürs Modell gegen die Texte der Oberfläche", () => {
   for (const [name, roh] of Object.entries(KORPUS)) {
     it(`${name}: jeder Wert, der ans Modell geht, steht in der Oberfläche`, () => {
-      const ergebnis = verarbeiteSchema(roh, STANDARD_GRENZEN);
-      expect(ergebnis.ok, name).toBe(true);
-      if (!ergebnis.ok) return;
+      const modell = fuersModell(roh);
+      expect(modell, name).toBeDefined();
+      if (modell === undefined) return;
       const erwartet: Erwartung[] = [];
       const unbekannt: string[] = [];
-      erwartungen(ergebnis.modell, "", erwartet, unbekannt);
+      erwartungen(modell, "", erwartet, unbekannt);
       // Ein Stichwort, das dieser Test nicht kennt: Die Oberfläche muss es zeigen, der Test es lernen.
       expect(unbekannt, "unbekannte Stichwörter im Schema fürs Modell").toEqual([]);
       expect(erwartet.length).toBeGreaterThan(0);
-      const gezeigt = schemaTexteVollstaendig(ergebnis.modell);
+      const gezeigt = schemaTexteVollstaendig(modell);
       expect(gezeigt.vollstaendig).toBe(true);
       for (const e of erwartet) {
         const da = gezeigt.texte.some(
@@ -162,24 +191,19 @@ describe("Differenz: Schema fürs Modell gegen die Texte der Oberfläche", () =>
         else sammle(w);
       }
     };
-    for (const roh of Object.values(KORPUS)) {
-      const e = verarbeiteSchema(roh, STANDARD_GRENZEN);
-      if (e.ok) sammle(e.modell);
-    }
-    for (const stichwort of MODELL_STICHWORTE)
-      expect(vorhanden.has(stichwort), stichwort).toBe(true);
+    for (const roh of Object.values(KORPUS)) sammle(fuersModell(roh));
+    const stichworte = modellStichworte();
+    expect(stichworte.length).toBeGreaterThan(10);
+    for (const stichwort of stichworte) expect(vorhanden.has(stichwort), stichwort).toBe(true);
   });
 
   it("„Weitere Felder“: PaiBot trägt „nein“ ein, wo das Schema nichts sagt; „ja“ nur, wo die App es erlaubt", () => {
-    const e = verarbeiteSchema(
-      {
-        type: "object",
-        properties: { a: { type: "object", properties: {}, additionalProperties: true } },
-      },
-      STANDARD_GRENZEN,
-    );
-    if (!e.ok) throw new Error("Schema abgewiesen");
-    const zeilen = schemaTexteVollstaendig(e.modell).texte.filter((z) => z.art === "zusatz");
+    const modell = fuersModell({
+      type: "object",
+      properties: { a: { type: "object", properties: {}, additionalProperties: true } },
+    });
+    if (modell === undefined) throw new Error("Schema abgewiesen");
+    const zeilen = schemaTexteVollstaendig(modell).texte.filter((z) => z.art === "zusatz");
     expect(zeilen.map((z) => [z.pfad, z.text])).toEqual([
       ["(Werkzeug)", "nein"],
       ["a", "ja"],
