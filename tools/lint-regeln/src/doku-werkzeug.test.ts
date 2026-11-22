@@ -19,10 +19,12 @@ const ORDNER = "packages/agents/src/werkzeuge/doku";
 const SKIP_DIRS = new Set(["node_modules", "dist", "testdaten"]);
 
 /**
- * Kurzlebige Probe-Ordner anderer Tests dieses Pakets (`regeln.test.ts`,
- * `akteur-besitzer.test.ts`): Sie entstehen und verschwinden, während die Dateien parallel laufen.
+ * Kurzlebige Probe-Ordner anderer Tests dieses Pakets (`regeln.test.ts`, `akteur-besitzer.test.ts`,
+ * `mcp-schicht.test.ts`; Name `__<art>_versuch_<pid>__`): Sie entstehen und verschwinden, während
+ * die Dateien parallel laufen. Dasselbe Muster steht in `werkzeug-schleife.test.ts`,
+ * `doku-werkzeug.test.ts` und `leser-nachrichten.test.ts`; ein Test dort hält die Kopien gleich.
  */
-const PROBE_DIR = /^__(lint|akteur)_versuch_\d+__$/;
+const PROBE_DIR = /^__[a-z]+_versuch_\d+__$/;
 
 const isGone = (error: unknown) => (error as { code?: string }).code === "ENOENT";
 

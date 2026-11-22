@@ -18,10 +18,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.
 const SKIP_DIRS = new Set(["node_modules", "dist", ".next", ".turbo", "coverage", "testdaten"]);
 
 /**
- * Kurzlebige Probe-Ordner anderer Tests dieses Pakets (`regeln.test.ts`,
- * `akteur-besitzer.test.ts`): Sie entstehen und verschwinden, während die Dateien parallel laufen.
+ * Kurzlebige Probe-Ordner anderer Tests dieses Pakets (`regeln.test.ts`, `akteur-besitzer.test.ts`,
+ * `mcp-schicht.test.ts`; Name `__<art>_versuch_<pid>__`): Sie entstehen und verschwinden, während
+ * die Dateien parallel laufen. Dasselbe Muster steht in `werkzeug-schleife.test.ts`,
+ * `doku-werkzeug.test.ts` und `leser-nachrichten.test.ts`; ein Test dort hält die Kopien gleich.
  */
-const PROBE_DIR = /^__(lint|akteur)_versuch_\d+__$/;
+const PROBE_DIR = /^__[a-z]+_versuch_\d+__$/;
 
 /** Fehler „Datei oder Ordner gibt es nicht (mehr)“? */
 const isGone = (error: unknown) => (error as { code?: string }).code === "ENOENT";
@@ -98,12 +100,30 @@ const read = (file: string) =>
 describe("Durchsuchen des Quelltexts", () => {
   // Gegenprobe: `PROBE_DIR` weiter fassen (etwa jeder Name mit `versuch`) → rot.
   it("überspringt nur die Probe-Ordner der anderen Tests, sonst keinen Ordner", () => {
-    for (const name of ["__lint_versuch_123__", "__akteur_versuch_21429__"]) {
+    for (const name of ["__lint_versuch_123__", "__akteur_versuch_21429__", "__mcp_versuch_3__"]) {
       expect(PROBE_DIR.test(name), name).toBe(true);
     }
-    for (const name of ["versuch", "api", "__lint_versuch__", "__akteur_versuch_x__", "repo"]) {
+    for (const name of [
+      "versuch",
+      "api",
+      "__lint_versuch__",
+      "__akteur_versuch_x__",
+      "__mcp_versuch_x__",
+      "__versuch_1__",
+      "repo",
+    ]) {
       expect(PROBE_DIR.test(name), name).toBe(false);
     }
+  });
+
+  // Gegenprobe: in einer der drei Dateien das Muster ändern (etwa wieder nur `lint|akteur`) → rot.
+  it("alle drei Dateien mit eigener Kopie nutzen genau dasselbe Muster für Probe-Ordner", () => {
+    const zeile = /^const PROBE_DIR = (.+);$/m;
+    const dateien = ["werkzeug-schleife", "doku-werkzeug", "leser-nachrichten"].map((name) =>
+      path.join(path.dirname(fileURLToPath(import.meta.url)), `${name}.test.ts`),
+    );
+    const muster = dateien.map((datei) => zeile.exec(readFileSync(datei, "utf8"))?.[1]);
+    expect(muster.every((eintrag) => eintrag === String(PROBE_DIR))).toBe(true);
   });
 
   // Gegenprobe: `unlessGone` gibt bei jedem Fehler `undefined` zurück → rot.
