@@ -55,7 +55,7 @@ Ausgabegrenze: Die Einrichtung legt den Bot ohne `maxOutputTokens` an, es gilt d
 
 CHECKs in `packages/db/src/schema/anbieter.ts#bots`: `bots_name_laenge` (1 bis 60 Zeichen), `bots_instructions_laenge` (höchstens 8000), `bots_max_output_tokens_positiv`, `bots_max_output_tokens_hoechstens` (höchstens 200 000, gleich `LIMITS.maxOutputTokens` in `packages/shared/src/constants.ts`). Migration: `packages/db/drizzle/0001_basis.sql`; die Obergrenze kam mit `packages/db/drizzle/0014_werkzeug_kern.sql`, die höhere Werte vorher auf 200 000 setzt.
 
-„Was dein Bot darf“ zeigt seitdem auch R-010 (`apps/web/src/lib/bot/bot.ts#botRechte`); die Regel wirkt erst mit dem Werkzeug „In der Doku nachschlagen“.
+„Was dein Bot darf“ zeigt seitdem auch R-010 (`apps/web/src/lib/bot/bot.ts#botRechte`); die Regel erlaubt das Werkzeug „In der Doku nachschlagen“ (`packages/agents/src/werkzeuge/doku/werkzeug.ts#dokuNachschlagen`). Der Hinweis unter den Listen nennt es mit dem Text `bot.darf.werkzeug_doku` (`apps/web/src/app/(app)/bot/BotAnsicht.tsx`).
 
 ## Schnittstellen
 
@@ -95,4 +95,4 @@ pnpm --filter @paibot/agents test
 ## Bekannte Schwächen
 
 - **Ein Bot:** Alle Funktionen lesen den Standard-Bot über `repo.bots.getDefault` (`apps/web/src/lib/bot/bot.ts`); weitere Bots gibt es in der Oberfläche nicht.
-- **Keine Werkzeuge:** Der Motor bekommt keine Werkzeuge (Kommentar an `packages/agents/src/run/ausfuehren.ts#executeRun`).
+- **Ein Werkzeug:** Der Bot kann nur in der Doku nachschlagen (`packages/agents/src/werkzeuge/eingebaut.ts#builtinTools`); andere Werkzeuge gibt es nicht.

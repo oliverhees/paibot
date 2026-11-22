@@ -257,7 +257,7 @@ Gut zu wissen:
 
 ## Live-Ereignisse
 
-Während der Bot antwortet, siehst du die Antwort Stück für Stück. Das läuft über einen Ereignis-Strom je Unterhaltung (Server-Sent Events): `GET /api/unterhaltungen/:id/ereignisse`. Die Bausteine liegen in `apps/web/src/lib/sse/`.
+Während der Bot antwortet, siehst du seinen Text Stück für Stück, als vorläufig gekennzeichnet, bis der Schritt zu Ende ist. Das läuft über einen Ereignis-Strom je Unterhaltung (Server-Sent Events): `GET /api/unterhaltungen/:id/ereignisse`. Die Bausteine liegen in `apps/web/src/lib/sse/`.
 
 | Frage                                         | Antwort                                                                                                                                                                                    |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

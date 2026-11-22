@@ -114,7 +114,8 @@ Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa
 |     | Funktion                                                       | Status                                                                                                                                                |
 | --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🖥️  | Läuft auf eigenem Server (Docker Compose, Coolify)             | vorhanden, siehe [`docs/installation.md`](docs/installation.md); ein veröffentlichtes Image gibt es noch nicht                                        |
-| 💬  | Chat mit deinem Bot, Antwort Stück für Stück, Stopp            | vorhanden ([Chat](docs/funktion-chat.md)); Anhänge, Spracheingabe, Merken und Web-Zugriff geplant                                                     |
+| 💬  | Chat mit deinem Bot, vorläufiger Text beim Schreiben, Stopp    | vorhanden ([Chat](docs/funktion-chat.md)); Anhänge, Spracheingabe, Merken und Web-Zugriff geplant                                                     |
+| 📚  | Pai schlägt in der Doku seiner Version nach, mit Quellen       | vorhanden als erstes Werkzeug ([Chat](docs/funktion-chat.md#so-benutzt-du-es)); es liest nur die mitgelieferte Doku, weitere Werkzeuge geplant        |
 | 🧾  | Tor und Belege: feste Regeln ohne KI, Beleg zu jeder Aktion    | vorhanden ([Belege](docs/funktion-belege.md), [Das Tor](docs/funktion-tor.md))                                                                        |
 | 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | vorhanden als zuschaltbarer Dienst, Schalter je Unterhaltung ([Datenschleuse](docs/funktion-datenschleuse.md)); Standard: aus                         |
 | 🤖  | Dein Bot mit Name, Anweisung und Aussehen                      | vorhanden ([Bot](docs/funktion-bot.md)); weitere Bots mit Rollen und Gedächtnis: geplant                                                              |
@@ -197,7 +198,7 @@ PaiBot wird laufend gebaut. Den Stand zeigen die [Issues und Meilensteine](https
 **Fertig** (mit Anleitung in der [Doku](docs/README.md)):
 
 - [Einrichtung und Zugang](docs/funktion-einrichtung-und-zugang.md)
-- [Chat](docs/funktion-chat.md)
+- [Chat](docs/funktion-chat.md), mit dem ersten Werkzeug: [Pai schlägt in der Doku nach](docs/funktion-chat.md#so-benutzt-du-es)
 - [Bot](docs/funktion-bot.md)
 - [Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md)
 - [Datenschleuse](docs/funktion-datenschleuse.md) (zuschaltbar)
@@ -208,7 +209,6 @@ PaiBot wird laufend gebaut. Den Stand zeigen die [Issues und Meilensteine](https
 
 **Im Bau** (noch nicht nutzbar):
 
-- Bots nutzen Werkzeuge. Das erste soll in der Doku nachschlagen. Die Grundlage in der Datenbank ist da, in der App ist davon noch nichts zu sehen ([Werkzeug-Kern](docs/entwickler/werkzeug-kern.md)).
 - Teamchat: Es gibt erst Bausteine der Oberfläche und Regeln, noch keine Funktion in der App ([Teamchat](docs/entwickler/teamchat.md)).
 
 **Geplant:**

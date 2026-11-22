@@ -10,7 +10,7 @@ Seit:      2026-11-22
 
 # In der Doku nachschlagen – für Entwickler
 
-**Anwender-Doku:** noch keine. Das Werkzeug ist gebaut, in der Auslieferung aber noch nicht eingeschaltet (`packages/agents/src/werkzeuge/eingebaut.ts#builtinTools` liefert eine leere Liste); die Anwender-Seite kommt mit dem Einschalten. Grundlage ist der [Doku-Index im Image](doku-index.md); die Schleife beschreibt der [Werkzeug-Kern](werkzeug-kern.md).
+**Anwender-Doku:** [Chat](../funktion-chat.md), Abschnitt „Pai schlägt in der Doku nach“. Das Werkzeug ist eingeschaltet: `packages/agents/src/werkzeuge/eingebaut.ts#builtinTools` liefert es, und der Worker lädt dafür beim Start den Index (`apps/worker/src/abhaengigkeiten.ts#buildRunDeps`). Grundlage ist der [Doku-Index im Image](doku-index.md); die Schleife beschreibt der [Werkzeug-Kern](werkzeug-kern.md).
 
 ## Zweck und Entscheidung
 
@@ -37,10 +37,13 @@ Entscheidungen, wie sie im Code stehen:
 | `packages/agents/src/run/aufruf.ts`                     | setzt die Beleg-Felder in den Ergebnis-Beleg                                                           |
 | `packages/agents/src/run/schleife.ts`                   | gibt die Ergebnisse der Aufrufe an den nächsten Schritt, gibt die Werkzeuge des Laufs an die Anweisung |
 | `packages/agents/src/prompt.ts`                         | `SATZ_DOKU`, `SATZ_OHNE_WERKZEUGE`, `buildSystemPrompt` mit den Werkzeugen des Laufs                   |
-| `packages/agents/src/werkzeuge/eingebaut.ts`            | `builtinTools`: nimmt den Doku-Index entgegen, liefert in dieser Fassung keine Werkzeuge               |
+| `packages/agents/src/werkzeuge/eingebaut.ts`            | `builtinTools`: liefert mit dem Doku-Index das Werkzeug, ohne Index wirft es einen Fehler              |
+| `apps/worker/src/abhaengigkeiten.ts`                    | lädt den Index beim Start (`ladeDokuIndex`); ohne gültigen Index startet der Worker nicht              |
+| `packages/agents/src/testing/doku-index.ts`             | Test-Fabrik: kleiner gültiger Index in einem eigenen temporären Ordner (`testDokuIndexPfad`)           |
+| `scripts/doku/index-bauen.mjs`                          | baut den Index vor dem Ende-zu-Ende-Lauf und den Bild-Aufnahmen                                        |
 | `packages/shared/src/i18n/de.ts`                        | Text `werkzeug.titel.doku_nachschlagen`                                                                |
 
-Datenfluss eines Aufrufs (sobald das Werkzeug im Register steht):
+Datenfluss eines Aufrufs:
 
 1. Das Modell wünscht `doku_nachschlagen`; die Schleife prüft Name und Eingabe (`packages/agents/src/run/aufruf.ts#prepareCalls`). Ungültige Eingabe endet abgelehnt mit `werkzeug_eingabe_ungueltig`, das Werkzeug läuft nicht.
 2. `gate.run("werkzeug.aufrufen")` mit allen Standard-Regeln. Erlaubt wird das Nachschlagen nur über R-010 (`packages/shared/src/gate.ts#ACTIVE_STANDARD_RULES`): Kennung „eingebaut/doku.nachschlagen“, Quelle `eingebaut`, `lesen`, `intern`, Bot der Unterhaltung.
@@ -142,11 +145,11 @@ pnpm --filter @paibot/lint-regeln exec vitest run src/doku-werkzeug.test.ts
 
 ## Bekannte Schwächen
 
-- **Gebaut, in der Auslieferung noch nicht eingeschaltet** (`packages/agents/src/werkzeuge/eingebaut.ts`). Der Worker lädt den Index noch nicht (`apps/worker/src/abhaengigkeiten.ts`).
+- **Der Worker startet nicht ohne gültigen Index:** `prepare()` lädt ihn beim Start (`apps/worker/src/abhaengigkeiten.ts#buildRunDeps`). Fehlt die Datei oder ist sie ungültig, bricht der Start mit einer Zeile ab, die `pnpm doku:index` und `PAIBOT_DOKU_INDEX` nennt und nichts aus der Datei wiedergibt. Im Image liegt die Datei unter `/app/doku-index/doku-index.json`. Außerhalb davon braucht der Worker den Index auch: `pnpm dev` und der Ende-zu-Ende-Lauf bauen ihn vorher, Tests bekommen ihn aus der Test-Fabrik.
 - **Wortsuche ohne Bedeutung:** Sie findet nur Wörter, die in der Doku stehen. Statt eines Wortstamms trifft ein Begriff ab 5 Zeichen auch Wörter, die mit ihm beginnen oder enden; gleiche Wörter kommen nur aus der festen Liste `GLEICHE_WOERTER`, Synonyme darüber hinaus gibt es nicht.
 - **Jeder Begriff muss vorkommen:** Ein Füllwort, das nicht in der Stoppwort-Liste steht, kann einen passenden Abschnitt verhindern; die Liste ist fest (`STOPPWOERTER`).
 - **Werkzeug-Fehler ohne Kurzschluss:** Meldet das Nachschlagen einen Fehler oder erreicht die Zeitgrenze, geht der Lauf weiter; das Modell sieht nur die Fehler-Hülle. Ein Lauf-Test deckt das ab (`packages/agents/src/run/schleife-doku.test.ts`).
-- **Ob das Modell ehrlich bleibt, kann PaiBot nicht erzwingen:** Bei „nichts gefunden“ sieht das Modell die Quelle, den Doku-Stand und `gefunden: 0` und hat die Anweisung, das offen zu sagen und nichts über PaiBot zu erfinden. Ein Modell kann sich trotzdem darüber hinwegsetzen oder aus seinem Wissen antworten; es gibt keine Prüfung des Antworttextes. Ob etwas gefunden wurde, hält der Beleg des Aufrufs mit `found` fest; eine Anzeige in der Oberfläche gibt es dafür in dieser Fassung nicht.
+- **Ob das Modell ehrlich bleibt, kann PaiBot nicht erzwingen:** Bei „nichts gefunden“ sieht das Modell die Quelle, den Doku-Stand und `gefunden: 0` und hat die Anweisung, das offen zu sagen und nichts über PaiBot zu erfinden. Ein Modell kann sich trotzdem darüber hinwegsetzen oder aus seinem Wissen antworten; es gibt keine Prüfung des Antworttextes. Ob etwas gefunden wurde, hält der Beleg des Aufrufs mit `found` fest, und die Werkzeug-Zeile im Chat zeigt es (`apps/web/src/lib/chat/schritte-anzeige.ts`: „nichts gefunden“ oder die Zahl der Abschnitte mit den Quellen).
 - **Zahl der Fundstellen nach dem Kürzen:** `found` zählt die Abschnitte der gespeicherten Hülle. Das Kürzen entfernt Abschnitte erst, wenn alle Texte leer sind (`packages/agents/src/run/huelle.ts#truncateContent`); bei den Grenzen der Einstellungen bleibt die Zahl deshalb meist gleich, die Texte werden kürzer.
 - **Prüfsumme ist kein Nachweis der Herkunft:** Die Prüfsumme des Index erkennt Versehen und beschädigte Dateien. Wer die Datei ändern kann, kann auch die Prüfsumme neu rechnen. Die Version gehört nicht zur Prüfsumme (`packages/agents/src/werkzeuge/doku/index-laden.ts#dokuPruefsumme` rechnet nur über die Abschnitte); eine geänderte Version mit alter Prüfsumme lädt also. Ein Schutz gegen Fälschung ist das nicht, sondern der Schreibschutz der Datei im Betrieb.
 - **Knapper Platz im Schritt:** Bleibt für das Ergebnis kaum Platz, kürzt `truncateContent` die längste Zeichenkette zuerst, und das kann der Doku-Stand sein. Eine gekürzte Hülle zählt deshalb nur, wenn der Stand noch vollständig ist (`packages/agents/src/werkzeuge/beleg-felder.ts#dokuAusHuelle`); sonst steht kein Doku-Stand im Beleg, der Lauf geht weiter.

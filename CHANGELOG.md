@@ -25,6 +25,7 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 - Einstellungen (Passwort, Sitzungen, Tagesbudget, Verlaufsgrenze, Zeitzone) und Info ([Doku](docs/funktion-einstellungen.md))
 - Anbieter-Auswahl in der Einrichtung und auf „Modell und Anbieter“: EUrouter mit deinen Routing-Regeln, Mistral AI (direkt) oder ein eigener bzw. lokaler Anbieter; an jeder Antwort steht, wer laut Anbieter geantwortet hat, und die Angaben zu Ort und Bedingungen nennen ihren Stand ([Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md))
 - Eigener Anbieter in der Oberfläche: OpenAI-kompatible Dienste anlegen, ändern und entfernen, auch auf deinem Rechner oder in deinem Netz (Ort „lokal“, Schlüssel dort freiwillig)
+- Das erste Werkzeug: Pai schlägt in der Doku der installierten Version nach, ohne zu fragen und mit Beleg; die Werkzeug-Zeile im Chat zeigt die Quellen oder „nichts gefunden“, der Knopf „Schritte“ blendet Werkzeug- und Beleg-Zeilen aus und ein, vorläufiger Text steht gekennzeichnet über der Antwort ([Chat](docs/funktion-chat.md#so-benutzt-du-es), [Bot](docs/funktion-bot.md))
 - Chat: Unterhaltungen durchsuchen (Titel und Nachrichten), eine Unterhaltung als Datei sichern, eine Antwort neu erzeugen (auch mit einem anderen Modell, mit Blättern zwischen den Fassungen) ([Chat](docs/funktion-chat.md))
 - Not-Aus als Schalter: alle Bots mit einem Klick anhalten, Fortsetzen nur mit deinem Passwort, beides mit Beleg ([Das Tor](docs/funktion-tor.md#not-aus-alle-bots-anhalten))
 - Selbsttest „Ist meine Installation richtig eingestellt?“: Adresse, Proxy, Verbindung, Kopfzeilen, Datenbank-Rolle, Migrationen, Worker und mehr, jeweils mit Ausweg ([Selbsttest](docs/funktion-selbsttest.md))
@@ -55,7 +56,7 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 
 ### Geändert
 
-- Die Lauf-Steuerung kann mehrere Schritte je Antwort machen; jeder Schritt und jeder spätere Werkzeug-Aufruf geht einzeln durchs Tor, mit den Grenzen aus den Einstellungen. In dieser Version gibt es noch kein Werkzeug, eine Antwort macht also weiter genau einen Schritt ([Chat](docs/funktion-chat.md), [Das Tor](docs/funktion-tor.md))
+- Die Lauf-Steuerung kann mehrere Schritte je Antwort machen; jeder Schritt und jeder spätere Werkzeug-Aufruf geht einzeln durchs Tor, mit den Grenzen aus den Einstellungen. Ein Werkzeug gibt es: das Nachschlagen in der Doku; ohne Wunsch des Modells macht eine Antwort weiter genau einen Schritt, nur ihr Text erscheint erst am Ende als Ganzes ([Chat](docs/funktion-chat.md), [Das Tor](docs/funktion-tor.md))
 - Verlauf, Suche, „Neu erzeugen“ und die gesicherte Datei zeigen nur deine Nachrichten und die End-Antworten, nie Zwischentexte eines Laufs mit Werkzeugen
 - Die Länge einer Antwort folgt zusätzlich der Grenze „Token je Antwort“ ([Chat](docs/funktion-chat.md#grenzen))
 - Wünscht ein Modell ein Werkzeug, das es nicht gibt, ist jeder Wunsch mit Beleg abgelehnt; die Antwort endet mit „Dieses Werkzeug gibt es hier nicht.“
