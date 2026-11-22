@@ -62,7 +62,7 @@ export function vergleichFuer(
  * Lädt den Verlauf eines Werkzeugs mit einer Fassung mehr als `MAX_TOOL_HISTORY`: Damit weiß der
  * Aufrufer, ob es ältere gibt. Zurück kommen höchstens `MAX_TOOL_HISTORY` Fassungen, die jüngsten.
  */
-export async function ladeVerlauf(
+export async function ladeFassungen(
   db: Database,
   toolId: AppTool["toolId"],
 ): Promise<{ verlauf: AppTool[]; abgeschnitten: boolean }> {
@@ -83,7 +83,7 @@ export async function werkzeugeMitVergleich(
       aus.push(werkzeugAnsicht(tool));
       continue;
     }
-    const { verlauf, abgeschnitten } = await ladeVerlauf(db, tool.toolId);
+    const { verlauf, abgeschnitten } = await ladeFassungen(db, tool.toolId);
     const { frueher, unvollstaendig } = vergleichFuer(verlauf, tool, abgeschnitten);
     aus.push(werkzeugAnsicht(tool, frueher, unvollstaendig));
   }

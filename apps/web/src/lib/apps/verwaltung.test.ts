@@ -1024,7 +1024,7 @@ describe("Was hat sich geändert", () => {
     expect(f[f.length - 1]?.frueher).toBeUndefined();
   });
 
-  // Gegenprobe: in `ladeVerlauf` nur `grenze` statt `grenze + 1` laden → kein Hinweis, rot.
+  // Gegenprobe: in `ladeFassungen` nur `grenze` statt `grenze + 1` laden → kein Hinweis, rot.
   it("liegt die bestätigte Fassung außerhalb der geladenen 200: fester Hinweis statt Vergleich, nie „unverändert“; die Antwort trägt höchstens 50", async () => {
     const u = await umgebung();
     const g = await geaendert(u, 0);
