@@ -26,6 +26,8 @@ export interface TestAppWerkzeug {
   name: string;
   /** Wie der Besitzer es einstuft; `null` = nie bestätigt (bleibt „neu“). */
   klasse: AppToolClass | null;
+  /** Beschreibung, wie sie in der Datenbank steht (Standard „Beschreibung <name>“). */
+  beschreibung?: string;
   /** Text, den der Aufruf liefert (Standard „Treffer“). */
   antwort?: string;
   /** Wird beim Aufruf der App ausgeführt, noch bevor die Antwort zurückgeht. */
@@ -61,7 +63,15 @@ export function abdruck(zeichen: string): string {
 }
 
 /** Eine Attrappe für `RunDeps.apps`. Alle Apps in `apps` werden von ihr bedient. */
-export function erzeugeTestAnschluss(apps: readonly TestApp[]): TestAnschluss {
+export function erzeugeTestAnschluss(
+  apps: readonly TestApp[],
+  optionen: {
+    /** Läuft in `holeListe` einer App, bevor die Liste zurückgeht. */
+    beimListe?: (app: AppInfo) => Promise<void> | void;
+    /** `holeListe` wirft diesen Fehler (statt eine Liste zu liefern). */
+    listeFehler?: Error;
+  } = {},
+): TestAnschluss {
   const protokoll: AnschlussProtokoll = { listen: [], aufrufe: [], ausgeschlossen: [] };
   const antworten = new Map<string, string>();
   const key = (app: TestApp, name: string) => `${app.id}/${name}`;
@@ -70,6 +80,8 @@ export function erzeugeTestAnschluss(apps: readonly TestApp[]): TestAnschluss {
       return {
         async holeListe({ app }) {
           protokoll.listen.push(app.kurzname);
+          await optionen.beimListe?.(app);
+          if (optionen.listeFehler !== undefined) throw optionen.listeFehler;
           const test = apps.find((a) => a.id === app.id);
           if (test === undefined) throw new Error("App unbekannt");
           return test.werkzeuge.map(

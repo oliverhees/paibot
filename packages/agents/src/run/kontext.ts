@@ -21,7 +21,7 @@ import {
 import type { ModelChoice } from "@paibot/llm/modell";
 import type { Facts } from "@paibot/shared/aktionen";
 import { targetOrigin } from "@paibot/shared/bindung";
-import type { RunId } from "@paibot/shared/ids";
+import type { MessageId, RunId } from "@paibot/shared/ids";
 import type { ToolSpec, TurnMessage } from "@paibot/shared/motor";
 import type {
   Bot,
@@ -194,10 +194,11 @@ export function buildHistory(messages: readonly Message[], maxChars: number): Tu
 export function buildHistoryWithRuns(
   messages: readonly Message[],
   maxChars: number,
-): { history: TurnMessage[]; runIds: RunId[] } {
+): { history: TurnMessage[]; runIds: RunId[]; messageIds: MessageId[] } {
   const usable = currentAnswers(messages);
   const kept: TurnMessage[] = [];
   const runIds: RunId[] = [];
+  const messageIds: MessageId[] = [];
   let chars = 0;
   for (let i = usable.length - 1; i >= 0; i--) {
     const message = usable[i] as Message;
@@ -208,10 +209,11 @@ export function buildHistoryWithRuns(
       kept.unshift({ role: "user", text: message.content });
     } else {
       kept.unshift({ role: "assistant", text: message.content });
+      messageIds.unshift(message.id);
       if (message.runId !== undefined) runIds.unshift(message.runId);
     }
   }
-  return { history: kept, runIds };
+  return { history: kept, runIds, messageIds };
 }
 
 /**

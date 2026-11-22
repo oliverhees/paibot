@@ -18,6 +18,20 @@
 
 import type { AppId } from "@paibot/shared/ids";
 
+/** Warum sich die Liste einer App nicht abrufen oder nicht verwenden lässt (fester Grund, nie Text der App). */
+export type AppListeGrund = "nicht_erreichbar" | "namen_ungueltig";
+
+/**
+ * Fehler beim Abruf der Liste. Der Anschluss ordnet jeden Fehler der Bibliothek und der App einem
+ * festen Grund zu; ein Text der App oder der Bibliothek kommt nie in diesem Fehler vor.
+ */
+export class AppListeFehler extends Error {
+  constructor(readonly grund: AppListeGrund) {
+    super(`App-Liste: ${grund}`);
+    this.name = "AppListeFehler";
+  }
+}
+
 /** Eine App, wie der Anschluss sie braucht (der Token bleibt im Anschluss). */
 export interface AppInfo {
   readonly id: AppId;

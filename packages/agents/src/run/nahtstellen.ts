@@ -13,7 +13,7 @@
 import { type Database, repo } from "@paibot/db";
 import type { DeniedToolCall, GateDenied } from "@paibot/gate";
 import type { RunTrigger } from "@paibot/shared/aktionen";
-import type { RunId } from "@paibot/shared/ids";
+import type { MessageId, RunId } from "@paibot/shared/ids";
 import type { Run, Settings } from "@paibot/shared/objekte";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
 
@@ -37,6 +37,7 @@ export function kettenStand(_run: Run): ChainCounters {
 /**
  * Nahtstelle 3: Hat die tatsächlich gesendete Anfrage fremde Inhalte? Frisch aus der Datenbank,
  * immer über `tool_calls.run_id`, nie über die Nachricht:
+ * - eine Antwort im gesendeten Verlauf (`historyMessageIds`) mit dem Kennzeichen „fremder Inhalt“;
  * - Läufe, deren End-Antwort im gesendeten Verlauf steht (`historyRunIds`): ein Aufruf mit
  *   `untrusted_input` oder ein erfolgreicher Aufruf mit `foreign_content`;
  * - dieser Lauf: ein erfolgreicher Aufruf mit `foreign_content`.
@@ -44,8 +45,22 @@ export function kettenStand(_run: Run): ChainCounters {
  */
 export async function untrustedInput(
   db: Database,
-  input: { runId: RunId; historyRunIds: readonly RunId[] },
+  input: {
+    runId: RunId;
+    historyRunIds: readonly RunId[];
+    /** Die Antworten, die im gesendeten Verlauf stehen: Trägt eine das Kennzeichen, ist die Anfrage fremd. */
+    historyMessageIds?: readonly MessageId[];
+  },
 ): Promise<boolean> {
+  // Das Kennzeichen an der Antwort selbst: Auch ein Lauf ohne Aufruf, der fremden Text aus einem
+  // früheren Lauf weitergab, trägt es (die Steuerung setzt es nach jedem Schritt). So bleibt der
+  // Text gekennzeichnet, selbst wenn der Lauf mit dem Aufruf schon aus dem Verlauf gefallen ist.
+  if (
+    input.historyMessageIds !== undefined &&
+    (await repo.messages.anyUntrusted(db, input.historyMessageIds))
+  ) {
+    return true;
+  }
   const own = await repo.toolCalls.listForRun(db, input.runId);
   if (own.some((call) => call.foreignContent === true && call.status === "succeeded")) return true;
   for (const runId of new Set(input.historyRunIds)) {

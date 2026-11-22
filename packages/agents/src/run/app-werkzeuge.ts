@@ -16,7 +16,13 @@ import type { JsonValue } from "@paibot/shared/motor";
 import type { AppAccessLevel, AppToolStatus } from "@paibot/shared/tor-fassung-3";
 import { type AppWerkzeugEintrag, erweitereRegister } from "../werkzeuge/app-register";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
-import type { AppAnschluss, AppInfo, AppLauf } from "./app-anschluss";
+import {
+  type AppAnschluss,
+  type AppInfo,
+  type AppLauf,
+  AppListeFehler,
+  type AusgeschlossenMeldung,
+} from "./app-anschluss";
 
 /** Was beim Lauf-Start aus den Apps dieses Bots wird. */
 export interface AppWerkzeugeFuerLauf {
@@ -63,6 +69,7 @@ export async function ladeAppWerkzeuge(input: {
   const lauf = anschluss.neuerLauf();
   const alleApps = await repo.apps.list(db);
   const eintraege: AppWerkzeugEintrag[] = [];
+  const meldungen: AusgeschlossenMeldung[] = [];
   for (const appId of appIds) {
     const app = alleApps.find((a) => a.id === appId);
     if (app === undefined) continue;
@@ -82,8 +89,16 @@ export async function ladeAppWerkzeuge(input: {
         bereitsVergeben,
         signal: input.signal,
       });
-    } catch {
+    } catch (fehler) {
       // Die Meldung der App oder der Bibliothek geht nirgends hin; diese App trägt nichts bei.
+      // Sind die gespeicherten Namen ungültig, bleibt die App gesperrt und der Besitzer erfährt es.
+      if (fehler instanceof AppListeFehler && fehler.grund === "namen_ungueltig") {
+        meldungen.push({
+          appId: app.id,
+          kennung: `mcp/${app.shortName}`,
+          grund: "Die gespeicherten Namen der Werkzeuge dieser App sind ungültig.",
+        });
+      }
       continue;
     }
     let ergebnisse: Awaited<ReturnType<typeof repo.apps.sehen>>;
@@ -132,8 +147,11 @@ export async function ladeAppWerkzeuge(input: {
   }
   const { registry, ausgeschlossen } = await erweitereRegister(basis, eintraege);
   for (const a of ausgeschlossen) {
+    meldungen.push({ appId: a.appId, kennung: a.key, grund: a.fehler.message });
+  }
+  for (const meldung of meldungen) {
     try {
-      anschluss.meldeAusgeschlossen({ appId: a.appId, kennung: a.key, grund: a.fehler.message });
+      anschluss.meldeAusgeschlossen(meldung);
     } catch {
       // Eine Meldung, die scheitert, hält den Lauf nicht an.
     }

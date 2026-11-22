@@ -16,9 +16,11 @@ import type { ToolDefinition, ToolKey } from "@paibot/shared/werkzeug";
 import { toolKeySchema } from "@paibot/shared/werkzeug";
 import { z } from "zod";
 import type { AppAufrufErgebnis } from "../run/app-anschluss";
-import { cleanText, hasUnwanted, jsonUeberGrenzen } from "../run/bereinigen";
+import { hasUnwanted, jsonUeberGrenzen } from "../run/bereinigen";
 import {
   type ExcludedTool,
+  festerFehler,
+  kennungFuerMeldung,
   MAX_TOOL_DESCRIPTION_CHARS,
   PLACEHOLDER_TOOL_KEY,
   type RegisteredTool,
@@ -62,7 +64,6 @@ export interface AppAusgeschlossen extends ExcludedTool {
 }
 
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
-const MAX_KENNUNG_ZEICHEN = 128;
 
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
@@ -70,19 +71,6 @@ function deepFreeze<T>(value: T): T {
     Object.freeze(value);
   }
   return value;
-}
-
-/** Kennung für die Meldung: nur ein Text, bereinigt, höchstens 128 Zeichen, sonst fester Ersatz. */
-function kennungFuerMeldung(eintrag: unknown): string {
-  const ersatz = "(ohne Kennung)";
-  try {
-    const key = (eintrag as { toolKey?: unknown } | null | undefined)?.toolKey;
-    if (typeof key !== "string") return ersatz;
-    const sauber = Array.from(cleanText(key)).slice(0, MAX_KENNUNG_ZEICHEN).join("");
-    return sauber === "" ? ersatz : sauber;
-  } catch {
-    return ersatz;
-  }
 }
 
 /** Prüft einen Eintrag; wirft `ToolRegistryError` mit festem Text. */
@@ -211,12 +199,12 @@ export async function erweitereRegister(
       kennungen.add(eintrag.toolKey);
       tools.push(tool);
     } catch (fehler) {
-      const grund =
-        fehler instanceof ToolRegistryError
-          ? fehler
-          : new ToolRegistryError("Beschreibung nicht lesbar");
       ausgeschlossen.push(
-        Object.freeze({ appId: eintrag.appId, key: kennungFuerMeldung(eintrag), fehler: grund }),
+        Object.freeze({
+          appId: eintrag.appId,
+          key: kennungFuerMeldung(eintrag.toolKey),
+          fehler: festerFehler(fehler),
+        }),
       );
     }
   }

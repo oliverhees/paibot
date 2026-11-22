@@ -202,7 +202,11 @@ export async function runLoop(
   const kennzeichne = async (anfrageHatFremdes: boolean): Promise<void> => {
     const fremd =
       anfrageHatFremdes ||
-      (await untrustedInput(db, { runId: run.id, historyRunIds: base.runIds }));
+      (await untrustedInput(db, {
+        runId: run.id,
+        historyRunIds: base.runIds,
+        historyMessageIds: base.messageIds,
+      }));
     if (fremd) await write(() => repo.messages.markRunUntrusted(db, run.id));
   };
 
@@ -219,7 +223,11 @@ export async function runLoop(
     const history = [...base.history, ...runHistory];
     const specs = offered.map((tool) => tool.spec);
     const inputChars = requestChars(system, history, specs);
-    const untrusted = await untrustedInput(db, { runId: run.id, historyRunIds: base.runIds });
+    const untrusted = await untrustedInput(db, {
+      runId: run.id,
+      historyRunIds: base.runIds,
+      historyMessageIds: base.messageIds,
+    });
     const ausgabe = ausgabeGrenze({
       botMaxOutputTokens: context.bot.maxOutputTokens,
       maxRunTokens: settings.maxTokensPerRun,
