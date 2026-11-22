@@ -34,11 +34,19 @@ export type AbgleichKlasse = (typeof ABGLEICH_KLASSEN_WERTE)[number];
  *
  * - `nein`: kein Geheimnis in der Tabelle.
  * - `nie`: Die genannten Spalten verlassen den Ort nie (auch nicht verschlüsselt).
+ * - `nur-gekoppelt-verschluesselt`: Die genannten Spalten gehen nur über einen gekoppelten,
+ *   verschlüsselten Kanal zu einem anderen Ort, nie im Klartext; Änderungen nur als signiertes
+ *   Ereignis (so der Passwort-Abdruck des Besitzers).
  * - `je-ort-neu-verschluesselt`: Die genannten Spalten sind Geheimtext. Sie gehen nie als
  *   Geheimtext zu einem anderen Ort, sondern nur auf ausdrückliche Wahl am Zielort, der sie mit
  *   seinem eigenen Schlüssel neu verschlüsselt.
  */
-export const ABGLEICH_GEHEIM_WERTE = ["nein", "nie", "je-ort-neu-verschluesselt"] as const;
+export const ABGLEICH_GEHEIM_WERTE = [
+  "nein",
+  "nie",
+  "nur-gekoppelt-verschluesselt",
+  "je-ort-neu-verschluesselt",
+] as const;
 export type AbgleichGeheim = (typeof ABGLEICH_GEHEIM_WERTE)[number];
 
 /** Klasse einer Tabelle, der Grund, warum sie so eingeordnet ist, und die Kennzeichnung der Geheimnisse. */
@@ -144,11 +152,11 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
   },
   owner: {
     klasse: "B",
-    geheim: "nie",
+    geheim: "nur-gekoppelt-verschluesselt",
     spalten: ["password_hash"],
     oeffentlich: ["password_changed_at"],
     grund:
-      "Der Besitzer mit Passwort-Abdruck, höchstens eine Zeile; wird geändert. Der Passwort-Abdruck ist ein Geheimnis und geht nie offen oder als Geheimtext zu einem anderen Ort; Änderungen laufen nur über einen gekoppelten, verschlüsselten Kanal.",
+      "Der Besitzer mit Passwort-Abdruck (ein Hash, nicht verschlüsselt), höchstens eine Zeile; wird geändert. Der Abdruck geht nur über einen gekoppelten, verschlüsselten Kanal zu einem anderen Ort, nie im Klartext; Änderungen nur als signiertes Ereignis.",
   },
 
   // C: bleibt am Ort
@@ -264,6 +272,11 @@ export function abgleichGeheimFehler(
     }
     for (const spalte of gekennzeichnet) {
       if (!spalten.includes(spalte)) fehler.push(`Spalte ${tabelle}.${spalte} gibt es nicht.`);
+    }
+    for (const spalte of eintrag.spalten ?? []) {
+      if ((eintrag.oeffentlich ?? []).includes(spalte)) {
+        fehler.push(`Spalte ${tabelle}.${spalte} steht in spalten und in oeffentlich.`);
+      }
     }
   }
   for (const [tabelle, eintrag] of Object.entries(zuordnung)) {

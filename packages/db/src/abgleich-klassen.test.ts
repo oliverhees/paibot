@@ -132,7 +132,10 @@ describe("Kennzeichnung der Geheimnisse", () => {
   });
 
   it("Besitzer, Anbieter, Apps und Einstellungen sind gekennzeichnet", () => {
-    expect(ABGLEICH_KLASSEN.owner).toMatchObject({ geheim: "nie", spalten: ["password_hash"] });
+    expect(ABGLEICH_KLASSEN.owner).toMatchObject({
+      geheim: "nur-gekoppelt-verschluesselt",
+      spalten: ["password_hash"],
+    });
     expect(ABGLEICH_KLASSEN.settings).toMatchObject({
       geheim: "nie",
       spalten: ["setup_code_hash"],
@@ -249,6 +252,48 @@ describe("Gegenproben der Prüfung", () => {
         "Tabelle eins: unbekannte Kennzeichnung vielleicht.",
       ]);
     });
+  });
+
+  it("dieselbe Spalte in spalten und in oeffentlich: Meldung", () => {
+    const zuordnung = {
+      eins: {
+        klasse: "A",
+        geheim: "nie",
+        grund: "Beispiel.",
+        spalten: ["pw_hash"],
+        oeffentlich: ["pw_hash"],
+      },
+    } as Record<string, AbgleichEintrag>;
+    expect(abgleichGeheimFehler({ eins: ["id", "pw_hash"] }, zuordnung)).toEqual([
+      "Spalte eins.pw_hash steht in spalten und in oeffentlich.",
+    ]);
+  });
+
+  it("der vierte Wert nur-gekoppelt-verschluesselt ist erlaubt und verlangt Spalten", () => {
+    const gut = {
+      eins: {
+        klasse: "B",
+        geheim: "nur-gekoppelt-verschluesselt",
+        grund: "Beispiel.",
+        spalten: ["pw_hash"],
+      },
+    } as Record<string, AbgleichEintrag>;
+    expect(abgleichGeheimFehler({ eins: ["pw_hash"] }, gut)).toEqual([]);
+    const ohne = {
+      eins: { klasse: "B", geheim: "nur-gekoppelt-verschluesselt", grund: "Beispiel." },
+    } as Record<string, AbgleichEintrag>;
+    expect(abgleichGeheimFehler({ eins: ["pw_hash"] }, ohne)).toContain(
+      "Tabelle eins: geheim ist nur-gekoppelt-verschluesselt, aber es sind keine Spalten genannt.",
+    );
+  });
+
+  it("die vier Werte der Kennzeichnung", () => {
+    expect([...ABGLEICH_GEHEIM_WERTE]).toEqual([
+      "nein",
+      "nie",
+      "nur-gekoppelt-verschluesselt",
+      "je-ort-neu-verschluesselt",
+    ]);
   });
 
   describe("Namensmuster für Geheimnisse (GEHEIMNIS_SPALTE)", () => {
