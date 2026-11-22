@@ -45,8 +45,8 @@ function biome(args: string[]): Diagnostic[] {
 }
 
 /** Legt eine Datei unter `packages/mcp/src/` an, prüft sie mit Biome und löscht sie wieder. */
-function lint(source: string, name = "versuch.ts"): Diagnostic[] {
-  const dir = path.join(ROOT, "packages/mcp/src", `__mcp_versuch_${process.pid}__`);
+function lint(source: string, name = "versuch.ts", ordner = "packages/mcp/src"): Diagnostic[] {
+  const dir = path.join(ROOT, ordner, `__mcp_versuch_${process.pid}__`);
   mkdirSync(dir, { recursive: true });
   try {
     writeFileSync(path.join(dir, name), source);
@@ -89,6 +89,25 @@ describe("MCP-Schicht: verbotene Importe (muss rot sein)", () => {
       'import { createMCPClient } from "@ai-sdk/mcp";\nimport { createTestMcpServer } from "@paibot/test-mcp-server";\nexport { createMCPClient, createTestMcpServer };\n';
     expect(importVerbot(source, "x.test.ts")).toEqual([]);
   });
+});
+
+describe("Keine fremden Prozesse auch in den Agents und in der Web-App (muss rot sein)", () => {
+  for (const ordner of ["packages/agents/src", "apps/web/src/lib"]) {
+    for (const quelle of [
+      "node:child_process",
+      "child_process",
+      "cross-spawn",
+      "@ai-sdk/mcp/mcp-stdio",
+    ]) {
+      it(`${quelle} in ${ordner}`, () => {
+        const source = `import * as x from "${quelle}";\nexport { x };\n`;
+        const meldungen = lint(source, "versuch.ts", ordner).filter(
+          (d) => d.category === "lint/style/noRestrictedImports",
+        );
+        expect(meldungen.length).toBeGreaterThan(0);
+      });
+    }
+  }
 });
 
 describe("MCP-Schicht: kein eigener Netz-Zugriff (muss rot sein)", () => {

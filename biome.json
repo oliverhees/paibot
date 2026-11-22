@@ -623,7 +623,11 @@
                   "@paibot/ui": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/fake-provider": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/test-mcp-server": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/test-mcp-server": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "node:child_process": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https.",
+                  "child_process": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https.",
+                  "cross-spawn": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https.",
+                  "@ai-sdk/mcp/mcp-stdio": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https."
                 },
                 "patterns": [
                   {
@@ -1138,7 +1142,11 @@
                   "@paibot/agents": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/fake-provider": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/test-mcp-server": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/llm/modell": "Die Web-App baut nie einen Modell-Zugang; Modelle ruft nur der Worker über das Tor auf."
+                  "@paibot/llm/modell": "Die Web-App baut nie einen Modell-Zugang; Modelle ruft nur der Worker über das Tor auf.",
+                  "node:child_process": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https.",
+                  "child_process": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https.",
+                  "cross-spawn": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https.",
+                  "@ai-sdk/mcp/mcp-stdio": "Keine fremden Prozesse starten (kein stdio, kein child_process); fremde MCP-Server nur über https."
                 },
                 "patterns": [
                   {
