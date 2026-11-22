@@ -29,12 +29,15 @@ import { STANDARD_GRENZEN } from "./grenzen";
 import {
   baueSicheresFetch,
   ERLAUBTE_AUSGEHENDE_METHODEN,
-  holeWerkzeuge,
+  holeWerkzeugeIntern,
+  holeWerkzeuge as holeWerkzeugeOeffentlich,
   type McpFetch,
   type McpVerbindungOptionen,
-  oeffneVerbindung,
+  oeffneVerbindungIntern,
+  oeffneVerbindung as oeffneVerbindungOeffentlich,
   pruefeAdresse,
-  rufeWerkzeugAuf,
+  pruefeAdresseMitSchalter,
+  rufeWerkzeugAufIntern,
 } from "./verbindung";
 
 type Protokoll = "modern" | "legacy" | "both";
@@ -82,7 +85,16 @@ function zaehlend(basis: McpFetch = echtesFetch as McpFetch) {
   return { fetch: f, aufrufe };
 }
 
-const BASIS = { erlaubeHttp: true, appKurzname: "test" } as const;
+/** Die Tests laufen gegen einen Server auf 127.0.0.1 (http): mit dem Schalter für Tests. */
+const FUER_TESTS = { erlaubeHttp: true } as const;
+const holeWerkzeuge = (optionen: Parameters<typeof holeWerkzeugeIntern>[0]) =>
+  holeWerkzeugeIntern(optionen, FUER_TESTS);
+const rufeWerkzeugAuf = (optionen: Parameters<typeof rufeWerkzeugAufIntern>[0]) =>
+  rufeWerkzeugAufIntern(optionen, FUER_TESTS);
+const oeffneVerbindung = (optionen: Parameters<typeof oeffneVerbindungIntern>[0]) =>
+  oeffneVerbindungIntern(optionen, FUER_TESTS);
+
+const BASIS = { appKurzname: "test", bekannteNamen: new Map<string, string>() } as const;
 
 const TEXT_SCHEMA = { type: "object", properties: { text: { type: "string" } } };
 function werkzeug(name: string, answer?: McpAnswer, extra: Partial<McpToolSpec> = {}): McpToolSpec {
@@ -409,14 +421,14 @@ describe("Adresse", () => {
       "http://postgres/mcp",
     ]) {
       expect(pruefeAdresse(adresse).ok).toBe(false);
-      expect(pruefeAdresse(adresse, true).ok).toBe(true);
+      expect(pruefeAdresseMitSchalter(adresse, true).ok).toBe(true);
     }
     // Auch mit dem Schalter bleiben Zugangsdaten, Abfrage und Fragment verboten.
-    expect(pruefeAdresse("http://u:p@127.0.0.1/mcp", true)).toEqual({
+    expect(pruefeAdresseMitSchalter("http://u:p@127.0.0.1/mcp", true)).toEqual({
       ok: false,
       grund: "zugangsdaten",
     });
-    expect(pruefeAdresse("http://127.0.0.1/mcp?x=1", true)).toEqual({
+    expect(pruefeAdresseMitSchalter("http://127.0.0.1/mcp?x=1", true)).toEqual({
       ok: false,
       grund: "abfrage",
     });
@@ -425,7 +437,7 @@ describe("Adresse", () => {
   it("lässt https zu, http nur ausdrücklich", () => {
     expect(pruefeAdresse("https://beispiel.invalid/mcp").ok).toBe(true);
     expect(pruefeAdresse("http://127.0.0.1:3000/mcp").ok).toBe(false);
-    expect(pruefeAdresse("http://127.0.0.1:3000/mcp", true).ok).toBe(true);
+    expect(pruefeAdresseMitSchalter("http://127.0.0.1:3000/mcp", true).ok).toBe(true);
   });
 });
 
@@ -631,6 +643,76 @@ describe("Das hineingereichte fetch (jede Anfrage, nur die eine Adresse)", () =>
       expect(
         (await (await f2(ENDPUNKT.href, { method: "POST", body: LISTE })).text()).length,
       ).toBeGreaterThan(0);
+    });
+
+    // Nach SSE enden Zeilen mit `\r\n`, `\n` oder `\r` allein. Gegenprobe: die Zählung wieder
+    // auf zwei `\n` hintereinander beschränken → alle Trenner außer `\n\n` zählen 0 Ereignisse.
+    describe("Ereignis-Grenze bei jedem Zeilenende", () => {
+      const TRENNER: [string, string][] = [
+        ["\\n\\n", "\n\n"],
+        ["\\r\\n\\r\\n", "\r\n\r\n"],
+        ["\\r\\r", "\r\r"],
+        ["\\r\\r\\n", "\r\r\n"],
+        ["\\n\\r\\n", "\n\r\n"],
+        ["\\r\\n\\n", "\r\n\n"],
+        ["\\n\\r", "\n\r"],
+      ];
+      const bauStrom = (text: string | string[], max: number) => {
+        const teile = Array.isArray(text) ? text : [text];
+        const strom: McpFetch = async () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(steuerung) {
+                for (const teil of teile) steuerung.enqueue(new TextEncoder().encode(teil));
+                steuerung.close();
+              },
+            }),
+            { headers: { "content-type": "text/event-stream" } },
+          );
+        return baueSicheresFetch(strom, ENDPUNKT, () => "offen", new AbortController().signal, {
+          ...GRENZEN,
+          maxEreignisse: max,
+          maxAntwortBytes: 1_000_000,
+        });
+      };
+      const ereignisMit = (trenner: string) => `data: {"jsonrpc":"2.0","method":"x"}${trenner}`;
+
+      for (const [name, trenner] of TRENNER) {
+        it(`${name}: zu viele Ereignisse enden mit festem Fehlercode, genau so viele wie erlaubt gehen durch`, async () => {
+          const zuViele = await bauStrom(ereignisMit(trenner).repeat(50), 10)(ENDPUNKT.href, {
+            method: "POST",
+            body: LISTE,
+          });
+          await expect(zuViele.text()).rejects.toMatchObject({ code: "app_zu_viele_anfragen" });
+          const genau = await bauStrom(ereignisMit(trenner).repeat(10), 10)(ENDPUNKT.href, {
+            method: "POST",
+            body: LISTE,
+          });
+          expect((await genau.text()).length).toBeGreaterThan(0);
+        });
+      }
+
+      it("ein Zeilenende, das auf zwei Stücke verteilt ist (`\\r` | `\\n`), zählt einmal", async () => {
+        const stuecke = Array.from({ length: 10 }, () => [
+          'data: {"jsonrpc":"2.0","method":"x"}\r\n\r',
+          "\n",
+        ]).flat();
+        const genau = await bauStrom(stuecke, 10)(ENDPUNKT.href, { method: "POST", body: LISTE });
+        expect((await genau.text()).length).toBeGreaterThan(0);
+        const zuViele = await bauStrom(stuecke.concat(stuecke), 10)(ENDPUNKT.href, {
+          method: "POST",
+          body: LISTE,
+        });
+        await expect(zuViele.text()).rejects.toMatchObject({ code: "app_zu_viele_anfragen" });
+      });
+
+      it("reiner Text ohne Leerzeile zählt nie", async () => {
+        const antwort = await bauStrom("data: x\r".repeat(500), 10)(ENDPUNKT.href, {
+          method: "POST",
+          body: LISTE,
+        });
+        expect((await antwort.text()).length).toBeGreaterThan(0);
+      });
     });
 
     it("begrenzt die Antwort nach Bytes: Content-Length und Strom", async () => {
@@ -1185,5 +1267,93 @@ describe("Änderung der Liste zwischen zwei Abrufen", () => {
     const erste = await holeWerkzeuge({ ...BASIS, adresse: url, fetch: echtesFetch as McpFetch });
     const zweite = await holeWerkzeuge({ ...BASIS, adresse: url, fetch: echtesFetch as McpFetch });
     expect(erste.werkzeuge[0]?.abdruck).not.toBe(zweite.werkzeuge[0]?.abdruck);
+  });
+});
+
+// Der Test-Schalter für `http`-Adressen ist von außen nicht erreichbar: Eine Option `erlaubeHttp`
+// aus einer Eingabe (JSON, Spread) wirkt nicht, und `pruefeAdresse` nimmt keinen zweiten Wert.
+// Gegenprobe: die Option wieder als Text-Schlüssel `erlaubeHttp` lesen → die Fälle werden rot.
+describe("Test-Schalter für Adressen (nicht umgehbar)", () => {
+  const nieAufgerufen: McpFetch = async () => {
+    throw new Error("darf nicht verbinden");
+  };
+
+  it("`erlaubeHttp` aus JSON oder per Spread öffnet keine http-Adresse", async () => {
+    const aus = JSON.parse('{"erlaubeHttp":true}') as Record<string, unknown>;
+    for (const extra of [aus, { ["erlaube" + "Http"]: true }, { ...aus }]) {
+      const optionen = {
+        adresse: "http://127.0.0.1:8080/mcp",
+        fetch: nieAufgerufen,
+        ...extra,
+      } as McpVerbindungOptionen;
+      expect(await fehlerCode(oeffneVerbindungOeffentlich(optionen))).toBe(
+        "app_adresse_unzulaessig",
+      );
+      expect(
+        await fehlerCode(
+          holeWerkzeugeOeffentlich({ ...optionen, appKurzname: "test", bekannteNamen: new Map() }),
+        ),
+      ).toBe("app_adresse_unzulaessig");
+    }
+  });
+
+  it("`pruefeAdresse` lässt sich nicht mit einem zweiten Wert lockern", () => {
+    const lockern = pruefeAdresse as unknown as (adresse: string, schalter: boolean) => unknown;
+    expect(lockern("http://127.0.0.1:8080/mcp", true)).toMatchObject({ ok: false });
+    expect(lockern("https://127.0.0.1/mcp", true)).toMatchObject({ ok: false });
+  });
+});
+
+// Gegenprobe: `bekannteNamen` in `holeWerkzeuge` nicht weiterreichen → das neue Werkzeug nimmt dem
+// bestätigten den Namen weg.
+describe("holeWerkzeuge und die gespeicherten Namen", () => {
+  it("ein neues Werkzeug a.b verdrängt das bestätigte a_b nicht von seinem Namen", async () => {
+    const roh = (name: string) => werkzeug(name);
+    const erste = await starte({ tools: [roh("a_b")] });
+    const abruf1 = await holeWerkzeuge({
+      ...BASIS,
+      adresse: erste.url,
+      fetch: echtesFetch as McpFetch,
+      bekannteNamen: new Map(),
+    });
+    expect(abruf1.werkzeuge[0]?.modellName).toBe("test__a_b");
+    const bekannteNamen = new Map(abruf1.werkzeuge.map((w) => [w.originalName, w.modellName]));
+    const zweite = await starte({ tools: [roh("a.b"), roh("a_b")] });
+    const abruf2 = await holeWerkzeuge({
+      ...BASIS,
+      adresse: zweite.url,
+      fetch: echtesFetch as McpFetch,
+      bekannteNamen,
+    });
+    const nach = Object.fromEntries(abruf2.werkzeuge.map((w) => [w.originalName, w.modellName]));
+    expect(nach).toEqual({ a_b: "test__a_b", "a.b": "test__a_b_2" });
+  });
+});
+
+// Gegenprobe: den Schalter wieder aus den Optionen lesen (Symbol-Schlüssel) → ein Proxy, der für
+// jeden Symbol-Schlüssel `true` liefert, öffnet eine http-Adresse.
+describe("Test-Schalter für Adressen: auch aus Code nicht über die Optionen", () => {
+  const nieAufgerufen: McpFetch = async () => {
+    throw new Error("darf nicht verbinden");
+  };
+
+  it("ein Proxy als Optionen, der auf jeden Symbol-Schlüssel `true` liefert, lockert nichts", async () => {
+    const echt = {
+      adresse: "http://127.0.0.1:8080/mcp",
+      fetch: nieAufgerufen,
+      appKurzname: "test",
+      bekannteNamen: new Map<string, string>(),
+    };
+    const proxy = new Proxy(echt, {
+      get: (ziel, schluessel) =>
+        typeof schluessel === "symbol" ? true : (ziel as Record<string, unknown>)[schluessel],
+      has: () => true,
+    });
+    expect(await fehlerCode(oeffneVerbindungOeffentlich(proxy as never))).toBe(
+      "app_adresse_unzulaessig",
+    );
+    expect(await fehlerCode(holeWerkzeugeOeffentlich(proxy as never))).toBe(
+      "app_adresse_unzulaessig",
+    );
   });
 });
