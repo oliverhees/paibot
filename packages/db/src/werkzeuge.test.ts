@@ -9,9 +9,17 @@
  * @since     2026-11-20
  */
 
-import { type ActionId, newId, type ReceiptId, toolCallSchema, ZERO_PREV } from "@paibot/shared";
+import {
+  type ActionId,
+  newId,
+  type ReceiptId,
+  TOOL_CALL_STATUSES,
+  toolCallSchema,
+  ZERO_PREV,
+} from "@paibot/shared";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { Database } from "./client";
 import { toolCalls as calls, StatuswechselError } from "./repo";
 import { belege, bots, conversations, installationKeys, messages, runs, toolCalls } from "./schema";
 import {
@@ -32,6 +40,16 @@ const UNIQUE = "23505";
 const FOREIGN_KEY = "23503";
 
 type Ids = Parameters<typeof toolCallRow>[0];
+
+/** Datenbank-Attrappe: jede Abfrage (jeder Zugriff) scheitert sofort. */
+const OHNE_DATENBANK = new Proxy(
+  {},
+  {
+    get() {
+      throw new Error("Hier darf keine Abfrage laufen.");
+    },
+  },
+) as Database;
 
 let ctx: TestDb;
 let ids: Ids;
@@ -287,19 +305,56 @@ describe("toolCalls (Zugriff)", () => {
     expect(toolCallSchema.safeParse(fertig).success).toBe(true);
   });
 
-  it("fragen: kein Weg nach „wartet auf Freigabe“, die Zeile bleibt angefragt", async () => {
+  it("fragen: in dieser Fassung abgewiesen, bevor eine Abfrage läuft; die Zeile bleibt angefragt", async () => {
     const id = await neu();
     await expect(
       calls.recordDecision(ctx.db, id, {
+        // @ts-expect-error „fragen“ gibt es in dieser Fassung nicht.
         outcome: "ask",
         decisionReceiptId: belegIds[0] as ReceiptId,
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: "intern" });
+    await expect(
+      calls.recordDecision(OHNE_DATENBANK, id, {
+        // @ts-expect-error „fragen“ gibt es in dieser Fassung nicht.
+        outcome: "ask",
+        decisionReceiptId: belegIds[0] as ReceiptId,
+      }),
+    ).rejects.toMatchObject({ code: "intern" });
     expect((await calls.get(ctx.db, id))?.status).toBe("requested");
     expect(await calls.listWaiting(ctx.db, ids.conversationId)).toEqual([]);
   });
 
-  it("ablehnen durch das Tor oder den Besitzer gibt dem Modell ein Ergebnis denied", async () => {
+  it("Freigabe-Wege sind stillgelegt: approve, markRunning, rejectByOwner werfen ohne Abfrage", async () => {
+    const id = await neu();
+    for (const versuch of [
+      () => calls.approve(OHNE_DATENBANK, id),
+      () => calls.markRunning(OHNE_DATENBANK, id),
+      () => calls.rejectByOwner(OHNE_DATENBANK, id, { output: "Nein." }),
+      () => calls.approve(ctx.db, id),
+      () => calls.rejectByOwner(ctx.db, id, { output: "Nein." }),
+    ]) {
+      expect(versuch).toThrow(expect.objectContaining({ code: "intern" }));
+    }
+    expect((await calls.get(ctx.db, id))?.status).toBe("requested");
+  });
+
+  it("die Daten-Form bleibt: alle Zustände, nur ohne Weg in die Warte-Zustände", () => {
+    expect([...TOOL_CALL_STATUSES]).toEqual([
+      "requested",
+      "waiting_approval",
+      "approved",
+      "running",
+      "succeeded",
+      "failed",
+      "denied",
+      "cancelled",
+    ]);
+    expect(calls.TOOL_CALL_TRANSITIONS.waiting_approval).toEqual([]);
+    expect(calls.TOOL_CALL_TRANSITIONS.approved).toEqual([]);
+  });
+
+  it("ablehnen durch das Tor gibt dem Modell ein Ergebnis denied", async () => {
     const vomTor = await neu(0);
     const abgelehnt = await calls.recordDecision(ctx.db, vomTor, {
       outcome: "deny",
@@ -312,15 +367,10 @@ describe("toolCalls (Zugriff)", () => {
       resultStatus: "denied",
       errorCode: "abgelehnt",
     });
-
-    const angefragt = await neu(1);
-    await expect(calls.rejectByOwner(ctx.db, angefragt, { output: "Nein." })).rejects.toThrow();
-    expect((await calls.get(ctx.db, angefragt))?.status).toBe("requested");
   });
 
   it("weist unerlaubte Wechsel ab und meldet unbekannte Aufrufe", async () => {
     const id = await neu();
-    await expect(calls.approve(ctx.db, id)).rejects.toBeInstanceOf(StatuswechselError);
     await expect(
       calls.finish(ctx.db, id, {
         status: "succeeded",
@@ -328,9 +378,34 @@ describe("toolCalls (Zugriff)", () => {
         resultReceiptId: belegIds[1] as ReceiptId,
       }),
     ).rejects.toBeInstanceOf(StatuswechselError);
-    await expect(calls.approve(ctx.db, newId("action"))).rejects.toMatchObject({
+    await expect(calls.cancel(ctx.db, newId("action"), { output: null })).rejects.toMatchObject({
       code: "nicht_gefunden",
     });
+  });
+
+  it("Ende mit gekürztem Ergebnis; Abbruch eines laufenden Aufrufs mit unbekanntem Ausgang", async () => {
+    const id = await neu(0);
+    await calls.recordDecision(ctx.db, id, {
+      outcome: "allow",
+      decisionReceiptId: belegIds[0] as ReceiptId,
+    });
+    expect(
+      await calls.finish(ctx.db, id, {
+        status: "succeeded",
+        output: { text: "…" },
+        resultReceiptId: belegIds[1] as ReceiptId,
+        outputTruncated: true,
+        outputChars: 40000,
+      }),
+    ).toMatchObject({ outputTruncated: true, outputChars: 40000 });
+    const laeuft = await neu(1);
+    await calls.recordDecision(ctx.db, laeuft, {
+      outcome: "allow",
+      decisionReceiptId: belegIds[2] as ReceiptId,
+    });
+    expect(
+      await calls.cancel(ctx.db, laeuft, { output: null, errorCode: "ausgang_unbekannt" }),
+    ).toMatchObject({ status: "cancelled", errorCode: "ausgang_unbekannt" });
   });
 
   it("Abbruch beendet offene Aufrufe mit Fehler-Ergebnis", async () => {

@@ -144,7 +144,11 @@ describe("runs", () => {
         // `von` herstellen (direkt in der Tabelle, der Ablauf darum geht es hier nicht).
         await setzeDirekt(lauf.id, von);
         const versuch = wechsle(lauf.id, nach);
-        if (erlaubt) {
+        if (nach === "waiting_approval") {
+          // Stillgelegt: wirft, ohne die Datenbank zu fragen.
+          await expect(versuch).rejects.toMatchObject({ code: "intern" });
+          expect((await runs.get(db, lauf.id))?.status).toBe(von);
+        } else if (erlaubt) {
           expect((await versuch).status).toBe(nach);
         } else {
           await expect(versuch).rejects.toBeInstanceOf(StatuswechselError);
@@ -159,7 +163,7 @@ describe("runs", () => {
       case "running":
         return runs.markRunning(db, id);
       case "waiting_approval":
-        return runs.markWaiting(db, id);
+        return Promise.resolve().then(() => runs.markWaiting(db, id));
       case "queued":
         // „queued“ ist nie ein Ziel: es gibt keine Funktion, die dorthin wechselt.
         return Promise.reject(new StatuswechselError("lauf", id, "?", "queued"));
@@ -173,7 +177,9 @@ describe("runs", () => {
     await expect(runs.finish(db, lauf.id, { status: "succeeded" })).rejects.toBeInstanceOf(
       StatuswechselError,
     );
-    await expect(runs.markWaiting(db, lauf.id)).rejects.toBeInstanceOf(StatuswechselError);
+    expect(() => runs.markWaiting(db, lauf.id)).toThrow(
+      expect.objectContaining({ code: "intern" }),
+    );
     await runs.markRunning(db, lauf.id);
     await runs.finish(db, lauf.id, { status: "cancelled" });
     await expect(runs.markRunning(db, lauf.id)).rejects.toBeInstanceOf(StatuswechselError);
@@ -247,26 +253,39 @@ describe("runs", () => {
     void wartend;
   });
 
-  it("resume beendet den wartenden Lauf und legt einen neuen mit resumesRunId an", async () => {
+  it("markWaiting und resume sind stillgelegt: werfen ohne Abfrage, der wartende Lauf bleibt", async () => {
     const lauf = await anlegen();
     await wartend(lauf.id);
-    const neu = await runs.resume(db, lauf.id);
-    expect(neu).toMatchObject({
-      status: "queued",
-      resumesRunId: lauf.id,
-      conversationId,
-      botId,
-      triggerMessageId,
-    });
-    expect((await runs.get(db, lauf.id))?.status).toBe("succeeded");
-    expect((await runs.getActive(db, conversationId))?.id).toBe(neu.id);
+    const ohneDatenbank = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error("Hier darf keine Abfrage laufen.");
+        },
+      },
+    ) as Database;
+    for (const versuch of [
+      () => runs.resume(db, lauf.id),
+      () => runs.resume(ohneDatenbank, lauf.id),
+      () => runs.markWaiting(ohneDatenbank, lauf.id),
+    ]) {
+      expect(versuch).toThrow(expect.objectContaining({ code: "intern" }));
+    }
+    expect((await runs.get(db, lauf.id))?.status).toBe("waiting_approval");
+    expect(await runs.listForConversation(db, conversationId)).toHaveLength(1);
   });
 
-  it("resume nur aus waiting_approval; bei Fehlern bleibt alles wie es war", async () => {
-    const lauf = await anlegen();
-    await expect(runs.resume(db, lauf.id)).rejects.toBeInstanceOf(StatuswechselError);
-    await expect(runs.resume(db, newId("run"))).rejects.toEqual(mitCode("nicht_gefunden"));
-    expect((await runs.get(db, lauf.id))?.status).toBe("queued");
-    expect(await runs.listForConversation(db, conversationId)).toHaveLength(1);
+  it("die Daten-Form bleibt: Zustände und CHECKs wie vorher, der Wartezustand ohne Weg hinein", async () => {
+    expect([...RUN_STATUSES]).toEqual([
+      "queued",
+      "running",
+      "waiting_approval",
+      "succeeded",
+      "failed",
+      "cancelled",
+      "denied",
+    ]);
+    expect(RUN_TRANSITIONS.waiting_approval).toEqual([]);
+    expect(RUN_TRANSITIONS.succeeded).toContain("waiting_approval");
   });
 });

@@ -174,7 +174,10 @@ export async function listForMessages(
   return rows.map(toToolCall);
 }
 
-/** Aufrufe einer Unterhaltung, die auf die Freigabe des Besitzers warten. */
+/**
+ * Aufrufe einer Unterhaltung, die auf die Freigabe des Besitzers warten. In dieser Fassung führt
+ * kein Weg nach `waiting_approval`; die Liste ist deshalb leer.
+ */
 export async function listWaiting(
   db: Database,
   conversationId: ConversationId,
@@ -219,15 +222,16 @@ async function wechseln(
 }
 
 /**
- * Hält die Entscheidung des Tors fest: `allow` → `running`, `ask` → `waiting_approval`,
- * `deny` → `denied` (mit Ergebnis `denied` für das Modell).
+ * Hält die Entscheidung des Tors fest: `allow` → `running`, `deny` → `denied` (mit Ergebnis
+ * `denied` für das Modell). In dieser Fassung gibt es kein „fragen“: Das Tor belegt dann selbst
+ * „abgelehnt“, und die Lauf-Steuerung hält das als `deny` fest. Jede andere Angabe wirft
+ * `intern`, bevor eine Abfrage läuft.
  */
 export function recordDecision(
   db: Database,
   actionId: ActionId,
   input:
     | { outcome: "allow"; decisionReceiptId: ReceiptId }
-    | { outcome: "ask"; decisionReceiptId: ReceiptId }
     | {
         outcome: "deny";
         decisionReceiptId: ReceiptId;
@@ -240,46 +244,45 @@ export function recordDecision(
   if (input.outcome === "allow") {
     return wechseln(db, actionId, "running", { decisionReceiptId: input.decisionReceiptId });
   }
-  if (input.outcome === "ask") {
-    return wechseln(db, actionId, "waiting_approval", {
+  if (input.outcome === "deny") {
+    return wechseln(db, actionId, "denied", {
       decisionReceiptId: input.decisionReceiptId,
+      resultReceiptId: input.resultReceiptId ?? null,
+      resultStatus: "denied",
+      output: input.output,
+      errorCode: input.errorCode ?? "abgelehnt",
+      finishedAt: input.now ?? new Date(),
     });
   }
-  return wechseln(db, actionId, "denied", {
-    decisionReceiptId: input.decisionReceiptId,
-    resultReceiptId: input.resultReceiptId ?? null,
-    resultStatus: "denied",
-    output: input.output,
-    errorCode: input.errorCode ?? "abgelehnt",
-    finishedAt: input.now ?? new Date(),
-  });
-}
-
-/** `waiting_approval` → `approved`: der Besitzer hat zugestimmt. */
-export function approve(db: Database, actionId: ActionId): Promise<ToolCallRecord> {
-  return wechseln(db, actionId, "approved", {});
-}
-
-/** `approved` → `running`: der fortgesetzte Lauf führt den Aufruf jetzt aus. */
-export function markRunning(db: Database, actionId: ActionId): Promise<ToolCallRecord> {
-  return wechseln(db, actionId, "running", {});
+  return Promise.reject(new PaiBotError("intern"));
 }
 
 /**
- * `waiting_approval` → `denied`: der Besitzer hat abgelehnt. Das Modell bekommt `output` als
- * Ergebnis `denied`.
+ * In dieser Fassung stillgelegt (es gibt keine Freigaben): wirft sofort `intern`, ohne Abfrage.
+ * Eine spätere Fassung mit Freigaben stellt den Weg `waiting_approval` → `approved` wieder her.
+ */
+export function approve(_db: Database, _actionId: ActionId): never {
+  throw new PaiBotError("intern");
+}
+
+/**
+ * In dieser Fassung stillgelegt: `approved` → `running` gibt es nicht. Wirft sofort `intern`,
+ * ohne Abfrage; eine spätere Fassung mit Freigaben stellt den Weg wieder her.
+ */
+export function markRunning(_db: Database, _actionId: ActionId): never {
+  throw new PaiBotError("intern");
+}
+
+/**
+ * In dieser Fassung stillgelegt (der Besitzer gibt nichts frei, also lehnt er auch nichts ab):
+ * wirft sofort `intern`, ohne Abfrage. Eine spätere Fassung mit Freigaben stellt sie wieder her.
  */
 export function rejectByOwner(
-  db: Database,
-  actionId: ActionId,
-  input: { output: unknown; now?: Date },
-): Promise<ToolCallRecord> {
-  return wechseln(db, actionId, "denied", {
-    resultStatus: "denied",
-    output: input.output,
-    errorCode: "abgelehnt",
-    finishedAt: input.now ?? new Date(),
-  });
+  _db: Database,
+  _actionId: ActionId,
+  _input: { output: unknown; now?: Date },
+): never {
+  throw new PaiBotError("intern");
 }
 
 /** `running` → `succeeded` oder `failed` mit Ergebnis und Ergebnis-Beleg. */
@@ -290,6 +293,10 @@ export function finish(
     status: "succeeded" | "failed";
     output: unknown;
     resultReceiptId: ReceiptId;
+    /** Das Ergebnis wurde für das Modell gekürzt. */
+    outputTruncated?: boolean;
+    /** Zeichen des Ergebnisses vor dem Kürzen. */
+    outputChars?: number;
     errorCode?: ErrorCode;
     now?: Date;
   },
@@ -298,21 +305,26 @@ export function finish(
     resultStatus: input.status === "succeeded" ? "ok" : "error",
     output: input.output,
     resultReceiptId: input.resultReceiptId,
+    outputTruncated: input.outputTruncated ?? null,
+    outputChars: input.outputChars ?? null,
     errorCode: input.errorCode ?? null,
     finishedAt: input.now ?? new Date(),
   });
 }
 
-/** Bricht einen offenen Aufruf ab (Lauf abgebrochen); das Modell bekommt `output` als Fehler. */
+/**
+ * Bricht einen offenen Aufruf ab (Lauf abgebrochen); das Modell bekommt `output` als Fehler.
+ * `ausgang_unbekannt`, wenn der Aufruf schon lief und vielleicht gewirkt hat; sonst `unterbrochen`.
+ */
 export function cancel(
   db: Database,
   actionId: ActionId,
-  input: { output: unknown; now?: Date },
+  input: { output: unknown; errorCode?: "unterbrochen" | "ausgang_unbekannt"; now?: Date },
 ): Promise<ToolCallRecord> {
   return wechseln(db, actionId, "cancelled", {
     resultStatus: "error",
     output: input.output,
-    errorCode: "unterbrochen",
+    errorCode: input.errorCode ?? "unterbrochen",
     finishedAt: input.now ?? new Date(),
   });
 }
