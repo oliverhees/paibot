@@ -28,9 +28,11 @@ const MELDUNG = "Eine Fassung wird nie geändert; lege eine neue an.";
 
 /** SHA-256 (Hex) je eingefrorener Datei, Pfad relativ zu diesem Ordner. */
 const EINGEFROREN: Readonly<Record<string, string>> = {
-  "./fassung-1.ts": "c308478cd290fd5b6f2919924971f54581a7e8c05df9ff65d564d18356c77c98",
+  // Fassung 1 und 2: Prüfsummen einmalig neu am 2026-11-22, nur weil ihre Liste der Aktionen seitdem
+  // als fester Typ in der Datei steht (Ausnahme am Typ; Ausgabe ohne Typen und feste Fälle gleich).
+  "./fassung-1.ts": "5e83a38a610ad1be5ecbae62e9497a497081f88d2599f06101241775ecc77363",
   "./fassung-1.korpus.json": "51e1e509336dca9eb0fe5505c1bc0bd4afbd45c5ba956cd2d3b2e3a944e80338",
-  "./fassung-2.ts": "eae9f14666a075fc1cdbe27de4f643612efd520b8dbb8c321d310e66e40e8f46",
+  "./fassung-2.ts": "193b69a6f94c942502afa374375305f8dd1bacbde0a05591c887645616544e28",
   "./fassung-2.korpus.json": "41263028e1219cd4ee01a8778544a9697f379a66471f9ea1ec44bf94ee727653",
   "./fassung-3.ts": "1760a3839e7eaa170e684055014b6fd5d48de3ec8b78201193bc472151d63186",
   "./fassung-3.korpus.json": "2a0b299bb8053eeea843c63901718b95aa8927a22d418c76ed0fe419854e946d",

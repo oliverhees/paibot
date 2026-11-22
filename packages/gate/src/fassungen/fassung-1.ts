@@ -14,7 +14,7 @@
 // Schema, bleibt Fassung 1 gleich. Importiert werden nur Grund-Schemas, die per Definition nie
 // geändert werden (Kennungen, Prüfsummen-Formate), Typen und Texte.
 
-import type { ActionType, ActorKind } from "@paibot/shared/aktionen";
+import type { ActorKind } from "@paibot/shared/aktionen";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import { hmacDigestSchema, sha256DigestSchema } from "@paibot/shared/grundtypen";
 import { ID_BODY_PATTERN, ID_PREFIX, idSchema } from "@paibot/shared/ids";
@@ -97,6 +97,40 @@ function toolAction(target: z.ZodRawShape, facts: z.ZodRawShape) {
       ) as z.ZodType,
   };
 }
+
+// Einmalige Ausnahme vom Einfrieren, nur am Typ: Diese Datei bezog ihre Aktionen anfangs aus der
+// lebenden Aktions-Liste. Damit eine neue Aktion sie nicht berührt, steht die Liste seit 2026-11-22
+// hier fest. Geändert sind nur Typen und dieser Kommentar; die übersetzte Ausgabe ohne Typen ist
+// Byte für Byte gleich, die festen Fälle der Fassung 1 sind unverändert.
+/** Aktionen der Fassung 1, als feste Liste. */
+type Action1 =
+  | "einrichtung.abschliessen"
+  | "zugang.anmelden"
+  | "zugang.abmelden"
+  | "zugang.alle_abmelden"
+  | "zugang.passwort_aendern"
+  | "anbieter.speichern"
+  | "anbieter.loeschen"
+  | "modell.waehlen"
+  | "bot.aendern"
+  | "schleuse.umschalten"
+  | "einstellung.aendern"
+  | "unterhaltung.anlegen"
+  | "unterhaltung.umbenennen"
+  | "unterhaltung.loeschen"
+  | "nachricht.senden"
+  | "modell.anfragen"
+  | "lauf.abbrechen"
+  | "belege.exportieren"
+  | "werkzeug.aufrufen"
+  | "werkzeug.freigeben"
+  | "werkzeug.ausfuehren"
+  | "geraet.hinzufuegen"
+  | "geraet.entfernen"
+  | "geraet.bestaetigen"
+  | "notaus.umschalten"
+  | "unterhaltung.exportieren"
+  | "antwort.neu_erzeugen";
 
 const ACTIONS_1 = {
   "einrichtung.abschliessen": action(
@@ -245,11 +279,11 @@ const ACTIONS_1 = {
       killSwitch: z.boolean(),
     },
   ),
-} as const satisfies Record<ActionType, unknown>;
+} as const satisfies Record<Action1, unknown>;
 
 type Spec1Action = (typeof ACTIONS_1)[keyof typeof ACTIONS_1];
 
-const ACTION_TYPES_1 = Object.keys(ACTIONS_1) as ActionType[];
+const ACTION_TYPES_1 = Object.keys(ACTIONS_1) as Action1[];
 
 /** Fakten, die die Aktion laut Fassung 1 kennt (Schlüssel des Fakten-Schemas). */
 const FACT_NAMES_1: Readonly<Record<string, ReadonlySet<string>>> = Object.fromEntries(
@@ -263,7 +297,7 @@ const FACT_NAMES_1: Readonly<Record<string, ReadonlySet<string>>> = Object.fromE
   }),
 );
 
-function hasAction(type: unknown): type is ActionType {
+function hasAction(type: unknown): type is Action1 {
   return typeof type === "string" && Object.hasOwn(ACTIONS_1, type);
 }
 
@@ -279,7 +313,7 @@ const requestVariants = ACTION_TYPES_1.map((type) =>
 const REQUEST_1 = z
   .discriminatedUnion("type", requestVariants as [never, ...never[]])
   .refine(
-    (request: { type: ActionType; actor: string }) =>
+    (request: { type: Action1; actor: string }) =>
       actorKindOf(request.actor) === (ACTIONS_1[request.type] as Spec1Action).actor,
     { path: ["actor"] },
   ) as unknown as z.ZodType;
@@ -652,7 +686,7 @@ function checkLimits(action: { type: string }, facts: unknown): LimitCheck[] {
 
 function isValidInput(action: unknown, facts: unknown): boolean {
   if (!REQUEST_1.safeParse(action).success) return false;
-  const type = (action as { type: ActionType }).type;
+  const type = (action as { type: Action1 }).type;
   return (ACTIONS_1[type] as Spec1Action).facts.safeParse(facts).success;
 }
 
