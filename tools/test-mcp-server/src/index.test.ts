@@ -639,6 +639,16 @@ describe("Schädliches Verhalten des Aufrufs", () => {
     expect(text.match(/event: message/g)).toHaveLength(3);
   });
 
+  it("Ergebnis als SSE-Strom mit Anfragen des Servers davor", async () => {
+    mcp.configure({
+      tools: [{ name: "flut", answer: { kind: "serverRequests", count: 3, method: "ping" } }],
+    });
+    const text = await (await call("flut")).text();
+    expect(text.match(/event: message/g)).toHaveLength(4);
+    expect(text.match(/"method":"ping"/g)).toHaveLength(3);
+    expect(text).toContain('"id":"server-3"');
+  });
+
   it("übergroße, langsame und kaputte Antwort auch auf server/discover", async () => {
     mcp.configure({ discoverAnswer: { kind: "status", status: 503, body: "nicht bereit" } });
     const res = await rpc("server/discover");

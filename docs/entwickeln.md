@@ -151,7 +151,7 @@ server.count("tools/call"); // wie viele Aufrufe kamen an?
 await server.stop();
 ```
 
-Eine Antwort (`answer`, auch für `listAnswer` und `discoverAnswer`) kann normal sein, ein Text mit `isError`, ein Strom, übergroß, endlos, tröpfelnd, langsam, nie ankommend, abgebrochen, eine Weiterleitung, kaputtes JSON, ein fester Statuscode, ein Ergebnis mit Medien oder eine Rückfrage des Servers (`inputRequired`). Fertige Einstellungen für typische Fälle stehen in `tools/test-mcp-server/src/presets.ts` (eingeschleuste Anweisung, giftiges Schema, wechselnde Liste, viele Werkzeuge, Token in der Adresse u. a.).
+Eine Antwort (`answer`, auch für `listAnswer` und `discoverAnswer`) kann normal sein, ein Text mit `isError`, ein Strom (auch mit einer Flut von Anfragen des Servers an den Client, `serverRequests`), übergroß, endlos, tröpfelnd, langsam, nie ankommend, abgebrochen, eine Weiterleitung, kaputtes JSON, ein fester Statuscode, ein Ergebnis mit Medien oder eine Rückfrage des Servers (`inputRequired`). Fertige Einstellungen für typische Fälle stehen in `tools/test-mcp-server/src/presets.ts` (eingeschleuste Anweisung, giftiges Schema, wechselnde Liste, viele Werkzeuge, Token in der Adresse u. a.).
 
 Läuft er als eigener Prozess, steuerst du ihn über HTTP. **Ohne Schlüssel gibt es keine Steuerung**: Die Pfade unter `/_steuerung/` antworten dann mit 403, auch von Loopback. Mit `TEST_MCP_CONTROL_KEY` brauchst du die Kopfzeile `x-steuerung-schluessel` (falsch oder fehlend: 401):
 
