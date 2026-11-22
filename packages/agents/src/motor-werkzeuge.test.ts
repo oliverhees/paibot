@@ -31,6 +31,7 @@ import type {
   TurnMessage,
 } from "@paibot/shared/motor";
 import { t } from "@paibot/shared/texte";
+import type { ToolKey } from "@paibot/shared/werkzeug";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createAiSdkMotor } from "./motor-aisdk";
 import {
@@ -40,6 +41,7 @@ import {
   memoryReceipts,
   modelAccess,
 } from "./testing/test-umgebung";
+import { R010_TOOL_KEY } from "./testing/werkzeuge";
 
 const API_KEY = `sk-test-${"s".repeat(24)}`;
 
@@ -58,6 +60,10 @@ interface Werkzeug {
   /** Quelle des Werkzeugs; bei `mcp` mit dem Namen des Servers. */
   quelle?: { source: "eingebaut" } | { source: "mcp"; server: string };
   art?: "lesen" | "schreiben";
+  /** Kennung des Werkzeugs, wenn sie von `quelle` und Name abweicht (z. B. `R010_TOOL_KEY`). */
+  kennung?: ToolKey;
+  /** Fakten, die die Test-Steuerung überschreibt (z. B. `killSwitch`). */
+  fakten?: Partial<Facts<"werkzeug.aufrufen">>;
 }
 
 interface Steuerung {
@@ -191,7 +197,8 @@ function werkzeugFakten(call: ToolCall, werkzeug: Werkzeug): Facts<"werkzeug.auf
     argsDigest: contextDigest(KONTEXT, `${TOOL_ARGS_DIGEST_PREFIX}${kanonisch(call.input)}`),
     killSwitch: false,
     toolKey:
-      quelle.source === "mcp" ? `mcp/${quelle.server}/${call.name}` : `eingebaut/${call.name}`,
+      werkzeug.kennung ??
+      (quelle.source === "mcp" ? `mcp/${quelle.server}/${call.name}` : `eingebaut/${call.name}`),
     toolDigest: `sha256:${"0".repeat(64)}`,
     toolReach: "intern",
     toolForeign: false,
@@ -205,6 +212,7 @@ function werkzeugFakten(call: ToolCall, werkzeug: Werkzeug): Facts<"werkzeug.auf
     callsInRun: 0,
     maxCallsPerRun: 16,
     trigger: "chat",
+    ...werkzeug.fakten,
   };
 }
 
@@ -216,25 +224,6 @@ function werkzeugAktion(): ActionRequest<"werkzeug.aufrufen"> {
     target: { conversationId: UNTERHALTUNG, runId: LAUF, botId: BOT },
   };
 }
-
-function regel(id: string, effect: RuleDefinition["effect"], reason: string): RuleDefinition {
-  return {
-    id: id as RuleDefinition["id"],
-    version: 1,
-    action: "werkzeug.aufrufen",
-    effect,
-    stage: effect === "ask" ? "ask" : "execute",
-    conditions: [],
-    priority: 1,
-    source: "owner",
-    enabled: true,
-    title: `Test-Regel ${effect}`,
-    reason,
-  };
-}
-
-const ABLEHNEN = regel("R-901", "deny", "Löschen von Notizen ist für den Bot gesperrt.");
-const ERLAUBEN = regel("R-903", "allow", "Der Bot darf dieses Werkzeug benutzen.");
 
 /** Motor-Hülle, die alle Ereignisse mitschreibt (nur zum Prüfen). */
 function aufzeichnen(motor: Motor, log: MotorEvent[][]): Motor {
@@ -307,6 +296,9 @@ function chatMessages(index: number): Array<Record<string, unknown>> {
 }
 
 describe("Werkzeug-Aufruf, am Tor abgelehnt", () => {
+  // Im Betrieb hat ein Bot keine Regel, die einen Werkzeug-Aufruf verbietet; abgelehnt wird er durch
+  // eine Grenze. Hier der Not-Aus (G-05), der vor allen Regeln greift; die Regeln sind die
+  // vollständigen Standard-Regeln.
   it("Motor meldet den Aufruf, nichts wird ausgeführt, die Ablehnung geht in den zweiten Schritt", async () => {
     const { client } = await neueDb();
     provider.configure({
@@ -319,8 +311,10 @@ describe("Werkzeug-Aufruf, am Tor abgelehnt", () => {
       db: client,
       motor: aufzeichnen(createAiSdkMotor(), log),
       zugang: modelAccess({ baseUrl, apiKey: API_KEY }),
-      werkzeuge: new Map([["notiz_loeschen", { spec: notiz, ausfuehren }]]),
-      regelnFuer: async () => [ABLEHNEN],
+      werkzeuge: new Map([
+        ["notiz_loeschen", { spec: notiz, ausfuehren, fakten: { killSwitch: true } }],
+      ]),
+      regelnFuer: async () => ACTIVE_STANDARD_RULES,
       werkzeugAktionen: [],
     };
     await speichere(client, "lauf_1", "wartend_in_schlange", [
@@ -336,23 +330,25 @@ describe("Werkzeug-Aufruf, am Tor abgelehnt", () => {
     ]);
     expect(ausfuehren).not.toHaveBeenCalled();
 
+    // Belege des Werkzeug-Aufrufs: Entscheidung deny, Ergebnis denied (Not-Aus: angehalten).
+    const [decision] = decisions(s.zugang.receipts, s.werkzeugAktionen);
+    const grund = decision?.kind === "decision" ? decision.record.decision.reason : "";
+    expect(grund).toContain("G-05");
+
     // Schritt 2 bekommt die Ablehnung im Verlauf.
     expect(provider.requests).toHaveLength(2);
     expect(chatMessages(1).at(-1)).toEqual({
       role: "tool",
       tool_call_id: "call_a",
-      content: ABLEHNEN.reason,
+      content: grund,
     });
     expect(log[1]?.at(-1)).toMatchObject({ type: "finish", finishReason: "stop" });
 
-    // Belege des Werkzeug-Aufrufs: Entscheidung deny, Ergebnis denied.
-    const [decision] = decisions(s.zugang.receipts, s.werkzeugAktionen);
     expect(decision?.kind === "decision" && decision.record.decision).toMatchObject({
       outcome: "deny",
-      matchedRules: [{ id: "R-901", version: 1 }],
     });
     expect(results(s.zugang.receipts, s.werkzeugAktionen)).toMatchObject([
-      { kind: "result", record: { result: { status: "denied", code: "abgelehnt" } } },
+      { kind: "result", record: { result: { status: "denied", code: "angehalten" } } },
     ]);
 
     // Zustand in der Datenbank.
@@ -363,13 +359,11 @@ describe("Werkzeug-Aufruf, am Tor abgelehnt", () => {
     expect(rows[0]?.verlauf.map((m) => m.role)).toEqual(["user", "assistant", "tool", "assistant"]);
     expect(rows[0]?.verlauf[2]).toEqual({
       role: "tool",
-      results: [
-        { callId: "call_a", name: "notiz_loeschen", status: "denied", output: ABLEHNEN.reason },
-      ],
+      results: [{ callId: "call_a", name: "notiz_loeschen", status: "denied", output: grund }],
     });
     expect(rows[0]?.verlauf[3]).toEqual({
       role: "assistant",
-      text: `Verstanden: ${ABLEHNEN.reason}`,
+      text: `Verstanden: ${grund}`,
     });
     await client.close();
   });
@@ -475,8 +469,12 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
     eingang.length = 0;
   });
 
-  /** Werkzeuge des Servers als Beschreibungen ohne Ausführung plus Ausführung über HTTP. */
-  async function werkzeugeVomServer(): Promise<Map<string, Werkzeug>> {
+  /**
+   * Werkzeuge des Servers als Beschreibungen ohne Ausführung plus Ausführung über HTTP. Mit
+   * `alsDoku` trägt das Werkzeug die Kennung, die R-010 erlaubt (lesend, intern, eingebaut); ohne
+   * kommt es als MCP-Werkzeug, für das keine Standard-Regel „erlauben“ sagt.
+   */
+  async function werkzeugeVomServer(alsDoku: boolean): Promise<Map<string, Werkzeug>> {
     const http = createEgressFetch([{ ...egressTargetOf(serverUrl), allowPrivate: true }]);
     let nextId = 1;
     const rpc = async (method: string, params?: unknown) => {
@@ -493,7 +491,9 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
         spec.name,
         {
           spec: { name: spec.name, description: spec.description, inputSchema: spec.inputSchema },
-          quelle: { source: "mcp" as const, server: "test-server" },
+          ...(alsDoku
+            ? { quelle: { source: "eingebaut" as const }, kennung: R010_TOOL_KEY }
+            : { quelle: { source: "mcp" as const, server: "test-server" } }),
           art: "lesen" as const,
           ausfuehren: async (input: JsonValue) =>
             (await rpc("tools/call", { name: spec.name, arguments: input })) as JsonValue,
@@ -502,7 +502,7 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
     );
   }
 
-  async function lauf(regeln: readonly RuleDefinition[]) {
+  async function lauf(alsDoku: boolean) {
     const { client } = await neueDb();
     provider.configure({
       reply: antwortNachWerkzeug("Antwort mit "),
@@ -514,8 +514,8 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
       db: client,
       motor: createAiSdkMotor(),
       zugang,
-      werkzeuge: await werkzeugeVomServer(),
-      regelnFuer: async () => regeln,
+      werkzeuge: await werkzeugeVomServer(alsDoku),
+      regelnFuer: async () => ACTIVE_STANDARD_RULES,
       werkzeugAktionen: [],
     };
     await speichere(client, "lauf_3", "neu", [{ role: "user", text: "Wie ist das Wetter?" }]);
@@ -525,7 +525,7 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
   }
 
   it("erlaubt: Ausführung erst nach dem Beleg „Entscheidung“, Ergebnis im zweiten Schritt", async () => {
-    const { ende, s } = await lauf([ERLAUBEN]);
+    const { ende, s } = await lauf(true);
     expect(ende).toBe("fertig");
     expect(eingang.map((e) => e.method)).toEqual(["tools/list", "tools/call"]);
     // Der Motor bekam nur die Beschreibung.
@@ -556,12 +556,11 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
       botOfConversation: true,
       runRunning: true,
       toolName: "wetter",
-      toolSource: "mcp",
-      toolServer: "test-server",
+      toolSource: "eingebaut",
       toolKind: "lesen",
       argsDigest: contextDigest(KONTEXT, `${TOOL_ARGS_DIGEST_PREFIX}{"ort":"Berlin"}`),
       killSwitch: false,
-      toolKey: "mcp/test-server/wetter",
+      toolKey: R010_TOOL_KEY,
       toolDigest: `sha256:${"0".repeat(64)}`,
       toolReach: "intern",
       toolForeign: false,
@@ -588,9 +587,12 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
     });
   });
 
-  it("abgelehnt: der Server bekommt keinen Aufruf", async () => {
-    const { ende } = await lauf([ABLEHNEN]);
+  it("R-005 fragt (MCP-Werkzeug): nicht ausgeführt, der Server bekommt keinen Aufruf", async () => {
+    const { ende, s } = await lauf(false);
     expect(ende).toBe("fertig");
+    expect(decisions(s.zugang.receipts, s.werkzeugAktionen)).toMatchObject([
+      { record: { decision: { outcome: "ask", matchedRules: [{ id: "R-005" }] } } },
+    ]);
     expect(eingang.map((e) => e.method)).toEqual(["tools/list"]);
   });
 });

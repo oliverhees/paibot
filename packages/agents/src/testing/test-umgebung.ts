@@ -62,6 +62,7 @@ export function steppingClock(start = Date.UTC(2026, 10, 20, 10, 0, 0)): Clock {
   return { now: () => new Date(now++) };
 }
 
+/** Tor mit einem Regelstand im Speicher; er muss alle aktiven Standard-Regeln enthalten, sonst lehnt das Tor ihn ab. */
 export function gateWith(
   rules: readonly RuleDefinition[],
   receipts: ReceiptWriter,
