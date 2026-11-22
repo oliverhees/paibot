@@ -290,21 +290,21 @@ const BEISPIEL_APPS = [
   },
   {
     id: "app_1c1m0r5k7q8s9t0v1w2x3y4z5e",
-    kurzname: "kalender",
-    name: "Kalender",
-    adresse: "https://kalender.beispiel.example/mcp",
+    kurzname: "aufgaben",
+    name: "Aufgaben",
+    adresse: "https://aufgaben.beispiel.example/mcp",
     token: false,
     werkzeuge: [
       {
         id: "wzg_1c1m0r5k7q8s9t0v1w2x3y4z5f",
-        name: "termine",
-        beschreibung: "Listet die Termine eines Tages auf.",
+        name: "liste",
+        beschreibung: "Listet die offenen Aufgaben auf.",
         schema: {
           type: "object",
           properties: {
-            tag: { type: "string", description: "Der Tag als Datum, zum Beispiel 2026-11-23." },
+            status: { type: "string", description: "Welche Aufgaben: offen oder erledigt." },
           },
-          required: ["tag"],
+          required: ["status"],
         },
         nurLesend: true,
       },

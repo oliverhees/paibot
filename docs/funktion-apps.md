@@ -34,7 +34,7 @@ Du willst, dass dein Bot im Chat etwas nachschlagen kann, das in einer anderen A
 6. Klick bei einer App auf **Werkzeuge ansehen**. Du siehst jedes Werkzeug mit dem Text, der ans Modell gehen würde, und darunter den **Zugriff der Bots**. Ein neues Werkzeug gilt als „schreibt“, bis du es einstufst. Die Angabe „laut App: nur lesend“ ist nur eine Auskunft der App und ändert nichts.
 
    ![Eine aufgeklappte App: Werkzeuge mit Beschreibung und „laut App“-Hinweis, darunter der Zugriff der Bots](assets/screenshots/apps-werkzeuge.png)
-7. Klick bei einem Werkzeug auf **Einstufen**. Dort steht der volle Text, den das Modell sähe (Beschreibung, Feldnamen, Beschreibungen der Felder, Auswahlwerte, Vorgaben, Beispiele). Wähle **Liest nur**, **Schreibt** oder **Gesperrt** und klick auf **Bestätigen**. Mit „Liest nur“ sagst du, dass das Werkzeug nichts verändert; das entscheidest du, nicht die App.
+7. Klick bei einem Werkzeug auf **Einstufen**. Dort steht der volle Text, den das Modell sähe (Beschreibung, Feldnamen, Beschreibungen der Felder und – unter „(Werkzeug)“ – die Beschreibung des ganzen Eingabe-Schemas, Auswahlwerte, Vorgaben, Beispiele). Wähle **Liest nur**, **Schreibt** oder **Gesperrt** und klick auf **Bestätigen**. Mit „Liest nur“ sagst du, dass das Werkzeug nichts verändert; das entscheidest du, nicht die App.
 
    ![Ein Werkzeug wird eingestuft: voller Text, gewählt „Liest nur“, Hinweis vor dem Bestätigen](assets/screenshots/apps-einstufen.png)
 8. Nach dem Bestätigen gilt die Einstufung für genau die Fassung, die du gesehen hast. Ein als „liest“ eingestuftes Werkzeug wird angeboten; alle anderen nicht.
@@ -50,7 +50,7 @@ Du willst, dass dein Bot im Chat etwas nachschlagen kann, das in einer anderen A
 
 ## So sieht es aus
 
-Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Daten, erfundene Apps „Notizen“ und „Kalender“, nichts davon ist ein echter Server). Am Handy steht alles untereinander:
+Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Daten, erfundene Apps „Notizen“ und „Aufgaben“, nichts davon ist ein echter Server). Am Handy steht alles untereinander:
 
 ![Seite „Apps“ auf dem Handy, eine App aufgeklappt](assets/screenshots/apps-handy.png)
 
@@ -76,8 +76,8 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 - **Nicht jedes Werkzeug lässt sich prüfen:** Hat ein Werkzeug ein Eingabe-Schema, das PaiBot nicht prüfen kann, wird es nicht gespeichert und nie angeboten.
 - **Grenzen beim Lesen der Liste:** PaiBot liest höchstens 200 Werkzeuge je Abruf; hat die App mehr, steht das in der Meldung und die übrigen fehlen.
 - **Was „geändert“ im Einzelnen war,** zeigt die Seite noch nicht: Sie sagt nur, dass sich die Fassung geändert hat.
-- **Nicht gegen echte Server geprüft:** Verbinden, Einstufen und Zugriff sind gegen einen Test-Server geprüft, nicht gegen echte MCP-Server (zum Beispiel Notion, Linear oder ein Kalender). Ob echte Server nach diesen Regeln bestätigbar sind, ist offen.
-- **Im Chat:** Die Zeile eines Werkzeug-Aufrufs im Chat nennt die App noch nicht. Hat sich eine Antwort auf Inhalte aus einer App gestützt, sind Links darin nicht anklickbar: Das ganze Ziel steht als Text daneben, auch der Abfrage-Teil. Wer es öffnen will, kopiert es. Solange eine Antwort noch schreibt und kurz danach, bis PaiBot den Lauf gelesen hat, sind Links in jeder Antwort nur Text; erst dann werden sie anklickbar, wenn die Antwort nicht auf Inhalte aus einer App beruht. Scheitert dieses Lesen, bleiben sie bis zum Neuladen Text.
+- **Nicht gegen echte Server geprüft:** Verbinden, Einstufen und Zugriff sind gegen einen Test-Server geprüft, nicht gegen echte MCP-Server (zum Beispiel Notion oder Linear). Ob echte Server nach diesen Regeln bestätigbar sind, ist offen.
+- **Im Chat:** Die Zeile eines Werkzeug-Aufrufs im Chat nennt die App noch nicht. Hat sich eine Antwort auf Inhalte aus einer App gestützt, sind Links darin nicht anklickbar: Das ganze Ziel steht als Text daneben, auch der Abfrage-Teil. Wer es öffnen will, kopiert es. Solange eine Antwort noch schreibt und kurz danach, bis PaiBot den Lauf gelesen hat (auch bei einer abgebrochenen oder gescheiterten Antwort mit Teiltext), sind Links in jeder Antwort nur Text; erst dann werden sie anklickbar, wenn die Antwort nicht auf Inhalte aus einer App beruht. Scheitert dieses Lesen, bleiben sie bis zum Neuladen Text.
 
 ## Fehlerbehebung
 
