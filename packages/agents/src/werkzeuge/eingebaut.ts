@@ -1,5 +1,6 @@
 /**
- * PaiBot – Die eingebauten Werkzeuge der Auslieferung. In dieser Fassung gibt es noch keins.
+ * PaiBot – Die eingebauten Werkzeuge der Auslieferung. Das Werkzeug „In der Doku nachschlagen“
+ * ist gebaut (`doku/werkzeug.ts`), in dieser Fassung aber noch nicht eingeschaltet.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -10,8 +11,21 @@
 
 import type { JsonValue } from "@paibot/shared/motor";
 import type { ToolDefinition } from "@paibot/shared/werkzeug";
+import type { GeladenerDokuIndex } from "./doku/suche";
 
-/** Alle eingebauten Werkzeuge in fester Reihenfolge; in dieser Fassung leer. */
-export function builtinTools(): readonly ToolDefinition<JsonValue, JsonValue>[] {
+/** Was die eingebauten Werkzeuge zum Aufbau brauchen. */
+export interface EingebauteTeile {
+  /** Geladener Doku-Index (`ladeDokuIndex`); wird erst mit dem Einschalten genutzt. */
+  dokuIndex?: GeladenerDokuIndex;
+}
+
+/**
+ * Alle eingebauten Werkzeuge in fester Reihenfolge. In dieser Fassung leer, auch mit Doku-Index:
+ * Das Nachschlagen in der Doku wird erst zusammen mit der Anzeige der Schritte im Chat
+ * eingeschaltet.
+ */
+export function builtinTools(
+  _teile: EingebauteTeile = {},
+): readonly ToolDefinition<JsonValue, JsonValue>[] {
   return [];
 }

@@ -2301,4 +2301,6 @@ export const de = {
   "werkzeug.huelle.art.unbekannt": "enthält ein Feld, das es nicht gibt.",
   "werkzeug.huelle.art.format": "hat nicht die erwartete Form.",
   "werkzeug.huelle.art.ungueltig": "ist nicht gültig.",
+  // Werkzeug „In der Doku nachschlagen“
+  "werkzeug.titel.doku_nachschlagen": "In der Doku nachschlagen",
 } as const satisfies Record<string, string | readonly string[]>;

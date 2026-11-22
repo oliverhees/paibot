@@ -28,6 +28,7 @@ import { TOOL_NAME_PATTERN, type ToolKind, type ToolSource } from "@paibot/share
 import { t } from "@paibot/shared/texte";
 import type { GatePermit } from "@paibot/shared/tor";
 import type { ToolEnvelope, ToolKey } from "@paibot/shared/werkzeug";
+import { belegFelder, dokuAusHuelle } from "../werkzeuge/beleg-felder";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
 import {
   cleanJson,
@@ -308,6 +309,10 @@ export interface CallOutcome {
   code?: ErrorCode;
   /** Der Lauf wurde während des Werkzeugs angehalten. */
   aborted: boolean;
+  /** Das Tor hat erlaubt und das Werkzeug ist zu Ende gelaufen (mit Ergebnis oder Werkzeug-Fehler). */
+  ausgefuehrt: boolean;
+  /** Nur beim Nachschlagen in der Doku mit Ergebnis: Doku-Stand und Zahl der Fundstellen. */
+  doku?: { stand: string; gefunden: number };
 }
 
 /** Code, mit dem ein abgebrochener Aufruf endet: streng, wenn er gewirkt haben könnte. */
@@ -459,6 +464,8 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
                 deps.keys.context,
                 toolResultDigestText(envelope),
               ) as HmacDigest,
+              // Doku-Stand und Fundstellen aus genau der Hülle, die das Modell bekommt.
+              ...belegFelder(call.toolKey, envelope),
             }
           : {
               status: "error",
@@ -494,12 +501,15 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         });
       }),
     );
+    const doku = dokuAusHuelle(call.toolKey, envelope);
     return {
       envelope,
       result: toolResult(envelope),
       status: envelope.status === "ok" ? "ok" : "fehler",
       ...(envelope.status === "ok" ? {} : { code: envelope.code }),
       aborted: false,
+      ausgefuehrt: true,
+      ...(doku === undefined ? {} : { doku }),
       chars: contentChars(envelope as unknown as JsonValue),
     };
   } catch (error) {
@@ -539,6 +549,7 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         status: "abgelehnt",
         code: decision.errorCode,
         aborted: false,
+        ausgefuehrt: false,
         chars: contentChars(envelope as unknown as JsonValue),
       };
     }
@@ -551,6 +562,7 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         status: "fehler",
         code,
         aborted: true,
+        ausgefuehrt: false,
         chars: 0,
       };
     }
