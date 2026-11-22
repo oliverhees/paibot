@@ -1155,6 +1155,20 @@
                   "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
                   "@paibot/web": "Kein Paket importiert aus apps/*.",
                   "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/mcp": {
+                    "message": "Die Web-App holt nur die Liste der Werkzeuge: aus der MCP-Schicht darf sie nur die Namen der Liste und die Typen importieren, nie den Aufruf und nie den ganzen Namensraum.",
+                    "allowImportNames": [
+                      "bereiteWerkzeugeAuf",
+                      "holeWerkzeuge",
+                      "McpFetch",
+                      "McpSchichtFehler",
+                      "McpWerkzeugBereinigt",
+                      "McpWerkzeugRoh",
+                      "pruefeAdresse",
+                      "vergebeModellNamen",
+                      "WerkzeugAbruf"
+                    ]
+                  },
                   "@paibot/agents": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/fake-provider": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/test-mcp-server": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
