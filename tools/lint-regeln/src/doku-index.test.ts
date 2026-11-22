@@ -33,6 +33,7 @@ interface Abschnitt {
   seite: string;
   anker: string;
   titel: string;
+  pfad: string[];
   text: string;
 }
 interface Index {
@@ -138,9 +139,30 @@ describe("Bereinigung (L4-1)", () => {
       seite: "funktion-a.md",
       anker: "seite-a",
       titel: "Seite A",
+      pfad: ["Seite A"],
       text: "Einleitung TESTDATEN-MARKE-BEREINIGUNG bleibt stehen.",
     });
     expect(abschnitte[2]?.titel).toBe("Unterabschnitt: mit Satzzeichen!");
+  });
+
+  it("jeder Abschnitt kennt die Überschriften über sich: von der Seite abwärts bis zur eigenen", () => {
+    const { abschnitte } = indexMitZeichen() as Index;
+    expect(abschnitte.map((a) => a.pfad)).toEqual([
+      ["Seite A"],
+      ["Seite A", "Erster Abschnitt"],
+      ["Seite A", "Erster Abschnitt", "Unterabschnitt: mit Satzzeichen!"],
+      ["Seite A", "Zweiter Abschnitt"],
+    ]);
+    const dir = projekt({
+      "docs/funktion-a.md":
+        "# T\n\n## Eins\n\n### Unter\n\nText\n\n## Zwei\n\nText\n\n### Drei\n\nText\n",
+    });
+    const { abschnitte: b } = baueIndex({ wurzel: dir, liste: A }).index;
+    expect(b.map((a) => a.pfad)).toEqual([
+      ["T", "Eins", "Unter"],
+      ["T", "Zwei"],
+      ["T", "Zwei", "Drei"],
+    ]);
   });
 
   it("eine Zeile mit „#“ im Codeblock ist keine Überschrift", () => {
@@ -152,11 +174,27 @@ describe("Bereinigung (L4-1)", () => {
     expect(abschnitte[0]?.text).toContain("## nicht-ueberschrift");
   });
 
+  it("die Datei ist so formatiert, wie die Formatierung des Repos sie schreibt: kurzer Pfad in einer Zeile, langer je Titel eine Zeile", () => {
+    const lang = `Ein sehr langer Titel ${"x".repeat(60)}`;
+    const dir = projekt({
+      "docs/funktion-a.md": `# Kurz\n\nText\n\n## ${lang}\n\nText\n`,
+    });
+    const { index, text } = baueIndex({ wurzel: dir, liste: A });
+    expect(JSON.parse(text)).toEqual(index);
+    expect(text).toContain('      "pfad": ["Kurz"],\n');
+    expect(text).toContain(`      "pfad": [\n        "Kurz",\n        "${lang}"\n      ],\n`);
+    for (const zeile of text.split("\n")) {
+      if (zeile.includes('"pfad": [') && zeile.endsWith("],")) {
+        expect([...zeile].length).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
   it("Format und Stand: Schlüssel in fester Reihenfolge, Version aus package.json", () => {
     const { index, text } = baueIndex({ wurzel: kopie("bereinigung"), liste: A });
     expect(Object.keys(index)).toEqual(["format", "v", "stand", "abschnitte"]);
     expect(index.format).toBe("pb-doku-index");
-    expect(index.v).toBe(1);
+    expect(index.v).toBe(2);
     expect(index.stand.version).toBe("9.9.9");
     expect(index.stand.pruefsumme).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(Object.keys(index.abschnitte[0] ?? {})).toEqual([
@@ -164,6 +202,7 @@ describe("Bereinigung (L4-1)", () => {
       "seite",
       "anker",
       "titel",
+      "pfad",
       "text",
     ]);
     expect(text.endsWith("\n")).toBe(true);

@@ -14,7 +14,8 @@
 //   node scripts/doku-index.mjs --wurzel <ordner>   anderen Projektordner nehmen (für Tests)
 //
 // Der Index enthält je Überschrift (## und ###) einen Abschnitt mit bereinigtem Text: ohne
-// HTML-Kommentare, Tags, Bilder und unsichtbare Zeichen, Links als ihr Text. Dazu den Stand
+// HTML-Kommentare, Tags, Bilder und unsichtbare Zeichen, Links als ihr Text; dazu je Abschnitt
+// den Pfad der Überschriften von der Seite abwärts bis zur eigenen (`pfad`). Dazu den Stand
 // (Version aus package.json und Prüfsumme über die Abschnitte). Die Datei ist erzeugt und gehört
 // nicht ins Repo; das Image bekommt sie beim Bau (apps/web/Dockerfile).
 //
@@ -31,6 +32,8 @@ import { IN_DEN_INDEX, passtAuf } from "./doku-umfang.mjs";
 const PROJEKT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const AUSGABE = "doku-index/doku-index.json";
 export const GRENZE_BYTES = 4 * 1024 * 1024;
+/** Fassung des Formats; 2: jeder Abschnitt trägt `pfad` (Überschriften von der Seite abwärts). */
+export const FASSUNG = 2;
 
 /** Fehler, der den Bau abbricht; die Meldung sagt, was zu tun ist. */
 export class IndexFehler extends Error {}
@@ -78,6 +81,24 @@ export function pruefsumme(abschnitte) {
   return `sha256:${createHash("sha256").update(JSON.stringify(abschnitte)).digest("hex")}`;
 }
 
+/** Breite einer Zeile, ab der die Formatierung des Repos (biome.json, `lineWidth`) umbricht. */
+const ZEILENBREITE = 100;
+
+/**
+ * Text der Index-Datei: JSON mit zwei Leerzeichen Einzug, `pfad` in einer Zeile, wenn sie in
+ * `ZEILENBREITE` passt – so, wie die Formatierung des Repos sie schreiben würde (`pnpm lint`
+ * bleibt grün, auch wenn der Index im Arbeitsordner liegt).
+ */
+function alsText(index) {
+  const roh = JSON.stringify(index, null, 2);
+  const kurz = roh.replace(/^( *)"pfad": \[\n([\s\S]*?)\n\1\]/gm, (ganz, einzug, innen) => {
+    const teile = innen.split("\n").map((z) => z.trim().replace(/,$/, ""));
+    const zeile = `${einzug}"pfad": [${teile.join(", ")}]`;
+    return [...zeile].length + 1 <= ZEILENBREITE ? zeile : ganz;
+  });
+  return `${kurz}\n`;
+}
+
 /**
  * Baut den Index im Ordner `wurzel`. Gibt { index, text } zurück, `text` ist der Dateiinhalt.
  * Bricht mit IndexFehler ab (siehe Kopf dieser Datei).
@@ -100,18 +121,25 @@ export function baueIndex({
         );
       }
       ids.add(id);
-      abschnitte.push({ id, seite, anker: teil.anker, titel: teil.titel, text: teil.text });
+      abschnitte.push({
+        id,
+        seite,
+        anker: teil.anker,
+        titel: teil.titel,
+        pfad: teil.pfad,
+        text: teil.text,
+      });
     }
   }
   if (abschnitte.length === 0) throw new IndexFehler("Der Index hat keinen Abschnitt.");
   const paket = JSON.parse(readFileSync(path.join(wurzelPfad, "package.json"), "utf8"));
   const index = {
     format: "pb-doku-index",
-    v: 1,
+    v: FASSUNG,
     stand: { version: String(paket.version), pruefsumme: pruefsumme(abschnitte) },
     abschnitte,
   };
-  const text = `${JSON.stringify(index, null, 2)}\n`;
+  const text = alsText(index);
   const bytes = Buffer.byteLength(text);
   if (bytes > grenzeBytes) {
     throw new IndexFehler(

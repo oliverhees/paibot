@@ -34,7 +34,7 @@ Datenfluss:
 
 1. Beim Bau des Images läuft in der Bau-Stufe `pnpm doku:index` (`apps/web/Dockerfile`). Dafür enthält der Build-Kontext nur die Seiten der Liste (`.dockerignore`).
 2. `baueIndex` (`scripts/doku-index.mjs#baueIndex`) löst die Liste auf. Fehlt eine Seite oder passt ein Muster auf keine Datei, bricht der Bau ab.
-3. `zerlege` (`scripts/doku-index/hilfen.mjs#zerlege`) bereinigt jede Seite und schneidet sie je Überschrift (`##`, `###`) in Abschnitte. Der Text unter der Überschrift erster Ebene bildet einen eigenen Abschnitt; Abschnitte ohne Text entfallen.
+3. `zerlege` (`scripts/doku-index/hilfen.mjs#zerlege`) bereinigt jede Seite und schneidet sie je Überschrift (`##`, `###`) in Abschnitte. Der Text unter der Überschrift erster Ebene bildet einen eigenen Abschnitt; Abschnitte ohne Text entfallen. Jeder Abschnitt bekommt den Pfad der Überschriften über sich (`pfad`), auch wenn eine Überschrift darüber selbst keinen Text hat.
 4. Der Index wird als `doku-index.json` im Ordner `doku-index` des Projektstamms geschrieben. Die Datei ist erzeugt und steht in `.gitignore`.
 5. Die Laufzeit-Stufe kopiert die Datei nach `/app/doku-index/doku-index.json`; die Umgebungsvariable `PAIBOT_DOKU_INDEX` zeigt dorthin. Web und Worker nutzen dasselbe Image, also dieselbe Kopie.
 
@@ -47,13 +47,14 @@ Keine eigenen Tabellen, keine Migration. Das Format der Datei:
 ```ts
 interface DokuIndex {
   format: "pb-doku-index";
-  v: 1;
+  v: 2; // scripts/doku-index.mjs#FASSUNG
   stand: { version: string; pruefsumme: string }; // "sha256:" + Hex
   abschnitte: Array<{
     id: string; // "<seite>#<anker>", eindeutig
     seite: string; // relativ zu docs/, z. B. "funktion-belege.md"
     anker: string; // im Stil von GitHub aus der Überschrift
     titel: string;
+    pfad: string[]; // Titel der Überschriften von der Seite abwärts, die eigene zuletzt
     text: string; // bereinigt, bis zur nächsten ##/###-Überschrift
   }>;
 }
@@ -61,6 +62,7 @@ interface DokuIndex {
 
 - `version` ist die Version aus der `package.json` im Projektstamm. Ein Commit steht nicht im Stand, weil `.git` nicht im Build-Kontext ist (`.dockerignore`).
 - `pruefsumme` ist der SHA-256 über die JSON-Form von `abschnitte` (`scripts/doku-index.mjs#pruefsumme`). Sie ändert sich, wenn sich ein Abschnitt ändert; der Urheber-Kopf und andere Kommentare zählen nicht, weil sie vorher entfernt werden.
+- `pfad` enthält die Titel der Überschriften erster bis dritter Ebene, die über dem Abschnitt offen sind, von oben nach unten, zuletzt den eigenen Titel; bereinigt wie der Titel. Beispiel: „Auf dem iPhone und iPad (Safari)“ in `installation.md` hat den Pfad „Installation“ › „Als Web-App installieren“ › „Auf dem iPhone und iPad (Safari)“. Fassung 1 hatte das Feld nicht; seit Fassung 2 steht es in jedem Abschnitt und zählt zur Prüfsumme.
 - Die Datei enthält keinen Zeitstempel und nichts Zufälliges: zweimal bauen ergibt dieselben Bytes.
 - Doppelte Anker auf einer Seite brechen den Bau ab (zwei gleiche Überschriften); eine der beiden muss anders heißen.
 
@@ -85,12 +87,12 @@ Keine Route, keine Aktion, kein Ereignis: Es liest noch niemand den Index. Der B
 
 ## Tests
 
-| Test                                         | Prüft                                                                                                                                                                                      |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `tools/lint-regeln/src/doku-index.test.ts`   | Bereinigung, Zerlegung, Auswahl der Seiten, Abbruch beim Bau (fehlende Seite, Muster ohne Treffer, leer, über 4 MB, doppelte Kennung), Wiederholbarkeit, keine Testdaten im echten Index   |
-| `tools/lint-regeln/src/doku-check.test.ts`   | versteckte Teile, die beiden Listen, jede Form eingeschleuster Anweisungen mit Beispiel und Gegenbeispiel                                                                                  |
-| `tools/lint-regeln/src/dockerignore.test.ts` | `.dockerignore` lässt die Seiten der Liste hinein und Bilder und Entwickler-Seiten draußen; die Zeilen im Dockerfile; aus dem so bestimmten Build-Kontext entsteht der Index (ohne Docker) |
-| `.github/workflows/ci.yml`                   | Schritt „Doku-Index im Image prüfen“: der Index im Web- und im Worker-Container ist byte-gleich zu einem frisch gebauten                                                                   |
+| Test                                         | Prüft                                                                                                                                                                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tools/lint-regeln/src/doku-index.test.ts`   | Bereinigung, Zerlegung, Pfad der Überschriften, Auswahl der Seiten, Abbruch beim Bau (fehlende Seite, Muster ohne Treffer, leer, über 4 MB, doppelte Kennung), Wiederholbarkeit, keine Testdaten im echten Index |
+| `tools/lint-regeln/src/doku-check.test.ts`   | versteckte Teile, die beiden Listen, jede Form eingeschleuster Anweisungen mit Beispiel und Gegenbeispiel                                                                                                        |
+| `tools/lint-regeln/src/dockerignore.test.ts` | `.dockerignore` lässt die Seiten der Liste hinein und Bilder und Entwickler-Seiten draußen; die Zeilen im Dockerfile; aus dem so bestimmten Build-Kontext entsteht der Index (ohne Docker)                       |
+| `.github/workflows/ci.yml`                   | Schritt „Doku-Index im Image prüfen“: der Index im Web- und im Worker-Container ist byte-gleich zu einem frisch gebauten                                                                                         |
 
 Ausführen:
 

@@ -93,15 +93,21 @@ const UEBERSCHRIFT = /^(#{1,3})[ \t]+(.+?)[ \t]*#*[ \t]*$/;
 /**
  * Zerlegt eine Seite in Abschnitte: Text unter der Überschrift erster Ebene (falls vorhanden) und je
  * eine Überschrift zweiter und dritter Ebene. Der Text ist bereinigt (siehe `bereinige`).
- * Rückgabe: [{ anker, titel, text }] ohne Abschnitte, die keinen Text oder keine Überschrift haben.
+ * Rückgabe: [{ anker, titel, pfad, text }] ohne Abschnitte, die keinen Text oder keine Überschrift
+ * haben. `pfad` sind die Titel der Überschriften von der Seite abwärts bis zur eigenen (erste bis
+ * dritte Ebene, die eigene zuletzt), bereinigt wie der Titel; eine Überschrift ohne Titel fehlt darin.
  */
 export function zerlege(roh) {
   const text = entferneUnsichtbares(entferneKommentare(normalisiere(roh)));
   const abschnitte = [];
   let aktuell = null;
   let zaun = null;
-  const neu = (titel) => {
-    aktuell = { titel, zeilen: [] };
+  /** Offene Überschriften über der aktuellen Stelle: [{ ebene, titel }], oberste zuerst. */
+  const offen = [];
+  const neu = (ebene, titel) => {
+    while (offen.length > 0 && offen[offen.length - 1].ebene >= ebene) offen.pop();
+    if (titel !== "") offen.push({ ebene, titel });
+    aktuell = { titel, pfad: offen.map((o) => o.titel), zeilen: [] };
     abschnitte.push(aktuell);
   };
   for (const zeile of text.split("\n")) {
@@ -125,7 +131,7 @@ export function zerlege(roh) {
     }
     const kopf = UEBERSCHRIFT.exec(zeile);
     if (kopf) {
-      neu(bereinigeZeile(kopf[2]).trim());
+      neu(kopf[1].length, bereinigeZeile(kopf[2]).trim());
       continue;
     }
     aktuell?.zeilen.push(bereinigeZeile(zeile));
@@ -134,6 +140,7 @@ export function zerlege(roh) {
   return abschnitte
     .map((a) => ({
       titel: a.titel,
+      pfad: a.pfad,
       anker: ankerVon(a.titel),
       text: a.zeilen
         .join("\n")
