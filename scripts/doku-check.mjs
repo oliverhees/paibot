@@ -56,7 +56,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SONDERWERTE } from "./doku/lauf.mjs";
 import { ListenFehler, pruefeListe } from "./doku/liste.mjs";
-import { findeEinschleusung, findeUnsichtbares } from "./doku-index/hilfen.mjs";
+import {
+  findeEinschleusung,
+  findeRohesHtml,
+  findeUnerlaubtImTitel,
+  findeUnsichtbares,
+  zerlege,
+} from "./doku-index/hilfen.mjs";
 import { inDenIndex, nichtInDenIndex } from "./doku-umfang.mjs";
 
 const VORLAGE = "docs/VORLAGE-funktion.md";
@@ -538,7 +544,7 @@ function checkIndex(files) {
   }
 }
 
-/** j) Kommentare außer dem Urheber-Kopf am Anfang und unsichtbare Zeichen. */
+/** j) Kommentare außer dem Urheber-Kopf am Anfang, rohes HTML, unsichtbare Zeichen. */
 function checkVersteckt(file, text) {
   const normal = text.replace(/\r\n?/g, "\n");
   let kopfEnde = 0;
@@ -555,12 +561,38 @@ function checkVersteckt(file, text) {
       "Den Kommentar entfernen; was gesagt werden soll, gehört als sichtbarer Text in die Seite.",
     );
   }
+  // Die Vorlagen tragen Platzhalter in spitzen Klammern und kommen nie in den Index.
+  const vorlage = file === VORLAGE || file === ENTWICKLER_VORLAGE;
+  for (const fund of vorlage ? [] : findeRohesHtml(normal)) {
+    error(
+      file,
+      `Zeile ${fund.zeile}: Rohes HTML im Fließtext (${fund.form}).`,
+      "Das Tag entfernen oder in Backticks setzen; die Seite nutzt nur Markdown, damit nichts Unsichtbares im Text steht.",
+    );
+  }
   for (const fund of findeUnsichtbares(normal)) {
     error(
       file,
       `Zeile ${fund.zeile}: Ein unsichtbares Zeichen (${fund.code}) steht im Text.`,
       "Das Zeichen löschen (auch Bidi- und Steuerzeichen sind nicht erlaubt).",
     );
+  }
+}
+
+/** j2) Überschriften (und ihre Pfade und Anker) ohne Zeichen, die der Index-Bau ablehnt. */
+function checkUeberschriften(file, text) {
+  for (const teil of zerlege(text)) {
+    for (const feld of [teil.anker, teil.titel, ...teil.pfad]) {
+      const code = findeUnerlaubtImTitel(feld);
+      if (code !== null) {
+        error(
+          file,
+          `Die Überschrift „${teil.titel}“ (oder ihr Pfad) enthält das Zeichen ${code}, das in Titeln nicht erlaubt ist.`,
+          "Das Zeichen aus der Überschrift löschen.",
+        );
+        break;
+      }
+    }
   }
 }
 
@@ -619,7 +651,10 @@ export function pruefeDoku({ wurzel = PROJEKT, streng = false } = {}) {
     const text = readText(file);
     checkVersteckt(file, text);
     checkUmfang(file);
-    if (inDenIndex(file)) checkEinschleusung(file, text);
+    if (inDenIndex(file)) {
+      checkEinschleusung(file, text);
+      checkUeberschriften(file, text);
+    }
   }
   checkIndex(docs);
   checkDeveloperPages(functionPages);

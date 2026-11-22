@@ -91,6 +91,17 @@ function projekt(seiten: Record<string, string>): string {
 
 const A = ["docs/funktion-*.md"];
 
+/** Kopie der echten Doku (ohne Bilder) und von package.json in einem eigenen Temp-Ordner. */
+function echteKopie(): string {
+  const dir = tmp();
+  cpSync(path.join(ROOT, "docs"), path.join(dir, "docs"), {
+    recursive: true,
+    filter: (src) => !src.includes(`${path.sep}assets`),
+  });
+  cpSync(path.join(ROOT, "package.json"), path.join(dir, "package.json"));
+  return dir;
+}
+
 describe("Bereinigung (L4-1)", () => {
   // Dazu die Klassen, die der Lader des Index ebenfalls ablehnt: Tag-Zeichen, weiches
   // Trennzeichen, Wortverbinder, Variationswähler, Füllzeichen, Zeilen- und Absatztrenner.
@@ -285,11 +296,34 @@ describe("Abbruch beim Bau (L4-8)", () => {
   });
 
   it("Ausgang des Befehls ist 1 bei Abbruch und 0 beim Erfolg", () => {
-    // Erfolg nur mit allen Seiten der echten Liste: die echte Wurzel
-    const ok = lauf(ROOT);
+    // Erfolg nur mit allen Seiten der echten Liste: eine Kopie der echten Doku in einem eigenen
+    // Ordner unter dem Temp-Ordner (der Befehl schreibt `doku-index/` in seine Wurzel; im
+    // Arbeitsbaum soll dabei nichts entstehen).
+    const ok = lauf(echteKopie());
     expect(ok.code).toBe(0);
     expect(ok.ausgabe).toMatch(/^Doku-Index: \d+ Seiten, \d+ Abschnitte, \d+ Bytes/);
     expect(lauf(projekt({})).code).toBe(1);
+  });
+});
+
+describe("Reihenfolge der Bereinigung (#85)", () => {
+  // Gegenprobe: in `zerlege` (scripts/doku-index/hilfen.mjs) wieder erst `entferneKommentare`,
+  // dann `entferneUnsichtbares` aufrufen → der Kommentartext bleibt im Index stehen.
+  it("ein Kommentar, dessen Zeichen durch unsichtbare Zeichen getrennt sind, verschwindet ganz", async () => {
+    const { zerlege } = (await import(
+      pathToFileURL(path.join(ROOT, "scripts", "doku-index", "hilfen.mjs")).href
+    )) as { zerlege: (roh: string) => { text: string }[] };
+    for (const z of ["\u200b", "\u202e", "\u{e0041}", "\u00ad"]) {
+      for (const roh of [
+        `# T\n\n## A\n\nVor <!${z}-- GEHEIM -->nach.\n`,
+        `# T\n\n## A\n\nVor <!-${z}- GEHEIM -${z}->nach.\n`,
+        `# T\n\n## A\n\nVor <${z}!-- GEHEIM --${z}>nach.\n`,
+      ]) {
+        const text = JSON.stringify(zerlege(roh));
+        expect(text).not.toContain("GEHEIM");
+        expect(text).toContain("Vor nach.");
+      }
+    }
   });
 });
 
@@ -345,12 +379,7 @@ describe("Wiederholbar (L4-9)", () => {
   });
 
   it("der echte Befehl schreibt die Datei im Projektstamm und zweimal dieselbe", () => {
-    const dir = tmp();
-    cpSync(path.join(ROOT, "docs"), path.join(dir, "docs"), {
-      recursive: true,
-      filter: (src) => !src.includes(`${path.sep}assets`),
-    });
-    cpSync(path.join(ROOT, "package.json"), path.join(dir, "package.json"));
+    const dir = echteKopie();
     const lauf = () => spawnSync(process.execPath, [SCRIPT, "--wurzel", dir], { encoding: "utf8" });
     expect(lauf().status).toBe(0);
     const erste = readFileSync(path.join(dir, "doku-index", "doku-index.json"));

@@ -124,7 +124,9 @@ const UEBERSCHRIFT = /^(#{1,3})[ \t]+(.+?)[ \t]*#*[ \t]*$/;
  * dritte Ebene, die eigene zuletzt), bereinigt wie der Titel; eine Überschrift ohne Titel fehlt darin.
  */
 export function zerlege(roh) {
-  const text = entferneUnsichtbares(entferneKommentare(normalisiere(roh)));
+  // Erst Unsichtbares entfernen, dann Kommentare: Sonst bliebe ein Kommentar, dessen Zeichen
+  // (`<!` und `--`) durch ein unsichtbares Zeichen getrennt sind, als Text stehen.
+  const text = entferneKommentare(entferneUnsichtbares(normalisiere(roh)));
   const abschnitte = [];
   let aktuell = null;
   let zaun = null;
@@ -174,6 +176,74 @@ export function zerlege(roh) {
         .trim(),
     }))
     .filter((a) => a.titel !== "" && a.anker !== "" && a.text !== "");
+}
+
+/**
+ * Rohe HTML-Tags, die im Fließtext der Doku stehen dürfen (kleingeschrieben). Die Seiten unter
+ * `docs/` benutzen heute keine; die Liste ist deshalb leer. Auch ein erlaubtes Tag darf kein
+ * Attribut `hidden` oder `style` tragen.
+ */
+export const ERLAUBTE_TAGS = [];
+
+/**
+ * Ersetzt Codeblöcke und Code in Backticks durch Leerzeichen (Zeilenumbrüche bleiben), ebenso den
+ * Urheber-Kopf am Dateianfang. Die Codeblock-Erkennung ist dieselbe wie in `zerlege`.
+ */
+function ohneCode(roh) {
+  const leer = (t) => t.replace(/[^\n]/g, " ");
+  let text = normalisiere(roh);
+  if (text.startsWith("<!--")) {
+    const ende = text.indexOf("-->");
+    if (ende !== -1) text = leer(text.slice(0, ende + 3)) + text.slice(ende + 3);
+  }
+  let zaun = null;
+  return text
+    .split("\n")
+    .map((zeile) => {
+      const marke = FENCE.exec(zeile);
+      if (zaun) {
+        if (
+          marke &&
+          marke[1][0] === zaun[0] &&
+          marke[1].length >= zaun.length &&
+          !/\S/.test(zeile.slice(marke[0].length))
+        ) {
+          zaun = null;
+        }
+        return leer(zeile);
+      }
+      if (marke) {
+        zaun = marke[1];
+        return leer(zeile);
+      }
+      return zeile.replace(/`[^`\n]*`/g, leer);
+    })
+    .join("\n");
+}
+
+const AUTOLINK = /^<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>]+)>/;
+
+/**
+ * Findet rohes HTML im Fließtext (außerhalb von Codeblöcken, Inline-Code und dem Urheber-Kopf):
+ * jedes `<` vor Buchstabe, `/`, `!` oder `?` (Tags, Kommentare, `<!…>`, `<?…?>`, CDATA), außer
+ * Adress-Verweisen in spitzen Klammern und Tags aus `erlaubt`, die weder `hidden` noch `style`
+ * tragen. Gibt [{ zeile, form }] zurück, `form` ist der Anfang der Fundstelle.
+ */
+export function findeRohesHtml(text, erlaubt = ERLAUBTE_TAGS) {
+  const prosa = ohneCode(text);
+  const funde = [];
+  for (const treffer of prosa.matchAll(/<(?=[A-Za-z!?/])/g)) {
+    const ab = prosa.slice(treffer.index);
+    if (AUTOLINK.test(ab)) continue;
+    const ganz = /^<[^>]*>?/.exec(ab)[0];
+    const name = /^<\/?([A-Za-z][A-Za-z0-9-]*)/.exec(ganz)?.[1]?.toLowerCase();
+    if (name && erlaubt.includes(name) && !/\b(?:hidden|style)\b/i.test(ganz)) continue;
+    funde.push({
+      zeile: prosa.slice(0, treffer.index).split("\n").length,
+      form: ganz.replace(/\s+/g, " ").slice(0, 24),
+    });
+  }
+  return funde;
 }
 
 /**

@@ -150,9 +150,12 @@ describe("Dockerfile: Doku-Index", () => {
   it("die Laufzeit-Stufe kopiert den Index aus der Bau-Stufe an den Ort aus PAIBOT_DOKU_INDEX", () => {
     const env = /PAIBOT_DOKU_INDEX=(\S+)/.exec(lauf)?.[1];
     expect(env).toBe("/app/doku-index/doku-index.json");
+    // root-eigen und nur lesbar: die App darf den Index zur Laufzeit nicht ändern
+    // (Gegenprobe: `--chown=paibot:paibot` ohne `--chmod` → rot)
     expect(lauf).toContain(
-      "COPY --from=build --chown=paibot:paibot /app/doku-index/doku-index.json ./doku-index/doku-index.json",
+      "COPY --from=build --chown=root:root --chmod=0444 /app/doku-index/doku-index.json ./doku-index/doku-index.json",
     );
+    expect(lauf).not.toContain("--chown=paibot:paibot /app/doku-index");
     // WORKDIR /app + Ziel der Kopie = Wert der Umgebungsvariable
     expect(lauf).toContain("WORKDIR /app");
   });
