@@ -58,7 +58,9 @@ function alsFehlercode(text: string | null): ErrorCode | undefined {
 export function toConversation(row: ConversationRow): Conversation {
   return {
     id: row.id,
-    botId: row.botId,
+    ...wennGesetzt("botId", row.botId),
+    kind: row.kind,
+    ...wennGesetzt("teamId", row.teamId),
     title: row.title,
     ...wennGesetzt("schleuseMode", row.schleuseMode),
     ...wennGesetzt("lastMessageAt", zeit(row.lastMessageAt)),

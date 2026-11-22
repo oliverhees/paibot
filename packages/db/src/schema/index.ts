@@ -13,6 +13,7 @@ export * from "./anbieter";
 export * from "./apps";
 export * from "./schleuse";
 export * from "./settings";
+export * from "./teams";
 export * from "./tor";
 export * from "./unterhaltungen";
 export * from "./werkzeuge";

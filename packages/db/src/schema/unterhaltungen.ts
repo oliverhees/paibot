@@ -8,7 +8,15 @@
  * @since     2026-11-20
  */
 
-import type { BotId, ConversationId, MessageId, ModelId, ProviderId, RunId } from "@paibot/shared";
+import type {
+  BotId,
+  ConversationId,
+  MessageId,
+  ModelId,
+  ProviderId,
+  RunId,
+  TeamId,
+} from "@paibot/shared";
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -33,9 +41,11 @@ import {
   pgTable,
   valueList,
 } from "./helfer";
+import { teams } from "./teams";
 import {
   ACTIVE_RUN_STATUSES,
   CONVERSATION_EVENT_TYPES,
+  CONVERSATION_KINDS,
   MESSAGE_ORIGINS,
   MESSAGE_ROLES,
   MESSAGE_STATUSES,
@@ -44,15 +54,24 @@ import {
   SCHLEUSE_MODES,
 } from "./werte";
 
-/** Gespräche mit dem Bot. `schleuse_mode` ist leer, wenn der Standard aus den Einstellungen gilt. */
+/**
+ * Gespräche. Ein Direkt-Chat (`kind = 'direkt'`) und ein Entwurf (`'entwurf'`) gehören einem Bot;
+ * ein Faden (`'faden'`) gehört einem Team und hat keinen Bot (`bot_id` ist leer). Die CHECK-Regel
+ * `conversations_bot_oder_team` erzwingt das. `schleuse_mode` ist leer, wenn der Standard aus den
+ * Einstellungen gilt. Löscht man einen Bot, gehen seine Direkt-Chats mit (aber nur, wenn er keine
+ * Läufe hat: `runs.bot_id` verhindert das Löschen); ein Team mit Fäden lässt sich nicht löschen.
+ */
 export const conversations = pgTable(
   "conversations",
   {
     id: text("id").$type<ConversationId>().primaryKey(),
     botId: text("bot_id")
       .$type<BotId>()
-      .notNull()
       .references(() => bots.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<(typeof CONVERSATION_KINDS)[number]>().notNull().default("direkt"),
+    teamId: text("team_id")
+      .$type<TeamId>()
+      .references(() => teams.id, { onDelete: "restrict" }),
     title: text("title").notNull(),
     schleuseMode: text("schleuse_mode").$type<(typeof SCHLEUSE_MODES)[number]>(),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
@@ -62,6 +81,13 @@ export const conversations = pgTable(
   (t) => [
     idCheck("conversations_id_format", t.id, "conversation"),
     check("conversations_title_laenge", sql`char_length(${t.title}) between 1 and 200`),
+    inListCheck("conversations_kind_werte", t.kind, CONVERSATION_KINDS),
+    optionalIdCheck("conversations_team_id_format", t.teamId, "team"),
+    check(
+      "conversations_bot_oder_team",
+      sql`(${t.kind} in ('direkt', 'entwurf') and ${t.botId} is not null and ${t.teamId} is null) or (${t.kind} = 'faden' and ${t.botId} is null and ${t.teamId} is not null)`,
+    ),
+    index("conversations_team_id_idx").on(t.teamId),
     check(
       "conversations_schleuse_mode_werte",
       sql`${t.schleuseMode} is null or ${t.schleuseMode} in (${valueList(SCHLEUSE_MODES)})`,
@@ -167,7 +193,7 @@ export const runs = pgTable(
     botId: text("bot_id")
       .$type<BotId>()
       .notNull()
-      .references(() => bots.id, { onDelete: "cascade" }),
+      .references(() => bots.id, { onDelete: "restrict" }),
     status: text("status").$type<(typeof RUN_STATUSES)[number]>().notNull().default("queued"),
     resumesRunId: text("resumes_run_id")
       .$type<RunId>()

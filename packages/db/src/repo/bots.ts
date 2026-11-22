@@ -122,8 +122,37 @@ export async function setModel(
   return row === undefined ? undefined : toBot(row);
 }
 
-/** Löscht einen Bot samt seinen Unterhaltungen. `true`, wenn es ihn gab. */
+/** Namen der Fremdschlüssel, die das Löschen eines Bots verhindern. */
+const FK_LAEUFE = "runs_bot_id_bots_id_fk";
+const FK_STANDARD_BOT = "settings_default_bot_id_bots_id_fk";
+
+/**
+ * Löscht einen Bot samt seinen Direkt-Chats. `true`, wenn es ihn gab. Ein Bot mit Läufen und der
+ * Standard-Bot lassen sich nicht löschen: Das meldet ein Fehler mit festem Satz (Code `abgelehnt`),
+ * nichts wird verändert. Ein Bot, der in einem Team ist, verlässt es (`team_id` wird leer), und ein
+ * Team, dessen Leitung er war, hat danach keine Leitung.
+ */
 export async function remove(db: Database, id: BotId): Promise<boolean> {
-  const geloescht = await db.delete(bots).where(eq(bots.id, id)).returning({ id: bots.id });
+  const geloescht = await uebersetzen(
+    () => db.delete(bots).where(eq(bots.id, id)).returning({ id: bots.id }),
+    (fehler) => {
+      if (fehler.code !== SQLSTATE.fremdschluessel && fehler.code !== SQLSTATE.verhindert) {
+        return undefined;
+      }
+      if (fehler.constraint === FK_STANDARD_BOT) {
+        return new PaiBotError("abgelehnt", {
+          text: "Das ist dein Standard-Bot und lässt sich nicht löschen.",
+          ausweg: "Wähle zuerst einen anderen Bot als Standard.",
+        });
+      }
+      if (fehler.constraint === FK_LAEUFE) {
+        return new PaiBotError("abgelehnt", {
+          text: "Dieser Bot hat schon gearbeitet und lässt sich nicht löschen.",
+          ausweg: "Pausiere den Bot, dann antwortet er nicht mehr.",
+        });
+      }
+      return undefined;
+    },
+  );
   return geloescht.length > 0;
 }

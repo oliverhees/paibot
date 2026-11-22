@@ -8,10 +8,21 @@
  * @since     2026-11-20
  */
 
-import type { BotId, ModelId, ProviderId } from "@paibot/shared";
+import type { BotId, EntwurfId, ModelId, ProviderId, TeamId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, jsonb, text, timestamp, unique } from "drizzle-orm/pg-core";
-import { idCheck, inListCheck, matches, PATTERNS, pgTable } from "./helfer";
+import {
+  type AnyPgColumn,
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  text,
+  timestamp,
+  unique,
+} from "drizzle-orm/pg-core";
+import { idCheck, inListCheck, matches, optionalIdCheck, PATTERNS, pgTable } from "./helfer";
+import { teamEntwuerfe, teams } from "./teams";
 import {
   AVATAR_SHAPES,
   BOT_COLORS,
@@ -126,11 +137,27 @@ export const bots = pgTable(
     avatarShape: text("avatar_shape").$type<(typeof AVATAR_SHAPES)[number]>().notNull(),
     color: text("color").$type<(typeof BOT_COLORS)[number]>().notNull(),
     maxOutputTokens: integer("max_output_tokens").notNull().default(4096),
+    /** Aufgabe des Bots in seinem Team, ein Satz (höchstens 200 Zeichen); leer bei Bots ohne Team. */
+    role: text("role").notNull().default(""),
+    /** Pausierte Bots antworten nicht und rufen keine Werkzeuge auf; das Tor liest den Stand je Anfrage. */
+    paused: boolean("paused").notNull().default(false),
+    /** Das Team des Bots; leer bei einem einzelnen Bot. Fällt das Team weg, bleibt der Bot einzeln. */
+    teamId: text("team_id")
+      .$type<TeamId>()
+      .references((): AnyPgColumn => teams.id, { onDelete: "set null" }),
+    /** Der Entwurf, aus dem der Bot angelegt wurde; leer bei Bots von Hand. */
+    fromDraftId: text("aus_entwurf_id")
+      .$type<EntwurfId>()
+      .references((): AnyPgColumn => teamEntwuerfe.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     idCheck("bots_id_format", t.id, "bot"),
+    check("bots_role_laenge", sql`char_length(${t.role}) <= 200`),
+    optionalIdCheck("bots_team_id_format", t.teamId, "team"),
+    optionalIdCheck("bots_aus_entwurf_id_format", t.fromDraftId, "entwurf"),
+    index("bots_team_id_idx").on(t.teamId),
     check("bots_name_laenge", sql`char_length(${t.name}) between 1 and 60`),
     check("bots_instructions_laenge", sql`char_length(${t.instructions}) <= 8000`),
     inListCheck("bots_avatar_shape_werte", t.avatarShape, AVATAR_SHAPES),

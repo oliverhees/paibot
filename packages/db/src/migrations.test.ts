@@ -29,6 +29,7 @@ const TABLES = [
   "bots",
   "conversation_events",
   "conversations",
+  "faeden",
   "geraete",
   "installation_keys",
   "messages",
@@ -41,6 +42,9 @@ const TABLES = [
   "schleuse_zustand",
   "sessions",
   "settings",
+  "team_anlagen",
+  "team_entwuerfe",
+  "teams",
   "tool_calls",
 ];
 

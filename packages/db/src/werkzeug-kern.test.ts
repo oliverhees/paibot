@@ -1022,9 +1022,9 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
   it("Bestandsdaten aus dem Stand 0014 bleiben ohne Verlust; alte Zeilen bleiben, neue Wechsel sind gebunden", async () => {
     const test = await createTestDbFrom(migrationsUpTo(15));
     const bot = botRow();
-    await test.db.insert(bots).values(bot);
+    await alteZeile(test.client, "bots", bot);
     const conversation = conversationRow(bot.id);
-    await test.db.insert(conversations).values(conversation);
+    await alteZeile(test.client, "conversations", conversation);
     const frage = messageRow(conversation.id);
     await alteZeile(test.client, "messages", frage);
     const run = runRow({
@@ -1100,7 +1100,7 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     const migrationen = await test.client.query<{ n: number }>(
       "select count(*)::int as n from drizzle.__drizzle_migrations",
     );
-    expect(migrationen.rows[0]?.n).toBe(17);
+    expect(migrationen.rows[0]?.n).toBe(18);
     // Nach dem Aufstieg ist ein neuer Wechsel mit fremder Entscheidung nicht mehr möglich.
     const neu = toolCallRow(ids, { position: 9, callId: "neu" });
     await test.db.insert(toolCalls).values(neu);

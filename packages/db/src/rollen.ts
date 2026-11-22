@@ -43,6 +43,14 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * - `apps`: lesen, anlegen, nur Name, Adresse, Zugang, Zustand, Verbindungsnummer, gemeldete
  *   Fassung und Zeiten ändern; nie löschen (eine App wird getrennt, nicht gelöscht).
  * - `app_tools`, `bot_app_grants`: nur lesen und anhängen (Trigger lehnen Ändern und Löschen ab).
+ * - `teams`: lesen, anlegen, nur Name, Leitung, Zusammenarbeit, Abnahme-Standard und Zeit ändern, löschen.
+ * - `team_entwuerfe`: lesen, anlegen, nur Stand, die beiden Aktionen und Zeit ändern; Inhalt und
+ *   Abdruck eines Entwurfs ändert die App nie.
+ * - `team_anlagen`: nur lesen und anhängen (Trigger lehnen Ändern und Löschen ab).
+ * - `faeden`: nur lesen und anlegen; der Kopf eines Fadens geht nur mit seiner Unterhaltung weg.
+ * - Alle diese Tabellen schreibt dieselbe Rolle für die Web-App und den Worker: Die Datenbank trennt
+ *   nicht, wer schreibt. Dass nur der Besitzer-Weg der Web-App `bots`, `teams`, `team_entwuerfe`
+ *   und `faeden` ändert, prüft ein Quelltext-Test (`teams-nur-besitzer-weg.test.ts`).
  * - `runs`: lesen, anlegen, fortschreiben; gelöscht wird nur mit der Unterhaltung (sonst verschwänden
  *   mit einem Lauf auch seine Werkzeug-Aufrufe).
  */
@@ -64,8 +72,14 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   providers: APP_DEFAULT_TABLE_RIGHTS,
   rate_limits: APP_DEFAULT_TABLE_RIGHTS,
   runs: "select, insert, update",
+  faeden: "select, insert",
   sessions: APP_DEFAULT_TABLE_RIGHTS,
   settings: APP_DEFAULT_TABLE_RIGHTS,
+  team_anlagen: "select, insert",
+  team_entwuerfe:
+    "select, insert, update (status, angelegt_action_id, zurueck_action_id, updated_at)",
+  teams:
+    "select, insert, update (name, lead_bot_id, zusammenarbeit, abnahme_standard, updated_at), delete",
   rules: "select",
   schleuse_zustand: "select, insert, update",
   tool_calls:
@@ -79,6 +93,7 @@ export const APPEND_ONLY_TABLES = [
   "installation_keys",
   "app_tools",
   "bot_app_grants",
+  "team_anlagen",
 ] as const;
 
 /** Gründe, aus denen eine Verbindung zu viele Rechte hat. */

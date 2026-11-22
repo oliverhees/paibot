@@ -36,7 +36,7 @@ export const settings = pgTable(
     installationId: text("installation_id").$type<InstallationId>().unique(),
     defaultBotId: text("default_bot_id")
       .$type<BotId>()
-      .references(() => bots.id, { onDelete: "set null" }),
+      .references(() => bots.id, { onDelete: "restrict" }),
     setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
     /**
      * Prüfwert des Einrichtungs-Codes (`sha256:` und 64 Hex-Zeichen), nie der Code selbst. Steht nur,
@@ -61,6 +61,8 @@ export const settings = pgTable(
     maxTokensPerRun: integer("max_tokens_per_run").notNull().default(60000),
     /** Höchstzahl der Zeichen eines Werkzeug-Ergebnisses für das Modell. */
     toolResultMaxChars: integer("tool_result_max_chars").notNull().default(16000),
+    /** Ob Pai Teams Aufträge geben darf (Stabschef); aus, bis der Besitzer es einschaltet. */
+    stabschefErlaubt: boolean("stabschef_erlaubt").notNull().default(false),
     /** Höchstzahl der Zeichen aller Werkzeug-Ergebnisse eines Schritts. */
     toolResultsMaxCharsPerStep: integer("tool_results_max_chars_per_step").notNull().default(24000),
   },

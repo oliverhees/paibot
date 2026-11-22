@@ -126,12 +126,26 @@ describe("settings", () => {
     await expect(settings.update(db, { installationId: newId("installation") })).rejects.toThrow();
   });
 
-  it("der Standard-Bot fällt weg, wenn der Bot gelöscht wird", async () => {
+  // Gegenprobe: `settings.default_bot_id` wieder mit `on delete set null` → der Standard-Bot ist weg (rot).
+  it("der Standard-Bot lässt sich nicht löschen: fester Satz, nichts ändert sich", async () => {
     const bot = await bots.create(db, { name: "Pai", avatarShape: "blatt", color: "blau" });
     await settings.update(db, { defaultBotId: bot.id });
     expect((await bots.getDefault(db))?.id).toBe(bot.id);
-    await bots.remove(db, bot.id);
-    expect((await settings.get(db))?.defaultBotId).toBeUndefined();
-    expect(await bots.getDefault(db)).toBeUndefined();
+    await expect(bots.remove(db, bot.id)).rejects.toMatchObject({
+      code: "abgelehnt",
+      text: "Das ist dein Standard-Bot und lässt sich nicht löschen.",
+      ausweg: "Wähle zuerst einen anderen Bot als Standard.",
+    });
+    expect((await settings.get(db))?.defaultBotId).toBe(bot.id);
+    expect((await bots.getDefault(db))?.id).toBe(bot.id);
+  });
+
+  it("nach einem Wechsel des Standard-Bots lässt sich der frühere löschen", async () => {
+    const alt = await bots.create(db, { name: "Alt", avatarShape: "blatt", color: "blau" });
+    const neu = await bots.create(db, { name: "Neu", avatarShape: "blatt", color: "pink" });
+    await settings.update(db, { defaultBotId: alt.id });
+    await settings.update(db, { defaultBotId: neu.id });
+    expect(await bots.remove(db, alt.id)).toBe(true);
+    expect((await bots.getDefault(db))?.id).toBe(neu.id);
   });
 });

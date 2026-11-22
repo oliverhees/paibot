@@ -37,3 +37,27 @@ export {
   TOOL_RESULT_STATUSES,
   TOOL_SOURCES,
 } from "@paibot/shared";
+
+// Werte der Spalten für Teams (ab Migration 0017). Sie stehen hier, weil die Verträge der Fassung 4
+// sie nicht als Aufzählung führen; das Format des Entwurfs in der Web-App benutzt dieselben Wörter.
+
+/** Art einer Unterhaltung: Direkt-Chat mit einem Bot, Faden eines Teams, Entwurf eines Teams. */
+export const CONVERSATION_KINDS = ["direkt", "faden", "entwurf"] as const;
+/** Wie ein Team zusammenarbeitet. */
+export const TEAM_ZUSAMMENARBEIT = ["aus", "leitung_fuehrt"] as const;
+/** Wer Ergebnisse abnimmt. */
+export const FADEN_ABNAHMEN = ["leitung", "besitzer", "ohne"] as const;
+/** Woher ein Faden kommt. In Fassung 4 nur vom Besitzer; `stabschef` kommt mit Fassung 5. */
+export const FADEN_HERKUENFTE = ["besitzer"] as const;
+/** Stand eines Entwurfs für ein Team. */
+export const ENTWURF_STATUS = [
+  "offen",
+  "angelegt",
+  "zurueckgenommen",
+  "verworfen",
+  "verfallen",
+] as const;
+/** Woher ein Entwurf kommt. In Fassung 4 nur `vorlage` oder `datei`. */
+export const ENTWURF_HERKUENFTE = ["vorlage", "datei"] as const;
+/** Was ein Entwurf anlegen kann. */
+export const TEAM_ANLAGE_ARTEN = ["bot", "team"] as const;

@@ -13,6 +13,8 @@ import { PaiBotError, type RunStatus } from "@paibot/shared";
 /** SQLSTATE-Klassen, die die Zugriffsfunktionen übersetzen. */
 export const SQLSTATE = {
   fremdschluessel: "23503",
+  /** Löschen verhindert durch `on delete restrict`; Postgres meldet je nach Fall 23001 oder 23503. */
+  verhindert: "23001",
   eindeutig: "23505",
   pruefbedingung: "23514",
 } as const;
