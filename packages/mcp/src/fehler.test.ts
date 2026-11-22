@@ -9,7 +9,13 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { MCP_FEHLERCODES, MCP_FEHLERTEXTE, McpSchichtFehler, ordneFehlerZu } from "./fehler";
+import {
+  MCP_FEHLERCODES,
+  MCP_FEHLERTEXTE,
+  McpSchichtFehler,
+  ordneFehlerZu,
+  ordneStatusZu,
+} from "./fehler";
 
 const TOKEN = "geheim-token-1234567890";
 
@@ -160,5 +166,23 @@ describe("Fehler-Abbildung", () => {
       expect(ordneFehlerZu(wert).code).toBe("app_nicht_erreichbar");
     }
     expect(ordneFehlerZu(new Error("x".repeat(5_000_000))).code).toBe("app_nicht_erreichbar");
+  });
+});
+
+describe("Zuordnung nach Statuscode", () => {
+  // Gegenprobe: `429` aus der Zuordnung entfernen → `undefined` statt eines Codes, rot. (Über die
+  // Routen bliebe das unsichtbar, weil der allgemeine Rückfall denselben Code liefert.)
+  it("ordnet jeden Status gezielt zu: Zugang, kein MCP-Server, nicht erreichbar (auch 408, 429, 5xx)", () => {
+    for (const status of [401, 403]) expect(ordneStatusZu(status)).toBe("app_zugang_ungueltig");
+    for (const status of [404, 405, 406, 415]) expect(ordneStatusZu(status)).toBe("app_kein_mcp");
+    for (const status of [408, 429, 500, 502, 503, 599]) {
+      expect(ordneStatusZu(status)).toBe("app_nicht_erreichbar");
+    }
+  });
+
+  it("lässt andere Status offen (der Rückfall der Abbildung entscheidet)", () => {
+    for (const status of [200, 204, 301, 400, 402, 409, 418, 499]) {
+      expect(ordneStatusZu(status)).toBeUndefined();
+    }
   });
 });
