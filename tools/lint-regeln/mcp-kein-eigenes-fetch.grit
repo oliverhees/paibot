@@ -1,6 +1,9 @@
 // PaiBot – Lint-Regel: In `packages/mcp` gibt es keinen eigenen Netz-Zugriff. Jede Anfrage geht über das
 // hineingereichte `fetch` (die Ausgangs-Hülle). Verboten sind dort das globale `fetch` (Aufruf und
 // Verweis), `globalThis`, `global`, `self`, `window` und `XMLHttpRequest`/`WebSocket`/`EventSource`.
+// Ebenfalls verboten, weil sie die Sperren der Importe umgehen würden: `process` (z. B.
+// `process.binding`), `Function` (`new Function`), `eval`, `require`, `createRequire` und ein
+// `import()` mit einem Namen, der nicht als Zeichenkette dasteht.
 // Das hineingereichte `fetch` heißt `optionen.fetch` bzw. `basis`, nie bloß `fetch`.
 //
 // Autor:     Oliver Hees
@@ -11,7 +14,17 @@
 
 language js
 
-JsReferenceIdentifier() as $name where {
-  $name <: r"^(?:fetch|globalThis|global|self|window|XMLHttpRequest|WebSocket|EventSource)$",
-  register_diagnostic(span=$name, message="In packages/mcp gibt es keinen eigenen Netz-Zugriff: Anfragen gehen nur über das hineingereichte fetch.")
+or {
+  JsReferenceIdentifier() as $name where {
+    $name <: r"^(?:fetch|globalThis|global|self|window|XMLHttpRequest|WebSocket|EventSource)$",
+    register_diagnostic(span=$name, message="In packages/mcp gibt es keinen eigenen Netz-Zugriff: Anfragen gehen nur über das hineingereichte fetch.")
+  },
+  JsReferenceIdentifier() as $name where {
+    $name <: r"^(?:process|Function|eval|require|createRequire)$",
+    register_diagnostic(span=$name, message="In packages/mcp gibt es keinen Weg an den Sperren vorbei (process, Function, eval, require, createRequire).")
+  },
+  JsImportCallExpression() as $aufruf where {
+    $aufruf <: not r"^import\(\s*(?:\"[^\"]*\"|'[^']*')\s*\)$",
+    register_diagnostic(span=$aufruf, message="In packages/mcp gibt es keinen eigenen Netz-Zugriff und keinen Weg an den Sperren vorbei: import() nur mit einer festen Zeichenkette.")
+  }
 }

@@ -9,7 +9,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -136,6 +136,96 @@ describe("MCP-Schicht: kein eigener Netz-Zugriff (muss rot sein)", () => {
 
   it("in Tests ist das globale fetch erlaubt", () => {
     expect(netzVerbot('export const a = fetch("x");\n', "x.test.ts")).toEqual([]);
+  });
+});
+
+describe("MCP-Schicht: keine Umgehung der Sperren (muss rot sein)", () => {
+  const ROT: Record<string, string> = {
+    "createRequire aus node:module":
+      'import { createRequire } from "node:module";\nexport const r = createRequire(import.meta.url);\n',
+    "node:module": 'import * as m from "node:module";\nexport { m };\n',
+    "node:vm": 'import { runInNewContext } from "node:vm";\nexport { runInNewContext };\n',
+    "node:inspector": 'import * as i from "node:inspector";\nexport { i };\n',
+    "import() mit zusammengesetztem Namen": 'export const a = import("node:" + "net");\n',
+    "import() mit einer Variablen": 'const n = "node:net";\nexport const a = import(n);\n',
+    "new Function": 'export const a = new Function("return this")();\n',
+    "Function(...)": 'export const a = Function("return this")();\n',
+    "process.binding": 'export const a = process.binding("tcp_wrap");\n',
+    "process als Wert": "export const a = process;\n",
+    eval: 'export const a = eval("1");\n',
+    require: 'export const a = require("node:net");\n',
+  };
+  const umgehung = (source: string, name?: string) =>
+    lint(source, name).filter(
+      (d) =>
+        d.category === "lint/style/noRestrictedImports" ||
+        d.category === "lint/security/noGlobalEval" ||
+        (d.category === "plugin" && /Weg an den Sperren vorbei|import\(\)/.test(d.message)),
+    );
+  for (const [name, source] of Object.entries(ROT)) {
+    it(`${name}`, () => {
+      expect(umgehung(source).length).toBeGreaterThan(0);
+    });
+  }
+
+  it("ein import() mit fester Zeichenkette ist erlaubt (er unterliegt den Sperren der Importe)", () => {
+    expect(umgehung('export const a = import("./anderes");\n')).toEqual([]);
+  });
+
+  it("in Tests sind diese Mittel erlaubt", () => {
+    expect(umgehung("export const a = process.env;\n", "x.test.ts")).toEqual([]);
+  });
+});
+
+describe("MCP-Schicht: der Test-Schalter für Adressen steht nirgends im Betriebs-Code", () => {
+  /** Dateien, in denen `erlaubeHttp` vorkommen darf: die Definition und Tests. */
+  const ERLAUBT = (datei: string) =>
+    datei === "packages/mcp/src/verbindung.ts" ||
+    /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(datei) ||
+    datei.startsWith("packages/mcp/src/spike/") ||
+    datei.startsWith("tools/lint-regeln/");
+
+  /** Dateien, die die MCP-Schicht benutzen (ein gleichnamiger Parameter anderswo zählt nicht). */
+  const NUTZT_SCHICHT =
+    /@paibot\/mcp|\boeffneVerbindung\b|\bholeWerkzeuge\b|\brufeWerkzeugAuf\b|\bpruefeAdresse\b/;
+
+  /** Gibt die Dateien zurück, die den Schalter außerhalb des Erlaubten benutzen. */
+  function verstoesse(dateien: { datei: string; text: string }[]): string[] {
+    return dateien
+      .filter(
+        (f) => !ERLAUBT(f.datei) && /\berlaubeHttp\b/.test(f.text) && NUTZT_SCHICHT.test(f.text),
+      )
+      .map((f) => f.datei);
+  }
+
+  it("kein Quelltext außer der Definition und Tests nennt erlaubeHttp", () => {
+    const liste = execFileSync(
+      "git",
+      ["ls-files", "-z", "--", "*.ts", "*.tsx", "*.js", "*.mjs", "*.cjs"],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+      },
+    )
+      .split("\0")
+      .filter((d) => d !== "");
+    const dateien = liste.map((datei) => ({
+      datei,
+      text: readFileSync(path.join(ROOT, datei), "utf8"),
+    }));
+    expect(dateien.length).toBeGreaterThan(100);
+    expect(verstoesse(dateien)).toEqual([]);
+  });
+
+  it("die Prüfung schlägt an, wenn Betriebs-Code den Schalter setzt (Gegenprobe)", () => {
+    expect(
+      verstoesse([
+        { datei: "apps/worker/src/x.ts", text: "oeffneVerbindung({ erlaubeHttp: true })" },
+        { datei: "packages/mcp/src/verbindung.ts", text: "erlaubeHttp" },
+        { datei: "packages/mcp/src/x.test.ts", text: "erlaubeHttp" },
+      ]),
+    ).toEqual(["apps/worker/src/x.ts"]);
   });
 });
 

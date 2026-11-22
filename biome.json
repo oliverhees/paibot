@@ -826,6 +826,12 @@
                   "cross-spawn": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process).",
                   "@ai-sdk/mcp/mcp-stdio": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process).",
                   "node:worker_threads": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process).",
+                  "node:module": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein createRequire, kein node:module).",
+                  "module": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein createRequire, kein node:module).",
+                  "node:vm": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
+                  "vm": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
+                  "node:inspector": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
+                  "node:v8": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
                   "node:cluster": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process)."
                 },
                 "patterns": [
@@ -961,6 +967,12 @@
                   "cross-spawn": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process).",
                   "@ai-sdk/mcp/mcp-stdio": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process).",
                   "node:worker_threads": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process).",
+                  "node:module": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein createRequire, kein node:module).",
+                  "module": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein createRequire, kein node:module).",
+                  "node:vm": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
+                  "vm": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
+                  "node:inspector": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
+                  "node:v8": "In @paibot/mcp gibt es keinen Weg an den Sperren vorbei (kein node:vm, kein node:inspector).",
                   "node:cluster": "In @paibot/mcp werden keine fremden Prozesse gestartet (kein stdio, kein child_process)."
                 },
                 "patterns": [
