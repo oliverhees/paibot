@@ -554,12 +554,25 @@ describe("erkenneZeilen: Weg (nur Fakt mit Code, nie eine Entscheidung)", () => 
       leitung("@Ideen: x", { auftragArt: "keiner" }),
       "verboten_leitung_auftragsart",
     ],
+    [
+      "Leitung gibt in einer Auftragsart ohne Übergabe zurück",
+      leitung("Zurück an @Ideen: nochmal", { auftragArt: "bitte" }),
+      "verboten_leitung_auftragsart",
+    ],
   ];
   it.each(verboten)("%s → eigener Code, trotzdem als Wunsch geliefert", (_n, eingabe, erwartet) => {
     const e = erkenneZeilen(eingabe);
     expect(e.wuensche).toHaveLength(1);
     expect(e.wuensche[0]?.weg?.code).toBe(erwartet);
     expect(e.wuensche[0]?.weg?.inTabelle).toBe(false);
+  });
+
+  it("Leitung außerhalb eines Fadens: gar keine Wünsche (der Ort wird vor dem Weg geprüft)", () => {
+    for (const text of ["@Ideen: x", "Zurück an @Ideen: x"]) {
+      const e = erkenneZeilen(leitung(text, { conversationKind: "direkt" }));
+      expect(e.wuensche).toEqual([]);
+      expect(e.grund).toBe("kein_ort");
+    }
   });
 
   it("Zurück an von einem Mitglied wird nie als Bitte gelesen", () => {
