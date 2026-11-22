@@ -54,12 +54,14 @@ describe("WerkzeugZeile: Name der App und des Werkzeugs", () => {
 
   // Gegenprobe: in `WerkzeugZeile` statt `FremderText` den Rohtext einsetzen → rot.
   it("entfernt Steuer-, Richtungs- und unsichtbare Zeichen aus App-Name und Werkzeug", () => {
+    const verboten = ["\u202e", "\u200b", "\u2066", "\u0007"];
     const html = zeile({
       kurzname: "x",
-      name: "Aufgaben‮​\u0007Ende",
-      werkzeug: "liste⁦​.heute",
+      name: `Aufgaben${verboten[0]}${verboten[1]}${verboten[3]}Ende`,
+      werkzeug: `liste${verboten[2]}${verboten[1]}.heute`,
     });
-    expect(html).not.toMatch(/[‮​⁦\u0007]/u);
+    for (const zeichen of verboten)
+      expect(html.includes(zeichen), JSON.stringify(zeichen)).toBe(false);
     expect(html).toContain("AufgabenEnde");
     expect(html).toContain("liste.heute");
   });
