@@ -1,0 +1,32 @@
+// PaiBot – Lint-Regel: Die Web-App ruft nur `tools/list`, nie `tools/call`. Verboten sind in
+// `apps/web` (ohne Tests) die Namen `callTool`, `rufeWerkzeugAuf`, `rufeWerkzeugAufIntern` und
+// `rufeAuf`, auch als Eigenschaft (`client.callTool(…)`), als Import (auch umbenannt) und die
+// Zeichenkette `tools/call` (mit `"`, `'` oder `` ` ``). Werkzeuge ruft allein der Worker auf, über
+// das Tor und mit der Berechtigung eines Laufs; die Web-App holt nur die Liste (`holeWerkzeuge`).
+// Nicht erkennbar: ein berechneter Name (`obj["call" + "Tool"]`), eine zusammengesetzte
+// Zeichenkette (`"tools/" + "call"`) und ein Aufruf über ein Objekt, das von außen hereinkommt;
+// für solche Umgehungen gibt es die Importsperre für Pakete und die Prüfung im Review.
+//
+// Autor:     Oliver Hees
+// Website:   https://paibot.de
+// Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+// Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+// Seit:      2026-11-22
+
+language js
+
+or {
+  or {
+    JsReferenceIdentifier(),
+    JsName(),
+    JsIdentifierBinding(),
+    JsLiteralExportName()
+  } as $name where {
+    $name <: r"^(?:callTool|rufeWerkzeugAuf|rufeWerkzeugAufIntern|rufeAuf)$",
+    register_diagnostic(span=$name, message="Die Web-App ruft nur tools/list, nie tools/call: Werkzeuge ruft allein der Worker auf.")
+  },
+  `$text` where {
+    $text <: r"^[\"'`].*tools/call.*[\"'`]$",
+    register_diagnostic(span=$text, message="Die Web-App ruft nur tools/list, nie tools/call: Werkzeuge ruft allein der Worker auf.")
+  }
+}

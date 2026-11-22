@@ -52,6 +52,10 @@
       ]
     },
     {
+      "path": "./tools/lint-regeln/web-kein-werkzeug-aufruf.grit",
+      "includes": ["apps/web/**/*.ts", "apps/web/**/*.tsx", "!**/*.test.ts", "!**/*.test.tsx"]
+    },
+    {
       "path": "./tools/lint-regeln/mcp-kein-eigenes-fetch.grit",
       "includes": ["packages/mcp/**/*.ts", "!**/*.test.ts", "!packages/mcp/src/spike/**"]
     },
@@ -1166,7 +1170,7 @@
                     "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
                   },
                   {
-                    "group": ["**/apps/**"],
+                    "group": ["**/apps/**", "!**/lib/apps/**", "!./apps/**"],
                     "message": "Kein Paket importiert aus apps/*."
                   },
                   {
