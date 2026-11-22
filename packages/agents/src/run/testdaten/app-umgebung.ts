@@ -45,6 +45,8 @@ export interface TestApp {
 /** Gespielte Anfragen an die Attrappe: sie zählt, was hinausgegangen wäre. */
 export interface AnschlussProtokoll {
   listen: string[];
+  /** Die bekannten Namen (Original-Namen), die jeder Abruf der Liste mitbekam, in der Reihenfolge der Abrufe. */
+  bekannteNamen: string[][];
   aufrufe: { app: string; name: string; argumente: unknown }[];
   ausgeschlossen: AusgeschlossenMeldung[];
 }
@@ -74,14 +76,20 @@ export function erzeugeTestAnschluss(
     doppelt?: boolean;
   } = {},
 ): TestAnschluss {
-  const protokoll: AnschlussProtokoll = { listen: [], aufrufe: [], ausgeschlossen: [] };
+  const protokoll: AnschlussProtokoll = {
+    listen: [],
+    bekannteNamen: [],
+    aufrufe: [],
+    ausgeschlossen: [],
+  };
   const antworten = new Map<string, string>();
   const key = (app: TestApp, name: string) => `${app.id}/${name}`;
   const anschluss: AppAnschluss = {
     neuerLauf(): AppLauf {
       return {
-        async holeListe({ app }) {
+        async holeListe({ app, bekannteNamen }) {
           protokoll.listen.push(app.kurzname);
+          protokoll.bekannteNamen.push([...bekannteNamen.keys()].sort());
           await optionen.beimListe?.(app);
           if (optionen.listeFehler !== undefined) throw optionen.listeFehler;
           const test = apps.find((a) => a.id === app.id);

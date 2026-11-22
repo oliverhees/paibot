@@ -399,6 +399,14 @@ export async function sehen(
   db: Database,
   appId: AppId,
   seen: readonly SeenTool[],
+  options: {
+    /**
+     * Ein Werkzeug, das in dieser Transaktion noch nicht bekannt ist, wird nicht angelegt
+     * (Standard: es wird als „neu“ angelegt). Gedacht für den Lauf-Start des Workers: Der Stand
+     * wird erst hier, in derselben Transaktion, gelesen, nie schon vor dem Abruf.
+     */
+    nurBekannte?: boolean;
+  } = {},
 ): Promise<SeenResult[]> {
   return withTransaction(db, async (tx) => {
     const app = await get(tx, appId);
@@ -413,6 +421,7 @@ export async function sehen(
       if (gesehen.has(tool.originalName)) throw feldFehler("originalName");
       gesehen.add(tool.originalName);
       const vorher = nachName.get(tool.originalName);
+      if (vorher === undefined && options.nurBekannte === true) continue;
       const inhalt = {
         toolDigest: tool.toolDigest,
         description: tool.description,

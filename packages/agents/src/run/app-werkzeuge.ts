@@ -182,15 +182,16 @@ export async function ladeAppWerkzeuge(input: {
     }
     // Zu spät angekommen: nichts mehr schreiben, der Lauf geht ohne diese App weiter.
     if (frist.aborted) return ergebnis;
-    // Nur Werkzeuge, die die Datenbank schon kennt; ein neues schreibt erst „Neu abrufen“.
-    const bekanntSind = new Set(bekannte.map((t) => t.originalName));
-    const bekannteListe = liste.filter((e) => bekanntSind.has(e.originalName));
+    // Nur Werkzeuge, die die Datenbank in derselben Transaktion schon kennt (`nurBekannte`); ein
+    // neues schreibt erst „Neu abrufen“. Der Stand wird dort gelesen, nicht schon vor dem Abruf:
+    // Ein Werkzeug, das im Fenster des Abrufs neu angelegt und bestätigt wurde, wird so nie
+    // fälschlich als „entfernt“ gekennzeichnet.
     let ergebnisse: Awaited<ReturnType<typeof repo.apps.sehen>>;
     try {
       ergebnisse = await repo.apps.sehen(
         db,
         app.id,
-        bekannteListe.map((e) => ({
+        liste.map((e) => ({
           originalName: e.originalName,
           toolDigest: e.abdruck as Sha256Digest,
           description: e.beschreibung,
@@ -198,13 +199,14 @@ export async function ladeAppWerkzeuge(input: {
           hintReadOnly: e.hinweisNurLesen,
           hintDestructive: e.hinweisZerstoerend,
         })),
+        { nurBekannte: true },
       );
     } catch {
       return ergebnis;
     }
     for (const gesehen of ergebnisse) {
       if (gesehen.change !== "unveraendert") continue;
-      const roh = bekannteListe.find((e) => e.originalName === gesehen.tool.originalName);
+      const roh = liste.find((e) => e.originalName === gesehen.tool.originalName);
       if (roh === undefined || !roh.bestaetigbar || roh.schemaFuerModell === null) continue;
       const bestaetigt = await repo.apps.confirmedTool(db, {
         modelName: gesehen.tool.modelName,
@@ -232,6 +234,8 @@ export async function ladeAppWerkzeuge(input: {
   };
 
   const ergebnisse = await gleichzeitig(kandidaten, APP_ABRUF_GLEICHZEITIG, async (app) => {
+    // Nach Fristende fängt keine App mehr an: keine Datenbank-Lesung, keine Entschlüsselung des Zugangs.
+    if (frist.aborted) return { eintraege: [], meldungen: [] };
     const gelungen = await mitFrist(frist, ladeApp(app));
     return gelungen ?? { eintraege: [], meldungen: [] };
   });

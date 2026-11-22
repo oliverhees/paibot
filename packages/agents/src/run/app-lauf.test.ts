@@ -1047,6 +1047,80 @@ describe("Abruf der Listen beim Lauf-Start", () => {
     expect(env.anschluss.protokoll.listen).toEqual([]);
   });
 
+  // Gegenprobe: unbekannte Werkzeuge vor dem Abruf mit dem Stand von damals aussortieren, statt `nurBekannte` in
+  // derselben Transaktion zu nutzen → „frisch“ fehlt in der Liste und wird als „entfernt“ gekennzeichnet, rot.
+  it("ein Werkzeug, das im Fenster des Abrufs neu angelegt und bestätigt wird, geht nicht verloren (wird nicht „entfernt“)", async () => {
+    let env: (Env & { apps: TestApp[] }) | undefined;
+    env = await setup(eineAntwort, async (e) => [await eine(e, "notizen")], {
+      anschluss: {
+        beimListe: async () => {
+          if (env === undefined) return;
+          const a = env.apps[0] as TestApp;
+          // Der Server nennt jetzt „frisch“; der Besitzer legt es an („Neu abrufen“) und bestätigt es,
+          // noch bevor dieser Abruf ausgewertet wird.
+          a.werkzeuge.push({ name: "frisch", klasse: "lesen" });
+          await repo.apps.sehen(
+            env.db,
+            a.id,
+            a.werkzeuge.map((w) => ({
+              originalName: w.name,
+              toolDigest: abdruck(a.version.get(w.name) ?? "1") as Sha256Digest,
+              description: w.beschreibung ?? `Beschreibung ${w.name}`,
+              inputSchema: {
+                type: "object",
+                properties: { q: { type: "string" } },
+                additionalProperties: false,
+              },
+            })),
+          );
+          await stufeUm(env, a, "frisch", "lesen");
+        },
+      },
+    });
+    await env.ask();
+    const zeilen = await repo.apps.currentTools(env.db, (env.apps[0] as TestApp).id);
+    expect(zeilen.find((z) => z.originalName === "frisch")?.status).toBe("bestaetigt");
+    expect(zeilen.find((z) => z.originalName === "suche")?.status).toBe("bestaetigt");
+  });
+
+  // Gegenprobe: die Prüfung `frist.aborted` vor `ladeApp` entfernen → die wartenden Arbeiter rufen nach Fristende
+  // weiter `holeListe` auf (Datenbank lesen, Zugang entschlüsseln), rot.
+  it("nach Ablauf der Gesamtfrist fängt keine weitere App mehr an", async () => {
+    const namen = ["a1", "a2", "a3", "a4", "a5", "a6"];
+    const env = await setup(eineAntwort, async (e) => Promise.all(namen.map((n) => eine(e, n))), {
+      tuning: { appAbrufMs: 150 },
+      anschluss: {
+        // Jede App hängt und ignoriert das Signal; es laufen höchstens 4 gleichzeitig.
+        beimListe: async () => new Promise(() => undefined),
+      },
+    });
+    const { outcome } = await env.ask();
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    // Nach dem Fristende noch einen Augenblick warten: Hätten wartende Arbeiter weitergemacht, stünden hier 6.
+    await new Promise((r) => setTimeout(r, 300));
+    expect(env.anschluss.protokoll.listen).toHaveLength(4);
+  });
+
+  // Gegenprobe: die Prüfung `frist.aborted` nach dem Abruf entfernen → die zu späte Antwort schreibt eine neue
+  // Fassung („geändert“), rot.
+  it("antwortet eine App erst nach der Gesamtfrist, wird nichts mehr geschrieben: keine neue Fassung", async () => {
+    const env = await setup(eineAntwort, async (e) => [await eine(e, "notizen")], {
+      tuning: { appAbrufMs: 100 },
+      anschluss: { beimListe: () => new Promise((r) => setTimeout(r, 400)) },
+    });
+    const a = env.apps[0] as TestApp;
+    const vorher = await repo.apps.currentTools(env.db, a.id);
+    // Der Server hat „suche“ geändert: Würde die späte Antwort noch ausgewertet, entstünde eine neue Fassung.
+    env.anschluss.aendereWerkzeug(a, "suche", "5");
+    const { outcome } = await env.ask();
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    await new Promise((r) => setTimeout(r, 700));
+    const nachher = await repo.apps.currentTools(env.db, a.id);
+    expect(nachher.map((z) => [z.version, z.status])).toEqual(
+      vorher.map((z) => [z.version, z.status]),
+    );
+  });
+
   // Gegenprobe: neue Werkzeuge beim Lauf-Start wieder in die Datenbank schreiben → mehr Zeilen, rot.
   it("ein neues Werkzeug des Servers wird beim Lauf-Start nicht in die Datenbank geschrieben; ein bekanntes, geändertes wird wie bisher gesperrt", async () => {
     const env = await setup(eineAntwort, async (e) => [await eine(e, "notizen")]);
@@ -1064,13 +1138,35 @@ describe("Abruf der Listen beim Lauf-Start", () => {
     expect(body.tools).toBeUndefined();
   });
 
-  it("ein entferntes Werkzeug wird gekennzeichnet und taucht nicht mehr in den bekannten Namen auf", async () => {
-    const env = await setup(eineAntwort, async (e) => [await eine(e, "notizen")]);
+  // Gegenprobe: den Filter auf „nicht entfernt“ bei den bekannten Namen entfernen → der Name des entfernten
+  // Werkzeugs geht beim nächsten Abruf an die Schicht, rot.
+  it("ein entferntes Werkzeug wird gekennzeichnet und geht beim nächsten Abruf nicht mehr in die bekannten Namen an die Schicht", async () => {
+    const env = await setup(eineAntwort, async (e) =>
+      richteAppEin(e, {
+        kurzname: "notizen",
+        botId: e.botId,
+        werkzeuge: [
+          { name: "suche", klasse: "lesen" },
+          { name: "alt", klasse: "lesen" },
+        ],
+      }).then((a) => [a]),
+    );
     const a = env.apps[0] as TestApp;
-    a.werkzeuge.length = 0;
+    // Der Server nennt „alt“ nicht mehr.
+    a.werkzeuge.splice(
+      a.werkzeuge.findIndex((w) => w.name === "alt"),
+      1,
+    );
     await env.ask();
-    const zeilen = await repo.apps.currentTools(env.db, a.id);
-    expect(zeilen.map((z) => [z.originalName, z.status])).toEqual([["suche", "entfernt"]]);
+    expect(env.anschluss.protokoll.bekannteNamen[0]).toEqual(["alt", "suche"]);
+    const nachLauf1 = await repo.apps.currentTools(env.db, a.id);
+    expect(nachLauf1.map((z) => [z.originalName, z.status]).sort()).toEqual([
+      ["alt", "entfernt"],
+      ["suche", "bestaetigt"],
+    ]);
+    await env.ask();
+    // Beim zweiten Abruf ist „alt“ entfernt und geht nicht mehr mit.
+    expect(env.anschluss.protokoll.bekannteNamen[1]).toEqual(["suche"]);
   });
 });
 
@@ -1119,7 +1215,8 @@ describe.skipIf(postgresUrl === undefined)("Werkzeuge aus Apps gegen echtes Post
     await reserviert.unsafe("set lock_timeout = '500ms'");
     zweite = reserviert as never;
     const { outcome } = await env.ask();
-    expect(outcome).toMatchObject({ status: "succeeded" });
+    // Zuerst das Protokoll: Eine Sperre soll als Sperre auffallen, nicht als Folgefehler des Laufs.
     expect(protokoll).toEqual(["liste:frei", "aufruf:frei"]);
+    expect(outcome).toMatchObject({ status: "succeeded" });
   });
 });
