@@ -35,6 +35,11 @@ import {
 } from "@paibot/shared/eingaben";
 import type { z } from "zod";
 import { GROESSTER_KOERPER_BYTES, STANDARD_KOERPER_BYTES } from "./api/koerper";
+import {
+  appVerbindenEingabe,
+  werkzeugBestaetigenEingabe,
+  zugriffSetzenEingabe,
+} from "./apps/eingaben";
 import type { LimitName } from "./rate-limit";
 
 export type Methode = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -334,6 +339,80 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "modell.waehlen",
     eingabe: modelChoiceInput,
+  },
+
+  /** Die verbundenen und getrennten Apps (ohne Token) mit dem Zugriff der Bots; liest nur. */
+  appsListe: {
+    methode: "GET",
+    pfad: "/api/apps",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  /**
+   * Verbindet eine App: prüft die Adresse vor jeder Verbindung, holt die Liste der Werkzeuge
+   * (nur lesend), speichert App, verschlüsselten Token und Werkzeuge. Zählt auf das Limit des
+   * Verbindungstests.
+   */
+  appVerbinden: {
+    methode: "POST",
+    pfad: "/api/apps",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "app.verbinden",
+    eingabe: appVerbindenEingabe,
+    limits: ["verbindungstest"],
+  },
+  /** Die gespeicherten Werkzeuge einer App mit dem Text, der ans Modell geht; liest nur. */
+  appWerkzeuge: {
+    methode: "GET",
+    pfad: "/api/apps/:id/werkzeuge",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  /**
+   * Holt die Liste der Werkzeuge einer verbundenen App neu (nur lesend, `tools/list`) und gleicht
+   * sie mit den gespeicherten Fassungen ab: erneut testen. Zählt auf das Limit des Verbindungstests.
+   */
+  appWerkzeugeAbrufen: {
+    methode: "POST",
+    pfad: "/api/apps/:id/werkzeuge",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "app.verbinden",
+    limits: ["verbindungstest"],
+  },
+  /** Stuft ein Werkzeug ein (lesen, schreiben, gesperrt); der Abdruck, den der Besitzer sah, wird geprüft. */
+  appWerkzeugBestaetigen: {
+    methode: "PUT",
+    pfad: "/api/apps/:id/werkzeuge/:werkzeug",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "app.werkzeuge_bestaetigen",
+    eingabe: werkzeugBestaetigenEingabe,
+  },
+  /** Setzt den Zugriff eines Bots auf eine App (kein Zugriff oder darf lesen). */
+  appZugriffSetzen: {
+    methode: "PUT",
+    pfad: "/api/apps/:id/zugriff/:bot",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "app.zugriff_setzen",
+    eingabe: zugriffSetzenEingabe,
+  },
+  /** Trennt eine App: Der Token wird gelöscht, der Zugriff aller Bots ist sofort „keiner“. */
+  appTrennen: {
+    methode: "DELETE",
+    pfad: "/api/apps/:id",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "app.trennen",
   },
 
   anbieterListe: {

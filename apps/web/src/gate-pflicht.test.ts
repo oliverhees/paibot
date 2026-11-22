@@ -17,8 +17,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { geraete, repo } from "@paibot/db";
 import { createTestDb, type TestDb } from "@paibot/db/testing";
+import { bereiteWerkzeugeAuf } from "@paibot/mcp";
 import { CSRF } from "@paibot/shared/konstanten";
 import { afterAll, describe, expect, it, vi } from "vitest";
+import { _ersetzeAppDienste } from "./lib/apps/dienste";
 import { API_ROUTEN, type RoutenName, routenOrdner, routenPfad } from "./lib/routen";
 import { _ersetzeProzessDienste } from "./lib/zugang/dienste";
 import {
@@ -51,7 +53,10 @@ vi.mock("./lib/warteschlange", async (original) => {
   };
 });
 
-afterAll(() => _ersetzeProzessDienste(undefined));
+afterAll(() => {
+  _ersetzeProzessDienste(undefined);
+  _ersetzeAppDienste(undefined);
+});
 
 const APP = fileURLToPath(new URL("./app", import.meta.url));
 
@@ -347,6 +352,47 @@ async function anbieterId(s: Stand): Promise<string> {
   return p.id;
 }
 
+/** Ersatz für die Naht zur MCP-Schicht: echte Aufbereitung einer rohen Liste, kein Netz. */
+function appListeErsetzen(beschreibung = "Gibt Text zurück."): void {
+  _ersetzeAppDienste({
+    async werkzeugeAbrufen(abruf) {
+      return {
+        werkzeuge: bereiteWerkzeugeAuf(
+          [
+            {
+              name: "echo",
+              description: beschreibung,
+              inputSchema: { type: "object", properties: { text: { type: "string" } } },
+            },
+          ],
+          { appKurzname: abruf.appKurzname, bekannteNamen: abruf.bekannteNamen },
+        ),
+        serverName: "Beispiel",
+        seiten: 1,
+        abgeschnitten: false,
+      };
+    },
+  });
+}
+
+const APP_ADRESSE = "https://mcp.beispiel.de/mcp";
+
+/** Eingerichtet, mit einer verbundenen App (Ersatz für die Liste der Werkzeuge). */
+async function mitApp(): Promise<Stand> {
+  const s = await einrichten();
+  appListeErsetzen();
+  await rufe(s, "appVerbinden", {
+    koerper: { url: APP_ADRESSE, token: "tok-Beispiel-0123456789" },
+  });
+  return s;
+}
+
+async function appId(s: Stand): Promise<string> {
+  const [app] = await repo.apps.list(s.u.db);
+  if (app === undefined) throw new Error("keine App");
+  return app.id;
+}
+
 interface Fall {
   /** Bringt die Installation in den Zustand vor dem Aufruf. */
   vorher(): Promise<Stand & Partial<{ unterhaltung: string }>>;
@@ -485,6 +531,47 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
         koerper: { name: "Umbenannt", baseUrl: p.baseUrl, region: p.region },
       };
     },
+  },
+  appVerbinden: {
+    vorher: async () => {
+      const s = await einrichten();
+      appListeErsetzen();
+      return s;
+    },
+    aufruf: async () => ({ koerper: { url: APP_ADRESSE, token: "tok-Beispiel-0123456789" } }),
+  },
+  appWerkzeugeAbrufen: {
+    // Der Server hat die Beschreibung geändert: Der Abruf hängt eine neue Fassung an.
+    vorher: async () => {
+      const s = await mitApp();
+      appListeErsetzen("Gibt Text zurück, neu gefasst.");
+      return s;
+    },
+    aufruf: async (s) => ({ params: { id: await appId(s) } }),
+  },
+  appWerkzeugBestaetigen: {
+    vorher: mitApp,
+    aufruf: async (s) => {
+      const id = await appId(s);
+      const [tool] = await repo.apps.currentTools(s.u.db, id as never);
+      if (tool === undefined) throw new Error("kein Werkzeug");
+      return {
+        params: { id, werkzeug: tool.toolId },
+        koerper: { klasse: "lesen", gesehenerAbdruck: tool.toolDigest },
+      };
+    },
+  },
+  appZugriffSetzen: {
+    vorher: mitApp,
+    aufruf: async (s) => {
+      const bot = await repo.bots.getDefault(s.u.db);
+      if (bot === undefined) throw new Error("kein Bot");
+      return { params: { id: await appId(s), bot: bot.id }, koerper: { zugriff: "lesen" } };
+    },
+  },
+  appTrennen: {
+    vorher: mitApp,
+    aufruf: async (s) => ({ params: { id: await appId(s) } }),
   },
   anbieterLoeschen: {
     vorher: async () => {
@@ -635,6 +722,11 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
     },
   },
   bot: { vorher: einrichten, aufruf: async () => ({}) },
+  appsListe: { vorher: mitApp, aufruf: async () => ({}) },
+  appWerkzeuge: {
+    vorher: mitApp,
+    aufruf: async (s) => ({ params: { id: await appId(s) } }),
+  },
   anbieterListe: { vorher: einrichten, aufruf: async () => ({}) },
   anbieterVerbindungstest: {
     vorher: einrichten,

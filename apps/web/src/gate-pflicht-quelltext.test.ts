@@ -171,6 +171,10 @@ function schreibAufrufe(text: string, schreibend: ReadonlySet<string>): string[]
  * neben jeder Aktion nötig ist; die Liste der Funktionen ist hier abschließend.
  */
 const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonly string[] }> = {
+  // Apps: Schreiben nur in der Ausführung der Aktionen (verbinden, bestätigen, Zugriff, trennen);
+  // `abgleich.ts` wird nur aus der Ausführung von `app.verbinden` aufgerufen.
+  "web/src/lib/apps/abgleich.ts": { art: "aktion" },
+  "web/src/lib/apps/verwaltung.ts": { art: "aktion" },
   "web/src/lib/bot/bot.ts": { art: "aktion" },
   "web/src/lib/chat/aktionen.ts": { art: "aktion" },
   "web/src/lib/einstellungen/grenzen.ts": { art: "aktion" },
