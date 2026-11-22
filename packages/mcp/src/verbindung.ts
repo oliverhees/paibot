@@ -17,6 +17,7 @@ import { bereinigeText } from "./bereinigen";
 import { ergebnisZuText, type McpErgebnis } from "./ergebnis";
 import { McpSchichtFehler, ordneFehlerZu, ordneStatusZu } from "./fehler";
 import { type McpGrenzen, mitStandardGrenzen } from "./grenzen";
+import { pruefeNamenZuordnung } from "./namen";
 import { bereiteWerkzeugeAuf, type McpWerkzeugBereinigt, type McpWerkzeugRoh } from "./werkzeug";
 
 /** Eine Anfrage nach draußen. Die Ausgangs-Hülle des Systems hat diese Form. */
@@ -579,6 +580,14 @@ export async function holeWerkzeugeIntern(
   optionen: WerkzeugAbrufOptionen,
   intern: InterneOptionen,
 ): Promise<WerkzeugAbruf> {
+  // Die Zuordnung der Namen kommt vom Aufrufer: erst prüfen, dann verbinden. Bei einer ungültigen
+  // Zuordnung geht keine Anfrage hinaus (der Zugang wird nie gesendet), und es wirft immer ein
+  // `McpSchichtFehler` mit festem Text, nie die rohe Ausnahme der Namensvergabe.
+  if (
+    !pruefeNamenZuordnung(optionen.appKurzname, optionen.bekannteNamen, optionen.bereitsVergeben)
+  ) {
+    throw new McpSchichtFehler("namen_ungueltig");
+  }
   const verbindung = await oeffneVerbindungIntern(optionen, intern);
   try {
     const liste = await verbindung.listeRoh();

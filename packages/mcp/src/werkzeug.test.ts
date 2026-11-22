@@ -22,6 +22,7 @@ import {
   bereiteWerkzeugeAuf,
   type McpWerkzeugRoh,
   modellDefinition,
+  namenZumSpeichern,
   vergleicheWerkzeuge,
 } from "./werkzeug";
 
@@ -258,7 +259,7 @@ describe("Modell-Namen aus der gespeicherten Zuordnung", () => {
   it("ein neues Werkzeug verdrängt ein bestätigtes nicht von seinem Namen", () => {
     const erste = bereiteWerkzeugeAuf([werkzeug("a_b")], OPT);
     expect(erste[0]?.modellName).toBe("app__a_b");
-    const bekannteNamen = new Map(erste.map((w) => [w.originalName, w.modellName]));
+    const bekannteNamen = namenZumSpeichern(erste);
     const zweite = bereiteWerkzeugeAuf([werkzeug("a.b"), werkzeug("a_b")], {
       ...OPT,
       bekannteNamen,
@@ -293,5 +294,52 @@ describe("Namen: die gespeicherte Zuordnung ist Pflicht und verbindlich", () => 
     const bekannteNamen = new Map([["a_b", "app__a_b"]]);
     const [neu] = bereiteWerkzeugeAuf([werkzeug("a.b")], { ...OPT, bekannteNamen });
     expect(neu?.modellName).toBe("app__a_b_2");
+  });
+});
+
+// Gegenprobe: `namenZumSpeichern` nimmt alle Einträge mit (auch die mit Name ""), oder die letzte
+// Zeile eines doppelten Namens überschreibt die erste → der zweite Abruf wirft.
+describe("Zuordnung zum Speichern", () => {
+  const liste = () => [
+    { ...ECHO, name: "a" },
+    { ...ECHO, name: "a" },
+    { ...ECHO, name: "x".repeat(300) },
+    { ...ECHO, name: "" },
+    { ...ECHO, name: "b" },
+  ];
+
+  it("enthält nur bestätigbare Werkzeuge mit einem Namen, nie einen leeren", () => {
+    const abruf = bereiteWerkzeugeAuf(liste(), OPT);
+    expect(abruf.map((w) => w.problem)).toEqual([
+      null,
+      "name_doppelt",
+      "name_ungueltig",
+      "name_ungueltig",
+      null,
+    ]);
+    const zuordnung = namenZumSpeichern(abruf);
+    expect([...zuordnung]).toEqual([
+      ["a", "app__a"],
+      ["b", "app__b"],
+    ]);
+    for (const name of zuordnung.values()) expect(name).not.toBe("");
+  });
+
+  it("ein zweiter Abruf mit dieser Zuordnung wirft nicht und behält die Namen", () => {
+    const zuordnung = namenZumSpeichern(bereiteWerkzeugeAuf(liste(), OPT));
+    const zweite = bereiteWerkzeugeAuf(liste(), { ...OPT, bekannteNamen: zuordnung });
+    expect(zweite.map((w) => w.modellName)).toEqual(["app__a", "", "", "", "app__b"]);
+  });
+
+  it("ein Werkzeug, das nicht bestätigbar ist, kommt nicht hinein", () => {
+    const abruf = bereiteWerkzeugeAuf(
+      [
+        { ...ECHO, name: "ok" },
+        { ...ECHO, name: "boese", inputSchema: { type: "object", $ref: "#/x" } },
+      ],
+      OPT,
+    );
+    expect(abruf[1]?.bestaetigbar).toBe(false);
+    expect([...namenZumSpeichern(abruf).keys()]).toEqual(["ok"]);
   });
 });
