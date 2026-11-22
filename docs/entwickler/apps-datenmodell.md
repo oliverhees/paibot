@@ -63,7 +63,7 @@ Spalten, die das Tor und die Fakten betreffen:
 | `app_tools.tool_id`, `app_tools.version`                | Kennung `wzg_…` des Werkzeugs und Nummer der Fassung ab 1; zusammen der Schlüssel                                                                                 |
 | `app_tools.original_name`, `.model_name`, `.tool_key`   | Name beim Server, einmal vergebener Name fürs Modell, Kennung `mcp/<kurzname>/<name>`                                                                             |
 | `app_tools.tool_digest`                                 | Abdruck der Rohform in voller Länge (`sha256:` und 64 Hex-Zeichen)                                                                                                |
-| `app_tools.description`, `.input_schema`                | bereinigte Beschreibung (höchstens 2000 Zeichen) und bereinigtes Eingabe-Schema (ein Objekt, höchstens 65 536 Zeichen), so wie sie ans Modell gehen               |
+| `app_tools.description`, `.input_schema`                | bereinigte Beschreibung (höchstens 2000 Zeichen) und bereinigtes Eingabe-Schema (ein Objekt, höchstens 65 536 Bytes; der Trigger prüft `octet_length` des Textes, nicht die Zahl der Zeichen), so wie sie ans Modell gehen               |
 | `app_tools.hint_read_only`, `.hint_destructive`         | Hinweise des Servers, nur zur Anzeige, nie eine Einstufung                                                                                                        |
 | `app_tools.status`, `.tool_class`                       | `neu`, `bestaetigt`, `geaendert`, `entfernt`, `gesperrt` und die Einstufung `lesen`, `schreiben`, `gesperrt` (außer bei Bestätigung und Sperre immer `schreiben`) |
 | `app_tools.action_id`, `.seen_digest`, `.target_digest` | Entscheidung des Besitzers, gesehener Abdruck und Abdruck des Ziels; genau bei `bestaetigt` und `gesperrt` gesetzt                                                |
@@ -138,5 +138,5 @@ PAIBOT_TEST_DATABASE_URL=postgres://… pnpm --filter @paibot/db test
 - **Noch keine Anwendung:** Keine Route, keine Oberfläche, kein Aufruf im Lauf nutzt die Tabellen. Dass ein getrennter Zugang im Lauf als `appAccess: keiner` ankommt, prüft erst der Test im Paket des Laufs; die Datenbank liefert es über `currentAccess`.
 - **Kennzeichen „fremder Inhalt“ je Lauf:** Die Datenbank kennt nur das Kennzeichen und die Vererbung innerhalb eines Laufs. Ob ein Lauf in irgendeinem Schritt fremde Inhalte hatte, entscheidet der Lauf und ruft dann `markRunUntrusted`.
 - **Zugriff überlebt einen Bot nicht:** `bot_app_grants.bot_id` hat keinen Fremdschlüssel; Zeilen gelöschter Bots bleiben als Protokoll stehen.
-- **Größe der Texte:** `description` und `input_schema` sind die bereinigten Texte; ihre Grenzen hier (2000 und 65 536 Zeichen) sind Obergrenzen der Datenbank, nicht die der Schicht, die sie liefert.
+- **Größe der Texte:** `description` und `input_schema` sind die bereinigten Texte; ihre Grenzen hier (2000 Zeichen und 65 536 Bytes) sind Obergrenzen der Datenbank, nicht die der Schicht, die sie liefert.
 - **Kein Löschen von Werkzeugen:** Entfernte Werkzeuge bleiben als Zeilen stehen; die Protokolle wachsen nur.

@@ -1,5 +1,5 @@
 <!--
-PaiBot – Entwickler-Seite: die MCP-Schicht in `packages/mcp` (fremde MCP-Server nur lesend ansprechen); noch nicht angeschlossen.
+PaiBot – Entwickler-Seite: die MCP-Schicht in `packages/mcp` (fremde MCP-Server nur lesend ansprechen); noch nicht angeschlossen (die Datenbank für Apps steht, siehe `apps-datenmodell.md`).
 
 Autor:     Oliver Hees
 Website:   https://paibot.de
@@ -52,7 +52,7 @@ Datenfluss eines Aufrufs (`rufeWerkzeugAuf`): Der Prüfer des Werkzeugs (`pruefe
 
 ## Datenmodell und Migrationen
 
-Keine eigenen Tabellen, keine Migration. Die Schicht liest und schreibt keine Datenbank; was sie liefert (Abdruck, Modell-Form, Status-Gründe), soll eine spätere Anbindung speichern.
+Die Schicht selbst hat keine eigenen Tabellen und keine Migration; sie liest und schreibt keine Datenbank. Die Tabellen für Apps, Werkzeuge und Zugriffe gibt es (Paket `packages/db`, beschrieben in [Apps: Datenmodell](apps-datenmodell.md)); die Schicht greift aber nicht darauf zu. Was sie liefert (Abdruck, Modell-Form, Status-Gründe), soll eine spätere Anbindung dort speichern.
 
 ## Schnittstellen
 
@@ -118,7 +118,7 @@ Der Test-Server (`tools/test-mcp-server/src/index.ts#createTestMcpServer`) ist n
 
 ## Bekannte Schwächen
 
-- **Nicht angeschlossen:** Weder Tor, Datenbank, Worker noch Oberfläche benutzen die Schicht; Fakten für das Tor, Tabellen, Routen und Belege gibt es noch nicht.
+- **Nicht angeschlossen:** Kein anderes Paket importiert `@paibot/mcp`; weder Tor-Aufruf, Datenbank-Zugriff, Worker noch Oberfläche benutzen die Schicht. Die Tabellen gibt es ([Apps: Datenmodell](apps-datenmodell.md)) und die Fassung 3 des Tors ist in Kraft, aber die Fakten für das Tor liefert die Schicht noch nicht, und Routen für Apps gibt es nicht.
 - **Modell-Namen vergibt die Schicht nur für die ganze Liste:** `vergebeModellNamen` sortiert nach dem Original-Namen und zählt bei Kollisionen; kommt später ein Werkzeug hinzu, kann ein bestätigtes seinen Namen an das neue verlieren. Die späteren Pakete müssen den Modell-Namen deshalb beim ersten Sehen einmal vergeben und speichern und nie neu berechnen; Heute nimmt `bereiteWerkzeugeAuf` nur die Namen anderer Apps entgegen (`bereitsVergeben`), keine Zuordnung von Original-Name zu gespeichertem Modell-Namen; sie muss das anschließende Paket ergänzen (`packages/mcp/src/namen.ts#vergebeModellNamen`, `packages/mcp/src/werkzeug.ts#bereiteWerkzeugeAuf`). Die Zuordnung Modell-Name zu Werkzeug darf nur aus der gespeicherten Liste kommen.
 - **Adress-Klassen prüft die Hülle:** Private und interne Ziele sperrt allein die Ausgangs-Hülle; ohne sie (mit dem globalen `fetch`) wären sie offen (`packages/mcp/src/verbindung.ts#pruefeAdresse`).
 - **Rechenzeit:** Der schlimmste Fall beim Aufbereiten einer Liste liegt bei etwa einer Sekunde (gemessen mit 200 Werkzeugen zu je 15 KB Schema, synchron). Die Aufbereitung gehört deshalb nicht in den Web-Prozess, sondern in den Worker oder mit einer Grenze je Anfrage.
