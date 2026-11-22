@@ -209,7 +209,6 @@ PaiBot wird laufend gebaut. Den Stand zeigen die [Issues und Meilensteine](https
 **Im Bau** (noch nicht nutzbar):
 
 - Bots nutzen Werkzeuge. Das erste soll in der Doku nachschlagen. Die Grundlage in der Datenbank ist da, in der App ist davon noch nichts zu sehen ([Werkzeug-Kern](docs/entwickler/werkzeug-kern.md)).
-- EUrouter: die Routing-Regeln deines Kontos als Liste anzeigen. Heute trägst du die Namen selbst ein ([Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md)).
 - Teamchat: Es gibt erst Bausteine der Oberfläche und Regeln, noch keine Funktion in der App ([Teamchat](docs/entwickler/teamchat.md)).
 
 **Geplant:**
