@@ -14,9 +14,9 @@ Einleitung TESTDATEN-MARKE-BEREINIGUNG bleibt stehen.
 
 ## Erster Abschnitt
 
-Vorher <!-- VERSTECKT-KOMMENTAR --> nachher.
+Vorher nachher.
 
-Ein <span class="x">Tag-Text</span> und ein [Link-Text](https://example.org/ziel) mit Rest.
+Ein Tag-Text und ein [Link-Text](https://example.org/ziel) mit Rest.
 
 ![BILD-ALT](assets/bild.png)
 

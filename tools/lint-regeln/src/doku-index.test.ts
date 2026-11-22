@@ -103,46 +103,52 @@ function echteKopie(): string {
 }
 
 describe("Bereinigung (L4-1)", () => {
-  // Dazu die Klassen, die der Lader des Index ebenfalls ablehnt: Tag-Zeichen, weiches
-  // Trennzeichen, Wortverbinder, Variationswähler, Füllzeichen, Zeilen- und Absatztrenner.
-  // Gegenprobe: `istUnsichtbar` auf die alte, schmale Liste → rot.
+  // Unsichtbare Zeichen werden nicht mehr still entfernt: Der Bau bricht ab (siehe unten
+  // „Abbruch bei Verborgenem“). Dazu gehören die Klassen, die der Lader des Index ebenfalls
+  // ablehnt: Tag-Zeichen, weiches Trennzeichen, Wortverbinder, Variationswähler, Füllzeichen,
+  // Zeilen- und Absatztrenner. Gegenprobe: `istUnsichtbar` auf die alte, schmale Liste → rot.
   const unsichtbar = [
     0x202e, 0x200b, 0x200f, 0xfeff, 0x2066, 0x0007, 0xe0041, 0xe0001, 0xad, 0x2060, 0x180b, 0xfe0f,
     0xe0100, 0x3164, 0xffa0, 0x2028, 0x2029, 0x34f,
   ].map((c) => String.fromCodePoint(c));
 
-  function indexMitZeichen(): Index {
-    const dir = kopie("bereinigung");
-    const datei = path.join(dir, "docs", "funktion-a.md");
-    const roh = readFileSync(datei, "utf8");
-    writeFileSync(datei, roh.replace("Ende.", `En${unsichtbar.join("")}de.`));
-    return baueIndex({ wurzel: dir, liste: A }).index;
+  function indexAusTestseite(): Index {
+    return baueIndex({ wurzel: kopie("bereinigung"), liste: A }).index;
   }
 
-  it("entfernt Kommentare, Tags, Bilder, unsichtbare Zeichen; der Text drumherum bleibt", () => {
-    const text = JSON.stringify(indexMitZeichen());
-    expect(text).not.toContain("VERSTECKT-KOMMENTAR");
+  it("lässt Bilder samt Alt-Text, Link-Ziele und den Kopf weg; der Text drumherum bleibt", () => {
+    const text = JSON.stringify(indexAusTestseite());
     expect(text).not.toContain("PaiBot – Testseite"); // der Kopf
-    expect(text).not.toContain("<span");
     expect(text).not.toContain("BILD-ALT");
     expect(text).not.toContain("https://example.org");
-    for (const z of unsichtbar) expect(text).not.toContain(z);
-    const erster = indexMitZeichen().abschnitte.find((a) => a.anker === "erster-abschnitt");
-    expect(erster?.text).toContain("Vorher  nachher.");
+    const erster = indexAusTestseite().abschnitte.find((a) => a.anker === "erster-abschnitt");
+    expect(erster?.text).toContain("Vorher nachher.");
     expect(erster?.text).toContain("Tag-Text");
     expect(erster?.text).toContain("Link-Text mit Rest.");
-    const zweiter = indexMitZeichen().abschnitte.find((a) => a.anker === "zweiter-abschnitt");
+    const zweiter = indexAusTestseite().abschnitte.find((a) => a.anker === "zweiter-abschnitt");
     expect(zweiter?.text).toBe("Ende.");
   });
 
+  it("jede Klasse unsichtbarer Zeichen bricht den Bau ab", () => {
+    for (const z of unsichtbar) {
+      const dir = kopie("bereinigung");
+      const datei = path.join(dir, "docs", "funktion-a.md");
+      writeFileSync(datei, readFileSync(datei, "utf8").replace("Ende.", `En${z}de.`));
+      expect(
+        () => baueIndex({ wurzel: dir, liste: A }),
+        `U+${z.codePointAt(0)?.toString(16)}`,
+      ).toThrow(/Unsichtbares Zeichen/);
+    }
+  });
+
   it("Code bleibt als Text, auch mit Tag-Schreibweise und Link-Schreibweise", () => {
-    const erster = indexMitZeichen().abschnitte.find((a) => a.anker === "erster-abschnitt");
+    const erster = indexAusTestseite().abschnitte.find((a) => a.anker === "erster-abschnitt");
     expect(erster?.text).toContain("`<platzhalter>`");
     expect(erster?.text).toContain('echo "[nicht](ändern)" # <name>');
   });
 
   it("zerlegt nach ## und ###; Text unter der Überschrift erster Ebene ist ein eigener Abschnitt", () => {
-    const { abschnitte } = indexMitZeichen() as Index;
+    const { abschnitte } = indexAusTestseite() as Index;
     expect(abschnitte.map((a) => a.id)).toEqual([
       "funktion-a.md#seite-a",
       "funktion-a.md#erster-abschnitt",
@@ -161,7 +167,7 @@ describe("Bereinigung (L4-1)", () => {
   });
 
   it("jeder Abschnitt kennt die Überschriften über sich: von der Seite abwärts bis zur eigenen", () => {
-    const { abschnitte } = indexMitZeichen() as Index;
+    const { abschnitte } = indexAusTestseite() as Index;
     expect(abschnitte.map((a) => a.pfad)).toEqual([
       ["Seite A"],
       ["Seite A", "Erster Abschnitt"],
@@ -306,24 +312,102 @@ describe("Abbruch beim Bau (L4-8)", () => {
   });
 });
 
-describe("Reihenfolge der Bereinigung (#85)", () => {
-  // Gegenprobe: in `zerlege` (scripts/doku-index/hilfen.mjs) wieder erst `entferneKommentare`,
-  // dann `entferneUnsichtbares` aufrufen → der Kommentartext bleibt im Index stehen.
-  it("ein Kommentar, dessen Zeichen durch unsichtbare Zeichen getrennt sind, verschwindet ganz", async () => {
-    const { zerlege } = (await import(
-      pathToFileURL(path.join(ROOT, "scripts", "doku-index", "hilfen.mjs")).href
-    )) as { zerlege: (roh: string) => { text: string }[] };
+describe("Abbruch bei Verborgenem", () => {
+  const lauf = (dir: string) => {
+    const r = spawnSync(process.execPath, [SCRIPT, "--wurzel", dir], { encoding: "utf8" });
+    return { code: r.status, ausgabe: `${r.stdout}${r.stderr}` };
+  };
+  const seite = (inhalt: string) => projekt({ "docs/funktion-a.md": `# T\n\n## A\n\n${inhalt}\n` });
+
+  // Gegenprobe: die Abfrage auf `gelesen.funde` in `baueIndex` (scripts/doku-index.mjs) entfernen
+  // → der Bau gelingt und die Fälle werden rot.
+  it.each([
+    ["ein unsichtbares Zeichen", "En\u200bde.", /Zeile 5: Unsichtbares Zeichen \(U\+200B\)/],
+    ["ein Kommentar im Text", "Vor <!-- GEHEIM --> nach.", /Zeile 5: Rohes HTML/],
+    ["eine Link-Definition", "Text.\n\n[//]: # (GEHEIM)", /Zeile 7: Link-Definition/],
+    ["eine Zeichenreferenz", "Vor &#x41; nach.", /Zeile 5: Zeichenreferenz &#x41;/],
+    [
+      "ein Zusatz hinter der Sprache",
+      "```bash GEHEIM\nls\n```",
+      /Zeile 5: Zusatz hinter der Sprache/,
+    ],
+  ])(
+    "%s: der Bau bricht ab und nennt Seite, Zeile und den Befehl für alle Stellen",
+    (_n, inhalt, muster) => {
+      const dir = seite(inhalt);
+      expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(IndexFehler);
+      expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(muster);
+      expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(/pnpm doku:check --streng/);
+      expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(/In docs\/funktion-a\.md/);
+    },
+  );
+
+  // Die drei Formen aus der früheren Reihenfolge-Prüfung: Zeichen, die einen Kommentar auftrennen.
+  it("ein Kommentar, dessen Zeichen durch unsichtbare Zeichen getrennt sind, bricht den Bau ab", () => {
     for (const z of ["\u200b", "\u202e", "\u{e0041}", "\u00ad"]) {
       for (const roh of [
-        `# T\n\n## A\n\nVor <!${z}-- GEHEIM -->nach.\n`,
-        `# T\n\n## A\n\nVor <!-${z}- GEHEIM -${z}->nach.\n`,
-        `# T\n\n## A\n\nVor <${z}!-- GEHEIM --${z}>nach.\n`,
+        `Vor <!${z}-- GEHEIM -->nach.`,
+        `Vor <!-${z}- GEHEIM -${z}->nach.`,
+        `Vor <${z}!-- GEHEIM --${z}>nach.`,
       ]) {
-        const text = JSON.stringify(zerlege(roh));
-        expect(text).not.toContain("GEHEIM");
-        expect(text).toContain("Vor nach.");
+        expect(() => baueIndex({ wurzel: seite(roh), liste: A }), roh).toThrow(IndexFehler);
       }
     }
+  });
+
+  it("der Befehl endet mit Ausgang 1 und schreibt nichts", () => {
+    const dir = echteKopie();
+    const datei = path.join(dir, "docs", "installation.md");
+    writeFileSync(datei, `${readFileSync(datei, "utf8")}\nVor <!-- GEHEIM --> nach.\n`);
+    const { code, ausgabe } = lauf(dir);
+    expect(code).toBe(1);
+    expect(ausgabe).toMatch(
+      /Doku-Index fehlgeschlagen: In docs\/installation\.md Zeile \d+: Rohes HTML/,
+    );
+    expect(existsSync(path.join(dir, "doku-index"))).toBe(false);
+  });
+
+  it("ein Kommentar nach dem Kopf der Datei bricht ab; der Kopf allein nicht", () => {
+    const kopf = "<!--\nKopf\n-->\n\n";
+    expect(
+      baueIndex({
+        wurzel: projekt({ "docs/funktion-a.md": `${kopf}# T\n\n## A\n\nText.\n` }),
+        liste: A,
+      }).index.abschnitte.length,
+    ).toBe(1);
+    const mit = projekt({
+      "docs/funktion-a.md": `${kopf}<!-- noch einer -->\n\n# T\n\n## A\n\nText.\n`,
+    });
+    expect(() => baueIndex({ wurzel: mit, liste: A })).toThrow(/Rohes HTML/);
+  });
+
+  it("Abschnitte ohne Verborgenes aus den echten Seiten: kein Fund", () => {
+    expect(baueIndex({ wurzel: ROOT }).index.abschnitte.length).toBeGreaterThan(100);
+  });
+});
+
+describe("Schneiden: Bild, Link, Adress-Verweis, Diagramm", () => {
+  const abschnitte = (inhalt: string) =>
+    baueIndex({
+      wurzel: projekt({ "docs/funktion-a.md": `# T\n\n## A\n\n${inhalt}\n` }),
+      liste: A,
+    }).index.abschnitte;
+
+  // Gegenprobe: in `rendere` (scripts/doku-index/markdown.mjs) die Zeile für `image` entfernen
+  // → `BILD-ALT` steht im Index, und die Wort-Gegenprobe des Baus bricht ab.
+  it("ein Bild fällt als Ganzes weg, auch mit Titel in Klammern", () => {
+    const a = abschnitte("Vor ![BILD-ALT](a.png (Titel)) und [![BILD-ALT](b.png)](c.md) nach.");
+    expect(a[0]?.text).toBe("Vor  und  nach.");
+  });
+
+  it("ein Link mit Code im Text wird zum Code, ein Adress-Verweis zur Adresse", () => {
+    const a = abschnitte("Siehe [`deploy/README.md`](x.md) und <https://example.org>.");
+    expect(a[0]?.text).toBe("Siehe `deploy/README.md` und https://example.org.");
+  });
+
+  it("ein Diagramm-Block steht nicht im Index", () => {
+    const a = abschnitte("Vor.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\nNach.");
+    expect(a[0]?.text).toBe("Vor.\n\nNach.");
   });
 });
 

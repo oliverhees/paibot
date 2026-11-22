@@ -9,7 +9,15 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -177,6 +185,9 @@ describe("Build-Kontext nach .dockerignore ergibt den Index am Laufzeit-Ort (ohn
       mkdirSync(path.dirname(path.join(kontext, datei)), { recursive: true });
       cpSync(path.join(ROOT, datei), path.join(kontext, datei));
     }
+    // Im Image liegen die Pakete der Wurzel nach `pnpm install` in node_modules; hier zeigt ein
+    // Link auf die schon installierten (nicht kopiert, nichts im Arbeitsbaum geschrieben).
+    symlinkSync(path.join(ROOT, "node_modules"), path.join(kontext, "node_modules"), "dir");
     // Wie im Dockerfile: `pnpm doku:index` ruft genau diesen Befehl auf.
     const skript = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")).scripts[
       "doku:index"
