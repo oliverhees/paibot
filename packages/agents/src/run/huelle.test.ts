@@ -15,6 +15,7 @@ import type { Decision } from "@paibot/shared/tor";
 import { toolEnvelopeSchema } from "@paibot/shared/werkzeug";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { cleanJson } from "./bereinigen";
 import {
   codeEnvelope,
   contentChars,
@@ -200,5 +201,51 @@ describe("Kürzen ohne Wirkung auf den Prototyp", () => {
     expect(ergebnis?.gekuerzt).toBe(true);
     expect(Object.hasOwn(inhalt, "__proto__")).toBe(true);
     expect(Object.getPrototypeOf(inhalt)).toBe(Object.prototype);
+  });
+});
+
+describe("Eigene Schlüssel constructor und prototype", () => {
+  /** Alle Objekte im Wert, auch verschachtelt. */
+  function objekte(wert: unknown, out: object[] = []): object[] {
+    if (Array.isArray(wert)) for (const w of wert) objekte(w, out);
+    else if (wert !== null && typeof wert === "object") {
+      out.push(wert);
+      for (const w of Object.values(wert)) objekte(w, out);
+    }
+    return out;
+  }
+
+  // Gegenprobe: in `cleanJson` oder `fitBounds` Prototypen ändern (z. B. `Object.setPrototypeOf(out, value[key])`) → rot.
+  it("laufen durch Bereinigen, Kürzen und Hülle: jedes erzeugte Objekt behält Object.prototype, Object.prototype bleibt unverändert", () => {
+    const vorher = Object.getOwnPropertyNames(Object.prototype).sort();
+    const roh = JSON.parse(
+      `{"constructor":{"prototype":{"x":"${"a".repeat(100)}"}},"prototype":{"constructor":"c"},"liste":[{"constructor":1,"prototype":2},"y"]}`,
+    ) as JsonValue;
+    const sauber = cleanJson(roh);
+    const gekuerzt = truncateContent(sauber, 120);
+    expect(gekuerzt?.gekuerzt).toBe(true);
+    const huelle = dataEnvelope(
+      "eingebaut/test_lesen" as never,
+      gekuerzt?.inhalt as JsonValue,
+      true,
+    );
+    for (const wert of [sauber, gekuerzt?.inhalt, huelle]) {
+      const alle = objekte(wert);
+      expect(alle.length).toBeGreaterThan(3);
+      for (const o of alle) {
+        const proto = Object.getPrototypeOf(o);
+        expect(proto === Object.prototype || proto === Array.prototype || proto === null).toBe(
+          true,
+        );
+      }
+    }
+    // Die Schlüssel sind eigene Eigenschaften und bleiben es.
+    expect(Object.hasOwn(sauber as object, "constructor")).toBe(true);
+    expect(Object.hasOwn(sauber as object, "prototype")).toBe(true);
+    expect(Object.getPrototypeOf(sauber)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(vorher);
+    expect(({} as Record<string, unknown>).x).toBeUndefined();
+    expect(({} as Record<string, unknown>).prototype).toBeUndefined();
+    expect(Object.hasOwn(Object.prototype, "x")).toBe(false);
   });
 });
