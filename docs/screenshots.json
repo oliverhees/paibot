@@ -4406,6 +4406,65 @@
       "beschreibung": "Seite „Apps“ auf dem Handy, eine App aufgeklappt"
     },
     {
+      "name": "apps-geaendert",
+      "pfad": "/apps",
+      "zustand": "mit-apps",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 1000,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Werkzeuge ansehen: Notizen"
+          }
+        },
+        {
+          "warteAufText": "Zugriff der Bots"
+        },
+        {
+          "klick": "article[aria-label='notizen__lesen'] [data-ausloeser]"
+        },
+        {
+          "warteAuf": "article[aria-label='notizen__lesen'] form"
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Liest nur",
+            "genau": false
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Bestätigen"
+          }
+        },
+        {
+          "warteAuf": "article[aria-label='notizen__lesen'][data-angeboten='ja']"
+        },
+        {
+          "appAendern": "notizen__lesen"
+        },
+        {
+          "gehe": "/apps"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Werkzeuge ansehen: Notizen"
+          }
+        },
+        {
+          "warteAuf": "article[aria-label='notizen__lesen'][data-status='geaendert']"
+        }
+      ],
+      "ausschnitt": "article[aria-label='notizen__lesen']",
+      "beschreibung": "Ein bestätigtes Werkzeug, das die App geändert hat: gesperrt, „Das hat sich geändert“ mit Vorher und Jetzt (die Beispiel-App ändert das Werkzeug in dieser Aufnahme; sie steht deshalb vor „apps-neu-verbinden“)"
+    },
+    {
       "name": "apps-neu-verbinden",
       "pfad": "/apps",
       "zustand": "mit-apps",

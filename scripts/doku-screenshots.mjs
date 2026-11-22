@@ -48,6 +48,7 @@
 //                 { "taste": "Enter" }   { "warteAuf": "<CSS>" }   { "warteAufText": "…" }
 //                 { "gehe": "/pfad" }    { "ablauf": "<Name aus „ablaeufe“>" }
 //                 { "zeige": "<CSS>" }  (in den sichtbaren Bereich scrollen)
+//                 { "appAendern": "notizen__suche" }  (die Beispiel-App ändert ihr Werkzeug: Stand „geändert“)
 //                 { "anbieter": { "reply": "…", "chunkDelayMs": 200 } }  (Test-Anbieter, nur diese Aufnahme)
 //                   Mit "script": { "steps": [ … ] } bekommt der Test-Anbieter einen festen Ablauf, z. B. einen
 //                   Werkzeug-Wunsch und danach die Antwort (Form wie `FakeScript` in tools/fake-provider).
@@ -318,6 +319,15 @@ async function runStep(page, step, baseUrl) {
     await locate(page, step.zeige).first().scrollIntoViewIfNeeded({ timeout });
   } else if (step.anbieter) {
     await steuereAnbieter(lauf, step.anbieter);
+  } else if (step.appAendern) {
+    if (!lauf.steuerung)
+      throw new Error("Die Lauf-Datei kennt keine Steuerung (pnpm doku:app neu starten).");
+    const antwort = await fetch(
+      `${lauf.steuerung.url}/beispiel-werkzeug-aendern/${encodeURIComponent(step.appAendern)}`,
+      { method: "POST", headers: { authorization: `Bearer ${lauf.steuerung.token}` } },
+    );
+    if (!antwort.ok)
+      throw new Error(`Beispiel-Werkzeug ändern: Steuerung antwortet ${antwort.status}.`);
   } else if (step.gehe) {
     await page.goto(`${baseUrl}${step.gehe}`, { waitUntil: "load" });
     await waitUntilSettled(page);

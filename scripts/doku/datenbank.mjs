@@ -348,6 +348,37 @@ export async function legeBeispielAppsAn(root, appAdresse) {
 }
 
 /**
+ * Lässt einen Server sein Werkzeug ändern: hängt wie der Abgleich der App eine Fassung mit anderer
+ * Beschreibung und anderem Abdruck an (Stand „geändert“). Nur für das Bild „Das hat sich geändert“;
+ * ein Werkzeug, das der Besitzer vorher bestätigt hat, wird dadurch gesperrt, bis er neu bestätigt.
+ * Zeigt die Datenbank nur Beispiel-Daten (Notizen/suche), nie etwas Echtes.
+ */
+export async function aendereBeispielWerkzeug(root, appAdresse, modellName) {
+  const postgres = postgresTreiber(root);
+  const sql = postgres(appAdresse, { max: 1, onnotice: () => undefined, connect_timeout: 10 });
+  try {
+    return await sql.begin(async (tx) => {
+      const [aktuell] = await tx`
+        select * from app_tools where model_name = ${modellName} order by version desc limit 1`;
+      if (aktuell === undefined) throw new Error(`Beispiel-Werkzeug „${modellName}“ fehlt.`);
+      const beschreibung = `${aktuell.description} Ab sofort auch in geteilten Ordnern.`;
+      const abdruck = `sha256:${createHash("sha256").update(`${aktuell.tool_key}/${beschreibung}`).digest("hex")}`;
+      await tx`
+        insert into app_tools (tool_id, version, app_id, original_name, model_name, tool_key,
+                               tool_digest, description, input_schema, hint_read_only,
+                               hint_destructive, status, tool_class)
+        values (${aktuell.tool_id}, ${aktuell.version + 1}, ${aktuell.app_id}, ${aktuell.original_name},
+                ${aktuell.model_name}, ${aktuell.tool_key}, ${abdruck}, ${beschreibung},
+                ${tx.json(aktuell.input_schema)}, ${aktuell.hint_read_only},
+                ${aktuell.hint_destructive}, 'geaendert', 'schreiben')`;
+      return { geaendert: 1 };
+    });
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
+
+/**
  * Eine Beispiel-App mit Texten, die ein Angreifer schreiben könnte (Bild-Adresse, Link, Markdown,
  * HTML). Nur für die Prüfung im Browser (`pnpm apps:browser`), nie in einem Bild der Doku.
  */

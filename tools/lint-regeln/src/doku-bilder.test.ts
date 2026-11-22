@@ -377,6 +377,18 @@ describe("Beispiel-Umgebung: Datenschleuse, Test-Anbieter, verdeckte Stellen", (
   });
 
   // Gegenprobe: die Prüfung der Art „ablauf“ in `scripts/doku/liste.mjs` entfernen → zweiter Teil rot.
+  // Gegenprobe: „appAendern“ aus der Liste der Aktionen nehmen → rot.
+  it("Schritt „appAendern“: Name eines Beispiel-Werkzeugs, sonst ein Fehler", () => {
+    const [a] = pruefe([{ name: "a", pfad: "/", vorher: [{ appAendern: "notizen__lesen" }] }]);
+    expect(a?.vorher).toEqual([{ appAendern: "notizen__lesen" }]);
+    for (const schlecht of ["", "../x", "A B", 5, { x: 1 }]) {
+      expect(
+        fehlerText(() => pruefe([{ name: "x", pfad: "/", vorher: [{ appAendern: schlecht }] }])),
+        String(schlecht),
+      ).toMatch(/appAendern/);
+    }
+  });
+
   it("„anbieter“ nimmt einen Ablauf („script“) mit Schritten an und lehnt andere Formen ab", () => {
     const ablauf = { steps: [{ toolCalls: [{ name: "x", arguments: {} }] }, { text: "Fertig." }] };
     const [a] = pruefe([{ name: "a", pfad: "/", vorher: [{ anbieter: { script: ablauf } }] }]);

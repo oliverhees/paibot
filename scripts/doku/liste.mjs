@@ -26,6 +26,7 @@ const AKTIONEN = [
   "ablauf",
   "zeige",
   "anbieter",
+  "appAendern",
 ];
 const ERLAUBTE_ZUSATZFELDER = { tippe: ["text"] };
 
@@ -139,6 +140,12 @@ export function pruefeSchritt(wo, schritt) {
       return { zeige: pruefeZiel(wo, wert, "css") };
     case "anbieter":
       return { anbieter: pruefeAnbieter(wo, wert) };
+    case "appAendern":
+      if (!istText(wert) || !/^[a-z0-9_-]+$/.test(wert))
+        fehler(
+          `${wo}: „appAendern“ braucht den Namen eines Beispiel-Werkzeugs (a-z, 0-9, _ und -).`,
+        );
+      return { appAendern: wert };
     case "warteAuf":
     case "warteAufText":
     case "taste":

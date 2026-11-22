@@ -39,6 +39,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  aendereBeispielWerkzeug,
   legeBeispielAppsAn,
   legeDatenbankAn,
   legeFeindlicheAppAn,
@@ -315,7 +316,7 @@ async function warteAufAntwort(url, sekunden = 60) {
  * Kleine Steuerung für `pnpm doku:screenshots`: `POST /datenschleuse` mit `{ "zustand": … }` und
  * dem Token als Bearer. Antwortet erst, wenn der Worker den Zustand gemeldet hat.
  */
-function starteSteuerung(token, setzeSchleuse, legeAppsAn, legeFeindlicheAppAn) {
+function starteSteuerung(token, setzeSchleuse, legeAppsAn, legeFeindlicheAppAn, aendereWerkzeug) {
   let warteschlange = Promise.resolve();
   const server = createHttpServer((anfrage, antwort) => {
     const ende = (status, daten) => {
@@ -326,6 +327,16 @@ function starteSteuerung(token, setzeSchleuse, legeAppsAn, legeFeindlicheAppAn) 
     if (anfrage.method === "POST" && anfrage.url === "/feindliche-app") {
       warteschlange = warteschlange
         .then(() => legeFeindlicheAppAn())
+        .then(
+          (ergebnis) => ende(200, { ok: true, ...ergebnis }),
+          (error) => ende(500, { ok: false, fehler: error.message }),
+        );
+      return undefined;
+    }
+    if (anfrage.method === "POST" && anfrage.url?.startsWith("/beispiel-werkzeug-aendern/")) {
+      const name = decodeURIComponent(anfrage.url.slice("/beispiel-werkzeug-aendern/".length));
+      warteschlange = warteschlange
+        .then(() => aendereWerkzeug(name))
         .then(
           (ergebnis) => ende(200, { ok: true, ...ergebnis }),
           (error) => ende(500, { ok: false, fehler: error.message }),
@@ -595,6 +606,7 @@ async function main() {
     },
     () => legeBeispielAppsAn(ROOT, db.app),
     () => legeFeindlicheAppAn(ROOT, db.app),
+    (name) => aendereBeispielWerkzeug(ROOT, db.app, name),
   );
   aufgaben.push(() => steuerDienst.stop());
 
