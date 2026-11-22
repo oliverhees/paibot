@@ -139,7 +139,10 @@ describe("Verarbeiter nehmen nur Geprüftes an und werfen nie", () => {
     ],
     ["Kreis", () => ({ name: "x", inputSchema: { type: "object" }, _meta: kreis() })],
   ])("rohes Werkzeug mit %s wird gesperrt und bekommt trotzdem einen Abdruck", (_name, bau) => {
-    const [werkzeug] = bereiteWerkzeugeAuf([bau()], { appKurzname: "app" });
+    const [werkzeug] = bereiteWerkzeugeAuf([bau()], {
+      appKurzname: "app",
+      bekannteNamen: new Map(),
+    });
     expect(werkzeug?.bestaetigbar).toBe(false);
     expect(werkzeug?.problem).toBe("werkzeug_zu_gross");
     expect(werkzeug?.abdruck).toMatch(/^sha256:[0-9a-f]{64}$/);

@@ -41,17 +41,35 @@ export interface ModellNameEintrag {
 }
 
 /**
- * Vergibt die Modell-Namen für alle Werkzeuge einer App. Die Zuteilung hängt nur von den Namen ab,
- * nicht von der Reihenfolge der Liste: Es wird nach Original-Name sortiert, bei Gleichheit nach
- * Zähler (`_2`, `_3` …). `bereitsVergeben` sind die Namen anderer Apps der Installation.
+ * Vergibt die Modell-Namen für alle Werkzeuge einer App. `bekannt` ist die gespeicherte Zuordnung
+ * Original-Name → Modell-Name der App und **Pflicht** (eine leere Zuordnung beim ersten Abruf):
+ * Namen darin bleiben unverändert, und **alle** zählen als vergeben, auch wenn ihr Werkzeug in der
+ * Liste fehlt. Ein neues Werkzeug des Servers verdrängt so nie ein bestätigtes von seinem Namen,
+ * auch nicht, nachdem dieses vorübergehend verschwunden war. Nur die neuen Werkzeuge werden
+ * vergeben, sortiert nach Original-Name, bei Gleichheit mit Zähler (`_2`, `_3` …); ihre Zuteilung
+ * hängt damit nicht von der Reihenfolge der Liste ab. `bereitsVergeben` sind die Namen anderer Apps
+ * der Installation.
+ *
+ * Eine gespeicherte Zuordnung, die nicht stimmt, wird abgewiesen und nie still geändert (`RangeError`):
+ * ein Name, der nicht zu dieser App gehört (`<kurzname>__…`) oder nicht zum Namensmuster passt, ein
+ * Name, der zwei Werkzeugen gehört, und ein Name, der schon in `bereitsVergeben` steht. Das sind
+ * Fehler der Daten (der eindeutige Index in der Datenbank verhindert sie); ein bestätigtes
+ * Werkzeug wird deshalb nicht umbenannt. Fehlt `bekannt` (`TypeError`), gibt es keine Vergabe.
  */
 export function vergebeModellNamen(
   appKurzname: string,
   originalNamen: readonly string[],
-  bereitsVergeben: ReadonlySet<string> = new Set(),
+  bereitsVergeben: ReadonlySet<string>,
+  bekannt: ReadonlyMap<string, string>,
 ): ModellNameEintrag[] {
   if (!APP_KURZNAME_MUSTER.test(appKurzname)) {
     throw new RangeError("Kurzname der App ist ungültig");
+  }
+  if (typeof bekannt?.get !== "function" || typeof bekannt.values !== "function") {
+    throw new TypeError("Die gespeicherte Zuordnung der Namen fehlt");
+  }
+  if (typeof bereitsVergeben?.has !== "function") {
+    throw new TypeError("Die Namen anderer Apps fehlen");
   }
   const vorsatz = `${appKurzname}${NAMEN_TRENNER}`;
   if (vorsatz.length + MIN_TEIL > MAX_LAENGE) {
@@ -59,9 +77,27 @@ export function vergebeModellNamen(
   }
   const platz = MAX_LAENGE - vorsatz.length;
   const vergeben = new Set(bereitsVergeben);
+  // Erst alle bekannten Namen reservieren, auch die von Werkzeugen, die in der Liste fehlen.
+  const gespeichert = new Set<string>();
+  for (const name of bekannt.values()) {
+    if (!name.startsWith(vorsatz) || !MODELL_NAME_MUSTER.test(name)) {
+      throw new RangeError("Ein gespeicherter Name gehört nicht zu dieser App");
+    }
+    if (gespeichert.has(name)) throw new RangeError("Ein gespeicherter Name ist doppelt vergeben");
+    if (bereitsVergeben.has(name)) {
+      throw new RangeError("Ein gespeicherter Name gehört schon einer anderen App");
+    }
+    gespeichert.add(name);
+    vergeben.add(name);
+  }
   const eindeutigeOriginale = [...new Set(originalNamen)].sort();
   const zuordnung = new Map<string, string>();
   for (const original of eindeutigeOriginale) {
+    const name = bekannt.get(original);
+    if (name !== undefined) zuordnung.set(original, name);
+  }
+  for (const original of eindeutigeOriginale) {
+    if (zuordnung.has(original)) continue;
     const basis = bereinigeNamensteil(original).slice(0, platz);
     let kandidat = `${vorsatz}${basis}`;
     for (let zaehler = 2; vergeben.has(kandidat); zaehler++) {

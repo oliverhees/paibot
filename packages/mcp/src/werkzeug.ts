@@ -69,6 +69,12 @@ export interface WerkzeugListeOptionen {
   grenzen?: Partial<McpGrenzen>;
   /** Modell-Namen, die in der Installation schon vergeben sind (andere Apps). */
   bereitsVergeben?: ReadonlySet<string>;
+  /**
+   * Die gespeicherte Zuordnung Original-Name → Modell-Name dieser App (aus der Datenbank). **Pflicht**:
+   * beim ersten Abruf eine leere Zuordnung. Die Namen darin bleiben unverändert und gelten als
+   * vergeben, auch wenn ihr Werkzeug fehlt; nur neue Werkzeuge bekommen einen frischen Namen.
+   */
+  bekannteNamen: ReadonlyMap<string, string>;
 }
 
 const MAX_NAME_ROH = 256;
@@ -216,9 +222,12 @@ export function bereiteWerkzeugeAuf(
   }
   const zuBenennen = [...gesehen];
   const vergeben = new Map(
-    vergebeModellNamen(optionen.appKurzname, zuBenennen, optionen.bereitsVergeben).map(
-      (eintrag) => [eintrag.original, eintrag.modellName],
-    ),
+    vergebeModellNamen(
+      optionen.appKurzname,
+      zuBenennen,
+      optionen.bereitsVergeben ?? new Set(),
+      optionen.bekannteNamen,
+    ).map((eintrag) => [eintrag.original, eintrag.modellName]),
   );
   // Der zweite Eintrag mit gleichem Namen teilt sich den Namen nicht: Er bekommt keinen und ist gesperrt.
   const vergebenFuer = new Set<string>();
