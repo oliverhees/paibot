@@ -34,6 +34,7 @@ import {
   type VerbindungDaten,
   VerbindungForm,
   type WerkzeugArt,
+  WerkzeugKarte,
   WerkzeugListe,
   type WerkzeugListeEintrag,
   ZugriffUmschalter,
@@ -238,6 +239,26 @@ function Fassungswechsel() {
   );
 }
 
+function KarteEinzeln() {
+  const [fassung, setFassung] = useState("aaaaaaaaaaaaaaaa");
+  return (
+    <Seite titel="Einzelne Karte – neue Fassung bei offenem Einstufen">
+      <div className="stapel">
+        <button type="button" id="wechsel" onClick={() => setFassung("bbbbbbbbbbbbbbbb")}>
+          Fassung wechseln
+        </button>
+        <WerkzeugKarte
+          name="notiz_suchen"
+          beschreibung={fassung === "aaaaaaaaaaaaaaaa" ? "Erste Fassung." : "Zweite Fassung."}
+          status="neu"
+          fassung={fassung}
+          onEinstufen={(art, f) => protokolliere(`eingestuft: ${art} @${f ?? "-"}`)}
+        />
+      </div>
+    </Seite>
+  );
+}
+
 function Fehler() {
   return (
     <Seite titel="Apps – Fehler">
@@ -334,6 +355,7 @@ const ANSICHTEN: Record<string, () => React.ReactNode> = {
   verbunden: () => <Verbunden />,
   gesperrt: () => <Gesperrt />,
   fassungswechsel: () => <Fassungswechsel />,
+  karteeinzeln: () => <KarteEinzeln />,
   fehler: () => <Fehler />,
   notaus: () => <NotAus />,
   lang: () => <Lang />,

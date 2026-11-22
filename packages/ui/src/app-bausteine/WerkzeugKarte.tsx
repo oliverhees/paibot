@@ -137,6 +137,9 @@ export function WerkzeugKarte({
   const wirksam = wirksameArt(status, art);
   const angeboten = wirdAngeboten(status, art);
   const [offen, setOffen] = useState(false);
+  // Die Fassung, die der Besitzer beim Öffnen des Felds sah: Nur sie wird bestätigt, nie eine, die
+  // erst danach in die Eigenschaften kam.
+  const [gesehen, setGesehen] = useState<string | undefined>();
   const [wahl, setWahl] = useState<WerkzeugArt>("schreibt");
   const [alleSchema, setAlleSchema] = useState(false);
   const gruppe = useId();
@@ -151,8 +154,15 @@ export function WerkzeugKarte({
   // Beim Öffnen steht „schreibt“ vor; eine bestehende Einstufung bleibt Ausgangspunkt.
   const oeffnen = () => {
     setWahl(status === "bestaetigt" && art !== undefined ? art : "schreibt");
+    setGesehen(fassung);
     setOffen(true);
   };
+
+  // Kommt eine neue Fassung, während das Feld offen ist, schließt es sich: Der Besitzer sieht erst
+  // die neue Fassung, dann stuft er sie ein.
+  useEffect(() => {
+    if (offen && gesehen !== fassung) setOffen(false);
+  }, [offen, gesehen, fassung]);
 
   useEffect(() => {
     if (offen) {
@@ -166,7 +176,7 @@ export function WerkzeugKarte({
   const absenden = (e: FormEvent) => {
     e.preventDefault();
     if (wahl === "liest" && !schemaPruefbar) return;
-    onEinstufen?.(wahl, fassung);
+    onEinstufen?.(wahl, gesehen);
     setOffen(false);
   };
 

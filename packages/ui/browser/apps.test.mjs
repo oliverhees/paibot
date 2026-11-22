@@ -210,6 +210,23 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
     expect(await protokoll()).toBe("eingestuft: wechsel = liest @bbbbbbbbbbbbbbbb");
   });
 
+  // Gegenprobe: das Schließen bei neuer Fassung (der Effekt mit `gesehen !== fassung`) weglassen → rot.
+  it("einzelne Karte: eine neue Fassung bei offenem Einstufen wird nie als die gesehene bestätigt", async () => {
+    await oeffne("karteeinzeln");
+    const k = karte("notiz_suchen");
+    await k.locator("[data-ausloeser]").click();
+    await k.getByRole("radio", { name: "Liest nur", exact: false }).click();
+    await page.locator("#wechsel").click();
+    // Das Feld schließt sich; nichts wurde bestätigt.
+    await k.locator("form").waitFor({ state: "detached" });
+    expect(await protokoll()).toBe("");
+    // Neu geöffnet: jetzt die neue Fassung.
+    await k.locator("[data-ausloeser]").click();
+    await k.getByRole("radio", { name: "Liest nur", exact: false }).click();
+    await k.getByRole("button", { name: "Bestätigen" }).click();
+    expect(await protokoll()).toBe("eingestuft: liest @bbbbbbbbbbbbbbbb");
+  });
+
   it("Standard ist „schreibt“: neue Werkzeuge werden nicht angeboten, „liest“ ist nie vorgewählt", async () => {
     await oeffne("verbunden");
     const k = karte("aufgabe_loeschen");
