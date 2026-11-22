@@ -180,13 +180,14 @@ describe("MCP-Schicht: keine Umgehung der Sperren (muss rot sein)", () => {
 describe("MCP-Schicht: der Test-Schalter für Adressen steht nirgends im Betriebs-Code", () => {
   /**
    * Der Schalter ist ein eigener Parameter der Funktionen `…Intern` in `packages/mcp/src/verbindung.ts`,
-   * nie ein Feld der Optionen. Ihre Namen dürfen nur in der Definition, in Tests und in den Proben der
-   * Schicht vorkommen, in jeder Datei, egal wie sie die Schicht erreicht. Das ist eine Suche nach
-   * Namen: Sie hält Eingaben, Spreads und `Proxy` ab (die Funktionen lesen den Schalter nie aus den
-   * Optionen) und meldet jeden Code im Repo, der die internen Funktionen nennt oder die Datei
-   * `verbindung.ts` über einen relativen Pfad einbindet. Wer den Schalter mit eigenem Code aus
-   * einem Betriebs-Paket erreichen will, muss die Datei lesen und die Prüfung hier ändern; die
-   * Ausgangs-Hülle bleibt der eigentliche Schutz.
+   * nie ein Feld der Optionen. Ihre Namen sollen nur in der Definition, in Tests und in den Proben
+   * der Schicht vorkommen. Das ist eine Suche nach Namen und Pfaden, kein Schutz gegen einen
+   * Entwickler, der sie umgehen will: Sie hält Eingaben, Spreads und `Proxy` ab (die Funktionen
+   * lesen den Schalter nie aus den Optionen) und meldet Code, der die internen Funktionen nennt oder
+   * die Datei `verbindung.ts` über einen relativen oder absoluten Pfad in einem Import,
+   * `import()` oder `require` einbindet (auch mit Backticks oder `/./` im Pfad). Ein Pfad, der erst
+   * zur Laufzeit zusammengesetzt wird, bleibt unentdeckt. Der eigentliche Schutz ist die
+   * Ausgangs-Hülle, die private und interne Ziele sperrt.
    */
   const ERLAUBT = (datei: string) =>
     datei === "packages/mcp/src/verbindung.ts" ||
@@ -197,9 +198,9 @@ describe("MCP-Schicht: der Test-Schalter für Adressen steht nirgends im Betrieb
   const SCHALTER =
     /\b(?:holeWerkzeugeIntern|rufeWerkzeugAufIntern|oeffneVerbindungIntern|pruefeAdresseMitSchalter|InterneOptionen)\b/;
 
-  /** Ein relativer Import oder `require`/`import()` in das Quellverzeichnis dieses Pakets von außerhalb. */
+  /** Ein Import, `require` oder `import()` mit einem Pfad in das Quellverzeichnis dieses Pakets (relativ oder absolut). */
   const RELATIV_IN_PAKET =
-    /(?:from\s*|import\s*\(\s*|require\s*\(\s*|import\s+)["'](?:\.{1,2}\/)+[^"']*(?:\/mcp\/src\/|\/mcp\/src["'])[^"']*["']/;
+    /(?:from\s*|import\s*\(\s*|require\s*\(\s*|import\s+)["'`](?:[^"'`]*\/)?mcp\/src(?:\/[^"'`]*)?["'`]/;
 
   /** Gibt die Dateien zurück, die den Schalter außerhalb des Erlaubten nennen. */
   function verstoesse(dateien: { datei: string; text: string }[]): string[] {
@@ -247,6 +248,18 @@ describe("MCP-Schicht: der Test-Schalter für Adressen steht nirgends im Betrieb
           text: 'const m = await import("../../../packages/mcp/src/verbindung");',
         },
         {
+          datei: "apps/worker/src/b.ts",
+          text: "const m = await import(`../../../packages/mcp/src/verbindung`);",
+        },
+        {
+          datei: "apps/worker/src/p.ts",
+          text: 'import { oeffneVerbindung } from "../../../packages/./mcp/src/verbindung";',
+        },
+        {
+          datei: "apps/worker/src/a.ts",
+          text: 'import { oeffneVerbindung } from "/home/x/paibot/packages/mcp/src/verbindung";',
+        },
+        {
           datei: "packages/mcp/src/index.ts",
           text: "export { InterneOptionen } from './verbindung'",
         },
@@ -259,6 +272,9 @@ describe("MCP-Schicht: der Test-Schalter für Adressen steht nirgends im Betrieb
       "apps/worker/src/y.ts",
       "apps/worker/src/z.ts",
       "apps/web/src/w.ts",
+      "apps/worker/src/b.ts",
+      "apps/worker/src/p.ts",
+      "apps/worker/src/a.ts",
       "packages/mcp/src/index.ts",
     ]);
   });

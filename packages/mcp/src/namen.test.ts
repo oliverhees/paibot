@@ -9,7 +9,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { bereinigeNamensteil, MODELL_NAME_MUSTER, vergebeModellNamen } from "./namen";
+import {
+  bereinigeNamensteil,
+  MODELL_NAME_MUSTER,
+  pruefeNamenZuordnung,
+  vergebeModellNamen,
+} from "./namen";
 
 /** Erste Vergabe einer App: noch keine gespeicherte Zuordnung. */
 const neu = (app: string, namen: string[], vergeben: ReadonlySet<string> = new Set()) =>
@@ -120,5 +125,49 @@ describe("Bekannte Namen sind verbindlich", () => {
     expect(() => vergebeModellNamen("app", ["x"], new Set(), undefined as never)).toThrow(
       TypeError,
     );
+  });
+});
+
+// Gegenprobe: eine der Prüfungen weglassen → der zugehörige Fall wird grün gemeldet.
+describe("pruefeNamenZuordnung", () => {
+  const ok = (bekannt: unknown, vergeben: unknown = new Set<string>(), kurz = "app") =>
+    pruefeNamenZuordnung(kurz, bekannt as never, vergeben as never);
+
+  it("nimmt eine stimmige Zuordnung an (auch leer)", () => {
+    expect(ok(new Map())).toBe(true);
+    expect(ok(new Map([["a", "app__a"]]), new Set(["andere__a"]))).toBe(true);
+  });
+
+  it("weist ab, was keine Zuordnung ist oder falsche Werte trägt", () => {
+    expect(ok(undefined)).toBe(false);
+    expect(ok({ a: "app__a" })).toBe(false);
+    expect(ok(new Map([["a", null]]))).toBe(false);
+    expect(ok(new Map([["a", 5]]))).toBe(false);
+    expect(ok(new Map([["a", ""]]))).toBe(false);
+    expect(ok(new Map([[1, "app__a"]]))).toBe(false);
+    expect(ok(new Map([["a", "fremd__a"]]))).toBe(false);
+    expect(ok(new Map([["a", "app__ä"]]))).toBe(false);
+    expect(ok(new Map([["a", `app__${"x".repeat(80)}`]]))).toBe(false);
+  });
+
+  it("weist doppelte Namen und Namen anderer Apps ab", () => {
+    expect(
+      ok(
+        new Map([
+          ["a", "app__x"],
+          ["b", "app__x"],
+        ]),
+      ),
+    ).toBe(false);
+    expect(ok(new Map([["a", "app__x"]]), new Set(["app__x"]))).toBe(false);
+  });
+
+  it("weist falsche Namen anderer Apps, einen ungültigen Kurznamen und zu große Mengen ab", () => {
+    expect(ok(new Map(), undefined)).toBe(true);
+    expect(ok(new Map(), [])).toBe(false);
+    expect(ok(new Map(), new Set([5]))).toBe(false);
+    expect(ok(new Map(), new Set(), "Gross")).toBe(false);
+    const viele = new Map(Array.from({ length: 2001 }, (_, i) => [`t${i}`, `app__t${i}`]));
+    expect(ok(viele)).toBe(false);
   });
 });

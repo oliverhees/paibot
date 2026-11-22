@@ -240,6 +240,25 @@ export function bereiteWerkzeugeAuf(
   });
 }
 
+/**
+ * Die Zuordnung Original-Name → Modell-Name, die der Aufrufer speichern soll und beim nächsten
+ * Abruf als `bekannteNamen` zurückgibt. Nur Werkzeuge, die bestätigbar sind und einen Namen
+ * bekommen haben; nie ein leerer Name (doppelte, zu lange oder leere Namen vom Server fehlen). Die
+ * Zuordnung nie aus dem Ergebnis von `bereiteWerkzeugeAuf` selbst bauen: Dort steht bei diesen
+ * Werkzeugen ein leerer `modellName`, und ein gespeicherter leerer Name lässt jeden späteren
+ * Abruf scheitern.
+ */
+export function namenZumSpeichern(werkzeuge: readonly McpWerkzeugBereinigt[]): Map<string, string> {
+  const zuordnung = new Map<string, string>();
+  for (const werkzeug of werkzeuge) {
+    if (!werkzeug.bestaetigbar || werkzeug.modellName === "" || werkzeug.originalName === "") {
+      continue;
+    }
+    zuordnung.set(werkzeug.originalName, werkzeug.modellName);
+  }
+  return zuordnung;
+}
+
 /** Das, was ans Modell geht: Name, Beschreibung, Schema. Nur für bestätigbare Werkzeuge. */
 export interface McpModellDefinition {
   name: string;
