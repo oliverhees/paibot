@@ -445,6 +445,9 @@ describe("Avatar im Chat", () => {
 
   it("die Seite gibt das Kennzeichen „fremde Quelle“ an die Markdown-Anzeige weiter", () => {
     const quelle = readFileSync(new URL("./ChatSeite.tsx", import.meta.url), "utf8");
-    expect(quelle).toContain("fremd={n.fremd === true}");
+    // Auch solange die Antwort streamt oder das Kennzeichen noch aussteht, sind Links nur Text.
+    expect(quelle).toContain(
+      'fremd={n.fremd === true || n.zustand === "streamt" || n.herkunftOffen === true}',
+    );
   });
 });

@@ -682,16 +682,16 @@ export function ereignisAnwenden(
       };
       const servedBy = e.data.servedBy;
       const lauf = runId ?? nachricht?.runId;
-      // Hatte der Lauf Schritte, ist die Herkunft der Antwort (Modell oder PaiBot) erst aus dem
-      // Lesestand zu bestätigen: Das Ereignis „angelegt“ nennt sie nicht.
-      const mitSchritten = lauf !== undefined && weiter.schritte.some((x) => x.runId === lauf);
+      // Herkunft der Antwort (Modell oder PaiBot) und das Kennzeichen „fremder Inhalt“ stehen erst
+      // im Lesestand: Das Ereignis „fertig“ nennt sie nicht. Deshalb fragt die Ansicht für jeden
+      // fertigen Lauf nach (auch ohne Schritte), und bis dahin zeigt sie Links nur als Text.
       const eintraege = ersetze(weiter.eintraege, e.data.messageId, (n) => ({
         ...n,
         zustand: "fertig",
         route: e.data.route,
         modell,
         ...(servedBy === undefined ? {} : { servedBy }),
-        ...(mitSchritten && n.herkunft === undefined ? { herkunftOffen: true as const } : {}),
+        ...(lauf !== undefined && n.herkunft === undefined ? { herkunftOffen: true as const } : {}),
       }));
       const ohneVorlaeufig = lauf === undefined ? weiter : antwortSchrittEntfernen(weiter, lauf);
       const mit = { ...ohneVorlaeufig, eintraege, fertigeAntwort: e.data.messageId };

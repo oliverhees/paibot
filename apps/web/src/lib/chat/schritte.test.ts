@@ -390,7 +390,7 @@ describe("feste Antworten", () => {
     expect(modellAntwort).not.toHaveProperty("herkunftOffen");
   });
 
-  it("ein Lauf ohne Schritte fragt nie nach", () => {
+  it("auch ein Lauf ohne Schritte fragt einmal nach: Herkunft und Kennzeichen „fremder Inhalt“ stehen erst im Lesestand", () => {
     const ev = folge();
     const runId = newId("run");
     const antwort = newId("message");
@@ -410,7 +410,10 @@ describe("feste Antworten", () => {
       ),
     ];
     const a = ereignisseAnwenden(leereAnsicht(), liste, KONTEXT);
-    expect(offeneNachfragen(a)).toEqual([]);
+    expect(offeneNachfragen(a).map((n) => n.runId)).toEqual([runId]);
+    // Mit der Antwort der Nachfrage ist nichts mehr offen.
+    const danach = nachfrageUebernehmen(a, runId, { werkzeuge: [], feste: [], fremde: [] });
+    expect(offeneNachfragen(danach)).toEqual([]);
   });
 });
 

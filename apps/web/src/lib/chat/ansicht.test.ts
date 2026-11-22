@@ -31,6 +31,7 @@ import {
   nachfrageUebernehmen,
   neuErzeugbar,
   neuErzeugt,
+  offeneNachfragen,
   sendenGesperrt,
 } from "./ansicht";
 import { fassungenVon } from "./fassungen";
@@ -367,6 +368,28 @@ describe("Nachfrage zum Lauf: Kennzeichen „fremder Inhalt“", () => {
     });
     const fremd = danach.eintraege.map((e) => (e.art === "nachricht" ? e.fremd === true : false));
     expect(fremd).toEqual([true, false]);
+  });
+});
+
+describe("Links in Antworten, bevor das Kennzeichen „fremder Inhalt“ feststeht", () => {
+  // Gegenprobe: `herkunftOffen` nur bei Läufen mit Schritten setzen → die Nachfrage bleibt leer (Lücke wie vorher).
+  it("ein Lauf ohne Schritte mit einem Markdown-Link in der Antwort fragt nach, bis der Lesestand es sagt", () => {
+    const ev = folge();
+    const g = glueck(ev, "Hier: [Klick](https://sammler.example/x?k=1)");
+    const a = ereignisseAnwenden(leereAnsicht(), g.liste, KONTEXT);
+    expect(offeneNachfragen(a).map((n) => n.runId)).toEqual([g.runId]);
+    const antwort = a.eintraege.find((e) => e.art === "nachricht" && e.id === g.antwort);
+    expect(antwort).toMatchObject({ zustand: "fertig", herkunftOffen: true });
+    // Der Lesestand nennt die Antwort „fremd“: Erst dann gilt das Kennzeichen, die Nachfrage ist erledigt.
+    const danach = nachfrageUebernehmen(a, g.runId, {
+      werkzeuge: [],
+      feste: [],
+      fremde: [g.antwort],
+    });
+    expect(offeneNachfragen(danach)).toEqual([]);
+    expect(danach.eintraege.find((e) => e.art === "nachricht" && e.id === g.antwort)).toMatchObject(
+      { fremd: true },
+    );
   });
 });
 

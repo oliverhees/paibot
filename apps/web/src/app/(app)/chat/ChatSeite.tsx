@@ -929,7 +929,7 @@ export function ChatSeite({
           <Markdown
             text={n.text}
             blockTexte={BLOCK_TEXTE}
-            fremd={n.fremd === true}
+            fremd={n.fremd === true || n.zustand === "streamt" || n.herkunftOffen === true}
             onKopiert={() => avatar.ausdruck("zwinkern")}
           />
         )}
