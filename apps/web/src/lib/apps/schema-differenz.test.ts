@@ -209,4 +209,112 @@ describe("Differenz: Schema fürs Modell gegen die Texte der Oberfläche", () =>
       ["a", "ja"],
     ]);
   });
+
+  describe("jedes JSON-Schema-Stichwort einzeln, an der Wurzel und an einem Feld", () => {
+    const MARKE = "GEHEIME-ANWEISUNG-4711";
+    // Wert je Stichwort; Texte tragen die Marke. Wird das Schema angenommen, darf kein Text ans
+    // Modell gehen, den die Oberfläche nicht zeigt; wird es abgewiesen, geht nichts ans Modell.
+    const STICHWORTE: Record<string, unknown> = {
+      pattern: MARKE,
+      format: MARKE,
+      const: MARKE,
+      anyOf: [{ type: "string", description: MARKE }],
+      oneOf: [{ type: "string", description: MARKE }],
+      allOf: [{ type: "string", description: MARKE }],
+      not: { type: "string", description: MARKE },
+      $ref: `#/$defs/${MARKE}`,
+      $defs: { [MARKE]: { type: "string" } },
+      definitions: { [MARKE]: { type: "string" } },
+      title: MARKE,
+      default: MARKE,
+      examples: [MARKE],
+      example: MARKE,
+      $comment: MARKE,
+      $schema: `https://json-schema.org/${MARKE}`,
+      $id: `https://${MARKE}.example/x`,
+      propertyNames: { pattern: MARKE },
+      patternProperties: { [MARKE]: { type: "string" } },
+      dependentSchemas: { a: { description: MARKE } },
+      dependentRequired: { a: [MARKE] },
+      if: { description: MARKE },
+      then: { description: MARKE },
+      else: { description: MARKE },
+      prefixItems: [{ type: "string", description: MARKE }],
+      contains: { type: "string", description: MARKE },
+      uniqueItems: true,
+      multipleOf: 5,
+      minProperties: 1,
+      maxProperties: 5,
+      deprecated: true,
+      readOnly: true,
+      writeOnly: true,
+      contentEncoding: MARKE,
+      contentMediaType: MARKE,
+      additionalItems: { description: MARKE },
+      unevaluatedProperties: { description: MARKE },
+      unevaluatedItems: { description: MARKE },
+    };
+
+    /**
+     * Alles, was ein Schema fürs Modell an Text und Zahlen trägt: Werte (Zeichenketten, Zahlen) und
+     * die Namen der Felder unter `properties`. Die Stichwörter selbst (`type`, `required` …) sind
+     * die Form; ihre Werte stehen als Zeilen da.
+     */
+    const blaetter = (w: unknown, aus: string[] = [], feldNamen = false): string[] => {
+      if (typeof w === "string") aus.push(w);
+      else if (typeof w === "number") aus.push(String(w));
+      else if (Array.isArray(w)) for (const x of w) blaetter(x, aus);
+      else if (istObjekt(w)) {
+        for (const [k, v] of Object.entries(w)) {
+          if (feldNamen) aus.push(k);
+          blaetter(v, aus, k === "properties" && !feldNamen);
+        }
+      }
+      return aus;
+    };
+
+    const wurzeln = (stichwort: string, wert: unknown): Record<string, unknown>[] => [
+      { type: "object", properties: { a: { type: "string" } }, [stichwort]: wert },
+      { type: "object", properties: { a: { type: "string", [stichwort]: wert } } },
+      {
+        type: "object",
+        properties: { a: { type: "array", items: { type: "string", [stichwort]: wert } } },
+      },
+    ];
+
+    for (const [stichwort, wert] of Object.entries(STICHWORTE)) {
+      it(`${stichwort}: abgewiesen, oder alles, was ans Modell geht, steht in der Oberfläche`, () => {
+        for (const roh of wurzeln(stichwort, wert)) {
+          const modell = fuersModell(roh);
+          if (modell === undefined) continue;
+          const gezeigt = schemaTexteVollstaendig(modell);
+          expect(gezeigt.vollstaendig, stichwort).toBe(true);
+          const alles = gezeigt.texte.map((z) => `${z.pfad}\n${z.text}`).join("\n");
+          for (const blatt of blaetter(modell)) {
+            // „Weitere Felder“ sind ja/nein, der Typ ein Wort; beides steht als Zeile da.
+            expect(
+              alles.includes(blatt),
+              `${stichwort}: „${blatt}“ geht ans Modell, die Oberfläche zeigt es nicht`,
+            ).toBe(true);
+          }
+          expect(
+            JSON.stringify(modell).includes(MARKE) ? alles.includes(MARKE) : true,
+            stichwort,
+          ).toBe(true);
+        }
+      });
+    }
+
+    it("die Probe erkennt einen Text, den die Oberfläche nicht zeigt (Selbstprüfung der Prüfung)", () => {
+      const modell = {
+        type: "object",
+        properties: {},
+        pattern: MARKE,
+        additionalProperties: false,
+      };
+      const gezeigt = schemaTexteVollstaendig(modell);
+      const alles = gezeigt.texte.map((z) => `${z.pfad}\n${z.text}`).join("\n");
+      expect(blaetter(modell).every((b) => alles.includes(b))).toBe(false);
+    });
+  });
 });
