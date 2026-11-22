@@ -1170,7 +1170,13 @@
                     "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
-                    "group": ["**/apps/**", "!**/lib/apps/**", "!./apps/**"],
+                    "group": [
+                      "**/apps/**",
+                      "!**/lib/apps/**",
+                      "!./apps/*",
+                      "**/apps/worker/**",
+                      "**/worker/src/**"
+                    ],
                     "message": "Kein Paket importiert aus apps/*."
                   },
                   {
