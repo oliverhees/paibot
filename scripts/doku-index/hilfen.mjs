@@ -1,5 +1,5 @@
 /**
- * PaiBot – Hilfen für den Doku-Index: Bereinigung, Zerlegung in Abschnitte, Prüfmuster.
+ * PaiBot – Hilfen für den Doku-Index: Zeichenmengen, Anker, Formen eingeschleuster Anweisungen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -8,8 +8,9 @@
  * @since     2026-11-21
  */
 
-// Gemeinsam benutzt von scripts/doku-index.mjs (Index bauen) und scripts/doku-check.mjs (Doku
-// prüfen). Nur Node-Bordmittel.
+// Gemeinsam benutzt von scripts/doku-index.mjs (Index bauen), scripts/doku-check.mjs (Doku prüfen)
+// und scripts/doku-index/markdown.mjs (Seiten lesen). Nur Node-Bordmittel, keine Pakete: Wie
+// Markdown gelesen wird, steht allein in markdown.mjs.
 
 /**
  * Zeichen, die in der Doku nie stehen bleiben: Steuerzeichen außer Zeilenumbruch und Tabulator,
@@ -78,32 +79,6 @@ export function entferneUnsichtbares(text) {
   return aus;
 }
 
-/** Entfernt alle HTML-Kommentare; ein nicht geschlossener gilt bis zum Ende als Kommentar. */
-export function entferneKommentare(text) {
-  return text.replace(/<!--[\s\S]*?(?:-->|$)/g, "");
-}
-
-const BILD = /!\[(?:[^[\]]|\[[^\]]*\])*\]\(\s*<?[^)\s>]*>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g;
-const LINK = /\[((?:[^[\]]|\[[^\]]*\])*)\]\(\s*<?[^)\s>]*>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g;
-const TAG = /<\/?[A-Za-z][^<>\n]*>/g;
-
-/** Bereinigt Fließtext einer Zeile (ohne Code in Backticks): Bilder, Links zu ihrem Text, Tags. */
-function bereinigeProsa(text) {
-  return text.replace(BILD, "").replace(LINK, "$1").replace(TAG, "");
-}
-
-/** Bereinigt eine Zeile außerhalb eines Codeblocks; Code in Backticks bleibt unverändert. */
-export function bereinigeZeile(zeile) {
-  let aus = "";
-  let rest = zeile;
-  for (;;) {
-    const treffer = /`[^`\n]*`/.exec(rest);
-    if (!treffer) return aus + bereinigeProsa(rest);
-    aus += bereinigeProsa(rest.slice(0, treffer.index)) + treffer[0];
-    rest = rest.slice(treffer.index + treffer[0].length);
-  }
-}
-
 /** Anker im Stil von GitHub: klein, ohne Satzzeichen, Leerzeichen zu „-“. */
 export function ankerVon(titel) {
   return titel
@@ -111,139 +86,6 @@ export function ankerVon(titel) {
     .replace(/[^\p{L}\p{N}\p{M}_\- ]/gu, "")
     .trim()
     .replace(/ /g, "-");
-}
-
-const FENCE = /^ {0,3}(`{3,}|~{3,})/;
-const UEBERSCHRIFT = /^(#{1,3})[ \t]+(.+?)[ \t]*#*[ \t]*$/;
-
-/**
- * Zerlegt eine Seite in Abschnitte: Text unter der Überschrift erster Ebene (falls vorhanden) und je
- * eine Überschrift zweiter und dritter Ebene. Der Text ist bereinigt (siehe `bereinige`).
- * Rückgabe: [{ anker, titel, pfad, text }] ohne Abschnitte, die keinen Text oder keine Überschrift
- * haben. `pfad` sind die Titel der Überschriften von der Seite abwärts bis zur eigenen (erste bis
- * dritte Ebene, die eigene zuletzt), bereinigt wie der Titel; eine Überschrift ohne Titel fehlt darin.
- */
-export function zerlege(roh) {
-  // Erst Unsichtbares entfernen, dann Kommentare: Sonst bliebe ein Kommentar, dessen Zeichen
-  // (`<!` und `--`) durch ein unsichtbares Zeichen getrennt sind, als Text stehen.
-  const text = entferneKommentare(entferneUnsichtbares(normalisiere(roh)));
-  const abschnitte = [];
-  let aktuell = null;
-  let zaun = null;
-  /** Offene Überschriften über der aktuellen Stelle: [{ ebene, titel }], oberste zuerst. */
-  const offen = [];
-  const neu = (ebene, titel) => {
-    while (offen.length > 0 && offen[offen.length - 1].ebene >= ebene) offen.pop();
-    if (titel !== "") offen.push({ ebene, titel });
-    aktuell = { titel, pfad: offen.map((o) => o.titel), zeilen: [] };
-    abschnitte.push(aktuell);
-  };
-  for (const zeile of text.split("\n")) {
-    const marke = FENCE.exec(zeile);
-    if (zaun) {
-      if (
-        marke &&
-        marke[1][0] === zaun[0] &&
-        marke[1].length >= zaun.length &&
-        !/\S/.test(zeile.slice(marke[0].length))
-      ) {
-        zaun = null;
-      }
-      aktuell?.zeilen.push(zeile);
-      continue;
-    }
-    if (marke) {
-      zaun = marke[1];
-      aktuell?.zeilen.push(zeile);
-      continue;
-    }
-    const kopf = UEBERSCHRIFT.exec(zeile);
-    if (kopf) {
-      neu(kopf[1].length, bereinigeZeile(kopf[2]).trim());
-      continue;
-    }
-    aktuell?.zeilen.push(bereinigeZeile(zeile));
-  }
-  // Zeilen innerhalb von Codeblöcken bleiben unverändert; alles andere ist bereinigt.
-  return abschnitte
-    .map((a) => ({
-      titel: a.titel,
-      pfad: a.pfad,
-      anker: ankerVon(a.titel),
-      text: a.zeilen
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim(),
-    }))
-    .filter((a) => a.titel !== "" && a.anker !== "" && a.text !== "");
-}
-
-/**
- * Rohe HTML-Tags, die im Fließtext der Doku stehen dürfen (kleingeschrieben). Die Seiten unter
- * `docs/` benutzen heute keine; die Liste ist deshalb leer. Auch ein erlaubtes Tag darf kein
- * Attribut `hidden` oder `style` tragen.
- */
-export const ERLAUBTE_TAGS = [];
-
-/**
- * Ersetzt Codeblöcke und Code in Backticks durch Leerzeichen (Zeilenumbrüche bleiben), ebenso den
- * Urheber-Kopf am Dateianfang. Die Codeblock-Erkennung ist dieselbe wie in `zerlege`.
- */
-function ohneCode(roh) {
-  const leer = (t) => t.replace(/[^\n]/g, " ");
-  let text = normalisiere(roh);
-  if (text.startsWith("<!--")) {
-    const ende = text.indexOf("-->");
-    if (ende !== -1) text = leer(text.slice(0, ende + 3)) + text.slice(ende + 3);
-  }
-  let zaun = null;
-  return text
-    .split("\n")
-    .map((zeile) => {
-      const marke = FENCE.exec(zeile);
-      if (zaun) {
-        if (
-          marke &&
-          marke[1][0] === zaun[0] &&
-          marke[1].length >= zaun.length &&
-          !/\S/.test(zeile.slice(marke[0].length))
-        ) {
-          zaun = null;
-        }
-        return leer(zeile);
-      }
-      if (marke) {
-        zaun = marke[1];
-        return leer(zeile);
-      }
-      return zeile.replace(/`[^`\n]*`/g, leer);
-    })
-    .join("\n");
-}
-
-const AUTOLINK = /^<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>]+)>/;
-
-/**
- * Findet rohes HTML im Fließtext (außerhalb von Codeblöcken, Inline-Code und dem Urheber-Kopf):
- * jedes `<` vor Buchstabe, `/`, `!` oder `?` (Tags, Kommentare, `<!…>`, `<?…?>`, CDATA), außer
- * Adress-Verweisen in spitzen Klammern und Tags aus `erlaubt`, die weder `hidden` noch `style`
- * tragen. Gibt [{ zeile, form }] zurück, `form` ist der Anfang der Fundstelle.
- */
-export function findeRohesHtml(text, erlaubt = ERLAUBTE_TAGS) {
-  const prosa = ohneCode(text);
-  const funde = [];
-  for (const treffer of prosa.matchAll(/<(?=[A-Za-z!?/])/g)) {
-    const ab = prosa.slice(treffer.index);
-    if (AUTOLINK.test(ab)) continue;
-    const ganz = /^<[^>]*>?/.exec(ab)[0];
-    const name = /^<\/?([A-Za-z][A-Za-z0-9-]*)/.exec(ganz)?.[1]?.toLowerCase();
-    if (name && erlaubt.includes(name) && !/\b(?:hidden|style)\b/i.test(ganz)) continue;
-    funde.push({
-      zeile: prosa.slice(0, treffer.index).split("\n").length,
-      form: ganz.replace(/\s+/g, " ").slice(0, 24),
-    });
-  }
-  return funde;
 }
 
 /**
