@@ -34,13 +34,13 @@ function fall1(type: string): Fall1 {
 }
 
 describe("Fassungen", () => {
-  it("das Tor entscheidet mit Fassung 2, der höchsten bekannten", () => {
-    expect(GATE_FORMAT).toBe(2);
-    expect(KNOWN_GATE_FORMAT).toBe(2);
-    expect(currentGateFormat()).toBe(GATE_FORMATS[2]);
+  it("das Tor entscheidet mit Fassung 3, der höchsten bekannten", () => {
+    expect(GATE_FORMAT).toBe(3);
+    expect(KNOWN_GATE_FORMAT).toBe(3);
+    expect(currentGateFormat()).toBe(GATE_FORMATS[3]);
     expect(GATE_FORMATS[1]).toBe(GATE_FORMAT_1);
     expect(GATE_FORMATS[2]).toBe(GATE_FORMAT_2);
-    expect(gateFormatSpec(3)).toBeUndefined();
+    expect(gateFormatSpec(4)).toBeUndefined();
     expect(gateFormatSpec(0)).toBeUndefined();
   });
 
@@ -60,8 +60,8 @@ describe("Fassungen", () => {
   it("eine unbekannte Fassung wird nicht gerechnet", () => {
     const action = sampleAction("nachricht.senden");
     const facts = sampleFacts("nachricht.senden");
-    expect(() => evaluate(action, facts, ACTIVE_STANDARD_RULES, { format: 3 })).toThrow(RangeError);
-    expect(evaluate(action, facts, ACTIVE_STANDARD_RULES, { format: 2 })).toEqual(
+    expect(() => evaluate(action, facts, ACTIVE_STANDARD_RULES, { format: 4 })).toThrow(RangeError);
+    expect(evaluate(action, facts, ACTIVE_STANDARD_RULES, { format: 3 })).toEqual(
       evaluate(action, facts, ACTIVE_STANDARD_RULES),
     );
   });

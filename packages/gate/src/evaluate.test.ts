@@ -147,6 +147,12 @@ const VIOLATIONS: Record<GateLimitName, Partial<Record<ActionType, Record<string
   lauf_token: {
     "modell.anfragen": [{ runTokens: 498774 }, { stepTokenEstimate: 500001 }],
   },
+  // Die Grenzen für Apps gelten nur bei App-Werkzeugen; ihre Verletzungen prüfen die festen Fälle
+  // der Fassung 3 (`fassungen/fassung-3.korpus.test.ts`).
+  app_zugriff: {},
+  werkzeug_bestaetigt: {},
+  app_ziel: {},
+  eine_app_je_schritt: {},
 };
 
 const LIMIT_ID_BY_NAME = Object.fromEntries(

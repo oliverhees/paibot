@@ -24,7 +24,7 @@ import {
 describe("Fehlercodes", () => {
   it("haben die vorgegebene Schreibweise und Liste", () => {
     for (const code of [...ERROR_CODES, ...FIELD_CODES]) expect(code).toMatch(CODE_PATTERN);
-    expect(ERROR_CODES).toHaveLength(33);
+    expect(ERROR_CODES).toHaveLength(47);
     expect(ERROR_STATUS.regel_unbekannt).toBe(409);
     expect(ERROR_STATUS.freigabe_noetig).toBe(202);
     expect(ERROR_STATUS.werkzeug_unbekannt).toBe(400);

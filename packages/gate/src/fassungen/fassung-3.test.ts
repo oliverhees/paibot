@@ -5,8 +5,9 @@
  *   Entscheidung; die neuen Grenzen stehen dahinter und entfallen);
  * - jede Bedingung von R-014 wirkt (ohne sie ändert sich ein fester Fall bzw., bei Akteur und
  *   Quelle, die Auswertung der Regel selbst);
- * - sie ist noch nicht in Kraft: Das Tor entscheidet mit Fassung 2, eine neue Aktion oder ein
- *   Aufruf eines App-Werkzeugs kommt mit Fassung 2 nie durch, R-014 wird im Regelstand abgelehnt.
+ * - sie ist in Kraft: Das Tor entscheidet mit Fassung 3, R-014 steht in den Standard-Regeln, ein
+ *   erlaubter Aufruf eines App-Werkzeugs läuft durch das echte Tor; mit Fassung 2 bleibt er
+ *   ungültig.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -15,7 +16,7 @@
  * @since     2026-11-22
  */
 
-import { PaiBotError } from "@paibot/shared/fehler";
+import type { PaiBotError } from "@paibot/shared/fehler";
 import { ACTIVE_STANDARD_RULES, GATE_FORMAT, type RuleDefinition } from "@paibot/shared/tor";
 import {
   APP_ACTION_SHAPES,
@@ -325,56 +326,91 @@ describe("Bedingungen Akteur und Quelle von R-014, direkt an der Regel-Auswertun
   });
 });
 
-describe("Fassung 3 ist noch nicht in Kraft", () => {
+describe("Fassung 3 ist in Kraft", () => {
   const verbinden = K3.cases.find((fall) => fall.name === "aktion app.verbinden") as Fall;
   const appAufruf = K3.cases.find((fall) => fall.name === "R-014 passt") as Fall;
-  const regelnMitR014 = [...ACTIVE_STANDARD_RULES, R014_V1];
 
-  it("das Tor entscheidet mit Fassung 2; Fassung 3 ist nicht eingetragen", () => {
-    expect(GATE_FORMAT).toBe(2);
-    expect(currentGateFormat()).toBe(GATE_FORMAT_2);
-    expect(KNOWN_GATE_FORMAT).toBe(2);
-    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2"]);
-    expect(gateFormatSpec(3)).toBeUndefined();
+  it("das Tor entscheidet mit Fassung 3, der höchsten bekannten", () => {
+    expect(GATE_FORMAT).toBe(3);
+    expect(currentGateFormat()).toBe(GATE_FORMAT_3);
+    expect(KNOWN_GATE_FORMAT).toBe(3);
+    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3"]);
+    expect(gateFormatSpec(3)).toBe(GATE_FORMAT_3);
+    expect(gateFormatSpec(4)).toBeUndefined();
     expect(() =>
-      evaluate(appAufruf.action as never, appAufruf.facts as never, regelnMitR014, { format: 3 }),
+      evaluate(appAufruf.action as never, appAufruf.facts as never, ACTIVE_STANDARD_RULES, {
+        format: 4,
+      }),
     ).toThrow(RangeError);
   });
 
-  it("eine Aktion für Apps ist mit Fassung 2 ungültig", () => {
-    const decision = evaluate(verbinden.action as never, verbinden.facts as never, regelnMitR014);
-    expect(decision.outcome).toBe("deny");
-    expect(decision.matchedRules).toEqual([]);
-    expect(GATE_FORMAT_2.evaluate(verbinden.action, verbinden.facts, regelnMitR014).outcome).toBe(
-      "deny",
+  it("die lebenden Standard-Regeln enthalten R-014 genau wie der Vertrag", () => {
+    expect(ACTIVE_STANDARD_RULES).toContainEqual(R014_V1);
+    const decision = evaluate(
+      appAufruf.action as never,
+      appAufruf.facts as never,
+      ACTIVE_STANDARD_RULES,
     );
+    expect(decision.outcome).toBe("allow");
+    expect(decision.matchedRules).toEqual([{ id: "R-014", version: 1 }]);
   });
 
-  it("ein Aufruf eines App-Werkzeugs mit den Fakten der App ist mit Fassung 2 ungültig", () => {
-    const decision = evaluate(appAufruf.action as never, appAufruf.facts as never, regelnMitR014);
+  it("eine Aktion für Apps ist mit Fassung 3 gültig und mit Fassung 2 ungültig", () => {
+    const decision = evaluate(
+      verbinden.action as never,
+      verbinden.facts as never,
+      ACTIVE_STANDARD_RULES,
+    );
+    expect(decision.outcome).toBe("allow");
+    const alt = GATE_FORMAT_2.evaluate(verbinden.action, verbinden.facts, ACTIVE_STANDARD_RULES);
+    expect(alt.outcome).toBe("deny");
+    expect(alt.matchedRules).toEqual([]);
+  });
+
+  it("ein Aufruf mit den Fakten der App ist mit Fassung 2 weiter ungültig", () => {
+    const decision = GATE_FORMAT_2.evaluate(
+      appAufruf.action,
+      appAufruf.facts,
+      ACTIVE_STANDARD_RULES,
+    );
     expect(decision.outcome).toBe("deny");
     expect(decision.matchedRules).toEqual([]);
   });
 
-  it("ohne die Fakten der App passt R-014 unter Fassung 2 nie; es fragt R-005", () => {
+  it("ohne die Fakten der App passt R-014 nie; es fragt R-005", () => {
     const facts = { ...(appAufruf.facts as Record<string, unknown>) };
     for (const name of Object.keys(MCP_TOOL_CALL_FACTS)) delete facts[name];
+    facts.toolSource = "eingebaut";
+    delete facts.toolServer;
+    facts.toolKey = "eingebaut/doku.nachschlagen";
     facts.toolReach = "intern";
     facts.toolForeign = false;
-    const decision = GATE_FORMAT_2.evaluate(appAufruf.action, facts, regelnMitR014);
-    expect(decision.outcome).toBe("ask");
-    expect(decision.matchedRules).toEqual([{ id: "R-005", version: 1 }]);
+    const decision = evaluate(appAufruf.action as never, facts as never, ACTIVE_STANDARD_RULES);
+    expect(decision.matchedRules).toEqual([{ id: "R-010", version: 1 }]);
+    facts.toolKey = "eingebaut/anderes.werkzeug";
+    const anders = evaluate(appAufruf.action as never, facts as never, ACTIVE_STANDARD_RULES);
+    expect(anders.outcome).toBe("ask");
+    expect(anders.matchedRules).toEqual([{ id: "R-005", version: 1 }]);
   });
 
-  function ports(rules: readonly RuleDefinition[]): GatePorts & { belege: string[] } {
+  function ports(rules: readonly RuleDefinition[]): GatePorts & {
+    belege: string[];
+    entscheidungen: { gateFormat: number; outcome: string }[];
+  } {
     const belege: string[] = [];
+    const entscheidungen: { gateFormat: number; outcome: string }[] = [];
     let seq = 1;
     return {
       belege,
+      entscheidungen,
       rules: { load: () => ruleSnapshot(rules) },
       receipts: {
-        appendDecision: async () => {
+        appendDecision: async (record) => {
           belege.push("decision");
+          entscheidungen.push({
+            gateFormat: record.decision.gateFormat,
+            outcome: record.decision.outcome,
+          });
           seq += 1;
           return { receiptId: `blg_01m7zempyqasb34830zmcrxq${seq}e` as never, seq };
         },
@@ -397,40 +433,51 @@ describe("Fassung 3 ist noch nicht in Kraft", () => {
     throw new Error("kein Fehler geworfen");
   }
 
-  it("das Tor nimmt keinen Regelstand mit R-014 an: intern, kein Beleg, nichts ausgeführt", async () => {
-    const p = ports(regelnMitR014);
+  it("ein erlaubter App-Aufruf läuft durch das echte Tor: Beleg-Paar mit Fassung 3, ausgeführt", async () => {
+    const p = ports(ACTIVE_STANDARD_RULES);
     let ausgefuehrt = false;
-    const nachricht = K2.cases.find((fall) => fall.name === "aktion nachricht.senden") as Fall;
+    await createGate(p).run(appAufruf.action as never, appAufruf.facts as never, async () => {
+      ausgefuehrt = true;
+      return { value: 1, result: { status: "ok" } };
+    });
+    expect(ausgefuehrt).toBe(true);
+    expect(p.belege).toEqual(["decision", "result"]);
+    expect(p.entscheidungen).toEqual([{ gateFormat: 3, outcome: "allow" }]);
+  });
+
+  it("derselbe Aufruf mit geändertem Abdruck wird abgelehnt: nichts ausgeführt, Beleg mit Ablehnung", async () => {
+    const p = ports(ACTIVE_STANDARD_RULES);
+    let ausgefuehrt = false;
+    const facts = {
+      ...(appAufruf.facts as Record<string, unknown>),
+      confirmedToolDigest: `sha256:${"ee".repeat(32)}`,
+    };
     const error = await fehler(
-      createGate(p).run(nachricht.action as never, nachricht.facts as never, async () => {
+      createGate(p).run(appAufruf.action as never, facts as never, async () => {
         ausgefuehrt = true;
         return { value: 1, result: { status: "ok" } };
       }),
     );
-    expect(error).toBeInstanceOf(PaiBotError);
-    expect((error as PaiBotError).code).toBe("intern");
-    expect(p.belege).toEqual([]);
+    expect((error as PaiBotError).code).toBe("werkzeug_geaendert");
     expect(ausgefuehrt).toBe(false);
+    expect(p.entscheidungen.map((e) => e.outcome)).toEqual(["deny"]);
   });
 
-  it("das Tor nimmt app.verbinden nicht an: Eingabe ungültig, kein Beleg, nichts ausgeführt", async () => {
+  it("app.verbinden läuft durch das echte Tor", async () => {
     const p = ports(ACTIVE_STANDARD_RULES);
-    let ausgefuehrt = false;
-    const error = await fehler(
-      createGate(p).run(verbinden.action as never, verbinden.facts as never, async () => {
-        ausgefuehrt = true;
-        return { value: 1, result: { status: "ok" } };
-      }),
-    );
-    expect((error as PaiBotError).code).toBe("eingabe_ungueltig");
-    expect(p.belege).toEqual([]);
-    expect(ausgefuehrt).toBe(false);
+    await createGate(p).run(verbinden.action as never, verbinden.facts as never, async () => ({
+      value: 1,
+      result: { status: "ok" },
+    }));
+    expect(p.entscheidungen).toEqual([{ gateFormat: 3, outcome: "allow" }]);
   });
 
-  it("das Tor nimmt einen Aufruf mit den Fakten der App nicht an", async () => {
+  it("Fakten einer App ohne alle App-Fakten (nur ein Teil) sind ungültig: kein Beleg", async () => {
     const p = ports(ACTIVE_STANDARD_RULES);
+    const facts = { ...(appAufruf.facts as Record<string, unknown>) };
+    delete facts.appToolId;
     const error = await fehler(
-      createGate(p).run(appAufruf.action as never, appAufruf.facts as never, async () => ({
+      createGate(p).run(appAufruf.action as never, facts as never, async () => ({
         value: 1,
         result: { status: "ok" },
       })),

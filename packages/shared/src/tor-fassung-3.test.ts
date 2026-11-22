@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { ACTION_TYPES, ACTIONS } from "./actions";
+import { ACTION_TYPES, ACTIONS, CREDENTIALS } from "./actions";
 import {
   APP_TARGET_DIGEST_PREFIX,
   appTargetDigestInput,
@@ -62,42 +62,56 @@ describe("Vertrag der Fassung 3: Nummern", () => {
     expect(STANDARD_RULE_VERSIONS_3.map((rule) => rule.id)).toEqual(["R-014"]);
   });
 
-  it("keine Nummer der Fassung 3 kollidiert mit einer heutigen", () => {
-    const heute = [
+  it("keine Nummer der Fassung 3 steht doppelt, auch nicht mit den älteren Nummern", () => {
+    const alle = [
       ...Object.keys(LIMITS_BY_ID),
       ...Object.keys(PRECONDITIONS),
       ...Object.keys(CAPS),
       ...STANDARD_RULE_VERSIONS.map((rule) => rule.id),
       ...UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id),
     ];
-    for (const id of [
-      ...Object.keys(LIMITS_BY_ID_3),
-      ...Object.keys(PRECONDITIONS_3),
-      ...STANDARD_RULE_VERSIONS_3.map((rule) => rule.id),
-    ]) {
-      expect(heute, id).not.toContain(id);
-    }
-    for (const code of ERROR_CODES_3) expect(ERROR_CODES, code).not.toContain(code);
-    for (const type of APP_ACTION_TYPES) expect(ACTION_TYPES, type).not.toContain(type);
+    const einzigartig = new Set(alle);
+    // Jede Regel steht in `STANDARD_RULE_VERSIONS` und `UNSTORED_…` ohne Doppelung der Nummer.
+    expect(einzigartig.size).toBe(
+      new Set([
+        ...Object.keys(LIMITS_BY_ID),
+        ...Object.keys(PRECONDITIONS),
+        ...Object.keys(CAPS),
+        ...alle.filter((id) => id.startsWith("R-")),
+      ]).size,
+    );
+    expect(new Set(Object.keys(LIMITS_BY_ID)).size).toBe(Object.keys(LIMITS_BY_ID).length);
+    expect(new Set(Object.keys(PRECONDITIONS)).size).toBe(Object.keys(PRECONDITIONS).length);
+    expect(new Set(ERROR_CODES).size).toBe(ERROR_CODES.length);
+    expect(new Set(ACTION_TYPES).size).toBe(ACTION_TYPES.length);
+  });
+
+  it("die Nachweise des Vertrags sind dieselben wie die der Aktionen", () => {
+    expect(APP_ACTION_SHAPES["app.trennen"].facts.credential.options).toEqual([...CREDENTIALS]);
   });
 });
 
-describe("Vertrag der Fassung 3: noch nicht in Kraft", () => {
-  it("das Tor entscheidet weiter mit Fassung 2; die heutigen Listen kennen nichts von Fassung 3", () => {
-    expect(GATE_FORMAT).toBe(2);
-    expect(Object.keys(ACTIONS)).not.toContain("app.verbinden");
-    expect(ACTIVE_STANDARD_RULES.map((rule) => rule.id)).not.toContain("R-014");
-    expect(UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id)).not.toContain("R-014");
-    expect(errorCodeSchema.safeParse("werkzeug_zweite_app").success).toBe(false);
+describe("Vertrag der Fassung 3: in Kraft", () => {
+  it("das Tor entscheidet mit Fassung 3; die lebenden Listen enthalten alles aus dem Vertrag", () => {
+    expect(GATE_FORMAT).toBe(FORMAT_3);
+    for (const type of APP_ACTION_TYPES) expect(Object.keys(ACTIONS), type).toContain(type);
+    for (const id of Object.keys(LIMITS_BY_ID_3))
+      expect(Object.keys(LIMITS_BY_ID), id).toContain(id);
+    for (const id of Object.keys(PRECONDITIONS_3))
+      expect(Object.keys(PRECONDITIONS), id).toContain(id);
+    for (const rule of STANDARD_RULE_VERSIONS_3) {
+      expect(STANDARD_RULE_VERSIONS).toContainEqual(rule);
+      expect(ACTIVE_STANDARD_RULES).toContainEqual(rule);
+      expect(UNSTORED_STANDARD_RULE_VERSIONS.map((r) => r.id)).not.toContain(rule.id);
+    }
+    for (const code of ERROR_CODES_3)
+      expect(errorCodeSchema.safeParse(code).success, code).toBe(true);
     const fakten = ACTIONS["werkzeug.aufrufen"].facts as unknown as {
       def?: { schema?: { shape?: object } };
       shape?: object;
     };
     const namen = Object.keys(fakten.shape ?? fakten.def?.schema?.shape ?? {});
-    for (const name of Object.keys(MCP_TOOL_CALL_FACTS)) {
-      if (name === "targetDigest") continue;
-      expect(namen, name).not.toContain(name);
-    }
+    for (const name of Object.keys(MCP_TOOL_CALL_FACTS)) expect(namen, name).toContain(name);
   });
 });
 

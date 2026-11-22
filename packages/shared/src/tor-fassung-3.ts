@@ -18,7 +18,6 @@
  */
 
 import { z } from "zod";
-import { credentialSchema } from "./actions";
 import type { RuleDefinition } from "./gate";
 import { positiveIntSchema, sha256DigestSchema } from "./grundtypen";
 import { idSchema } from "./id";
@@ -74,6 +73,9 @@ const appId = idSchema("app");
 const appToolId = idSchema("tool");
 const botId = idSchema("bot");
 const deviceId = idSchema("device");
+// Gleich `credentialSchema` in `./actions`; eine eigene Kopie, weil `./actions` diesen Vertrag
+// einbindet (ein Test hält beide gleich).
+const credentialSchema = z.enum(["sitzung", "passwort", "einrichtungs_code"]);
 const ownerFacts = { credential: credentialSchema, device: deviceId.optional() };
 
 /**
@@ -216,7 +218,11 @@ export const PRECONDITIONS_3 = {
     actions: ["app.werkzeuge_bestaetigen"],
     require: [
       { fact: "seenToolDigest", op: "eq", value: { fact: "toolDigest" } },
-      { fact: "toolStatus", op: "in", value: ["neu", "bestaetigt", "geaendert", "gesperrt"] },
+      {
+        fact: "toolStatus",
+        op: "in",
+        value: ["neu", "bestaetigt", "geaendert", "gesperrt"] as string[],
+      },
     ],
     errorCode: "werkzeug_abdruck_ungesehen",
   },

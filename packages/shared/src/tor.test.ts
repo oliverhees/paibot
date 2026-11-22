@@ -104,6 +104,10 @@ describe("Aktionen", () => {
       "notaus.umschalten",
       "unterhaltung.exportieren",
       "antwort.neu_erzeugen",
+      "app.verbinden",
+      "app.werkzeuge_bestaetigen",
+      "app.zugriff_setzen",
+      "app.trennen",
     ]);
     const botActions = new Set(["modell.anfragen", "werkzeug.aufrufen", "werkzeug.ausfuehren"]);
     for (const type of ACTION_TYPES) {
@@ -211,7 +215,7 @@ describe("Regeln", () => {
     });
     expect(ruleDefinitionSchema.parse(r010)).toEqual(r010);
     expect(ACTIVE_STANDARD_RULES.find((rule) => rule.id === "R-010")).toBe(r010);
-    // Die ersten sieben Fassungen bleiben, wie sie waren; R-010 kommt nur hinten dazu.
+    // Die ersten sieben Fassungen bleiben, wie sie waren; R-010 und R-014 kommen nur hinten dazu.
     expect(STANDARD_RULE_VERSIONS.map((rule) => `${rule.id}@${rule.version}`)).toEqual([
       "R-001@1",
       "R-002@1",
@@ -221,6 +225,7 @@ describe("Regeln", () => {
       "R-005@1",
       "R-006@1",
       "R-010@1",
+      "R-014@1",
     ]);
     expect(UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id)).toEqual(["R-007", "R-008"]);
   });
@@ -238,6 +243,10 @@ describe("Regeln", () => {
       "G-16",
       "G-17",
       "G-18",
+      "G-06",
+      "G-07",
+      "G-08",
+      "G-40",
     ]);
   });
 

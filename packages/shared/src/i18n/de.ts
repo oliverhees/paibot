@@ -1939,6 +1939,14 @@ export const de = {
   "regel.G-40": "Eine App je Schritt",
   "regel.V-19": "Adresse der App erlaubt",
   "regel.V-38": "Gesehene Fassung des Werkzeugs",
+  "regeln.grenze.G-06": "Ein App-Werkzeug läuft nur, wenn der Bot Lese-Zugriff auf die App hat.",
+  "regeln.grenze.G-07":
+    "Ein App-Werkzeug läuft nur, wenn du es bestätigt hast und es unverändert ist.",
+  "regeln.grenze.G-08": "Ein App-Werkzeug läuft nur an die Adresse, für die du es bestätigt hast.",
+  "regeln.grenze.G-40": "In einem Schritt ruft der Bot Werkzeuge nur einer App auf.",
+  "regeln.vorbedingung.V-19":
+    "Die Adresse der App ist öffentlich, https und ohne Zugangsdaten darin.",
+  "regeln.vorbedingung.V-38": "Du bestätigst genau die Fassung des Werkzeugs, die du gesehen hast.",
   "fehler.app_nicht_erreichbar": "Die App antwortet gerade nicht.",
   "fehler.app_nicht_erreichbar.ausweg":
     "Prüfe, ob die App läuft und ihre Adresse noch stimmt, und teste dann erneut.",

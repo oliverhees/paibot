@@ -21,7 +21,6 @@ import { ID_BODY_PATTERN, ID_PREFIX, idSchema } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
 import type {
   Decision,
-  GateLimitName,
   LimitCheck,
   ListDecision,
   Outcome,
@@ -345,6 +344,19 @@ function actorKindOf(actor: string): ActorKind {
 // Vorbedingungen, Grenzen, Deckel, Fehlercodes, Felder im Beleg (Kopien)
 
 const TOOL_GATE_ACTIONS_2 = ["werkzeug.aufrufen"] as const;
+
+// Einmalige Ausnahme vom Einfrieren, nur am Typ (wie bei den Aktionen oben): Der Name einer Grenze
+// stand anfangs als `GateLimitName` aus den lebenden Verträgen hier; seit Fassung 3 kennt dieser
+// Typ mehr Namen. Er steht jetzt fest in der Datei; die Ausgabe ohne Typen ist gleich.
+type GateLimitName =
+  | "schleuse_gefordert"
+  | "anbieter_region"
+  | "laenge"
+  | "tagesbudget"
+  | "not_aus"
+  | "lauf_schritte"
+  | "lauf_aufrufe"
+  | "lauf_token";
 
 const LIMITS_BY_ID_2 = {
   "G-01": "schleuse_gefordert",
