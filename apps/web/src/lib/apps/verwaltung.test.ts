@@ -849,6 +849,31 @@ describe("App neu verbinden", () => {
     for (const stelle of [...u.e.antworten, ...u.e.u.log]) expect(stelle).not.toContain(TOKEN2);
   });
 
+  it("wirft der Abgleich nach dem Wiederverbinden: nichts bleibt davon übrig (App getrennt, Verbindungsnummer und Token unverändert)", async () => {
+    const u = await umgebung();
+    const id = await getrennt(u);
+    const spion = vi.spyOn(repo.apps, "sehen").mockRejectedValueOnce(new Error("Platte voll"));
+    try {
+      const r = await neu(u, id);
+      expect(r.status).toBeGreaterThanOrEqual(400);
+      expect(spion).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(r.body)).not.toContain("Platte voll");
+    } finally {
+      spion.mockRestore();
+    }
+    const app = await repo.apps.get(u.e.u.db, id);
+    expect(app).toMatchObject({ state: "getrennt", connectionNo: 1, tokenSet: false });
+    expect(await repo.apps.getTokenEnc(u.e.u.db, id)).toBeUndefined();
+    // Die alten Werkzeuge sind unverändert („bestätigt“ bleibt in der Vorgeschichte, nichts Neues).
+    expect((await repo.apps.currentTools(u.e.u.db, id)).map((t) => t.status).sort()).toEqual([
+      "bestaetigt",
+      "neu",
+    ]);
+    // Danach klappt es.
+    expect((await neu(u, id)).status).toBe(200);
+    await ohneToken(u);
+  });
+
   it("Neu verbinden zählt auf das Limit des Verbindungstests wie Verbinden und Erneut testen", () => {
     expect(API_ROUTEN.appNeuVerbinden.limits).toEqual(API_ROUTEN.appVerbinden.limits);
     expect(API_ROUTEN.appNeuVerbinden.limits).toEqual(API_ROUTEN.appWerkzeugeAbrufen.limits);
