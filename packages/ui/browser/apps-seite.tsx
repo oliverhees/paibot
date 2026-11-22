@@ -69,7 +69,7 @@ function Seite({ titel, children }: { titel: string; children: React.ReactNode }
   );
 }
 
-function Zugriffe({ app, lesend, gesperrt }: { app: string; lesend: number; gesperrt?: boolean }) {
+function Zugriffe({ app, lesend }: { app: string; lesend: number }) {
   const [stand, setStand] = useState<Record<string, AppZugriff>>({
     pai: "lesen",
     kai: "lesen",
@@ -84,7 +84,6 @@ function Zugriffe({ app, lesend, gesperrt }: { app: string; lesend: number; gesp
           app={app}
           wert={stand[bot.id] ?? "keiner"}
           lesendeWerkzeuge={lesend}
-          gesperrt={gesperrt}
           onAendern={(wert) => {
             protokolliere(`zugriff: ${bot.id} = ${wert}`);
             setStand((alt) => ({ ...alt, [bot.id]: wert }));
@@ -242,7 +241,7 @@ function NotAus() {
           onErneutTesten={() => undefined}
           onTrennen={() => undefined}
         >
-          <Zugriffe app={BEISPIEL_APPS.notaus?.name ?? ""} lesend={2} gesperrt />
+          <Zugriffe app={BEISPIEL_APPS.notaus?.name ?? ""} lesend={2} />
         </AppZeile>
       </div>
     </Seite>

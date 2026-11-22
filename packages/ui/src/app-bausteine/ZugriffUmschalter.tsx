@@ -28,8 +28,6 @@ export interface ZugriffUmschalterProps {
   onAendern: (wert: AppZugriff) => void;
   /** Wie viele Werkzeuge der App der Besitzer als „liest“ bestätigt hat. */
   lesendeWerkzeuge: number;
-  /** Not-Aus ist an: Der Zugriff bleibt sichtbar, lässt sich aber gerade nicht ändern. */
-  gesperrt?: boolean;
   /** Wird gerade gespeichert. */
   speichert?: boolean;
   className?: string;
@@ -46,7 +44,6 @@ export function ZugriffUmschalter({
   wert,
   onAendern,
   lesendeWerkzeuge,
-  gesperrt = false,
   speichert = false,
   className,
 }: ZugriffUmschalterProps) {
@@ -54,10 +51,9 @@ export function ZugriffUmschalter({
   const textId = useId();
   const botName = bereinigeFremdText(bot.name, "name").text;
   const appName = bereinigeFremdText(app, "name").text || t("apps.fremd.leer");
-  const aus = gesperrt || speichert;
-  const text = gesperrt
-    ? t("apps.zugriff.notaus")
-    : wert === "keiner"
+  const aus = speichert;
+  const text =
+    wert === "keiner"
       ? t("apps.zugriff.text.keiner", { name: botName })
       : lesendeWerkzeuge > 0
         ? t("apps.zugriff.text.lesen", { name: botName })

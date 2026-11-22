@@ -2342,7 +2342,6 @@ export const de = {
   "apps.zugriff.text.lesen": "{name} bekommt nur Werkzeuge, die du als „liest“ bestätigt hast.",
   "apps.zugriff.text.lesen.leer":
     "{name} darf lesen, aber noch ist kein Werkzeug als „liest“ bestätigt. Dann bekommt der Bot nichts.",
-  "apps.zugriff.notaus": "Not-Aus aktiv: Der Zugriff lässt sich gerade nicht ändern.",
   // Seite „Apps“
   "apps.seite.einleitung":
     "Verbinde Apps (MCP-Server mit öffentlicher https-Adresse). Du siehst, was jedes Werkzeug dem Modell sagt, stufst es selbst ein und gibst einem Bot höchstens Lese-Zugriff.",
