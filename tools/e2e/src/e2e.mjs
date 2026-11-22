@@ -1267,7 +1267,12 @@ const netz = netzVerstoesse(path.join(ausgabe, "netz.jsonl"));
 ergebnis.netz = netz.verstoesse;
 ergebnis.netzLokaleNamen = [...new Set(netz.lokal.map((z) => z.ziel))];
 ergebnis.gesperrteProzesse = [...new Set(netz.starts.map((z) => z.rolle))].sort();
-const konsolenFehler = ergebnis.konsole.filter((k) => k.art !== "warning");
+// Warnungen zählen nicht, außer dem unnötig vorgeladenen Stylesheet: Es zeigt, dass eine Seite die
+// Stile einer anderen mitlädt (so ist es schon einmal aufgefallen).
+const VORGELADEN_UNGENUTZT = "preloaded using link preload but not used";
+const konsolenFehler = ergebnis.konsole.filter(
+  (k) => k.art !== "warning" || k.text.includes(VORGELADEN_UNGENUTZT),
+);
 const pruefungen = [
   ["alle Schritte", fehler === undefined],
   [
