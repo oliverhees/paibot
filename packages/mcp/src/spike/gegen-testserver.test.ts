@@ -95,7 +95,7 @@ describe.each(["modern", "legacy", "both"] as const)(
       });
       const ergebnis = await client.callTool({ name: "strom" });
       expect(ergebnis.isError).toBeFalsy();
-      expect(ergebnis.content.length).toBeGreaterThan(0);
+      expect((ergebnis.content as unknown[]).length).toBeGreaterThan(0);
     });
 
     it("liest Ergebnisse mit Bild, Ton, Verweis und eingebetteter Ressource", async () => {
@@ -103,7 +103,7 @@ describe.each(["modern", "legacy", "both"] as const)(
         tools: [{ name: "medien", answer: { kind: "media" } }],
       });
       const ergebnis = await client.callTool({ name: "medien" });
-      expect(ergebnis.content.map((c) => c.type)).toEqual([
+      expect((ergebnis.content as { type: string }[]).map((c) => c.type)).toEqual([
         "text",
         "image",
         "audio",

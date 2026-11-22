@@ -452,7 +452,7 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
             .filter(
               (e) => e.getBoundingClientRect().right > document.documentElement.clientWidth + 1,
             )
-            .map((e) => e.tagName.toLowerCase() + "." + e.className)
+            .map((e) => `${e.tagName.toLowerCase()}.${e.className}`)
             .slice(0, 5),
         }));
         expect({ thema, breite, ...ueber }).toEqual({ thema, breite, seite: 0, kinder: [] });
