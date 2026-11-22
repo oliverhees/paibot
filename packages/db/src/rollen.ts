@@ -73,7 +73,7 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
 };
 
 /** Tabellen, auf denen die App-Rolle weder ändern noch löschen noch leeren darf. */
-const APPEND_ONLY_TABLES = [
+export const APPEND_ONLY_TABLES = [
   "belege",
   "rules",
   "installation_keys",

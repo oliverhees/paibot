@@ -14,7 +14,7 @@
 import { is } from "drizzle-orm";
 import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
-import { APP_TABLE_RIGHTS, QUEUE_SCHEMA_NAME } from "./rollen";
+import { APPEND_ONLY_TABLES, QUEUE_SCHEMA_NAME } from "./rollen";
 import * as schema from "./schema";
 import {
   ABGLEICH_GEHEIM_WERTE,
@@ -65,13 +65,27 @@ describe("Abgleich-Klassen der Tabellen", () => {
     }
   });
 
-  it("Tabellen, in denen die App nur lesen und anlegen darf, sind Klasse A", () => {
-    const nurAnhaengen = Object.entries(APP_TABLE_RIGHTS)
-      .filter(([, rechte]) => rechte === "select" || rechte === "select, insert")
-      .map(([name]) => name);
-    expect(nurAnhaengen.length).toBeGreaterThan(0);
-    for (const name of nurAnhaengen) {
-      expect(ABGLEICH_KLASSEN[name]?.klasse, name).toBe("A");
+  it("Tabellen, auf denen die App weder ändern noch löschen darf (`APPEND_ONLY_TABLES`), sind Klasse A; nur ein Geheimnis, das den Ort nie verlässt, macht sie zu C", () => {
+    expect(APPEND_ONLY_TABLES.length).toBeGreaterThan(0);
+    for (const name of APPEND_ONLY_TABLES) {
+      const eintrag = ABGLEICH_KLASSEN[name];
+      expect(eintrag, name).toBeDefined();
+      expect(eintrag?.klasse, name).toBe(eintrag?.geheim === "nie" ? "C" : "A");
+    }
+  });
+
+  it("die Klassen der Tabellen mit Geheimnissen sind festgenagelt", () => {
+    const erwartet: Record<string, string> = {
+      installation_keys: "C",
+      sessions: "C",
+      geraete: "C",
+      owner: "B",
+      providers: "B",
+      apps: "B",
+      settings: "B",
+    };
+    for (const [name, klasse] of Object.entries(erwartet)) {
+      expect(ABGLEICH_KLASSEN[name]?.klasse, name).toBe(klasse);
     }
   });
 
