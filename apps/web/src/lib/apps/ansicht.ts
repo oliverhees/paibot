@@ -62,10 +62,11 @@ function serverHinweis(h: WerkzeugAntwort["hinweiseLautApp"]): ServerHinweis | u
 /**
  * Ein Werkzeug für die Liste. Name und Beschreibung sind genau der gespeicherte Text, der ans
  * Modell geht; die Hinweise der App stehen nur als Anzeige („laut App“) und ändern die Einstufung
- * nie. Gespeichert wird nur, was PaiBot prüfen kann, deshalb ist das Schema hier immer prüfbar.
+ * nie. Das Schema gilt als prüfbar, wenn alle seine Texte gezeigt werden können.
  */
 export function werkzeugEintrag(w: WerkzeugAntwort): WerkzeugListeEintrag {
   const hinweis = serverHinweis(w.hinweiseLautApp);
+  const schema = schemaTexteVollstaendig(w.modellText.schema);
   return {
     id: w.id,
     name: w.modellText.name,
@@ -73,21 +74,26 @@ export function werkzeugEintrag(w: WerkzeugAntwort): WerkzeugListeEintrag {
     status: STATUS[w.stand],
     art: ART[w.klasse],
     fassung: w.abdruck,
-    schemaPruefbar: true,
-    schemaTexte: werkzeugSchemaTexte(w.modellText.schema),
+    // Ist das Schema nicht ganz zeigbar, lässt sich „liest“ nicht wählen: Bestätigt wird nur, was
+    // der Besitzer vollständig gesehen hat.
+    schemaPruefbar: schema.vollstaendig,
+    schemaTexte: schema.texte,
     ...(hinweis === undefined ? {} : { serverHinweis: hinweis }),
   };
 }
 
-const MAX_TIEFE = 8;
-const MAX_TEXTE = 400;
-const MAX_LAENGE = 500;
+/**
+ * Tiefe, ab der PaiBot ein Schema nicht mehr ganz zeigt (Schutz vor zu tiefer Rekursion; die
+ * Datenbank lässt ohnehin höchstens 64 KB je Schema zu). Wird sie überschritten, gilt das Schema
+ * als nicht vollständig zeigbar, und „liest“ lässt sich nicht wählen.
+ */
+const MAX_TIEFE = 64;
 
 function alsText(wert: unknown): string | undefined {
-  if (typeof wert === "string") return wert.slice(0, MAX_LAENGE);
+  if (typeof wert === "string") return wert;
   if (typeof wert === "number" || typeof wert === "boolean" || wert === null) return String(wert);
   try {
-    return JSON.stringify(wert)?.slice(0, MAX_LAENGE);
+    return JSON.stringify(wert);
   } catch {
     return undefined;
   }
@@ -97,25 +103,36 @@ function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === "object" && wert !== null && !Array.isArray(wert);
 }
 
+/** Alle lesbaren Texte eines Schemas, und ob wirklich alle erfasst sind. */
+export interface SchemaTexteErgebnis {
+  texte: SchemaText[];
+  /** `false`, wenn ein Teil nicht erfasst wurde (zu tief oder ein Kreis). Dann nichts bestätigen. */
+  vollstaendig: boolean;
+}
+
 /**
  * Alles Lesbare aus dem Schema, das mit dem Werkzeug ans Modell geht: Feldnamen,
  * Feldbeschreibungen, Auswahlwerte, Vorgaben und Beispiele, je mit ihrem Pfad (`aufgabe.status`,
- * bei Listen `eintraege[]`). Nur Text: nichts wird ausgewertet, geladen oder umgewandelt. Wirft
- * nie und bleibt begrenzt (Tiefe, Zahl der Texte, Länge), auch bei Kreisen und riesigen Schemas.
+ * bei Listen `eintraege[]`), **vollständig und in voller Länge**: nichts wird gekürzt oder
+ * weggelassen, denn der Besitzer bestätigt genau das, was das Modell bekommt. Nur Text: nichts
+ * wird ausgewertet, geladen oder umgewandelt. Wirft nie.
  */
-export function werkzeugSchemaTexte(schema: unknown): SchemaText[] {
-  const aus: SchemaText[] = [];
+export function schemaTexteVollstaendig(schema: unknown): SchemaTexteErgebnis {
+  const texte: SchemaText[] = [];
   const gesehen = new Set<unknown>();
+  let vollstaendig = true;
 
   const nimm = (pfad: string, art: SchemaText["art"], wert: unknown) => {
-    if (aus.length >= MAX_TEXTE) return;
     const text = alsText(wert);
-    if (text !== undefined && text !== "") aus.push({ pfad, art, text });
+    if (text !== undefined && text !== "") texte.push({ pfad, art, text });
   };
 
   const gehe = (knoten: unknown, pfad: string, tiefe: number) => {
-    if (!istObjekt(knoten) || tiefe > MAX_TIEFE || aus.length >= MAX_TEXTE) return;
-    if (gesehen.has(knoten)) return;
+    if (!istObjekt(knoten)) return;
+    if (tiefe > MAX_TIEFE || gesehen.has(knoten)) {
+      vollstaendig = false;
+      return;
+    }
     gesehen.add(knoten);
     if (pfad !== "") {
       if (typeof knoten.description === "string")
@@ -127,7 +144,6 @@ export function werkzeugSchemaTexte(schema: unknown): SchemaText[] {
     }
     if (istObjekt(knoten.properties)) {
       for (const [name, kind] of Object.entries(knoten.properties)) {
-        if (aus.length >= MAX_TEXTE) return;
         const kindPfad = pfad === "" ? name : `${pfad}.${name}`;
         nimm(kindPfad, "feldname", name);
         gehe(kind, kindPfad, tiefe + 1);
@@ -137,7 +153,12 @@ export function werkzeugSchemaTexte(schema: unknown): SchemaText[] {
   };
 
   gehe(schema, "", 0);
-  return aus;
+  return { texte, vollstaendig };
+}
+
+/** Wie `schemaTexteVollstaendig`, nur die Texte. */
+export function werkzeugSchemaTexte(schema: unknown): SchemaText[] {
+  return schemaTexteVollstaendig(schema).texte;
 }
 
 /** Wie vielen Bots der Zugriff „darf lesen“ gegeben ist. */

@@ -26,6 +26,8 @@ export interface FremderTextProps {
    * block: wie der Kasten ohne eigene Kennzeichnung (wenn der Rahmen schon sagt, woher der Text kommt).
    */
   darstellung?: "zeile" | "kasten" | "block";
+  /** Höchstlänge in Zeichen statt der Standardgrenze der Art (etwa, wenn der ganze Text gezeigt werden muss). */
+  grenze?: number;
   className?: string;
 }
 
@@ -37,8 +39,14 @@ const KASTEN_KURZ = 170;
  * Tags, Skripte und Markdown-Links erscheinen als Zeichen, nie als Element und nie als Link.
  * Der Kasten sagt ausdrücklich, dass der Text nicht von PaiBot kommt.
  */
-export function FremderText({ text, art, darstellung = "zeile", className }: FremderTextProps) {
-  const { text: sauber, gekuerzt } = bereinigeFremdText(text, art);
+export function FremderText({
+  text,
+  art,
+  darstellung = "zeile",
+  grenze,
+  className,
+}: FremderTextProps) {
+  const { text: sauber, gekuerzt } = bereinigeFremdText(text, art, undefined, grenze);
   const hinweisId = useId();
   const [ganz, setGanz] = useState(false);
 

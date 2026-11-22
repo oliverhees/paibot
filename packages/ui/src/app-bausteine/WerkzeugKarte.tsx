@@ -93,6 +93,13 @@ const SCHEMA_ART: Record<SchemaTextArt, () => string> = {
   ausgabe: () => t("apps.schema.art.ausgabe"),
 };
 
+/**
+ * Höchstlänge für Texte, die ans Modell gehen (Beschreibung, Schema-Texte): so hoch, dass nichts
+ * gekürzt wird. Die Datenbank lässt höchstens 64 KB je Schema zu. Der Besitzer bestätigt, was das
+ * Modell bekommt, also sieht er es ganz.
+ */
+const GRENZE_VOLL = 70_000;
+
 /** So viele Schema-Texte stehen sofort da; der Rest klappt auf. */
 const SCHEMA_SOFORT = 4;
 
@@ -214,7 +221,12 @@ export function WerkzeugKarte({
       </div>
 
       {beschreibung !== undefined && beschreibung !== "" && (
-        <FremderText text={beschreibung} art="beschreibung" darstellung="kasten" />
+        <FremderText
+          text={beschreibung}
+          art="beschreibung"
+          darstellung="kasten"
+          grenze={GRENZE_VOLL}
+        />
       )}
 
       {serverHinweis && (
@@ -279,9 +291,10 @@ export function WerkzeugKarte({
               // biome-ignore lint/suspicious/noArrayIndexKey: feste Liste ohne eigene Kennung
               <li key={i} className={styles.feld}>
                 <p className={styles.feldName}>
-                  {SCHEMA_ART[e.art]()} · <FremderText text={e.pfad} art="name" />
+                  {SCHEMA_ART[e.art]()} ·{" "}
+                  <FremderText text={e.pfad} art="name" grenze={GRENZE_VOLL} />
                 </p>
-                <FremderText text={e.text} art="wert" darstellung="block" />
+                <FremderText text={e.text} art="wert" darstellung="block" grenze={GRENZE_VOLL} />
               </li>
             ))}
           </ul>
