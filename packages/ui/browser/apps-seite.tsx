@@ -29,6 +29,7 @@ import {
   type AppZugriff,
   Button,
   EmptyState,
+  NeuVerbindenForm,
   NotAusHinweis,
   type VerbindungDaten,
   VerbindungForm,
@@ -307,9 +308,28 @@ function Lang() {
   );
 }
 
+function NeuVerbinden() {
+  const [fehler, setFehler] = useState<AppFehlerArt | undefined>();
+  return (
+    <Seite titel="Getrennte App neu verbinden">
+      <NeuVerbindenForm
+        name="Aufgaben"
+        adresse="https://aufgaben.beispiel.example/mcp"
+        tokenNoetig
+        fehlerArt={fehler}
+        onVerbinden={(token) => {
+          protokolliere(`neu verbinden: token ${token.length} Zeichen`);
+          setFehler("zugang_ungueltig");
+        }}
+      />
+    </Seite>
+  );
+}
+
 const ANSICHTEN: Record<string, () => React.ReactNode> = {
   leer: () => <Leer />,
   formular: () => <Formular />,
+  neuverbinden: () => <NeuVerbinden />,
   verbindet: () => <Verbindet />,
   verbunden: () => <Verbunden />,
   gesperrt: () => <Gesperrt />,

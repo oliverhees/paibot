@@ -393,6 +393,22 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
     expect(await zweite.locator('input[type="password"]').inputValue()).toBe("");
   });
 
+  it("Neu verbinden: leerer Token wird nicht gesendet, der Token bleibt nach dem Absenden nicht stehen", async () => {
+    await oeffne("neuverbinden");
+    const form = page.locator("form[data-neu-verbinden]");
+    const token = form.getByLabel("Neuer Token");
+    expect(await token.getAttribute("type")).toBe("password");
+    await form.getByRole("button", { name: "Neu verbinden" }).click();
+    expect(await protokoll()).toBe("");
+    expect(await form.textContent()).toContain("Gib den Token ein.");
+    await token.fill("GEHEIM-TOKEN-4711");
+    await form.getByRole("button", { name: "Neu verbinden" }).click();
+    expect(await protokoll()).toBe("neu verbinden: token 17 Zeichen");
+    expect(await token.inputValue()).toBe("");
+    expect(await page.content()).not.toContain("GEHEIM-TOKEN-4711");
+    expect(await page.locator('[data-fehler="zugang_ungueltig"]').count()).toBe(1);
+  });
+
   it("Formular: Befehle, http-Adressen und Zugangsdaten in der Adresse gehen nicht raus", async () => {
     await oeffne("formular");
     const form = page.locator("form").first();

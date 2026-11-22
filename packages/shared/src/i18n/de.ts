@@ -2300,6 +2300,15 @@ export const de = {
     "Die App fragt nach einer Eingabe. Die kann PaiBot nicht weitergeben.",
   "apps.fehler.braucht_eingabe.ausweg": "Diese App lässt sich mit PaiBot noch nicht nutzen.",
   "apps.fehler.versuchen": "Erneut versuchen",
+  "apps.neu.titel": "Neu verbinden:",
+  "apps.neu.hilfe":
+    "PaiBot verbindet sich nur mit der gespeicherten Adresse. Danach sind alle Werkzeuge wieder neu und kein Bot hat Zugriff, bis du es wieder erlaubst:",
+  "apps.neu.token": "Neuer Token",
+  "apps.neu.token.hilfe":
+    "Der alte Token wurde beim Trennen gelöscht. PaiBot speichert den neuen verschlüsselt und zeigt ihn nie wieder an.",
+  "apps.neu.token.leer": "Gib den Token ein.",
+  "apps.neu.verbinden": "Neu verbinden",
+  "apps.neu.verbunden": "Wieder verbunden. Prüfe die Werkzeuge und gib den Bots den Zugriff neu.",
   "apps.form.titel": "Verbindung einfügen",
   "apps.form.adresse": "Adresse des Servers",
   "apps.form.adresse.hilfe": "Nur öffentliche https-Adressen, zum Beispiel https://…/mcp",
@@ -2414,7 +2423,7 @@ export const de = {
   "apps.seite.zugriff.keine": "Es gibt noch keinen Bot.",
   "apps.seite.getrennt.titel": "Getrennte Apps",
   "apps.seite.getrennt.text":
-    "Eine getrennte App hat keinen Token mehr und bekommt keinen Aufruf. Zum Neu verbinden trägst du sie noch einmal ein.",
+    "Eine getrennte App hat keinen Token mehr und bekommt keinen Aufruf. Du kannst sie mit der gespeicherten Adresse neu verbinden.",
   "apps.seite.getrennt.am": "getrennt am {datum}",
   "apps.seite.trennen.titel": "App trennen?",
   "apps.seite.trennen.text":

@@ -18,6 +18,7 @@ export {
 export { type AdressePruefung, kurzAdresse, pruefeAdresse } from "./adresse";
 export { FremderText, type FremderTextProps } from "./FremderText";
 export { bereinigeFremdText, FREMD_MAX, type FremdArt, type FremdErgebnis } from "./fremdText";
+export { NeuVerbindenForm, type NeuVerbindenFormProps } from "./NeuVerbindenForm";
 export { NotAusHinweis, type NotAusHinweisProps } from "./NotAusHinweis";
 export { type VerbindungDaten, VerbindungForm, type VerbindungFormProps } from "./VerbindungForm";
 export { WerkzeugKarte, type WerkzeugKarteProps } from "./WerkzeugKarte";

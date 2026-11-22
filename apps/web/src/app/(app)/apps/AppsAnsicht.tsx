@@ -23,6 +23,7 @@ import {
   EmptyState,
   FremderText,
   Icon,
+  NeuVerbindenForm,
   NotAusHinweis,
   SeitenSpalte,
   type VerbindungDaten,
@@ -108,6 +109,9 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
   const [meldungen, setMeldungen] = useState<Readonly<Record<string, Meldung>>>({});
   const [testFehler, setTestFehler] = useState<Readonly<Record<string, AppFehlerArt>>>({});
   const [trennen, setTrennen] = useState<AppsAnsichtEintrag>();
+  const [neuOffen, setNeuOffen] = useState<string>();
+  const [neuLaeuft, setNeuLaeuft] = useState(false);
+  const [neuFehler, setNeuFehler] = useState<AppFehlerArt>();
 
   const verbundene = apps.filter((a) => a.zustand === "verbunden");
   const getrennte = apps.filter((a) => a.zustand !== "verbunden");
@@ -234,6 +238,27 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
       meldeFuer(app.id, fehlerMeldung(r.fehler, r.wartenSekunden));
       return;
     }
+    neuLaden();
+  }
+
+  async function appNeuVerbinden(app: AppsAnsichtEintrag, token: string) {
+    setNeuLaeuft(true);
+    setNeuFehler(undefined);
+    setSeitenMeldung(undefined);
+    // Der Token geht nur in diese Anfrage; er wird nirgends gemerkt.
+    const r = await apiFetch("POST", APP_PFADE.neuVerbinden(app.id), {
+      ...(token === "" ? {} : { token }),
+    });
+    setNeuLaeuft(false);
+    if (!r.ok) {
+      const art = appFehlerArt(r.fehler.code);
+      if (art === undefined) setSeitenMeldung(fehlerMeldung(r.fehler, r.wartenSekunden));
+      else setNeuFehler(art);
+      return;
+    }
+    setNeuOffen(undefined);
+    setOffen((alt) => new Set(alt).add(app.id));
+    setSeitenMeldung({ art: "ok", text: t("apps.neu.verbunden") });
     neuLaden();
   }
 
@@ -396,6 +421,33 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
                     <span className={styles.leise}>
                       {t("apps.seite.getrennt.am", { datum: app.getrenntText })}
                     </span>
+                  )}
+                  {neuOffen !== app.id && (
+                    <Button
+                      art="zweit"
+                      aria-expanded={false}
+                      aria-label={`${t("apps.neu.verbinden")}: ${app.name}`}
+                      onClick={() => {
+                        setNeuFehler(undefined);
+                        setNeuOffen(app.id);
+                      }}
+                    >
+                      {t("apps.neu.verbinden")}
+                    </Button>
+                  )}
+                  {neuOffen === app.id && (
+                    <NeuVerbindenForm
+                      className={styles.neuForm}
+                      name={app.name}
+                      adresse={app.adresse}
+                      tokenNoetig={app.anmeldung === "token"}
+                      laeuft={neuLaeuft}
+                      {...(neuFehler === undefined ? {} : { fehlerArt: neuFehler })}
+                      onVerbinden={(token) => {
+                        void appNeuVerbinden(app, token);
+                      }}
+                      onAbbrechen={() => setNeuOffen(undefined)}
+                    />
                   )}
                 </li>
               ))}

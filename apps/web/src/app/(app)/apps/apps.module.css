@@ -110,6 +110,10 @@
   list-style: none;
 }
 
+.neuForm {
+  flex-basis: 100%;
+}
+
 .getrenntZeile {
   display: flex;
   flex-wrap: wrap;
