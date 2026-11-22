@@ -22,7 +22,7 @@ import {
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "./client";
-import { toolCalls as calls, StatuswechselError } from "./repo";
+import { apps, toolCalls as calls, StatuswechselError } from "./repo";
 import { belege, bots, conversations, installationKeys, messages, runs, toolCalls } from "./schema";
 import {
   belegRow,
@@ -491,5 +491,134 @@ describe("toolCalls (Zugriff)", () => {
     );
     expect(await calls.listForMessages(ctx.db, [])).toEqual([]);
     expect((await calls.get(ctx.db, a))?.position).toBe(0);
+  });
+});
+
+describe("repo.toolCalls.create mit Angaben zur App", () => {
+  /** Eine App mit einem gesehenen Werkzeug (Fassung 1), wie die Steuerung sie kennt. */
+  async function appMitWerkzeug() {
+    const app = await apps.create(ctx.db, {
+      shortName: "notizen",
+      name: "Notizen",
+      url: "https://mcp.beispiel.test/mcp",
+      authKind: "token",
+      tokenEnc: `v2:${"a".repeat(16)}:${"b".repeat(22)}:${"c".repeat(40)}`,
+    });
+    const [gesehen] = await apps.sehen(ctx.db, app.id, [
+      {
+        originalName: "suche",
+        toolDigest: sha256Digest(),
+        description: "Sucht.",
+        inputSchema: { type: "object" },
+      },
+    ]);
+    if (gesehen === undefined) throw new Error("Werkzeug fehlt");
+    return { app, tool: gesehen.tool };
+  }
+
+  function neu(extra: Partial<Parameters<typeof calls.create>[1]>) {
+    return calls.create(ctx.db, {
+      actionId: newId("action"),
+      conversationId: ids.conversationId,
+      runId: ids.runId,
+      messageId: ids.messageId,
+      position: 0,
+      callId: "c0",
+      name: "notizen__suche",
+      source: "mcp",
+      server: "notizen",
+      kind: "lesen",
+      input: { q: "x" },
+      argsDigest: hmacDigest() as never,
+      toolKey: "mcp/notizen/suche" as never,
+      toolDigest: sha256Digest() as never,
+      reach: "nach_aussen",
+      foreignContent: true,
+      step: 0,
+      untrustedInput: false,
+      ...extra,
+    });
+  }
+
+  it("legt einen Aufruf mit App, Werkzeug und Fassung an", async () => {
+    const { app, tool } = await appMitWerkzeug();
+    const zeile = await neu({ appId: app.id, appToolId: tool.toolId, toolVersion: tool.version });
+    const [row] = await ctx.db
+      .select()
+      .from(toolCalls)
+      .where(eq(toolCalls.actionId, zeile.actionId));
+    expect(row).toMatchObject({ appId: app.id, appToolId: tool.toolId, toolVersion: tool.version });
+  });
+
+  // Gegenprobe: die Prüfung „alle drei oder keins“ im Repo entfernen → die Datenbank meldet es anders (oder gar nicht).
+  it("nur ein Teil der App-Angaben ist ein fester Fehler vor dem Schreiben", async () => {
+    const { app, tool } = await appMitWerkzeug();
+    for (const teil of [
+      { appId: app.id },
+      { appId: app.id, appToolId: tool.toolId },
+      { toolVersion: 1 },
+    ]) {
+      await expect(neu(teil)).rejects.toMatchObject({
+        code: "eingabe_ungueltig",
+        felder: [{ feld: "app", code: "fehlt" }],
+      });
+    }
+    expect(await ctx.db.select().from(toolCalls)).toHaveLength(0);
+  });
+
+  it("App-Angaben bei einer anderen Quelle als mcp sind ein fester Fehler", async () => {
+    const { app, tool } = await appMitWerkzeug();
+    await expect(
+      neu({
+        source: "eingebaut",
+        toolKey: "eingebaut/doku.nachschlagen" as never,
+        reach: "intern",
+        foreignContent: false,
+        appId: app.id,
+        appToolId: tool.toolId,
+        toolVersion: tool.version,
+      }),
+    ).rejects.toMatchObject({
+      code: "eingabe_ungueltig",
+      felder: [{ feld: "app", code: "ungueltig" }],
+    });
+  });
+
+  it("ein Aufruf mit Quelle mcp ohne App-Angaben scheitert weiter an der Datenbank", async () => {
+    await expect(neu({})).rejects.toMatchObject({ code: "eingabe_ungueltig" });
+  });
+
+  it("eine Fassung, die es nicht gibt, scheitert an der Datenbank (Prüfung 23514 wird nicht verschluckt)", async () => {
+    const { app, tool } = await appMitWerkzeug();
+    await expect(
+      neu({ appId: app.id, appToolId: tool.toolId, toolVersion: tool.version + 5 }),
+    ).rejects.toMatchObject({ code: "eingabe_ungueltig" });
+  });
+
+  it("ein eingebautes Werkzeug bleibt unverändert", async () => {
+    const zeile = await calls.create(ctx.db, {
+      actionId: newId("action"),
+      conversationId: ids.conversationId,
+      runId: ids.runId,
+      messageId: ids.messageId,
+      position: 0,
+      callId: "c0",
+      name: "doku_nachschlagen",
+      source: "eingebaut",
+      kind: "lesen",
+      input: { frage: "x" },
+      argsDigest: hmacDigest() as never,
+      toolKey: "eingebaut/doku.nachschlagen" as never,
+      toolDigest: sha256Digest() as never,
+      reach: "intern",
+      foreignContent: false,
+      step: 0,
+      untrustedInput: false,
+    });
+    const [row] = await ctx.db
+      .select()
+      .from(toolCalls)
+      .where(eq(toolCalls.actionId, zeile.actionId));
+    expect(row).toMatchObject({ appId: null, appToolId: null, toolVersion: null, server: null });
   });
 });

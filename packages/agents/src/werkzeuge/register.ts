@@ -12,6 +12,7 @@
 import { toolDefinitionDigest } from "@paibot/gate";
 import { TOOL_GATE_ACTIONS } from "@paibot/shared/aktionen";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
+import type { AppId, AppToolId } from "@paibot/shared/ids";
 import type { JsonValue, ToolSpec } from "@paibot/shared/motor";
 import { TOOL_NAME_PATTERN } from "@paibot/shared/objekte";
 import type { ToolDefinition, ToolKey } from "@paibot/shared/werkzeug";
@@ -20,8 +21,20 @@ import { z } from "zod";
 import { cleanText, hasUnwanted } from "../run/bereinigen";
 import { builtinTools } from "./eingebaut";
 
+/** Woher ein Werkzeug aus einer App kommt; nur bei Werkzeugen mit Quelle `mcp` gesetzt. */
+export interface AppBezug {
+  readonly appId: AppId;
+  readonly appToolId: AppToolId;
+  /** Name beim Server; geht nie an das Modell. */
+  readonly originalName: string;
+  /** Kurzname der App (Spalte `server` der Aufrufe). */
+  readonly kurzname: string;
+}
+
 /** Ein Werkzeug im Register: eingefrorene Beschreibung, Abdruck und Angebot an das Modell. */
 export interface RegisteredTool {
+  /** Nur bei Werkzeugen aus einer App (Quelle `mcp`). */
+  readonly app?: AppBezug;
   readonly definition: ToolDefinition<JsonValue, JsonValue>;
   /** Abdruck der Beschreibung, einmal beim Aufbau gerechnet. */
   readonly toolDigest: Sha256Digest;

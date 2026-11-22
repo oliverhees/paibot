@@ -352,8 +352,10 @@ describe("Fremde Inhalte (Deckel D-01)", () => {
     ]);
   });
 
-  // Gegenprobe: Wert nur einmal je Schritt lesen → zweiter Aufruf false, rot.
-  it("nach test_fremd ist untrustedInput = true am nächsten Aufruf im selben Schritt", async () => {
+  // Gegenprobe: den Wert vor jedem Aufruf neu aus der Datenbank lesen → zweiter Aufruf true, rot.
+  // Der Wert gehört zur Anfrage, die den Aufruf erzeugte: das Modell hat beide Wünsche geschrieben,
+  // bevor es ein Ergebnis dieses Schritts gesehen hat. Erst der nächste Schritt ist gedeckelt.
+  it("untrustedInput gilt je Anfrage: ein fremdes Ergebnis desselben Schritts ändert ihn am nächsten Aufruf nicht", async () => {
     const env = await setup(SCRIPTS.fremdDannSchreibenImSchritt, {
       tools: { allowedByR010: "test_fremd" },
     });
@@ -361,11 +363,9 @@ describe("Fremde Inhalte (Deckel D-01)", () => {
     const calls = decisions(await env.receipts(), "werkzeug.aufrufen");
     expect(calls.map((d) => [d.facts.toolName, d.facts.untrustedInput])).toEqual([
       ["test_fremd", false],
-      ["test_schreiben", true],
+      ["test_schreiben", false],
     ]);
-    expect(calls[1]?.decision.caps).toEqual([
-      { name: "fremd_dann_fragen", result: "nicht_noetig" },
-    ]);
+    expect(calls[1]?.decision.caps).toEqual([{ name: "fremd_dann_fragen", result: "entfaellt" }]);
   });
 
   it("fällt die End-Antwort des fremden Laufs aus dem gesendeten Verlauf, gilt der Lauf nicht mehr als fremd", async () => {

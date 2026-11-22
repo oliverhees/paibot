@@ -11,6 +11,8 @@
 
 import {
   type ActionId,
+  type AppId,
+  type AppToolId,
   type ConversationId,
   type ErrorCode,
   type HmacDigest,
@@ -76,6 +78,13 @@ export interface ToolCallCreate {
   untrustedInput: boolean;
   /** Roher Name des Modells, nur wenn `name` der Platzhalter ist; schon bereinigt und gekürzt. */
   rawName?: string;
+  /**
+   * Bei einem Werkzeug aus einer App (Quelle `mcp`): App, Werkzeug und Fassung, zu denen der
+   * Aufruf gehört. Alle drei oder keins; bei `mcp` Pflicht, bei jeder anderen Quelle verboten.
+   */
+  appId?: AppId;
+  appToolId?: AppToolId;
+  toolVersion?: number;
 }
 
 function toToolCall(row: ToolCallRow): ToolCallRecord {
@@ -115,6 +124,22 @@ function toToolCall(row: ToolCallRow): ToolCallRecord {
 
 /** Legt einen Aufruf im Zustand `requested` an (vor dem Tor). */
 export async function create(db: Database, input: ToolCallCreate): Promise<ToolCallRecord> {
+  // Die App-Angaben gehören zusammen und nur zu einem Aufruf mit Quelle `mcp`; vor dem Schreiben
+  // prüfen, damit ein falscher Aufruf nie als Datenbankfehler endet, der nach einem anderen
+  // Fehler aussieht.
+  const appAngaben = [input.appId, input.appToolId, input.toolVersion].filter(
+    (wert) => wert !== undefined,
+  ).length;
+  if (appAngaben !== 0 && appAngaben !== 3) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      felder: [{ feld: "app", code: "fehlt" }],
+    });
+  }
+  if ((appAngaben === 3) !== (input.source === "mcp")) {
+    throw new PaiBotError("eingabe_ungueltig", {
+      felder: [{ feld: "app", code: "ungueltig" }],
+    });
+  }
   const [row] = await uebersetzen(
     () =>
       db
@@ -139,6 +164,9 @@ export async function create(db: Database, input: ToolCallCreate): Promise<ToolC
           step: input.step,
           untrustedInput: input.untrustedInput,
           rawName: input.rawName ?? null,
+          appId: input.appId ?? null,
+          appToolId: input.appToolId ?? null,
+          toolVersion: input.toolVersion ?? null,
         })
         .returning(),
     standardFehler,

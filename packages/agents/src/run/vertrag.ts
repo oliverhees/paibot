@@ -17,6 +17,7 @@ import type { MessageId, RunId } from "@paibot/shared/ids";
 import type { Motor } from "@paibot/shared/motor";
 import type { RunStatus } from "@paibot/shared/objekte";
 import type { ToolRegistry } from "../werkzeuge/register";
+import type { AppAnschluss } from "./app-anschluss";
 
 /** Stellschrauben eines Laufs. */
 export interface RunTuning {
@@ -88,6 +89,11 @@ export interface RunDeps {
    * gilt das leere Register: Der Lauf bietet keine Werkzeuge an.
    */
   tools?: ToolRegistry;
+  /**
+   * Anschluss an die Apps (MCP): im Betrieb vom Worker gesetzt, im Test eine Attrappe. Fehlt er,
+   * bietet der Lauf keine Werkzeuge aus Apps an und ruft keine Adresse auf.
+   */
+  apps?: AppAnschluss;
 }
 
 /** Endzustände eines Laufs. */

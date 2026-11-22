@@ -22,7 +22,14 @@ import {
 import type { ReceiptResult } from "@paibot/shared/belege";
 import { type ErrorCode, PaiBotError } from "@paibot/shared/fehler";
 import type { HmacDigest, Sha256Digest } from "@paibot/shared/grundtypen";
-import { type ActionId, type ConversationId, newId, type RunId } from "@paibot/shared/ids";
+import {
+  type ActionId,
+  type AppId,
+  type AppToolId,
+  type ConversationId,
+  newId,
+  type RunId,
+} from "@paibot/shared/ids";
 import type { JsonValue, ToolCall, ToolResult } from "@paibot/shared/motor";
 import { TOOL_NAME_PATTERN, type ToolKind, type ToolSource } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
@@ -30,6 +37,7 @@ import type { GatePermit } from "@paibot/shared/tor";
 import type { ToolEnvelope, ToolKey } from "@paibot/shared/werkzeug";
 import { belegFelder } from "../werkzeuge/beleg-felder";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
+import { type AppAufrufFakten, leseAufrufFakten } from "./app-werkzeuge";
 import {
   cleanJson,
   cleanText,
@@ -77,6 +85,8 @@ export interface PreparedCall {
   /** Bereinigter roher Name, nur wenn `name` der Platzhalter ist. */
   rawName?: string;
   tool?: RegisteredTool;
+  /** Kurzname der App bei einem Werkzeug aus einer App (Spalte `server`). */
+  server?: string;
   toolKey: ToolKey;
   toolDigest: Sha256Digest;
   source: ToolSource;
@@ -206,6 +216,7 @@ export function prepareCalls(
       name,
       ...(rawName === undefined ? {} : { rawName }),
       ...(tool === undefined ? {} : { tool }),
+      ...(tool?.app === undefined ? {} : { server: tool.app.kurzname }),
       toolKey,
       toolDigest,
       source: def?.source ?? placeholder.source,
@@ -364,6 +375,32 @@ export interface CallInput {
   guardSignal: AbortSignal;
   untrusted: (input: { runId: RunId; historyRunIds: readonly RunId[] }) => Promise<boolean>;
   trigger: Facts<"werkzeug.aufrufen">["trigger"];
+  /**
+   * Die App des ersten App-Aufrufs dieses Schritts. Die Steuerung führt sie von Aufruf zu Aufruf
+   * mit; der erste Aufruf an eine App setzt sie, und das Modell kann sie nie beeinflussen.
+   */
+  stepApp?: { appId: AppId | undefined };
+}
+
+/** Feste Fakten für einen App-Aufruf, dessen Werkzeug oder App es nicht mehr gibt: das Tor lehnt ab. */
+function fehlendeAppFakten(
+  appId: AppId,
+  appToolId: AppToolId,
+  angeboten: Sha256Digest,
+): AppAufrufFakten {
+  const nichts = `sha256:${"0".repeat(64)}` as Sha256Digest;
+  return {
+    appId,
+    appToolId,
+    toolVersion: 1,
+    toolStatus: "entfernt",
+    toolKind: "schreiben",
+    appAccess: "keiner",
+    toolDigest: angeboten,
+    targetDigest: nichts,
+    confirmedToolDigest: nichts,
+    confirmedTargetDigest: nichts,
+  };
 }
 
 /**
@@ -382,10 +419,42 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
     runId: run.id,
     historyRunIds: input.historyRunIds,
   });
+  // Werkzeug aus einer App: alle Fakten direkt vor dem Aufruf frisch aus der Datenbank, aus
+  // derselben Zeile; nichts davon stammt vom Lauf-Start, vom Modell oder von der App.
+  const bezug = call.tool?.app;
+  let appFakten: AppAufrufFakten | undefined;
+  if (bezug !== undefined) {
+    appFakten =
+      (await write(() =>
+        leseAufrufFakten({
+          db,
+          botId: run.botId,
+          modelName: call.name,
+          angebotenDigest: call.toolDigest,
+        }),
+      )) ?? fehlendeAppFakten(bezug.appId, bezug.appToolId, call.toolDigest);
+    if (input.stepApp !== undefined) input.stepApp.appId ??= appFakten.appId;
+  }
+  const appFaktenFuerTor =
+    appFakten === undefined
+      ? {}
+      : {
+          appId: appFakten.appId,
+          appToolId: appFakten.appToolId,
+          toolVersion: appFakten.toolVersion,
+          toolStatus: appFakten.toolStatus,
+          appAccess: appFakten.appAccess,
+          targetDigest: appFakten.targetDigest,
+          confirmedToolDigest: appFakten.confirmedToolDigest,
+          confirmedTargetDigest: appFakten.confirmedTargetDigest,
+          stepAppId: input.stepApp?.appId ?? appFakten.appId,
+        };
   const facts: Facts<"werkzeug.aufrufen"> = {
+    ...appFaktenFuerTor,
+    ...(call.server === undefined ? {} : { toolServer: call.server }),
     toolName: call.name,
     toolSource: call.source,
-    toolKind: call.kind,
+    toolKind: appFakten === undefined ? call.kind : appFakten.toolKind,
     toolKey: call.toolKey,
     toolDigest: call.toolDigest,
     toolReach: call.reach,
