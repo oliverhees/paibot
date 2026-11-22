@@ -413,10 +413,13 @@ function waehleWeg(
     code = "verboten_pai_an_mitglied";
   } else if (art === "rueckgabe") {
     if (geber.rolle !== "leitung") code = "verboten_rueckgabe_von_nicht_leitung";
+    // Nicht erreichbar, Absicherung: Außerhalb eines Fadens weist `erkenneZeilen` die Leitung schon
+    // vorher mit `kein_ort` ab; der Zweig bleibt für den Fall, dass sich diese Prüfung ändert.
     else if (!faden) code = "verboten_leitung_nicht_im_faden";
     else if (!leitungArt) code = "verboten_leitung_auftragsart";
     else code = "leitung_gibt_zurueck";
   } else if (geber.rolle === "leitung") {
+    // Nicht erreichbar, Absicherung (wie oben): `kein_ort` greift vorher.
     if (!faden) code = "verboten_leitung_nicht_im_faden";
     else if (!leitungArt) code = "verboten_leitung_auftragsart";
     else code = "leitung_an_mitglied";

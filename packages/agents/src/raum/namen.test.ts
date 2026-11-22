@@ -59,6 +59,14 @@ describe("namensKonflikte", () => {
     expect(k[0]?.art).toBe("gleich");
   });
 
+  it("gemischte Gruppe: zwei gleiche und ein ähnlicher Name ergeben beide Meldungen", () => {
+    const k = namensKonflikte(bots("Ideen", "ideen", "Id\u0435en"));
+    expect(k).toEqual([
+      { art: "gleich", botIds: ["b0", "b1"] },
+      { art: "aehnlich", botIds: ["b0", "b1", "b2"] },
+    ]);
+  });
+
   it("meldet jeden Konflikt mit allen beteiligten Bots", () => {
     const k = namensKonflikte(bots("Ideen", "ideen", "IDEEN", "Entwurf"));
     expect(k).toEqual([{ art: "gleich", botIds: ["b0", "b1", "b2"] }]);
