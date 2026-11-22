@@ -280,7 +280,7 @@ describe("Prüf-Schema für Argumente", () => {
     expect(mitVorgabe.pruefer({})).toEqual({ ok: true, wert: {} });
   });
 
-  it("prüft const und exklusive Grenzen, obwohl sie nicht ans Modell gehen", () => {
+  it("prüft const und exklusive Grenzen und zeigt sie dem Modell", () => {
     const schema = gut({
       type: "object",
       properties: {
@@ -290,7 +290,7 @@ describe("Prüf-Schema für Argumente", () => {
     });
     expect(schema.modell).toEqual({
       type: "object",
-      properties: { b: {}, c: { type: "integer" } },
+      properties: { b: { enum: ["fest"] }, c: { type: "integer", exclusiveMinimum: 0 } },
       additionalProperties: false,
     });
     expect(schema.pruefer({ b: "fest", c: 1 }).ok).toBe(true);
@@ -410,5 +410,161 @@ describe("Das Prüf-Schema ist nie lockerer als die Rohform", () => {
       properties: { a: { type: "object", properties: { x: A }, additionalProperties: false } },
       additionalProperties: false,
     });
+  });
+});
+
+// Das Prüf-Schema darf nie lockerer sein als die Rohform. Jeder Fall unten wird entweder
+// abgewiesen oder der Prüfer weist den Wert ab, den die Rohform nach JSON Schema nicht annimmt.
+// Gegenprobe: `z.fromJSONSchema` direkt auf die Rohform (ohne `verarbeiteSchema`) nimmt Fälle an,
+// die hier abgewiesen werden müssen; das ist der Ausgangsstand vor der Nacharbeit.
+describe("Prüfer nie lockerer als die Rohform", () => {
+  const wurzel = (eigenschaft: unknown, extra: Record<string, unknown> = {}) => ({
+    type: "object",
+    properties: { a: eigenschaft },
+    ...extra,
+  });
+  const FAELLE: [string, unknown, unknown][] = [
+    [
+      "ohne type: Eigenschaft hat Text-Typ, Zahl kommt",
+      wurzel({ properties: { b: { type: "string" } } }),
+      { a: { b: 5 } },
+    ],
+    [
+      "ohne type: zusätzliches Feld trotz Modell-Schema false",
+      wurzel({ properties: { b: { type: "string" } } }),
+      { a: { b: "x", geheim: 1 } },
+    ],
+    [
+      "ohne type: required, Feld fehlt",
+      wurzel({ properties: { b: { type: "string" } }, required: ["b"] }),
+      { a: {} },
+    ],
+    ["ohne type: minLength", wurzel({ minLength: 3 }), { a: "x" }],
+    ["ohne type: minimum", wurzel({ minimum: 3 }), { a: 1 }],
+    ["ohne type: items", wurzel({ items: { type: "string" } }), { a: [1] }],
+    ["enum passt nicht zum Typ string", wurzel({ type: "string", enum: [1] }), { a: 1 }],
+    ["enum passt nicht zum Typ integer", wurzel({ type: "integer", enum: [1.5] }), { a: 1.5 }],
+    ["const passt nicht zum Typ string", wurzel({ type: "string", const: 1 }), { a: 1 }],
+    ["enum gegen minLength", wurzel({ type: "string", minLength: 5, enum: ["ab"] }), { a: "ab" }],
+    ["enum gegen maximum", wurzel({ type: "number", maximum: 1, enum: [5] }), { a: 5 }],
+    ["Typ-eigenes Stichwort zum falschen Typ", wurzel({ type: "string", minimum: 3 }), { a: "x" }],
+    [
+      "properties an einem Text",
+      wurzel({ type: "string", properties: { b: { type: "string" } } }),
+      { a: "x" },
+    ],
+    [
+      "const und enum zusammen",
+      wurzel({ type: "string", enum: ["a", "b"], const: "a" }),
+      { a: "b" },
+    ],
+  ];
+
+  for (const [name, schema, schlecht] of FAELLE) {
+    it(`${name}: abgewiesen oder der Prüfer weist ihn ab`, () => {
+      const ergebnis = verarbeiteSchema(schema, GRENZEN);
+      if (ergebnis.ok) expect(ergebnis.pruefer(schlecht).ok, JSON.stringify(schlecht)).toBe(false);
+    });
+  }
+
+  const OFFEN: [string, unknown][] = [
+    ["leere Eigenschaft", wurzel({})],
+    ["nur description", wurzel({ description: "frei" })],
+    ["items leer", wurzel({ type: "array", items: {} })],
+    ["array ohne items", wurzel({ type: "array" })],
+    ["items ohne type", wurzel({ type: "array", items: { description: "x" } })],
+  ];
+  for (const [name, schema] of OFFEN) {
+    it(`${name}: nimmt alles an und wird deshalb abgewiesen`, () => {
+      expect(problem(schema)).not.toBeNull();
+    });
+  }
+
+  it("übliche Schemas bleiben bestätigbar: Typ mit enum, Typ-Liste, verschachtelt, const allein, enum allein", () => {
+    expect(problem(wurzel({ type: "string", enum: ["a", "b"] }))).toBeNull();
+    expect(problem(wurzel({ type: ["string", "null"] }))).toBeNull();
+    expect(problem(wurzel({ type: "integer", minimum: 1, maximum: 5, enum: [1, 2] }))).toBeNull();
+    expect(problem(wurzel({ enum: ["a", "b"] }))).toBeNull();
+    expect(problem(wurzel({ const: "a", description: "fest" }))).toBeNull();
+    expect(
+      problem(
+        wurzel({ type: "array", items: { type: "object", properties: { x: { type: "string" } } } }),
+      ),
+    ).toBeNull();
+    expect(problem(wurzel({ type: "object" }))).toBeNull();
+    expect(problem(wurzel({ type: "boolean" }))).toBeNull();
+  });
+
+  it("Typ-Liste mit passenden Stichwörtern: der Prüfer wendet sie an", () => {
+    const geprueft = gut(wurzel({ type: ["string", "null"], minLength: 3 }));
+    expect(geprueft.pruefer({ a: "abc" }).ok).toBe(true);
+    expect(geprueft.pruefer({ a: null }).ok).toBe(true);
+    expect(geprueft.pruefer({ a: "x" }).ok).toBe(false);
+  });
+});
+
+// Gegenprobe: `const` und die Grenzen `exclusiveMinimum` und `exclusiveMaximum` nur dem Prüfer
+// geben → das Schema, das das Modell sieht, ist weniger streng als die Prüfung.
+describe("Das Modell sieht, was geprüft wird (const und exklusive Grenzen)", () => {
+  it("const erscheint im Modell-Schema als enum mit einem Wert", () => {
+    const geprueft = gut({ type: "object", properties: { a: { type: "string", const: "fest" } } });
+    expect((geprueft.modell.properties as Record<string, unknown>).a).toEqual({
+      type: "string",
+      enum: ["fest"],
+      additionalProperties: undefined,
+    });
+    expect(geprueft.pruefer({ a: "fest" }).ok).toBe(true);
+    expect(geprueft.pruefer({ a: "anders" }).ok).toBe(false);
+  });
+
+  it("const allein ohne type erscheint ebenfalls als enum", () => {
+    const geprueft = gut({ type: "object", properties: { a: { const: 5, description: "fest" } } });
+    expect((geprueft.modell.properties as Record<string, { enum?: unknown }>).a?.enum).toEqual([5]);
+  });
+
+  it("exclusiveMinimum und exclusiveMaximum erscheinen im Modell-Schema", () => {
+    const geprueft = gut({
+      type: "object",
+      properties: { a: { type: "number", exclusiveMinimum: 0, exclusiveMaximum: 10 } },
+    });
+    expect((geprueft.modell.properties as Record<string, unknown>).a).toMatchObject({
+      exclusiveMinimum: 0,
+      exclusiveMaximum: 10,
+    });
+    expect(geprueft.pruefer({ a: 0 }).ok).toBe(false);
+    expect(geprueft.pruefer({ a: 5 }).ok).toBe(true);
+    expect(geprueft.pruefer({ a: 10 }).ok).toBe(false);
+  });
+
+  it("jede Regel, die der Prüfer anwendet, steht auch im Modell-Schema", () => {
+    const roh = {
+      type: "object",
+      properties: {
+        a: { type: "integer", minimum: 1, exclusiveMaximum: 9, description: "x" },
+        b: { type: "string", const: "k", minLength: 1 },
+        c: { type: "array", items: { type: "number", exclusiveMinimum: 2 }, minItems: 1 },
+      },
+      required: ["a"],
+    };
+    const geprueft = gut(roh);
+    const stichworte = (wert: unknown, aus = new Set<string>()): Set<string> => {
+      if (Array.isArray(wert)) for (const e of wert) stichworte(e, aus);
+      else if (typeof wert === "object" && wert !== null)
+        for (const [name, kind] of Object.entries(wert)) {
+          if (name !== "properties") aus.add(name);
+          stichworte(kind, aus);
+        }
+      return aus;
+    };
+    for (const name of [
+      "minimum",
+      "exclusiveMaximum",
+      "exclusiveMinimum",
+      "minLength",
+      "minItems",
+    ]) {
+      expect(stichworte(geprueft.modell).has(name), name).toBe(true);
+    }
+    expect(stichworte(geprueft.modell).has("const")).toBe(false);
   });
 });

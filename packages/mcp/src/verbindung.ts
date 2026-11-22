@@ -32,12 +32,6 @@ export interface McpVerbindungOptionen {
   grenzen?: Partial<McpGrenzen>;
   /** Bricht die ganze Verbindung ab (z. B. Not-Aus des Laufs). */
   signal?: AbortSignal;
-  /**
-   * Nur für Tests der Schicht: lässt `http`, IP-Adressen und beliebige Ports zu. Wird außerhalb von
-   * Tests nie gesetzt und nie aus einer Eingabe gelesen (ein Test der Lint-Regeln prüft das).
-   * Standard: nein.
-   */
-  erlaubeHttp?: boolean;
 }
 
 /** Ergebnis von `pruefeAdresse`. */
@@ -64,14 +58,19 @@ const CLIENT_NAME = "paibot";
  * Prüft die Adresse einer App: nur `https` auf dem Standard-Port 443, ein Name mit Punkt (kein
  * IP-Literal, kein `localhost`, kein Name ohne Punkt), kein Benutzer-, Abfrage- und Fragment-Teil.
  *
- * Mit `erlaubeHttp` entfallen die Regeln zu Protokoll, Port und Namen (`http`, `127.0.0.1`, jeder
- * Port); der Schalter ist nur für Tests der Schicht da und wird außerhalb von Tests nie gesetzt.
+ * Einen Schalter, der `http`, IP-Adressen oder andere Ports zulässt, gibt es für Tests der Schicht
+ * nur über die internen Funktionen `…Intern` (siehe `InterneOptionen`), nie an dieser Funktion.
  *
  * Das ist nur ein erster, grober Filter für die Eingabe. Ob das Ziel öffentlich ist (private,
  * Link-lokale und Loopback-Adressen, Namen, die dorthin auflösen, DNS-Rebinding), prüft allein die
  * Ausgangs-Hülle beim Verbinden.
  */
-export function pruefeAdresse(adresse: string, erlaubeHttp = false): AdressePruefung {
+export function pruefeAdresse(adresse: string): AdressePruefung {
+  return pruefeAdresseMitSchalter(adresse, false);
+}
+
+/** Wie `pruefeAdresse`; mit `lockern` nur für Tests der Schicht (siehe `InterneOptionen`). */
+export function pruefeAdresseMitSchalter(adresse: string, lockern: boolean): AdressePruefung {
   if (adresse.length > MAX_ADRESSE) return { ok: false, grund: "zu_lang" };
   let url: URL;
   try {
@@ -79,13 +78,13 @@ export function pruefeAdresse(adresse: string, erlaubeHttp = false): AdressePrue
   } catch {
     return { ok: false, grund: "ungueltig" };
   }
-  if (url.protocol !== "https:" && !(erlaubeHttp && url.protocol === "http:")) {
+  if (url.protocol !== "https:" && !(lockern && url.protocol === "http:")) {
     return { ok: false, grund: "protokoll" };
   }
   if (url.hostname === "") return { ok: false, grund: "ungueltig" };
   if (url.username !== "" || url.password !== "") return { ok: false, grund: "zugangsdaten" };
   if (url.search !== "" || url.hash !== "") return { ok: false, grund: "abfrage" };
-  if (!erlaubeHttp) {
+  if (!lockern) {
     // Der Standard-Port (443) steht in `url.port` als leere Zeichenkette.
     if (url.port !== "") return { ok: false, grund: "port" };
     // Die Adress-Klasse prüft die Hülle; hier fallen nur die offensichtlichen Formen heraus.
@@ -206,20 +205,23 @@ function begrenzeEreignisse(
   const art = antwort.headers.get("content-type") ?? "";
   if (antwort.body === null || !/text\/event-stream/i.test(art)) return antwort;
   let ereignisse = 0;
-  let vorherNeueZeile = false;
+  // Nach SSE enden Zeilen mit `\r\n`, `\n` oder `\r` allein (wie im Parser der Bibliothek). Eine
+  // Leerzeile beendet ein Ereignis; ein `\n` direkt nach `\r` gehört zu diesem `\r`.
+  let zeileLeer = true;
+  let vorherCr = false;
   const zaehler = new TransformStream<Uint8Array, Uint8Array>({
     transform(stueck, steuerung) {
       for (const byte of stueck) {
-        if (byte === 0x0d) continue;
-        if (byte === 0x0a) {
-          if (vorherNeueZeile) {
-            ereignisse += 1;
-            vorherNeueZeile = false;
-            continue;
-          }
-          vorherNeueZeile = true;
+        if (byte === 0x0a && vorherCr) {
+          vorherCr = false;
+          continue;
+        }
+        vorherCr = byte === 0x0d;
+        if (byte === 0x0d || byte === 0x0a) {
+          if (zeileLeer) ereignisse += 1;
+          zeileLeer = true;
         } else {
-          vorherNeueZeile = false;
+          zeileLeer = false;
         }
       }
       if (ereignisse > maxEreignisse) {
@@ -356,12 +358,32 @@ function pruefeToken(token: string): void {
 }
 
 /**
+ * Nur für Tests der Schicht. Der Schalter ist ein eigener Parameter der Funktionen `…Intern`, nie
+ * ein Feld der Optionen: Weder ein Objekt aus einer Eingabe noch ein Spread noch ein `Proxy` als
+ * Optionen erreicht ihn. Die Funktionen stehen nicht in `index.ts`, und `package.json` lässt nur
+ * diesen einen Einstieg zu; ein Test sucht außerdem im ganzen Quelltext nach ihren Namen und nach
+ * relativen Importen in dieses Paket (`tools/lint-regeln/src/mcp-schicht.test.ts`).
+ */
+export interface InterneOptionen {
+  /** Lässt `http`, IP-Adressen und beliebige Ports zu. */
+  readonly erlaubeHttp?: boolean;
+}
+
+/**
  * Öffnet eine Verbindung. Wirft `McpSchichtFehler` (feste Texte, nie ein Text des Servers und nie
  * das Zugangsdatum).
  */
 export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise<McpVerbindung> {
+  return oeffneVerbindungIntern(optionen, {});
+}
+
+/** `oeffneVerbindung` mit dem Schalter für Tests (siehe `InterneOptionen`). */
+export async function oeffneVerbindungIntern(
+  optionen: McpVerbindungOptionen,
+  intern: InterneOptionen,
+): Promise<McpVerbindung> {
   const grenzen = mitStandardGrenzen(optionen.grenzen);
-  const adresse = pruefeAdresse(optionen.adresse, optionen.erlaubeHttp === true);
+  const adresse = pruefeAdresseMitSchalter(optionen.adresse, intern.erlaubeHttp === true);
   if (!adresse.ok) throw new McpSchichtFehler("app_adresse_unzulaessig");
   if (optionen.token !== undefined) pruefeToken(optionen.token);
 
@@ -529,6 +551,12 @@ export interface WerkzeugAbrufOptionen extends McpVerbindungOptionen {
   appKurzname: string;
   /** Modell-Namen anderer Apps der Installation (für eindeutige Namen). */
   bereitsVergeben?: ReadonlySet<string>;
+  /**
+   * Die gespeicherte Zuordnung Original-Name → Modell-Name dieser App, **immer aus der Datenbank**
+   * (beim ersten Abruf leer). Sie wird unverändert an `bereiteWerkzeugeAuf` gereicht: Bestätigte
+   * Werkzeuge behalten ihren Namen.
+   */
+  bekannteNamen: ReadonlyMap<string, string>;
 }
 
 export interface WerkzeugAbruf {
@@ -543,12 +571,21 @@ export interface WerkzeugAbruf {
  * `McpSchichtFehler`, wenn das Verbinden oder Holen scheitert.
  */
 export async function holeWerkzeuge(optionen: WerkzeugAbrufOptionen): Promise<WerkzeugAbruf> {
-  const verbindung = await oeffneVerbindung(optionen);
+  return holeWerkzeugeIntern(optionen, {});
+}
+
+/** `holeWerkzeuge` mit dem Schalter für Tests (siehe `InterneOptionen`). */
+export async function holeWerkzeugeIntern(
+  optionen: WerkzeugAbrufOptionen,
+  intern: InterneOptionen,
+): Promise<WerkzeugAbruf> {
+  const verbindung = await oeffneVerbindungIntern(optionen, intern);
   try {
     const liste = await verbindung.listeRoh();
     return {
       werkzeuge: bereiteWerkzeugeAuf(liste.werkzeuge, {
         appKurzname: optionen.appKurzname,
+        bekannteNamen: optionen.bekannteNamen,
         ...(optionen.grenzen === undefined ? {} : { grenzen: optionen.grenzen }),
         ...(optionen.bereitsVergeben === undefined
           ? {}
@@ -576,6 +613,14 @@ export interface WerkzeugAufrufOptionen extends McpVerbindungOptionen {
  * Zugriff gebraucht (nicht bestätigbares Werkzeug, ungültige Argumente), geht keine Anfrage hinaus.
  */
 export async function rufeWerkzeugAuf(optionen: WerkzeugAufrufOptionen): Promise<McpErgebnis> {
+  return rufeWerkzeugAufIntern(optionen, {});
+}
+
+/** `rufeWerkzeugAuf` mit dem Schalter für Tests (siehe `InterneOptionen`). */
+export async function rufeWerkzeugAufIntern(
+  optionen: WerkzeugAufrufOptionen,
+  intern: InterneOptionen,
+): Promise<McpErgebnis> {
   const fehlerErgebnis = (code: McpSchichtFehler["code"]): McpErgebnis => ({
     status: "fehler",
     text: new McpSchichtFehler(code).message,
@@ -593,7 +638,7 @@ export async function rufeWerkzeugAuf(optionen: WerkzeugAufrufOptionen): Promise
   if (!geprueft.ok) return fehlerErgebnis("werkzeug_argumente_ungueltig");
   let verbindung: McpVerbindung;
   try {
-    verbindung = await oeffneVerbindung({ ...optionen, grenzen });
+    verbindung = await oeffneVerbindungIntern({ ...optionen, grenzen }, intern);
   } catch (fehler) {
     return fehlerErgebnis(ordneFehlerZu(fehler).code);
   }

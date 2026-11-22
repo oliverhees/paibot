@@ -25,7 +25,7 @@ import {
   vergleicheWerkzeuge,
 } from "./werkzeug";
 
-const OPT = { appKurzname: "app" };
+const OPT = { appKurzname: "app", bekannteNamen: new Map<string, string>() };
 
 const ECHO: McpWerkzeugRoh = {
   name: "echo",
@@ -136,9 +136,13 @@ describe("Hinweise des Servers sind nur Anzeige", () => {
 
 describe("Namen", () => {
   it("vergibt drei verschiedene Modell-Namen für zwei Apps mit `search` und das eingebaute `doku_nachschlagen`", () => {
-    const erste = bereiteWerkzeugeAuf(roh(collision("eins")), { appKurzname: "eins" });
+    const erste = bereiteWerkzeugeAuf(roh(collision("eins")), {
+      appKurzname: "eins",
+      bekannteNamen: new Map(),
+    });
     const zweite = bereiteWerkzeugeAuf(roh(collision("zwei")), {
       appKurzname: "zwei",
+      bekannteNamen: new Map(),
       bereitsVergeben: new Set(erste.map((w) => w.modellName)),
     });
     const namen = [...erste, ...zweite].map((w) => w.modellName);
@@ -239,5 +243,55 @@ describe("Abgleich der Liste (neu, geändert, unverändert, entfernt)", () => {
       bereiteWerkzeugeAuf([{ ...ECHO, description: "Gibt Text zurück.​" }], OPT),
     );
     expect(abgleich.geaendert.map((w) => w.originalName)).toEqual(["echo"]);
+  });
+});
+
+// `bereiteWerkzeugeAuf` bekommt die gespeicherte Zuordnung und ändert sie nie.
+// Gegenprobe: Option ignorieren → `a_b` heißt nach dem neuen Werkzeug `app__a_b_2`.
+describe("Modell-Namen aus der gespeicherten Zuordnung", () => {
+  const werkzeug = (name: string): McpWerkzeugRoh => ({
+    name,
+    description: "x",
+    inputSchema: { type: "object", properties: {} },
+  });
+
+  it("ein neues Werkzeug verdrängt ein bestätigtes nicht von seinem Namen", () => {
+    const erste = bereiteWerkzeugeAuf([werkzeug("a_b")], OPT);
+    expect(erste[0]?.modellName).toBe("app__a_b");
+    const bekannteNamen = new Map(erste.map((w) => [w.originalName, w.modellName]));
+    const zweite = bereiteWerkzeugeAuf([werkzeug("a.b"), werkzeug("a_b")], {
+      ...OPT,
+      bekannteNamen,
+    });
+    const nach = Object.fromEntries(zweite.map((w) => [w.originalName, w.modellName]));
+    expect(nach).toEqual({ "a.b": "app__a_b_2", a_b: "app__a_b" });
+    // Der Abgleich nennt das bestätigte Werkzeug weiter „unverändert“, und sein Name stimmt.
+    const abgleich = vergleicheWerkzeuge(
+      erste.map((w) => ({ originalName: w.originalName, abdruck: w.abdruck })),
+      zweite,
+    );
+    expect(abgleich.unveraendert.map((w) => [w.originalName, w.modellName])).toEqual([
+      ["a_b", "app__a_b"],
+    ]);
+  });
+});
+
+describe("Namen: die gespeicherte Zuordnung ist Pflicht und verbindlich", () => {
+  const werkzeug = (name: string): McpWerkzeugRoh => ({
+    name,
+    description: "x",
+    inputSchema: { type: "object", properties: {} },
+  });
+
+  it("ohne `bekannteNamen` gibt es keine Aufbereitung", () => {
+    expect(() => bereiteWerkzeugeAuf([werkzeug("a_b")], { appKurzname: "app" } as never)).toThrow(
+      TypeError,
+    );
+  });
+
+  it("ein bestätigter Name bleibt reserviert, auch wenn sein Werkzeug aus der Liste verschwindet", () => {
+    const bekannteNamen = new Map([["a_b", "app__a_b"]]);
+    const [neu] = bereiteWerkzeugeAuf([werkzeug("a.b")], { ...OPT, bekannteNamen });
+    expect(neu?.modellName).toBe("app__a_b_2");
   });
 });
