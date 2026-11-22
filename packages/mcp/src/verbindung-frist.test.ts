@@ -13,7 +13,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { McpSchichtFehler } from "./fehler";
-import { type McpFetch, oeffneVerbindung } from "./verbindung";
+import { type McpFetch, oeffneVerbindungIntern } from "./verbindung";
 
 const attrappe = vi.hoisted(() => ({
   /** Was `createMCPClient` tut: eine Attrappe liefern oder nie fertig werden. */
@@ -45,8 +45,12 @@ vi.mock("@ai-sdk/mcp", () => ({
   },
 }));
 
+/** Die Attrappe läuft gegen eine `http`-Adresse auf 127.0.0.1: mit dem Schalter für Tests (`…Intern`). */
+const FUER_TESTS = { erlaubeHttp: true } as const;
+const oeffneVerbindung = (optionen: Parameters<typeof oeffneVerbindungIntern>[0]) =>
+  oeffneVerbindungIntern(optionen, FUER_TESTS);
+
 const BASIS = {
-  erlaubeHttp: true,
   appKurzname: "test",
   adresse: "http://127.0.0.1:1/mcp",
   fetch: (async () => {

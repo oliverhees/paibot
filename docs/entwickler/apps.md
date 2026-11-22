@@ -95,19 +95,21 @@ Die Optionen einer Verbindung (`McpVerbindungOptionen`): `adresse`, `fetch`, `to
 
 ## Tests
 
-| Test                                        | Prüft                                                                                                                                                   |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/mcp/src/verbindung.test.ts`       | Liste und Aufruf in beiden Protokoll-Fassungen gegen den Test-Server, Zugang, Adresse, erzwungenes `fetch`, Zeit, Abbruch, Größe, Hülle                 |
-| `packages/mcp/src/struktur.test.ts`         | 10 000 Ebenen, eine Million Schlüssel, Kreis, Typen, verbotene Schlüssel; die Verarbeiter werfen nie                                                    |
-| `packages/mcp/src/schema.test.ts`           | Kürzung, Bereinigung, abgewiesene Stichwörter, Namen aus `Object.prototype`, Prüf-Schema für Argumente                                                  |
-| `packages/mcp/src/werkzeug.test.ts`         | Beschreibung, Hinweise nur als Anzeige, Namen, Abgleich der Liste                                                                                       |
-| `packages/mcp/src/ergebnis.test.ts`         | fester Satz bei `isError`, Kürzung, Medien, strukturierter Inhalt                                                                                       |
-| `packages/mcp/src/bereinigen.test.ts`       | unsichtbare Zeichen, Bilder und ihre Umgehungen, Länge, Kombinationszeichen, Zeit bei verwinkelten Eingaben                                             |
-| `packages/mcp/src/index.test.ts`            | Liste der Exporte: kein Aufruf ohne Prüfung der Argumente                                                                                               |
-| `packages/mcp/src/abdruck.test.ts`          | Abdruck stabil bei anderer Reihenfolge, empfindlich schon bei einem unsichtbaren Zeichen                                                                |
-| `packages/mcp/src/namen.test.ts`            | eindeutige Namen, Kollisionen, 64 Zeichen, bekannte Namen bleiben stabil                                                                                |
-| `packages/mcp/src/fehler.test.ts`           | feste Texte, Zuordnung, kein Text des Servers und kein Zugangsdatum                                                                                     |
-| `tools/lint-regeln/src/mcp-schicht.test.ts` | Importsperren, Regel gegen eigenen Netz-Zugriff und gegen Umgehungen, Test-Schalter nur in Definition und Tests (Biome läuft wirklich, mit Gegenproben) |
+| Test                                        | Prüft                                                                                                                                                                                        |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/mcp/src/verbindung.test.ts`       | Liste und Aufruf in beiden Protokoll-Fassungen gegen den Test-Server, Zugang, Adresse, erzwungenes `fetch`, Zeit, Abbruch, Größe, Hülle                                                      |
+| `packages/mcp/src/verbindung-frist.test.ts` | die eigene Frist der Schicht (Aufruf, Liste, Öffnen, Schließen, Abbruch von außen) gilt auch, wenn die Bibliothek durch eine Attrappe ersetzt ist, die keine Frist einhält und nie antwortet |
+| `packages/mcp/vitest.config.ts`             | Zeitgrenze der Tests im Paket: 30 Sekunden je Test und je Vorbereitung statt der Standardzeit von 5 Sekunden, weil echte Test-Server auf einer ausgelasteten Maschine länger brauchen        |
+| `packages/mcp/src/struktur.test.ts`         | 10 000 Ebenen, eine Million Schlüssel, Kreis, Typen, verbotene Schlüssel; die Verarbeiter werfen nie                                                                                         |
+| `packages/mcp/src/schema.test.ts`           | Kürzung, Bereinigung, abgewiesene Stichwörter, Namen aus `Object.prototype`, Prüf-Schema für Argumente                                                                                       |
+| `packages/mcp/src/werkzeug.test.ts`         | Beschreibung, Hinweise nur als Anzeige, Namen, Abgleich der Liste                                                                                                                            |
+| `packages/mcp/src/ergebnis.test.ts`         | fester Satz bei `isError`, Kürzung, Medien, strukturierter Inhalt                                                                                                                            |
+| `packages/mcp/src/bereinigen.test.ts`       | unsichtbare Zeichen, Bilder und ihre Umgehungen, Länge, Kombinationszeichen, Zeit bei verwinkelten Eingaben                                                                                  |
+| `packages/mcp/src/index.test.ts`            | Liste der Exporte: kein Aufruf ohne Prüfung der Argumente                                                                                                                                    |
+| `packages/mcp/src/abdruck.test.ts`          | Abdruck stabil bei anderer Reihenfolge, empfindlich schon bei einem unsichtbaren Zeichen                                                                                                     |
+| `packages/mcp/src/namen.test.ts`            | eindeutige Namen, Kollisionen, 64 Zeichen, bekannte Namen bleiben stabil                                                                                                                     |
+| `packages/mcp/src/fehler.test.ts`           | feste Texte, Zuordnung, kein Text des Servers und kein Zugangsdatum                                                                                                                          |
+| `tools/lint-regeln/src/mcp-schicht.test.ts` | Importsperren, Regel gegen eigenen Netz-Zugriff und gegen Umgehungen, Test-Schalter nur in Definition und Tests (Biome läuft wirklich, mit Gegenproben)                                      |
 
 Ausführen:
 
