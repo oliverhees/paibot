@@ -29,6 +29,29 @@ export function istUnsichtbar(zeichen) {
   return UNSICHTBAR.test(zeichen);
 }
 
+/**
+ * Zusätzlich in Titeln, Überschriften-Pfaden und Kennungen (nicht im Fließtext): Zeilenumbruch,
+ * Tabulator, das leere Braille-Muster U+2800 und Zeichen für den privaten Gebrauch (`\p{Co}`).
+ * Dieselbe Menge prüft der Lader des Index (`index-laden.ts#unerlaubtImTitel`); der Test
+ * `unsichtbare-zeichen.test.ts` vergleicht beide.
+ */
+const TITEL_ZUSATZ = /[\n\t\u2800\p{Co}]/u;
+
+/** Darf dieses Zeichen nicht in einem Titel, Pfad oder einer Kennung stehen? */
+export function istUnerlaubtImTitel(zeichen) {
+  return istUnsichtbar(zeichen) || TITEL_ZUSATZ.test(zeichen);
+}
+
+/** Das erste Zeichen eines Titels, das dort nicht stehen darf, als „U+XXXX“; sonst `null`. */
+export function findeUnerlaubtImTitel(text) {
+  for (const zeichen of text) {
+    if (istUnerlaubtImTitel(zeichen)) {
+      return `U+${zeichen.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`;
+    }
+  }
+  return null;
+}
+
 /** Zeilenenden vereinheitlichen. */
 export function normalisiere(text) {
   return text.replace(/\r\n?/g, "\n");

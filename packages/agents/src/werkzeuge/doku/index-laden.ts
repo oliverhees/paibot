@@ -71,6 +71,18 @@ export function dokuPruefsumme(abschnitte: readonly z.infer<typeof abschnittSche
   return `sha256:${createHash("sha256").update(JSON.stringify(kanonisch)).digest("hex")}`;
 }
 
+/**
+ * Zusätzlich in Kennung, Seite, Anker, Titel und Pfad (nicht im Text): Zeilenumbruch, Tabulator,
+ * das leere Braille-Muster U+2800 und Zeichen für den privaten Gebrauch. Titel gehen an das
+ * Modell; ein Zeilenumbruch darin ließe eine zweite Zeile wie eine eigene Anweisung aussehen.
+ */
+const TITEL_ZUSATZ = /[\n\t\u2800\p{Co}]/u;
+
+/** Steht in einem Titel, Pfad oder einer Kennung ein Zeichen, das dort nicht stehen darf? */
+export function unerlaubtImTitel(text: string): boolean {
+  return hasUnwanted(text) || TITEL_ZUSATZ.test(text);
+}
+
 /** Prüft den Inhalt einer Index-Datei und bereitet ihn für die Suche vor. */
 export function dokuIndexAusText(text: string): GeladenerDokuIndex {
   if (Buffer.byteLength(text) > MAX_INDEX_BYTES) throw new DokuIndexFehler("Datei zu groß");
@@ -96,7 +108,10 @@ export function dokuIndexAusText(text: string): GeladenerDokuIndex {
     if (a.pfad[a.pfad.length - 1] !== a.titel) {
       throw new DokuIndexFehler("Pfad der Überschriften endet nicht mit dem Titel");
     }
-    if ([a.id, a.seite, a.anker, a.titel, ...a.pfad, a.text].some(hasUnwanted)) {
+    if (
+      [a.id, a.seite, a.anker, a.titel, ...a.pfad].some(unerlaubtImTitel) ||
+      hasUnwanted(a.text)
+    ) {
       throw new DokuIndexFehler("unsichtbare oder Steuerzeichen in einem Abschnitt");
     }
   }

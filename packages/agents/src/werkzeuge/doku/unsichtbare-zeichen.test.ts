@@ -16,12 +16,15 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { hasUnwanted } from "../../run/bereinigen";
+import { unerlaubtImTitel } from "./index-laden";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const hilfen = (await import(
   pathToFileURL(path.join(ROOT, "scripts", "doku-index", "hilfen.mjs")).href
 )) as {
   istUnsichtbar: (zeichen: string) => boolean;
+  istUnerlaubtImTitel: (zeichen: string) => boolean;
+  findeUnerlaubtImTitel: (text: string) => string | null;
   findeUnsichtbares: (text: string) => { zeile: number; code: string }[];
   entferneUnsichtbares: (text: string) => string;
 };
@@ -92,6 +95,27 @@ describe("Doku-Check, Index-Bau und Lader erkennen dieselben unsichtbaren Zeiche
       }
     }
     expect(abweichend).toEqual([]);
+  });
+
+  // Gegenprobe: in `hilfen.mjs` U+2800 aus `TITEL_ZUSATZ` nehmen → rot.
+  it("in Titel und Pfad lehnen Skripte und Lader für jeden Codepunkt dasselbe ab", () => {
+    const abweichend: string[] = [];
+    for (let n = 0; n <= 0x10ffff; n += 1) {
+      const zeichen = cp(n);
+      if (hilfen.istUnerlaubtImTitel(zeichen) !== unerlaubtImTitel(zeichen)) {
+        abweichend.push(`U+${n.toString(16).toUpperCase().padStart(4, "0")}`);
+        if (abweichend.length >= 10) break;
+      }
+    }
+    expect(abweichend).toEqual([]);
+    for (const n of [0x0a, 0x09, 0x2800, 0xe000, 0xf0000, 0xe0041]) {
+      expect(unerlaubtImTitel(cp(n)), `U+${n.toString(16)}`).toBe(true);
+    }
+    for (const n of [0x20, 0x41, 0xe4, 0x4e2d, 0x1f600]) {
+      expect(unerlaubtImTitel(cp(n)), `U+${n.toString(16)}`).toBe(false);
+    }
+    expect(hilfen.findeUnerlaubtImTitel(`a${cp(0x2800)}b`)).toBe("U+2800");
+    expect(hilfen.findeUnerlaubtImTitel("Größe 😀 中文")).toBeNull();
   });
 
   it("findeUnsichtbares nennt Zeile und Zeichen als U+XXXX; entferneUnsichtbares lässt Zeilenumbruch und Tabulator", () => {

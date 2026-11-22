@@ -293,6 +293,34 @@ describe("Abbruch beim Bau (L4-8)", () => {
   });
 });
 
+describe("Titel und Pfad: Zeichen, die dort nicht stehen dürfen", () => {
+  const seite = (kopf: string) => `# Seite\n\n## Erste\n\nText.\n\n${kopf}\n\nMehr Text.\n`;
+
+  // Gegenprobe: die Prüfung `findeUnerlaubtImTitel` in `baueIndex` entfernen → der Bau gelingt.
+  it.each([
+    ["leeres Braille-Zeichen U+2800", "### Unter\u{2800}titel"],
+    ["Zeichen für den privaten Gebrauch U+E000", "### Unter\u{E000}titel"],
+    ["Zeichen für den privaten Gebrauch U+F0000", "### Unter\u{F0000}titel"],
+  ])("%s in einer Überschrift: der Bau bricht mit Meldung und Zeichen ab", (_name, kopf) => {
+    const dir = projekt({ "docs/funktion-a.md": seite(kopf) });
+    expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(IndexFehler);
+    expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(/U\+(2800|E000|F0000)/);
+  });
+
+  it("ein Zeilenumbruch im Titel kann nicht entstehen: die Überschrift endet an der Zeile", () => {
+    const dir = projekt({ "docs/funktion-a.md": seite("### Eins\nZwei") });
+    const { index } = baueIndex({ wurzel: dir, liste: A });
+    expect(index.abschnitte.every((a) => !a.titel.includes("\n"))).toBe(true);
+    expect(index.abschnitte.flatMap((a) => a.pfad).every((t) => !t.includes("\n"))).toBe(true);
+  });
+
+  it("sichtbare Zeichen (Umlaute, Emoji, CJK) in Überschriften bleiben erlaubt", () => {
+    const dir = projekt({ "docs/funktion-a.md": seite("### Größe 😀 中文") });
+    const { index } = baueIndex({ wurzel: dir, liste: A });
+    expect(index.abschnitte.map((a) => a.titel)).toContain("Größe 😀 中文");
+  });
+});
+
 describe("Wiederholbar (L4-9)", () => {
   it("zweimal bauen ergibt dieselben Bytes; der Befehl schreibt doku-index/doku-index.json", () => {
     const dir = kopie("bereinigung");

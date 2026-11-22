@@ -20,13 +20,15 @@
 // nicht ins Repo; das Image bekommt sie beim Bau (apps/web/Dockerfile).
 //
 // Der Bau bricht mit Ausgang 1 ab, wenn eine Seite der Liste fehlt, ein Muster auf keine Datei
-// passt, der Index keinen Abschnitt hat, größer als 4 MB ist oder eine Kennung doppelt vorkommt.
+// passt, der Index keinen Abschnitt hat, größer als 4 MB ist, eine Kennung doppelt vorkommt oder ein
+// Titel bzw. Pfad ein Zeichen enthält, das dort nicht stehen darf (Zeilenumbruch, Tabulator,
+// leeres Braille-Zeichen, Zeichen für den privaten Gebrauch).
 // Kein Zeitstempel und nichts Zufälliges: zweimal bauen ergibt dieselben Bytes.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { zerlege } from "./doku-index/hilfen.mjs";
+import { findeUnerlaubtImTitel, zerlege } from "./doku-index/hilfen.mjs";
 import { IN_DEN_INDEX, passtAuf } from "./doku-umfang.mjs";
 
 const PROJEKT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -115,6 +117,14 @@ export function baueIndex({
     const seite = datei.slice("docs/".length);
     for (const teil of zerlege(readFileSync(path.join(wurzelPfad, datei), "utf8"))) {
       const id = `${seite}#${teil.anker}`;
+      for (const feld of [seite, teil.anker, teil.titel, ...teil.pfad]) {
+        const code = findeUnerlaubtImTitel(feld);
+        if (code !== null) {
+          throw new IndexFehler(
+            `In ${seite} enthält die Überschrift mit dem Anker „${teil.anker}“ (oder ihr Pfad) das Zeichen ${code}, das in Titeln nicht erlaubt ist. Das Zeichen aus der Überschrift löschen.`,
+          );
+        }
+      }
       if (ids.has(id)) {
         throw new IndexFehler(
           `Die Kennung ${id} kommt doppelt vor: In ${seite} haben zwei Überschriften denselben Anker. Eine umbenennen.`,
