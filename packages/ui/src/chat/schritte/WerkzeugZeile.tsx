@@ -10,6 +10,7 @@
 
 import { t } from "@paibot/shared/texte";
 import { useId } from "react";
+import { FremderText } from "../../app-bausteine/FremderText";
 import { Icon, type IconName } from "../../basis/Icon";
 import { klassen } from "../../basis/klassen";
 import { NurLesbar } from "../../basis/NurLesbar";
@@ -50,6 +51,12 @@ export interface WerkzeugZeileProps {
    * kennt. Er steht als Zitat in Anführungszeichen, nie in der Gestalt einer Kennzeichnung.
    */
   nameVomModell?: string;
+  /**
+   * Woher das Werkzeug stammt, wenn es aus einer App kommt: Kurzname (von PaiBot vergeben), Name
+   * der App (wenn bekannt, vom Besitzer oder der App) und Name des Werkzeugs (vom fremden Server).
+   * Alles steht nur als Text da, nie als Markdown oder Link.
+   */
+  app?: { kurzname: string; name?: string; werkzeug: string };
   /** Kurzform der Frage ans Werkzeug, vom Modell. Steht als Zitat. */
   eingabeKurz?: string;
   status: WerkzeugZeileStatus;
@@ -73,6 +80,7 @@ export function WerkzeugZeile({
   titel,
   symbol = "zahnrad",
   nameVomModell,
+  app,
   eingabeKurz,
   status,
   statusText,
@@ -104,6 +112,18 @@ export function WerkzeugZeile({
               „<bdi>{name}</bdi>“
             </span>
           </>
+        )}
+        {app !== undefined && (
+          <span data-herkunft="app">
+            {" "}
+            <span className={styles.fremd} data-fremd="app">
+              „<FremderText text={app.name ?? app.kurzname} art="name" />“
+            </span>
+            {" · "}
+            <span className={styles.fremd} data-fremd="werkzeug">
+              „<FremderText text={app.werkzeug} art="name" />“
+            </span>
+          </span>
         )}
         {frage !== "" && (
           <>

@@ -147,6 +147,54 @@ function mitNachschlagen(
   });
 }
 
+describe("Zeile zu einem Werkzeug aus einer App", () => {
+  const appAufruf = (teil: Partial<WerkzeugAnzeige> = {}) =>
+    aufruf({
+      key: "mcp/aufgaben/liste.heute",
+      name: "mcp-aufgaben__liste_heute",
+      eingabeKurz: undefined,
+      quellen: undefined,
+      ...teil,
+    });
+  const mitApp = (appNamen?: Record<string, string>) =>
+    renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: { ...BEREIT, ...(appNamen === undefined ? {} : { appNamen }) },
+        verlauf: {
+          ...mitNachschlagen(),
+          werkzeuge: [appAufruf()],
+        },
+        schritteAnfangs: true,
+      }),
+    );
+
+  // Gegenprobe: `app` nicht durchreichen → rot.
+  it("nennt App und Werkzeug als Text; ohne bekannten Namen steht der Kurzname da", () => {
+    const html = mitApp({ aufgaben: "Meine Aufgaben" });
+    expect(html).toContain("Werkzeug aus der App");
+    expect(html).toContain('data-herkunft="app"');
+    expect(html).toContain("Meine Aufgaben");
+    expect(html).toContain("liste.heute");
+    expect(html).not.toContain("mcp-aufgaben__liste_heute");
+    const ohne = mitApp();
+    expect(ohne).toContain("aufgaben");
+    expect(ohne).not.toContain("Meine Aufgaben");
+  });
+
+  // Gegenprobe: den Namen als Markdown oder HTML einsetzen → rot.
+  it("ein feindlicher Name der App bleibt Text: kein Link, kein Element", () => {
+    const html = mitApp({
+      aufgaben:
+        '[klick](https://boese.example/x) <script>alert(1)</script> <a href="https://boese.example">a</a>',
+    });
+    expect(html).not.toContain("<script");
+    expect(html).not.toContain('href="https://boese.example');
+    expect(html).not.toMatch(/<a [^>]*boese/);
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).toContain("[klick](https://boese.example/x)");
+  });
+});
+
 describe("Antwort nach dem Nachschlagen", () => {
   it("Werkzeug-Zeile mit Zustand in Worten, Quellen, Regel und Beleg; Zwischenschritt eingeklappt", () => {
     const aus = seite(mitNachschlagen());

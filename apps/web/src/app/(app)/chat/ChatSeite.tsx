@@ -776,7 +776,7 @@ export function ChatSeite({
 
   /** Eine Werkzeug-Zeile; der Zustand kommt nur aus dem Aufruf, Beleg und Regel aus den Belegen. */
   function werkzeugZeile(w: AnsichtWerkzeug) {
-    const { beleg, ...rest } = werkzeugZeileAngaben(w, ansicht.belege);
+    const { beleg, ...rest } = werkzeugZeileAngaben(w, ansicht.belege, bereitschaft.appNamen);
     const schluessel = `w:${w.actionId}`;
     return (
       <WerkzeugZeile

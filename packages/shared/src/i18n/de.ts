@@ -2464,6 +2464,7 @@ export const de = {
   "schritte.werkzeug.label": "Werkzeug-Schritt",
   "schritte.werkzeug.titel.doku_nachschlagen": "In der Doku nachschlagen",
   "schritte.werkzeug.titel.unbekannt": "Werkzeug",
+  "schritte.werkzeug.titel.app": "Werkzeug aus der App",
   "schritte.werkzeug.eingabe": "Frage",
   "schritte.werkzeug.name_vom_modell": "Name laut Modell",
   "schritte.werkzeug.status.laeuft": "läuft",

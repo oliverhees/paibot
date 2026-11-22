@@ -27,6 +27,27 @@ export type WerkzeugZeileAngaben = Omit<WerkzeugZeileProps, "offen" | "onUmschal
   beleg?: { id: string; kennung: string };
 };
 
+/** Kennung eines Werkzeugs einer App: `mcp/<kurzname>/<werkzeug>` (Kurzname und Name wie gespeichert). */
+const APP_KENNUNG = /^mcp\/([a-z0-9][a-z0-9-]*)\/([a-z0-9][a-z0-9_.-]{0,63})$/;
+
+/**
+ * Herkunft eines Werkzeugs aus seiner Kennung. Der Kurzname kommt aus der Kennung (von PaiBot
+ * vergeben); der Name der App nur, wenn die App in der Liste steht. Der Werkzeug-Teil stammt vom
+ * fremden Server: Er geht nur als Text in die Zeile.
+ */
+function appHerkunft(
+  key: string,
+  appNamen: Readonly<Record<string, string>>,
+): WerkzeugZeileProps["app"] {
+  const treffer = APP_KENNUNG.exec(key);
+  if (treffer === null) return undefined;
+  const kurzname = treffer[1] as string;
+  const werkzeug = treffer[2] as string;
+  // `Object.hasOwn`: Ein Kurzname wie „constructor“ darf nichts aus dem Prototyp finden.
+  const name = Object.hasOwn(appNamen, kurzname) ? appNamen[kurzname] : undefined;
+  return { kurzname, ...(name === undefined ? {} : { name }), werkzeug };
+}
+
 /**
  * Die Zeile zu einem Aufruf. Der Titel kommt von PaiBot (feste Liste je Kennung); ein unbekanntes
  * Werkzeug heißt „Werkzeug“ und sein Name steht als Zitat. Der Zustand in Worten kommt allein aus
@@ -35,8 +56,10 @@ export type WerkzeugZeileAngaben = Omit<WerkzeugZeileProps, "offen" | "onUmschal
 export function werkzeugZeileAngaben(
   w: AnsichtWerkzeug,
   belege: readonly BelegKurz[],
+  appNamen: Readonly<Record<string, string>> = {},
 ): WerkzeugZeileAngaben {
   const bekannt = w.key === WERKZEUG_DOKU;
+  const app = bekannt ? undefined : appHerkunft(w.key, appNamen);
   const fundstellen = w.quellen?.length ?? 0;
   const zusatz =
     w.status !== "fertig"
@@ -59,9 +82,12 @@ export function werkzeugZeileAngaben(
   return {
     titel: bekannt
       ? t("schritte.werkzeug.titel.doku_nachschlagen")
-      : t("schritte.werkzeug.titel.unbekannt"),
+      : app === undefined
+        ? t("schritte.werkzeug.titel.unbekannt")
+        : t("schritte.werkzeug.titel.app"),
     ...(bekannt ? { symbol: "suche" as const } : {}),
-    ...(bekannt ? {} : { nameVomModell: w.nameVomModell ?? w.name }),
+    ...(app === undefined ? {} : { app }),
+    ...(bekannt || app !== undefined ? {} : { nameVomModell: w.nameVomModell ?? w.name }),
     ...(w.eingabeKurz === undefined ? {} : { eingabeKurz: w.eingabeKurz }),
     status: w.status,
     ...((w.status === "abgelehnt" || w.status === "fehlgeschlagen") && w.code !== undefined

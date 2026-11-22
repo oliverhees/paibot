@@ -305,7 +305,11 @@ export async function ladeBereitschaft(
       ? undefined
       : await unterAnbieter(eurouter);
   const belegeGesamt = (await repo.belege.head(db))?.seq ?? 0;
+  const appNamen = Object.fromEntries(
+    (await repo.apps.list(db)).map((app) => [app.shortName, app.name]),
+  );
   return {
+    ...(Object.keys(appNamen).length === 0 ? {} : { appNamen }),
     ...(bot?.modelId === undefined ? {} : { modellId: bot.modelId }),
     belegeGesamt,
     waehlbar,

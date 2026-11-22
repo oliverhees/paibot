@@ -175,4 +175,6 @@ export interface ChatBereitschaft {
   waehlbar?: ModellWahl[];
   /** Anbieter-Liste von EUrouter (Namen, Sitz) für die Herkunft der Antworten, wenn geholt. */
   unterAnbieter?: UnterAnbieterListe;
+  /** Namen der verbundenen Apps nach Kurzname (für die Zeile „Werkzeug aus der App“). Fehlt eine App, steht der Kurzname. */
+  appNamen?: Readonly<Record<string, string>>;
 }
