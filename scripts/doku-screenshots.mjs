@@ -31,7 +31,8 @@
 //   name        Dateiname ohne Endung (Pflicht)
 //   pfad        URL-Pfad in der App, z. B. "/" (Pflicht)
 //   modus       "app" (Standard) oder "entwicklung" (Seite nur mit `next dev`)
-//   zustand     "frisch" (nicht eingerichtet), "eingerichtet" oder "mit-beispieldaten" (optional).
+//   zustand     "frisch" (nicht eingerichtet), "eingerichtet", "mit-beispieldaten" oder "mit-apps"
+//               (dazu zwei Beispiel-Apps mit „neuen“ Werkzeugen; optional).
 //               Das Skript ordnet die Aufnahmen so, dass jeder Zustand nur einmal hergestellt wird,
 //               und stellt ihn über die echten Wege der App her (scripts/doku-beispieldaten.mjs).
 //   anmeldung   true: vor der Aufnahme angemeldet (eine Sitzung je Lauf, über die Seite „Anmelden“)
@@ -581,7 +582,7 @@ async function ensureState(entry) {
     }
     return;
   }
-  const reihenfolge = ["frisch", "eingerichtet", "mit-beispieldaten"];
+  const reihenfolge = ["frisch", "eingerichtet", "mit-beispieldaten", "mit-apps"];
   if (reihenfolge.indexOf(lauf.zustand) < reihenfolge.indexOf(entry.zustand)) {
     console.log(`…    Zustand „${entry.zustand}“ wird hergestellt`);
     const ergebnis = await stelleHer(entry.zustand, LAUF);

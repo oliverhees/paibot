@@ -72,7 +72,7 @@ export function wegwerfWert(laenge = 24) {
 }
 
 /** Zustände der App, in der Reihenfolge, in der sie sich herstellen lassen. */
-export const ZUSTAENDE = ["frisch", "eingerichtet", "mit-beispieldaten"];
+export const ZUSTAENDE = ["frisch", "eingerichtet", "mit-beispieldaten", "mit-apps"];
 
 /** Zustände der Datenschleuse in der Beispiel-Umgebung („aus“ = nicht eingerichtet). */
 export const SCHLEUSE_ZUSTAENDE = ["aus", "bereit", "schluessel_falsch", "nicht_erreichbar"];

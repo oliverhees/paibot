@@ -297,11 +297,32 @@ export async function stelleHer(ziel, datei = laufDatei()) {
     meldungen.push("Eingerichtet: Bot „Pai“, Beispiel-Modell, Test-Anbieter, Datenschleuse aus.");
   }
   if (lauf.zustand === "frisch") lauf = aendereLauf({ zustand: "eingerichtet" }, datei);
-  if (ziel === "mit-beispieldaten" && lauf.zustand !== "mit-beispieldaten") {
+  const mitDaten = ziel === "mit-beispieldaten" || ziel === "mit-apps";
+  if (mitDaten && !["mit-beispieldaten", "mit-apps"].includes(lauf.zustand)) {
     const besuch = await meldeAn(lauf);
     const ergebnis = await legeUnterhaltungenAn(lauf, besuch);
     meldungen.push(ergebnis.hinweis ?? `${ergebnis.anzahl} Beispiel-Unterhaltungen angelegt.`);
     lauf = aendereLauf({ zustand: "mit-beispieldaten", unterhaltungen: ergebnis.anzahl }, datei);
+  }
+  if (ziel === "mit-apps" && lauf.zustand !== "mit-apps") {
+    if (!lauf.steuerung)
+      throw new Error("Die Lauf-Datei kennt keine Steuerung (pnpm doku:app neu starten).");
+    const antwort = await fetch(`${lauf.steuerung.url}/beispiel-apps`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${lauf.steuerung.token}` },
+    });
+    if (!antwort.ok) {
+      const grund = await antwort.json().then(
+        (d) => d.fehler,
+        () => undefined,
+      );
+      throw new Error(
+        `Beispiel-Apps: Steuerung antwortet ${antwort.status}${grund ? `: ${grund}` : ""}.`,
+      );
+    }
+    const daten = await antwort.json();
+    meldungen.push(`${daten.angelegt} Beispiel-Apps angelegt.`);
+    lauf = aendereLauf({ zustand: "mit-apps" }, datei);
   }
   return { lauf, meldungen };
 }

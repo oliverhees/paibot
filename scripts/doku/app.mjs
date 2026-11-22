@@ -37,7 +37,12 @@ import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { legeDatenbankAn, loescheDatenbank, starteEigenenServer } from "./datenbank.mjs";
+import {
+  legeBeispielAppsAn,
+  legeDatenbankAn,
+  loescheDatenbank,
+  starteEigenenServer,
+} from "./datenbank.mjs";
 import { baueDokuIndex } from "./index-bauen.mjs";
 import { starteKontoAttrappe } from "./konto-attrappe.mjs";
 import {
@@ -308,7 +313,7 @@ async function warteAufAntwort(url, sekunden = 60) {
  * Kleine Steuerung für `pnpm doku:screenshots`: `POST /datenschleuse` mit `{ "zustand": … }` und
  * dem Token als Bearer. Antwortet erst, wenn der Worker den Zustand gemeldet hat.
  */
-function starteSteuerung(token, setzeSchleuse) {
+function starteSteuerung(token, setzeSchleuse, legeAppsAn) {
   let warteschlange = Promise.resolve();
   const server = createHttpServer((anfrage, antwort) => {
     const ende = (status, daten) => {
@@ -316,6 +321,15 @@ function starteSteuerung(token, setzeSchleuse) {
       antwort.end(JSON.stringify(daten));
     };
     if (anfrage.headers.authorization !== `Bearer ${token}`) return ende(401, { ok: false });
+    if (anfrage.method === "POST" && anfrage.url === "/beispiel-apps") {
+      warteschlange = warteschlange
+        .then(() => legeAppsAn())
+        .then(
+          (ergebnis) => ende(200, { ok: true, ...ergebnis }),
+          (error) => ende(500, { ok: false, fehler: error.message }),
+        );
+      return undefined;
+    }
     if (anfrage.method !== "POST" || anfrage.url !== "/datenschleuse")
       return ende(404, { ok: false });
     let text = "";
@@ -559,13 +573,17 @@ async function main() {
 
   // Steuerung für doku:screenshots (nur 127.0.0.1, mit Wegwerf-Token aus der Lauf-Datei)
   const steuerToken = wegwerfWert(32);
-  const steuerDienst = await starteSteuerung(steuerToken, async (zustand) => {
-    if (zustand !== schleuseZustand) {
-      log(`Datenschleuse der Beispiel-Umgebung: ${zustand} (Worker startet neu) …`);
-      await starteWorker(zustand);
-      aendereLauf({ prozesse: kinder.map((k) => k.pid) }, datei);
-    }
-  });
+  const steuerDienst = await starteSteuerung(
+    steuerToken,
+    async (zustand) => {
+      if (zustand !== schleuseZustand) {
+        log(`Datenschleuse der Beispiel-Umgebung: ${zustand} (Worker startet neu) …`);
+        await starteWorker(zustand);
+        aendereLauf({ prozesse: kinder.map((k) => k.pid) }, datei);
+      }
+    },
+    () => legeBeispielAppsAn(ROOT, db.app),
+  );
   aufgaben.push(() => steuerDienst.stop());
 
   // 5. Lauf-Datei

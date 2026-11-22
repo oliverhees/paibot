@@ -18,6 +18,7 @@
 //   2. Sonst: ein eigener Postgres-Server aus den Programmen des Systems (initdb, pg_ctl) in einem
 //      neuen temporären Ordner, nur an 127.0.0.1. Am Ende gestoppt und der Ordner gelöscht.
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   chownSync,
@@ -228,6 +229,119 @@ export async function zaehleDokuReste(root, verwalter) {
         (select count(*)::int from pg_database where datname like 'paibot\\_doku\\_%') as datenbanken,
         (select count(*)::int from pg_roles where rolname like 'paibot\\_doku\\_%') as rollen`;
     return zahl;
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
+
+/**
+ * Beispiel-Apps der Doku: erfundene Namen und Adressen (`.example`), keine echten Server. Sie
+ * stehen nur in der Wegwerf-Datenbank von `pnpm doku:app`. Die Werkzeuge sind „neu“; Einstufen
+ * und Zugriff gehen in den Aufnahmen über die echten Wege der App (Routen, Tor, Belege).
+ */
+const BEISPIEL_APPS = [
+  {
+    id: "app_1c1m0r5k7q8s9t0v1w2x3y4z5a",
+    kurzname: "notizen",
+    name: "Notizen",
+    adresse: "https://notizen.beispiel.example/mcp",
+    token: true,
+    werkzeuge: [
+      {
+        id: "wzg_1c1m0r5k7q8s9t0v1w2x3y4z5b",
+        name: "suche",
+        beschreibung: "Sucht Notizen nach einem Stichwort und gibt die Treffer zurück.",
+        schema: {
+          type: "object",
+          properties: {
+            frage: { type: "string", description: "Wonach soll gesucht werden?" },
+            anzahl: { type: "integer", description: "Wie viele Treffer höchstens?", default: 5 },
+          },
+          required: ["frage"],
+        },
+        nurLesend: true,
+      },
+      {
+        id: "wzg_1c1m0r5k7q8s9t0v1w2x3y4z5c",
+        name: "lesen",
+        beschreibung: "Liest eine einzelne Notiz anhand ihrer Nummer.",
+        schema: {
+          type: "object",
+          properties: { nummer: { type: "integer", description: "Nummer der Notiz." } },
+          required: ["nummer"],
+        },
+        nurLesend: true,
+      },
+      {
+        id: "wzg_1c1m0r5k7q8s9t0v1w2x3y4z5d",
+        name: "anlegen",
+        beschreibung: "Legt eine neue Notiz an.",
+        schema: {
+          type: "object",
+          properties: {
+            titel: { type: "string", description: "Titel der Notiz." },
+            text: { type: "string", description: "Inhalt der Notiz." },
+          },
+          required: ["titel", "text"],
+        },
+        nurLesend: false,
+      },
+    ],
+  },
+  {
+    id: "app_1c1m0r5k7q8s9t0v1w2x3y4z5e",
+    kurzname: "kalender",
+    name: "Kalender",
+    adresse: "https://kalender.beispiel.example/mcp",
+    token: false,
+    werkzeuge: [
+      {
+        id: "wzg_1c1m0r5k7q8s9t0v1w2x3y4z5f",
+        name: "termine",
+        beschreibung: "Listet die Termine eines Tages auf.",
+        schema: {
+          type: "object",
+          properties: {
+            tag: { type: "string", description: "Der Tag als Datum, zum Beispiel 2026-11-23." },
+          },
+          required: ["tag"],
+        },
+        nurLesend: true,
+      },
+    ],
+  },
+];
+
+/** Legt die Beispiel-Apps in der Wegwerf-Datenbank an (App-Rolle, wie der Worker es täte). */
+export async function legeBeispielAppsAn(root, appAdresse) {
+  const postgres = postgresTreiber(root);
+  const sql = postgres(appAdresse, { max: 1, onnotice: () => undefined, connect_timeout: 10 });
+  try {
+    const [vorhanden] = await sql`select count(*)::int as anzahl from apps`;
+    if (vorhanden.anzahl > 0) return { angelegt: 0 };
+    let angelegt = 0;
+    for (const app of BEISPIEL_APPS) {
+      await sql.begin(async (tx) => {
+        await tx`
+          insert into apps (id, short_name, name, url, auth_kind, token_enc)
+          values (${app.id}, ${app.kurzname}, ${app.name}, ${app.adresse},
+                  ${app.token ? "token" : "keine"},
+                  ${app.token ? "v2:QUJDREVGRw:QUJDREVGR0hJSktMTQ:QUJDREVGR0hJSktMTk9QUQ" : null})`;
+        for (const werkzeug of app.werkzeuge) {
+          const abdruck = `sha256:${createHash("sha256").update(`${app.kurzname}/${werkzeug.name}`).digest("hex")}`;
+          await tx`
+            insert into app_tools (tool_id, version, app_id, original_name, model_name, tool_key,
+                                   tool_digest, description, input_schema, hint_read_only,
+                                   hint_destructive, status, tool_class)
+            values (${werkzeug.id}, 1, ${app.id}, ${werkzeug.name},
+                    ${`${app.kurzname}__${werkzeug.name}`}, ${`mcp/${app.kurzname}/${werkzeug.name}`},
+                    ${abdruck}, ${werkzeug.beschreibung}, ${tx.json(werkzeug.schema)},
+                    ${werkzeug.nurLesend}, ${werkzeug.nurLesend ? false : null}, 'neu', 'schreiben')`;
+        }
+      });
+      angelegt += 1;
+    }
+    return { angelegt };
   } finally {
     await sql.end({ timeout: 5 });
   }
