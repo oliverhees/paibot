@@ -149,7 +149,43 @@ for (const umgebung of umgebungen) {
         if (seq > 1) freieBelege.push(row.id);
         prevHash = row.hash;
       }
+      kette = { keyId: key.id, seq: 400, prevHash };
     }, 120_000);
+
+    /** Unterhaltung im Körper der angehängten Belege (Entscheidung und Ergebnis müssen gleich sein). */
+    const BELEG_UNTERHALTUNG = newId("conversation") as ConversationId;
+    /** Aktionen, für die schon eine Entscheidung in der Kette steht. */
+    const entschieden = new Set<string>();
+    /** Stand der Kette, um Belege genau einer Aktion anzuhängen. */
+    let kette: { keyId: ReturnType<typeof keyRow>["id"]; seq: number; prevHash: string };
+
+    /**
+     * Beleg genau dieser Aktion: Entscheidung (Standard „erlaubt“) bzw. Ergebnis. Ein Aufruf läuft
+     * nur mit der Entscheidung „erlaubt“ seiner Aktion und endet nur mit seinem Ergebnis-Beleg.
+     */
+    async function belegFuer(
+      actionId: unknown,
+      type: "decision" | "result",
+      option: { outcome?: "allow" | "deny"; status?: "ok" | "error" | "denied" } = {},
+    ): Promise<ReceiptId> {
+      // Ein Ergebnis folgt immer einer Entscheidung derselben Aktion (Trigger der Belege).
+      if (type === "result" && !entschieden.has(String(actionId))) {
+        await belegFuer(actionId, "decision");
+      }
+      if (type === "decision") entschieden.add(String(actionId));
+      kette.seq += 1;
+      const row = belegRow(kette.keyId, {
+        seq: kette.seq,
+        prevHash: kette.prevHash,
+        type,
+        actionId: actionId as never,
+        conversationId: BELEG_UNTERHALTUNG,
+        ...option,
+      });
+      await u.db.insert(belege).values(row);
+      kette.prevHash = row.hash;
+      return row.id as ReceiptId;
+    }
     afterAll(async () => {
       await u?.schliessen();
     });
@@ -291,15 +327,25 @@ for (const umgebung of umgebungen) {
           for (const neu of TOOL_CALL_STATUSES) {
             const id = await aufrufEinfuegen(alt);
             const erledigt = ERLEDIGT.includes(neu);
+            // Belege genau dieser Aktion, damit nur der Zustandswechsel geprüft wird.
+            const entscheidung =
+              alt === "requested"
+                ? await belegFuer(id, "decision", { outcome: neu === "denied" ? "deny" : "allow" })
+                : null;
+            const ergebnis =
+              neu === "succeeded" || neu === "failed"
+                ? await belegFuer(id, "result", { status: neu === "succeeded" ? "ok" : "error" })
+                : null;
             const f = await fehler(
               u.q(
-                "update tool_calls set status = $2, result_status = $3, finished_at = $4, decision_receipt_id = coalesce(decision_receipt_id, $5) where action_id = $1",
+                "update tool_calls set status = $2, result_status = $3, finished_at = $4, decision_receipt_id = coalesce(decision_receipt_id, $5), result_receipt_id = coalesce(result_receipt_id, $6) where action_id = $1",
                 [
                   id,
                   neu,
                   erledigt ? ERGEBNIS[neu] : null,
                   erledigt ? new Date().toISOString() : null,
-                  beleg(),
+                  entscheidung,
+                  ergebnis,
                 ],
               ),
             );
@@ -346,12 +392,12 @@ for (const umgebung of umgebungen) {
         const a = await neu(0);
         await calls.recordDecision(u.db, a.actionId, {
           outcome: "allow",
-          decisionReceiptId: beleg(),
+          decisionReceiptId: await belegFuer(a.actionId, "decision"),
         });
         const fertig = await calls.finish(u.db, a.actionId, {
           status: "succeeded",
           output: { text: "gefunden" },
-          resultReceiptId: beleg(),
+          resultReceiptId: await belegFuer(a.actionId, "result"),
         });
         expect(fertig.status).toBe("succeeded");
         const b = await neu(1);
@@ -372,7 +418,7 @@ for (const umgebung of umgebungen) {
           if (status === "running") {
             await u.q(
               "update tool_calls set status = 'running', decision_receipt_id = $2 where action_id = $1",
-              [row.actionId, beleg()],
+              [row.actionId, await belegFuer(row.actionId, "decision")],
             );
           }
           return row.actionId;
@@ -782,11 +828,11 @@ for (const umgebung of umgebungen) {
         );
         await u.q(
           "update tool_calls set status = 'running', decision_receipt_id = $2 where action_id = $1",
-          [id, beleg()],
+          [id, await belegFuer(id, "decision")],
         );
         await u.q(
-          "update tool_calls set status = 'succeeded', result_status = 'ok', finished_at = now(), output_truncated = true, output_chars = 30000 where action_id = $1",
-          [id],
+          "update tool_calls set status = 'succeeded', result_status = 'ok', finished_at = now(), output_truncated = true, output_chars = 30000, result_receipt_id = $2 where action_id = $1",
+          [id, await belegFuer(id, "result")],
         );
         const gelesen = await calls.get(u.db, id as never);
         expect(gelesen).toMatchObject({
@@ -941,5 +987,103 @@ describe("Für später nichts verbaut", () => {
       "insert into runs (id, conversation_id, trigger_message_id, bot_id, status) values ($1, $2, $3, $4, 'waiting_approval')",
       [newId("run"), conversation.id, frage, bot.id],
     );
+  });
+});
+
+describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => {
+  // Gegenprobe: in der Migration Zeilen ändern (z. B. `UPDATE tool_calls SET output = null`) → rot.
+  it("Bestandsdaten aus dem Stand 0014 bleiben ohne Verlust; alte Zeilen bleiben, neue Wechsel sind gebunden", async () => {
+    const test = await createTestDbFrom(migrationsUpTo(15));
+    const bot = botRow();
+    await test.db.insert(bots).values(bot);
+    const conversation = conversationRow(bot.id);
+    await test.db.insert(conversations).values(conversation);
+    const frage = messageRow(conversation.id);
+    await test.db.insert(messages).values(frage);
+    const run = runRow({
+      conversationId: conversation.id,
+      triggerMessageId: frage.id,
+      botId: bot.id,
+    });
+    await test.db.insert(runs).values(run);
+    const antwort = messageRow(conversation.id, { role: "assistant", runId: run.id, step: 0 });
+    await test.db.insert(messages).values(antwort);
+    const key = keyRow();
+    await test.db.insert(installationKeys).values(key);
+    const ids = { conversationId: conversation.id, runId: run.id, messageId: antwort.id };
+    let prevHash = ZERO_PREV;
+    const frei: string[] = [];
+    for (let seq = 1; seq <= 12; seq++) {
+      const row = belegRow(key.id, { seq, prevHash, type: seq === 1 ? "start" : "decision" });
+      await test.db.insert(belege).values(row);
+      if (seq > 1) frei.push(row.id);
+      prevHash = row.hash;
+    }
+    // Zeilen in jedem Zustand mit Belegen, die zu anderen Aktionen gehören (vor der Bindung möglich).
+    await test.client.exec("set session_replication_role = replica");
+    for (const [position, status] of [
+      "requested",
+      "running",
+      "succeeded",
+      "failed",
+      "denied",
+      "cancelled",
+    ].entries()) {
+      const erledigt = !["requested", "running"].includes(status);
+      await test.db.insert(toolCalls).values(
+        toolCallRow(ids, {
+          position,
+          callId: `c${position}`,
+          status: status as never,
+          ...(status === "requested" ? {} : { decisionReceiptId: frei[position] as never }),
+          ...(status === "succeeded" || status === "failed"
+            ? { resultReceiptId: frei[position + 6] as never }
+            : {}),
+          ...(erledigt
+            ? {
+                resultStatus:
+                  status === "succeeded" ? "ok" : status === "denied" ? "denied" : "error",
+                finishedAt: new Date(),
+                output: { text: `Ergebnis ${position}` },
+              }
+            : {}),
+        }),
+      );
+    }
+    await test.client.exec("set session_replication_role = origin");
+    const lesen = async () =>
+      (
+        await test.client.query<{ z: unknown }>(
+          "select to_jsonb(t) as z from tool_calls t order by position",
+        )
+      ).rows;
+    const vorher = await lesen();
+    const tabellen = async () =>
+      (
+        await test.client.query<{ n: number }>(
+          "select (select count(*) from tool_calls) + (select count(*) from messages) * 1000 + (select count(*) from belege) * 1000000 as n",
+        )
+      ).rows[0]?.n;
+    const zahlenVorher = await tabellen();
+    await migrateTestDb(test);
+    expect(await lesen()).toEqual(vorher);
+    expect(await tabellen()).toEqual(zahlenVorher);
+    const migrationen = await test.client.query<{ n: number }>(
+      "select count(*)::int as n from drizzle.__drizzle_migrations",
+    );
+    expect(migrationen.rows[0]?.n).toBe(16);
+    // Nach dem Aufstieg ist ein neuer Wechsel mit fremder Entscheidung nicht mehr möglich.
+    const neu = toolCallRow(ids, { position: 9, callId: "neu" });
+    await test.db.insert(toolCalls).values(neu);
+    const f = await test.client
+      .query(
+        "update tool_calls set status = 'running', decision_receipt_id = $2 where action_id = $1",
+        [neu.actionId, frei[10]],
+      )
+      .then(
+        () => undefined,
+        (error: { code?: string }) => error.code,
+      );
+    expect(f).toBe("23001");
   });
 });

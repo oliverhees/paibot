@@ -29,7 +29,7 @@ import {
 } from "@paibot/shared";
 import { errorText } from "@paibot/shared/texte";
 import { type ToolEnvelope, toolEnvelopeSchema } from "@paibot/shared/werkzeug";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { type ToolCallRow, toolCalls } from "../schema";
 import { StatuswechselError, standardFehler, uebersetzen } from "./fehler";
@@ -350,19 +350,23 @@ export function openCallEndCode(
  * Beendet alle offenen Aufrufe (`requested`, `running`) eines Laufs, z. B. beim Aufräumen nach
  * einem Absturz: Zustand `cancelled`, Ergebnis `error` mit `openCallEndCode`, für das Modell die
  * feste Hülle mit Code und Text (ohne Kennung des Werkzeugs, also bei Zeilen aus der Zeit davor:
- * `null`). Nie wiederholt: Aus `cancelled` führt kein Weg zurück; ein zweiter Aufruf ändert
- * nichts. Gibt die Anzahl der beendeten Aufrufe zurück.
+ * `null`). Die offenen Zeilen werden dabei gesperrt (`for update`), damit ein noch lebender Worker
+ * sie nicht gleichzeitig weiterschaltet. Nie wiederholt: Aus `cancelled` führt kein Weg zurück; ein
+ * zweiter Aufruf ändert nichts. Mit `results` (Kennung des Aufrufs → Ergebnis-Beleg) vermerkt er
+ * zusätzlich an abgebrochenen Aufrufen dieses Laufs ohne Ergebnis-Beleg den Beleg, den das
+ * Aufräumen danach geschrieben hat. Gibt die Anzahl der beendeten Aufrufe zurück.
  */
 export async function endOpenForRun(
   db: Database,
   runId: RunId,
-  input: { now?: Date } = {},
+  input: { now?: Date; results?: ReadonlyMap<ActionId, ReceiptId> } = {},
 ): Promise<number> {
   const offen = await db
     .select()
     .from(toolCalls)
     .where(and(eq(toolCalls.runId, runId), inArray(toolCalls.status, ["requested", "running"])))
-    .orderBy(asc(toolCalls.createdAt), asc(toolCalls.messageId), asc(toolCalls.position));
+    .orderBy(asc(toolCalls.createdAt), asc(toolCalls.messageId), asc(toolCalls.position))
+    .for("update");
   const now = input.now ?? new Date();
   for (const row of offen) {
     const code = openCallEndCode(row);
@@ -378,6 +382,23 @@ export async function endOpenForRun(
             text: errorText(code),
           });
     await cancel(db, row.actionId, { output: huelle, errorCode: code, now });
+  }
+  for (const [actionId, resultReceiptId] of input.results ?? []) {
+    await uebersetzen(
+      () =>
+        db
+          .update(toolCalls)
+          .set({ resultReceiptId, updatedAt: now })
+          .where(
+            and(
+              eq(toolCalls.actionId, actionId),
+              eq(toolCalls.runId, runId),
+              eq(toolCalls.status, "cancelled"),
+              isNull(toolCalls.resultReceiptId),
+            ),
+          ),
+      standardFehler,
+    );
   }
   return offen.length;
 }

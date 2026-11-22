@@ -249,6 +249,7 @@ paibot_regeln_unveraenderlich:79d5e2e71fb891da2a560d8cd5f65671
 paibot_runs_regeln:cfebdd4e9b6a02f5fa087f01f65991e2
 paibot_schluessel_nur_anhaengen:7b14af8ca27cc0bcabbd5d475a024900
 paibot_tool_calls_regeln:014fc466b90bb93c9853fc39d40f5813
+paibot_tool_calls_regeln:cf4081e3be677b82335f196b87e7d317
 "
 # Eingebaute Funktionen, die in Prüfregeln, Standardwerten, Indizes und Trigger-Bedingungen der
 # Migrationen vorkommen (auch hinter Operatoren). Andere eingebaute Funktionen, die etwa Text als

@@ -40,6 +40,8 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  *   gelöscht wird nur mit der Unterhaltung.
  * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
  *   der Unterhaltung.
+ * - `runs`: lesen, anlegen, fortschreiben; gelöscht wird nur mit der Unterhaltung (sonst verschwänden
+ *   mit einem Lauf auch seine Werkzeug-Aufrufe).
  */
 export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   belege: "select, insert",
@@ -55,7 +57,7 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   owner: APP_DEFAULT_TABLE_RIGHTS,
   providers: APP_DEFAULT_TABLE_RIGHTS,
   rate_limits: APP_DEFAULT_TABLE_RIGHTS,
-  runs: APP_DEFAULT_TABLE_RIGHTS,
+  runs: "select, insert, update",
   sessions: APP_DEFAULT_TABLE_RIGHTS,
   settings: APP_DEFAULT_TABLE_RIGHTS,
   rules: "select",

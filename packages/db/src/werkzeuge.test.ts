@@ -11,6 +11,8 @@
 
 import {
   type ActionId,
+  type ConversationId,
+  type KeyId,
   newId,
   type ReceiptId,
   TOOL_CALL_STATUSES,
@@ -109,19 +111,43 @@ beforeEach(async () => {
   const key = keyRow();
   await ctx.db.insert(installationKeys).values(key);
   belegIds = [];
-  let prevHash = ZERO_PREV;
-  for (let seq = 1; seq <= 4; seq++) {
-    const row = belegRow(key.id, {
-      seq,
-      prevHash,
-      type: "decision",
-      conversationId: conversation.id,
-    });
-    await ctx.db.insert(belege).values(row);
-    belegIds.push(row.id);
-    prevHash = row.hash;
-  }
+  kette = { keyId: key.id, seq: 0, prevHash: ZERO_PREV, conversationId: conversation.id };
+  for (let i = 1; i <= 4; i++) belegIds.push(await beleg({ type: "decision" }));
 });
+
+/** Stand der Beleg-Kette im Test. */
+let kette: { keyId: KeyId; seq: number; prevHash: string; conversationId: ConversationId };
+
+/** Hängt einen Beleg an (Entscheidung oder Ergebnis, optional zu einer bestimmten Aktion). */
+async function beleg(options: {
+  type: "decision" | "result";
+  actionId?: ActionId;
+  outcome?: "allow" | "deny";
+  status?: "ok" | "denied";
+}): Promise<ReceiptId> {
+  kette.seq += 1;
+  const row = belegRow(kette.keyId, {
+    seq: kette.seq,
+    prevHash: kette.prevHash,
+    conversationId: kette.conversationId,
+    ...options,
+  });
+  await ctx.db.insert(belege).values(row);
+  kette.prevHash = row.hash;
+  return row.id as ReceiptId;
+}
+
+/** Belege genau dieser Aktion: Entscheidung (Standard „erlaubt“) und Ergebnis. */
+async function gebunden(actionId: ActionId, outcome: "allow" | "deny" = "allow") {
+  return {
+    entscheidung: (await beleg({ type: "decision", actionId, outcome })) as ReceiptId,
+    ergebnis: await beleg({
+      type: "result",
+      actionId,
+      status: outcome === "allow" ? "ok" : "denied",
+    }),
+  };
+}
 
 describe("tool_calls (Schema)", () => {
   it("nimmt einen angefragten Aufruf an", async () => {
@@ -286,15 +312,16 @@ describe("toolCalls (Zugriff)", () => {
 
   it("erlaubt: angefragt → läuft → fertig, mit Belegen und Ergebnis", async () => {
     const id = await neu();
+    const b = await gebunden(id);
     const laeuft = await calls.recordDecision(ctx.db, id, {
       outcome: "allow",
-      decisionReceiptId: belegIds[0] as ReceiptId,
+      decisionReceiptId: b.entscheidung,
     });
-    expect(laeuft).toMatchObject({ status: "running", decisionReceiptId: belegIds[0] });
+    expect(laeuft).toMatchObject({ status: "running", decisionReceiptId: b.entscheidung });
     const fertig = await calls.finish(ctx.db, id, {
       status: "succeeded",
       output: { termine: [] },
-      resultReceiptId: belegIds[1] as ReceiptId,
+      resultReceiptId: b.ergebnis,
     });
     expect(fertig).toMatchObject({
       status: "succeeded",
@@ -356,10 +383,11 @@ describe("toolCalls (Zugriff)", () => {
 
   it("ablehnen durch das Tor gibt dem Modell ein Ergebnis denied", async () => {
     const vomTor = await neu(0);
+    const b = await gebunden(vomTor, "deny");
     const abgelehnt = await calls.recordDecision(ctx.db, vomTor, {
       outcome: "deny",
-      decisionReceiptId: belegIds[0] as ReceiptId,
-      resultReceiptId: belegIds[1] as ReceiptId,
+      decisionReceiptId: b.entscheidung,
+      resultReceiptId: b.ergebnis,
       output: "Abgelehnt.",
     });
     expect(abgelehnt).toMatchObject({
@@ -385,15 +413,16 @@ describe("toolCalls (Zugriff)", () => {
 
   it("Ende mit gekürztem Ergebnis; Abbruch eines laufenden Aufrufs mit unbekanntem Ausgang", async () => {
     const id = await neu(0);
+    const b = await gebunden(id);
     await calls.recordDecision(ctx.db, id, {
       outcome: "allow",
-      decisionReceiptId: belegIds[0] as ReceiptId,
+      decisionReceiptId: b.entscheidung,
     });
     expect(
       await calls.finish(ctx.db, id, {
         status: "succeeded",
         output: { text: "…" },
-        resultReceiptId: belegIds[1] as ReceiptId,
+        resultReceiptId: b.ergebnis,
         outputTruncated: true,
         outputChars: 40000,
       }),
@@ -401,7 +430,7 @@ describe("toolCalls (Zugriff)", () => {
     const laeuft = await neu(1);
     await calls.recordDecision(ctx.db, laeuft, {
       outcome: "allow",
-      decisionReceiptId: belegIds[2] as ReceiptId,
+      decisionReceiptId: (await gebunden(laeuft)).entscheidung,
     });
     expect(
       await calls.cancel(ctx.db, laeuft, { output: null, errorCode: "ausgang_unbekannt" }),

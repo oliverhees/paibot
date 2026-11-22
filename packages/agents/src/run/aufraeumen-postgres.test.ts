@@ -347,7 +347,12 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
       status: "streaming",
       runId,
     });
-    const entscheidungen = [];
+    const entscheidungen: {
+      action: ActionRequest<"werkzeug.aufrufen">;
+      key: string;
+      kind: "lesen" | "schreiben";
+      reach: "intern" | "nach_aussen";
+    }[] = [];
     for (const [key, kind, reach] of [
       ["eingebaut/doku.nachschlagen", "lesen", "intern"],
       ["eingebaut/notiz.schreiben", "schreiben", "intern"],
@@ -363,10 +368,11 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
       key: string,
       kind: "lesen" | "schreiben",
       reach: "intern" | "nach_aussen",
+      actionId = newId("action"),
     ) =>
       (
         await repo.toolCalls.create(env.db, {
-          actionId: newId("action"),
+          actionId,
           conversationId: env.conversationId,
           runId,
           messageId: antwort.id,
@@ -385,29 +391,39 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
           untrustedInput: false,
         })
       ).actionId;
-    const beleg = (i: number) => belege.filter((e) => e.body.type === "decision")[i]?.id as never;
+    // Jede Zeile gehört zur Entscheidung derselben Aktion (der Trigger bindet sie aneinander).
+    const aktion = (i: number) => entscheidungen[i]?.action.actionId as never;
+    const beleg = (i: number) =>
+      belege.find((e) => e.body.type === "decision" && e.body.action.actionId === aktion(i))
+        ?.id as never;
     const angefragt = await anlegen(0, "eingebaut/doku.nachschlagen", "lesen", "intern");
-    const lesend = await anlegen(1, "eingebaut/doku.nachschlagen", "lesen", "intern");
+    const lesend = await anlegen(1, "eingebaut/doku.nachschlagen", "lesen", "intern", aktion(0));
     await repo.toolCalls.recordDecision(env.db, lesend, {
       outcome: "allow",
       decisionReceiptId: beleg(0),
     });
-    const schreibend = await anlegen(2, "eingebaut/notiz.schreiben", "schreiben", "intern");
+    const schreibend = await anlegen(
+      2,
+      "eingebaut/notiz.schreiben",
+      "schreiben",
+      "intern",
+      aktion(1),
+    );
     await repo.toolCalls.recordDecision(env.db, schreibend, {
       outcome: "allow",
       decisionReceiptId: beleg(1),
     });
-    const draussen = await anlegen(3, "eingebaut/web.lesen", "lesen", "nach_aussen");
+    const draussen = await anlegen(3, "eingebaut/web.lesen", "lesen", "nach_aussen", aktion(2));
     await repo.toolCalls.recordDecision(env.db, draussen, {
       outcome: "allow",
       decisionReceiptId: beleg(2),
     });
     // Zeile aus der Zeit vor den Pflicht-Angaben: läuft, ohne Wirkung und ohne Kennung.
-    const alt = newId("action");
+    const alt = aktion(3);
     await sql.begin(async (tx) => {
       await tx.unsafe("set local session_replication_role = replica");
       await tx`insert into tool_calls (action_id, conversation_id, run_id, message_id, position, call_id, name, source, kind, input, args_digest, status, decision_receipt_id)
-        values (${alt}, ${env.conversationId}, ${runId}, ${antwort.id}, 4, 'c4', 'alt', 'eingebaut', 'lesen', '{}'::jsonb, ${`hmac-sha256:${"c".repeat(64)}`}, 'running', ${belege.filter((e) => e.body.type === "decision")[3]?.id ?? null})`;
+        values (${alt}, ${env.conversationId}, ${runId}, ${antwort.id}, 4, 'c4', 'alt', 'eingebaut', 'lesen', '{}'::jsonb, ${`hmac-sha256:${"c".repeat(64)}`}, 'running', ${beleg(3) ?? null})`;
     });
 
     await failStaleRuns(
@@ -435,6 +451,15 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
       text: "Ob der Werkzeug-Aufruf gewirkt hat, ist nicht bekannt.",
     });
     expect(nachher.find((c) => c.actionId === alt)?.output).toBeUndefined();
+    // Das Aufräumen vermerkt den Ergebnis-Beleg an der Zeile (Gegenprobe: ohne `results` → rot).
+    const nachBelegen = await env.receipts();
+    for (const id of [lesend, schreibend, draussen, alt]) {
+      const ergebnis = nachBelegen.find(
+        (e) => e.body.type === "result" && e.body.action.actionId === id,
+      );
+      expect(nachher.find((c) => c.actionId === id)?.resultReceiptId).toBe(ergebnis?.id);
+    }
+    expect(nachher.find((c) => c.actionId === angefragt)?.resultReceiptId).toBeUndefined();
     for (const { action, kind, reach } of entscheidungen) {
       expect(await ergebnisVon(env, action.actionId)).toEqual({
         status: "error",
@@ -453,6 +478,125 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     expect(await repo.toolCalls.listForRun(env.db, runId)).toEqual(nachher);
     expect((await env.receipts()).length).toBe(belegZahl);
     expect(await repo.toolCalls.endOpenForRun(env.db, runId)).toBe(0);
+  }, 60_000);
+
+  // Gegenprobe: `for update` in `endOpenForRun` entfernen → liest den alten Zustand, Code unterbrochen, rot.
+  it("endOpenForRun sperrt die offenen Zeilen: ein gleichzeitiger Wechsel nach running wird abgewartet, der Code passt dazu", async () => {
+    const lauf = await haengenderLauf();
+    const { env, runId, sql } = lauf;
+    const antwort = await repo.messages.insert(env.db, {
+      conversationId: env.conversationId,
+      role: "assistant",
+      status: "streaming",
+      runId,
+      step: 0,
+    });
+    const { action } = await werkzeugEntscheidung(
+      lauf,
+      werkzeugFakten("eingebaut/notiz.schreiben", "schreiben", "nach_aussen"),
+      true,
+    );
+    await repo.toolCalls.create(env.db, {
+      actionId: action.actionId,
+      conversationId: env.conversationId,
+      runId,
+      messageId: antwort.id,
+      position: 0,
+      callId: "c0",
+      name: "werkzeug",
+      source: "eingebaut",
+      kind: "schreiben",
+      input: {},
+      argsDigest: `hmac-sha256:${"b".repeat(64)}` as never,
+      toolKey: "eingebaut/notiz.schreiben" as never,
+      toolDigest: `sha256:${"4d".repeat(32)}` as never,
+      reach: "nach_aussen",
+      foreignContent: false,
+      step: 0,
+      untrustedInput: false,
+    });
+    const entscheidung = (await env.receipts()).find(
+      (e) => e.body.type === "decision" && e.body.action.actionId === action.actionId,
+    );
+    // Ein noch lebender Worker schaltet die Zeile gerade nach `running` (Transaktion offen).
+    const worker = await sql.reserve();
+    await worker`begin`;
+    await worker`update tool_calls set status = 'running', decision_receipt_id = ${entscheidung?.id ?? ""} where action_id = ${action.actionId}`;
+    const aufraeumen = repo.withTransaction(env.db, (tx) =>
+      repo.toolCalls.endOpenForRun(tx, runId),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await worker`commit`;
+    worker.release();
+    expect(await aufraeumen).toBe(1);
+    expect(await repo.toolCalls.get(env.db, action.actionId)).toMatchObject({
+      status: "cancelled",
+      errorCode: "ausgang_unbekannt",
+    });
+  }, 60_000);
+
+  // Gegenprobe: Nachlauf in `failStaleRuns` entfernen → Entscheidung bleibt ohne Ergebnis, rot.
+  it("Absturz zwischen dem Beenden des Laufs und dem Schließen der Entscheidungen: der nächste Durchgang schließt sie", async () => {
+    const lauf = await haengenderLauf();
+    const { env, runId } = lauf;
+    const antwort = await repo.messages.insert(env.db, {
+      conversationId: env.conversationId,
+      role: "assistant",
+      status: "streaming",
+      runId,
+      step: 0,
+    });
+    const { action } = await werkzeugEntscheidung(
+      lauf,
+      werkzeugFakten("eingebaut/notiz.schreiben", "schreiben", "intern"),
+      true,
+    );
+    await repo.toolCalls.create(env.db, {
+      actionId: action.actionId,
+      conversationId: env.conversationId,
+      runId,
+      messageId: antwort.id,
+      position: 0,
+      callId: "c0",
+      name: "werkzeug",
+      source: "eingebaut",
+      kind: "schreiben",
+      input: {},
+      argsDigest: `hmac-sha256:${"b".repeat(64)}` as never,
+      toolKey: "eingebaut/notiz.schreiben" as never,
+      toolDigest: `sha256:${"4d".repeat(32)}` as never,
+      reach: "intern",
+      foreignContent: false,
+      step: 0,
+      untrustedInput: false,
+    });
+    const entscheidung = (await env.receipts()).find(
+      (e) => e.body.type === "decision" && e.body.action.actionId === action.actionId,
+    );
+    await repo.toolCalls.recordDecision(env.db, action.actionId, {
+      outcome: "allow",
+      decisionReceiptId: entscheidung?.id as never,
+    });
+    // Erster Durchgang ohne Beleg-Schreiber: wie ein Absturz nach dem Beenden des Laufs.
+    await failStaleRuns({ db: env.db, clock: spaeter }, { staleAfterMs: 60_000 });
+    expect((await repo.runs.get(env.db, runId))?.status).toBe("failed");
+    expect(await ergebnisVon(env, action.actionId)).toBeUndefined();
+    // Nächster Durchgang: Der Lauf ist schon beendet, der Nachlauf schließt die Entscheidung.
+    await failStaleRuns(
+      { db: env.db, clock: spaeter, receipts: env.writer },
+      { staleAfterMs: 60_000 },
+    );
+    expect(await ergebnisVon(env, action.actionId)).toEqual({
+      status: "error",
+      code: "ausgang_unbekannt",
+    });
+    const zeile = await repo.toolCalls.get(env.db, action.actionId);
+    expect(zeile).toMatchObject({ status: "cancelled", errorCode: "ausgang_unbekannt" });
+    const ergebnis = (await env.receipts()).find(
+      (e) => e.body.type === "result" && e.body.action.actionId === action.actionId,
+    );
+    expect(zeile?.resultReceiptId).toBe(ergebnis?.id);
+    expect((await pruefen(env, true)).verdict.level).toBe("vertrauenswuerdig");
   }, 60_000);
 
   it("Entscheidung der Tor-Fassung 1 (vor dem Update) mit Not-Aus: das Aufräumen schreibt „angehalten“", async () => {

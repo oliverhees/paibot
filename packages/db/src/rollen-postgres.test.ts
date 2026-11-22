@@ -248,6 +248,8 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
       });
       const [last] = await db.select().from(belege).orderBy(desc(belege.seq)).limit(1);
       const seq = last?.seq ?? 0;
+      // Entscheidung und Ergebnis genau dieser Aktion (der Trigger bindet den Aufruf an sie).
+      const actionId = newId("action");
       const [decision] = await db
         .insert(belege)
         .values(
@@ -255,6 +257,8 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
             seq: seq + 1,
             prevHash: last?.hash ?? ZERO_PREV,
             conversationId: conv.id,
+            type: "decision",
+            actionId,
           }),
         )
         .returning();
@@ -265,10 +269,11 @@ describe.skipIf(BASE_URL === undefined)("Rollen der Datenbank gegen echtes Postg
             seq: seq + 2,
             prevHash: decision?.hash ?? "",
             conversationId: conv.id,
+            type: "result",
+            actionId,
           }),
         )
         .returning();
-      const actionId = newId("action");
       await toolCalls.create(db, {
         actionId,
         conversationId: conv.id,

@@ -355,46 +355,58 @@ async function befuellen(appUrl: string) {
       type: "step.finished",
       data: { runId: lauf.id, step: 0, ending: "zwischentext" },
     });
+    // Je Aufruf eine eigene Aktion; der Trigger bindet jede Zeile an die Belege genau ihrer Aktion.
+    // Die vierte wird abgelehnt (nicht angeboten, V-12), die anderen erlaubt R-010.
     const belegt: { decision: { receiptId: string }; result: { receiptId: string } }[] = [];
+    const aktionen: ReturnType<typeof newId<"action">>[] = [];
     for (let i = 0; i < 4; i++) {
-      const r = await gate.run(
-        {
-          actionId: newId("action"),
-          type: "werkzeug.aufrufen",
-          actor: `bot:${bot.id}`,
-          target: { conversationId: fertig.id, runId: lauf.id, botId: bot.id },
-        },
-        {
-          botOfConversation: true,
-          runRunning: true,
-          toolName: "doku_nachschlagen",
-          toolSource: "eingebaut",
-          toolKind: "lesen",
-          argsDigest: `hmac-sha256:${"a7".repeat(32)}`,
-          killSwitch: false,
-          toolKey: "eingebaut/doku.nachschlagen",
-          toolDigest: `sha256:${"4d".repeat(32)}`,
-          toolReach: "intern",
-          toolForeign: false,
-          toolRegistered: true,
-          toolOffered: true,
-          inputValid: true,
-          untrustedInput: false,
-          step: 0,
-          callIndexInStep: i,
-          maxCallsPerStep: 8,
-          callsInRun: i,
-          maxCallsPerRun: 16,
-          trigger: "chat",
-        },
-        async () => ({ value: undefined, result: { status: "ok" as const } }),
-      );
-      belegt.push(r.receipts);
+      const actionId = newId("action");
+      aktionen.push(actionId);
+      const r = await gate
+        .run(
+          {
+            actionId,
+            type: "werkzeug.aufrufen",
+            actor: `bot:${bot.id}`,
+            target: { conversationId: fertig.id, runId: lauf.id, botId: bot.id },
+          },
+          {
+            botOfConversation: true,
+            runRunning: true,
+            toolName: "doku_nachschlagen",
+            toolSource: "eingebaut",
+            toolKind: "lesen",
+            argsDigest: `hmac-sha256:${"a7".repeat(32)}`,
+            killSwitch: false,
+            toolKey: "eingebaut/doku.nachschlagen",
+            toolDigest: `sha256:${"4d".repeat(32)}`,
+            toolReach: "intern",
+            toolForeign: false,
+            toolRegistered: true,
+            toolOffered: i !== 3,
+            inputValid: true,
+            untrustedInput: false,
+            step: 0,
+            callIndexInStep: i,
+            maxCallsPerStep: 8,
+            callsInRun: i,
+            maxCallsPerRun: 16,
+            trigger: "chat",
+          },
+          async () => ({ value: undefined, result: { status: "ok" as const } }),
+        )
+        .then(
+          (ok) => ok.receipts,
+          (abgelehnt: {
+            receipts: { decision: { receiptId: string }; result: { receiptId: string } };
+          }) => abgelehnt.receipts,
+        );
+      belegt.push(r);
     }
-    const aufruf = async (position: number) =>
+    const aufruf = async (position: number, actionId = newId("action")) =>
       (
         await repo.toolCalls.create(db, {
-          actionId: newId("action"),
+          actionId: actionId as never,
           conversationId: fertig.id,
           runId: lauf.id,
           messageId: antwort.id,
@@ -414,7 +426,7 @@ async function befuellen(appUrl: string) {
         })
       ).actionId;
     const entschieden = async (position: number, i: number) => {
-      const id = await aufruf(position);
+      const id = await aufruf(position, aktionen[i]);
       await repo.toolCalls.recordDecision(db, id, {
         outcome: "allow",
         decisionReceiptId: belegt[i]?.decision.receiptId as never,
@@ -433,9 +445,10 @@ async function befuellen(appUrl: string) {
       output: null,
       resultReceiptId: belegt[2]?.result.receiptId as never,
     });
-    await repo.toolCalls.recordDecision(db, await aufruf(4), {
+    await repo.toolCalls.recordDecision(db, await aufruf(4, aktionen[3]), {
       outcome: "deny",
       decisionReceiptId: belegt[3]?.decision.receiptId as never,
+      resultReceiptId: belegt[3]?.result.receiptId as never,
       output: "Abgelehnt.",
     });
     await repo.toolCalls.cancel(db, await aufruf(5), { output: null });
@@ -794,11 +807,11 @@ describe.skipIf(bereit.grund !== undefined)(
         const belege = vergleich.find((z) => z.startsWith("B|"))?.split("|");
         expect(belege?.[6]).toBe("true");
 
-        // Migrations-Schritt mit dem neuen Code: auf 0014, gleiche Daten, R-010 dazu.
+        // Migrations-Schritt mit dem neuen Code: auf den neuesten Stand (ab 0014), gleiche Daten, R-010 dazu.
         await runMigrations(ziel.url, MIGRATIONS_FOLDER);
         const neu = await zaehlen(ziel.url);
         expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 1);
-        expect(neu["drizzle.__drizzle_migrations"]).toBe(15);
+        expect(neu["drizzle.__drizzle_migrations"]).toBe(16);
         for (const tabelle of Object.keys(altZeilen).filter(
           (t) => t !== "public.rules" && t !== "drizzle.__drizzle_migrations",
         )) {

@@ -13,7 +13,7 @@ import { type Database, repo } from "@paibot/db";
 import { denialCode, type ReceiptWriter } from "@paibot/gate";
 import type { ActionRequest } from "@paibot/shared/aktionen";
 import type { ErrorCode } from "@paibot/shared/fehler";
-import type { MessageId, RunId } from "@paibot/shared/ids";
+import type { ActionId, MessageId, ReceiptId, RunId } from "@paibot/shared/ids";
 import type { Run } from "@paibot/shared/objekte";
 import { errorText } from "@paibot/shared/texte";
 import { RUN_TUNING, type RunDeps } from "./vertrag";
@@ -73,9 +73,56 @@ export async function failStaleRuns(
   for (const run of [...running, ...queued]) {
     if (!(await failRun(db, run, now))) continue;
     failed.push(run.id);
-    if (deps.receipts !== undefined) await closeOpenDecisions(db, deps.receipts, run, now);
+    if (deps.receipts !== undefined) await closeRunDecisions(db, deps.receipts, run, now);
+  }
+  // Nachlauf: Stürzte ein Worker zwischen dem Beenden eines Laufs und dem Schließen seiner
+  // Entscheidungen ab, ist der Lauf schon beendet und kommt oben nicht mehr vor.
+  if (deps.receipts !== undefined) {
+    for (const run of await finishedRunsWithOpenToolDecisions(db)) {
+      if (failed.includes(run.id)) continue;
+      await closeRunDecisions(db, deps.receipts, run, now);
+    }
   }
   return failed;
+}
+
+/** Entscheidungen eines beendeten Laufs schließen und Ergebnis-Belege an seinen Aufrufen vermerken. */
+async function closeRunDecisions(
+  db: Database,
+  receipts: ReceiptWriter,
+  run: Run,
+  now: Date,
+): Promise<void> {
+  const written = await closeOpenDecisions(db, receipts, run, now);
+  if (written.size > 0) await repo.toolCalls.endOpenForRun(db, run.id, { now, results: written });
+}
+
+/**
+ * Beendete Läufe mit einer Entscheidung `werkzeug.aufrufen` ohne Ergebnis. Bei einem laufenden
+ * Lauf ist das normal (der Aufruf läuft gerade); bei einem beendeten nur nach einem Absturz.
+ */
+async function finishedRunsWithOpenToolDecisions(db: Database): Promise<Run[]> {
+  const open = await db.query.belege.findMany({
+    columns: { body: true },
+    where: (t, { and, eq, sql }) =>
+      and(
+        eq(t.entryType, "decision"),
+        eq(t.action, "werkzeug.aufrufen"),
+        sql`not exists (select 1 from "public"."belege" r where r.entry_type = 'result' and r.action_id = ${t.actionId})`,
+      ),
+  });
+  const runIds = new Set<RunId>();
+  for (const decision of open) {
+    if (decision.body.type !== "decision") continue;
+    const target = decision.body.action.target as { runId?: RunId };
+    if (target.runId !== undefined) runIds.add(target.runId);
+  }
+  const runs: Run[] = [];
+  for (const runId of runIds) {
+    const run = await repo.runs.get(db, runId);
+    if (run !== undefined && run.status !== "queued" && run.status !== "running") runs.push(run);
+  }
+  return runs;
 }
 
 /** Beendet einen Lauf als fehlgeschlagen; `false`, wenn ihn inzwischen ein anderer beendet hat. */
@@ -130,14 +177,16 @@ async function streamedText(db: Database, run: Run, messageId: MessageId): Promi
 const LAUF_AKTIONEN = ["modell.anfragen", "werkzeug.aufrufen"] as const;
 
 /**
- * Code für eine erlaubte, nie beendete Entscheidung: Bei einem Werkzeug, das schreibt oder nach
- * außen wirkt, ist nicht bekannt, ob es schon gewirkt hat (`ausgang_unbekannt`); sonst `unterbrochen`.
+ * Code für eine erlaubte, nie beendete Entscheidung: Nur bei einem Werkzeug, das liest und nur
+ * innerhalb von PaiBot wirkt, `unterbrochen`; sonst ist nicht bekannt, ob es schon gewirkt hat
+ * (`ausgang_unbekannt`) – auch wenn die Fakten die Wirkung nicht nennen (gleich streng wie
+ * `repo.toolCalls.openCallEndCode`).
  */
 function erlaubtOhneEnde(action: string, facts: Record<string, unknown>): ErrorCode {
   if (action !== "werkzeug.aufrufen") return STALE_CODE;
-  return facts.toolKind === "schreiben" || facts.toolReach === "nach_aussen"
-    ? "ausgang_unbekannt"
-    : STALE_CODE;
+  return facts.toolKind === "lesen" && facts.toolReach === "intern"
+    ? STALE_CODE
+    : "ausgang_unbekannt";
 }
 
 /**
@@ -152,7 +201,8 @@ async function closeOpenDecisions(
   receipts: ReceiptWriter,
   run: Run,
   now: Date,
-): Promise<void> {
+): Promise<Map<ActionId, ReceiptId>> {
+  const written = new Map<ActionId, ReceiptId>();
   const decisions = await db.query.belege.findMany({
     columns: { actionId: true, body: true },
     where: (t, { and, eq, inArray, sql }) =>
@@ -172,7 +222,7 @@ async function closeOpenDecisions(
     });
     if (result !== undefined) continue;
     const entschieden = decision.body.decision;
-    await receipts.appendResult({
+    const ref = await receipts.appendResult({
       action: decision.body.action as ActionRequest,
       result:
         entschieden.outcome === "allow"
@@ -186,5 +236,7 @@ async function closeOpenDecisions(
             },
       time: now,
     });
+    if (decision.body.action.type === "werkzeug.aufrufen") written.set(actionId, ref.receiptId);
   }
+  return written;
 }
