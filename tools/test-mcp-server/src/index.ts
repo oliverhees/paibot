@@ -57,8 +57,16 @@ export type McpAnswer =
   | { kind: "normal" }
   /** Textergebnis; mit `isError` als Werkzeug-Fehler. */
   | { kind: "text"; text: string; isError?: boolean }
-  /** Ergebnis als SSE-Strom mit `notifications` Fortschrittsmeldungen davor. */
-  | { kind: "sse"; notifications?: number }
+  /**
+   * Ergebnis als SSE-Strom mit `notifications` Fortschrittsmeldungen davor; mit `thenEndless` bleibt
+   * der Strom nach dem Ergebnis offen und sendet weiter Meldungen, bis der Aufrufer schließt.
+   */
+  | { kind: "sse"; notifications?: number; thenEndless?: boolean }
+  /**
+   * Ergebnis als SSE-Strom, davor `count` Anfragen des Servers an den Client (Methode `method`,
+   * Standard `sampling/createMessage`): prüft, dass der Client nicht auf jede einzeln antwortet.
+   */
+  | { kind: "serverRequests"; count: number; method?: string }
   /** Übergroße Antwort: so viele Bytes Text (Liste: eine Beschreibung dieser Länge). */
   | { kind: "huge"; bytes: number }
   /** Endloser SSE-Strom: Fortschrittsmeldungen ohne Ende, nie ein Ergebnis. */
@@ -208,6 +216,7 @@ const ANSWER_KINDS = new Set([
   "normal",
   "text",
   "sse",
+  "serverRequests",
   "huge",
   "endless",
   "drip",
@@ -491,6 +500,22 @@ export function createTestMcpServer(
         startSse(ex);
         for (let i = 1; i <= (a.notifications ?? 1); i += 1)
           sseEvent(ex, progress(progressToken, i));
+        sseEvent(ex, reply(normal()));
+        if (a.thenEndless === true) {
+          for (let step = 1; !ex.closed; step += 1) {
+            sseEvent(ex, progress(progressToken, step));
+            await sleep(10, ex);
+          }
+          return;
+        }
+        ex.res.end();
+        return;
+      }
+      case "serverRequests": {
+        startSse(ex);
+        const method = a.method ?? "sampling/createMessage";
+        for (let i = 1; i <= Math.max(0, a.count); i += 1)
+          sseEvent(ex, { jsonrpc: "2.0", id: `server-${i}`, method, params: {} });
         sseEvent(ex, reply(normal()));
         ex.res.end();
         return;

@@ -34,6 +34,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | In der Doku nachschlagen (noch nicht eingeschaltet) | [doku-nachschlagen.md](doku-nachschlagen.md)           | –                                                                           |
 | Teamchat (Regeln)                                   | [teamchat.md](teamchat.md)                             | –                                                                           |
 | Werkzeug-Kern (Vertrag, Datenbank, Schleife)        | [werkzeug-kern.md](werkzeug-kern.md)                   | [funktion-tor.md](../funktion-tor.md)                                       |
+| Apps (MCP-Schicht, noch nicht angeschlossen)        | [apps.md](apps.md)                                     | folgt mit der Oberfläche                                                    |
 | Vorlage                                             | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
 
 ## Aufbau des Monorepos
