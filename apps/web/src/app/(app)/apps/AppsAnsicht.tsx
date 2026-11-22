@@ -163,6 +163,7 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
       app: { id: string };
       werkzeuge: unknown[];
       nichtPruefbar: { name: string }[];
+      abgeschnitten: boolean;
     }>("POST", APP_PFADE.verbinden(), {
       url: daten.adresse,
       ...(daten.token === "" ? {} : { token: daten.token }),
@@ -186,7 +187,10 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
         anzahl === 1
           ? t("apps.seite.verbunden.eins")
           : t("apps.seite.verbunden.mehr", { anzahl: String(anzahl) }),
-      hinweis: t("apps.seite.verbunden.hinweis"),
+      hinweis: [
+        t("apps.seite.verbunden.hinweis"),
+        ...(r.daten.abgeschnitten ? [t("apps.seite.abgeschnitten")] : []),
+      ].join(" "),
       nichtPruefbar: r.daten.nichtPruefbar.map((n) => n.name),
     });
     neuLaden();
@@ -195,7 +199,7 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
   async function erneutTesten(app: AppsAnsichtEintrag) {
     setLaeuft(`${app.id}:testen`);
     meldeFuer(app.id, undefined);
-    const r = await apiFetch<{ nichtPruefbar: { name: string }[] }>(
+    const r = await apiFetch<{ nichtPruefbar: { name: string }[]; abgeschnitten: boolean }>(
       "POST",
       APP_PFADE.werkzeuge(app.id),
     );
@@ -217,6 +221,7 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
     meldeFuer(app.id, {
       art: "ok",
       text: t("apps.seite.erneut.fertig"),
+      ...(r.daten.abgeschnitten ? { hinweis: t("apps.seite.abgeschnitten") } : {}),
       nichtPruefbar: r.daten.nichtPruefbar.map((n) => n.name),
     });
     neuLaden();
@@ -444,6 +449,11 @@ export function AppsAnsicht({ apps, notAus }: AppsAnsichtProps) {
           </>
         }
       >
+        {trennen !== undefined && (
+          <p className={styles.fett}>
+            <FremderText text={trennen.name} art="name" />
+          </p>
+        )}
         <p>{t("apps.seite.trennen.text")}</p>
       </Dialog>
     </SeitenSpalte>

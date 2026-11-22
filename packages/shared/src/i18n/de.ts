@@ -2360,6 +2360,8 @@ export const de = {
   "apps.seite.nicht_pruefbar":
     "Diese Werkzeuge kann PaiBot nicht prüfen. Es zeigt sie nicht an und bietet sie keinem Bot an:",
   "apps.seite.erneut.fertig": "Die Liste wurde neu abgerufen.",
+  "apps.seite.abgeschnitten":
+    "Die App meldet mehr Werkzeuge, als PaiBot liest. Die übrigen fehlen hier.",
   "apps.seite.aktion.warten": "Versuche es in {sekunden} Sekunden noch einmal.",
   "apps.seite.zugriff.titel": "Zugriff der Bots",
   "apps.seite.zugriff.keine": "Es gibt noch keinen Bot.",

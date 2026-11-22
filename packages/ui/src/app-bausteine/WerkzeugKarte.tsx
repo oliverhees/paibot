@@ -21,6 +21,7 @@ import { bereinigeFremdText } from "./fremdText";
 import styles from "./Werkzeug.module.css";
 import {
   type AenderungFeld,
+  kurzeFassung,
   type SchemaText,
   type SchemaTextArt,
   type ServerHinweis,
@@ -316,7 +317,7 @@ export function WerkzeugKarte({
           {fassung && (
             <span>
               {t("apps.werkzeug.fassung")}{" "}
-              <code className={styles.fassung}>{fassung.slice(0, 8)}</code>
+              <code className={styles.fassung}>{kurzeFassung(fassung)}</code>
             </span>
           )}
         </p>

@@ -9,6 +9,11 @@
  */
 
 /** Was der Besitzer über das Werkzeug sagt. Ohne seine Bestätigung gilt immer „schreibt“. */
+/** Kurze Kennung einer Fassung zum Anzeigen: die ersten acht Zeichen des Abdrucks ohne `sha256:`. */
+export function kurzeFassung(abdruck: string): string {
+  return abdruck.replace(/^sha256:/, "").slice(0, 8);
+}
+
 export type WerkzeugArt = "schreibt" | "liest" | "gesperrt";
 
 /** neu: noch nie bestätigt · bestaetigt: Fassung bestätigt · geaendert: Fassung weicht ab · entfernt: nicht mehr gemeldet */

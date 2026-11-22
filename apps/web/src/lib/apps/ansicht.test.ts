@@ -23,7 +23,7 @@ const ABDRUCK = `sha256:${"a".repeat(64)}`;
 
 function werkzeug(teil: Partial<WerkzeugAntwort> = {}): WerkzeugAntwort {
   return {
-    id: "tool_01",
+    id: "wzg_01",
     version: 1,
     stand: "neu",
     klasse: "schreiben",
@@ -45,7 +45,7 @@ describe("werkzeugEintrag", () => {
     expect(e.serverHinweis).toBe("nur_lesend");
     // Der Hinweis der App ist nur Anzeige: Die Einstufung bleibt die des Besitzers.
     expect(e.art).toBe("schreibt");
-    expect(e.id).toBe("tool_01");
+    expect(e.id).toBe("wzg_01");
     expect(e.fassung).toBe(ABDRUCK);
   });
 

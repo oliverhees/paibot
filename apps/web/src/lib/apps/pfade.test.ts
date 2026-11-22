@@ -16,7 +16,7 @@ describe("APP_PFADE", () => {
   it("entsprechen den Pfaden und Methoden des Vertrags", () => {
     const id = "app_01m81wg92mhw4f655fe1rf19gk";
     const bot = "bot_01m81wg92mhw4f655fe1rf19gk";
-    const werkzeug = "tool_01m81wg92mhw4f655fe1rf19gk";
+    const werkzeug = "wzg_01m81wg92mhw4f655fe1rf19gk";
     expect(APP_PFADE.liste()).toBe(routenPfad("appsListe", {}));
     expect(APP_PFADE.verbinden()).toBe(routenPfad("appVerbinden", {}));
     expect(APP_PFADE.werkzeuge(id)).toBe(routenPfad("appWerkzeuge", { id }));

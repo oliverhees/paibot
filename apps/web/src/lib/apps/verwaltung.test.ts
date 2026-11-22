@@ -646,6 +646,30 @@ describe("Zugriff der Bots", () => {
     expect(await repo.apps.currentAccess(u.e.u.db, d.app.id, u.botId)).toBe("keiner");
   });
 
+  it("bei gesetztem Not-Aus lassen sich Zugriff und Einstufung weiter ändern (der Not-Aus hält nur die Aufrufe an)", async () => {
+    const u = await umgebung();
+    const d = daten(await verbinden(u));
+    await repo.settings.update(u.e.u.db, { killSwitch: true });
+    const zugriff = await u.e.rufe(u.h.zugriff, "PUT", `/api/apps/${d.app.id}/zugriff/${u.botId}`, {
+      params: { id: d.app.id, bot: u.botId },
+      koerper: { zugriff: "lesen" },
+    });
+    expect(zugriff.status).toBe(200);
+    expect(await repo.apps.currentAccess(u.e.u.db, d.app.id, u.botId)).toBe("lesen");
+    const werkzeug = d.werkzeuge[0];
+    if (werkzeug === undefined) throw new Error("kein Werkzeug");
+    const einstufen = await u.e.rufe(
+      u.h.bestaetigen,
+      "PUT",
+      `/api/apps/${d.app.id}/werkzeuge/${werkzeug.id}`,
+      {
+        params: { id: d.app.id, werkzeug: werkzeug.id },
+        koerper: { klasse: "lesen", gesehenerAbdruck: werkzeug.abdruck },
+      },
+    );
+    expect(einstufen.status).toBe(200);
+  });
+
   it("ein unbekannter Bot oder eine getrennte App: nicht gefunden", async () => {
     const u = await umgebung();
     const d = daten(await verbinden(u));

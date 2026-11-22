@@ -24,7 +24,7 @@ const ABDRUCK = `sha256:${"b".repeat(64)}`;
 
 function werkzeug(teil: Partial<WerkzeugAntwort> = {}): WerkzeugAntwort {
   return {
-    id: "tool_01",
+    id: "wzg_01",
     version: 1,
     stand: "neu",
     klasse: "schreiben",

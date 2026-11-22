@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BEISPIEL_WERKZEUGE } from "./beispiele";
-import { werkzeugSumme, wirdAngeboten, wirksameArt } from "./werkzeug";
+import { kurzeFassung, werkzeugSumme, wirdAngeboten, wirksameArt } from "./werkzeug";
 
 describe("Einstufung", () => {
   it("Standard ist „schreibt“: ohne Bestätigung nie „liest“, auch wenn art „liest“ sagt", () => {
@@ -57,5 +57,12 @@ describe("Texte der App-Bausteine", () => {
 
   it("enthält weder „EU“ noch „sicher“ (keine Kennzeichnung ohne Beleg)", () => {
     expect(block.match(/\bEU\b|sicher/i)).toBeNull();
+  });
+});
+
+describe("Kurze Kennung einer Fassung", () => {
+  it("zeigt die ersten acht Zeichen des Abdrucks ohne das Vorzeichen „sha256:“", () => {
+    expect(kurzeFassung(`sha256:${"ab12cd34".repeat(8)}`)).toBe("ab12cd34");
+    expect(kurzeFassung("ab12cd34ef")).toBe("ab12cd34");
   });
 });
