@@ -20,8 +20,10 @@ import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { ConversationEvent } from "@paibot/shared/ereignisse";
 import type { RunId } from "@paibot/shared/ids";
+import type { JsonValue } from "@paibot/shared/motor";
 import { t } from "@paibot/shared/texte";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { createAiSdkMotor } from "../motor-aisdk";
 import { buildSystemPrompt } from "../prompt";
 import { type RunSetup, type RunSetupOptions, setupRun } from "../testing/lauf-umgebung";
@@ -1206,5 +1208,69 @@ describe("Für später nichts verbaut", () => {
       "denied",
     ]);
     expect((await repo.runs.get(env.db, runId))?.status).toBe("succeeded");
+  });
+});
+
+describe("Ergebnis mit dem Schlüssel __proto__", () => {
+  /** `test_lesen` mit einem Ausgabe-Schema, das beliebige Schlüssel zulässt, und dem gewünschten Ergebnis. */
+  async function mitErgebnis(env: Env, ergebnis: string) {
+    const lesen = env.tools.byName("test_lesen");
+    env.deps.tools = await createToolRegistry([
+      {
+        ...lesen,
+        output: z.record(z.string(), z.unknown()) as unknown as z.ZodType<JsonValue>,
+        async run() {
+          return { status: "ok" as const, output: JSON.parse(ergebnis) };
+        },
+      },
+    ]);
+  }
+
+  // Gegenprobe: Prüfung in `outcomeEnvelope` entfernen → Hülle `ok`, rot.
+  it.each([
+    ["in einem Wert", '{"a":{"__proto__":{"x":"gefahr"}}}'],
+    // erst das Bereinigen macht den Schlüssel zu `__proto__`
+    ["getarnt", '{"__pro\u200bto__":{"x":"gefahr"}}'],
+    ["verschachtelt", '{"a":[{"__proto__":{"x":"gefahr"}}]}'],
+  ])(
+    "Ergebnis %s: Hülle fehler/werkzeug_fehler, nichts davon geht an das Modell",
+    async (_name, ergebnis) => {
+      const env = await setup(SCRIPTS.textDannAufruf, { tools: { allowedByR010: "test_lesen" } });
+      await mitErgebnis(env, ergebnis);
+      const { runId, outcome } = await env.ask();
+      expect(outcome).toMatchObject({ status: "succeeded" });
+      const { row, result } = await onlyCall(env, runId);
+      expect(row).toMatchObject({ status: "failed", errorCode: "werkzeug_fehler" });
+      expect(result?.result).toMatchObject({ status: "error", code: "werkzeug_fehler" });
+      const tool = body(1).messages.find((m) => m.role === "tool");
+      expect(String(tool?.content)).not.toContain("gefahr");
+      expect(JSON.stringify(row)).not.toContain("gefahr");
+    },
+  );
+
+  it("ein Schlüssel __proto__ auf oberster Ebene entfernt schon das Schema; das Ergebnis kommt ohne ihn an", async () => {
+    const env = await setup(SCRIPTS.textDannAufruf, { tools: { allowedByR010: "test_lesen" } });
+    await mitErgebnis(env, '{"__proto__":{"x":"gefahr"},"antwort":"gelesen"}');
+    const { runId } = await env.ask();
+    const { row } = await onlyCall(env, runId);
+    expect(row).toMatchObject({ status: "succeeded", output: { inhalt: { antwort: "gelesen" } } });
+    expect(JSON.stringify(row)).not.toContain("gefahr");
+  });
+
+  // Gegenprobe: Prüfung auf doppelte Schlüssel in `outcomeEnvelope` entfernen → Hülle `ok`, rot.
+  it("zwei Schlüssel, die bereinigt gleich sind: Hülle fehler, kein stilles Überschreiben", async () => {
+    const env = await setup(SCRIPTS.textDannAufruf, { tools: { allowedByR010: "test_lesen" } });
+    await mitErgebnis(env, '{"k":"eins","k\u200b":"zwei"}');
+    const { runId } = await env.ask();
+    const { row } = await onlyCall(env, runId);
+    expect(row).toMatchObject({ status: "failed", errorCode: "werkzeug_fehler" });
+  });
+
+  it("ein gewöhnliches Ergebnis desselben Werkzeugs kommt an (die Prüfung weist nicht alles ab)", async () => {
+    const env = await setup(SCRIPTS.textDannAufruf, { tools: { allowedByR010: "test_lesen" } });
+    await mitErgebnis(env, '{"antwort":"gelesen"}');
+    const { runId } = await env.ask();
+    const { row } = await onlyCall(env, runId);
+    expect(row).toMatchObject({ status: "succeeded" });
   });
 });

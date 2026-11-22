@@ -17,6 +17,7 @@ import { errorText, isTextKey, type TextKey, t } from "@paibot/shared/texte";
 import { type Decision, LIMITS_BY_ID, PRECONDITIONS } from "@paibot/shared/tor";
 import { type ToolEnvelope, type ToolKey, toolEnvelopeSchema } from "@paibot/shared/werkzeug";
 import type { z } from "zod";
+import { setOwn } from "./bereinigen";
 
 /** Text eines Schlüssels, der keine Platzhalter hat. */
 export function plainText(key: TextKey): string {
@@ -198,7 +199,7 @@ function shortenLongestString(
       return node.map((child, i) => (i === step ? replace(child, depth + 1) : child));
     const copy: { [key: string]: JsonValue } = {};
     for (const [key, child] of Object.entries(node as { [key: string]: JsonValue })) {
-      copy[key] = key === step ? replace(child, depth + 1) : child;
+      setOwn(copy, key, key === step ? replace(child, depth + 1) : child);
     }
     return copy;
   };
@@ -263,7 +264,7 @@ function fitBounds(value: JsonValue): JsonValue {
   if (Array.isArray(value)) return value.slice(0, BOUNDED_JSON_LIMITS.items).map(fitBounds);
   if (value !== null && typeof value === "object") {
     const out: { [key: string]: JsonValue } = {};
-    for (const [key, child] of Object.entries(value)) out[key] = fitBounds(child);
+    for (const [key, child] of Object.entries(value)) setOwn(out, key, fitBounds(child));
     return out;
   }
   return value;

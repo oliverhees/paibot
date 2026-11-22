@@ -46,24 +46,79 @@ export function hasUnwanted(text: string): boolean {
   return HAS_UNWANTED.test(text);
 }
 
+/** Der Schlüssel, der bei einer Zuweisung den Prototyp eines Objekts setzen würde. */
+const PROTO_KEY = "__proto__";
+
+/**
+ * Schreibt `key` als eigene Eigenschaft von `target`, auch für `__proto__`. Eine Zuweisung
+ * `target[key] = value` würde dort den Prototyp setzen und die Eigenschaft verlieren. Das Objekt
+ * behält `Object.prototype`, damit Schemas und `JSON.stringify` wie gewohnt arbeiten.
+ */
+export function setOwn(target: { [key: string]: JsonValue }, key: string, value: JsonValue): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+}
+
 /** Jede Zeichenkette eines JSON-Werts (auch Schlüssel) bereinigt; die Form bleibt gleich. */
 export function cleanJson(value: JsonValue): JsonValue {
   if (typeof value === "string") return cleanText(value);
   if (Array.isArray(value)) return value.map(cleanJson);
   if (value !== null && typeof value === "object") {
     const out: { [key: string]: JsonValue } = {};
-    for (const [key, entry] of Object.entries(value)) out[cleanText(key)] = cleanJson(entry);
+    for (const [key, entry] of Object.entries(value)) setOwn(out, cleanText(key), cleanJson(entry));
     return out;
   }
   return value;
 }
 
-/** Enthält irgendeine Zeichenkette (auch ein Schlüssel) des Werts unerwünschte Zeichen? */
-export function jsonHasUnwanted(value: JsonValue): boolean {
-  if (typeof value === "string") return hasUnwanted(value);
-  if (Array.isArray(value)) return value.some(jsonHasUnwanted);
+/**
+ * Hat irgendein Objekt des Werts den Schlüssel `__proto__`, auch erst nach dem Bereinigen (etwa
+ * `__pro` + unsichtbares Zeichen + `to__`)?
+ */
+export function jsonHasProtoKey(value: JsonValue): boolean {
+  if (Array.isArray(value)) return value.some(jsonHasProtoKey);
   if (value !== null && typeof value === "object") {
-    return Object.entries(value).some(([key, entry]) => hasUnwanted(key) || jsonHasUnwanted(entry));
+    return Object.entries(value).some(
+      ([key, entry]) => cleanText(key) === PROTO_KEY || jsonHasProtoKey(entry),
+    );
+  }
+  return false;
+}
+
+/**
+ * Werden in irgendeinem Objekt des Werts zwei Schlüssel nach dem Bereinigen gleich (etwa ein
+ * Schlüssel mit unsichtbarem Zeichen und derselbe ohne)? Beim Bereinigen würde der spätere den
+ * früheren still überschreiben.
+ */
+export function jsonHasKeyClash(value: JsonValue): boolean {
+  if (Array.isArray(value)) return value.some(jsonHasKeyClash);
+  if (value !== null && typeof value === "object") {
+    const keys = Object.keys(value);
+    if (new Set(keys.map(cleanText)).size < keys.length) return true;
+    return Object.values(value).some(jsonHasKeyClash);
+  }
+  return false;
+}
+
+/**
+ * Ist an einer Eingabe etwas unerwünscht: eine Zeichenkette (auch ein Schlüssel) mit
+ * unerwünschten Zeichen, der Schlüssel `__proto__` (auch erst nach dem Bereinigen) oder zwei
+ * Schlüssel, die nach dem Bereinigen gleich sind? Eine solche Eingabe ist ungültig.
+ */
+export function jsonHasUnwanted(value: JsonValue): boolean {
+  return hasUnwantedText(value) || jsonHasProtoKey(value) || jsonHasKeyClash(value);
+}
+
+/** Enthält irgendeine Zeichenkette (auch ein Schlüssel) des Werts unerwünschte Zeichen? */
+function hasUnwantedText(value: JsonValue): boolean {
+  if (typeof value === "string") return hasUnwanted(value);
+  if (Array.isArray(value)) return value.some(hasUnwantedText);
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value).some(([key, entry]) => hasUnwanted(key) || hasUnwantedText(entry));
   }
   return false;
 }

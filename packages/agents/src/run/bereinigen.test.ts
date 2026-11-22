@@ -14,7 +14,9 @@ import {
   cleanJson,
   cleanText,
   hasUnwanted,
+  jsonHasKeyClash,
   jsonHasNonInteger,
+  jsonHasProtoKey,
   jsonHasUnwanted,
   RAW_NAME_MAX_CHARS,
   rawToolName,
@@ -104,4 +106,51 @@ describe("Bereinigen", () => {
     expect(jsonHasNonInteger([1, [2, { a: 2 ** 60 }]])).toBe(true);
     expect(jsonHasNonInteger({ a: 1, b: [2, 3] })).toBe(false);
   });
+});
+
+describe("Schlüssel __proto__ und doppelte Schlüssel", () => {
+  /** Ein Schlüssel, der erst durch das Bereinigen zu `__proto__` wird (unsichtbares Zeichen mittendrin). */
+  const GETARNT = "__pro\u200bto__";
+
+  // Gegenprobe: Prüfung auf `__proto__` aus `jsonHasUnwanted` entfernen → die ersten drei Fälle rot.
+  it("eine Eingabe mit dem Schlüssel __proto__ gilt als unerwünscht, auch verschachtelt und getarnt", () => {
+    expect(jsonHasUnwanted(JSON.parse('{"__proto__":{"frage":"x"}}'))).toBe(true);
+    expect(jsonHasUnwanted(JSON.parse('{"a":{"__proto__":1}}'))).toBe(true);
+    expect(jsonHasUnwanted(JSON.parse('{"a":[{"b":{"__proto__":null}}]}'))).toBe(true);
+    expect(jsonHasUnwanted(JSON.parse(`{"${GETARNT}":1}`))).toBe(true);
+    expect(jsonHasProtoKey(JSON.parse(`{"a":{"${GETARNT}":1}}`))).toBe(true);
+    expect(jsonHasUnwanted({ frage: "x" })).toBe(false);
+    // Schlüssel, die nur ähnlich heißen, bleiben erlaubt (als eigene Eigenschaft ohne Wirkung).
+    expect(jsonHasUnwanted({ constructor: "x", prototype: "y", proto: "z", __proto: 1 })).toBe(
+      false,
+    );
+  });
+
+  // Gegenprobe: Prüfung auf doppelte Schlüssel aus `jsonHasUnwanted` entfernen → rot.
+  it("zwei Schlüssel, die bereinigt gleich sind, machen die Eingabe unerwünscht (kein stilles Überschreiben)", () => {
+    const zerlegt = JSON.parse('{"e\u0301":1,"\u00e9":2}');
+    expect(Object.keys(zerlegt)).toHaveLength(2);
+    expect(jsonHasKeyClash(zerlegt)).toBe(true);
+    expect(jsonHasUnwanted(zerlegt)).toBe(true);
+    expect(jsonHasKeyClash({ a: { "k\u200b": 1, k: 2 } })).toBe(true);
+    expect(jsonHasKeyClash([{ a: 1 }, { b: 2 }])).toBe(false);
+    expect(jsonHasUnwanted({ a: 1, b: 2, é: 3 })).toBe(false);
+  });
+
+  // Gegenprobe: in `cleanJson` wieder `out[cleanText(key)] = …` schreiben → rot.
+  it.each([
+    ["roh", '{"__proto__":{"x":"gefahr"},"y":"ok"}'],
+    ["getarnt", `{"${GETARNT}":{"x":"gefahr"},"y":"ok"}`],
+  ])(
+    "cleanJson (%s): __proto__ bleibt eigene Eigenschaft, der Prototyp bleibt Object.prototype",
+    (_name, text) => {
+      const ergebnis = cleanJson(JSON.parse(text)) as Record<string, unknown>;
+      expect(Object.hasOwn(ergebnis, "__proto__")).toBe(true);
+      expect(Object.getPrototypeOf(ergebnis)).toBe(Object.prototype);
+      expect(ergebnis.x).toBeUndefined();
+      expect(Object.keys(ergebnis).sort()).toEqual(["__proto__", "y"]);
+      expect(JSON.stringify(ergebnis)).toContain('"__proto__":{"x":"gefahr"}');
+      expect(({} as Record<string, unknown>).x).toBeUndefined();
+    },
+  );
 });

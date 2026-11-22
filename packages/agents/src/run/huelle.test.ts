@@ -167,3 +167,38 @@ describe("Kürzen", () => {
     expect(truncateContent(deep, 1000)).toBeUndefined();
   });
 });
+
+describe("Kürzen ohne Wirkung auf den Prototyp", () => {
+  const lang = "a".repeat(100);
+
+  // Gegenprobe: in `fitBounds` wieder `out[key] = …` schreiben → rot.
+  it("fitBounds: __proto__ bleibt eigene Eigenschaft", () => {
+    const wert = JSON.parse(`{"__proto__":{"x":"${lang}"},"y":"b"}`) as JsonValue;
+    const ergebnis = truncateContent(wert, 10_000);
+    const inhalt = ergebnis?.inhalt as Record<string, unknown>;
+    expect(Object.hasOwn(inhalt, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(inhalt)).toBe(Object.prototype);
+    expect(inhalt.x).toBeUndefined();
+    expect(JSON.stringify(inhalt)).toContain('"__proto__":{"x":"');
+  });
+
+  // Gegenprobe: im Kürzen der längsten Zeichenkette wieder `copy[key] = …` schreiben → rot.
+  it("Kürzen der längsten Zeichenkette: __proto__ bleibt eigene Eigenschaft, die Kürzung greift", () => {
+    const wert = JSON.parse(`{"__proto__":{"x":"${lang}"},"y":"b"}`) as JsonValue;
+    const ergebnis = truncateContent(wert, 60);
+    const inhalt = ergebnis?.inhalt as Record<string, { x: string }>;
+    expect(ergebnis?.gekuerzt).toBe(true);
+    expect(Object.hasOwn(inhalt, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(inhalt)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyDescriptor(inhalt, "__proto__")?.value.x.length).toBeLessThan(100);
+  });
+
+  it("Kürzen der letzten Liste: ein Objekt mit __proto__ behält die eigene Eigenschaft", () => {
+    const wert = JSON.parse('{"__proto__":{"a":1},"liste":[1,2,3,4,5,6,7,8,9,10]}') as JsonValue;
+    const ergebnis = truncateContent(wert, 40);
+    const inhalt = ergebnis?.inhalt as Record<string, unknown>;
+    expect(ergebnis?.gekuerzt).toBe(true);
+    expect(Object.hasOwn(inhalt, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(inhalt)).toBe(Object.prototype);
+  });
+});

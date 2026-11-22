@@ -300,6 +300,26 @@ describe("Normalisieren", () => {
     expect(steuer?.inputValid).toBe(false);
   });
 
+  // Gegenprobe: Prüfung auf `__proto__` in `jsonHasUnwanted` entfernen → die Eingaben mit dem Schlüssel gelten als gültig, rot.
+  it("Schlüssel __proto__ in der Eingabe (auch verschachtelt oder getarnt): inputValid false; sonst gültig", async () => {
+    const [direkt, daneben, getarnt, gut] = await prepare([
+      wish({ input: JSON.parse('{"__proto__":{"frage":"x"}}') }),
+      wish({ input: JSON.parse('{"q":"x","__proto__":{"a":1}}') }),
+      wish({ input: JSON.parse('{"__pro\u200bto__":{"q":"x"}}') }),
+      wish({ input: { q: "x" } }),
+    ]);
+    expect([direkt, daneben, getarnt].map((c) => c?.inputValid)).toEqual([false, false, false]);
+    expect(gut).toMatchObject({ inputValid: true, storedInput: { q: "x" } });
+    // Gespeichert wird nur der bereinigte Rohtext, kein Objekt mit dem Schlüssel.
+    expect(direkt?.storedInput).toEqual({ roh: '{"__proto__":{"frage":"x"}}' });
+  });
+
+  // Die Prüfung auf doppelte Schlüssel greift hier doppelt (auch das Schema kennt `é` nicht); ihr Test mit Gegenprobe steht in `bereinigen.test.ts`.
+  it("zwei Schlüssel, die bereinigt gleich sind: inputValid false, nichts wird überschrieben", async () => {
+    const [doppelt] = await prepare([wish({ input: JSON.parse('{"e\u0301":1,"\u00e9":2}') })]);
+    expect(doppelt?.inputValid).toBe(false);
+  });
+
   it("gespeicherte Eingabe ungültig: { roh } gekürzt auf 2 000 Zeichen und bereinigt", async () => {
     const [call] = await prepare([wish({ input: `\u202e${"y".repeat(5000)}` })]);
     expect((call?.storedInput as { roh: string } | undefined)?.roh).toBe(
