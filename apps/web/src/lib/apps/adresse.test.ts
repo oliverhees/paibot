@@ -49,6 +49,15 @@ describe("Adresse einer App: Fakten für das Tor", () => {
     expect(ziel.origin).toBe("https://mcp.beispiel.de");
   });
 
+  it("bei eingegebenem http: Ursprung bleibt https, das echte Schema steht im Fakt und das Tor lehnt ab", () => {
+    const ziel = zielAus("http://mcp.beispiel.de/mcp", appId);
+    expect(ziel.origin).toBe("https://mcp.beispiel.de");
+    expect(ziel.fakten.addressHttps).toBe(false);
+    expect(erlaubt(ziel.fakten)).toBe(false);
+    // Mit https dieselbe Adresse: Fakt wahr, erlaubt.
+    expect(zielAus("https://mcp.beispiel.de/mcp", appId).fakten.addressHttps).toBe(true);
+  });
+
   const ABGELEHNT: [string, string, Partial<Record<string, boolean>>][] = [
     ["http statt https", "http://mcp.beispiel.de/mcp", { addressHttps: false }],
     [

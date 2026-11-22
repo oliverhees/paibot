@@ -33,7 +33,12 @@ export interface AdressFakten {
 /** Das geprüfte Ziel: Fakten, lesbarer Ursprung, Abdruck und die Adresse, die gespeichert wird. */
 export interface GeprueftesZiel {
   fakten: AdressFakten;
-  /** `https://host` (mit Port, wenn er nicht 443 ist), nie mit Pfad, Benutzer- oder Abfrage-Teil. */
+  /**
+   * `https://host` (mit Port, wenn er nicht 443 ist), nie mit Pfad, Benutzer- oder Abfrage-Teil.
+   * Beginnt immer mit `https://`, auch wenn `http` eingegeben wurde: Der Vertrag des Tors kennt
+   * nur diese Form. Ob die Eingabe `http` war, steht allein im Fakt `addressHttps`; das Tor lehnt
+   * sie dann ab, und nichts davon wird gespeichert oder abgerufen.
+   */
   origin: string;
   /** Abdruck von Kennung und bereinigter Adresse (Fakt `targetDigest`). */
   digest: Sha256Digest;
@@ -88,6 +93,8 @@ export function zielAus(roh: string, appId: AppId): GeprueftesZiel {
     (probe.grund !== "ip_adresse" &&
       probe.grund !== "interner_name" &&
       probe.grund !== "ungueltig");
+  // Immer `https://`, auch bei eingegebenem `http`: Das Schema des Tors lässt nur diese Form zu. Das
+  // echte Schema steht im Fakt `addressHttps`, über den das Tor `http` ablehnt.
   const origin = `https://${url.host}`;
   if (!appOriginSchema.safeParse(origin).success) throw unzulaessig();
   let bereinigt: string;
