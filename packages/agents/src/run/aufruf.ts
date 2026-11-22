@@ -37,6 +37,7 @@ import {
   jsonHasNonInteger,
   jsonHasProtoKey,
   jsonHasUnwanted,
+  jsonUeberGrenzen,
   rawToolName,
 } from "./bereinigen";
 import {
@@ -147,7 +148,9 @@ export function prepareCalls(
     let inputValid = call.callId.length >= 1 && call.callId.length <= MAX_CALL_ID_CHARS;
     let issue: PreparedCall["issue"];
     let accepted: JsonValue | undefined;
-    if (call.rawInput === undefined && isPlainObject(call.input)) {
+    // Als Allererstes, vor jedem rekursiven Prüfen oder Bereinigen: zu tief oder zu groß → ungültig.
+    const oversize = call.rawInput === undefined && jsonUeberGrenzen(call.input);
+    if (call.rawInput === undefined && !oversize && isPlainObject(call.input)) {
       const value = call.input;
       if (jsonHasUnwanted(value) || jsonHasNonInteger(value)) {
         inputValid = false;
@@ -170,7 +173,8 @@ export function prepareCalls(
     const actionId = newId("action") as ActionId;
     const toolKey = tool?.definition.key ?? placeholder.toolKey;
     const toolDigest = tool?.toolDigest ?? placeholder.toolDigest;
-    const fullText = inputText(call);
+    // Ein zu tiefer oder zu großer Wert wird nicht zu Text gemacht (`JSON.stringify` würde werfen).
+    const fullText = oversize ? "" : inputText(call);
     let args: JsonValue = inputValid && accepted !== undefined ? accepted : { roh: fullText };
     let argsDigest: HmacDigest;
     try {
@@ -595,8 +599,8 @@ export async function cancelCall(
   return envelope;
 }
 
-/** Hülle aus dem Ausgang eines Werkzeugs: Ausgabe prüfen, bereinigen, kürzen. */
-function outcomeEnvelope(
+/** Hülle aus dem Ausgang eines Werkzeugs: Ausgabe prüfen, bereinigen, kürzen (für Tests offen). */
+export function outcomeEnvelope(
   outcome: Awaited<ReturnType<RegisteredTool["definition"]["run"]>>,
   tool: RegisteredTool,
   settings: { toolResultMaxChars: number },
@@ -611,6 +615,9 @@ function outcomeEnvelope(
         : "werkzeug_fehler";
     return codeEnvelope(key, "fehler", code, errorEnvelopeText(code));
   }
+  // Als Allererstes: ein zu tiefes, zu großes oder kreisförmiges Ergebnis wird nie weiter angefasst.
+  if (jsonUeberGrenzen(outcome.output))
+    return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   const checked = tool.definition.output.safeParse(outcome.output);
   if (!checked.success)
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
