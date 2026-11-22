@@ -132,3 +132,43 @@ FOR EACH ROW EXECUTE FUNCTION paibot_apps_nur_anhaengen();
 CREATE TRIGGER team_anlagen_kein_truncate
 BEFORE TRUNCATE ON "team_anlagen"
 FOR EACH STATEMENT EXECUTE FUNCTION paibot_apps_nur_anhaengen();
+--> statement-breakpoint
+-- Art und Team einer Unterhaltung stehen nach dem Anlegen fest: Ein Faden wird nie zum Direkt-Chat
+-- (und umgekehrt) und wechselt nie das Team. Beim Faden steht `bot_id` durch die Prüfregel
+-- `conversations_bot_oder_team` und die feste Art ebenfalls fest (immer leer).
+CREATE FUNCTION paibot_unterhaltung_festhalten() RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF NEW.kind IS DISTINCT FROM OLD.kind OR NEW.team_id IS DISTINCT FROM OLD.team_id THEN
+    RAISE EXCEPTION 'conversations: Art und Team einer Unterhaltung lassen sich nicht ändern.'
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER conversations_festhalten
+BEFORE UPDATE ON "conversations"
+FOR EACH ROW EXECUTE FUNCTION paibot_unterhaltung_festhalten();
+--> statement-breakpoint
+-- Der Kopf eines Fadens gehört nur zu einer Unterhaltung der Art `faden`.
+CREATE FUNCTION paibot_faden_nur_fuer_faden() RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.conversations c WHERE c.id = NEW.conversation_id AND c.kind = 'faden'
+  ) THEN
+    RAISE EXCEPTION 'faeden: Ein Faden gehört nur zu einer Unterhaltung der Art Faden.'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER faeden_nur_fuer_faden
+BEFORE INSERT ON "faeden"
+FOR EACH ROW EXECUTE FUNCTION paibot_faden_nur_fuer_faden();
