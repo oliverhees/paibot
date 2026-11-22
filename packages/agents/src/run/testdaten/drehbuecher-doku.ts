@@ -86,6 +86,13 @@ export const DOKU_SCRIPTS = {
       { text: ZWEITER_SCHRITT },
     ],
   },
+  /** Eine Frage ohne Treffer und eine, deren Aufruf fehlschlägt: der Lauf geht weiter. */
+  nichtsUndFehler: {
+    steps: [
+      { text: ENTWURF, toolCalls: [doku({ frage: FRAGE_FALLE }), doku({ frage: FRAGE_FALLE_2 })] },
+      { text: ANTWORT_OHNE_WUNSCH },
+    ],
+  },
   /** Eine Frage trifft, eine nicht: der Lauf geht weiter. */
   einerTrifft: {
     steps: [

@@ -99,7 +99,7 @@ function gezaehlt(
     ...aendern,
     async run(input, ctx) {
       zaehler.n += 1;
-      return def.run(input, ctx);
+      return (aendern.run ?? def.run)(input, ctx);
     },
   };
   return { tool, zaehler };
@@ -454,6 +454,76 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     expect(chats()).toHaveLength(1);
     expect(env.zaehler.n).toBe(2);
     expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({ origin: "fest" });
+  });
+
+  // Gegenprobe: In `nachAufrufen` (`nahtstellen.ts`) einen Fehler als Fehlanzeige zählen
+  // (`const mitErgebnis = doku` und `e.doku?.gefunden ?? 0` statt `e.doku?.gefunden`) → in allen
+  // drei Fällen hier nur eine Anfrage und der feste Satz.
+  it("Fehler des Werkzeugs beim Nachschlagen: keine Fehlanzeige, der Lauf geht zum nächsten Modell-Schritt", async () => {
+    const env = await setup(DOKU_SCRIPTS.nichtsGefunden, {
+      aendern: {
+        async run() {
+          throw new Error("Index nicht lesbar");
+        },
+      },
+    });
+    const { runId, outcome } = await env.ask(FRAGE_FALLE);
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    expect(env.zaehler.n).toBe(1);
+    expect(chats()).toHaveLength(2);
+    expect(gesendeteHuellen(1)).toMatchObject([{ status: "fehler", code: "werkzeug_fehler" }]);
+    const nachrichten = await botNachrichten(env, runId);
+    expect(nachrichten.at(-1)).toMatchObject({ origin: "modell", content: ZWEITER_SCHRITT });
+    expect(nachrichten.some((m) => m.origin === "fest")).toBe(false);
+    expect(JSON.stringify(nachrichten)).not.toContain(festerSatz());
+  });
+
+  it("eine Frage ohne Treffer und ein Fehler im selben Schritt: der Lauf geht weiter, kein fester Satz", async () => {
+    const echtesWerkzeug = widen(dokuNachschlagen(echt));
+    let aufrufe = 0;
+    const env = await setup(DOKU_SCRIPTS.nichtsUndFehler, {
+      aendern: {
+        async run(input, ctx) {
+          aufrufe += 1;
+          if (aufrufe === 2) throw new Error("Index nicht lesbar");
+          return echtesWerkzeug.run(input, ctx);
+        },
+      },
+    });
+    const { runId } = await env.ask(FRAGE_FALLE);
+    expect(env.zaehler.n).toBe(2);
+    expect(chats()).toHaveLength(2);
+    expect(gesendeteHuellen(1)).toMatchObject([
+      { status: "ok", werkzeug: DOKU_TOOL_KEY },
+      { status: "fehler", code: "werkzeug_fehler" },
+    ]);
+    const nachrichten = await botNachrichten(env, runId);
+    expect(nachrichten.at(-1)).toMatchObject({
+      origin: "modell",
+      content: ANTWORT_OHNE_WUNSCH,
+    });
+    expect(nachrichten.some((m) => m.origin === "fest")).toBe(false);
+  });
+
+  it("Zeitgrenze beim Nachschlagen: keine Fehlanzeige, der Lauf geht zum nächsten Modell-Schritt", async () => {
+    const env = await setup(DOKU_SCRIPTS.nichtsGefunden, {
+      aendern: {
+        limits: { timeoutMs: 30, maxOutputChars: 6_000 },
+        run: (_input, ctx) =>
+          new Promise((_ok, fehler) => {
+            ctx.signal.addEventListener("abort", () => fehler(new Error("abgebrochen")), {
+              once: true,
+            });
+          }),
+      },
+    });
+    const { runId, outcome } = await env.ask(FRAGE_FALLE);
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    expect(chats()).toHaveLength(2);
+    expect(gesendeteHuellen(1)).toMatchObject([{ status: "fehler", code: "werkzeug_zeitgrenze" }]);
+    const nachrichten = await botNachrichten(env, runId);
+    expect(nachrichten.at(-1)).toMatchObject({ origin: "modell", content: ZWEITER_SCHRITT });
+    expect(nachrichten.some((m) => m.origin === "fest")).toBe(false);
   });
 
   it("eine Frage trifft, eine nicht: der Lauf geht weiter", async () => {
