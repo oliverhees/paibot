@@ -32,22 +32,44 @@ export interface McpVerbindungOptionen {
   grenzen?: Partial<McpGrenzen>;
   /** Bricht die ganze Verbindung ab (z. B. Not-Aus des Laufs). */
   signal?: AbortSignal;
-  /** Unverschlüsseltes `http` zulassen (nur für Tests und lokale Entwicklung). Standard: nein. */
+  /**
+   * Nur für Tests der Schicht: lässt `http`, IP-Adressen und beliebige Ports zu. Wird außerhalb von
+   * Tests nie gesetzt und nie aus einer Eingabe gelesen (ein Test der Lint-Regeln prüft das).
+   * Standard: nein.
+   */
   erlaubeHttp?: boolean;
 }
 
 /** Ergebnis von `pruefeAdresse`. */
 export type AdressePruefung =
   | { ok: true; url: URL }
-  | { ok: false; grund: "ungueltig" | "protokoll" | "zugangsdaten" | "abfrage" | "zu_lang" };
+  | {
+      ok: false;
+      grund:
+        | "ungueltig"
+        | "protokoll"
+        | "zugangsdaten"
+        | "abfrage"
+        | "zu_lang"
+        | "ip_adresse"
+        | "interner_name"
+        | "port";
+    };
 
 const MAX_ADRESSE = 2_048;
 const MAX_TOKEN = 4_096;
 const CLIENT_NAME = "paibot";
 
 /**
- * Prüft die Adresse einer App: nur `https` (mit `erlaubeHttp` auch `http`), kein Benutzer-Teil,
- * kein Abfrage-Teil, kein Fragment. Ob das Ziel öffentlich ist, prüft die Ausgangs-Hülle.
+ * Prüft die Adresse einer App: nur `https` auf dem Standard-Port 443, ein Name mit Punkt (kein
+ * IP-Literal, kein `localhost`, kein Name ohne Punkt), kein Benutzer-, Abfrage- und Fragment-Teil.
+ *
+ * Mit `erlaubeHttp` entfallen die Regeln zu Protokoll, Port und Namen (`http`, `127.0.0.1`, jeder
+ * Port); der Schalter ist nur für Tests der Schicht da und wird außerhalb von Tests nie gesetzt.
+ *
+ * Das ist nur ein erster, grober Filter für die Eingabe. Ob das Ziel öffentlich ist (private,
+ * Link-lokale und Loopback-Adressen, Namen, die dorthin auflösen, DNS-Rebinding), prüft allein die
+ * Ausgangs-Hülle beim Verbinden.
  */
 export function pruefeAdresse(adresse: string, erlaubeHttp = false): AdressePruefung {
   if (adresse.length > MAX_ADRESSE) return { ok: false, grund: "zu_lang" };
@@ -63,6 +85,19 @@ export function pruefeAdresse(adresse: string, erlaubeHttp = false): AdressePrue
   if (url.hostname === "") return { ok: false, grund: "ungueltig" };
   if (url.username !== "" || url.password !== "") return { ok: false, grund: "zugangsdaten" };
   if (url.search !== "" || url.hash !== "") return { ok: false, grund: "abfrage" };
+  if (!erlaubeHttp) {
+    // Der Standard-Port (443) steht in `url.port` als leere Zeichenkette.
+    if (url.port !== "") return { ok: false, grund: "port" };
+    // Die Adress-Klasse prüft die Hülle; hier fallen nur die offensichtlichen Formen heraus.
+    // `URL` schreibt Zahlen-Formen (`0x7f.1`, `2130706433`) schon als `127.0.0.1` um.
+    const name = url.hostname.endsWith(".") ? url.hostname.slice(0, -1) : url.hostname;
+    if (name.startsWith("[") || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(name)) {
+      return { ok: false, grund: "ip_adresse" };
+    }
+    if (name === "localhost" || name.endsWith(".localhost") || !name.includes(".")) {
+      return { ok: false, grund: "interner_name" };
+    }
+  }
   return { ok: true, url };
 }
 

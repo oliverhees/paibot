@@ -376,6 +376,52 @@ describe("Adresse", () => {
     expect(pruefeAdresse(adresse)).toEqual({ ok: false, grund });
   });
 
+  it.each([
+    ["https://127.0.0.1/mcp", "ip_adresse"],
+    ["https://169.254.169.254/mcp", "ip_adresse"],
+    ["https://0x7f.1/mcp", "ip_adresse"],
+    ["https://2130706433/mcp", "ip_adresse"],
+    ["https://[::1]/mcp", "ip_adresse"],
+    ["https://[::ffff:7f00:1]/mcp", "ip_adresse"],
+    ["https://[2001:db8::1]/mcp", "ip_adresse"],
+    ["https://localhost/mcp", "interner_name"],
+    ["https://localhost./mcp", "interner_name"],
+    ["https://app.localhost/mcp", "interner_name"],
+    ["https://postgres/mcp", "interner_name"],
+    ["https://beispiel.invalid:8443/mcp", "port"],
+    ["https://beispiel.invalid:0/mcp", "port"],
+    ["https://beispiel.invalid:80/mcp", "port"],
+  ])("%s ist nicht zulässig (%s)", (adresse, grund) => {
+    expect(pruefeAdresse(adresse)).toEqual({ ok: false, grund });
+  });
+
+  it("lässt den Standard-Port ausdrücklich und einen Namen mit Punkt (auch mit Punkt am Ende) zu", () => {
+    expect(pruefeAdresse("https://beispiel.invalid:443/mcp").ok).toBe(true);
+    expect(pruefeAdresse("https://app.beispiel.invalid./mcp").ok).toBe(true);
+  });
+
+  it("nur der ausdrückliche Test-Schalter lässt http, IP-Adressen, localhost und andere Ports zu", () => {
+    for (const adresse of [
+      "http://127.0.0.1:3000/mcp",
+      "https://127.0.0.1:8443/mcp",
+      "http://localhost:3000/mcp",
+      "http://[::1]:3000/mcp",
+      "http://postgres/mcp",
+    ]) {
+      expect(pruefeAdresse(adresse).ok).toBe(false);
+      expect(pruefeAdresse(adresse, true).ok).toBe(true);
+    }
+    // Auch mit dem Schalter bleiben Zugangsdaten, Abfrage und Fragment verboten.
+    expect(pruefeAdresse("http://u:p@127.0.0.1/mcp", true)).toEqual({
+      ok: false,
+      grund: "zugangsdaten",
+    });
+    expect(pruefeAdresse("http://127.0.0.1/mcp?x=1", true)).toEqual({
+      ok: false,
+      grund: "abfrage",
+    });
+  });
+
   it("lässt https zu, http nur ausdrücklich", () => {
     expect(pruefeAdresse("https://beispiel.invalid/mcp").ok).toBe(true);
     expect(pruefeAdresse("http://127.0.0.1:3000/mcp").ok).toBe(false);
