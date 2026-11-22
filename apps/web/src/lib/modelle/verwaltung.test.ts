@@ -258,6 +258,29 @@ describe("Belege: jede Änderung schreibt Entscheidung und Ergebnis (Tor-Fassung
     // Der Schlüssel steht in keinem dieser Belege.
     expect(await belegeAlsTextLokal(e)).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
   });
+
+  it("Anbieter ändern: der Beleg nennt, ob ein zweiter Schlüssel hinterlegt ist", async () => {
+    const e = await mitEurouter();
+    const aendern = async (name: string) => {
+      const vorher = await letzteNummer(e.u);
+      const r = await e.rufe(e.r.anbieterAendern, "PUT", `/api/anbieter/${e.id}`, {
+        params: { id: e.id },
+        koerper: { ...EUROUTER, name },
+      });
+      expect(r.status).toBe(200);
+      const belege = await belegeSeit(e.u, vorher);
+      expect(belege.map((b) => `${b.typ}:${b.aktion}`)).toEqual([
+        "decision:anbieter.speichern",
+        "result:anbieter.speichern",
+      ]);
+      return JSON.stringify(belege);
+    };
+    expect(await aendern("EUrouter privat")).toContain('"managementKeySet":false');
+    expect((await e.setzen()).status).toBe(200);
+    const mit = await aendern("EUrouter Konto");
+    expect(mit).toContain('"managementKeySet":true');
+    expect(mit).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
+  });
 });
 
 describe("Fehler beim Lesen der Liste", () => {
@@ -742,6 +765,57 @@ describe("Seite öffnen schreibt nichts", () => {
       .modelle;
     expect(modelle.find((m) => m.slug === "beispiel/modell-a")?.id).toMatch(/^mod_/);
     expect(modelle.find((m) => m.slug === "beispiel/modell-b")?.id).toBeUndefined();
+  });
+});
+
+describe("Modell-Liste lesen: eigene Begrenzung", () => {
+  async function zaehler(e: Awaited<ReturnType<typeof mitEurouter>>) {
+    const r = await e.client.query<{ key: string; count: number }>(
+      "select key, count from rate_limits order by key",
+    );
+    return r.rows.map((x) => `${x.key.split(":")[0]}=${x.count}`);
+  }
+  async function eigenerAnbieter(e: Awaited<ReturnType<typeof mitEurouter>>) {
+    const a = (await repo.providers.list(e.u.db)).find((x) => x.templateKey === "eigener");
+    if (a === undefined) throw new Error("kein Anbieter");
+    return a;
+  }
+
+  it("Lesen zählt auf ein eigenes Limit und verbraucht das Budget des Verbindungstests nicht", async () => {
+    const e = await mitEurouter();
+    const a = await eigenerAnbieter(e);
+    const vorher = (await zaehler(e)).filter((z) => z.startsWith("verbindungstest"));
+    for (let i = 0; i < 15; i++) {
+      const r = await e.rufe(e.h.lesen, "POST", `/api/anbieter/${a.id}/modelle/lesen`, {
+        params: { id: a.id },
+      });
+      expect(r.status).toBe(200);
+    }
+    const gezaehlt = await zaehler(e);
+    expect(gezaehlt).toContain("modelle_lesen=15");
+    // Vorher gezählte Aufrufe des Verbindungstests (Anbieter anlegen) bleiben, wie sie waren.
+    expect(gezaehlt.filter((z) => z.startsWith("verbindungstest"))).toEqual(vorher);
+  });
+
+  it("darüber kommt 429 mit Satz und Ausweg; das Limit ist großzügig (60 je Minute)", async () => {
+    const e = await mitEurouter();
+    const a = await eigenerAnbieter(e);
+    let status = 0;
+    let koerper: { fehler?: { code?: string; text?: string; ausweg?: string } } = {};
+    let ok = 0;
+    for (let i = 0; i < 61; i++) {
+      const r = await e.rufe(e.h.lesen, "POST", `/api/anbieter/${a.id}/modelle/lesen`, {
+        params: { id: a.id },
+      });
+      status = r.status;
+      koerper = r.body as typeof koerper;
+      if (r.status === 200) ok += 1;
+    }
+    expect(ok).toBe(60);
+    expect(status).toBe(429);
+    expect(koerper.fehler?.code).toBe("zu_viele_versuche");
+    expect(koerper.fehler?.text).toContain("Modell-Liste");
+    expect(koerper.fehler?.ausweg).toContain("Verbindungstest");
   });
 });
 

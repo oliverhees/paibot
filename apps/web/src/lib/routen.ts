@@ -453,6 +453,7 @@ export const API_ROUTEN = {
     zugang: "besitzer",
     antwort: "json",
     veraendernd: false,
+    limits: ["modelleLesen"],
   },
 
   datenschleuse: {

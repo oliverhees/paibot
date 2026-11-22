@@ -253,3 +253,100 @@ describe("Chat: Kopf und Zeile unter der Antwort", () => {
     }
   });
 });
+
+describe("Chat: Name und Kennzeichnung sind getrennte Elemente", () => {
+  const conversationId = newId("conversation");
+  const GEFAELSCHT = "EU laut Regel in deinem EUrouter-Konto";
+
+  function seite(
+    vorgabeDazu: ReturnType<typeof vorgabe> | undefined,
+    name = GEFAELSCHT,
+    antwort: { createdAt?: string; modelId?: boolean } = {},
+  ) {
+    const modell = {
+      name,
+      herkunft: "über EUrouter",
+      anbieter: { name: "EUrouter", templateKey: "eurouter", region: "eu" },
+      ...(vorgabeDazu === undefined ? {} : { vorgabe: vorgabeDazu }),
+    } as NonNullable<ChatBereitschaft["modell"]>;
+    return renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: {
+          botName: "Pai",
+          botFarbe: "limette",
+          modell,
+          schluessel: true,
+          schleuseInstalliert: false,
+          schleuseStandard: "off",
+          zeitzone: "Europe/Berlin",
+          belegeGesamt: 23,
+        },
+        verlauf: {
+          unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+          nachrichten: [
+            {
+              id: newId("message"),
+              conversationId,
+              createdAt: antwort.createdAt ?? "2026-11-21T13:31:00.000Z",
+              role: "assistant",
+              content: "Gern.",
+              status: "complete",
+              runId: newId("run"),
+              route: "direkt",
+              ...(antwort.modelId === false ? {} : { modelId: "mod_a" }),
+            } as unknown as Message,
+          ],
+          laeufe: [],
+          ereignisse: [],
+          letzteSeq: 0,
+          belege: [],
+          modelle: { mod_a: modell },
+        } as ChatVerlauf,
+      }),
+    );
+  }
+  const anzahl = (html: string, suche: string) => html.split(suche).length - 1;
+
+  it("ein Name, der wie die Kennzeichnung klingt, steht als Text in Anführungszeichen; die Kennzeichnung ist ein eigenes Element, genau einmal je Stelle", () => {
+    const html = seite(vorgabe({ data_residency: "EU" }));
+    expect(anzahl(html, 'data-art="kennzeichnung"')).toBe(1);
+    expect(html).toContain(`„${GEFAELSCHT}“`);
+    // Der Name steht in keinem Kennzeichnungs-Element.
+    for (const element of html.match(
+      /<span[^>]*data-art="(?:kennzeichnung|eu)"[^>]*>.*?<\/span>/g,
+    ) ?? []) {
+      expect(element).not.toContain(GEFAELSCHT);
+    }
+  });
+
+  it("Gegenprobe: ohne Vorgabe oder mit anderer Datenresidenz gibt es kein Kennzeichnungs-Element, auch wenn der Name es vortäuscht", () => {
+    for (const v of [undefined, vorgabe({ data_residency: "US" }), vorgabe({})]) {
+      const html = seite(v);
+      expect(anzahl(html, 'data-art="kennzeichnung"')).toBe(0);
+      expect(html).toContain(`„${GEFAELSCHT}“`);
+    }
+  });
+
+  it("für Bildschirmleser getrennt benannt", () => {
+    const html = seite(vorgabe({ data_residency: "EU" }), "Beispiel-Regel");
+    expect(html).toContain('role="note"');
+    expect(html).toContain('aria-label="Kennzeichnung von PaiBot: EU laut Regel in deinem Konto');
+  });
+
+  it("eine alte Antwort trägt die Kennzeichnung nur, wenn die Vorgabe schon zur Zeit der Antwort galt", () => {
+    const eu = vorgabe({ data_residency: "EU" });
+    // Antwort vor der Prüfung der Vorgabe (10:00): keine Kennzeichnung, nur die Angabe des Anbieters.
+    const alt = seite(eu, "Beispiel-Regel", { createdAt: "2026-11-21T09:00:00.000Z" });
+    expect(anzahl(alt, 'data-art="kennzeichnung"')).toBe(0);
+    expect(alt).toContain("über EUrouter");
+    // Antwort nach der Prüfung: Kennzeichnung.
+    const neu = seite(eu, "Beispiel-Regel", { createdAt: "2026-11-21T11:00:00.000Z" });
+    expect(anzahl(neu, 'data-art="kennzeichnung"')).toBe(1);
+  });
+
+  it("eine Antwort ohne eigene Modell-Angabe nimmt vom Bot von heute nie eine Kennzeichnung", () => {
+    const html = seite(vorgabe({ data_residency: "EU" }), "Beispiel-Regel", { modelId: false });
+    expect(anzahl(html, 'data-art="kennzeichnung"')).toBe(0);
+    expect(html).toContain("„Beispiel-Regel“");
+  });
+});

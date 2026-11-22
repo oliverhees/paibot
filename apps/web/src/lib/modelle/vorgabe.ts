@@ -121,23 +121,23 @@ export function antwortZusatz(vorgabe: RegelVorgabe | undefined, anbieter: strin
 }
 
 /**
- * Kurze Teile für die Zeile unter einer Antwort und die Kopfzeile: Kennzeichnung mit Datum (nur
- * mit Beleg) und der Hinweis aufs Ausweichen. Keine Rechtsaussage.
+ * Kennzeichnung für die Zeile unter einer Antwort: der kurze Satz mit Datum, nur mit Beleg. Sie
+ * steht in der Oberfläche als eigenes Element, nie im Text des Namens. Keine Rechtsaussage.
  */
-export function antwortKurz(vorgabe: RegelVorgabe | undefined): string[] {
-  const teile: string[] = [];
-  if (vorgabe !== undefined && istEuBelegt(vorgabe)) {
-    teile.push(
-      t(vorgabe.veraltet ? "vorgabe.eu.kurz_alt" : "vorgabe.eu.kurz", {
-        datum: vorgabe.geprueftText,
-      }),
-    );
-  }
+export function kennzeichnungKurz(vorgabe: RegelVorgabe | undefined): string | undefined {
+  if (vorgabe === undefined || !istEuBelegt(vorgabe)) return undefined;
+  return t(vorgabe.veraltet ? "vorgabe.eu.kurz_alt" : "vorgabe.eu.kurz", {
+    datum: vorgabe.geprueftText,
+  });
+}
+
+/** Kurzer Hinweis aufs Ausweichen für die Zeile unter einer Antwort, sonst `undefined`. */
+export function ausweichKurz(vorgabe: RegelVorgabe | undefined): string | undefined {
   const modelle = vorgabe?.policy.models ?? [];
   if (modelle.length > 0) {
-    teile.push(t("vorgabe.ausweichen.kurz_modelle", { modelle: modelle.join(", ") }));
-  } else if (vorgabe?.policy.allow_fallbacks === true) {
-    teile.push(t("vorgabe.ausweichen.kurz_erlaubt"));
+    return t("vorgabe.ausweichen.kurz_modelle", { modelle: modelle.join(", ") });
   }
-  return teile;
+  return vorgabe?.policy.allow_fallbacks === true
+    ? t("vorgabe.ausweichen.kurz_erlaubt")
+    : undefined;
 }

@@ -63,6 +63,22 @@ export function anbieterImSatz(anbieter: Pick<Provider, "name" | "templateKey">)
   return anbieter.templateKey === "eigener" ? `„${anbieter.name}“` : anbieter.name;
 }
 
+/**
+ * Name einer Routing-Regel mitten im Satz. Er ist frei vergebener Text aus dem Konto (er kann
+ * Kommas, Zahlen oder Wörter wie „EU“ enthalten) und steht deshalb immer in Anführungszeichen.
+ */
+export function regelImSatz(name: string): string {
+  return `„${name}“`;
+}
+
+/**
+ * Mehrere Regel-Namen in einer Aufzählung: jeder einzeln in Anführungszeichen, mit „, “ verbunden.
+ * So bleibt die Aufzählung auch eindeutig, wenn ein Name selbst ein Komma enthält.
+ */
+export function regelnImSatz(namen: readonly string[]): string {
+  return namen.map(regelImSatz).join(", ");
+}
+
 /** Ausweg, wenn die Modell-Liste leer ist; bei eigenen Anbietern ohne „Konto bei …“. */
 export function listeLeerAusweg(anbieter: Pick<Provider, "name" | "templateKey">): string {
   return eigenerAnbieter(anbieter)
