@@ -29,12 +29,14 @@ function bereich(prefix: string, von: number, bis: number, stellen: number): str
 
 /** Nummern, die schon für etwas anderes vergeben sind. */
 const VERGEBEN = [
-  ...bereich("V", 15, 38, 2),
-  ...bereich("G", 6, 15, 2),
-  ...bereich("G", 19, 40, 2),
+  ...bereich("V", 15, 18, 2),
+  ...bereich("V", 20, 37, 2),
+  ...bereich("G", 9, 15, 2),
+  ...bereich("G", 19, 39, 2),
   "D-02",
   "R-011",
-  ...bereich("R", 13, 17, 3),
+  "R-013",
+  ...bereich("R", 15, 17, 3),
 ];
 
 /** Nummern, die nie vergeben werden. */
@@ -83,9 +85,13 @@ describe("Nummern des Tors", () => {
     expect(Object.keys(LIMITS_BY_ID)).toEqual([
       ...bereich("G", 1, 5, 2),
       ...bereich("G", 16, 18, 2),
+      "G-06",
+      "G-07",
+      "G-08",
+      "G-40",
     ]);
-    expect(Object.keys(PRECONDITIONS)).toEqual(bereich("V", 1, 14, 2));
+    expect(Object.keys(PRECONDITIONS)).toEqual([...bereich("V", 1, 14, 2), "V-19", "V-38"]);
     expect(Object.keys(CAPS)).toEqual(["D-01"]);
-    expect(REGELN.sort()).toEqual([...bereich("R", 1, 8, 3), "R-010", "R-999"].sort());
+    expect(REGELN.sort()).toEqual([...bereich("R", 1, 8, 3), "R-010", "R-014", "R-999"].sort());
   });
 });

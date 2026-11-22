@@ -587,12 +587,12 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
     });
   });
 
-  it("R-005 fragt (MCP-Werkzeug): nicht ausgeführt, der Server bekommt keinen Aufruf", async () => {
+  it("MCP-Werkzeug ohne die Fakten einer App: das Tor nimmt den Aufruf nicht an, der Server bekommt keinen Aufruf", async () => {
+    // Ab Tor-Fassung 3 gehören zu einem Werkzeug mit Quelle mcp immer die Fakten der App; ohne sie
+    // ist die Anfrage ungültig, es gibt keine Entscheidung und nichts wird ausgeführt.
     const { ende, s } = await lauf(false);
     expect(ende).toBe("fertig");
-    expect(decisions(s.zugang.receipts, s.werkzeugAktionen)).toMatchObject([
-      { record: { decision: { outcome: "ask", matchedRules: [{ id: "R-005" }] } } },
-    ]);
+    expect(decisions(s.zugang.receipts, s.werkzeugAktionen)).toEqual([]);
     expect(eingang.map((e) => e.method)).toEqual(["tools/list"]);
   });
 });

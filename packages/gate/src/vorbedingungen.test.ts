@@ -65,10 +65,18 @@ function violating(condition: RuleCondition, facts: Record<string, unknown>): un
     expect(typeof condition.value === "object" && condition.value !== null).toBe(true);
     return facts[(condition.value as { fact: string }).fact];
   }
+  if (condition.op === "in") {
+    // Stand `entfernt`: der einzige Stand, den V-38 ausschließt.
+    expect(condition.fact).toBe("toolStatus");
+    return "entfernt";
+  }
   expect(condition.op).toBe("eq");
   if (typeof condition.value === "object" && condition.value !== null) {
     expect(Object.keys(condition.value)).toEqual(["fact"]);
-    return `hmac-sha256:${"ff".repeat(32)}`;
+    const verglichen = facts[(condition.value as { fact: string }).fact];
+    return typeof verglichen === "string" && verglichen.startsWith("sha256:")
+      ? `sha256:${"ff".repeat(32)}`
+      : `hmac-sha256:${"ff".repeat(32)}`;
   }
   expect(typeof condition.value).toBe("boolean");
   return !condition.value;

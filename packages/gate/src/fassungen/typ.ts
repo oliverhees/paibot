@@ -58,8 +58,11 @@ export type FormatLimitFn = (action: { type: string }, facts: unknown) => LimitC
  */
 export interface GateFormatSpec {
   readonly format: number;
-  /** Aktionen dieser Fassung. */
-  readonly actions: readonly ActionType[];
+  /**
+   * Aktionen dieser Fassung. Eine Fassung, die noch nicht in Kraft ist, kann Aktionen kennen, die
+   * die heutigen Verträge (`ActionType`) noch nicht haben; deshalb hier als Text.
+   */
+  readonly actions: readonly (ActionType | (string & {}))[];
   /** Fakten-Schema je Aktion. */
   readonly facts: Readonly<Record<string, z.ZodType>>;
   /** Ziel-Schema je Aktion. */

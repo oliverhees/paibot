@@ -87,7 +87,7 @@ Die Datenschleuse (Profil `schleuse`) wird auch auf diesem Weg aus einem festen 
 
 ## Zurück auf die alte Version
 
-Eine Datenbank, die schon auf der neueren Version lief, passt nicht mehr zur älteren: Die ältere Version meldet dann im Log „Datenbank nicht auf Stand“ und startet nicht. Zurück geht es nur mit der Sicherung von vorher:
+Eine Datenbank, die schon auf der neueren Version lief, passt nicht mehr zur älteren: Die ältere Version meldet dann im Log „Datenbank nicht auf Stand“ und startet nicht. Das gilt auch für den Wechsel auf den Stand mit der Datenbank für Apps: Danach gibt es kein Zurück auf eine ältere Version ohne die Sicherung von vorher, also mach sie vor dem Wechsel. Zurück geht es nur mit der Sicherung von vorher:
 
 1. Möchtest du den Stand der neueren Version behalten, sichere ihn zuerst (`sh deploy/sicherung.sh sichern`).
 2. Den alten Stand holen (`git checkout v<alte Version>`, bei fertigem Image zusätzlich `PAIBOT_VERSION` zurücksetzen).

@@ -108,7 +108,7 @@ export function regelEintraege(regeln: readonly RuleDefinition[]): RegelZeile[] 
  * Grenzen, die nur Werkzeug-Aufrufe betreffen. Werkzeuge gibt es in dieser Fassung noch nicht;
  * die Seite zeigt sie deshalb nicht, wie die reinen Werkzeug-Vorbedingungen.
  */
-export const NUR_WERKZEUG_GRENZEN: readonly string[] = ["G-17"];
+export const NUR_WERKZEUG_GRENZEN: readonly string[] = ["G-17", "G-06", "G-07", "G-08", "G-40"];
 
 /** Die festen Grenzen (ohne die reinen Werkzeug-Grenzen). */
 export function grenzenEintraege(): RegelZeile[] {
@@ -123,7 +123,9 @@ export function grenzenEintraege(): RegelZeile[] {
 /** Vorbedingungen der Aktionen, die es in dieser Fassung gibt (ohne Werkzeug-Freigaben). */
 export function vorbedingungenEintraege(): RegelZeile[] {
   return PRECONDITION_IDS.filter((id) =>
-    (PRECONDITIONS[id].actions as readonly ActionType[]).some((a) => !a.startsWith("werkzeug.")),
+    (PRECONDITIONS[id].actions as readonly ActionType[]).some(
+      (a) => !a.startsWith("werkzeug.") && !a.startsWith("app."),
+    ),
   ).map((id) => ({
     nr: id,
     titel: regelName(id, id),

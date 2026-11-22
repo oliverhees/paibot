@@ -1,5 +1,5 @@
 /**
- * PaiBot – eingefrorene Dateien bleiben Byte für Byte gleich: die Fassungen 1 und 2 des Tors, ihre
+ * PaiBot – eingefrorene Dateien bleiben Byte für Byte gleich: die Fassungen 1 bis 3 des Tors, ihre
  * festen Fälle, die festen Beleg-Ketten und die Lese-Schemata der alten Stände. Jede Änderung,
  * auch an Leerzeichen oder Kommentaren, macht diesen Test rot.
  *
@@ -28,10 +28,16 @@ const MELDUNG = "Eine Fassung wird nie geändert; lege eine neue an.";
 
 /** SHA-256 (Hex) je eingefrorener Datei, Pfad relativ zu diesem Ordner. */
 const EINGEFROREN: Readonly<Record<string, string>> = {
-  "./fassung-1.ts": "c308478cd290fd5b6f2919924971f54581a7e8c05df9ff65d564d18356c77c98",
+  // Fassung 2: zum zweiten Mal neu am 2026-11-22; der Name einer Grenze steht jetzt fest in der
+  // Datei statt aus den lebenden Verträgen (nur Typ; Ausgabe ohne Typen Byte für Byte gleich).
+  // Fassung 1 und 2: Prüfsummen einmalig neu am 2026-11-22, nur weil ihre Liste der Aktionen seitdem
+  // als fester Typ in der Datei steht (Ausnahme am Typ; Ausgabe ohne Typen und feste Fälle gleich).
+  "./fassung-1.ts": "5e83a38a610ad1be5ecbae62e9497a497081f88d2599f06101241775ecc77363",
   "./fassung-1.korpus.json": "51e1e509336dca9eb0fe5505c1bc0bd4afbd45c5ba956cd2d3b2e3a944e80338",
-  "./fassung-2.ts": "eae9f14666a075fc1cdbe27de4f643612efd520b8dbb8c321d310e66e40e8f46",
+  "./fassung-2.ts": "3d91d31bbcdc0f7ce06bc742cbc38d76fe38aea963d90be484f3c620bd274292",
   "./fassung-2.korpus.json": "41263028e1219cd4ee01a8778544a9697f379a66471f9ea1ec44bf94ee727653",
+  "./fassung-3.ts": "2160046e50c9262cccb12419a5e7a36405ac7f21f7fca202c27c49b7582196fd",
+  "./fassung-3.korpus.json": "2f345c2787ca57684601959c4ea11002b2888b98045c5d82cfc3f2ec1bbee84a",
   "../../../receipts/src/testdaten/kette-vor-fassung.jsonl":
     "9ad3e785369d054078213238428d7cbfbda5212758d66ec39c093cfba100b295",
   "../../../receipts/src/testdaten/kette-l1.jsonl":

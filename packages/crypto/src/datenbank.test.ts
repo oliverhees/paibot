@@ -63,6 +63,50 @@ describe("Formate und Datenbank", () => {
     ).toBe("sk-test-beispiel");
   });
 
+  it("token_enc einer App: gebunden an Kennung und volle Adresse; anderer Pfad oder Host entschlüsselt nicht, Klartext und v1 werden abgelehnt", async () => {
+    const appId = `app_0${"0".repeat(25)}`;
+    const url = "https://mcp.beispiel.invalid/mcp";
+    const appAad = (id: string, adresse: string) =>
+      ["pb-geheimnis/v2", "apps", id, "token", adresse].join("\n");
+    const secretsKey = deriveKey(master, "secrets-v1");
+    const stored = encryptSecret("token-test-beispiel", secretsKey, { aad: appAad(appId, url) });
+    await ctx.client.query(
+      "insert into apps (id, short_name, name, url, auth_kind, token_enc) values ($1, 'notizen', 'Notizen', $2, 'token', $3)",
+      [appId, url, stored],
+    );
+    const { rows } = await ctx.client.query<{ token_enc: string; url: string }>(
+      "select token_enc, url from apps where id = $1",
+      [appId],
+    );
+    expect(
+      decryptSecret(rows[0]?.token_enc ?? "", secretsKey, {
+        aad: appAad(appId, rows[0]?.url ?? ""),
+      }),
+    ).toBe("token-test-beispiel");
+    for (const anders of [
+      "https://mcp.beispiel.invalid/mcp2",
+      "https://mcp.beispiel.invalid",
+      "https://anderer-host.invalid/mcp",
+    ]) {
+      expect(() =>
+        decryptSecret(rows[0]?.token_enc ?? "", secretsKey, { aad: appAad(appId, anders) }),
+      ).toThrow();
+    }
+    expect(() =>
+      decryptSecret(rows[0]?.token_enc ?? "", secretsKey, {
+        aad: appAad(`app_0${"0".repeat(24)}1`, url),
+      }),
+    ).toThrow();
+    for (const unzulaessig of ["token-klartext", encryptLegacySecret("t", secretsKey)]) {
+      await expect(
+        ctx.client.query(
+          "insert into apps (id, short_name, name, url, auth_kind, token_enc) values ($1, 'zwei', 'Zwei', $2, 'token', $3)",
+          [`app_0${"0".repeat(24)}2`, "https://zwei.beispiel.invalid/mcp", unzulaessig],
+        ),
+      ).rejects.toMatchObject({ constraint: "apps_token_format" });
+    }
+  });
+
   it("api_key_enc weist Klartext ab", async () => {
     await expect(
       ctx.client.query(

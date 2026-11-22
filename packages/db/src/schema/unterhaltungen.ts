@@ -13,6 +13,7 @@ import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -102,6 +103,11 @@ export const messages = pgTable(
     step: integer("step"),
     /** Woher der Text stammt: vom Modell oder als fester Text von PaiBot. */
     origin: text("origin").$type<(typeof MESSAGE_ORIGINS)[number]>().notNull().default("modell"),
+    /**
+     * Die Nachricht enthält oder stützt sich auf fremde Inhalte (z. B. aus einer App). Wird nur
+     * gesetzt, nie zurückgenommen (Trigger `messages_unveraenderlich`, Migration 0016).
+     */
+    untrusted: boolean("untrusted").notNull().default(false),
   },
   (t) => [
     idCheck("messages_id_format", t.id, "message"),

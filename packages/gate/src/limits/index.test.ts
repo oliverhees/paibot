@@ -163,6 +163,10 @@ describe("G-05 not_aus", () => {
       "entfaellt",
       "ok",
       "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
     ]);
   });
 });
@@ -179,6 +183,10 @@ describe("fehlende oder falsche Fakten lassen nichts durch", () => {
       "verletzt",
       "entfaellt",
       "verletzt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
     ]);
   });
 

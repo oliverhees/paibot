@@ -67,6 +67,24 @@ const torFakten = {
 
 const facts = { ...basisFakten, ...torFakten };
 
+/** Quelle `mcp` mit allen Fakten der App (Tor-Fassung 3). */
+const mcpFakten = {
+  toolSource: "mcp",
+  toolServer: "notizen",
+  toolKey: "mcp/notizen/suchen",
+  toolReach: "nach_aussen",
+  toolForeign: true,
+  appId: `app_0${"0".repeat(25)}`,
+  appToolId: `wzg_0${"0".repeat(25)}`,
+  toolVersion: 1,
+  toolStatus: "bestaetigt",
+  appAccess: "lesen",
+  targetDigest: `sha256:${"2c".repeat(32)}`,
+  confirmedToolDigest: `sha256:${"1b".repeat(32)}`,
+  confirmedTargetDigest: `sha256:${"2c".repeat(32)}`,
+  stepAppId: `app_0${"0".repeat(25)}`,
+};
+
 describe("Aktion werkzeug.aufrufen", () => {
   it("steht in ACTIONS; gespeichert werden alle Aktionen außer den noch nicht speicherbaren", () => {
     expect(TOOL_ACTION_TYPES).toEqual(["werkzeug.aufrufen", "werkzeug.ausfuehren"]);
@@ -92,9 +110,7 @@ describe("Aktion werkzeug.aufrufen", () => {
   it("Fakten nennen Werkzeug, Quelle und Art, die Argumente nur als Abdruck", () => {
     const schema = ACTIONS["werkzeug.aufrufen"].facts;
     expect(schema.parse(facts)).toEqual(facts);
-    expect(schema.safeParse({ ...facts, toolSource: "mcp", toolServer: "notizen" }).success).toBe(
-      true,
-    );
+    expect(schema.safeParse({ ...facts, ...mcpFakten }).success).toBe(true);
     expect(schema.safeParse({ ...facts, args: { datum: "heute" } }).success).toBe(false);
     expect(schema.safeParse({ ...facts, argsDigest: `sha256:${"0".repeat(64)}` }).success).toBe(
       false,
@@ -153,11 +169,14 @@ describe("Aktion werkzeug.aufrufen", () => {
               approvalArgsDigest: digest,
             };
       expect(schema.safeParse(base).success, type).toBe(true);
-      expect(schema.safeParse({ ...base, toolSource: "mcp", toolServer: "notizen" }).success).toBe(
-        true,
-      );
+      // Für `werkzeug.aufrufen` kommen bei `mcp` die Fakten der App dazu.
+      const mcp =
+        type === "werkzeug.aufrufen"
+          ? { ...base, ...mcpFakten }
+          : { ...base, toolSource: "mcp", toolServer: "notizen" };
+      expect(schema.safeParse(mcp).success, type).toBe(true);
       // mcp ohne Server und ein Server ohne mcp sind ungültig.
-      expect(schema.safeParse({ ...base, toolSource: "mcp" }).success, type).toBe(false);
+      expect(schema.safeParse({ ...mcp, toolServer: undefined }).success, type).toBe(false);
       expect(schema.safeParse({ ...base, toolServer: "notizen" }).success, type).toBe(false);
     }
   });

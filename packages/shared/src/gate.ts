@@ -29,13 +29,14 @@ import {
   sha256DigestSchema,
 } from "./grundtypen";
 import { type ActionId, idSchema, type ReceiptId } from "./id";
+import { LIMITS_BY_ID_3, PRECONDITIONS_3, R014_V1 } from "./tor-fassung-3";
 
 /**
  * Fassung des Tor-Formats, mit der das Tor jetzt entscheidet und der Schreiber belegt. Jede
  * Änderung am Tor, die für gleiche Fakten ein anderes Ergebnis von `evaluate` geben kann, hebt
  * diese Zahl; eine Fassung selbst wird nie geändert.
  */
-export const GATE_FORMAT = 2;
+export const GATE_FORMAT = 3;
 
 /** Stufen einer Aktion: nachfragen, vorbereiten, ausführen (mit Beleg). */
 export const STAGES = ["ask", "prepare", "execute"] as const;
@@ -88,6 +89,7 @@ export const STANDARD_RULE_IDS = [
   "R-005",
   "R-006",
   "R-010",
+  "R-014",
   "R-999",
 ] as const;
 export type StandardRuleId = (typeof STANDARD_RULE_IDS)[number];
@@ -109,6 +111,8 @@ export const LIMITS_BY_ID = {
   "G-17": "lauf_aufrufe",
   /** `modell.anfragen`: `runTokens + stepTokenEstimate <= maxRunTokens`. */
   "G-18": "lauf_token",
+  /** Ab Fassung 3, nur bei App-Werkzeugen (siehe `LIMITS_BY_ID_3`). */
+  ...LIMITS_BY_ID_3,
 } as const;
 export type LimitId = keyof typeof LIMITS_BY_ID;
 /** Name einer Grenze (alle Grenzen, die dieser Stand kennt). */
@@ -375,6 +379,7 @@ export const STANDARD_RULE_VERSIONS = [
   R005_V1,
   R006_V1,
   R010_V1,
+  R014_V1,
 ] as const satisfies readonly RuleDefinition[];
 
 const R007_V1 = {
@@ -432,6 +437,7 @@ export const ACTIVE_STANDARD_RULES = [
   R005_V1,
   R006_V1,
   R010_V1,
+  R014_V1,
   R999_V1,
 ] as const satisfies readonly RuleDefinition[];
 
@@ -599,6 +605,8 @@ export const PRECONDITIONS = {
     require: [{ fact: "callIndexInStep", op: "lt", value: { fact: "maxCallsPerStep" } }],
     errorCode: "limit_erreicht",
   },
+  /** Ab Fassung 3: Adresse einer App beim Verbinden (V-19) und gesehener Abdruck (V-38). */
+  ...PRECONDITIONS_3,
 } as const satisfies Record<
   string,
   {

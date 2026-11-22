@@ -807,11 +807,11 @@ describe.skipIf(bereit.grund !== undefined)(
         const belege = vergleich.find((z) => z.startsWith("B|"))?.split("|");
         expect(belege?.[6]).toBe("true");
 
-        // Migrations-Schritt mit dem neuen Code: auf den neuesten Stand (ab 0014), gleiche Daten, R-010 dazu.
+        // Migrations-Schritt mit dem neuen Code: auf den neuesten Stand (ab 0014), gleiche Daten, R-010 und R-014 dazu.
         await runMigrations(ziel.url, MIGRATIONS_FOLDER);
         const neu = await zaehlen(ziel.url);
-        expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 1);
-        expect(neu["drizzle.__drizzle_migrations"]).toBe(16);
+        expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 2);
+        expect(neu["drizzle.__drizzle_migrations"]).toBe(17);
         for (const tabelle of Object.keys(altZeilen).filter(
           (t) => t !== "public.rules" && t !== "drizzle.__drizzle_migrations",
         )) {

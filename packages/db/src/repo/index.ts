@@ -9,6 +9,7 @@
  */
 
 export * as providers from "./anbieter";
+export * as apps from "./apps";
 export * as belege from "./belege";
 export * as owner from "./besitzer";
 export * as bots from "./bots";

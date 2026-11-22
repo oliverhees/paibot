@@ -14,14 +14,13 @@
 // sich später ein geteiltes Schema, bleibt Fassung 2 gleich. Importiert werden nur Grund-Schemas,
 // die per Definition nie geändert werden (Kennungen, Prüfsummen-Formate), Typen und Texte.
 
-import type { ActionType, ActorKind } from "@paibot/shared/aktionen";
+import type { ActorKind } from "@paibot/shared/aktionen";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import { hmacDigestSchema, sha256DigestSchema } from "@paibot/shared/grundtypen";
 import { ID_BODY_PATTERN, ID_PREFIX, idSchema } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
 import type {
   Decision,
-  GateLimitName,
   LimitCheck,
   ListDecision,
   Outcome,
@@ -130,8 +129,37 @@ function toolAction(target: z.ZodRawShape, facts: z.ZodRawShape) {
   };
 }
 
+// Einmalige Ausnahme vom Einfrieren, nur am Typ: Diese Datei bezog ihre Aktionen anfangs aus der
+// lebenden Aktions-Liste. Damit eine neue Aktion sie nicht berührt, steht die Liste seit 2026-11-22
+// hier fest. Geändert sind nur Typen und dieser Kommentar; die übersetzte Ausgabe ohne Typen ist
+// Byte für Byte gleich, die festen Fälle der Fassung 2 sind unverändert.
 /** Aktionen der Fassung 2: alle außer `werkzeug.freigeben` und `werkzeug.ausfuehren`. */
-type Action2 = Exclude<ActionType, "werkzeug.freigeben" | "werkzeug.ausfuehren">;
+type Action2 =
+  | "einrichtung.abschliessen"
+  | "zugang.anmelden"
+  | "zugang.abmelden"
+  | "zugang.alle_abmelden"
+  | "zugang.passwort_aendern"
+  | "anbieter.speichern"
+  | "anbieter.loeschen"
+  | "modell.waehlen"
+  | "bot.aendern"
+  | "schleuse.umschalten"
+  | "einstellung.aendern"
+  | "unterhaltung.anlegen"
+  | "unterhaltung.umbenennen"
+  | "unterhaltung.loeschen"
+  | "nachricht.senden"
+  | "modell.anfragen"
+  | "lauf.abbrechen"
+  | "belege.exportieren"
+  | "werkzeug.aufrufen"
+  | "geraet.hinzufuegen"
+  | "geraet.entfernen"
+  | "geraet.bestaetigen"
+  | "notaus.umschalten"
+  | "unterhaltung.exportieren"
+  | "antwort.neu_erzeugen";
 
 const ACTIONS_2 = {
   "einrichtung.abschliessen": action(
@@ -316,6 +344,19 @@ function actorKindOf(actor: string): ActorKind {
 // Vorbedingungen, Grenzen, Deckel, Fehlercodes, Felder im Beleg (Kopien)
 
 const TOOL_GATE_ACTIONS_2 = ["werkzeug.aufrufen"] as const;
+
+// Einmalige Ausnahme vom Einfrieren, nur am Typ (wie bei den Aktionen oben): Der Name einer Grenze
+// stand anfangs als `GateLimitName` aus den lebenden Verträgen hier; seit Fassung 3 kennt dieser
+// Typ mehr Namen. Er steht jetzt fest in der Datei; die Ausgabe ohne Typen ist gleich.
+type GateLimitName =
+  | "schleuse_gefordert"
+  | "anbieter_region"
+  | "laenge"
+  | "tagesbudget"
+  | "not_aus"
+  | "lauf_schritte"
+  | "lauf_aufrufe"
+  | "lauf_token";
 
 const LIMITS_BY_ID_2 = {
   "G-01": "schleuse_gefordert",

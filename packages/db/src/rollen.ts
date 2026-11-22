@@ -40,11 +40,17 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  *   gelöscht wird nur mit der Unterhaltung.
  * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
  *   der Unterhaltung.
+ * - `apps`: lesen, anlegen, nur Name, Adresse, Zugang, Zustand, Verbindungsnummer, gemeldete
+ *   Fassung und Zeiten ändern; nie löschen (eine App wird getrennt, nicht gelöscht).
+ * - `app_tools`, `bot_app_grants`: nur lesen und anhängen (Trigger lehnen Ändern und Löschen ab).
  * - `runs`: lesen, anlegen, fortschreiben; gelöscht wird nur mit der Unterhaltung (sonst verschwänden
  *   mit einem Lauf auch seine Werkzeug-Aufrufe).
  */
 export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
+  app_tools: "select, insert",
+  apps: "select, insert, update (name, url, auth_kind, token_enc, state, connection_no, server_version, updated_at, disconnected_at)",
   belege: "select, insert",
+  bot_app_grants: "select, insert",
   bots: APP_DEFAULT_TABLE_RIGHTS,
   conversation_events: "select, insert, delete",
   conversations: APP_DEFAULT_TABLE_RIGHTS,
@@ -52,7 +58,7 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
     "select, insert, update (last_seen_at, expires_at, revoked_at, revoke_reason, notice_seen_at), delete",
   installation_keys: "select, insert, update (retired_at)",
   messages:
-    "select, insert, update (status, content, model_id, provider_id, route, tokens_in, tokens_out, error_code, served_provider, served_model)",
+    "select, insert, update (status, content, model_id, provider_id, route, tokens_in, tokens_out, error_code, served_provider, served_model, untrusted)",
   models: APP_DEFAULT_TABLE_RIGHTS,
   owner: APP_DEFAULT_TABLE_RIGHTS,
   providers: APP_DEFAULT_TABLE_RIGHTS,
@@ -67,7 +73,13 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
 };
 
 /** Tabellen, auf denen die App-Rolle weder ändern noch löschen noch leeren darf. */
-const APPEND_ONLY_TABLES = ["belege", "rules", "installation_keys"] as const;
+const APPEND_ONLY_TABLES = [
+  "belege",
+  "rules",
+  "installation_keys",
+  "app_tools",
+  "bot_app_grants",
+] as const;
 
 /** Gründe, aus denen eine Verbindung zu viele Rechte hat. */
 export type RoleIssue =

@@ -182,7 +182,7 @@ const STAND_TEST_GEHEIMNIS = createHash("sha256")
 
 /** Neue Spalten der Migration 0014 je Tabelle. */
 const NEUE_SPALTEN: Readonly<Record<string, readonly string[]>> = {
-  messages: ["step", "origin"],
+  messages: ["step", "origin", "untrusted"],
   settings: [
     "max_steps_per_run",
     "max_tool_calls_per_step",
@@ -201,6 +201,9 @@ const NEUE_SPALTEN: Readonly<Record<string, readonly string[]>> = {
     "raw_name",
     "output_truncated",
     "output_chars",
+    "app_id",
+    "app_tool_id",
+    "tool_version",
   ],
 };
 
@@ -371,9 +374,15 @@ for (const umgebung of umgebungen) {
           await u.migrieren();
 
           const zeilen = await zeilenJeTabelle(u);
-          const vorherZeilen = Object.fromEntries(
-            Object.entries(vorher).map(([t, z]) => [t, z.length + (t === "rules" ? 1 : 0)]),
-          );
+          // Dazu kommen die Regeln R-010 und R-014 und die drei leeren Tabellen für Apps.
+          const vorherZeilen = {
+            ...Object.fromEntries(
+              Object.entries(vorher).map(([t, z]) => [t, z.length + (t === "rules" ? 2 : 0)]),
+            ),
+            app_tools: 0,
+            apps: 0,
+            bot_app_grants: 0,
+          };
           expect(zeilen).toEqual(vorherZeilen);
           const nachher = await inhalt(u);
           for (const [tabelle, alt] of Object.entries(vorher)) {

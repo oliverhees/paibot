@@ -10,6 +10,8 @@
 
 import type {
   ActionId,
+  AppId,
+  AppToolId,
   ConversationId,
   MessageId,
   ReceiptId,
@@ -28,6 +30,7 @@ import {
   timestamp,
   unique,
 } from "drizzle-orm/pg-core";
+import { apps } from "./apps";
 import {
   idCheck,
   inListCheck,
@@ -110,6 +113,12 @@ export const toolCalls = pgTable(
     rawName: text("raw_name"),
     outputTruncated: boolean("output_truncated"),
     outputChars: integer("output_chars"),
+    /** Bei Werkzeugen einer App: App, Kennung und Fassung des Werkzeugs (alle drei oder keins). */
+    appId: text("app_id")
+      .$type<AppId>()
+      .references(() => apps.id, { onDelete: "restrict" }),
+    appToolId: text("app_tool_id").$type<AppToolId>(),
+    toolVersion: integer("tool_version"),
   },
   (t) => [
     idCheck("tool_calls_action_id_format", t.actionId, "action"),
@@ -163,6 +172,17 @@ export const toolCalls = pgTable(
       "tool_calls_output_chars_nicht_negativ",
       sql`${t.outputChars} is null or ${t.outputChars} >= 0`,
     ),
+    optionalIdCheck("tool_calls_app_id_format", t.appId, "app"),
+    optionalIdCheck("tool_calls_app_tool_id_format", t.appToolId, "tool"),
+    check(
+      "tool_calls_tool_version_positiv",
+      sql`${t.toolVersion} is null or ${t.toolVersion} >= 1`,
+    ),
+    check(
+      "tool_calls_app_angaben_zusammen",
+      sql`(${t.appId} is null) = (${t.appToolId} is null) and (${t.appId} is null) = (${t.toolVersion} is null)`,
+    ),
+    check("tool_calls_app_nur_bei_mcp", sql`${t.appId} is null or ${t.source} = 'mcp'`),
     unique("tool_calls_stelle_eindeutig").on(t.messageId, t.position),
     unique("tool_calls_call_id_eindeutig").on(t.messageId, t.callId),
     unique("tool_calls_decision_receipt_id_eindeutig").on(t.decisionReceiptId),

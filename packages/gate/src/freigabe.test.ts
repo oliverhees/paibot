@@ -288,7 +288,7 @@ describe("aktuelle Fassung: keine Freigabe", () => {
     expect(perAction.size).toBe(3);
     for (const kinds of perAction.values()) expect(kinds).toEqual(["decision", "result"]);
     for (const entry of s.entries) {
-      if (entry.kind === "decision") expect(entry.record.decision.gateFormat).toBe(2);
+      if (entry.kind === "decision") expect(entry.record.decision.gateFormat).toBe(3);
     }
   });
 });

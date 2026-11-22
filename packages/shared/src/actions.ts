@@ -21,6 +21,7 @@ import {
   toolServerSchema,
   toolSourceSchema,
 } from "./objects";
+import { APP_ACTION_SHAPES, MCP_TOOL_CALL_FACTS } from "./tor-fassung-3";
 
 /** Wer eine Aktion auslöst: der Besitzer der Installation oder ein Bot. */
 export type Actor = "besitzer" | `bot:${BotId}`;
@@ -160,6 +161,42 @@ const toolGateFacts = {
   trigger: runTriggerSchema,
 };
 
+/** Namen der Fakten eines App-Werkzeugs (Tor-Fassung 3), genau bei Quelle `mcp` alle gesetzt. */
+const MCP_FACT_NAMES = Object.keys(MCP_TOOL_CALL_FACTS);
+
+/**
+ * Regel für `werkzeug.aufrufen`: Server genau bei Quelle `mcp`. Bei Quelle `mcp`
+ * sind dazu alle Fakten der App gesetzt, die Reichweite ist `nach_aussen`, das Werkzeug liefert
+ * fremde Inhalte und seine Kennung beginnt mit `mcp/<Server>/`; sonst steht kein Fakt der App da,
+ * und die Kennung beginnt nie mit `mcp/`.
+ */
+function toolSourceConsistent(value: unknown): boolean {
+  const record = value as Record<string, unknown>;
+  const mcp = record.toolSource === "mcp";
+  if (mcp !== (record.toolServer !== undefined)) return false;
+  const present = MCP_FACT_NAMES.filter((name) => record[name] !== undefined).length;
+  const key = record.toolKey;
+  if (mcp) {
+    return (
+      present === MCP_FACT_NAMES.length &&
+      record.toolReach === "nach_aussen" &&
+      record.toolForeign === true &&
+      typeof key === "string" &&
+      key.startsWith(`mcp/${String(record.toolServer)}/`)
+    );
+  }
+  return present === 0 && !(typeof key === "string" && key.startsWith("mcp/"));
+}
+
+/** Werkzeug-Aufruf (`werkzeug.aufrufen`) mit den Regeln für App-Werkzeuge. */
+function mcpToolAction<T extends z.ZodRawShape, F extends z.ZodRawShape>(target: T, facts: F) {
+  const base = action("bot", target, { ...toolFacts, ...facts });
+  return {
+    ...base,
+    facts: base.facts.refine(toolSourceConsistent, { path: ["toolSource"] }),
+  };
+}
+
 /** Fakten eines Werkzeug-Aufrufs mit der Regel „Server genau bei Quelle `mcp`“. */
 function toolAction<T extends z.ZodRawShape, F extends z.ZodRawShape>(target: T, facts: F) {
   const base = action("bot", target, { ...toolFacts, ...facts });
@@ -171,6 +208,19 @@ function toolAction<T extends z.ZodRawShape, F extends z.ZodRawShape>(target: T,
         ((value as { toolServer?: unknown }).toolServer !== undefined),
       { path: ["toolServer"] },
     ),
+  };
+}
+
+/** Ein Token ist genau bei Anmeldung `token` hinterlegt (`app.verbinden`). */
+function withTokenRule<T extends { facts: z.ZodType }>(spec: T): T {
+  return {
+    ...spec,
+    facts: spec.facts.refine(
+      (value) =>
+        ((value as { authKind?: unknown }).authKind === "token") ===
+        ((value as { tokenSet?: unknown }).tokenSet === true),
+      { path: ["tokenSet"] },
+    ) as z.ZodType,
   };
 }
 
@@ -302,7 +352,7 @@ export const ACTIONS = {
     { installationId },
     { ...ownerFacts, entries: countSchema },
   ),
-  "werkzeug.aufrufen": toolAction(
+  "werkzeug.aufrufen": mcpToolAction(
     { conversationId, runId, botId },
     {
       ...toolGateFacts,
@@ -312,6 +362,19 @@ export const ACTIONS = {
       runRunning: z.boolean(),
       /** Abdruck des Aufrufs (`TOOL_CALL_DIGEST_PREFIX`, Fassung 2); die Argumente selbst nie. */
       argsDigest: hmacDigestSchema,
+      /**
+       * Fakten eines App-Werkzeugs (ab Fassung 3): genau bei Quelle `mcp` alle gesetzt, sonst
+       * keiner. Sie kommen aus der Datenbank und der Steuerung des Laufs, nie von der App.
+       */
+      appId: MCP_TOOL_CALL_FACTS.appId.optional(),
+      appToolId: MCP_TOOL_CALL_FACTS.appToolId.optional(),
+      toolVersion: MCP_TOOL_CALL_FACTS.toolVersion.optional(),
+      toolStatus: MCP_TOOL_CALL_FACTS.toolStatus.optional(),
+      appAccess: MCP_TOOL_CALL_FACTS.appAccess.optional(),
+      targetDigest: MCP_TOOL_CALL_FACTS.targetDigest.optional(),
+      confirmedToolDigest: MCP_TOOL_CALL_FACTS.confirmedToolDigest.optional(),
+      confirmedTargetDigest: MCP_TOOL_CALL_FACTS.confirmedTargetDigest.optional(),
+      stepAppId: MCP_TOOL_CALL_FACTS.stepAppId.optional(),
     },
   ),
   /**
@@ -433,6 +496,32 @@ export const ACTIONS = {
       answerIsLatest: z.boolean(),
       killSwitch: z.boolean(),
     },
+  ),
+  /** Der Besitzer verbindet eine App oder testet sie erneut (`created: false`). */
+  "app.verbinden": withTokenRule(
+    action(
+      APP_ACTION_SHAPES["app.verbinden"].actorKind,
+      APP_ACTION_SHAPES["app.verbinden"].target,
+      APP_ACTION_SHAPES["app.verbinden"].facts,
+    ),
+  ),
+  /** Der Besitzer stuft genau ein Werkzeug einer App ein (Vorbedingung V-38). */
+  "app.werkzeuge_bestaetigen": action(
+    APP_ACTION_SHAPES["app.werkzeuge_bestaetigen"].actorKind,
+    APP_ACTION_SHAPES["app.werkzeuge_bestaetigen"].target,
+    APP_ACTION_SHAPES["app.werkzeuge_bestaetigen"].facts,
+  ),
+  /** Der Besitzer setzt den Zugriff eines Bots auf eine App. */
+  "app.zugriff_setzen": action(
+    APP_ACTION_SHAPES["app.zugriff_setzen"].actorKind,
+    APP_ACTION_SHAPES["app.zugriff_setzen"].target,
+    APP_ACTION_SHAPES["app.zugriff_setzen"].facts,
+  ),
+  /** Der Besitzer trennt eine App; ein hinterlegter Token wird gelöscht. */
+  "app.trennen": action(
+    APP_ACTION_SHAPES["app.trennen"].actorKind,
+    APP_ACTION_SHAPES["app.trennen"].target,
+    APP_ACTION_SHAPES["app.trennen"].facts,
   ),
 } as const;
 

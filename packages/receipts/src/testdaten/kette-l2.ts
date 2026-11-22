@@ -14,7 +14,12 @@ import { type ActionRequest, type ActionType, STORED_ACTION_TYPES } from "@paibo
 import { RECEIPT_CHAIN_FORMAT, type ReceiptBody, type ReceiptEntry } from "@paibot/shared/belege";
 import { isPaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
-import { ACTIVE_STANDARD_RULES, type RuleDefinition, type RuleSnapshot } from "@paibot/shared/tor";
+import {
+  ACTIVE_STANDARD_RULES,
+  GATE_FORMAT,
+  type RuleDefinition,
+  type RuleSnapshot,
+} from "@paibot/shared/tor";
 import { sampleAction, sampleFacts } from "../../../gate/src/testdaten";
 import { digestBytes, hashReceipt } from "../hash";
 import { exportJsonl } from "../jsonl";
@@ -62,11 +67,14 @@ type Schritt = {
 };
 
 function schritte(): Schritt[] {
-  const list: Schritt[] = STORED_ACTION_TYPES.map((type) => ({
-    type,
-    facts: sampleFacts(type) as Record<string, unknown>,
-    result: { status: "ok" },
-  }));
+  // Die Aktionen für Apps gehören zu Fassung 3; diese Kette zeigt, was ein Stand mit Fassung 1 liest.
+  const list: Schritt[] = STORED_ACTION_TYPES.filter((type) => !type.startsWith("app.")).map(
+    (type) => ({
+      type,
+      facts: sampleFacts(type) as Record<string, unknown>,
+      result: { status: "ok" },
+    }),
+  );
   list.push({
     type: "modell.anfragen",
     facts: sampleFacts("modell.anfragen") as Record<string, unknown>,
@@ -205,15 +213,16 @@ export async function ketteL2(art: "tor" | "roh"): Promise<KetteL2> {
       continue;
     }
     const regeln = schritt.deckel ? mitDeckel : current;
-    const decided = evaluate(action, schritt.facts as never, regeln) as unknown as Record<
-      string,
-      unknown
-    >;
+    // Durch das echte Tor gilt die aktuelle Fassung; die rohe Kette bleibt bei Fassung 2.
+    const format = art === "tor" ? GATE_FORMAT : 2;
+    const decided = evaluate(action, schritt.facts as never, regeln, {
+      format,
+    }) as unknown as Record<string, unknown>;
     const { matchedRules, ...rest } = decided;
     await roh({
       type: "decision",
       action,
-      decision: { gateFormat: 2, ...rest, rules: matchedRules },
+      decision: { gateFormat: format, ...rest, rules: matchedRules },
       facts: schritt.facts,
     });
     const allowed = decided.outcome === "allow";

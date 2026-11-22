@@ -1927,6 +1927,55 @@ export const de = {
     "Kette in sich stimmig, alle Schlüssel aus der Kette, aber mit Warnung.",
   "belege.urteil.gueltig_anzahl_warnung":
     "Mit Warnung: {anzahl} Belege geprüft, in sich stimmig, alle Schlüssel aus der Kette. Bitte die Warnung unten lesen.",
+  // Tor-Fassung 3 „Apps lesen“: Vertrag steht, im Tor noch nicht in Kraft
+  "aktion.app.verbinden": "App verbunden",
+  "aktion.app.werkzeuge_bestaetigen": "Werkzeug einer App eingestuft",
+  "aktion.app.zugriff_setzen": "Zugriff eines Bots auf eine App gesetzt",
+  "aktion.app.trennen": "App getrennt",
+  "regel.R-014": "Bot liest in Apps mit Lese-Zugriff",
+  "regel.G-06": "Zugriff des Bots auf die App",
+  "regel.G-07": "Werkzeug bestätigt und unverändert",
+  "regel.G-08": "Adresse der App unverändert",
+  "regel.G-40": "Eine App je Schritt",
+  "regel.V-19": "Adresse der App erlaubt",
+  "regel.V-38": "Gesehene Fassung des Werkzeugs",
+  "regeln.grenze.G-06": "Ein App-Werkzeug läuft nur, wenn der Bot Lese-Zugriff auf die App hat.",
+  "regeln.grenze.G-07":
+    "Ein App-Werkzeug läuft nur, wenn du es bestätigt hast und es unverändert ist.",
+  "regeln.grenze.G-08": "Ein App-Werkzeug läuft nur an die Adresse, für die du es bestätigt hast.",
+  "regeln.grenze.G-40": "In einem Schritt ruft der Bot Werkzeuge nur einer App auf.",
+  "regeln.vorbedingung.V-19":
+    "Die Adresse der App ist öffentlich, https und ohne Zugangsdaten darin.",
+  "regeln.vorbedingung.V-38": "Du bestätigst genau die Fassung des Werkzeugs, die du gesehen hast.",
+  "fehler.app_nicht_erreichbar": "Die App antwortet gerade nicht.",
+  "fehler.app_nicht_erreichbar.ausweg":
+    "Prüfe, ob die App läuft und ihre Adresse noch stimmt, und teste dann erneut.",
+  "fehler.app_zugang_ungueltig": "Die App lehnt den Zugang ab.",
+  "fehler.app_zugang_ungueltig.ausweg": "Trag unter Apps einen neuen Zugang ein.",
+  "fehler.app_adresse_unzulaessig": "Diese Adresse lässt PaiBot nicht zu.",
+  "fehler.app_adresse_unzulaessig.ausweg":
+    "Nur öffentliche https-Adressen ohne Zugangsdaten, Anfrage-Teil und Anker. Adressen im Heimnetz oder auf dem Server selbst lehnt PaiBot ab.",
+  "fehler.app_kein_mcp": "Unter dieser Adresse antwortet kein MCP-Server.",
+  "fehler.app_kein_mcp.ausweg": "Prüfe die Adresse, oft endet sie auf /mcp.",
+  "fehler.app_befehl_nicht_erlaubt": "Lokale Befehle startet PaiBot nicht.",
+  "fehler.app_befehl_nicht_erlaubt.ausweg": "Starte den Server selbst und füge seine Adresse ein.",
+  "fehler.app_version_unbekannt": "Die App spricht eine MCP-Fassung, die PaiBot nicht kennt.",
+  "fehler.app_version_unbekannt.ausweg": "Aktualisiere die App oder PaiBot.",
+  "fehler.werkzeug_geaendert": "Dieses Werkzeug ist nicht bestätigt oder hat sich geändert.",
+  "fehler.werkzeug_geaendert.ausweg": "Sieh dir das Werkzeug unter Apps an und bestätige es.",
+  "fehler.werkzeug_kein_zugriff": "Der Bot darf diese App nicht so nutzen.",
+  "fehler.werkzeug_kein_zugriff.ausweg": "Gib dem Bot unter Apps Lese-Zugriff.",
+  "fehler.werkzeug_ergebnis_zu_gross": "Das Ergebnis war zu lang und wurde gekürzt.",
+  "fehler.werkzeug_schema_nicht_pruefbar":
+    "Das Werkzeug nutzt Teile, die PaiBot nicht sicher prüfen kann. Es lässt sich nicht bestätigen.",
+  "fehler.app_braucht_eingabe": "Die App möchte eine Rückfrage stellen; das kann PaiBot nicht.",
+  "fehler.werkzeug_platzhalter":
+    "Mit eingeschalteter Datenschleuse schickt PaiBot keine Platzhalter an eine App.",
+  "fehler.werkzeug_zweite_app": "In einem Schritt liest Pai nur in einer App.",
+  "fehler.werkzeug_abdruck_ungesehen":
+    "Das Werkzeug hat sich geändert, während du es angesehen hast. Nichts wurde bestätigt.",
+  "fehler.werkzeug_abdruck_ungesehen.ausweg":
+    "Lade die Seite neu und sieh dir das Werkzeug noch einmal an.",
   // Fäden: Bausteine der Oberfläche für Teams (Vorschau mit Beispiel-Daten)
   "faden.kopf.region": "Kopf des Fadens",
   "faden.kopf.fertig_wenn": "Fertig, wenn",

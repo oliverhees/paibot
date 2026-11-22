@@ -22,7 +22,10 @@ import { belegRow, keyRow, providerRow } from "./testdaten";
 import { createTestDb, MIGRATIONS_FOLDER } from "./testing";
 
 const TABLES = [
+  "app_tools",
+  "apps",
   "belege",
+  "bot_app_grants",
   "bots",
   "conversation_events",
   "conversations",

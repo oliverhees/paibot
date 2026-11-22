@@ -109,7 +109,7 @@ describe("Prüfen von IDs", () => {
 
   it("kennt genau die vorgegebenen Präfixe", () => {
     expect(ID_PATTERN.source).toBe(
-      "^(unt|nac|lau|bot|anb|mod|bes|blg|akt|sch|ins|reg|ger)_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+      "^(unt|nac|lau|bot|anb|mod|bes|blg|akt|sch|ins|reg|ger|app|wzg)_[0-7][0-9a-hjkmnp-tv-z]{25}$",
     );
   });
 });

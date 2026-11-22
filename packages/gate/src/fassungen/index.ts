@@ -12,6 +12,7 @@
 import { GATE_FORMAT } from "@paibot/shared/tor";
 import { GATE_FORMAT_1 } from "./fassung-1";
 import { GATE_FORMAT_2 } from "./fassung-2";
+import { GATE_FORMAT_3 } from "./fassung-3";
 import type { GateFormatSpec } from "./typ";
 
 export type {
@@ -22,10 +23,16 @@ export type {
   GateFormatSpec,
 } from "./typ";
 
-/** Eingefrorene Beschreibung je Fassung. Eine Fassung wird nie geändert, nur neue kommen dazu. */
-export const GATE_FORMATS: Readonly<Record<1 | 2, GateFormatSpec>> = {
+/**
+ * Eingefrorene Beschreibung je Fassung. Eine Fassung wird nie geändert, nur neue kommen dazu.
+ *
+ * Fassung 3 („Apps lesen“) ist in Kraft: Die Datenbank speichert Apps, Werkzeuge, Zugriffe und die
+ * Regel R-014, und das Tor entscheidet mit ihr.
+ */
+export const GATE_FORMATS: Readonly<Record<1 | 2 | 3, GateFormatSpec>> = {
   1: GATE_FORMAT_1,
   2: GATE_FORMAT_2,
+  3: GATE_FORMAT_3,
 };
 
 /** Höchste Fassung, die dieser Stand kennt. */

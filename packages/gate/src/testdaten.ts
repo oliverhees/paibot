@@ -33,6 +33,8 @@ const ids = {
   toolCallId: newId("action"),
   approvalId: newId("action"),
   deviceId: newId("device"),
+  appId: newId("app"),
+  toolId: newId("tool"),
 };
 
 const ARGS_DIGEST = `hmac-sha256:${"a7".repeat(32)}`;
@@ -80,6 +82,10 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   "notaus.umschalten": { installationId: ids.installationId },
   "unterhaltung.exportieren": { conversationId: ids.conversationId },
   "antwort.neu_erzeugen": { conversationId: ids.conversationId, messageId: ids.messageId },
+  "app.verbinden": { appId: ids.appId },
+  "app.werkzeuge_bestaetigen": { appId: ids.appId, toolId: ids.toolId },
+  "app.zugriff_setzen": { appId: ids.appId, botId: ids.botId },
+  "app.trennen": { appId: ids.appId },
 };
 
 /**
@@ -206,6 +212,31 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     answerIsLatest: true,
     killSwitch: false,
   },
+  "app.verbinden": {
+    credential: "sitzung",
+    created: true,
+    authKind: "token",
+    tokenSet: true,
+    targetOrigin: "https://app.beispiel.test",
+    targetDigest: `sha256:${"b1".repeat(32)}`,
+    addressHttps: true,
+    addressPublic: true,
+    addressPort443: true,
+    addressUserinfo: false,
+    addressQuery: false,
+    addressFragment: false,
+  },
+  "app.werkzeuge_bestaetigen": {
+    credential: "sitzung",
+    toolClass: "lesen",
+    toolVersion: 1,
+    toolDigest: `sha256:${"c2".repeat(32)}`,
+    seenToolDigest: `sha256:${"c2".repeat(32)}`,
+    toolStatus: "neu",
+    targetDigest: `sha256:${"b1".repeat(32)}`,
+  },
+  "app.zugriff_setzen": { credential: "sitzung", access: "lesen", previousAccess: "keiner" },
+  "app.trennen": { credential: "sitzung", tokenSet: true },
 };
 
 /**

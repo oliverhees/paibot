@@ -58,7 +58,7 @@ const decision: ReceiptBody = {
   type: "decision",
   action,
   decision: {
-    gateFormat: 2,
+    gateFormat: 3,
     outcome: "allow",
     stage: "execute",
     rules: [{ id: "R-001", version: 1 }],

@@ -25,7 +25,8 @@
     "./bindung": "./src/bindung.ts",
     "./anzeigetext": "./src/anzeigetext.ts",
     "./regelliste": "./src/regelliste.ts",
-    "./werkzeug": "./src/werkzeug.ts"
+    "./werkzeug": "./src/werkzeug.ts",
+    "./tor-fassung-3": "./src/tor-fassung-3.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

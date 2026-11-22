@@ -990,6 +990,33 @@ describe("Für später nichts verbaut", () => {
   });
 });
 
+/**
+ * Legt eine Zeile in einer Datenbank im alten Stand an: mit rohem SQL und nur den Spalten, die in
+ * diesem Stand schon da sind (das Schema im Code kennt die neueren Spalten).
+ */
+async function alteZeile(
+  client: { query(sql: string, params?: unknown[]): Promise<unknown> },
+  tabelle: string,
+  zeile: Record<string, unknown>,
+): Promise<void> {
+  const neu = new Set(["untrusted", "appId", "appToolId", "toolVersion"]);
+  const eintraege = Object.entries(zeile).filter(
+    ([name, wert]) => !neu.has(name) && wert !== undefined,
+  );
+  const spalten = eintraege.map(([name]) => name.replace(/[A-Z]/g, (b) => `_${b.toLowerCase()}`));
+  const werte = eintraege.map(([, wert]) =>
+    wert instanceof Date
+      ? wert.toISOString()
+      : typeof wert === "object" && wert !== null
+        ? JSON.stringify(wert)
+        : wert,
+  );
+  await client.query(
+    `insert into ${tabelle} (${spalten.join(", ")}) values (${werte.map((_, i) => `$${i + 1}`).join(", ")})`,
+    werte,
+  );
+}
+
 describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => {
   // Gegenprobe: in der Migration Zeilen ändern (z. B. `UPDATE tool_calls SET output = null`) → rot.
   it("Bestandsdaten aus dem Stand 0014 bleiben ohne Verlust; alte Zeilen bleiben, neue Wechsel sind gebunden", async () => {
@@ -999,7 +1026,7 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     const conversation = conversationRow(bot.id);
     await test.db.insert(conversations).values(conversation);
     const frage = messageRow(conversation.id);
-    await test.db.insert(messages).values(frage);
+    await alteZeile(test.client, "messages", frage);
     const run = runRow({
       conversationId: conversation.id,
       triggerMessageId: frage.id,
@@ -1007,7 +1034,7 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     });
     await test.db.insert(runs).values(run);
     const antwort = messageRow(conversation.id, { role: "assistant", runId: run.id, step: 0 });
-    await test.db.insert(messages).values(antwort);
+    await alteZeile(test.client, "messages", antwort);
     const key = keyRow();
     await test.db.insert(installationKeys).values(key);
     const ids = { conversationId: conversation.id, runId: run.id, messageId: antwort.id };
@@ -1030,7 +1057,9 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
       "cancelled",
     ].entries()) {
       const erledigt = !["requested", "running"].includes(status);
-      await test.db.insert(toolCalls).values(
+      await alteZeile(
+        test.client,
+        "tool_calls",
         toolCallRow(ids, {
           position,
           callId: `c${position}`,
@@ -1054,7 +1083,7 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     const lesen = async () =>
       (
         await test.client.query<{ z: unknown }>(
-          "select to_jsonb(t) as z from tool_calls t order by position",
+          "select to_jsonb(t) - 'app_id' - 'app_tool_id' - 'tool_version' as z from tool_calls t order by position",
         )
       ).rows;
     const vorher = await lesen();
@@ -1071,7 +1100,7 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     const migrationen = await test.client.query<{ n: number }>(
       "select count(*)::int as n from drizzle.__drizzle_migrations",
     );
-    expect(migrationen.rows[0]?.n).toBe(16);
+    expect(migrationen.rows[0]?.n).toBe(17);
     // Nach dem Aufstieg ist ein neuer Wechsel mit fremder Entscheidung nicht mehr möglich.
     const neu = toolCallRow(ids, { position: 9, callId: "neu" });
     await test.db.insert(toolCalls).values(neu);
