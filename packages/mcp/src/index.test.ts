@@ -35,6 +35,7 @@ describe("Öffentliche Schnittstelle", () => {
   it("die Liste aller Exporte ist fest (eine neue Funktion muss hier bewusst eingetragen werden)", () => {
     expect(Object.keys(schnittstelle).sort()).toEqual([
       "APP_KURZNAME_MUSTER",
+      "MAX_KOMBINATIONSZEICHEN",
       "MCP_EMPFOHLENES_LEERLAUF_MS",
       "MCP_EMPFOHLENE_ANTWORT_BYTES",
       "MCP_FEHLERCODES",
@@ -53,6 +54,7 @@ describe("Öffentliche Schnittstelle", () => {
       "bereinigeText",
       "bereiteWerkzeugeAuf",
       "entferneMarkdownBilder",
+      "entschaerfeBildAnfaenge",
       "ergebnisZuText",
       "holeWerkzeuge",
       "kanonischeForm",

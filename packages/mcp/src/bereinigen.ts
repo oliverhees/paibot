@@ -52,13 +52,24 @@ const ENTFERNEN: readonly (readonly [number, number])[] = [
   [0xfe00, 0xfe0f],
   [0xfeff, 0xfeff],
   [0xffa0, 0xffa0],
-  [0xfff9, 0xfffb],
+  [0xfff9, 0xfffc],
   [0x1d173, 0x1d17a],
+  [0x13430, 0x1345f],
   [0xe0000, 0xe007f],
   [0xe0100, 0xe01ef],
   // einzelne Ersatz-Hälften ohne Gegenstück
   [0xd800, 0xdfff],
 ];
+
+/**
+ * Zusätzlich nach Unicode-Kategorie: Formatzeichen (`Cf`), Zeichen für den privaten Gebrauch (`Co`),
+ * nicht zugewiesene Code-Punkte und Nicht-Zeichen (`Cn`) und einzelne Ersatz-Hälften (`Cs`).
+ */
+const UNERWUENSCHTE_KATEGORIE = /^[\p{Cf}\p{Co}\p{Cn}\p{Cs}]$/u;
+const KOMBINATIONSZEICHEN = /^\p{M}$/u;
+
+/** Höchstzahl von Kombinationszeichen hintereinander an einem Grundzeichen; weitere entfallen. */
+export const MAX_KOMBINATIONSZEICHEN = 4;
 
 /** Leerzeichen-Arten, die zu einem normalen Leerzeichen werden (Code-Punkte). */
 const LEERZEICHEN: readonly (readonly [number, number])[] = [
@@ -86,6 +97,7 @@ function saeubereZeichen(text: string): { text: string; veraendert: boolean } {
   const ausgabe: string[] = [];
   let veraendert = false;
   let vorherCr = false;
+  let kombinationen = 0;
   for (const zeichen of text) {
     const codePunkt = zeichen.codePointAt(0) as number;
     if (codePunkt === 0x0d) {
@@ -107,9 +119,18 @@ function saeubereZeichen(text: string): { text: string; veraendert: boolean } {
       veraendert = true;
       continue;
     }
-    if (inBereich(codePunkt, ENTFERNEN)) {
+    if (inBereich(codePunkt, ENTFERNEN) || UNERWUENSCHTE_KATEGORIE.test(zeichen)) {
       veraendert = true;
       continue;
+    }
+    if (KOMBINATIONSZEICHEN.test(zeichen)) {
+      kombinationen += 1;
+      if (kombinationen > MAX_KOMBINATIONSZEICHEN) {
+        veraendert = true;
+        continue;
+      }
+    } else {
+      kombinationen = 0;
     }
     if (inBereich(codePunkt, LEERZEICHEN)) {
       ausgabe.push(" ");
@@ -175,8 +196,20 @@ export function entferneMarkdownBilder(text: string): { text: string; entfernt: 
 }
 
 /**
+ * Macht aus jedem `![` ein `! [`. Damit kann kein Rest ein Bild einleiten, auch keines, das erst
+ * durch das Entfernen anderer Bilder entsteht (`!![a](b)[c](d)`), keines mit verschachtelten
+ * Klammern und keine Kurz-Form (`![r]` mit einer Verweis-Definition). Ein Durchgang genügt: Das
+ * eingefügte Leerzeichen trennt `!` und `[` für immer, es kann dabei nie ein neues `![` entstehen.
+ * Läuft in linearer Zeit.
+ */
+export function entschaerfeBildAnfaenge(text: string): { text: string; entschaerft: boolean } {
+  if (!text.includes(BILD_ANFANG)) return { text, entschaerft: false };
+  return { text: text.replaceAll(BILD_ANFANG, "! ["), entschaerft: true };
+}
+
+/**
  * Bereinigt fremden Text. Reihenfolge: auf das Doppelte der Höchstlänge begrenzen (damit nichts
- * Langes verarbeitet wird), unsichtbare Zeichen entfernen, Bilder entfernen, Zeilenenden und
+ * Langes verarbeitet wird), unsichtbare Zeichen entfernen, Bilder entfernen und Bild-Anfänge entschärfen, Zeilenenden und
  * Leerzeichen vereinheitlichen, kürzen.
  */
 export function bereinigeText(roh: string, optionen: BereinigenOptionen): BereinigterText {
@@ -197,6 +230,10 @@ export function bereinigeText(roh: string, optionen: BereinigenOptionen): Berein
   const ohneBilder = entferneMarkdownBilder(text);
   if (ohneBilder.entfernt) veraendert = true;
   text = ohneBilder.text;
+  // Was die Suche nach vollständigen Bildern nicht erfasst, bekommt keinen Bild-Anfang mehr.
+  const entschaerft = entschaerfeBildAnfaenge(text);
+  if (entschaerft.entschaerft) veraendert = true;
+  text = entschaerft.text;
 
   if (optionen.zeilenumbrueche) {
     text = text

