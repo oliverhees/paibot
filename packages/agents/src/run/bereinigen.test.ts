@@ -25,6 +25,7 @@ import {
   jsonUeberGrenzen,
   RAW_NAME_MAX_CHARS,
   rawToolName,
+  reineKopie,
 } from "./bereinigen";
 
 // Gegenprobe je Fall: Bereinigung aus (Text unverändert zurückgeben) → rot.
@@ -443,5 +444,115 @@ describe("Werte, die kein JSON sind", () => {
     const kreis: Record<string, unknown> = {};
     kreis.q = kreis;
     expect(() => jsonHasNonJson(kreis)).not.toThrow();
+  });
+});
+
+// Gegenprobe: In `reineKopie` die Prüfung auf Prototyp und Typ entfernen → die Fälle „kein JSON“
+// werden rot; jede Eigenschaft ein zweites Mal lesen → der Fall „genau einmal“ wird rot.
+describe("Reine Kopie eines Werts aus Werkzeug-Code", () => {
+  it("liefert für reines JSON eine gleiche, aber neue Kopie", () => {
+    const wert = { a: [1, "ä", null, { b: true }], c: { d: "x" } };
+    const kopie = reineKopie(wert);
+    expect(kopie).toEqual(wert);
+    expect(kopie).not.toBe(wert);
+    expect((kopie as typeof wert).a).not.toBe(wert.a);
+    for (const einfach of [null, true, 0, "text", [], {}])
+      expect(reineKopie(einfach)).toEqual(einfach);
+  });
+
+  it("behält Schlüssel wie constructor und __proto__ als eigene Eigenschaften", () => {
+    const wert = JSON.parse('{"constructor":1,"__proto__":{"x":2},"toString":"t"}') as unknown;
+    const kopie = reineKopie(wert) as Record<string, unknown>;
+    expect(Object.getPrototypeOf(kopie)).toBe(Object.prototype);
+    expect(Object.hasOwn(kopie, "__proto__")).toBe(true);
+    expect(kopie.constructor).toBe(1);
+  });
+
+  it("liest jede Eigenschaft genau einmal; ein späteres Umschalten des Getters ändert die Kopie nicht", () => {
+    let gelesen = 0;
+    const wert = {
+      get a() {
+        gelesen += 1;
+        return gelesen === 1 ? "klein" : "x".repeat(10_000_000);
+      },
+    };
+    const kopie = reineKopie(wert);
+    expect(gelesen).toBe(1);
+    expect(kopie).toEqual({ a: "klein" });
+    expect(gelesen).toBe(1);
+  });
+
+  it("weist ab, was kein JSON ist", () => {
+    class Eigene {
+      wert = 1;
+    }
+    const nicht: unknown[] = [
+      undefined,
+      () => 1,
+      Symbol("s"),
+      1n,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      { a: undefined },
+      { a: () => 1 },
+      [undefined],
+      new Date(0),
+      new Map(),
+      new Set(),
+      new Eigene(),
+      Object.create({ geerbt: 1 }),
+      Object.prototype,
+      { a: Object.prototype },
+    ];
+    for (const wert of nicht) expect(reineKopie(wert), String(wert)).toBeUndefined();
+  });
+
+  it("weist ab: zu tief, zu breit, zu viele Knoten, zu viele Zeichen, Kreis; ein werfender Getter endet ohne Wurf", () => {
+    expect(reineKopie(nested(ERGEBNIS_PRUEFUNG_GRENZEN.depth))).toBeDefined();
+    expect(reineKopie(nested(ERGEBNIS_PRUEFUNG_GRENZEN.depth + 1))).toBeUndefined();
+    expect(reineKopie(nested(10_000))).toBeUndefined();
+    const breit = Object.fromEntries(Array.from({ length: 65 }, (_, i) => [`k${i}`, 1]));
+    expect(reineKopie(breit)).toBeUndefined();
+    expect(reineKopie(new Array<number>(ERGEBNIS_PRUEFUNG_GRENZEN.nodes).fill(1))).toBeUndefined();
+    expect(reineKopie("x".repeat(ERGEBNIS_PRUEFUNG_GRENZEN.chars + 1))).toBeUndefined();
+    const kreis: Record<string, unknown> = {};
+    kreis.q = kreis;
+    expect(reineKopie(kreis)).toBeUndefined();
+    const wirft = {
+      get a(): never {
+        throw new Error("Getter wirft");
+      },
+    };
+    expect(() => reineKopie(wirft)).not.toThrow();
+    expect(reineKopie(wirft)).toBeUndefined();
+  });
+});
+
+// Gegenprobe: `length` in jeder Runde neu lesen → die Lesungen wachsen mit dem Proxy und die
+// Abweisung kommt erst nach Millionen Runden.
+describe("Reine Kopie: die Länge einer Liste wird einmal gelesen", () => {
+  it("ein Proxy, dessen length bei jedem Lesen wächst, endet schnell nach einer einzigen Lesung", () => {
+    let lesungen = 0;
+    const proxy = new Proxy([1, 2, 3], {
+      get(ziel, schluessel, empfaenger) {
+        if (schluessel === "length") {
+          lesungen += 1;
+          // Gedeckelt, damit ein Fehler im Code den Test nicht hängen lässt.
+          return Math.min(lesungen, 3_000_000);
+        }
+        return Reflect.get(ziel, schluessel, empfaenger);
+      },
+    });
+    const start = performance.now();
+    const kopie = reineKopie({ a: proxy });
+    expect(performance.now() - start).toBeLessThan(200);
+    expect(lesungen).toBeLessThanOrEqual(3);
+    // Kopiert wird nur, was bei der einzigen Lesung galt (Länge 1), oder gar nichts.
+    expect([undefined, { a: [1] }]).toContainEqual(kopie);
+  });
+
+  it("eine gewöhnliche Liste wird weiter vollständig kopiert", () => {
+    const liste = Array.from({ length: 1000 }, (_, i) => i);
+    expect(reineKopie({ a: liste })).toEqual({ a: liste });
   });
 });
