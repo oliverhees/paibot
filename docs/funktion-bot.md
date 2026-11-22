@@ -68,7 +68,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 ## Grenzen
 
 - Es gibt einen Bot. Weitere Bots anlegen ist nicht Teil dieser Version.
-- In dieser Version hat der Bot genau ein Werkzeug: in der Doku nachschlagen. Er führt sonst selbst nichts aus.
+- Als Werkzeug nutzt der Bot in dieser Version das Nachschlagen in der Doku. Weitere Werkzeuge kannst du noch nicht einschalten. Er führt sonst selbst nichts aus.
 - Eine kurze Rolle oder Beschreibung des Bots lässt sich noch nicht speichern; die Navigation zeigt „dein persönlicher Assistent“.
 - Die Ausgabegrenze je Antwort hat den Standard 4096 Token und ist höchstens 200 000 (das prüft auch die Datenbank; beim Update werden höhere Werte auf 200 000 gesetzt); die Einrichtung setzt keinen eigenen Wert. Die Seite „Bot“ zeigt sie nicht und bietet kein Feld dafür; beim Speichern schickt sie den gespeicherten Wert unverändert zurück. Ändern lässt sie sich in dieser Version nur über die Schnittstelle der App (`PUT /api/bot`).
 

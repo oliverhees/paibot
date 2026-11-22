@@ -174,3 +174,12 @@ describe("Was dein Bot darf", () => {
     ).toEqual(["instructions"]);
   });
 });
+
+describe("Text zum Werkzeug auf der Seite „Was dein Bot darf“", () => {
+  it("verspricht nichts über andere Werkzeuge: Der Besitzer kann weitere noch nicht einschalten", () => {
+    const text = t("bot.darf.werkzeug_doku", { name: "Pai" });
+    expect(text).toContain("Weitere Werkzeuge kannst du noch nicht einschalten.");
+    // Der Lauf kann bestätigte App-Werkzeuge nutzen; „hat keine anderen Werkzeuge“ stimmte nicht mehr.
+    expect(text).not.toContain("Andere Werkzeuge hat");
+  });
+});
