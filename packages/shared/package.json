@@ -26,7 +26,8 @@
     "./anzeigetext": "./src/anzeigetext.ts",
     "./regelliste": "./src/regelliste.ts",
     "./werkzeug": "./src/werkzeug.ts",
-    "./tor-fassung-3": "./src/tor-fassung-3.ts"
+    "./tor-fassung-3": "./src/tor-fassung-3.ts",
+    "./tor-fassung-4": "./src/tor-fassung-4.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

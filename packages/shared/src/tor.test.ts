@@ -34,6 +34,7 @@ import {
   UNSTORED_STANDARD_RULE_VERSIONS,
 } from "./gate";
 import { idSchema, newId } from "./id";
+import { TEAM_ACTION_TYPES } from "./tor-fassung-4";
 
 const botId = idSchema("bot").parse("bot_06f8k2m9qz3w7x1c4b5n8p0r2t");
 const conversationId = idSchema("conversation").parse("unt_06f8k2m9qz3w7x1c4b5n8p0r2t");
@@ -108,6 +109,7 @@ describe("Aktionen", () => {
       "app.werkzeuge_bestaetigen",
       "app.zugriff_setzen",
       "app.trennen",
+      ...TEAM_ACTION_TYPES,
     ]);
     const botActions = new Set(["modell.anfragen", "werkzeug.aufrufen", "werkzeug.ausfuehren"]);
     for (const type of ACTION_TYPES) {

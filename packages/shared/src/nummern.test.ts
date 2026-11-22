@@ -19,6 +19,7 @@ import {
   STANDARD_RULE_VERSIONS,
   UNSTORED_STANDARD_RULE_VERSIONS,
 } from "./gate";
+import { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "./tor-fassung-4";
 
 function bereich(prefix: string, von: number, bis: number, stellen: number): string[] {
   return Array.from(
@@ -30,14 +31,30 @@ function bereich(prefix: string, von: number, bis: number, stellen: number): str
 /** Nummern, die schon für etwas anderes vergeben sind. */
 const VERGEBEN = [
   ...bereich("V", 15, 18, 2),
-  ...bereich("V", 20, 37, 2),
-  ...bereich("G", 9, 15, 2),
-  ...bereich("G", 19, 39, 2),
+  ...bereich("V", 20, 24, 2),
+  "V-26",
+  "V-32",
+  "V-33",
+  "V-34",
+  "V-35",
+  "V-36",
+  ...bereich("V", 39, 41, 2),
+  ...bereich("G", 9, 14, 2),
+  ...bereich("G", 19, 31, 2),
+  "G-35",
+  "G-36",
+  "G-37",
+  "G-38",
+  "G-39",
+  ...bereich("G", 41, 46, 2),
   "D-02",
   "R-011",
   "R-013",
-  ...bereich("R", 15, 17, 3),
+  ...bereich("R", 15, 19, 3),
 ];
+
+/** Nummern, die Fassung 4 braucht (noch nicht in den lebenden Listen, siehe `tor-fassung-4`). */
+const FASSUNG_4 = [...Object.keys(LIMITS_BY_ID_4), ...Object.keys(PRECONDITIONS_4)];
 
 /** Nummern, die nie vergeben werden. */
 const NIE_VERGEBEN = ["R-012"];
@@ -93,5 +110,40 @@ describe("Nummern des Tors", () => {
     expect(Object.keys(PRECONDITIONS)).toEqual([...bereich("V", 1, 14, 2), "V-19", "V-38"]);
     expect(Object.keys(CAPS)).toEqual(["D-01"]);
     expect(REGELN.sort()).toEqual([...bereich("R", 1, 8, 3), "R-010", "R-014", "R-999"].sort());
+  });
+
+  it("Fassung 4: ihre Nummern sind weder vergeben noch doppelt noch schon in den lebenden Listen", () => {
+    expect(new Set(FASSUNG_4).size).toBe(FASSUNG_4.length);
+    for (const id of FASSUNG_4) {
+      expect(VERGEBEN, id).not.toContain(id);
+      expect(NIE_VERGEBEN, id).not.toContain(id);
+      expect(ALLE, id).not.toContain(id);
+    }
+    expect(Object.keys(LIMITS_BY_ID_4)).toEqual(["G-15", "G-32", "G-33", "G-34"]);
+    expect(Object.keys(PRECONDITIONS_4)).toEqual([
+      "V-25",
+      "V-27",
+      "V-28",
+      "V-29",
+      "V-30",
+      "V-31",
+      "V-37",
+      "V-42",
+      "V-43",
+      "V-44",
+    ]);
+  });
+
+  it("die für Fassung 5 und später festgelegten Nummern stehen unter den vergebenen", () => {
+    for (const id of [
+      ...bereich("G", 41, 46, 2),
+      ...bereich("V", 39, 41, 2),
+      "R-018",
+      "R-019",
+      "G-38",
+      "G-39",
+    ]) {
+      expect(VERGEBEN, id).toContain(id);
+    }
   });
 });

@@ -37,6 +37,9 @@ const ids = {
   toolId: newId("tool"),
 };
 
+const TEAM_ID = `tea_${"0".repeat(26)}`;
+const ENTWURF_ID = `ent_${"0".repeat(26)}`;
+
 const ARGS_DIGEST = `hmac-sha256:${"a7".repeat(32)}`;
 
 const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
@@ -86,6 +89,23 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
   "app.werkzeuge_bestaetigen": { appId: ids.appId, toolId: ids.toolId },
   "app.zugriff_setzen": { appId: ids.appId, botId: ids.botId },
   "app.trennen": { appId: ids.appId },
+  "bot.anlegen": { botId: ids.botId },
+  "bot.loeschen": { botId: ids.botId },
+  "bot.pausieren": { botId: ids.botId },
+  "team.anlegen": { teamId: TEAM_ID },
+  "team.aendern": { teamId: TEAM_ID },
+  "team.loeschen": { teamId: TEAM_ID },
+  "bot.team_setzen": { botId: ids.botId, teamId: TEAM_ID },
+  "team.entwurf_erstellen": { entwurfId: ENTWURF_ID },
+  "team.entwurf_verwerfen": { entwurfId: ENTWURF_ID },
+  "team.entwurf_anlegen": { entwurfId: ENTWURF_ID },
+  "team.entwurf_zuruecknehmen": { entwurfId: ENTWURF_ID },
+  "faden.anlegen": {
+    conversationId: ids.conversationId,
+    teamId: TEAM_ID,
+    zettelDigest: `sha256:${"3d".repeat(32)}`,
+  },
+  "einstellung.stabschef_setzen": { installationId: ids.installationId },
 };
 
 /**
@@ -237,6 +257,45 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
   },
   "app.zugriff_setzen": { credential: "sitzung", access: "lesen", previousAccess: "keiner" },
   "app.trennen": { credential: "sitzung", tokenSet: true },
+  "bot.anlegen": { credential: "sitzung", botsAfter: 2, maxBots: 50 },
+  "bot.loeschen": { credential: "sitzung", isDefaultBot: false, botRunActive: false },
+  "bot.pausieren": { credential: "sitzung", paused: true, wasPaused: false },
+  "team.anlegen": { credential: "sitzung" },
+  "team.aendern": { credential: "sitzung", fields: ["name"], teamExists: true, leadInTeam: true },
+  "team.loeschen": { credential: "sitzung", teamExists: true },
+  "bot.team_setzen": { credential: "sitzung", teamExists: true },
+  "team.entwurf_erstellen": {
+    credential: "sitzung",
+    herkunft: "vorlage",
+    offeneEntwuerfe: 0,
+    maxOffeneEntwuerfe: 5,
+    entwuerfeHeute: 0,
+    maxEntwuerfeProTag: 20,
+    killSwitch: false,
+  },
+  "team.entwurf_verwerfen": { credential: "sitzung", entwurfOffen: true },
+  "team.entwurf_anlegen": {
+    credential: "sitzung",
+    entwurfOffen: true,
+    entwurfDigest: `sha256:${"4e".repeat(32)}`,
+    seenEntwurfDigest: `sha256:${"4e".repeat(32)}`,
+    namesFree: true,
+    modelsAvailable: true,
+    contactInDraft: true,
+    draftBots: 3,
+    maxDraftBots: 6,
+    botsAfter: 4,
+    maxBots: 50,
+    killSwitch: false,
+  },
+  "team.entwurf_zuruecknehmen": { credential: "sitzung", allUnused: true, allUnchanged: true },
+  "faden.anlegen": {
+    credential: "sitzung",
+    teamExists: true,
+    zettelChars: 120,
+    maxZettelChars: 4000,
+  },
+  "einstellung.stabschef_setzen": { credential: "sitzung", on: true, wasOn: false },
 };
 
 /**

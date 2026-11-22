@@ -26,6 +26,7 @@ import {
   TOOL_CALL_STATUSES,
   toolCallSchema,
 } from "./objects";
+import { TEAM_ACTION_TYPES } from "./tor-fassung-4";
 import {
   type ToolEnvelope,
   type ToolResultMessage,
@@ -89,7 +90,11 @@ describe("Aktion werkzeug.aufrufen", () => {
   it("steht in ACTIONS; gespeichert werden alle Aktionen außer den noch nicht speicherbaren", () => {
     expect(TOOL_ACTION_TYPES).toEqual(["werkzeug.aufrufen", "werkzeug.ausfuehren"]);
     expect(ACTION_TYPES).toContain("werkzeug.aufrufen");
-    expect(UNSTORED_ACTION_TYPES).toEqual(["werkzeug.freigeben", "werkzeug.ausfuehren"]);
+    expect(UNSTORED_ACTION_TYPES).toEqual([
+      "werkzeug.freigeben",
+      "werkzeug.ausfuehren",
+      ...TEAM_ACTION_TYPES,
+    ]);
     expect(STORED_ACTION_TYPES).toEqual(
       ACTION_TYPES.filter((type) => !(UNSTORED_ACTION_TYPES as readonly string[]).includes(type)),
     );
