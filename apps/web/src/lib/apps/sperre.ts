@@ -28,9 +28,25 @@ function sqlStatus(fehler: unknown): string | undefined {
 }
 
 /**
+ * Macht aus einem Fehler „Sperre nicht zu bekommen“ (`lock_not_available`, 55P03) den Fehler
+ * `limit_erreicht` mit einem Satz, der sagt, was zu tun ist; jeden anderen Fehler gibt es
+ * unverändert zurück.
+ */
+export function sperrfehlerAlsLimit(
+  fehler: unknown,
+  ausweg = "Warte einen Moment und trenne sie dann noch einmal.",
+): unknown {
+  if (sqlStatus(fehler) !== "55P03") return fehler;
+  return new PaiBotError("limit_erreicht", {
+    text: "Die App wird gerade abgeglichen oder geändert.",
+    ausweg,
+    retryAfterSeconds: 5,
+  });
+}
+
+/**
  * Führt `arbeit` in einer Transaktion mit begrenzter Wartezeit auf Sperren aus. Wartet sie zu
- * lange (`lock_not_available`, 55P03), endet es mit `limit_erreicht` und einem Satz, der sagt, was
- * zu tun ist; die Transaktion wird zurückgenommen.
+ * lange (55P03), endet es mit `limit_erreicht`; die Transaktion wird zurückgenommen.
  */
 export async function mitSperrzeit<T>(
   db: Database,
@@ -42,13 +58,6 @@ export async function mitSperrzeit<T>(
       return arbeit(tx);
     });
   } catch (fehler) {
-    if (sqlStatus(fehler) === "55P03") {
-      throw new PaiBotError("limit_erreicht", {
-        text: "Die App wird gerade abgeglichen oder geändert.",
-        ausweg: "Warte einen Moment und trenne sie dann noch einmal.",
-        retryAfterSeconds: 5,
-      });
-    }
-    throw fehler;
+    throw sperrfehlerAlsLimit(fehler);
   }
 }
