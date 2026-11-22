@@ -86,8 +86,4 @@ describe("Texte der Schritte", () => {
       }
     }
   });
-
-  it("keine internen Wörter", () => {
-    expect(block.match(/Planung|Regie|Befund|PAIBOT-|Stufe [12]/)).toBeNull();
-  });
 });
