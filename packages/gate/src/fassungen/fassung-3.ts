@@ -14,8 +14,9 @@
 // Alles hier ist eine Kopie, kein Verweis auf geteilte Schemas und keiner auf Fassung 1 oder 2:
 // Ändert sich später ein geteiltes Schema, bleibt Fassung 3 gleich. Importiert werden nur Grund-Schemas,
 // die per Definition nie geändert werden (Kennungen, Prüfsummen-Formate), Typen und Texte.
+// Die Aktionen und Arten von Akteuren stehen hier als feste Liste, nicht aus den lebenden Verträgen:
+// Eine später neu hinzukommende Aktion berührt Fassung 3 weder im Typ noch im Verhalten.
 
-import type { ActionType, ActorKind } from "@paibot/shared/aktionen";
 import type { ErrorCode } from "@paibot/shared/fehler";
 import { hmacDigestSchema, sha256DigestSchema } from "@paibot/shared/grundtypen";
 import { ID_BODY_PATTERN, ID_PREFIX, idSchema } from "@paibot/shared/ids";
@@ -89,6 +90,9 @@ const appAuthKind = z.enum(["keine", "token"]);
 const appAccess = z.enum(["keiner", "lesen"]);
 const appToolClass = z.enum(["lesen", "schreiben", "gesperrt"]);
 const appToolStatus = z.enum(["neu", "bestaetigt", "geaendert", "entfernt", "gesperrt"]);
+
+/** Arten von Akteuren der Fassung 3, als feste Liste. */
+type ActorKind = "besitzer" | "bot";
 
 const ACTOR_PATTERN = new RegExp(`^(besitzer|bot:${ID_PREFIX.bot}_${ID_BODY_PATTERN})$`);
 const ACTOR_FACT = "akteur";
@@ -198,8 +202,33 @@ function withTokenRule<T extends { facts: z.ZodType }>(spec: T): T {
   };
 }
 
-/** Aktionen der Fassung 2: alle heutigen außer `werkzeug.freigeben` und `werkzeug.ausfuehren`. */
-type Action2 = Exclude<ActionType, "werkzeug.freigeben" | "werkzeug.ausfuehren">;
+/** Aktionen der Fassung 2, als feste Liste (ohne `werkzeug.freigeben` und `werkzeug.ausfuehren`). */
+type Action2 =
+  | "einrichtung.abschliessen"
+  | "zugang.anmelden"
+  | "zugang.abmelden"
+  | "zugang.alle_abmelden"
+  | "zugang.passwort_aendern"
+  | "anbieter.speichern"
+  | "anbieter.loeschen"
+  | "modell.waehlen"
+  | "bot.aendern"
+  | "schleuse.umschalten"
+  | "einstellung.aendern"
+  | "unterhaltung.anlegen"
+  | "unterhaltung.umbenennen"
+  | "unterhaltung.loeschen"
+  | "nachricht.senden"
+  | "modell.anfragen"
+  | "lauf.abbrechen"
+  | "belege.exportieren"
+  | "werkzeug.aufrufen"
+  | "geraet.hinzufuegen"
+  | "geraet.entfernen"
+  | "geraet.bestaetigen"
+  | "notaus.umschalten"
+  | "unterhaltung.exportieren"
+  | "antwort.neu_erzeugen";
 
 /** Neue Aktionen der Fassung 3. */
 type AppAction3 =
