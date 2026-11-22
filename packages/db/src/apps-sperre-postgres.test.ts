@@ -16,6 +16,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import { BelegKette, tokenV2 } from "./apps-testhilfe";
 import { createDb, type Database } from "./client";
 import { apps, bots, settings, withTransaction } from "./repo";
+import { ZUGRIFF_SPERR_WARTEZEIT_MS } from "./repo/apps";
 import {
   createPostgresTestDatabase,
   type PostgresTestDatabase,
@@ -139,6 +140,57 @@ describe.skipIf(BASE_URL === undefined)(
       await halter.transaktion;
       expect((await apps.get(dbA, app.id))?.state).toBe("verbunden");
       expect(await apps.currentAccess(dbA, app.id, botId)).toBe("lesen");
+    });
+
+    it("setAccess wartet selbst nur kurz: Hält ein anderer das Trennen offen, endet es nach der Wartezeit mit 55P03", async () => {
+      const { dbA, dbB, botId, app, actionId } = await aufbau("sperre3");
+      // A trennt und hält die Transaktion offen: Die Zeile der App ist gesperrt.
+      let freigeben: () => void = () => undefined;
+      const gehalten = new Promise<void>((fertig) => {
+        freigeben = fertig;
+      });
+      let getrennt: () => void = () => undefined;
+      const istGetrennt = new Promise<void>((fertig) => {
+        getrennt = fertig;
+      });
+      const halter = withTransaction(dbA, async (tx) => {
+        await apps.disconnect(tx, app.id);
+        getrennt();
+        await gehalten;
+      });
+      await istGetrennt;
+
+      const start = Date.now();
+      let code: string | undefined;
+      try {
+        await withTransaction(dbB, (tx) =>
+          apps.setAccess(tx, { appId: app.id, botId, access: "lesen", actionId }),
+        );
+      } catch (fehler) {
+        const e = fehler as { code?: string; cause?: { code?: string } };
+        code = e.code ?? e.cause?.code;
+      }
+      const dauer = Date.now() - start;
+      // A hält länger als die Wartezeit, B endet davor und wartet nicht, bis A fertig ist.
+      expect(code).toBe("55P03");
+      expect(dauer).toBeGreaterThanOrEqual(ZUGRIFF_SPERR_WARTEZEIT_MS - 500);
+      expect(dauer).toBeLessThan(ZUGRIFF_SPERR_WARTEZEIT_MS + 2000);
+
+      freigeben();
+      await halter;
+    });
+
+    it("nach setAccess gilt in derselben Transaktion wieder die Wartezeit von vorher", async () => {
+      const { dbA, botId, app, actionId } = await aufbau("sperre4");
+      const wartezeit = await withTransaction(dbA, async (tx) => {
+        await tx.execute("set local lock_timeout = '7s'");
+        await apps.setAccess(tx, { appId: app.id, botId, access: "lesen", actionId });
+        const zeilen = (await tx.execute("show lock_timeout")) as unknown as {
+          lock_timeout: string;
+        }[];
+        return zeilen[0]?.lock_timeout;
+      });
+      expect(wartezeit).toBe("7s");
     });
   },
 );

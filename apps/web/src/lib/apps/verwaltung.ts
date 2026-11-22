@@ -21,7 +21,7 @@ import { zielAus } from "./adresse";
 import { appAnsicht, werkzeugAnsicht } from "./anzeige";
 import { appDienste } from "./dienste";
 import { fehlerOhneFremdtext, pruefbedingungAlsFeld } from "./fehler";
-import { mitSperrzeit } from "./sperre";
+import { mitSperrzeit, sperrfehlerAlsLimit } from "./sperre";
 import { tokenLesen, tokenPruefen, tokenVerschluesseln } from "./token";
 
 type App = repo.apps.App;
@@ -272,7 +272,12 @@ export async function appZugriffSetzen(k: RoutenKontext<"appZugriffSetzen">) {
           });
           return { value: undefined, result: { status: "ok" } };
         } catch (fehler) {
-          throw fehlerOhneFremdtext(fehler);
+          throw fehlerOhneFremdtext(
+            sperrfehlerAlsLimit(
+              fehler,
+              "Warte einen Moment und setze den Zugriff dann noch einmal.",
+            ),
+          );
         }
       },
       { db: tx },

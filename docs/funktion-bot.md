@@ -32,9 +32,9 @@ Du willst, dass dein Bot in deinem Ton antwortet und weiß, wofür du ihn brauch
 
    ![Nach „Speichern“: „Gespeichert. Kai nutzt die neuen Angaben ab der nächsten Antwort.“; die Seitenleiste zeigt „Kai“](assets/screenshots/bot-gespeichert.png)
 8. Unter „Modell“ steht, mit welchem Modell dein Bot arbeitet. „Modell ändern“ führt zur Seite „Modell und Anbieter“.
-9. Unter „Was dein Bot darf“ siehst du, was er nach den geltenden Regeln darf, wofür er fragen muss und was er nie darf. Dort steht auch „Bot liest in der Doku seiner Version“ (R-010): Damit darf der Bot in der Doku dieser PaiBot-Version nachschlagen, ohne zu fragen und jedes Mal mit Beleg; das Werkzeug selbst liest nur die mitgelieferte Doku und ruft nichts im Netz auf; was es findet, geht wie der übrige Chat an den Anbieter deines Modells (siehe [Chat](funktion-chat.md), „Pai schlägt in der Doku nach“). Dazu steht dort „Bot liest in Apps mit Lese-Zugriff“ (R-014) mit dem Zusatz „Apps lassen sich in dieser Version noch nicht verbinden“: Die Regel gehört zu PaiBot, du kannst aber noch keine App verbinden, also liest Pai auch in keiner (siehe [Das Tor](funktion-tor.md), „Pai liest in Apps“). „Regeln und Belege ansehen“ führt zu den Belegen.
+9. Unter „Was dein Bot darf“ siehst du, was er nach den geltenden Regeln darf, wofür er fragen muss und was er nie darf. Dort steht auch „Bot liest in der Doku seiner Version“ (R-010): Damit darf der Bot in der Doku dieser PaiBot-Version nachschlagen, ohne zu fragen und jedes Mal mit Beleg; das Werkzeug selbst liest nur die mitgelieferte Doku und ruft nichts im Netz auf; was es findet, geht wie der übrige Chat an den Anbieter deines Modells (siehe [Chat](funktion-chat.md), „Pai schlägt in der Doku nach“). Dazu steht dort „Bot liest in Apps mit Lese-Zugriff“ (R-014) mit dem Zusatz „Apps lassen sich in der Oberfläche noch nicht verbinden“: Die Regel gehört zu PaiBot, aber in der Oberfläche gibt es noch keine Stelle, an der du eine App verbindest, also liest Pai für dich auch in keiner (siehe [Das Tor](funktion-tor.md), „Pai liest in Apps“). „Regeln und Belege ansehen“ führt zu den Belegen.
 
-   ![Abschnitte „Modell“ und „Was dein Bot darf“: Darf, mit Beleg (R-002, R-010 und R-014 mit dem Zusatz „Apps lassen sich in dieser Version noch nicht verbinden“), Fragt vorher (R-005), Darf nie (G-01) und der Link „Regeln und Belege ansehen“](assets/screenshots/bot-darf.png)
+   ![Abschnitte „Modell“ und „Was dein Bot darf“: Darf, mit Beleg (R-002, R-010 und R-014 mit dem Zusatz „Apps lassen sich in der Oberfläche noch nicht verbinden“), Fragt vorher (R-005), Darf nie (G-01) und der Link „Regeln und Belege ansehen“](assets/screenshots/bot-darf.png)
 
 Beispiel für eine Anweisung:
 
@@ -68,7 +68,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 ## Grenzen
 
 - Es gibt einen Bot. Weitere Bots anlegen ist nicht Teil dieser Version.
-- In dieser Version hat der Bot genau ein Werkzeug: in der Doku nachschlagen. Er führt sonst selbst nichts aus.
+- Als Werkzeug nutzt der Bot in dieser Version das Nachschlagen in der Doku. Weitere Werkzeuge kannst du noch nicht einschalten. Er führt sonst selbst nichts aus.
 - Eine kurze Rolle oder Beschreibung des Bots lässt sich noch nicht speichern; die Navigation zeigt „dein persönlicher Assistent“.
 - Die Ausgabegrenze je Antwort hat den Standard 4096 Token und ist höchstens 200 000 (das prüft auch die Datenbank; beim Update werden höhere Werte auf 200 000 gesetzt); die Einrichtung setzt keinen eigenen Wert. Die Seite „Bot“ zeigt sie nicht und bietet kein Feld dafür; beim Speichern schickt sie den gespeicherten Wert unverändert zurück. Ändern lässt sie sich in dieser Version nur über die Schnittstelle der App (`PUT /api/bot`).
 

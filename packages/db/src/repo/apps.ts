@@ -604,9 +604,30 @@ export interface AccessSet {
   actionId: ActionId;
 }
 
+/** Längste Wartezeit von `setAccess` auf die Zeile der App in Millisekunden. */
+export const ZUGRIFF_SPERR_WARTEZEIT_MS = 3000;
+
+/** Die jetzt eingestellte Wartezeit auf Sperren (`lock_timeout`) als Text, etwa `0` oder `3s`. */
+async function aktuelleSperrzeit(tx: Database): Promise<string> {
+  const antwort = (await tx.execute(
+    sql`select pg_catalog.current_setting('lock_timeout') as wert`,
+  )) as unknown;
+  const zeilen = Array.isArray(antwort) ? antwort : ((antwort as { rows?: unknown[] }).rows ?? []);
+  const wert = (zeilen[0] as { wert?: unknown } | undefined)?.wert;
+  return typeof wert === "string" ? wert : "0";
+}
+
 /** Setzt den Zugriff eines Bots auf eine verbundene App (hängt eine Zeile an). */
 export async function setAccess(db: Database, input: AccessSet): Promise<void> {
   await withTransaction(db, async (tx) => {
+    // Höchstens kurz auf die Zeile der App warten: Wer hier wartet, hält schon die Sperre der
+    // Beleg-Kette (die Entscheidung steht davor), und mit ihr wartet sonst jeder Beleg im System.
+    // Nach Ablauf endet es mit `lock_not_available` (55P03). Der Wert gilt nur bis zum Ende dieser
+    // Funktion; danach gilt wieder, was vorher eingestellt war.
+    const vorher = await aktuelleSperrzeit(tx);
+    await tx.execute(
+      sql`select pg_catalog.set_config('lock_timeout', ${`${ZUGRIFF_SPERR_WARTEZEIT_MS}ms`}, true)`,
+    );
     // Die Zeile der App wird gesperrt (`for share`), bis die Transaktion endet: Trennt eine andere
     // Verbindung die App gleichzeitig, wartet sie, und die neue Zeile gehört sicher zu einer
     // Verbindung, die noch galt. Ohne die Sperre könnte sie nach dem Lesen trennen (und neu
@@ -625,6 +646,7 @@ export async function setAccess(db: Database, input: AccessSet): Promise<void> {
         }),
       standardFehler,
     );
+    await tx.execute(sql`select pg_catalog.set_config('lock_timeout', ${vorher}, true)`);
   });
 }
 
