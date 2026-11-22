@@ -14,23 +14,19 @@ import { createTestDb } from "@paibot/db/testing";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import { type ActionId, newId, type RunId } from "@paibot/shared/ids";
 import type { Run } from "@paibot/shared/objekte";
-import { t } from "@paibot/shared/texte";
 import { describe, expect, it } from "vitest";
 import { createFakeMotor } from "../testing/fake-motor";
 import { setupRun } from "../testing/lauf-umgebung";
 import { createTestTools } from "../testing/werkzeuge";
-import { DOKU_TOOL_KEY } from "../werkzeuge/doku/werkzeug";
 import { createToolRegistry } from "../werkzeuge/register";
 import * as nahtstellen from "./nahtstellen";
 import {
-  type AufrufErgebnis,
   addiereToken,
   ausgabeGrenze,
   kappeToken,
   kettenStand,
   laufAusloeser,
   MAX_REPORTED_TOKENS,
-  nachAufrufen,
   schrittFakten,
   tokensHeute,
   untrustedInput,
@@ -40,14 +36,8 @@ import {
 const run = { id: newId("run") } as unknown as Run;
 
 describe("Nahtstellen", () => {
-  it("es gibt genau je eine Funktion werkzeugeFuerLauf, kettenStand, untrustedInput, nachFrage, nachAufrufen", () => {
-    for (const name of [
-      "werkzeugeFuerLauf",
-      "kettenStand",
-      "untrustedInput",
-      "nachFrage",
-      "nachAufrufen",
-    ]) {
+  it("es gibt genau je eine Funktion werkzeugeFuerLauf, kettenStand, untrustedInput, nachFrage", () => {
+    for (const name of ["werkzeugeFuerLauf", "kettenStand", "untrustedInput", "nachFrage"]) {
       expect(typeof (nahtstellen as Record<string, unknown>)[name]).toBe("function");
     }
     // Keine andere Quelle der Lauf-Steuerung definiert sie (Gegenprobe: zweite Definition → rot).
@@ -56,7 +46,7 @@ describe("Nahtstellen", () => {
       if (!existsSync(new URL(file, dir))) continue;
       const text = readFileSync(new URL(file, dir), "utf8");
       expect(text).not.toMatch(
-        /function (werkzeugeFuerLauf|kettenStand|untrustedInput|nachFrage|nachAufrufen|laufAusloeser|schrittFakten)\b/,
+        /function (werkzeugeFuerLauf|kettenStand|untrustedInput|nachFrage|laufAusloeser|schrittFakten)\b/,
       );
     }
   });
@@ -68,11 +58,7 @@ describe("Nahtstellen", () => {
     expect(kettenStand(run)).not.toBe(kettenStand(run));
   });
 
-  it("nachAufrufen liefert immer „weiter“, laufAusloeser chat", () => {
-    expect(nachAufrufen([])).toEqual({ art: "weiter" });
-    expect(nachAufrufen([{ status: "ok" }, { status: "abgelehnt", code: "abgelehnt" }])).toEqual({
-      art: "weiter",
-    });
+  it("laufAusloeser liefert chat", () => {
     expect(laufAusloeser(run)).toBe("chat");
   });
 });
@@ -218,95 +204,5 @@ describe("schrittFakten", () => {
         inputChars: 400,
       }),
     ).toBe(1000);
-  });
-});
-
-// Die Gegenprobe im Kommentar ist die Änderung, die den Fall rot machen muss.
-describe("Nahtstelle 5 nach dem Nachschlagen in der Doku", () => {
-  const STAND = "0.3.0-dev+0123456789ab";
-  const fest = {
-    art: "fest",
-    textKey: "werkzeug.doku.nichts_gefunden",
-    werte: { stand: "0.3.0-dev" },
-  };
-  const nichts: AufrufErgebnis = {
-    status: "ok",
-    toolKey: DOKU_TOOL_KEY,
-    ausgefuehrt: true,
-    doku: { stand: STAND, gefunden: 0 },
-  };
-  const treffer: AufrufErgebnis = { ...nichts, doku: { stand: STAND, gefunden: 2 } };
-  const abgelehnt = (code: AufrufErgebnis["code"]): AufrufErgebnis => ({
-    status: "abgelehnt",
-    code,
-    toolKey: DOKU_TOOL_KEY,
-    ausgefuehrt: false,
-  });
-  const fehler = (code: AufrufErgebnis["code"]): AufrufErgebnis => ({
-    status: "fehler",
-    code,
-    toolKey: DOKU_TOOL_KEY,
-    ausgefuehrt: true,
-  });
-
-  it("ein ausgeführter Doku-Aufruf ohne Treffer: festes Ende mit dem Satz und der Version", () => {
-    expect(nachAufrufen([nichts])).toEqual(fest);
-  });
-
-  it("zwei ausgeführte Doku-Aufrufe ohne Treffer: festes Ende", () => {
-    expect(nachAufrufen([nichts, nichts])).toEqual(fest);
-  });
-
-  // Gegenprobe: nur prüfen, ob irgendein Aufruf nichts fand → hier festes Ende.
-  it("einer findet etwas, einer nicht: weiter", () => {
-    expect(nachAufrufen([nichts, treffer])).toEqual({ art: "weiter" });
-    expect(nachAufrufen([treffer, nichts])).toEqual({ art: "weiter" });
-  });
-
-  it("abgelehnter Aufruf (V-13, V-14, G-17, Not-Aus) und einer ohne Treffer: festes Ende", () => {
-    for (const code of [
-      "werkzeug_eingabe_ungueltig",
-      "zu_viele_aufrufe",
-      "limit_erreicht",
-      "angehalten",
-    ] as const) {
-      expect(nachAufrufen([abgelehnt(code), nichts]), code).toEqual(fest);
-    }
-  });
-
-  // Gegenprobe: abgelehnte Aufrufe als „nichts gefunden“ zählen → hier festes Ende.
-  it("nur abgelehnte Doku-Aufrufe: weiter", () => {
-    expect(nachAufrufen([abgelehnt("werkzeug_eingabe_ungueltig")])).toEqual({ art: "weiter" });
-    expect(nachAufrufen([abgelehnt("angehalten"), abgelehnt("zu_viele_aufrufe")])).toEqual({
-      art: "weiter",
-    });
-  });
-
-  it("Doku-Aufruf mit Werkzeug-Fehler oder Zeitgrenze: weiter", () => {
-    expect(nachAufrufen([fehler("werkzeug_fehler")])).toEqual({ art: "weiter" });
-    expect(nachAufrufen([fehler("werkzeug_zeitgrenze"), nichts])).toEqual({ art: "weiter" });
-  });
-
-  it("ohne Doku-Aufruf: weiter wie bisher", () => {
-    const anderes: AufrufErgebnis = {
-      status: "ok",
-      toolKey: "eingebaut/test_lesen",
-      ausgefuehrt: true,
-    };
-    expect(nachAufrufen([anderes])).toEqual({ art: "weiter" });
-    expect(nachAufrufen([{ ...nichts, toolKey: "eingebaut/test_lesen" }])).toEqual({
-      art: "weiter",
-    });
-  });
-
-  it("der Satz bekommt die Version ohne Prüfsumme; der Schlüssel hat genau den Platzhalter stand", () => {
-    expect(
-      nachAufrufen([{ ...nichts, doku: { stand: "1.2.3+abcdefabcdef", gefunden: 0 } }]),
-    ).toMatchObject({
-      werte: { stand: "1.2.3" },
-    });
-    const satz = t("werkzeug.doku.nichts_gefunden", { stand: "1.2.3" });
-    expect(satz).toContain("(1.2.3)");
-    expect(satz).not.toContain("{");
   });
 });

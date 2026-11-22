@@ -25,7 +25,7 @@ export interface BelegFelder {
  * Ergebnis des Nachschlagens aus einer gespeicherten Hülle, wenn sie eins ist. Eine gekürzte Hülle
  * zählt nur, wenn der Doku-Stand darin noch vollständig ist (Form `<Version>+<12 Hex>`): Bleibt
  * im Schritt kaum Platz, kürzt das Kürzen auch diese Angabe, und ein beschnittener Stand dürfte
- * weder im Beleg noch im festen Satz stehen. Dann ist das Ergebnis `undefined`, der Lauf geht
+ * nicht in den Beleg gehören. Dann ist das Ergebnis `undefined`, der Lauf geht
  * weiter, und das Modell sieht die gekürzte Hülle.
  */
 export function dokuAusHuelle(

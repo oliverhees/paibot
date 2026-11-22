@@ -50,6 +50,9 @@ const trefferSchema = z.strictObject({
   text: z.string().max(MAX_TEXT_JE_ABSCHNITT),
 });
 
+/** Name der durchsuchten Quelle, wie ihn das Modell im leeren Ergebnis sieht. */
+export const DOKU_QUELLE = "Doku von PaiBot";
+
 /** Ergebnis: gefundene Abschnitte mit dem Doku-Stand oder „nichts gefunden“. */
 export const dokuErgebnisSchema = z.discriminatedUnion("status", [
   z.strictObject({
@@ -60,6 +63,10 @@ export const dokuErgebnisSchema = z.discriminatedUnion("status", [
   z.strictObject({
     status: z.literal("nichts_gefunden"),
     stand: z.string().max(80),
+    /** Wo gesucht wurde. */
+    quelle: z.literal(DOKU_QUELLE),
+    /** Zahl der Fundstellen; hier immer 0. */
+    gefunden: z.literal(0),
   }),
 ]);
 export type DokuErgebnis = z.infer<typeof dokuErgebnisSchema>;
@@ -102,7 +109,7 @@ export function dokuNachschlagen(
       }));
       const output: DokuErgebnis =
         abschnitte.length === 0
-          ? { status: "nichts_gefunden", stand: index.stand }
+          ? { status: "nichts_gefunden", stand: index.stand, quelle: DOKU_QUELLE, gefunden: 0 }
           : { status: "gefunden", stand: index.stand, abschnitte };
       return { status: "ok", output: output as DokuErgebnis & JsonValue };
     },

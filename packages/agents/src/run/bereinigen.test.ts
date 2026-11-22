@@ -8,16 +8,19 @@
  * @since     2026-11-22
  */
 
+import { boundedJsonSchema } from "@paibot/shared/belege";
 import { describe, expect, it } from "vitest";
 import { TEST_FOREIGN_CLEAN, TEST_FOREIGN_TEXT } from "../testing/werkzeuge";
 import {
   cleanJson,
   cleanText,
   hasUnwanted,
+  JSON_PRUEFUNG_GRENZEN,
   jsonHasKeyClash,
   jsonHasNonInteger,
   jsonHasProtoKey,
   jsonHasUnwanted,
+  jsonUeberGrenzen,
   RAW_NAME_MAX_CHARS,
   rawToolName,
 } from "./bereinigen";
@@ -243,5 +246,86 @@ describe("Sichtbare Folgen des Entfernens", () => {
     const sichtbar = "\u00e4\u00f6\u00fc\u00df \u20ac \u2192\u2190 \u2713\u2714 \u{1f44d}\u{1f3fd}";
     expect(cleanText(sichtbar)).toBe(sichtbar);
     expect(hasUnwanted(sichtbar)).toBe(false);
+  });
+});
+
+/** `{ a: { a: … 1 } }` mit genau `levels` ineinander liegenden Objekten (ohne Rekursion gebaut). */
+function nested(levels: number): unknown {
+  let value: unknown = 1;
+  for (let i = 0; i < levels; i++) value = { a: value };
+  return value;
+}
+
+// Gegenprobe: `jsonUeberGrenzen` immer `false` zurückgeben → die Fälle „zu tief“, „zu groß“ und
+// „Kreis“ werden rot.
+describe("Vorprüfung ohne Rekursion (Tiefe, Größe, Kreise)", () => {
+  it("Tiefe: genau an der festen Grenze erlaubt, eine Ebene darüber abgelehnt (wie boundedJsonSchema)", () => {
+    const depth = JSON_PRUEFUNG_GRENZEN.depth;
+    expect(jsonUeberGrenzen(nested(depth))).toBe(false);
+    expect(jsonUeberGrenzen(nested(depth + 1))).toBe(true);
+    // Dieselbe Grenze wie in der Hülle.
+    expect(boundedJsonSchema.safeParse(nested(depth)).success).toBe(true);
+    expect(boundedJsonSchema.safeParse(nested(depth + 1)).success).toBe(false);
+    // Listen zählen als Ebene wie Objekte.
+    let list: unknown = 1;
+    for (let i = 0; i < depth + 1; i++) list = [list];
+    expect(jsonUeberGrenzen(list)).toBe(true);
+  });
+
+  it("10 000 Ebenen: abgelehnt, ohne zu werfen", () => {
+    const deep = nested(10_000);
+    expect(() => jsonUeberGrenzen(deep)).not.toThrow();
+    expect(jsonUeberGrenzen(deep)).toBe(true);
+  });
+
+  it("Knoten: eine Liste genau an der Grenze erlaubt, einer mehr abgelehnt; Riesenlisten sofort", () => {
+    const { nodes } = JSON_PRUEFUNG_GRENZEN;
+    expect(jsonUeberGrenzen(new Array<number>(nodes - 1).fill(1))).toBe(false);
+    expect(jsonUeberGrenzen(new Array<number>(nodes).fill(1))).toBe(true);
+    // Eine Liste mit riesiger Länge (nur Lücken) wird nicht Eintrag für Eintrag durchlaufen.
+    expect(jsonUeberGrenzen(new Array<number>(2 ** 31))).toBe(true);
+  });
+
+  it("1 Million Schlüssel: abgelehnt", () => {
+    const wide: Record<string, number> = {};
+    for (let i = 0; i < 1_000_000; i++) wide[`k${i}`] = i;
+    expect(jsonUeberGrenzen(wide)).toBe(true);
+  });
+
+  it("Zeichen: genau an der Grenze erlaubt, eines mehr abgelehnt (Zeichenketten und Schlüssel zählen)", () => {
+    const { chars } = JSON_PRUEFUNG_GRENZEN;
+    expect(jsonUeberGrenzen("x".repeat(chars))).toBe(false);
+    expect(jsonUeberGrenzen("x".repeat(chars + 1))).toBe(true);
+    expect(jsonUeberGrenzen({ ["k".repeat(chars)]: 1 })).toBe(false);
+    expect(jsonUeberGrenzen({ ["k".repeat(chars)]: "v" })).toBe(true);
+  });
+
+  it("Kreise enden an der Grenze, statt zu hängen: Objekt, Liste und gegenseitig", () => {
+    const self: Record<string, unknown> = {};
+    self.self = self;
+    expect(jsonUeberGrenzen(self)).toBe(true);
+    const list: unknown[] = [];
+    list.push(list, list);
+    expect(jsonUeberGrenzen(list)).toBe(true);
+    const a: Record<string, unknown> = {};
+    const b: Record<string, unknown> = { a };
+    a.b = b;
+    expect(jsonUeberGrenzen(a)).toBe(true);
+  });
+
+  it("gültige Werte bleiben gültig: einfache Werte, Umlaute, flache und verschachtelte Formen", () => {
+    for (const value of [
+      null,
+      true,
+      0,
+      "text",
+      "",
+      { q: "Käse" },
+      [],
+      {},
+      { a: [1, { b: [null] }] },
+    ]) {
+      expect(jsonUeberGrenzen(value)).toBe(false);
+    }
   });
 });

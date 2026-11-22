@@ -28,7 +28,7 @@ import { TOOL_NAME_PATTERN, type ToolKind, type ToolSource } from "@paibot/share
 import { t } from "@paibot/shared/texte";
 import type { GatePermit } from "@paibot/shared/tor";
 import type { ToolEnvelope, ToolKey } from "@paibot/shared/werkzeug";
-import { belegFelder, dokuAusHuelle } from "../werkzeuge/beleg-felder";
+import { belegFelder } from "../werkzeuge/beleg-felder";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
 import {
   cleanJson,
@@ -37,6 +37,7 @@ import {
   jsonHasNonInteger,
   jsonHasProtoKey,
   jsonHasUnwanted,
+  jsonUeberGrenzen,
   rawToolName,
 } from "./bereinigen";
 import {
@@ -147,7 +148,9 @@ export function prepareCalls(
     let inputValid = call.callId.length >= 1 && call.callId.length <= MAX_CALL_ID_CHARS;
     let issue: PreparedCall["issue"];
     let accepted: JsonValue | undefined;
-    if (call.rawInput === undefined && isPlainObject(call.input)) {
+    // Als Allererstes, vor jedem rekursiven Prüfen oder Bereinigen: zu tief oder zu groß → ungültig.
+    const oversize = call.rawInput === undefined && jsonUeberGrenzen(call.input);
+    if (call.rawInput === undefined && !oversize && isPlainObject(call.input)) {
       const value = call.input;
       if (jsonHasUnwanted(value) || jsonHasNonInteger(value)) {
         inputValid = false;
@@ -170,7 +173,8 @@ export function prepareCalls(
     const actionId = newId("action") as ActionId;
     const toolKey = tool?.definition.key ?? placeholder.toolKey;
     const toolDigest = tool?.toolDigest ?? placeholder.toolDigest;
-    const fullText = inputText(call);
+    // Ein zu tiefer oder zu großer Wert wird nicht zu Text gemacht (`JSON.stringify` würde werfen).
+    const fullText = oversize ? "" : inputText(call);
     let args: JsonValue = inputValid && accepted !== undefined ? accepted : { roh: fullText };
     let argsDigest: HmacDigest;
     try {
@@ -304,15 +308,10 @@ export async function invokeTool(
 export interface CallOutcome {
   envelope: ToolEnvelope;
   result: ToolResult;
-  /** Ergebnis für `nachAufrufen`. */
   status: "ok" | "fehler" | "abgelehnt";
   code?: ErrorCode;
   /** Der Lauf wurde während des Werkzeugs angehalten. */
   aborted: boolean;
-  /** Das Tor hat erlaubt und das Werkzeug ist zu Ende gelaufen (mit Ergebnis oder Werkzeug-Fehler). */
-  ausgefuehrt: boolean;
-  /** Nur beim Nachschlagen in der Doku mit Ergebnis: Doku-Stand und Zahl der Fundstellen. */
-  doku?: { stand: string; gefunden: number };
 }
 
 /** Code, mit dem ein abgebrochener Aufruf endet: streng, wenn er gewirkt haben könnte. */
@@ -501,15 +500,12 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         });
       }),
     );
-    const doku = dokuAusHuelle(call.toolKey, envelope);
     return {
       envelope,
       result: toolResult(envelope),
       status: envelope.status === "ok" ? "ok" : "fehler",
       ...(envelope.status === "ok" ? {} : { code: envelope.code }),
       aborted: false,
-      ausgefuehrt: true,
-      ...(doku === undefined ? {} : { doku }),
       chars: contentChars(envelope as unknown as JsonValue),
     };
   } catch (error) {
@@ -549,7 +545,6 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         status: "abgelehnt",
         code: decision.errorCode,
         aborted: false,
-        ausgefuehrt: false,
         chars: contentChars(envelope as unknown as JsonValue),
       };
     }
@@ -562,7 +557,6 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         status: "fehler",
         code,
         aborted: true,
-        ausgefuehrt: false,
         chars: 0,
       };
     }
@@ -595,8 +589,8 @@ export async function cancelCall(
   return envelope;
 }
 
-/** Hülle aus dem Ausgang eines Werkzeugs: Ausgabe prüfen, bereinigen, kürzen. */
-function outcomeEnvelope(
+/** Hülle aus dem Ausgang eines Werkzeugs: Ausgabe prüfen, bereinigen, kürzen (für Tests offen). */
+export function outcomeEnvelope(
   outcome: Awaited<ReturnType<RegisteredTool["definition"]["run"]>>,
   tool: RegisteredTool,
   settings: { toolResultMaxChars: number },
@@ -611,6 +605,9 @@ function outcomeEnvelope(
         : "werkzeug_fehler";
     return codeEnvelope(key, "fehler", code, errorEnvelopeText(code));
   }
+  // Als Allererstes: ein zu tiefes, zu großes oder kreisförmiges Ergebnis wird nie weiter angefasst.
+  if (jsonUeberGrenzen(outcome.output))
+    return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   const checked = tool.definition.output.safeParse(outcome.output);
   if (!checked.success)
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));

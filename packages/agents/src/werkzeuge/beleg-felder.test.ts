@@ -19,7 +19,12 @@ const STAND = "0.3.0-dev+afa35b66bc2b";
 
 /** Hülle, wie `aufruf.ts` sie aus einem Ergebnis mit Platz für `platz` Zeichen baut. */
 function huelleMitPlatz(platz: number) {
-  const inhalt: JsonValue = { status: "nichts_gefunden", stand: STAND };
+  const inhalt: JsonValue = {
+    status: "nichts_gefunden",
+    stand: STAND,
+    quelle: "Doku von PaiBot",
+    gefunden: 0,
+  };
   const cut = truncateContent(inhalt, platz);
   return cut === undefined ? undefined : dataEnvelope(DOKU_TOOL_KEY, cut.inhalt, cut.gekuerzt);
 }
@@ -34,9 +39,10 @@ describe("Ergebnis des Nachschlagens aus der gespeicherten Hülle", () => {
 
   // Gegenprobe: in `dokuAusHuelle` die Prüfung `STAND_MUSTER` bei gekürzter Hülle entfernen →
   // bei knappem Platz zählt ein beschnittener Stand („0.3.0-“, „0“, „“).
-  it("bei jedem Platz von 0 bis 80 Zeichen: gekürzt zählt nur mit vollständigem Stand", () => {
+  it("bei jedem Platz von 0 bis 130 Zeichen: gekürzt zählt nur mit vollständigem Stand", () => {
     let gekuerztGesehen = 0;
-    for (let platz = 0; platz <= 80; platz += 1) {
+    let ungekuerztGesehen = 0;
+    for (let platz = 0; platz <= 130; platz += 1) {
       const huelle = huelleMitPlatz(platz);
       if (huelle === undefined) continue;
       const doku = dokuAusHuelle(DOKU_TOOL_KEY, huelle);
@@ -47,22 +53,25 @@ describe("Ergebnis des Nachschlagens aus der gespeicherten Hülle", () => {
           doku === undefined ? {} : { docStand: STAND, found: 0 },
         );
       } else {
+        ungekuerztGesehen += 1;
         expect(doku, `Platz ${platz}`).toEqual({ stand: STAND, gefunden: 0 });
       }
     }
+    // Beide Bereiche müssen wirklich durchlaufen worden sein, sonst prüft die Schleife nichts.
     expect(gekuerztGesehen).toBeGreaterThan(10);
+    expect(ungekuerztGesehen).toBeGreaterThan(10);
   });
 
   it("ein beschnittener Stand in einer gekürzten Hülle zählt nicht, mit vollständigem Stand schon", () => {
     const beschnitten = dataEnvelope(
       DOKU_TOOL_KEY,
-      { status: "nichts_gefunden", stand: "0.3.0-" },
+      { status: "nichts_gefunden", stand: "0.3.0-", quelle: "Doku von PaiBot", gefunden: 0 },
       true,
     );
     expect(dokuAusHuelle(DOKU_TOOL_KEY, beschnitten)).toBeUndefined();
     const vollstaendig = dataEnvelope(
       DOKU_TOOL_KEY,
-      { status: "nichts_gefunden", stand: STAND },
+      { status: "nichts_gefunden", stand: STAND, quelle: "Doku von PaiBot", gefunden: 0 },
       true,
     );
     expect(dokuAusHuelle(DOKU_TOOL_KEY, vollstaendig)).toEqual({ stand: STAND, gefunden: 0 });

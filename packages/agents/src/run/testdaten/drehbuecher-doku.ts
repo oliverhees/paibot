@@ -19,7 +19,7 @@ export const DOKU_NAME = "doku_nachschlagen";
 /** Text, den das Modell vor dem Nachschlagen schreibt; darf nie als Antwort erscheinen. */
 export const ENTWURF = "ENTWURF";
 
-/** Text eines zweiten Schritts, der nach „nichts gefunden“ nie angefragt werden darf. */
+/** Antwort des Modells im zweiten Schritt, nachdem das Nachschlagen nichts gefunden hat. */
 export const ZWEITER_SCHRITT = "ZWEITER-SCHRITT";
 
 /** End-Antwort nach einem Treffer; nennt die Seite nur, weil das Drehbuch sie schreibt. */
@@ -72,7 +72,7 @@ export const DOKU_SCRIPTS = {
   treffer: {
     steps: [{ toolCalls: [doku({ frage: FRAGE_TREFFER })] }, { text: ANTWORT_MIT_SEITE }],
   },
-  /** Schritt 0: Text „ENTWURF“ und eine Frage ohne Treffer; Schritt 1 darf nie angefragt werden. */
+  /** Schritt 0: Text „ENTWURF“ und eine Frage ohne Treffer; Schritt 1 antwortet mit eigenen Worten. */
   nichtsGefunden: {
     steps: [
       { text: ENTWURF, toolCalls: [doku({ frage: FRAGE_FALLE })] },
@@ -100,7 +100,7 @@ export const DOKU_SCRIPTS = {
       { text: ANTWORT_MIT_SEITE },
     ],
   },
-  /** Ein Aufruf mit ungültiger Eingabe (abgelehnt) und einer ohne Treffer: Kurzschluss. */
+  /** Ein Aufruf mit ungültiger Eingabe (abgelehnt) und einer ohne Treffer: der Lauf geht weiter. */
   abgelehntUndNichts: {
     steps: [
       {
@@ -135,6 +135,21 @@ export const DOKU_SCRIPTS = {
       { toolCalls: [{ name: "test_schreiben", arguments: { q: "erledigt" } }] },
       { text: ANTWORT_OHNE_WUNSCH },
     ],
+  },
+  /** Endlos: jeder Schritt schlägt wieder nach und findet nie etwas, ein Aufruf je Schritt. */
+  endlosNichts: {
+    steps: [{ text: ENTWURF, toolCalls: [doku({ frage: FRAGE_FALLE })] }],
+    after: "letzten-wiederholen",
+  },
+  /** Endlos mit fünf Aufrufen je Schritt (unter der Grenze je Schritt, über der Grenze je Lauf). */
+  endlosVieleNichts: {
+    steps: [
+      {
+        text: ENTWURF,
+        toolCalls: Array.from({ length: 5 }, (_, i) => doku({ frage: `${FRAGE_FALLE} ${i}` })),
+      },
+    ],
+    after: "letzten-wiederholen",
   },
   /** Kein Werkzeug-Wunsch, obwohl das Werkzeug angeboten ist. */
   ohneWunsch: { steps: [{ text: ANTWORT_OHNE_WUNSCH }] },
