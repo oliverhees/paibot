@@ -73,11 +73,16 @@ export const MODELL_STICHWORTE: readonly string[] = [
   "maxLength",
   "minItems",
   "maxItems",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
   "additionalProperties",
 ];
 
-/** Stichwörter, die nur prüfen (nicht ans Modell gehen). */
-const NUR_PRUEFEN: readonly string[] = ["const", "exclusiveMinimum", "exclusiveMaximum"];
+/**
+ * Stichwörter, die der Prüfer anders liest, als das Modell sie sieht: `const` zeigt das Modell als
+ * `enum` mit einem Wert (gleiche Wirkung, und das Modell sieht, dass der Wert fest ist).
+ */
+const ANDERS_GEZEIGT: readonly string[] = ["const"];
 
 /** Beschreibende Stichwörter ohne Wirkung auf die Prüfung; sie fallen überall weg. */
 const IGNORIERT: ReadonlySet<string> = new Set([
@@ -177,7 +182,7 @@ function verarbeite(schema: unknown, ebene: number, zustand: Zustand): Teil {
   for (const schluessel of Object.keys(schema)) {
     const wert = schema[schluessel];
     if (IGNORIERT.has(schluessel)) continue;
-    if (!MODELL_STICHWORTE.includes(schluessel) && !NUR_PRUEFEN.includes(schluessel)) {
+    if (!MODELL_STICHWORTE.includes(schluessel) && !ANDERS_GEZEIGT.includes(schluessel)) {
       throw new Abweisung("stichwort_nicht_pruefbar");
     }
     switch (schluessel) {
@@ -250,6 +255,7 @@ function verarbeite(schema: unknown, ebene: number, zustand: Zustand): Teil {
       case "const": {
         pruefeFestenWert(wert, zustand);
         pruef.const = wert;
+        modell.enum = [wert];
         break;
       }
       case "additionalProperties": {
@@ -268,6 +274,7 @@ function verarbeite(schema: unknown, ebene: number, zustand: Zustand): Teil {
       case "exclusiveMinimum":
       case "exclusiveMaximum": {
         if (!istZahl(wert)) throw new Abweisung("form_ungueltig");
+        modell[schluessel] = wert;
         pruef[schluessel] = wert;
         break;
       }
@@ -284,8 +291,73 @@ function verarbeite(schema: unknown, ebene: number, zustand: Zustand): Teil {
         throw new Abweisung("stichwort_nicht_pruefbar");
     }
   }
+  pruefeNieLockerAlsRohform(pruef);
   schliesseObjektAb(modell, pruef);
   return { modell, pruef };
+}
+
+/** Typ, zu dem ein typ-eigenes Stichwort gehört. */
+const STICHWORT_TYPEN: Readonly<Record<string, readonly string[]>> = {
+  properties: ["object"],
+  required: ["object"],
+  additionalProperties: ["object"],
+  items: ["array"],
+  minItems: ["array"],
+  maxItems: ["array"],
+  minLength: ["string"],
+  maxLength: ["string"],
+  minimum: ["number", "integer"],
+  maximum: ["number", "integer"],
+  exclusiveMinimum: ["number", "integer"],
+  exclusiveMaximum: ["number", "integer"],
+};
+
+/**
+ * Das Prüf-Schema darf nie lockerer sein als die Rohform. `z.fromJSONSchema` liest ein
+ * Teilschema ohne `type` als „alles erlaubt“ und prüft bei `enum` oder `const` nur diese Werte, alle
+ * anderen Regeln des Teilschemas fallen weg. Deshalb gilt für jedes Teilschema:
+ *
+ * - Es hat einen `type` oder besteht nur aus `enum` bzw. `const` (die Beschreibung zählt nicht).
+ * - `enum` und `const` stehen nie zusammen.
+ * - Ein typ-eigenes Stichwort steht nur mit dem passenden `type` (`minLength` nur mit `string` …).
+ * - Ein `array` hat `items` (sonst nähme es beliebige Einträge an).
+ * - Jeder Wert aus `enum` bzw. `const` erfüllt die übrigen Regeln des Teilschemas.
+ */
+function pruefeNieLockerAlsRohform(pruef: Record<string, unknown>): void {
+  const hatEnum = pruef.enum !== undefined;
+  const hatConst = pruef.const !== undefined;
+  if (hatEnum && hatConst) throw new Abweisung("form_ungueltig");
+  const typen: string[] | undefined =
+    pruef.type === undefined
+      ? undefined
+      : ((Array.isArray(pruef.type) ? pruef.type : [pruef.type]) as string[]);
+  const uebrige = Object.keys(pruef).filter((name) => name !== "enum" && name !== "const");
+  if (typen === undefined) {
+    // Ohne `type` nur ein reines `enum` bzw. `const`; jedes andere Stichwort bräuchte einen Typ.
+    if ((!hatEnum && !hatConst) || uebrige.length > 0) throw new Abweisung("form_ungueltig");
+    return;
+  }
+  for (const name of uebrige) {
+    const passend = STICHWORT_TYPEN[name];
+    if (passend !== undefined && !typen.some((typ) => passend.includes(typ))) {
+      throw new Abweisung("form_ungueltig");
+    }
+  }
+  if (typen.includes("array") && pruef.items === undefined) throw new Abweisung("form_ungueltig");
+  if (hatEnum || hatConst) {
+    const rest: Record<string, unknown> = {};
+    for (const name of uebrige) rest[name] = pruef[name];
+    let regeln: z.ZodType;
+    try {
+      regeln = z.fromJSONSchema(rest as Parameters<typeof z.fromJSONSchema>[0]);
+    } catch {
+      throw new Abweisung("umwandlung_gescheitert");
+    }
+    const werte = hatEnum ? (pruef.enum as unknown[]) : [pruef.const];
+    for (const wert of werte) {
+      if (!regeln.safeParse(wert).success) throw new Abweisung("form_ungueltig");
+    }
+  }
 }
 
 /**
