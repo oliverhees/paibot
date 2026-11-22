@@ -49,7 +49,7 @@ Der Chat ist die Hauptsache von PaiBot: Fragen stellen, Texte schreiben lassen, 
 
 **Pai schlägt in der Doku nach**
 
-Bei Fragen zu PaiBot selbst kann dein Bot in der Doku der installierten PaiBot-Version nachschlagen. Das Werkzeug liest nur die mitgelieferte Doku und schickt nichts nach außen.
+Bei Fragen zu PaiBot selbst kann dein Bot in der Doku der installierten PaiBot-Version nachschlagen. Das Werkzeug selbst liest nur die mitgelieferte Doku und ruft nichts im Netz auf. Was es findet, geht wie der übrige Chat mit der nächsten Anfrage an den Anbieter deines Modells.
 
 1. Frag deinen Bot etwas zu PaiBot, zum Beispiel „Wie stelle ich das Tagesbudget ein?“, und sende die Nachricht.
 2. Entscheidet sich das Modell fürs Nachschlagen, steht oben neben dem Namen „schlägt in der Doku nach“. Über der Antwort erscheint eine Werkzeug-Zeile: „In der Doku nachschlagen“ mit dem Status „läuft“, danach „fertig“ und der Zahl der gefundenen Abschnitte. Dein Bot fragt dich dafür nicht vorher; die Regel „Bot liest in der Doku seiner Version“ (R-010) erlaubt es, und jeder Aufruf bekommt seinen Beleg.

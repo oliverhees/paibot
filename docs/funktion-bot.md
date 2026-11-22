@@ -32,7 +32,7 @@ Du willst, dass dein Bot in deinem Ton antwortet und weiß, wofür du ihn brauch
 
    ![Nach „Speichern“: „Gespeichert. Kai nutzt die neuen Angaben ab der nächsten Antwort.“; die Seitenleiste zeigt „Kai“](assets/screenshots/bot-gespeichert.png)
 8. Unter „Modell“ steht, mit welchem Modell dein Bot arbeitet. „Modell ändern“ führt zur Seite „Modell und Anbieter“.
-9. Unter „Was dein Bot darf“ siehst du, was er nach den geltenden Regeln darf, wofür er fragen muss und was er nie darf. Dort steht auch „Bot liest in der Doku seiner Version“ (R-010): Damit darf der Bot in der Doku dieser PaiBot-Version nachschlagen, ohne zu fragen und jedes Mal mit Beleg; das Werkzeug liest nur die mitgelieferte Doku und schickt nichts nach außen (siehe [Chat](funktion-chat.md), „Pai schlägt in der Doku nach“). „Regeln und Belege ansehen“ führt zu den Belegen.
+9. Unter „Was dein Bot darf“ siehst du, was er nach den geltenden Regeln darf, wofür er fragen muss und was er nie darf. Dort steht auch „Bot liest in der Doku seiner Version“ (R-010): Damit darf der Bot in der Doku dieser PaiBot-Version nachschlagen, ohne zu fragen und jedes Mal mit Beleg; das Werkzeug selbst liest nur die mitgelieferte Doku und ruft nichts im Netz auf; was es findet, geht wie der übrige Chat an den Anbieter deines Modells (siehe [Chat](funktion-chat.md), „Pai schlägt in der Doku nach“). „Regeln und Belege ansehen“ führt zu den Belegen.
 
    ![Abschnitte „Modell“ und „Was dein Bot darf“: Darf, mit Beleg (R-002 und R-010), Fragt vorher (R-005), Darf nie (G-01) und der Link „Regeln und Belege ansehen“](assets/screenshots/bot-darf.png)
 

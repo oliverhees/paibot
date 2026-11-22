@@ -609,13 +609,24 @@ async function main() {
       throw new Error("Anfangs müssen Knopf „Schritte“ an und die Werkzeug-Zeile da sein.");
     }
     await knopf.click();
-    if ((await knopf.getAttribute("aria-pressed")) !== "false")
-      throw new Error("Der Knopf ist nicht aus.");
-    if ((await zeile.count()) !== 0)
-      throw new Error("Die Werkzeug-Zeile steht trotz „Schritte“ aus da.");
+    // Der Zustand wechselt erst mit dem nächsten Zeichnen der Seite: darauf warten statt sofort zu lesen.
+    const zustand = (wert) =>
+      seite.locator(`button[aria-pressed="${wert}"]`, { hasText: /Schritte/ }).first();
+    await zustand("false")
+      .waitFor({ timeout: 10_000 })
+      .catch(() => {
+        throw new Error("Der Knopf ist nicht aus.");
+      });
+    await zeile
+      .first()
+      .waitFor({ state: "detached", timeout: 10_000 })
+      .catch(() => {
+        throw new Error("Die Werkzeug-Zeile steht trotz „Schritte“ aus da.");
+      });
     // Die Antwort des Modells bleibt.
     await verlaufVon(seite).getByText(OHNE_FUND_ANTWORT, { exact: true }).waitFor();
     await knopf.click();
+    await zustand("true").waitFor({ timeout: 10_000 });
     await zeile.first().waitFor({ timeout: 10_000 });
     if ((await knopf.getAttribute("aria-pressed")) !== "true" || (await zeile.count()) !== 1) {
       throw new Error("Mit „Schritte“ an muss die Werkzeug-Zeile wieder da sein.");

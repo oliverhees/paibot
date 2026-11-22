@@ -2355,5 +2355,5 @@ export const de = {
   "werkzeug.titel.doku_nachschlagen": "In der Doku nachschlagen",
   // „Was dein Bot darf“: das Werkzeug ehrlich benannt
   "bot.darf.werkzeug_doku":
-    "{name} kann in der Doku dieser PaiBot-Version nachschlagen, ohne vorher zu fragen und jedes Mal mit Beleg. Das Werkzeug liest nur die mitgelieferte Doku und schickt nichts nach außen. Andere Werkzeuge hat {name} in dieser Version nicht.",
+    "{name} kann in der Doku dieser PaiBot-Version nachschlagen, ohne vorher zu fragen und jedes Mal mit Beleg. Das Werkzeug selbst liest nur die mitgelieferte Doku und ruft nichts im Netz auf. Was es findet, geht wie der übrige Chat mit der nächsten Anfrage an den Anbieter deines Modells. Andere Werkzeuge hat {name} in dieser Version nicht.",
 } as const satisfies Record<string, string | readonly string[]>;
