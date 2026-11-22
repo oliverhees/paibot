@@ -426,12 +426,13 @@ describe.skipIf(!bereit && !erzwungen)("App-Bausteine im Browser", { timeout: 60
     ).toBe(1);
   });
 
-  it("Not-Aus: Hinweis sichtbar, Zugriff nicht änderbar, Knöpfe zum Testen gesperrt", async () => {
+  it("Not-Aus: Hinweis sichtbar, Zugriff bleibt änderbar, Knöpfe zum Testen gesperrt", async () => {
     await oeffne("notaus");
     expect(await page.locator("[data-notaus]").count()).toBe(2);
     expect(await page.locator("body").textContent()).toContain("Not-Aus aktiv");
     const radios = page.locator('[role="radiogroup"] input');
-    for (const r of await radios.all()) expect(await r.isDisabled()).toBe(true);
+    // Der Not-Aus hält nur die Aufrufe an: Der Zugriff lässt sich weiter ändern.
+    for (const r of await radios.all()) expect(await r.isDisabled()).toBe(false);
     expect(await page.getByRole("button", { name: /Erneut testen/ }).isDisabled()).toBe(true);
   });
 
