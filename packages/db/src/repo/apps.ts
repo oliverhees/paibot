@@ -284,7 +284,9 @@ function bereinigt(original: string, laenge: number): string {
 
 /** Wie `bereinigt`, klein geschrieben, ohne führendes `_` oder `-`, Punkte erlaubt. */
 function kennungsTeil(original: string, laenge: number): string {
-  const text = bereinigt(original, laenge).toLowerCase().replace(/^[_-]+/, "");
+  const text = bereinigt(original, laenge)
+    .toLowerCase()
+    .replace(/^[_-]+/, "");
   return (text === "" ? "werkzeug" : text).slice(0, laenge);
 }
 
