@@ -198,8 +198,8 @@ describe("Aktionen", () => {
 });
 
 describe("Regeln", () => {
-  it("R-010 steht nur im Code: ungespeichert, nicht aktiv, nicht in den gespeicherten Fassungen", () => {
-    const r010 = UNSTORED_STANDARD_RULE_VERSIONS.find((rule) => rule.id === "R-010");
+  it("R-010 ist gespeichert und aktiv; die Liste der Fassungen ist nur verlängert", () => {
+    const r010 = STANDARD_RULE_VERSIONS.find((rule) => rule.id === "R-010");
     expect(r010).toMatchObject({
       version: 1,
       action: "werkzeug.aufrufen",
@@ -207,15 +207,22 @@ describe("Regeln", () => {
       stage: "execute",
       priority: 90,
       source: "standard",
+      title: "Bot liest in der Doku seiner Version",
     });
     expect(ruleDefinitionSchema.parse(r010)).toEqual(r010);
-    expect(STANDARD_RULE_VERSIONS.map((rule) => rule.id)).not.toContain("R-010");
-    expect(ACTIVE_STANDARD_RULES.map((rule) => rule.id)).not.toContain("R-010");
-    expect(UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id)).toEqual([
-      "R-007",
-      "R-008",
-      "R-010",
+    expect(ACTIVE_STANDARD_RULES.find((rule) => rule.id === "R-010")).toBe(r010);
+    // Die ersten sieben Fassungen bleiben, wie sie waren; R-010 kommt nur hinten dazu.
+    expect(STANDARD_RULE_VERSIONS.map((rule) => `${rule.id}@${rule.version}`)).toEqual([
+      "R-001@1",
+      "R-002@1",
+      "R-999@1",
+      "R-003@1",
+      "R-004@1",
+      "R-005@1",
+      "R-006@1",
+      "R-010@1",
     ]);
+    expect(UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id)).toEqual(["R-007", "R-008"]);
   });
 
   it("Standard-Regeln sind gültig und tragen die lesbaren IDs", () => {

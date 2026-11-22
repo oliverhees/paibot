@@ -13,6 +13,7 @@ import {
   type ErrorCode,
   type Message,
   type MessageId,
+  type MessageOrigin,
   type MessageRole,
   type MessageStatus,
   type ModelId,
@@ -23,7 +24,7 @@ import {
   type RunId,
   type ServedBy,
 } from "@paibot/shared";
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { conversations, messages } from "../schema";
 import { toMessage } from "./abbildung";
@@ -44,6 +45,10 @@ export interface MessageCreate {
   tokensIn?: number;
   tokensOut?: number;
   errorCode?: ErrorCode;
+  /** Schritt eines Laufs mit Werkzeugen; fehlt bei der End-Antwort und bei Nachrichten der Person. */
+  step?: number;
+  /** Fester Text von PaiBot statt Text des Modells; Standard `modell`. */
+  origin?: MessageOrigin;
 }
 
 /** Abschluss einer streamenden Antwort. */
@@ -84,6 +89,8 @@ export async function insert(db: Database, input: MessageCreate): Promise<Messag
             tokensIn: input.tokensIn ?? null,
             tokensOut: input.tokensOut ?? null,
             errorCode: input.errorCode ?? null,
+            step: input.step ?? null,
+            ...(input.origin === undefined ? {} : { origin: input.origin }),
           })
           .returning();
         if (row === undefined) throw new PaiBotError("intern");
@@ -102,24 +109,38 @@ export async function get(db: Database, id: MessageId): Promise<Message | undefi
   return row === undefined ? undefined : toMessage(row);
 }
 
-/** Nachrichten einer Unterhaltung, älteste zuerst. Mit `limit` die letzten `limit`, ebenfalls aufsteigend. */
+/**
+ * Nachrichten einer Unterhaltung, älteste zuerst. Mit `limit` die letzten `limit`, ebenfalls
+ * aufsteigend. Ohne Option kommen alle Nachrichten, auch Zwischentexte (mit `step`).
+ */
 export async function listForConversation(
   db: Database,
   conversationId: ConversationId,
-  options: { limit?: number } = {},
+  options: {
+    limit?: number;
+    /**
+     * Nur Nachrichten ohne Schritt: die der Person und die End-Antworten (keine Zwischentexte eines
+     * Laufs mit Werkzeugen). `limit` zählt dann nur diese.
+     */
+    nurAntworten?: boolean;
+  } = {},
 ): Promise<Message[]> {
+  const bedingung =
+    options.nurAntworten === true
+      ? and(eq(messages.conversationId, conversationId), isNull(messages.step))
+      : eq(messages.conversationId, conversationId);
   if (options.limit === undefined) {
     const rows = await db
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
+      .where(bedingung)
       .orderBy(asc(messages.createdAt), asc(messages.id));
     return rows.map(toMessage);
   }
   const rows = await db
     .select()
     .from(messages)
-    .where(eq(messages.conversationId, conversationId))
+    .where(bedingung)
     .orderBy(desc(messages.createdAt), desc(messages.id))
     .limit(options.limit);
   return rows.reverse().map(toMessage);

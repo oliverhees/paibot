@@ -1,0 +1,562 @@
+/**
+ * PaiBot – Stile der rechten Faden-Leiste: Reiter, Ziele, Team, Lieferungen, Fragen, Belege.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.leiste {
+  border-left: 1px solid var(--line);
+  background: var(--surface-sunken);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.leiste[data-offen="false"] {
+  display: none;
+}
+
+.griff {
+  border: 0;
+  padding: 0;
+  font: inherit;
+  display: none;
+}
+
+.innen {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.reiter {
+  display: flex;
+  gap: 2px;
+  padding: 12px 12px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  flex: none;
+}
+
+.reiter button {
+  border: 0;
+  font: inherit;
+  height: 34px;
+  padding: 0 7px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  border-bottom: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+  background: none;
+}
+
+.reiter button[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.zahl {
+  font: 600 10.5px / 1 var(--font-sans);
+  background: var(--surface-raised);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  padding: 2px 5px;
+}
+
+.zahl[data-art="warn"] {
+  background: var(--warn-soft);
+  color: var(--warn);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, transparent);
+}
+
+.inhalt {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 14px 16px;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.naechst {
+  border: 1px solid var(--accent-text);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.beschriftung {
+  display: block;
+  margin-bottom: 5px;
+  font: 600 11.5px / 16px var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.naechst b {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.naechst p {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+
+.etappe {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.etappeKopf {
+  border: 0;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  background: none;
+  color: var(--ink);
+}
+
+.etappeKopf b {
+  font-weight: 600;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.etappeKopf .stand {
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+.etappeKopf > svg {
+  color: var(--ink-soft);
+}
+
+.etappeKopf > svg[data-ok="true"] {
+  color: var(--ok);
+}
+
+.ziele {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zielListe {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.ziel {
+  border: 0;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 17px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  color: var(--ink);
+}
+
+li + li > .ziel,
+.ziel + .ziel {
+  border-top: 1px solid var(--line);
+}
+
+button.ziel {
+  cursor: pointer;
+}
+
+button.ziel:hover {
+  background: var(--surface-raised);
+}
+
+.ck {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ck > svg {
+  stroke: var(--bg);
+}
+
+.ziel[data-stand="erledigt"] .ck {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.ziel[data-stand="laeuft"] .ck {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+.ziel[data-stand="wartet"] .ck {
+  border-color: var(--warn);
+}
+
+.zielText {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.zielText small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+.zielText small[data-art="aktiv"] {
+  color: var(--accent-text);
+}
+
+.zielText small[data-art="warn"] {
+  color: var(--warn);
+}
+
+.ziel[data-stand="erledigt"] .zielText {
+  color: var(--ink-soft);
+}
+
+.sprung {
+  color: var(--ink-soft);
+  display: flex;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gruppe {
+  font: 600 11.5px / 16px var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 6px 0 2px;
+}
+
+.mitglied {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.mitglied[data-gross="true"] {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.mitglied .text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mitglied .rolle {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.mitglied small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.mitglied .wort {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.mitglied .wort[data-art="warn"] {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.mitglied .wort[data-art="aktiv"] {
+  color: var(--accent-text);
+}
+
+.rest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.belege {
+  display: flex;
+  flex-direction: column;
+}
+
+.beleg {
+  display: grid;
+  grid-template-columns: 44px 14px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+  line-height: 17px;
+  min-height: 34px;
+}
+
+.beleg .zeit {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.linie {
+  position: relative;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.linie::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--line-mid);
+}
+
+.linie i {
+  position: relative;
+  margin: auto 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  border: 1.5px solid var(--line-strong);
+}
+
+.linie i[data-markiert="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.beleg b {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.beleg .weg {
+  color: var(--ink-soft);
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.notiz {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.leer {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.fuss {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: none;
+}
+
+.fuss .zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.knoepfe {
+  display: flex;
+  gap: 8px;
+}
+
+.knopf {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-mid);
+  background: transparent;
+  color: var(--ink);
+  font: 500 12.5px / 18px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.knopf:hover {
+  border-color: var(--line-strong);
+}
+
+.knopf[data-art="haupt"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* Handy: Blatt von unten mit Griffzeile */
+@media (max-width: 959px) {
+  .leiste,
+  .leiste[data-offen="false"] {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 64dvh;
+    border-left: 0;
+    border-top: 1px solid var(--line-mid);
+    border-radius: 20px 20px 0 0;
+    transform: translateY(calc(100% - 56px));
+    transition: transform 0.3s var(--kurve-sprung);
+    z-index: 25;
+    box-shadow: var(--shadow-pop);
+  }
+
+  .leiste[data-offen="true"] {
+    transform: none;
+  }
+
+  .griff {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px 10px;
+    font-size: 13px;
+    width: 100%;
+    text-align: left;
+    flex: none;
+    flex-wrap: wrap;
+    position: relative;
+    background: none;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .griff::before {
+    content: "";
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .strich {
+    position: absolute;
+    left: 50%;
+    top: 6px;
+    width: 36px;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--line-strong);
+    transform: translateX(-50%);
+  }
+
+  .griff b {
+    font-weight: 600;
+  }
+
+  .griffWarn {
+    color: var(--warn);
+    font-weight: 600;
+  }
+
+  .griff > svg {
+    margin-left: auto;
+    color: var(--ink-soft);
+  }
+
+  .reiter {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 1279px) and (min-width: 960px) {
+  .leiste {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--layout-flaeche);
+    z-index: 20;
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leiste,
+  .leiste[data-offen="false"],
+  .leiste[data-offen="true"] {
+    transition: none;
+  }
+}
+
+.ziele[hidden],
+.panel[hidden] {
+  display: none;
+}

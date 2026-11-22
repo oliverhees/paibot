@@ -1,0 +1,70 @@
+/**
+ * PaiBot – Stile der kleinen Marken im Faden (dran, führt, direkte Bitte, Leitung, fremde Inhalte).
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.dran {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 700 9.5px / 1 var(--font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.fuehrt {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  border: 1px solid var(--line-mid);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-text);
+}
+
+.bitte {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 11px / 1 var(--font-sans);
+  color: var(--ink-soft);
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-pill);
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+.leitung {
+  font: 600 10px / 1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-mid);
+  border-radius: 5px;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.fremd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 11px / 1 var(--font-sans);
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px 7px;
+  white-space: nowrap;
+}

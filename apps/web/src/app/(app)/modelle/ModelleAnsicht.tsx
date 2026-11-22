@@ -36,6 +36,7 @@ import { apiFetch } from "../../../lib/api/client";
 import type { BotModell } from "../../../lib/bot/bot";
 import type { AnbieterVorlage } from "../../../lib/modelle/anbieter";
 import {
+  anbieterImSatz,
   anbieterStatus,
   eigenerAnbieter,
   listeLeerAusweg,
@@ -135,6 +136,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
   const listenName = useId();
 
   const name = anbieter?.name ?? vorlage.name;
+  const satzName = anbieterImSatz(anbieter ?? vorlage);
 
   /**
    * Zeigt die Modell-Liste des Anbieters. Ohne `abgleichen` wird nur gelesen (beim Öffnen der Seite
@@ -270,7 +272,9 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     formSchliessen();
     setSchluesselMeldung({
       art: "ok",
-      text: t("modelle.schluessel.gespeichert", { anbieter: antwort.daten.anbieter.name }),
+      text: t("modelle.schluessel.gespeichert", {
+        anbieter: anbieterImSatz(antwort.daten.anbieter),
+      }),
     });
     void listeLaden(antwort.daten.anbieter);
   }
@@ -310,13 +314,13 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
       setSchluesselMeldung({
         art: "ok",
         text: eigenerAnbieter(weg)
-          ? t("modelle.eigen.entfernt", { anbieter: weg.name })
+          ? t("modelle.eigen.entfernt", { anbieter: anbieterImSatz(weg) })
           : t("modelle.schluessel.entfernt"),
       });
     } else {
       setSchluesselMeldung({
         art: "ok",
-        text: t("modelle.eigen.entfernt", { anbieter: weg.name }),
+        text: t("modelle.eigen.entfernt", { anbieter: anbieterImSatz(weg) }),
       });
       void listeLaden(naechster);
     }
@@ -331,7 +335,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
     setModellMeldung(undefined);
     const gespeichert: Meldung = {
       art: "ok",
-      text: t("modelle.eigen.gespeichert", { anbieter: neu.name }),
+      text: t("modelle.eigen.gespeichert", { anbieter: anbieterImSatz(neu) }),
     };
     setSchluesselMeldung(gespeichert);
     if (angelegt || vorher?.id !== neu.id) setSuche("");
@@ -503,7 +507,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         {formOffen && !bearbeiten && anbieter !== undefined && (
           <div className={styles.form}>
             <TextField
-              label={t("modelle.schluessel.neu", { anbieter: name })}
+              label={t("modelle.schluessel.neu", { anbieter: satzName })}
               type="password"
               name="apiKey"
               autoComplete="off"
@@ -523,7 +527,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
               }}
               laedt={testLaeuft}
               fehler={feldFehler}
-              hilfe={t("modelle.schluessel.hilfe", { anbieter: name })}
+              hilfe={t("modelle.schluessel.hilfe", { anbieter: satzName })}
             />
           </div>
         )}
@@ -634,13 +638,13 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
               ? t("modelle.aktuell.text", { name: botName, modell: modell.displayName })
               : t("modelle.aktuell.keins", { name: botName })}
           </p>
-          <p className={styles.leise}>{t("modelle.liste.text", { anbieter: name })}</p>
+          <p className={styles.leise}>{t("modelle.liste.text", { anbieter: satzName })}</p>
 
           {liste.zustand === "aus" && (
             <p className={styles.leise}>{t("modelle.liste.ohne_schluessel")}</p>
           )}
           {liste.zustand === "laedt" && (
-            <LoadingState text={t("modelle.liste.laedt", { anbieter: name })} />
+            <LoadingState text={t("modelle.liste.laedt", { anbieter: satzName })} />
           )}
           {liste.zustand === "fehler" && (
             <ErrorState
@@ -656,7 +660,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
           )}
           {liste.zustand === "fertig" && liste.modelle.length === 0 && (
             <ErrorState
-              titel={t("modelle.liste.leer", { anbieter: name })}
+              titel={t("modelle.liste.leer", { anbieter: satzName })}
               ausweg={listeLeerAusweg({
                 name,
                 templateKey: anbieter?.templateKey ?? vorlage.templateKey,
@@ -683,7 +687,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
               ) : (
                 <fieldset className={styles.liste}>
                   <legend className={styles.unsichtbar}>
-                    {t("modelle.liste.name", { anbieter: name })}
+                    {t("modelle.liste.name", { anbieter: satzName })}
                   </legend>
                   {gefiltert.map((m) => {
                     const istAktuell = modell?.id === m.id;
@@ -755,7 +759,7 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         onSchliessen={() => setDialogOffen(false)}
         titel={
           anbieter !== undefined && eigenerAnbieter(anbieter)
-            ? t("modelle.eigen.entfernen.titel", { anbieter: name })
+            ? t("modelle.eigen.entfernen.titel", { anbieter: satzName })
             : t("modelle.schluessel.entfernen.titel")
         }
         schliessenLabel={t("allgemein.abbrechen")}
@@ -773,19 +777,19 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
       >
         {anbieter !== undefined && eigenerAnbieter(anbieter) ? (
           <>
-            <p>{t("modelle.eigen.entfernen.text", { anbieter: name })}</p>
+            <p>{t("modelle.eigen.entfernen.text", { anbieter: satzName })}</p>
             {modell !== undefined && modell.anbieterId === anbieter.id && (
               <p>
                 {t("modelle.eigen.entfernen.modell", {
                   name: botName,
                   modell: modell.displayName,
-                  anbieter: name,
+                  anbieter: satzName,
                 })}
               </p>
             )}
           </>
         ) : (
-          <p>{t("modelle.schluessel.entfernen.text", { anbieter: name, name: botName })}</p>
+          <p>{t("modelle.schluessel.entfernen.text", { anbieter: satzName, name: botName })}</p>
         )}
       </Dialog>
     </SeitenSpalte>

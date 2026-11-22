@@ -54,10 +54,19 @@ export function eigenerAnbieter(
   );
 }
 
+/**
+ * Name des Anbieters mitten im Satz. Eigene und lokale Anbieter tragen frei gewählte Namen
+ * („Lokaler Anbieter“, „Mein Modell-Server“), die nach „für“, „zu“ oder „von“ holprig klingen; in
+ * Anführungszeichen lesen sie sich glatt. Bekannte Dienste wie EUrouter bleiben, wie sie sind.
+ */
+export function anbieterImSatz(anbieter: Pick<Provider, "name" | "templateKey">): string {
+  return anbieter.templateKey === "eigener" ? `„${anbieter.name}“` : anbieter.name;
+}
+
 /** Ausweg, wenn die Modell-Liste leer ist; bei eigenen Anbietern ohne „Konto bei …“. */
 export function listeLeerAusweg(anbieter: Pick<Provider, "name" | "templateKey">): string {
   return eigenerAnbieter(anbieter)
-    ? t("modelle.liste.leer.ausweg_eigen", { anbieter: anbieter.name })
+    ? t("modelle.liste.leer.ausweg_eigen", { anbieter: anbieterImSatz(anbieter) })
     : t("modelle.liste.leer.ausweg", { anbieter: anbieter.name });
 }
 

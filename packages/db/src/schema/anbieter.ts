@@ -136,6 +136,7 @@ export const bots = pgTable(
     inListCheck("bots_avatar_shape_werte", t.avatarShape, AVATAR_SHAPES),
     inListCheck("bots_color_werte", t.color, BOT_COLORS),
     check("bots_max_output_tokens_positiv", sql`${t.maxOutputTokens} > 0`),
+    check("bots_max_output_tokens_hoechstens", sql`${t.maxOutputTokens} <= 200000`),
     unique("bots_name_eindeutig").on(t.name),
   ],
 );

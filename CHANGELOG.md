@@ -38,6 +38,7 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 - Das Tor: jede Aktion läuft durch feste Regeln und Grenzen ohne KI, mit Vorbedingungen und Nachweis je Aktion ([Doku](docs/funktion-tor.md))
 - Das Beleg-Protokoll: verkettete, signierte Belege zu jeder Entscheidung, Prüfer mit `pnpm belege:pruefen`, Anker und Nachrechnen mit dem damaligen Regelstand ([Doku](docs/funktion-belege.md))
 - Verschlüsselung für gespeicherte Schlüssel, Passwörter, Tokens und Signaturen ([Doku](docs/sicherheit.md))
+- Datenbank für Werkzeug-Aufrufe: Angaben zu Werkzeug, Schritt und Kennzeichen an jedem Aufruf, Zwischentexte und Herkunft an Nachrichten, feste Grenzen für Läufe mit Werkzeugen, gespeicherte Regel R-010; Nachrichten werden nur noch mit ihrer Unterhaltung gelöscht ([Entwickler-Doku](docs/entwickler/werkzeug-kern.md)). Beim Update werden Ausgabegrenzen über 200 000 auf 200 000 gesetzt; die Grenze für Token je Lauf passt sich der höchsten Ausgabegrenze an.
 - Anbieter und Modelle mit Ausgangs-Liste ([Doku](docs/funktion-anbieter-und-modelle.md))
 - Motor: ein Baustein, der eine Antwort vom Modell abholt, Stück für Stück, und sich abbrechen lässt
 - Warteschlange für Läufe, je Unterhaltung der Reihe nach

@@ -113,9 +113,10 @@ describe("PUT /api/bot", () => {
 });
 
 describe("Was dein Bot darf", () => {
-  it("leitet aus den Standard-Regeln ab: antworten erlaubt, Werkzeuge nur mit Frage, G-01 nie", () => {
+  it("leitet aus den Standard-Regeln ab: antworten und in der Doku lesen erlaubt, andere Werkzeuge nur mit Frage, G-01 nie", () => {
     const rechte = botRechte(ACTIVE_STANDARD_RULES);
-    expect(rechte.erlaubt.map((r) => r.id)).toEqual(["R-002"]);
+    expect(rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010"]);
+    expect(rechte.erlaubt[1]?.text).toBe("Bot liest in der Doku seiner Version");
     expect(rechte.fragt.map((r) => r.id)).toEqual(["R-005"]);
     expect(rechte.nie.map((r) => r.id)).toEqual(["G-01"]);
     expect(rechte.erlaubt[0]?.text).toBe(t("regel.R-002"));
@@ -130,7 +131,7 @@ describe("Was dein Bot darf", () => {
   it("die Seite bekommt die Rechte aus der Datenbank", async () => {
     const e = await eingerichtet();
     const daten = await botSeitenDaten(e.u.db);
-    expect(daten?.rechte.erlaubt.map((r) => r.id)).toEqual(["R-002"]);
+    expect(daten?.rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010"]);
     expect(daten?.modell?.displayName).toBe("Beispiel-Modell A");
   });
 

@@ -8,9 +8,26 @@
  * @since     2026-11-20
  */
 
-import type { ActionId, ConversationId, MessageId, ReceiptId, RunId } from "@paibot/shared";
+import type {
+  ActionId,
+  ConversationId,
+  MessageId,
+  ReceiptId,
+  RunId,
+  Sha256Digest,
+  ToolKey,
+} from "@paibot/shared";
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, text, timestamp, unique } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  text,
+  timestamp,
+  unique,
+} from "drizzle-orm/pg-core";
 import {
   idCheck,
   inListCheck,
@@ -26,6 +43,7 @@ import {
   FINISHED_TOOL_CALL_STATUSES,
   TOOL_CALL_STATUSES,
   TOOL_KINDS,
+  TOOL_REACHES,
   TOOL_RESULT_STATUSES,
   TOOL_SOURCES,
 } from "./werte";
@@ -33,9 +51,15 @@ import {
 /**
  * Werkzeug-Aufrufe: je Zeile ein Wunsch des Modells (Teil der Antwort `message_id` an Stelle
  * `position`) und sein Ergebnis. Die Kennung ist die `action_id` der Aktion `werkzeug.aufrufen`;
- * `decision_receipt_id` und `result_receipt_id` zeigen auf die Belege. Ein Lauf, der auf eine
- * Freigabe wartet, hat Aufrufe im Zustand `waiting_approval`. Argumente und Ergebnis liegen nur
- * hier, nie im Beleg (dort steht nur ihr Abdruck).
+ * `decision_receipt_id` und `result_receipt_id` zeigen auf die Belege. Argumente und Ergebnis
+ * liegen nur hier, nie im Beleg (dort steht nur ihr Abdruck).
+ *
+ * Kennung, Abdruck, Wirkung, Herkunft, Schritt und Kennzeichen (`tool_key` bis `untrusted_input`)
+ * sind beim Anlegen Pflicht und danach unveränderlich; in der Tabelle dürfen sie leer sein, weil
+ * Zeilen aus der Zeit davor sie nicht haben. Das prüft der Trigger `tool_calls_regeln`
+ * (Migration 0014), der auch nur diese Wege erlaubt: `requested` → `running` | `denied` |
+ * `cancelled`, `running` → `succeeded` | `failed` | `cancelled`. Die Zustände `waiting_approval`
+ * und `approved` stehen weiter im CHECK; in dieser Fassung führt kein Weg dorthin.
  */
 export const toolCalls = pgTable(
   "tool_calls",
@@ -77,6 +101,15 @@ export const toolCalls = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
+    toolKey: text("tool_key").$type<ToolKey>(),
+    toolDigest: text("tool_digest").$type<Sha256Digest>(),
+    reach: text("reach").$type<(typeof TOOL_REACHES)[number]>(),
+    foreignContent: boolean("foreign_content"),
+    step: integer("step"),
+    untrustedInput: boolean("untrusted_input"),
+    rawName: text("raw_name"),
+    outputTruncated: boolean("output_truncated"),
+    outputChars: integer("output_chars"),
   },
   (t) => [
     idCheck("tool_calls_action_id_format", t.actionId, "action"),
@@ -108,6 +141,27 @@ export const toolCalls = pgTable(
     check(
       "tool_calls_error_code_format",
       sql`${t.errorCode} is null or ${matches(t.errorCode, PATTERNS.errorCode)}`,
+    ),
+    check(
+      "tool_calls_tool_key_format",
+      sql`${t.toolKey} is null or (char_length(${t.toolKey}) <= 140 and ${matches(t.toolKey, "^[a-z][a-z0-9]*(/[a-z0-9][a-z0-9_.-]{0,63}){1,2}$")})`,
+    ),
+    check(
+      "tool_calls_tool_digest_format",
+      sql`${t.toolDigest} is null or ${matches(t.toolDigest, PATTERNS.sha256Digest)}`,
+    ),
+    check(
+      "tool_calls_reach_werte",
+      sql`${t.reach} is null or ${t.reach} in (${valueList(TOOL_REACHES)})`,
+    ),
+    check("tool_calls_step_nicht_negativ", sql`${t.step} is null or ${t.step} >= 0`),
+    check(
+      "tool_calls_raw_name_laenge",
+      sql`${t.rawName} is null or char_length(${t.rawName}) between 1 and 64`,
+    ),
+    check(
+      "tool_calls_output_chars_nicht_negativ",
+      sql`${t.outputChars} is null or ${t.outputChars} >= 0`,
     ),
     unique("tool_calls_stelle_eindeutig").on(t.messageId, t.position),
     unique("tool_calls_call_id_eindeutig").on(t.messageId, t.callId),

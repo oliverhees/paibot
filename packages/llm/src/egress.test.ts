@@ -84,7 +84,7 @@ const TABLE: Row[] = [
   ["https://0.0.0.0/v1", "eu", "private_adresse"],
   ["https://224.0.0.1/v1", "eu", "private_adresse"],
   ["https://nas.local/v1", "eu", "private_adresse"],
-  ["https://ollama/v1", "eu", "private_adresse"],
+  ["https://modell/v1", "eu", "private_adresse"],
   ["https://db.internal/v1", "eu", "private_adresse"],
   // IPv6-Formen
   ["https://[::1]/v1", "eu", "private_adresse"],
@@ -120,7 +120,7 @@ const TABLE: Row[] = [
   ["http://[::1]:11434/v1", "local", "ok"],
   ["http://192.168.1.10:8080/v1", "local", "ok"],
   ["http://2130706433:8080/v1", "local", "ok"],
-  ["http://ollama:11434/v1", "local", "ok"],
+  ["http://modell:11434/v1", "local", "ok"],
   ["https://nas.local/v1", "local", "ok"],
 ];
 
@@ -412,7 +412,7 @@ describe("createEgressFetch", () => {
       if (host === "postgres") return ["172.18.0.2"];
       if (host === "web") throw new Error("ENOTFOUND");
       if (host === "nas.lan") return ["172.18.0.2"];
-      if (host === "ollama.lan") return ["172.18.0.9"];
+      if (host === "modell.lan") return ["172.18.0.9"];
       return ["192.168.1.5"];
     };
     const target = (host: string) => [
@@ -429,8 +429,8 @@ describe("createEgressFetch", () => {
     await expect(
       createEgressFetch(target("172.18.0.2"), fake, { lookup })("http://172.18.0.2/v1/models"),
     ).rejects.toMatchObject({ reason: "adresse_nicht_erlaubt" });
-    const ok = await createEgressFetch(target("ollama.lan"), fake, { lookup })(
-      "http://ollama.lan/v1/models",
+    const ok = await createEgressFetch(target("modell.lan"), fake, { lookup })(
+      "http://modell.lan/v1/models",
     );
     expect(ok.ok).toBe(true);
   });

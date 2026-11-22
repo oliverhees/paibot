@@ -214,6 +214,63 @@ describe("Chat-Ansicht", () => {
     expect(aus).toContain('aria-busy="true"');
   });
 
+  it("leere Antwortblase im Lauf sagt „denkt nach“, nicht „schreibt“", () => {
+    const runId = newId("run");
+    const antwort = newId("message");
+    const user = newId("message");
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: BEREIT,
+        verlauf: verlauf({
+          nachrichten: [
+            msg({ id: user as never, role: "user", content: "Zähl bitte", status: "complete" }),
+            msg({
+              id: antwort as never,
+              role: "assistant",
+              content: "",
+              status: "streaming",
+              runId: runId as never,
+            }),
+          ],
+          aktiverLauf: { id: runId, status: "running" } as Run,
+        }),
+      }),
+    );
+    expect(aus).toContain("Pai denkt nach …");
+    expect(aus).not.toContain("Pai schreibt …");
+  });
+
+  it("Knöpfe unter der Antwort: jeder trägt einen eigenen Namen für Bildschirmleser", () => {
+    const user = newId("message");
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: {
+          ...BEREIT,
+          modellId: "mod_a",
+          waehlbar: [
+            { id: "mod_a", name: "Beispiel-Modell A", herkunft: "über EUrouter" },
+            { id: "mod_b", name: "Beispiel-Modell B", herkunft: "über EUrouter" },
+          ],
+        },
+        verlauf: verlauf({
+          nachrichten: [
+            msg({ id: user as never, role: "user", content: "Hallo", status: "complete" }),
+            msg({ role: "assistant", content: "Erste Fassung.", status: "complete" }),
+            msg({ role: "assistant", content: "Zweite Fassung.", status: "complete" }),
+          ],
+        }),
+      }),
+    );
+    const namen = [...aus.matchAll(/<button[^>]*aria-label="([^"]*)"/g)].map((m) => m[1]);
+    expect(namen).toContain("Zur vorigen Fassung der Antwort");
+    expect(namen).toContain("Zur nächsten Fassung der Antwort");
+    expect(namen).toContain("Neu erzeugen: weitere Möglichkeiten");
+    expect(namen).not.toContain("Antwort neu erzeugen");
+    expect(new Set(namen).size).toBe(namen.length);
+    // der sichtbare Knopf heißt weiter „Neu erzeugen“; kein Pfeil trägt denselben Namen
+    expect(namen).not.toContain("Neu erzeugen");
+  });
+
   it("abgelehnter Lauf: Grund, Ausweg und Link zur passenden Seite, nie ein roher Fehler", () => {
     const user = newId("message");
     const aus = renderToStaticMarkup(
@@ -239,6 +296,49 @@ describe("Chat-Ansicht", () => {
     expect(aus).toContain("Der Anbieter hat den Schlüssel nicht angenommen.");
     expect(aus).toContain("Trag einen gültigen Schlüssel ein.");
     expect(aus).toContain('href="/modelle"');
+  });
+
+  it("abgelehnt wegen Tagesbudget: Ausweg und Link zu den Grenzen, auch nach dem Neuladen", () => {
+    const user = newId("message");
+    const runId = newId("run");
+    const beleg: BelegKurz = {
+      id: newId("receipt"),
+      vollstaendig: true,
+      seq: 7,
+      art: "decision",
+      aktion: "modell.anfragen",
+      zeit: "2026-11-21T13:31:05.000Z",
+      runId,
+      akteur: "bot",
+      entscheidung: {
+        outcome: "deny",
+        regeln: [],
+        grund: "Das Tor hat die Aktion abgelehnt. Grenze nicht eingehalten: G-04 „Tagesbudget“.",
+      },
+    };
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: BEREIT,
+        verlauf: verlauf({
+          nachrichten: [
+            msg({ id: user as never, role: "user", content: "Hallo", status: "complete" }),
+          ],
+          laeufe: [
+            {
+              id: runId,
+              status: "denied",
+              errorCode: "abgelehnt",
+              triggerMessageId: user,
+              createdAt: "2026-11-21T13:31:00.000Z",
+            } as Run,
+          ],
+          belege: [beleg],
+        }),
+      }),
+    );
+    expect(aus).toContain("Das Tagesbudget ist für heute aufgebraucht.");
+    expect(aus).toContain("Einstellungen › Grenzen");
+    expect(aus).toContain('href="/einstellungen/grenzen"');
   });
 
   it("kein Inline-Skript und kein unsicheres HTML", () => {

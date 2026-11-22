@@ -523,13 +523,20 @@ describe("runs", () => {
     ["waiting_approval", "waiting_approval"],
   ] as const)("höchstens ein offener Lauf je Unterhaltung: %s und %s", async (erster, zweiter) => {
     const ids = await frischeUnterhaltung();
-    await ctx.db.insert(runs).values(runRow(ids, { status: erster }));
-    await weistAb(
-      runs,
-      runRow(ids, { status: zweiter }),
-      UNIQUE,
-      "runs_ein_offener_lauf_je_unterhaltung",
-    );
+    // Wartende Läufe gibt es nur aus der Zeit vor dem Trigger `runs_regeln`: Trigger aus (nur im
+    // Test), der eindeutige Index gilt weiter.
+    await ctx.client.exec("set session_replication_role = replica");
+    try {
+      await ctx.db.insert(runs).values(runRow(ids, { status: erster }));
+      await weistAb(
+        runs,
+        runRow(ids, { status: zweiter }),
+        UNIQUE,
+        "runs_ein_offener_lauf_je_unterhaltung",
+      );
+    } finally {
+      await ctx.client.exec("set session_replication_role = origin");
+    }
   });
 
   it("der Teil-Index für offene Läufe meint dieselben Zustände wie ACTIVE_RUN_STATUSES", async () => {
@@ -568,7 +575,10 @@ describe("runs", () => {
   it("ein wartender Lauf wird durch einen neuen Lauf mit resumes_run_id fortgesetzt", async () => {
     const ids = await frischeUnterhaltung();
     const wartend = runRow(ids, { status: "waiting_approval" });
+    // Ein wartender Lauf aus der Zeit vor dem Trigger `runs_regeln` (Trigger nur hier aus).
+    await ctx.client.exec("set session_replication_role = replica");
     await ctx.db.insert(runs).values(wartend);
+    await ctx.client.exec("set session_replication_role = origin");
     await ctx.client.query("update runs set status = 'succeeded' where id = $1", [wartend.id]);
 
     const fortsetzung = runRow(ids, { status: "queued", resumesRunId: wartend.id });

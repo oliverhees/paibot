@@ -18,6 +18,7 @@ import { API_ROUTEN } from "../routen";
 import { letzterLaufText, zeitText } from "../schleuse/ansicht";
 import { TEST_SCHLUESSEL } from "../zugang/testing";
 import {
+  anbieterImSatz,
   anbieterStatus,
   eigenerAnbieter,
   einrichtungSchluesselText,
@@ -160,15 +161,25 @@ describe("Texte bei eigenem oder lokalem Anbieter", () => {
   const eigen = t("modelle.anbieter.name.eigener");
 
   it("eigene Anbieter bekommen Sätze ohne „Konto bei …“, EUrouter behält seinen", () => {
-    for (const name of [lokal, eigen, "Mein Ollama"]) {
+    for (const name of [lokal, eigen, "Mein Modell-Server"]) {
       const text = listeLeerAusweg({ name, templateKey: "eigener" });
-      expect(text).toBe(t("modelle.liste.leer.ausweg_eigen", { anbieter: name }));
+      expect(text).toBe(t("modelle.liste.leer.ausweg_eigen", { anbieter: `„${name}“` }));
       expect(text).not.toContain("Konto");
-      expect(text).toContain(name);
+      expect(text).toContain(`„${name}“`);
     }
     expect(listeLeerAusweg({ name: "EUrouter", templateKey: "eurouter" })).toBe(
       "Versuch es später noch einmal oder prüf dein Konto bei EUrouter.",
     );
+  });
+
+  it("Name mitten im Satz: eigene Anbieter in Anführungszeichen, bekannte Dienste unverändert", () => {
+    expect(anbieterImSatz({ name: lokal, templateKey: "eigener" })).toBe(`„${lokal}“`);
+    expect(anbieterImSatz({ name: "EUrouter", templateKey: "eurouter" })).toBe("EUrouter");
+    expect(
+      t("modelle.schluessel.neu", {
+        anbieter: anbieterImSatz({ name: lokal, templateKey: "eigener" }),
+      }),
+    ).toBe("Neuer Schlüssel für „Lokaler Anbieter“");
   });
 
   it("Einrichtung: der Anzeigename des eigenen Anbieters wählt den passenden Satz", () => {

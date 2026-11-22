@@ -36,6 +36,8 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * - `conversation_events`: lesen, anhängen, alte Ereignisse löschen; nie ändern.
  * - `geraete`: lesen, anlegen, „zuletzt gesehen“, Ablauf, Widerruf samt Grund und „Hinweis bestätigt bis“ setzen,
  *   alte Einträge löschen; Art, Rechte, Schlüssel und Prüfsumme des Cookies ändert die App nie.
+ * - `messages`: lesen, anlegen, nur Text, Zustand, Herkunft des Modells und Verbrauch fortschreiben;
+ *   gelöscht wird nur mit der Unterhaltung.
  * - `tool_calls`: lesen, anlegen und nur Zustand und Ergebnis fortschreiben; gelöscht wird nur mit
  *   der Unterhaltung.
  */
@@ -47,7 +49,8 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   geraete:
     "select, insert, update (last_seen_at, expires_at, revoked_at, revoke_reason, notice_seen_at), delete",
   installation_keys: "select, insert, update (retired_at)",
-  messages: APP_DEFAULT_TABLE_RIGHTS,
+  messages:
+    "select, insert, update (status, content, model_id, provider_id, route, tokens_in, tokens_out, error_code, served_provider, served_model)",
   models: APP_DEFAULT_TABLE_RIGHTS,
   owner: APP_DEFAULT_TABLE_RIGHTS,
   providers: APP_DEFAULT_TABLE_RIGHTS,
@@ -58,7 +61,7 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   rules: "select",
   schleuse_zustand: "select, insert, update",
   tool_calls:
-    "select, insert, update (status, decision_receipt_id, result_receipt_id, result_status, output, error_code, updated_at, finished_at)",
+    "select, insert, update (status, decision_receipt_id, result_receipt_id, result_status, output, error_code, updated_at, finished_at, output_truncated, output_chars)",
 };
 
 /** Tabellen, auf denen die App-Rolle weder ändern noch löschen noch leeren darf. */

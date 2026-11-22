@@ -1,0 +1,219 @@
+/**
+ * PaiBot – Stile der App-Zeile, des Fehlers und des Not-Aus-Hinweises.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.zeile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  background: var(--surface);
+}
+
+.zeile[data-zustand="fehler"] {
+  border-color: var(--danger);
+}
+
+.zeile[data-zustand="notaus"] {
+  border-color: var(--warn);
+}
+
+.kopf {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.symbol {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-feld);
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+.titel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nameZeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--schrift-l);
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.laut {
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+  white-space: nowrap;
+}
+
+.adresse {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.chip {
+  flex: none;
+  margin-left: auto;
+}
+
+.fakten {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+}
+
+.fakten li {
+  min-width: 0;
+}
+
+.fakten .achtung {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.laedt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fehler,
+.notaus {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-feld);
+  color: var(--ink);
+}
+
+.fehler {
+  background: var(--danger-soft);
+}
+
+.notaus {
+  background: var(--warn-soft);
+}
+
+.fehlerIcon {
+  display: inline-flex;
+  flex: none;
+  margin-top: 2px;
+}
+
+.fehler .fehlerIcon {
+  color: var(--danger);
+}
+
+.notaus .fehlerIcon {
+  color: var(--warn);
+}
+
+.fehlerText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fehlerTitel {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.fehler .fehlerTitel {
+  color: var(--danger);
+}
+
+.notaus .fehlerTitel {
+  color: var(--warn);
+}
+
+.fehlerText p {
+  margin: 0;
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.fehlerAktion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.detail {
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .zeile {
+    padding: 14px;
+  }
+
+  .chip {
+    margin-left: 0;
+  }
+
+  .kopf {
+    flex-wrap: wrap;
+  }
+
+  .titel {
+    flex-basis: calc(100% - 52px);
+  }
+}

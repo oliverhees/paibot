@@ -87,6 +87,7 @@ export const STANDARD_RULE_IDS = [
   "R-004",
   "R-005",
   "R-006",
+  "R-010",
   "R-999",
 ] as const;
 export type StandardRuleId = (typeof STANDARD_RULE_IDS)[number];
@@ -255,7 +256,7 @@ const R002_V1 = {
 
 /**
  * Standard-Regel R-010: Der Bot der Unterhaltung darf in der mitgelieferten Doku nachschlagen. Sie
- * steht im Code fest, aber noch nicht in der Datenbank; eine spätere Migration legt sie an.
+ * steht in der Datenbank (Migration für Werkzeug-Aufrufe) und wirkt, sobald es das Werkzeug gibt.
  */
 const R010_V1 = {
   id: "R-010",
@@ -373,6 +374,7 @@ export const STANDARD_RULE_VERSIONS = [
   R004_V1,
   R005_V1,
   R006_V1,
+  R010_V1,
 ] as const satisfies readonly RuleDefinition[];
 
 const R007_V1 = {
@@ -412,14 +414,13 @@ const R008_V1 = {
 
 /**
  * Fassungen der Standard-Regeln, die im Code feststehen, aber noch nicht in der Datenbank stehen
- * (R-007 und R-008 gehören zu Aktionen aus `UNSTORED_ACTION_TYPES`, R-010 wirkt erst mit dem
- * ersten Werkzeug). Das Tor erkennt sie als Standard-Regeln wie die aus `STANDARD_RULE_VERSIONS`;
- * eine spätere Migration legt genau diese Zeilen an, danach wandern sie dorthin.
+ * (R-007 und R-008 gehören zu Aktionen aus `UNSTORED_ACTION_TYPES`). Das Tor erkennt sie als
+ * Standard-Regeln wie die aus `STANDARD_RULE_VERSIONS`; eine spätere Migration legt genau diese
+ * Zeilen an, danach wandern sie dorthin.
  */
 export const UNSTORED_STANDARD_RULE_VERSIONS = [
   R007_V1,
   R008_V1,
-  R010_V1,
 ] as const satisfies readonly RuleDefinition[];
 
 /** Je Standard-Regel die neueste Fassung, in der Reihenfolge von `STANDARD_RULE_IDS`. */
@@ -430,6 +431,7 @@ export const ACTIVE_STANDARD_RULES = [
   R004_V1,
   R005_V1,
   R006_V1,
+  R010_V1,
   R999_V1,
 ] as const satisfies readonly RuleDefinition[];
 

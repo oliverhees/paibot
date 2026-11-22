@@ -14,12 +14,18 @@ import {
   ACTIONS,
   STORED_ACTION_TYPES,
   TOOL_ACTION_TYPES,
+  TOOL_REACHES,
   toolActionTypeSchema,
   UNSTORED_ACTION_TYPES,
 } from "./actions";
 import { ruleDefinitionSchema, STANDARD_RULE_VERSIONS, STANDARD_RULES } from "./gate";
 import { newId } from "./id";
-import { toolKeySchema as objektKennung, TOOL_CALL_STATUSES, toolCallSchema } from "./objects";
+import {
+  toolKeySchema as objektKennung,
+  TOOL_CALL_REACHES,
+  TOOL_CALL_STATUSES,
+  toolCallSchema,
+} from "./objects";
 import {
   type ToolEnvelope,
   type ToolResultMessage,
@@ -247,6 +253,29 @@ describe("Werkzeug-Aufruf im Verlauf", () => {
   it("nimmt einen erledigten Aufruf an", () => {
     expect(toolCallSchema.parse(record)).toEqual(record);
     expect(TOOL_CALL_STATUSES).toContain("waiting_approval");
+  });
+
+  it("nimmt die gespeicherten Angaben zum Werkzeug an (alle optional für alte Zeilen)", () => {
+    const voll = {
+      ...record,
+      toolKey: "eingebaut/kalender.lesen",
+      toolDigest: `sha256:${"c".repeat(64)}`,
+      reach: "intern",
+      foreignContent: false,
+      step: 0,
+      untrustedInput: true,
+      rawName: "Kalender lesen!",
+      outputTruncated: true,
+      outputChars: 30000,
+    };
+    expect(toolCallSchema.parse(voll)).toEqual(voll);
+    expect(toolCallSchema.safeParse({ ...voll, reach: "ueberall" }).success).toBe(false);
+    expect(toolCallSchema.safeParse({ ...voll, rawName: "" }).success).toBe(false);
+    expect(toolCallSchema.safeParse({ ...voll, step: -1 }).success).toBe(false);
+  });
+
+  it("die Wirkung am Aufruf kennt genau die Werte der Aktionen", () => {
+    expect([...TOOL_CALL_REACHES]).toEqual([...TOOL_REACHES]);
   });
 
   it("lehnt unbekannte Zustände und fremde IDs ab", () => {

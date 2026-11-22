@@ -10,6 +10,7 @@
 
 // Die Tokens liegen in `@paibot/ui/tokens.css`.
 
+export * from "./app-bausteine/index";
 export { FORM_ZU_FARBE, FORMEN, formFuer, gesichtFuer } from "./avatar/formen";
 export type { Zufall } from "./avatar/zufall";
 export {
@@ -87,6 +88,7 @@ export { EntwurfBlock, type EntwurfBlockProps, type EntwurfTexte } from "./chat/
 export { type EingabeAktion, eingabeAktion, sendbar } from "./chat/eingabe";
 export { Markdown, type MarkdownProps } from "./chat/Markdown";
 export { sichereUrl } from "./chat/sichereUrl";
+export * from "./faden";
 export { Select, type SelectOption, type SelectProps } from "./felder/Select";
 export { SuchFeld, type SuchFeldProps } from "./felder/SuchFeld";
 export { Switch, type SwitchProps } from "./felder/Switch";

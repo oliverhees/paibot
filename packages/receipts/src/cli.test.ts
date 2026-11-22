@@ -188,6 +188,28 @@ describe("runCli mit Anker", () => {
     expect((await run(["--anker=pb-anker.json", "export.jsonl"], files)).code).toBe(1);
   });
 
+  it("erste Zeile folgt dem Gesamtergebnis: gültig, fehlerhafter Beleg, zu kurze Kette", async () => {
+    const anchor = encodeAnchor(createAnchor(chain[0] as ReceiptEntry, chain[7] as ReceiptEntry));
+    const ok = await run(["export.jsonl"], { "export.jsonl": valid });
+    expect(ok.code).toBe(0);
+    expect(ok.out[0]).toBe("Belege-Kette gültig: 8 Einträge geprüft.");
+
+    const broken = structuredClone(chain);
+    broken.splice(2, 1);
+    const bad = await run(["export.jsonl"], { "export.jsonl": await exportText(broken) });
+    expect(bad.code).toBe(1);
+    expect(bad.out[0]).toMatch(/^Belege-Kette ungültig bei Eintrag \d+:/);
+
+    const short = await run(["export.jsonl", "--anker", "a.json"], {
+      "export.jsonl": await exportText(chain.slice(0, 6)),
+      "a.json": `${anchor}\n`,
+    });
+    expect(short.code).toBe(1);
+    expect(short.out[0]).toMatch(/^Belege-Kette ungültig/);
+    expect(short.out[0]).toBe("Belege-Kette ungültig: 6 Einträge geprüft.");
+    // „Nicht prüfbar“ (Ausgang 4) mit eigener erster Zeile: siehe fassung.test.ts.
+  });
+
   it("ungültiger oder fehlender Anker: Exit-Code 2", async () => {
     const kaputt = await run(["export.jsonl", "--anker", "{kein anker}"], {
       "export.jsonl": valid,

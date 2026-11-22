@@ -134,7 +134,8 @@
                   "@paibot/db": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -161,7 +162,8 @@
                       "@paibot/db/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/shared darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -197,7 +199,8 @@
                   "@paibot/db": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -224,7 +227,8 @@
                       "@paibot/db/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/stub darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -259,7 +263,8 @@
                   "@paibot/db": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -285,7 +290,8 @@
                       "@paibot/db/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/crypto darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -320,7 +326,8 @@
                   "@paibot/db": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -347,6 +354,7 @@
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
                       "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*",
                       "!@paibot/db/testing"
                     ],
                     "message": "Ein Test des Krypto-Pakets darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
@@ -381,7 +389,8 @@
                   "@paibot/db": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -406,7 +415,8 @@
                       "@paibot/db/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/gate darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -437,7 +447,8 @@
                   "@paibot/jobs": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -459,7 +470,8 @@
                       "@paibot/jobs/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/receipts darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -491,7 +503,8 @@
                   "@paibot/db": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -514,7 +527,8 @@
                       "@paibot/db/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/llm darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -547,7 +561,8 @@
                   "@paibot/db": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -572,7 +587,8 @@
                       "@paibot/db/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/jobs darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -602,7 +618,8 @@
                   "@paibot/jobs": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -623,7 +640,8 @@
                       "@paibot/jobs/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/agents darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -657,7 +675,8 @@
                   "@paibot/jobs": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -682,7 +701,8 @@
                       "@paibot/jobs/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/db darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -716,7 +736,8 @@
                   "@paibot/jobs": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/db": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -741,7 +762,8 @@
                       "@paibot/jobs/*",
                       "@paibot/db/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/ui darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
@@ -775,7 +797,8 @@
                   "@paibot/jobs": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/db": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -800,9 +823,69 @@
                       "@paibot/jobs/*",
                       "@paibot/db/*",
                       "@paibot/ui/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "@paibot/mcp darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/mcp/src/spike/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/crypto": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*", "!@ai-sdk/mcp"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "Ein Test der MCP-Bibliothek darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
                 ]
               }
@@ -835,7 +918,8 @@
                   "@paibot/jobs": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/db": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/mcp": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/mcp": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -861,9 +945,73 @@
                       "@paibot/jobs/*",
                       "@paibot/db/*",
                       "@paibot/ui/*",
-                      "@paibot/mcp/*"
+                      "@paibot/mcp/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "Der Test-Anbieter darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["tools/test-mcp-server/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "ai": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/openai-compatible": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts).",
+                  "@ai-sdk/gateway": "Kein Verkehr über ein fremdes Gateway; Modelle kommen nur aus der Anbieter-Schicht.",
+                  "pg-boss": "Die Warteschlange nutzt nur @paibot/jobs.",
+                  "@paibot/web": "Kein Paket importiert aus apps/*.",
+                  "@paibot/worker": "Kein Paket importiert aus apps/*.",
+                  "@paibot/shared": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/crypto": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/gate": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/receipts": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/llm": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/agents": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/jobs": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/db": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/ui": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/mcp": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/fake-provider": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                },
+                "patterns": [
+                  {
+                    "group": ["ai/*", "@ai-sdk/*"],
+                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                  },
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Kein Paket importiert aus apps/*."
+                  },
+                  {
+                    "group": ["@paibot/*/src", "@paibot/*/src/**"],
+                    "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
+                  },
+                  {
+                    "group": [
+                      "@paibot/shared/*",
+                      "@paibot/crypto/*",
+                      "@paibot/gate/*",
+                      "@paibot/receipts/*",
+                      "@paibot/llm/*",
+                      "@paibot/agents/*",
+                      "@paibot/jobs/*",
+                      "@paibot/db/*",
+                      "@paibot/ui/*",
+                      "@paibot/mcp/*",
+                      "@paibot/fake-provider/*"
+                    ],
+                    "message": "Der Test-MCP-Server darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
                 ]
               }
@@ -889,6 +1037,7 @@
                   "@paibot/worker": "Kein Paket importiert aus apps/*.",
                   "@paibot/agents": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/fake-provider": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/llm/modell": "Die Web-App baut nie einen Modell-Zugang; Modelle ruft nur der Worker über das Tor auf."
                 },
                 "patterns": [
@@ -905,7 +1054,11 @@
                     "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
                   },
                   {
-                    "group": ["@paibot/agents/*", "@paibot/fake-provider/*"],
+                    "group": [
+                      "@paibot/agents/*",
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
+                    ],
                     "message": "Die Web-App darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
                 ]
@@ -931,7 +1084,8 @@
                   "@paibot/web": "Kein Paket importiert aus apps/*.",
                   "@paibot/worker": "Kein Paket importiert aus apps/*.",
                   "@paibot/ui": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -947,7 +1101,11 @@
                     "message": "Pakete nur über ihre Exporte importieren, nicht über src/."
                   },
                   {
-                    "group": ["@paibot/ui/*", "@paibot/fake-provider/*"],
+                    "group": [
+                      "@paibot/ui/*",
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
+                    ],
                     "message": "Der Worker darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   }
                 ]
@@ -1073,6 +1231,7 @@
                   "@paibot/ui": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/fake-provider": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "ai": {
                     "message": "Kein Verkehr über ein fremdes Gateway.",
                     "importNames": ["gateway", "createGateway"]
@@ -1093,7 +1252,8 @@
                       "@paibot/jobs/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "Der Motor darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   },
@@ -1136,7 +1296,8 @@
                   "@paibot/db": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/ui": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
                   "@paibot/mcp": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
-                  "@paibot/fake-provider": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
+                  "@paibot/fake-provider": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json).",
+                  "@paibot/test-mcp-server": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                 },
                 "patterns": [
                   {
@@ -1160,7 +1321,8 @@
                       "@paibot/db/*",
                       "@paibot/ui/*",
                       "@paibot/mcp/*",
-                      "@paibot/fake-provider/*"
+                      "@paibot/fake-provider/*",
+                      "@paibot/test-mcp-server/*"
                     ],
                     "message": "Der Prüfer (läuft auch im Browser) darf dieses Paket nicht importieren (Abhängigkeits-Regeln in biome.json)."
                   },

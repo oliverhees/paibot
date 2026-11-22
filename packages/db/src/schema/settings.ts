@@ -47,12 +47,47 @@ export const settings = pgTable(
     setupCodeCreatedAt: timestamp("setup_code_created_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /*
+     * Grenzen eines Laufs mit Werkzeugen. Fest (keine Einstellung in der Oberfläche): Welche Felder
+     * sich ändern lassen, steht in den Fakten von `einstellung.aendern` und gehört zur Tor-Fassung.
+     */
+    /** Höchstzahl der Schritte eines Laufs. */
+    maxStepsPerRun: integer("max_steps_per_run").notNull().default(8),
+    /** Höchstzahl der Werkzeug-Aufrufe in einem Schritt. */
+    maxToolCallsPerStep: integer("max_tool_calls_per_step").notNull().default(8),
+    /** Höchstzahl der Werkzeug-Aufrufe in einem Lauf. */
+    maxToolCallsPerRun: integer("max_tool_calls_per_run").notNull().default(16),
+    /** Höchstzahl der Token eines Laufs (Eingabe und Ausgabe aller Schritte). */
+    maxTokensPerRun: integer("max_tokens_per_run").notNull().default(60000),
+    /** Höchstzahl der Zeichen eines Werkzeug-Ergebnisses für das Modell. */
+    toolResultMaxChars: integer("tool_result_max_chars").notNull().default(16000),
+    /** Höchstzahl der Zeichen aller Werkzeug-Ergebnisse eines Schritts. */
+    toolResultsMaxCharsPerStep: integer("tool_results_max_chars_per_step").notNull().default(24000),
   },
   (t) => [
     check("settings_nur_eine_zeile", sql`${t.id} = 'singleton'`),
     inListCheck("settings_locale_werte", t.locale, ["de", "en"]),
     inListCheck("settings_schleuse_mode_werte", t.schleuseModeDefault, SCHLEUSE_MODES),
     check("settings_max_hops_positiv", sql`${t.maxHops} > 0`),
+    check("settings_max_steps_per_run_bereich", sql`${t.maxStepsPerRun} between 1 and 16`),
+    check(
+      "settings_max_tool_calls_per_step_bereich",
+      sql`${t.maxToolCallsPerStep} between 1 and 16`,
+    ),
+    check("settings_max_tool_calls_per_run_bereich", sql`${t.maxToolCallsPerRun} between 1 and 64`),
+    check("settings_max_tokens_per_run_bereich", sql`${t.maxTokensPerRun} between 1000 and 500000`),
+    check(
+      "settings_tool_result_max_chars_bereich",
+      sql`${t.toolResultMaxChars} between 1000 and 24000`,
+    ),
+    check(
+      "settings_tool_results_max_chars_per_step_bereich",
+      sql`${t.toolResultsMaxCharsPerStep} between 1000 and 24000`,
+    ),
+    check(
+      "settings_werkzeug_zeichen_passen",
+      sql`${t.toolResultMaxChars} <= ${t.toolResultsMaxCharsPerStep}`,
+    ),
     check(
       "settings_tagesbudget_positiv",
       sql`${t.dailyTokenBudget} is null or ${t.dailyTokenBudget} > 0`,

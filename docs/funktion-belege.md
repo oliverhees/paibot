@@ -80,6 +80,8 @@ Belege-Kette ungültig bei Eintrag 42: 128 Einträge geprüft.
   ✓ Kette lückenlos bis hier
 ```
 
+Die erste Zeile sagt dasselbe wie der Ausgang des Befehls. Fehlt am Ende der Kette etwas (sie ist kürzer als der Anker), ist kein einzelner Beleg verändert; die erste Zeile heißt dann „Belege-Kette ungültig: 6 Einträge geprüft.“, ohne Stelle, und der Ausgang ist `1`.
+
 Darunter steht das Urteil über die ganze Kette, zum Beispiel „Kette gültig, alle Schlüssel aus der Kette.“, und ohne Anker der Hinweis „Ohne Anker geprüft: Ob am Ende Belege fehlen, ist so nicht erkennbar.“
 
 4. Mit Anker prüfen: Gib den aufbewahrten Anker mit, als Datei oder als kopierten Text (siehe unten):

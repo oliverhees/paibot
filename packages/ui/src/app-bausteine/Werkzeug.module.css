@@ -1,0 +1,375 @@
+/**
+ * PaiBot – Stile der Werkzeug-Karte und der Werkzeug-Liste.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-21
+ */
+
+.karte {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  background: var(--surface);
+}
+
+.karte[data-status="geaendert"] {
+  border-color: var(--warn);
+  background: var(--surface);
+}
+
+.karte[data-status="entfernt"] {
+  border-style: dashed;
+  color: var(--ink-soft);
+}
+
+.kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.namen {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--schrift-b);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.titel {
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.4;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hinweis {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.hinweis svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.hinweis[data-art="veraendert"] {
+  color: var(--warn);
+}
+
+.sperre {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--warn-soft);
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.sperre svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warn);
+}
+
+.aenderung {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.aenderungTitel {
+  margin: 0;
+  font-size: var(--schrift-m);
+  font-weight: 650;
+}
+
+.aenderungListe {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.feldName {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.paar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.seite {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.seiteName {
+  color: var(--ink-soft);
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+}
+
+.fuss {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.fassung {
+  font-family: var(--font-mono);
+}
+
+.einstufung {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-feld);
+  background: var(--surface-sunken);
+}
+
+.frage {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.frage legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: var(--schrift-m);
+  font-weight: 650;
+}
+
+.optionen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-feld);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.option:has(input:checked) {
+  border-color: var(--accent-kante, var(--line-strong));
+  box-shadow: inset 0 0 0 1px var(--fokus-feld);
+}
+
+.option:has(input:focus-visible) {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.option input {
+  grid-row: 1 / span 2;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--fokus-feld);
+}
+
+.optionTitel {
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.optionText {
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.warnung {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--warn-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.warnung svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warn);
+}
+
+.knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.listeKopf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.listeTitel {
+  margin: 0;
+  font-size: var(--schrift-b);
+  font-weight: 650;
+}
+
+.summe {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+}
+
+.grenze {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--surface-raised);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.grenze svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-soft);
+}
+
+.eintraege {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 480px) {
+  .karte {
+    padding: 12px;
+  }
+
+  .paar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.schema {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.schema > * {
+  align-self: stretch;
+}
+
+.schema > button {
+  align-self: flex-start;
+}
+
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}

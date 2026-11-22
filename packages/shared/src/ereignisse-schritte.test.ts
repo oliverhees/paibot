@@ -1,6 +1,6 @@
 /**
- * PaiBot – Tests: Daten der Ereignisse für Läufe mit mehreren Schritten stehen fest, gehören aber
- * noch nicht zu den Arten, die die Datenbank annimmt.
+ * PaiBot – Tests: Daten der Ereignisse für Läufe mit mehreren Schritten stehen fest und gehören zu
+ * den Arten, die die Datenbank annimmt.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -10,18 +10,24 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { CONVERSATION_EVENT_TYPES, STEP_EVENT_DATA, toolRequestedDataV2 } from "./events";
+import {
+  CONVERSATION_EVENT_TYPES,
+  EVENT_DATA,
+  STEP_EVENT_DATA,
+  toolRequestedDataV2,
+} from "./events";
 import { newId } from "./id";
 
 const runId = newId("run");
 
 describe("Ereignisse für Schritte", () => {
-  it("stehen fest, aber nicht in der Liste der gespeicherten Arten", () => {
+  it("stehen fest und in der Liste der gespeicherten Arten (mit denselben Schemas)", () => {
     expect(Object.keys(STEP_EVENT_DATA).sort()).toEqual(
       ["draft.delta", "step.finished", "tool.started"].sort(),
     );
-    for (const type of Object.keys(STEP_EVENT_DATA)) {
-      expect(CONVERSATION_EVENT_TYPES as readonly string[]).not.toContain(type);
+    for (const [type, schema] of Object.entries(STEP_EVENT_DATA)) {
+      expect(CONVERSATION_EVENT_TYPES as readonly string[]).toContain(type);
+      expect(EVENT_DATA[type as keyof typeof EVENT_DATA]).toBe(schema);
     }
   });
 

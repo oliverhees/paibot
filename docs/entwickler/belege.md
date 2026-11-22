@@ -125,6 +125,8 @@ Rechte der App-Rolle: `belege` nur lesen und anhängen (`packages/db/src/rollen.
 
 Exit-Codes des Befehls (`packages/receipts/src/cli.ts#CLI_EXIT`): 0 gültig, 1 ungültig, 2 Aufruf, Datei oder Anker fehlerhaft, 3 Vertrauenskette gebrochen, 4 mit dieser Fassung nicht prüfbar (Belege aus einer neueren PaiBot-Fassung; nie 0).
 
+Die erste Ausgabezeile folgt demselben Gesamtergebnis wie der Exit-Code: `exitCode` in `packages/receipts/src/cli.ts` leitet den Ausgang aus der Stufe des Urteils ab, `printReport` wählt den Text der ersten Zeile danach. Gibt es einen Fund ohne fehlerhaften Beleg (z. B. Kette kürzer als der Anker), lautet sie „ungültig“ ohne Stelle (`pruefung.ungueltig_ohne_stelle`). Test: `packages/receipts/src/cli.test.ts`, „erste Zeile folgt dem Gesamtergebnis“.
+
 Prüfungen je Beleg: `inhalt`, `signatur`, `kette`, `entscheidung`, `kontext` (`packages/receipts/src/verify.ts#CHECK_NAMES`); `kontext` nur auf dem Server (`packages/receipts/src/server.ts#checkContext`).
 
 ## Sicherheit

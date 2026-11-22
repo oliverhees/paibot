@@ -133,6 +133,42 @@ curl -X POST localhost:8080/_steuerung/drehbuch \
 
 Im Protokoll (`…/anfragen`) steht je Anfrage `scriptStep` (Index des Schritts, der sie beantwortet hat; bei Wiederholung der letzte). Die angebotenen `tools` und die Nachrichten mit `role: "tool"` stehen ungekürzt im `body`.
 
+### Test-MCP-Server
+
+Für Tests der MCP-Anbindung gibt es einen kleinen Server, der das Protokoll über HTTP spricht (`tools/test-mcp-server`). Er lauscht nur auf `127.0.0.1`, baut nie eine Verbindung nach außen auf und gehört in kein ausgeliefertes Image. Er kann beide Fassungen des Protokolls (`modern`: Entdeckung über `server/discover`, `legacy`: `initialize` mit Sitzung, `both`) und protokolliert jede eingegangene Anfrage.
+
+Im Test startest du ihn im selben Prozess und stellst sein Verhalten über das Objekt ein:
+
+```ts
+import { createTestMcpServer } from "@paibot/test-mcp-server";
+
+const server = createTestMcpServer({
+  tools: [{ name: "kaputt", answer: { kind: "text", text: "ging schief", isError: true } }],
+});
+const { url } = await server.start({ port: 0 }); // Port 0 = freier Port
+// ... Client mit `url` verbinden ...
+server.count("tools/call"); // wie viele Aufrufe kamen an?
+await server.stop();
+```
+
+Eine Antwort (`answer`, auch für `listAnswer` und `discoverAnswer`) kann normal sein, ein Text mit `isError`, ein Strom, übergroß, endlos, tröpfelnd, langsam, nie ankommend, abgebrochen, eine Weiterleitung, kaputtes JSON, ein fester Statuscode, ein Ergebnis mit Medien oder eine Rückfrage des Servers (`inputRequired`). Fertige Einstellungen für typische Fälle stehen in `tools/test-mcp-server/src/presets.ts` (eingeschleuste Anweisung, giftiges Schema, wechselnde Liste, viele Werkzeuge, Token in der Adresse u. a.).
+
+Läuft er als eigener Prozess, steuerst du ihn über HTTP. **Ohne Schlüssel gibt es keine Steuerung**: Die Pfade unter `/_steuerung/` antworten dann mit 403, auch von Loopback. Mit `TEST_MCP_CONTROL_KEY` brauchst du die Kopfzeile `x-steuerung-schluessel` (falsch oder fehlend: 401):
+
+```bash
+pnpm --filter @paibot/test-mcp-server build
+TEST_MCP_PORT=8090 TEST_MCP_CONTROL_KEY=test-schluessel \
+  node tools/test-mcp-server/dist/test-mcp-server.mjs
+
+curl -X POST localhost:8090/_steuerung/verhalten \
+  -H 'x-steuerung-schluessel: test-schluessel' \
+  -d '{"tools":[{"name":"neu","description":"Neu."}]}'
+curl -H 'x-steuerung-schluessel: test-schluessel' localhost:8090/_steuerung/anfragen
+curl -X POST -H 'x-steuerung-schluessel: test-schluessel' localhost:8090/_steuerung/zuruecksetzen
+```
+
+Das Protokoll gibt Zugangsdaten nicht heraus (`Authorization` und Werte in der Adresse sind unkenntlich). Wie die MCP-Bibliothek den Server liest, prüft `packages/mcp/src/spike/gegen-testserver.test.ts`.
+
 ### Tests gegen echtes Postgres
 
 Die meisten Datenbank-Tests laufen mit PGlite im Speicher. Einige Dinge kann PGlite nicht zeigen, weil es nur eine Verbindung kennt: gleichzeitiges Anhängen von Belegen über zwei Verbindungen, Migrationen bei gleichzeitigen Starts, die Warteschlange mit mehreren Prozessen. Diese Tests laufen nur, wenn `PAIBOT_TEST_DATABASE_URL` auf einen **Wegwerf-Server** zeigt, sonst werden sie übersprungen. In der CI läuft dafür ein eigener Postgres-Dienst.
@@ -177,16 +213,18 @@ Eine neue Route bekommt in `gate-pflicht.test.ts` einen Fall (`AKTIONS_FAELLE` b
 
 `tools/e2e` startet PaiBot im Produktions-Build und geht den ganzen Weg im Browser:
 
-| Bereich               | Was geprüft wird                                                                                                                                                                                                                                                      |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Einrichtung           | Code, Passwort, Anbieter eintragen und Verbindung testen, Modell wählen                                                                                                                                                                                               |
-| Chat                  | Nachricht senden, Antwort kommt gestreamt, Verlauf nach dem Neuladen, Beleg öffnen und prüfen                                                                                                                                                                         |
-| Handy-Format (390 px) | senden, Antwort streamt, „Stopp“ bricht sie ab (der Test-Anbieter sieht den Abbruch), Beleg als Blatt von unten                                                                                                                                                       |
-| Datenschleuse         | mit einer Beispiel-Datenschleuse (`scripts/doku/schleuse-attrappe.mjs`): Standard einschalten, Nachricht mit „geschützt über die Datenschleuse“; „Schlüssel passt nicht“ im Chat mit Ausweg und auf der Seite Datenschleuse, dabei geht keine Anfrage an den Anbieter |
-| Passwort ändern       | falsches aktuelles Passwort ändert nichts; danach ist das zweite Gerät abgemeldet, das alte Passwort gilt nicht mehr, das neue schon                                                                                                                                  |
-| Anmelde-Schutz        | fünf Fehlversuche sperren die Adresse (auch das richtige Passwort kommt dann nicht durch), viele Versuche aus vielen Adressen lösen die gemeinsame Bremse aus, ein bekanntes Gerät kommt trotzdem durch                                                               |
-| Belege                | ganze Kette prüfen, Export, `pnpm belege:pruefen` auf dem Export                                                                                                                                                                                                      |
-| Zugang und Grenzen    | Abmelden und Anmelden, Tagesbudget setzen, Ablehnung durch das Tor im Chat                                                                                                                                                                                            |
+| Bereich                   | Was geprüft wird                                                                                                                                                                                                                                                                                           |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Einrichtung               | Code, Passwort, Anbieter eintragen und Verbindung testen, Modell wählen                                                                                                                                                                                                                                    |
+| Chat                      | Nachricht senden, Antwort kommt gestreamt, Verlauf nach dem Neuladen, Beleg öffnen und prüfen                                                                                                                                                                                                              |
+| Handy-Format (390 px)     | senden, Antwort streamt, „Stopp“ bricht sie ab (der Test-Anbieter sieht den Abbruch), Beleg als Blatt von unten                                                                                                                                                                                            |
+| Datenschleuse             | mit einer Beispiel-Datenschleuse (`scripts/doku/schleuse-attrappe.mjs`): Standard einschalten, Nachricht mit „geschützt über die Datenschleuse“; „Schlüssel passt nicht“ im Chat mit Ausweg und auf der Seite Datenschleuse, dabei geht keine Anfrage an den Anbieter                                      |
+| Passwort ändern           | falsches aktuelles Passwort ändert nichts; danach ist das zweite Gerät abgemeldet, das alte Passwort gilt nicht mehr, das neue schon                                                                                                                                                                       |
+| Anmelde-Schutz            | fünf Fehlversuche sperren die Adresse (auch das richtige Passwort kommt dann nicht durch), viele Versuche aus vielen Adressen lösen die gemeinsame Bremse aus, ein bekanntes Gerät kommt trotzdem durch                                                                                                    |
+| Belege                    | ganze Kette prüfen, Export, `pnpm belege:pruefen` auf dem Export                                                                                                                                                                                                                                           |
+| Zugang und Grenzen        | Abmelden und Anmelden, Tagesbudget setzen, Ablehnung durch das Tor im Chat                                                                                                                                                                                                                                 |
+| Seite Modell und Anbieter | falscher Schlüssel wird abgelehnt (beim Anbieter nur die Prüfung, kein Chat, kein Beleg); Schlüssel ersetzen nach Schlüsselwechsel beim Anbieter, Verbindung steht, Chat geht durch, Beleg stimmt; anderes Modell wählen, nach Neuladen „aktuell“, die nächste Anfrage nennt das neue Modell, Beleg stimmt |
+| Seite Bot                 | leerer Name wird erklärt und nicht gespeichert (kein Beleg); Name und Anweisung ändern, nach Neuladen da, die nächste Anfrage trägt die Anweisung, Beleg stimmt                                                                                                                                            |
 
 ```bash
 pnpm build
@@ -201,17 +239,36 @@ Was passiert:
 4. Grün ist die Prüfung nur, wenn alle Schritte klappen, die Sperre in allen drei Prozessen geladen war und es keinen Verstoß, keine fremde Anfrage und keinen Konsolenfehler gab.
 5. Am Ende räumt das Skript alles ab (Prozesse, Datenbank, temporäre Ordner). Im Ausgabe-Ordner bleiben `ergebnis.json`, die Logs (`web.log`, `worker.log`, `worker-2.log` …, `anbieter.log`, `migrate.log`) und ein Bild je Schritt.
 
-Gegenproben: `--gegenprobe server` lädt in die Web-App zusätzlich einen absichtlichen Aufruf nach außen, `--gegenprobe browser` ruft im Browser eine fremde Adresse auf. Beide Male muss die Prüfung rot werden. Viele Schritte haben ihre Gegenprobe eingebaut, zum Beispiel: Bei „Schlüssel passt nicht“ darf beim Anbieter nichts ankommen, bei der Sperre darf auch das richtige Passwort nicht durchkommen.
+Gegenproben: `--gegenprobe server` lädt in die Web-App zusätzlich einen absichtlichen Aufruf nach außen, `--gegenprobe browser` ruft im Browser eine fremde Adresse auf. Beide Male muss die Prüfung rot werden. Viele Schritte haben ihre Gegenprobe eingebaut, zum Beispiel: Bei „Schlüssel passt nicht“ darf beim Anbieter nichts ankommen, bei der Sperre darf auch das richtige Passwort nicht durchkommen, ein abgelehnter Schlüssel und ein leerer Bot-Name dürfen keinen Beleg erzeugen. Belege werden dabei über `/api/belege` gezählt; wer die Seite „Modell und Anbieter“ öffnet, gleicht die Modell-Liste ab und erzeugt selbst einen Beleg „Anbieter gespeichert“, deshalb zählt die Prüfung nur zwischen zwei Handgriffen auf derselben Seite.
 
 Ohne Playwright meldet das Skript „ÜBERSPRUNGEN“ und endet mit Exit 0, mit `PAIBOT_E2E_PFLICHT=1` (so in der CI) dagegen mit Exit 1. Playwright ist nicht im Projekt enthalten (einmalig außerhalb: `npm install -g playwright && npx playwright install chromium`).
 
 Was die Netz-Sperre nicht sieht: Verbindungen aus nativen Erweiterungen oder über interne Bindungen von Node am Modul `net` vorbei, Kind-Prozesse, die `NODE_OPTIONS` nicht erben, Programme außerhalb von Node (Postgres selbst, der Browser), lokale Unix-Sockets (zugelassen) und alles vor dem Laden der Sperre. Die Dienstnamen aus Docker Compose (`postgres`, `datenschleuse`, `web`, `worker`), die die Anbieter-Schicht zur Sicherheit auflöst, beantwortet die Sperre selbst mit „unbekannt“; sie stehen als `name-lokal` im Log und zählen nicht als Verstoß.
+
+### Browser-Tests der Oberfläche
+
+Fokus-Falle, Tastatur und Maße der Bausteine lassen sich nur in einem echten Browser prüfen. Die Tests liegen in `packages/ui/browser/` und laufen mit Vitest und Playwright (Chromium).
+
+```bash
+pnpm --filter @paibot/ui test:browser
+```
+
+Das braucht:
+
+- Playwright **1.63.0** mit dem passenden Chromium (Fassung 153, Revision 1243). Playwright gehört nicht zu den Abhängigkeiten des Projekts: Installiere es außerhalb (`npm install -g playwright && npx playwright install chromium`), ein globales Playwright wird über `NODE_PATH` gefunden.
+- Keinen gebauten Stand und keine laufende App: Jede Testdatei startet selbst einen Vite-Server auf einem freien Port und liefert ihre Prüfseite aus.
+- Keinen Zugang nach außen: Chromium löst nur `127.0.0.1` auf, ein Aufruf nach draußen scheitert sofort (`packages/ui/browser/hilfen.mjs`).
+
+Der Aufruf setzt `PAIBOT_BROWSER_TESTS=1`: Fehlt Playwright oder Chromium, schlägt der Lauf fehl. Unter `pnpm test` werden diese Tests ohne die Variable übersprungen.
+
+Für neue Browser-Tests gilt: Jeder Vite-Server bekommt mit `neuerCacheOrdner()` einen eigenen Zwischenspeicher (Option `cacheDir`) und räumt ihn mit `loescheCacheOrdner()` auf, und `chromium.launch(CHROMIUM_OPTIONEN)` startet den Browser. Teilen sich die Server den Standard-Ordner `node_modules/.vite`, bündeln sie beim ersten Lauf gleichzeitig dieselben Abhängigkeiten, und die Prüfseite bleibt leer.
 
 ### In der CI
 
 | Job             | Was er tut                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `e2e`           | nach `check`: Postgres als Dienst-Container, Playwright in fester Fassung, `pnpm build`, die Prüfung oben, danach beide Gegenproben (müssen mit Exit 1 und der passenden Meldung enden). Im Fehlerfall stehen Schritte, Prüfungen und die Enden der Logs im Protokoll.                                                                                                                                                                                                                                                                                                                                                                         |
+| `browser`       | nach `check`: Playwright und Chromium in fester Fassung (wie in `e2e`), dann `pnpm --filter @paibot/ui test:browser`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `ohne-internet` | nach `check`: der echte Docker-Stack mit `deploy/docker-compose.ohne-internet.yml`. Dort ist auch das Netz `paibot-aussen` intern, der Test-Anbieter steht im selben Netz, `web` veröffentlicht keinen Port. Ein Prüf-Container im Netz geht über HTTP Einrichtung, eine Nachricht mit Antwort, die Kette der Belege und den Export samt eigenständigem Prüfer durch (`tools/e2e/src/ohne-internet.mjs`). Danach versucht `tools/e2e/src/netz-probe.cjs` aus `web` und `worker` Verbindungen nach draußen (ein Dienst auf dem Runner, öffentliche Adressen, Namen): keine darf klappen, Postgres und der Test-Anbieter müssen erreichbar sein. |
 
 Den Job `ohne-internet` kannst du mit Docker auch lokal nachstellen:
@@ -293,18 +350,20 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 - Die Steuerung unter `/_steuerung/` antwortet ohne Schlüssel nur auf Anfragen von derselben Maschine (Loopback). Mit `FAKE_PROVIDER_CONTROL_KEY` verlangt sie die Kopfzeile `x-steuerung-schluessel` mit diesem Wert. Binde ihn trotzdem nie an ein offenes Netz, ein Container gehört in ein internes Netz.
 - Er bildet das Format nach, das PaiBot heute nutzt (OpenAI-kompatibel), nicht jeden Anbieter. Was echte Anbieter zusätzlich oder anders senden, taucht im Drehbuch nur auf, wenn du es dort nachstellst.
 - Nur Chat und Modell-Liste sind nachgebildet (keine Einbettungen, keine Bilder).
-- Ein Compose-Testprofil mit dem Image, ein Netz ohne Internet in Docker und der nächtliche Lauf mit Datenschleuse sind geplant, aber noch nicht gebaut. Die Ende-zu-Ende-Prüfung läuft heute ohne Docker, mit der Netz-Sperre in den Node-Prozessen (siehe oben).
+- Gebaut ist der Docker-Stack ohne Weg nach draußen: der CI-Job `ohne-internet` mit `deploy/docker-compose.ohne-internet.yml` (siehe oben). Noch nicht gebaut sind Playwright-Tests im Compose-Stack und der nächtliche Lauf mit Datenschleuse. Die Browser-Prüfung mit Playwright läuft heute ohne Docker, mit der Netz-Sperre in den Node-Prozessen (siehe oben).
 
 ## Fehlerbehebung
 
-| Beobachtung                        | Ursache                                         | Was tun                                                 |
-| ---------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
-| Fehler 401 vom Test-Anbieter       | Schlüssel gesetzt, aber ein anderer gesendet    | gleichen Schlüssel verwenden oder `apiKey` leeren       |
-| Aus dem Container nicht erreichbar | bindet standardmäßig nur an `127.0.0.1`         | `FAKE_PROVIDER_HOST=0.0.0.0` setzen (im Image schon so) |
-| Port belegt                        | fester Port wird schon genutzt                  | `FAKE_PROVIDER_PORT=0` oder anderen Port nehmen         |
-| Test hängt                         | `haengen` war geplant und niemand bricht ab     | im Test abbrechen, `reset()` oder `stop()` beendet es   |
-| Werkzeug-Aufruf kommt immer wieder | `toolCall` bleibt gesetzt, bis er entfernt wird | nach dem Aufruf `configure({ toolCall: undefined })`    |
-| E2E: „Kein Postgres gefunden“      | `initdb` fehlt im System                        | Postgres installieren oder `PAIBOT_DOKU_PG_BIN` setzen  |
-| E2E: „Nicht gebaut“                | `pnpm build` fehlt                              | `pnpm build`, dann erneut                               |
-| E2E: Verstoß in `netz.jsonl`       | ein Prozess wollte nach außen                   | `rolle`, `ziel` und `stapel` im Eintrag zeigen, wer     |
-| Tests gegen Postgres übersprungen  | `PAIBOT_TEST_DATABASE_URL` ist nicht gesetzt    | Variable auf einen Wegwerf-Server setzen (siehe oben)   |
+| Beobachtung                               | Ursache                                                      | Was tun                                                  |
+| ----------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
+| Fehler 401 vom Test-Anbieter              | Schlüssel gesetzt, aber ein anderer gesendet                 | gleichen Schlüssel verwenden oder `apiKey` leeren        |
+| Aus dem Container nicht erreichbar        | bindet standardmäßig nur an `127.0.0.1`                      | `FAKE_PROVIDER_HOST=0.0.0.0` setzen (im Image schon so)  |
+| Port belegt                               | fester Port wird schon genutzt                               | `FAKE_PROVIDER_PORT=0` oder anderen Port nehmen          |
+| Test hängt                                | `haengen` war geplant und niemand bricht ab                  | im Test abbrechen, `reset()` oder `stop()` beendet es    |
+| Werkzeug-Aufruf kommt immer wieder        | `toolCall` bleibt gesetzt, bis er entfernt wird              | nach dem Aufruf `configure({ toolCall: undefined })`     |
+| E2E: „Kein Postgres gefunden“             | `initdb` fehlt im System                                     | Postgres installieren oder `PAIBOT_DOKU_PG_BIN` setzen   |
+| E2E: „Nicht gebaut“                       | `pnpm build` fehlt                                           | `pnpm build`, dann erneut                                |
+| E2E: Verstoß in `netz.jsonl`              | ein Prozess wollte nach außen                                | `rolle`, `ziel` und `stapel` im Eintrag zeigen, wer      |
+| Tests gegen Postgres übersprungen         | `PAIBOT_TEST_DATABASE_URL` ist nicht gesetzt                 | Variable auf einen Wegwerf-Server setzen (siehe oben)    |
+| Browser-Tests: `#wurzel > *` nie sichtbar | Server teilen sich den Zwischenspeicher `node_modules/.vite` | je Server `cacheDir` mit `neuerCacheOrdner()` setzen     |
+| Browser-Tests: Chromium nicht gefunden    | Playwright oder Chromium fehlt                               | Playwright 1.63.0 und Chromium installieren (siehe oben) |

@@ -215,7 +215,7 @@ export function belegRow(
   } satisfies typeof belege.$inferInsert;
 }
 
-/** Werkzeug-Aufruf im Zustand `requested` zu einer Antwort eines Laufs. */
+/** Werkzeug-Aufruf im Zustand `requested` zu einer Antwort eines Laufs, mit allen Pflicht-Angaben. */
 export function toolCallRow(
   ids: { conversationId: ConversationId; runId: RunId; messageId: MessageId },
   overrides: Partial<typeof toolCalls.$inferInsert> = {},
@@ -231,6 +231,12 @@ export function toolCallRow(
     kind: "lesen",
     input: { datum: "2026-11-20" },
     argsDigest: hmacDigest(),
+    toolKey: "eingebaut/kalender.lesen",
+    toolDigest: sha256Digest(),
+    reach: "intern",
+    foreignContent: false,
+    step: 0,
+    untrustedInput: false,
     ...overrides,
   } satisfies typeof toolCalls.$inferInsert;
 }
