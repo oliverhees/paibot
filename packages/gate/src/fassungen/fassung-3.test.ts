@@ -3,7 +3,8 @@
  * - sie setzt genau den Vertrag aus `@paibot/shared/tor-fassung-3` um (Fassung 2 und das Neue);
  * - sie ist eine Obermenge von Fassung 2 (feste Fälle der Fassung 2 ergeben dieselbe
  *   Entscheidung; die neuen Grenzen stehen dahinter und entfallen);
- * - jede Bedingung von R-014 wirkt (ohne sie ändert sich mindestens ein fester Fall);
+ * - jede Bedingung von R-014 wirkt (ohne sie ändert sich ein fester Fall bzw., bei Akteur und
+ *   Quelle, die Auswertung der Regel selbst);
  * - sie ist noch nicht in Kraft: Das Tor entscheidet mit Fassung 2, eine neue Aktion oder ein
  *   Aufruf eines App-Werkzeugs kommt mit Fassung 2 nie durch, R-014 wird im Regelstand abgelehnt.
  *
@@ -271,24 +272,56 @@ describe("Gegenproben: jede Bedingung von R-014 wirkt", () => {
 
   it.each([
     ["botOfConversation", "R-014 nur im direkt-chat"],
+    ["trigger", "R-014 ausloeser automation"],
     ["toolKind", "R-014 art schreiben"],
     ["appAccess", "R-014 kein zugriff"],
     ["toolStatus", "R-014 stand neu"],
-    ["akteur", undefined],
-    ["toolSource", undefined],
   ])("ohne Bedingung %s ändert sich ein fester Fall", (fakt, erwartet) => {
     const ohne = {
       ...R014_V1,
       conditions: R014_V1.conditions.filter((condition) => condition.fact !== fakt),
     };
-    const faelle = geaendert(ohne);
-    if (erwartet === undefined) {
-      // Akteur und Quelle sichert schon die Eingabe ab (nur Bots rufen Werkzeuge auf; Fakten der
-      // App gibt es nur bei Quelle `mcp`). Die Bedingungen bleiben als zweite Sicherung.
-      expect(faelle).toEqual([]);
-    } else {
-      expect(faelle).toContain(erwartet);
-    }
+    expect(geaendert(ohne)).toContain(erwartet);
+  });
+
+  it("Auslöser ungleich Chat: R-014 passt nicht, es fragt R-005", () => {
+    const entry = K3.cases.find((fall) => fall.name === "R-014 ausloeser automation") as Fall;
+    expect(entry.expected.outcome).toBe("ask");
+    expect(entry.expected.matchedRules).toEqual([{ id: "R-005", version: 1 }]);
+  });
+});
+
+/*
+ * Akteur und Quelle sichert schon die Eingabe ab (nur Bots rufen Werkzeuge auf; Fakten der App gibt
+ * es nur bei Quelle `mcp`). Deshalb ändert ohne diese Bedingungen kein fester Fall seine
+ * Entscheidung. Geprüft wird hier direkt an der Regel-Auswertung, auf rohen Fakten ohne Schema:
+ * Jeder Test weicht in genau einem Fakt vom passenden Aufruf ab.
+ */
+describe("Bedingungen Akteur und Quelle von R-014, direkt an der Regel-Auswertung", () => {
+  const passt = K3.cases.find((fall) => fall.name === "R-014 passt") as Fall;
+  const aktion = passt.action as { type: string; actor: string };
+  const fakten = passt.facts as Record<string, unknown>;
+  const ohne = (fakt: string): RuleDefinition => ({
+    ...R014_V1,
+    conditions: R014_V1.conditions.filter((condition) => condition.fact !== fakt),
+  });
+
+  it("der passende Aufruf: R-014 gilt", () => {
+    expect(GATE_FORMAT_3.ruleApplies(R014_V1, aktion, fakten)).toBe(true);
+  });
+
+  it("Akteur Besitzer statt Bot: R-014 gilt nicht", () => {
+    const besitzer = { ...aktion, actor: "besitzer" };
+    expect(GATE_FORMAT_3.ruleApplies(R014_V1, besitzer, fakten)).toBe(false);
+    // Gegenprobe im Test: Nur die Bedingung zum Akteur hält diesen Aufruf ab.
+    expect(GATE_FORMAT_3.ruleApplies(ohne("akteur"), besitzer, fakten)).toBe(true);
+  });
+
+  it("Quelle eingebaut statt mcp: R-014 gilt nicht", () => {
+    const eingebaut = { ...fakten, toolSource: "eingebaut" };
+    expect(GATE_FORMAT_3.ruleApplies(R014_V1, aktion, eingebaut)).toBe(false);
+    // Gegenprobe im Test: Nur die Bedingung zur Quelle hält diesen Aufruf ab.
+    expect(GATE_FORMAT_3.ruleApplies(ohne("toolSource"), aktion, eingebaut)).toBe(true);
   });
 });
 
