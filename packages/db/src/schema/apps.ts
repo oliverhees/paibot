@@ -150,10 +150,7 @@ export const appTools = pgTable(
     ),
     check("app_tools_tool_digest_format", matches(t.toolDigest, PATTERNS.sha256Digest)),
     check("app_tools_description_laenge", sql`char_length(${t.description}) <= 2000`),
-    check(
-      "app_tools_input_schema_objekt",
-      sql`jsonb_typeof(${t.inputSchema}) = 'object'`,
-    ),
+    check("app_tools_input_schema_objekt", sql`jsonb_typeof(${t.inputSchema}) = 'object'`),
     inListCheck("app_tools_status_werte", t.status, APP_TOOL_STATUSES),
     inListCheck("app_tools_tool_class_werte", t.toolClass, APP_TOOL_CLASSES),
     check(

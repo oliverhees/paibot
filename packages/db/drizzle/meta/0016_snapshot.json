@@ -74,12 +74,8 @@
           "tableFrom": "bots",
           "tableTo": "models",
           "schemaTo": "public",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -89,9 +85,7 @@
         "bots_name_eindeutig": {
           "name": "bots_name_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -201,12 +195,8 @@
           "tableFrom": "models",
           "tableTo": "providers",
           "schemaTo": "public",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["provider_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -216,10 +206,7 @@
         "models_provider_slug_eindeutig": {
           "name": "models_provider_slug_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "provider_id",
-            "slug"
-          ]
+          "columns": ["provider_id", "slug"]
         }
       },
       "policies": {},
@@ -351,9 +338,7 @@
         "providers_base_url_eindeutig": {
           "name": "providers_base_url_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "base_url"
-          ]
+          "columns": ["base_url"]
         }
       },
       "policies": {},
@@ -613,12 +598,8 @@
           "tableFrom": "app_tools",
           "tableTo": "apps",
           "schemaTo": "public",
-          "columnsFrom": [
-            "app_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["app_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -626,10 +607,7 @@
       "compositePrimaryKeys": {
         "app_tools_tool_id_version_pk": {
           "name": "app_tools_tool_id_version_pk",
-          "columns": [
-            "tool_id",
-            "version"
-          ]
+          "columns": ["tool_id", "version"]
         }
       },
       "uniqueConstraints": {},
@@ -786,9 +764,7 @@
         "apps_short_name_eindeutig": {
           "name": "apps_short_name_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "short_name"
-          ]
+          "columns": ["short_name"]
         }
       },
       "policies": {},
@@ -938,12 +914,8 @@
           "tableFrom": "bot_app_grants",
           "tableTo": "apps",
           "schemaTo": "public",
-          "columnsFrom": [
-            "app_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["app_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -953,9 +925,7 @@
         "bot_app_grants_entscheidung_einmal": {
           "name": "bot_app_grants_entscheidung_einmal",
           "nullsNotDistinct": false,
-          "columns": [
-            "action_id"
-          ]
+          "columns": ["action_id"]
         }
       },
       "policies": {},
@@ -1172,12 +1142,8 @@
           "tableFrom": "settings",
           "tableTo": "bots",
           "schemaTo": "public",
-          "columnsFrom": [
-            "default_bot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["default_bot_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1187,9 +1153,7 @@
         "settings_installation_id_unique": {
           "name": "settings_installation_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "installation_id"
-          ]
+          "columns": ["installation_id"]
         }
       },
       "policies": {},
@@ -1439,12 +1403,8 @@
           "tableFrom": "belege",
           "tableTo": "installation_keys",
           "schemaTo": "public",
-          "columnsFrom": [
-            "key_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["key_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -1454,16 +1414,12 @@
         "belege_id_eindeutig": {
           "name": "belege_id_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         },
         "belege_hash_eindeutig": {
           "name": "belege_hash_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "hash"
-          ]
+          "columns": ["hash"]
         }
       },
       "policies": {},
@@ -1603,9 +1559,7 @@
         "installation_keys_public_key_eindeutig": {
           "name": "installation_keys_public_key_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "public_key"
-          ]
+          "columns": ["public_key"]
         }
       },
       "policies": {},
@@ -1757,19 +1711,14 @@
       "compositePrimaryKeys": {
         "rules_id_version_pk": {
           "name": "rules_id_version_pk",
-          "columns": [
-            "id",
-            "version"
-          ]
+          "columns": ["id", "version"]
         }
       },
       "uniqueConstraints": {
         "rules_seq_eindeutig": {
           "name": "rules_seq_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "seq"
-          ]
+          "columns": ["seq"]
         }
       },
       "policies": {},
@@ -1918,12 +1867,8 @@
           "tableFrom": "conversation_events",
           "tableTo": "conversations",
           "schemaTo": "public",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1931,10 +1876,7 @@
       "compositePrimaryKeys": {
         "conversation_events_conversation_id_seq_pk": {
           "name": "conversation_events_conversation_id_seq_pk",
-          "columns": [
-            "conversation_id",
-            "seq"
-          ]
+          "columns": ["conversation_id", "seq"]
         }
       },
       "uniqueConstraints": {},
@@ -2031,12 +1973,8 @@
           "tableFrom": "conversations",
           "tableTo": "bots",
           "schemaTo": "public",
-          "columnsFrom": [
-            "bot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["bot_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2260,12 +2198,8 @@
           "tableFrom": "messages",
           "tableTo": "conversations",
           "schemaTo": "public",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2502,12 +2436,8 @@
           "tableFrom": "runs",
           "tableTo": "conversations",
           "schemaTo": "public",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2516,12 +2446,8 @@
           "tableFrom": "runs",
           "tableTo": "messages",
           "schemaTo": "public",
-          "columnsFrom": [
-            "trigger_message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trigger_message_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2530,12 +2456,8 @@
           "tableFrom": "runs",
           "tableTo": "bots",
           "schemaTo": "public",
-          "columnsFrom": [
-            "bot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["bot_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2544,12 +2466,8 @@
           "tableFrom": "runs",
           "tableTo": "runs",
           "schemaTo": "public",
-          "columnsFrom": [
-            "resumes_run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["resumes_run_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2822,12 +2740,8 @@
           "tableFrom": "tool_calls",
           "tableTo": "conversations",
           "schemaTo": "public",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2836,12 +2750,8 @@
           "tableFrom": "tool_calls",
           "tableTo": "runs",
           "schemaTo": "public",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2850,12 +2760,8 @@
           "tableFrom": "tool_calls",
           "tableTo": "messages",
           "schemaTo": "public",
-          "columnsFrom": [
-            "message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2864,12 +2770,8 @@
           "tableFrom": "tool_calls",
           "tableTo": "belege",
           "schemaTo": "public",
-          "columnsFrom": [
-            "decision_receipt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["decision_receipt_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -2878,12 +2780,8 @@
           "tableFrom": "tool_calls",
           "tableTo": "belege",
           "schemaTo": "public",
-          "columnsFrom": [
-            "result_receipt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["result_receipt_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -2892,12 +2790,8 @@
           "tableFrom": "tool_calls",
           "tableTo": "apps",
           "schemaTo": "public",
-          "columnsFrom": [
-            "app_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["app_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -2907,32 +2801,22 @@
         "tool_calls_stelle_eindeutig": {
           "name": "tool_calls_stelle_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "message_id",
-            "position"
-          ]
+          "columns": ["message_id", "position"]
         },
         "tool_calls_call_id_eindeutig": {
           "name": "tool_calls_call_id_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "message_id",
-            "call_id"
-          ]
+          "columns": ["message_id", "call_id"]
         },
         "tool_calls_decision_receipt_id_eindeutig": {
           "name": "tool_calls_decision_receipt_id_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "decision_receipt_id"
-          ]
+          "columns": ["decision_receipt_id"]
         },
         "tool_calls_result_receipt_id_eindeutig": {
           "name": "tool_calls_result_receipt_id_eindeutig",
           "nullsNotDistinct": false,
-          "columns": [
-            "result_receipt_id"
-          ]
+          "columns": ["result_receipt_id"]
         }
       },
       "policies": {},
@@ -3154,12 +3038,8 @@
           "tableFrom": "geraete",
           "tableTo": "owner",
           "schemaTo": "public",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3169,9 +3049,7 @@
         "geraete_token_hash_unique": {
           "name": "geraete_token_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "policies": {},
@@ -3311,10 +3189,7 @@
       "compositePrimaryKeys": {
         "rate_limits_key_window_start_pk": {
           "name": "rate_limits_key_window_start_pk",
-          "columns": [
-            "key",
-            "window_start"
-          ]
+          "columns": ["key", "window_start"]
         }
       },
       "uniqueConstraints": {},
@@ -3419,12 +3294,8 @@
           "tableFrom": "sessions",
           "tableTo": "owner",
           "schemaTo": "public",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3433,12 +3304,8 @@
           "tableFrom": "sessions",
           "tableTo": "geraete",
           "schemaTo": "public",
-          "columnsFrom": [
-            "device_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["device_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
