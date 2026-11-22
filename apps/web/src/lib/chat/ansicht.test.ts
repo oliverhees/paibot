@@ -13,6 +13,7 @@ import type { ConversationEvent, ConversationEventType } from "@paibot/shared/er
 import { newId } from "@paibot/shared/ids";
 import type { Message, Run } from "@paibot/shared/objekte";
 import { describe, expect, it } from "vitest";
+import { vorgabeAus } from "../modelle/vorgabe";
 import {
   abbruchAngefragt,
   ansichtAus,
@@ -21,6 +22,7 @@ import {
   type ChatAnsicht,
   ereignisseAnwenden,
   gesendet,
+  kopfModell,
   leereAnsicht,
   neuErzeugbar,
   neuErzeugt,
@@ -683,5 +685,141 @@ describe("Herkunft der Antwort", () => {
     });
     // Ohne bekanntes Modell: nur der Name, keine Region und kein „EU“.
     expect(antwort?.art === "nachricht" && antwort.modell).toEqual({ name: "Beispiel-Modell A" });
+  });
+});
+
+describe("Vorgabe der Regel zur Zeit der Antwort", () => {
+  const GEPRUEFT = new Date("2026-11-21T10:00:00.000Z");
+  const MODELL = newId("model");
+  const modellMit = (policy: object) => ({
+    name: "Beispiel-Regel",
+    herkunft: "über EUrouter",
+    vorgabe: vorgabeAus(policy, GEPRUEFT, GEPRUEFT, "Europe/Berlin"),
+  });
+
+  function verlaufMit(
+    antwort: Partial<Message>,
+    modelle: ChatVerlauf["modelle"],
+    ereignisse: ConversationEvent[] = [],
+  ): ChatVerlauf {
+    return {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [
+        {
+          id: newId("message"),
+          conversationId,
+          role: "assistant",
+          content: "Gern.",
+          status: "complete",
+          route: "direct",
+          createdAt: "2026-11-21T12:00:00.000Z",
+          ...antwort,
+        } as Message,
+      ],
+      laeufe: [],
+      ereignisse,
+      letzteSeq: 0,
+      belege: [],
+      modelle,
+    };
+  }
+  const modellDerAntwort = (verlauf: ChatVerlauf, kontext = {}) => {
+    const e = ansichtAus(verlauf, kontext).eintraege[0];
+    return e?.art === "nachricht" ? e.modell : undefined;
+  };
+
+  it("die Vorgabe zählt nur, wenn ihre Prüfung vor der Antwort liegt und die Nachricht ihr Modell nennt", () => {
+    const m = modellMit({ data_residency: "EU" });
+    const spaeter = verlaufMit({ modelId: MODELL }, { [MODELL]: m });
+    expect(modellDerAntwort(spaeter)?.vorgabe?.policy.data_residency).toBe("EU");
+  });
+
+  it("Gegenprobe: Prüfung nach der Antwort oder zur selben Zeit: nur der Name, keine Vorgabe", () => {
+    const m = modellMit({ data_residency: "EU" });
+    for (const createdAt of ["2026-11-21T09:59:59.000Z", "2026-11-21T10:00:00.000Z"]) {
+      const modell = modellDerAntwort(verlaufMit({ modelId: MODELL, createdAt }, { [MODELL]: m }));
+      expect(modell?.name).toBe("Beispiel-Regel");
+      expect(modell?.herkunft).toBe("über EUrouter");
+      expect(modell?.vorgabe).toBeUndefined();
+    }
+  });
+
+  it("ohne Modell an der Nachricht gibt es keine Vorgabe, auch nicht vom Modell von heute", () => {
+    const m = modellMit({ data_residency: "EU" });
+    expect(modellDerAntwort(verlaufMit({}, { [MODELL]: m }), { modell: m })).toBeUndefined();
+  });
+
+  it("eine Antwort, die gerade fertig wird, bekommt vom Modell von heute den Namen, aber keine Vorgabe", () => {
+    const ev = folge();
+    const g = glueck(ev);
+    const a = ereignisseAnwenden(leereAnsicht(), g.liste, {
+      modell: modellMit({ data_residency: "EU" }),
+    });
+    const antwort = a.eintraege[1];
+    const modell = antwort?.art === "nachricht" ? antwort.modell : undefined;
+    expect(modell?.name).toBe("Beispiel-Modell A");
+    expect(modell?.herkunft).toBe("über EUrouter");
+    expect(modell?.vorgabe).toBeUndefined();
+  });
+});
+
+describe("Chat-Kopf nach „Regel unbekannt“", () => {
+  const ENDE_UM = new Date(Date.UTC(2026, 10, 21, 10, 0, 5));
+  const modellGeprueft = (am: Date) => ({
+    name: "Beispiel-Regel",
+    herkunft: "über EUrouter",
+    vorgabe: vorgabeAus({ data_residency: "EU" }, am, am, "Europe/Berlin"),
+  });
+  const mitEnde = (code: "regel_unbekannt" | "anbieter_nicht_erreichbar") => {
+    const ev = folge();
+    const g = glueck(ev);
+    const a = ereignisseAnwenden(leereAnsicht(), g.liste.slice(0, 4), KONTEXT);
+    return ereignisseAnwenden(a, [
+      ev("run.failed", { runId: g.runId, code, text: "Das hat nicht geklappt." }, g.runId),
+    ]);
+  };
+
+  it("die Marke verschwindet sofort, wenn ein Lauf danach mit „Regel unbekannt“ endet", () => {
+    const a = mitEnde("regel_unbekannt");
+    const vorher = modellGeprueft(new Date(ENDE_UM.getTime() - 3_600_000));
+    expect(kopfModell(vorher, a.eintraege)?.vorgabe).toBeUndefined();
+    expect(kopfModell(vorher, a.eintraege)?.name).toBe("Beispiel-Regel");
+  });
+
+  it("Gegenprobe: anderer Fehler, oder die Vorgabe wurde nach dem Fehler neu gelesen: die Marke bleibt", () => {
+    const vorher = modellGeprueft(new Date(ENDE_UM.getTime() - 3_600_000));
+    expect(
+      kopfModell(vorher, mitEnde("anbieter_nicht_erreichbar").eintraege)?.vorgabe,
+    ).toBeDefined();
+    const nachher = modellGeprueft(new Date(ENDE_UM.getTime() + 3_600_000));
+    expect(kopfModell(nachher, mitEnde("regel_unbekannt").eintraege)?.vorgabe).toBeDefined();
+    expect(kopfModell(vorher, [])?.vorgabe).toBeDefined();
+    expect(kopfModell(undefined, mitEnde("regel_unbekannt").eintraege)).toBeUndefined();
+  });
+
+  it("auch nach dem Neuladen: ein beendeter Lauf mit „Regel unbekannt“ im Verlauf", () => {
+    const run = newId("run");
+    const verlauf: ChatVerlauf = {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [],
+      laeufe: [
+        {
+          id: run,
+          conversationId,
+          triggerMessageId: newId("message"),
+          status: "failed",
+          errorCode: "regel_unbekannt",
+          createdAt: ENDE_UM.toISOString(),
+          finishedAt: ENDE_UM.toISOString(),
+        } as unknown as Run,
+      ],
+      ereignisse: [],
+      letzteSeq: 0,
+      belege: [],
+      modelle: {},
+    };
+    const a = ansichtAus(verlauf, {});
+    const vorher = modellGeprueft(new Date(ENDE_UM.getTime() - 3_600_000));
+    expect(kopfModell(vorher, a.eintraege)?.vorgabe).toBeUndefined();
   });
 });

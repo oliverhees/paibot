@@ -13,12 +13,13 @@
 import type { RulePolicy } from "@paibot/shared/grundtypen";
 import { describe, expect, it } from "vitest";
 import {
-  antwortKurz,
   antwortZusatz,
+  ausweichKurz,
   ausweichSatz,
   euMarke,
   euSatz,
   istEuBelegt,
+  kennzeichnungKurz,
   residenzSatz,
   tagText,
   VORGABE_ALT_TAGE,
@@ -37,7 +38,7 @@ describe("Kennzeichnung nur mit Beleg", () => {
     expect(euSatz(v, "EUrouter")).toBe(
       "EU laut Regel in deinem EUrouter-Konto, geprüft am 21.11.2026.",
     );
-    expect(antwortKurz(v)[0]).toBe("EU laut Regel in deinem Konto, geprüft am 21.11.2026");
+    expect(kennzeichnungKurz(v)).toBe("EU laut Regel in deinem Konto, geprüft am 21.11.2026");
   });
 
   it("alles andere trägt keine: anderer Wert, andere Schreibweise, fehlendes Feld, keine Vorgaben", () => {
@@ -53,7 +54,7 @@ describe("Kennzeichnung nur mit Beleg", () => {
       expect(istEuBelegt(v), JSON.stringify(policy)).toBe(false);
       expect(euMarke(v)).toBeUndefined();
       expect(euSatz(v, "EUrouter")).toBeUndefined();
-      expect(antwortKurz(v).join(" ")).not.toContain("EU");
+      expect(kennzeichnungKurz(v)).toBeUndefined();
     }
     expect(istEuBelegt(undefined)).toBe(false);
     expect(euMarke(undefined)).toBeUndefined();
@@ -74,7 +75,8 @@ describe("Kennzeichnung nur mit Beleg", () => {
   it("keine Rechtsaussage", () => {
     const alle = [
       euSatz(vorgabe({ data_residency: "EU" }), "EUrouter"),
-      ...antwortKurz(vorgabe({ data_residency: "EU", models: ["a"] })),
+      kennzeichnungKurz(vorgabe({ data_residency: "EU", models: ["a"] })),
+      ausweichKurz(vorgabe({ data_residency: "EU", models: ["a"] })),
     ].join(" ");
     expect(alle.toLowerCase()).not.toMatch(/dsgvo|konform|garantiert|zertifiziert/);
   });
@@ -89,7 +91,7 @@ describe("Alter der Angabe", () => {
     expect(alt.veraltet).toBe(true);
     expect(istEuBelegt(alt)).toBe(true);
     expect(euSatz(alt, "EUrouter")).toContain("zuletzt geprüft am 21.11.2026");
-    expect(antwortKurz(alt)[0]).toContain("zuletzt geprüft am 21.11.2026");
+    expect(kennzeichnungKurz(alt)).toContain("zuletzt geprüft am 21.11.2026");
   });
 
   it("das Datum folgt der Zeitzone des Besitzers", () => {
@@ -105,23 +107,23 @@ describe("Ausweichen", () => {
     expect(ausweichSatz(vorgabe({ models: ["glm-5.1", "glm-5"] }))).toBe(
       "Kann auf glm-5.1, glm-5 ausweichen.",
     );
-    expect(antwortKurz(vorgabe({ models: ["glm-5.1"] }))).toEqual(["kann auf glm-5.1 ausweichen"]);
+    expect(ausweichKurz(vorgabe({ models: ["glm-5.1"] }))).toBe("kann auf glm-5.1 ausweichen");
     expect(ausweichSatz(vorgabe({ allow_fallbacks: true }))).toContain("Kann ausweichen");
-    expect(antwortKurz(vorgabe({ allow_fallbacks: true }))).toEqual([
+    expect(ausweichKurz(vorgabe({ allow_fallbacks: true }))).toBe(
       "kann ausweichen (Regel erlaubt es)",
-    ]);
+    );
   });
 
   it("Gegenprobe: ohne Modelle und ohne erlaubtes Ausweichen kein Hinweis", () => {
     expect(ausweichSatz(vorgabe({ allow_fallbacks: false }))).toBeUndefined();
     expect(ausweichSatz(vorgabe({}))).toBeUndefined();
     expect(ausweichSatz(undefined)).toBeUndefined();
-    expect(antwortKurz(vorgabe({ allow_fallbacks: false }))).toEqual([]);
+    expect(ausweichKurz(vorgabe({ allow_fallbacks: false }))).toBeUndefined();
   });
 
   it("der Hinweis hängt nicht an der Kennzeichnung", () => {
-    expect(antwortKurz(vorgabe({ data_residency: "US", models: ["x"] }))).toEqual([
-      "kann auf x ausweichen",
-    ]);
+    const v = vorgabe({ data_residency: "US", models: ["x"] });
+    expect(ausweichKurz(v)).toBe("kann auf x ausweichen");
+    expect(kennzeichnungKurz(v)).toBeUndefined();
   });
 });

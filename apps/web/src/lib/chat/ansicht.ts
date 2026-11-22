@@ -90,9 +90,51 @@ const LAUF_ENDE: Partial<Record<Run["status"], AnsichtLaufEnde["ergebnis"]>> = {
   denied: "abgelehnt",
 };
 
+/** Das Modell ohne die gelesenen Vorgaben seiner Regel (und damit ohne Kennzeichnung). */
+export function ohneVorgabe(modell: ModellInfo): ModellInfo {
+  const { vorgabe: _weg, ...rest } = modell;
+  return rest;
+}
+
+/**
+ * Das Modell einer Antwort mit der Vorgabe seiner Regel, aber nur, wenn die Vorgabe nachweislich
+ * schon zur Zeit der Antwort galt: Ihre Prüfung liegt vor dem Zeitpunkt der Antwort. Sonst bleibt
+ * nur der Name (fail-closed, keine Kennzeichnung): Die gespeicherte Vorgabe ist die von heute und
+ * sagt nichts darüber, was die Regel zur Zeit der Antwort vorgab.
+ */
+export function modellZurAntwort(modell: ModellInfo, antwortZeit: string): ModellInfo {
+  const v = modell.vorgabe;
+  if (v === undefined) return modell;
+  const geprueft = Date.parse(v.geprueftAm);
+  const antwort = Date.parse(antwortZeit);
+  return Number.isFinite(geprueft) && Number.isFinite(antwort) && geprueft < antwort
+    ? modell
+    : ohneVorgabe(modell);
+}
+
+/**
+ * Das Modell des Bots für den Chat-Kopf. Endete nach der Prüfung der Vorgabe ein Lauf mit „Regel
+ * unbekannt“ (der Anbieter kennt die Regel nicht mehr), steht die Vorgabe nicht mehr da: Die Marke
+ * verschwindet sofort und nicht erst nach erneutem Prüfen.
+ */
+export function kopfModell(
+  modell: ModellInfo | undefined,
+  eintraege: readonly AnsichtEintrag[],
+): ModellInfo | undefined {
+  const v = modell?.vorgabe;
+  if (modell === undefined || v === undefined) return modell;
+  const geprueft = Date.parse(v.geprueftAm);
+  const widerlegt = eintraege.some(
+    (e) =>
+      e.art === "lauf-ende" && e.code === "regel_unbekannt" && !(Date.parse(e.zeit) < geprueft),
+  );
+  return widerlegt ? ohneVorgabe(modell) : modell;
+}
+
 function ausNachricht(m: Message, modelle: Record<string, ModellInfo>): AnsichtNachricht | null {
   if (m.role === "system") return null;
-  const modell = m.modelId === undefined ? undefined : modelle[m.modelId];
+  const info = m.modelId === undefined ? undefined : modelle[m.modelId];
+  const modell = info === undefined ? undefined : modellZurAntwort(info, m.createdAt);
   return {
     art: "nachricht",
     id: m.id,
@@ -291,8 +333,10 @@ export function ereignisAnwenden(
     case "message.completed": {
       const nachricht = findeNachricht(weiter, e.data.messageId);
       // Herkunft vom Modell der Nachricht bzw. des Bots; ohne beides nur der Name, nie ein „EU“.
+      // Die Vorgabe der Regel kommt nie vom Bot von heute: Das Ereignis nennt das Modell nicht, nur
+      // eine Nachricht mit eigener Modell-Angabe trägt eine Vorgabe mit.
       const modell: ModellInfo = {
-        ...(nachricht?.modell ?? kontext.modell ?? {}),
+        ...(nachricht?.modell ?? (kontext.modell === undefined ? {} : ohneVorgabe(kontext.modell))),
         name: e.data.modelLabel,
       };
       const servedBy = e.data.servedBy;

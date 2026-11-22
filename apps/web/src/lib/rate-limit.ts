@@ -33,6 +33,9 @@ import { adressGruppe, UNBEKANNTE_ADRESSE } from "./kopfzeilen";
  * - `passwortAendern`: Versuche beim Ändern des Passworts je Sitzung. Darüber endet die Sitzung der
  *   Anfrage; andere Sitzungen des Besitzers zählen getrennt.
  * - `suche`: Suchanfragen in Unterhaltungen je Besitzer (die Suche liest den Text aller Nachrichten).
+ * - `modelleLesen`: Lesen der Modell-Liste beim Anbieter (`POST /api/anbieter/:id/modelle/lesen`)
+ *   je Besitzer. Großzügig, weil die Seite die Liste bei jedem Öffnen liest; eigener Zähler, damit
+ *   das Öffnen der Seite das Budget des Verbindungstests nicht verbraucht.
  */
 export const ZUSATZ_LIMITS = {
   anmeldenIpTag: { max: 20, windowSeconds: 86_400, effect: "sperren" },
@@ -40,6 +43,7 @@ export const ZUSATZ_LIMITS = {
   anmeldenGeraetTag: { max: 20, windowSeconds: 86_400, effect: "sperren" },
   passwortAendern: { max: 5, windowSeconds: 900, effect: "sperren" },
   suche: { max: 120, windowSeconds: 60, effect: "sperren" },
+  modelleLesen: { max: 60, windowSeconds: 60, effect: "sperren" },
 } as const satisfies Record<string, RateLimitDefinition>;
 
 /** Name eines Limits, das eine Route zählen kann. */
@@ -97,6 +101,10 @@ export function limitSchluessel(name: LimitName, bezug: LimitBezug): string {
     case "suche": {
       if (bezug.ownerId === undefined) throw new PaiBotError("nicht_angemeldet");
       return `suche:${bezug.ownerId}`;
+    }
+    case "modelleLesen": {
+      if (bezug.ownerId === undefined) throw new PaiBotError("nicht_angemeldet");
+      return `modelle_lesen:${bezug.ownerId}`;
     }
     case "passwortAendern": {
       if (bezug.sitzungId === undefined) throw new PaiBotError("nicht_angemeldet");
@@ -225,7 +233,14 @@ export interface LimitOptionen {
   warten: (ms: number) => Promise<void>;
 }
 
-function zuViele(retryAfterSeconds: number): PaiBotError {
+function zuViele(retryAfterSeconds: number, name?: LimitName): PaiBotError {
+  if (name === "modelleLesen") {
+    return new PaiBotError("zu_viele_versuche", {
+      text: t("modelle.lesen.zu_oft", { sekunden: retryAfterSeconds }),
+      ausweg: t("modelle.lesen.zu_oft.ausweg"),
+      retryAfterSeconds,
+    });
+  }
   return new PaiBotError("zu_viele_versuche", {
     text: t("anmelden.warten", { sekunden: retryAfterSeconds }),
     retryAfterSeconds,
@@ -284,7 +299,7 @@ export async function zaehleLimits(
       await optionen.warten(definition.delayMs ?? ERSATZ_VERZOEGERUNG_MS);
       continue;
     }
-    throw zuViele(ergebnis.retryAfterSeconds);
+    throw zuViele(ergebnis.retryAfterSeconds, name);
   }
 }
 

@@ -348,7 +348,13 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
   const ergebnis = await k.tor(
     k.nachweis,
     { type: "anbieter.speichern", target: { providerId: id } },
-    { created: false, region: eingabe.region, keySet: apiKey !== undefined || behaeltSchluessel },
+    {
+      created: false,
+      region: eingabe.region,
+      keySet: apiKey !== undefined || behaeltSchluessel,
+      // Der zweite Schlüssel bleibt beim Ändern, wie er ist; der Beleg nennt, ob einer hinterlegt ist.
+      managementKeySet: alt.managementKeySet === true,
+    },
     async () => {
       const neu = await repo.providers.update(k.db, id, {
         templateKey: eingabe.templateKey,
