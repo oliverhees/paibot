@@ -11,6 +11,7 @@
  */
 
 import { egressTargetOf, INTERNAL_SERVICE_HOSTS } from "@paibot/llm";
+import { MCP_EMPFOHLENE_ANTWORT_BYTES, MCP_EMPFOHLENES_LEERLAUF_MS } from "@paibot/mcp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { echteAppDienste } from "./dienste";
 
@@ -69,9 +70,14 @@ describe("echteAppDienste", () => {
     expect(beobachter.huellen).toHaveLength(2);
     expect(beobachter.huellen[0]?.huelle).not.toBe(beobachter.huellen[1]?.huelle);
     // Genau ein Ziel (Protokoll, Host, Port der App), `denyAddressesOf` mit den Namen der Dienste,
-    // und keine weiteren Argumente: kein `fetch` darunter, keine Optionen.
+    // kein `fetch` darunter, und die empfohlenen Grenzen der Schicht für Antwort und Leerlauf.
     expect(beobachter.huellen[0]?.argumente).toEqual([
       [{ ...egressTargetOf(ADRESSE), denyAddressesOf: INTERNAL_SERVICE_HOSTS }],
+      undefined,
+      {
+        limits: { maxBodyBytes: MCP_EMPFOHLENE_ANTWORT_BYTES },
+        idleTimeoutMs: MCP_EMPFOHLENES_LEERLAUF_MS,
+      },
     ]);
     expect(egressTargetOf(ADRESSE)).toMatchObject({ protocol: "https:", host: "mcp.beispiel.de" });
   });

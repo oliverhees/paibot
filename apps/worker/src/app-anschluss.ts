@@ -26,6 +26,8 @@ import {
 } from "@paibot/llm";
 import {
   holeWerkzeuge,
+  MCP_EMPFOHLENE_ANTWORT_BYTES,
+  MCP_EMPFOHLENES_LEERLAUF_MS,
   type McpFetch,
   McpSchichtFehler,
   type McpWerkzeugBereinigt,
@@ -85,7 +87,10 @@ export function baueAppAnschluss(optionen: AppAnschlussOptionen): AppAnschluss {
     if (!standardPort(gespeichert.url)) return undefined;
     // Genau ein Ziel, nie öffentlich erreichbar gemachte eigene Dienste (Datenbank, Web, Worker).
     const ziel = { ...egressTargetOf(gespeichert.url), denyAddressesOf: INTERNAL_SERVICE_HOSTS };
+    // Die empfohlenen Grenzen der Schicht gelten auch in der Hülle: Antwort und Leerlauf.
     const huelle = createEgressFetch([ziel], optionen.basisFetch, {
+      limits: { maxBodyBytes: MCP_EMPFOHLENE_ANTWORT_BYTES },
+      idleTimeoutMs: MCP_EMPFOHLENES_LEERLAUF_MS,
       ...(optionen.lookup === undefined ? {} : { lookup: optionen.lookup }),
     }) as McpFetch;
     if (gespeichert.authKind !== "token") return { fetch: huelle };

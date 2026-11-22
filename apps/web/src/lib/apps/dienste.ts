@@ -11,7 +11,13 @@
  */
 
 import { createEgressFetch, egressTargetOf, INTERNAL_SERVICE_HOSTS } from "@paibot/llm";
-import { holeWerkzeuge, type McpFetch, type WerkzeugAbruf } from "@paibot/mcp";
+import {
+  holeWerkzeuge,
+  MCP_EMPFOHLENE_ANTWORT_BYTES,
+  MCP_EMPFOHLENES_LEERLAUF_MS,
+  type McpFetch,
+  type WerkzeugAbruf,
+} from "@paibot/mcp";
 
 /** Was für den Abruf der Liste einer App gebraucht wird. */
 export interface AppAbruf {
@@ -42,7 +48,11 @@ export function echteAppDienste(): AppDienste {
   return {
     werkzeugeAbrufen(abruf) {
       const ziel = { ...egressTargetOf(abruf.adresse), denyAddressesOf: INTERNAL_SERVICE_HOSTS };
-      const huelle = createEgressFetch([ziel]) as McpFetch;
+      // Die empfohlenen Grenzen der Schicht gelten auch in der Hülle: Antwort und Leerlauf.
+      const huelle = createEgressFetch([ziel], undefined, {
+        limits: { maxBodyBytes: MCP_EMPFOHLENE_ANTWORT_BYTES },
+        idleTimeoutMs: MCP_EMPFOHLENES_LEERLAUF_MS,
+      }) as McpFetch;
       return holeWerkzeuge({
         adresse: abruf.adresse,
         fetch: huelle,

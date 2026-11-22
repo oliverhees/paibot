@@ -17,6 +17,7 @@ import { deriveKey, encryptSecret, loadMasterSecret } from "@paibot/crypto";
 import { repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import { egressTargetOf, INTERNAL_SERVICE_HOSTS } from "@paibot/llm";
+import { MCP_EMPFOHLENE_ANTWORT_BYTES, MCP_EMPFOHLENES_LEERLAUF_MS } from "@paibot/mcp";
 import { appTokenBinding, secretAad } from "@paibot/shared/bindung";
 import { type AppId, newId } from "@paibot/shared/ids";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -92,6 +93,11 @@ describe("Anschluss an die Apps im Betrieb (buildRunDeps)", () => {
     ]);
     expect(basisFetch).toBeUndefined();
     expect(optionen).not.toHaveProperty("lookup");
+    // Die empfohlenen Grenzen der Schicht für Antwort und Leerlauf gelten in der Hülle.
+    expect(optionen).toEqual({
+      limits: { maxBodyBytes: MCP_EMPFOHLENE_ANTWORT_BYTES },
+      idleTimeoutMs: MCP_EMPFOHLENES_LEERLAUF_MS,
+    });
   });
 
   it("reicht genau diese Hülle, die Adresse und den entschlüsselten Zugang an die Schicht weiter", async () => {

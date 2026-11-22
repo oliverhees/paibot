@@ -1162,6 +1162,8 @@
                     "allowImportNames": [
                       "bereiteWerkzeugeAuf",
                       "holeWerkzeuge",
+                      "MCP_EMPFOHLENE_ANTWORT_BYTES",
+                      "MCP_EMPFOHLENES_LEERLAUF_MS",
                       "McpFetch",
                       "McpSchichtFehler",
                       "McpWerkzeugBereinigt",
