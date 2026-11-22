@@ -767,6 +767,14 @@ describe("App neu verbinden", () => {
       ["decision", "app.verbinden"],
       ["result", "app.verbinden"],
     ]);
+    // Das Tor sieht „bestehende App“: `created: false`, mit Anmeldung „token“ und gesetztem Token.
+    const entscheidung = belege[0]?.body;
+    expect(entscheidung?.type).toBe("decision");
+    expect(entscheidung?.type === "decision" ? entscheidung.facts : undefined).toMatchObject({
+      created: false,
+      authKind: "token",
+      tokenSet: true,
+    });
     await ohneToken(u);
   });
 
@@ -799,9 +807,16 @@ describe("App neu verbinden", () => {
       params: { id: offen.app.id },
     });
     u.zustand.aufrufe.length = 0;
+    const vorMit = await letzteNummer(u.e.u);
     const mit = await neu(u, offen.app.id, { token: TOKEN2 });
     expect(mit.status).toBe(400);
+    // Die Route nennt das Feld; das ist die eigene Antwort der Route, nicht die des Tors.
+    expect(mit.body.fehler?.code).toBe("eingabe_ungueltig");
+    expect(JSON.stringify(mit.body)).toContain('"token"');
     expect(u.zustand.aufrufe).toHaveLength(0);
+    // Die Sperre der Route greift vor dem Tor: Es entsteht nicht einmal ein Beleg (die Sperre des
+    // Tors wäre ein zweites Netz und schriebe ein Beleg-Paar der Ablehnung).
+    expect(await belegeSeit(u.e.u, vorMit)).toEqual([]);
     const ohne = await neu(u, offen.app.id, {});
     expect(ohne.status).toBe(200);
     expect(daten(ohne).app.tokenGesetzt).toBe(false);

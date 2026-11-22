@@ -42,6 +42,8 @@ describe("Formular „Neu verbinden“", () => {
   it("sendet nie per GET, kein Feld mit Namen, Token nur als Passwortfeld ohne Vorschläge", () => {
     const html = form(true);
     expect(html).toMatch(/<form[^>]*method="post"/);
+    // Auch das Formular selbst schaltet die Vorschläge des Browsers aus (nicht nur das Feld).
+    expect(html).toMatch(/<form[^>]*autoComplete="off"/);
     expect(html).not.toMatch(/<input[^>]*\sname=/);
     expect(html).toMatch(
       /<input[^>]*type="password"[^>]*autoComplete="off"|<input[^>]*autoComplete="off"[^>]*type="password"/i,
