@@ -21,14 +21,24 @@ type AppTool = repo.apps.AppTool;
 export const MAX_FASSUNGEN = 50;
 
 /**
- * Die Fassung, mit der eine geänderte Fassung zu vergleichen ist: die jüngste frühere, die der
- * Besitzer eingestuft hat (`bestaetigt` oder `gesperrt`); gibt es keine, die unmittelbar vorherige.
- * `undefined`, wenn es keine frühere Fassung gibt.
+ * Die Fassung, mit der eine Fassung zu vergleichen ist: die jüngste frühere, die der Besitzer
+ * eingestuft hat (`bestaetigt` oder `gesperrt`) und deren Abdruck ein anderer ist als der heutige.
+ * Bei einer geänderten Fassung gilt sonst die unmittelbar vorherige. Eine neue Fassung hat nur dann
+ * einen Vergleich, wenn der Besitzer früher eine andere eingestuft hatte (etwa weil sich das
+ * Werkzeug während einer Trennung geändert hat). `undefined`, wenn es nichts zu vergleichen gibt.
  */
 export function vergleichsFassung(verlauf: readonly AppTool[], tool: AppTool): AppTool | undefined {
   const frueher = verlauf.filter((f) => f.version < tool.version);
-  const eingestuft = frueher.filter((f) => f.status === "bestaetigt" || f.status === "gesperrt");
-  return eingestuft.at(-1) ?? frueher.at(-1);
+  const eingestuft = frueher.filter(
+    (f) =>
+      (f.status === "bestaetigt" || f.status === "gesperrt") && f.toolDigest !== tool.toolDigest,
+  );
+  return eingestuft.at(-1) ?? (tool.status === "geaendert" ? frueher.at(-1) : undefined);
+}
+
+/** Hat die Fassung einen Vergleich verdient (geändert, oder neu nach früherer Einstufung)? */
+export function brauchtVergleich(tool: AppTool): boolean {
+  return tool.status === "geaendert" || (tool.status === "neu" && tool.version > 1);
 }
 
 /** Werkzeuge für die Anzeige; geänderte tragen die Fassung, die der Besitzer zuletzt bestätigt hatte. */
@@ -38,7 +48,7 @@ export async function werkzeugeMitVergleich(
 ): Promise<WerkzeugAntwort[]> {
   const aus: WerkzeugAntwort[] = [];
   for (const tool of werkzeuge) {
-    if (tool.status !== "geaendert") {
+    if (!brauchtVergleich(tool)) {
       aus.push(werkzeugAnsicht(tool));
       continue;
     }

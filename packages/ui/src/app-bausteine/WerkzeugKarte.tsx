@@ -255,38 +255,32 @@ export function WerkzeugKarte({
       )}
 
       {status === "geaendert" && (
-        <>
-          <p className={styles.sperre}>
-            <Icon name="schloss" groesse={16} />
-            <span>{t("apps.werkzeug.gesperrt.grund")}</span>
-          </p>
-          {aenderungen.length > 0 && (
-            <section className={styles.aenderung} aria-label={t("apps.werkzeug.aenderung.titel")}>
-              <h5 className={styles.aenderungTitel}>{t("apps.werkzeug.aenderung.titel")}</h5>
-              <ul className={styles.aenderungListe}>
-                {aenderungen.map((a) => (
-                  <li key={a.feld} className={styles.feld}>
-                    <p className={styles.feldName}>{FELD_TEXT[a.feld]()}</p>
-                    <div className={styles.paar}>
-                      <div className={styles.seite}>
-                        <span className={styles.seiteName}>
-                          {t("apps.werkzeug.aenderung.vorher")}
-                        </span>
-                        <FremderText text={a.vorher} art="wert" darstellung="block" />
-                      </div>
-                      <div className={styles.seite}>
-                        <span className={styles.seiteName}>
-                          {t("apps.werkzeug.aenderung.nachher")}
-                        </span>
-                        <FremderText text={a.nachher} art="wert" darstellung="block" />
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>
+        <p className={styles.sperre}>
+          <Icon name="schloss" groesse={16} />
+          <span>{t("apps.werkzeug.gesperrt.grund")}</span>
+        </p>
+      )}
+      {(status === "geaendert" || status === "neu") && aenderungen.length > 0 && (
+        <section className={styles.aenderung} aria-label={t("apps.werkzeug.aenderung.titel")}>
+          <h5 className={styles.aenderungTitel}>{t("apps.werkzeug.aenderung.titel")}</h5>
+          <ul className={styles.aenderungListe}>
+            {aenderungen.map((a) => (
+              <li key={a.feld} className={styles.feld}>
+                <p className={styles.feldName}>{FELD_TEXT[a.feld]()}</p>
+                <div className={styles.paar}>
+                  <div className={styles.seite}>
+                    <span className={styles.seiteName}>{t("apps.werkzeug.aenderung.vorher")}</span>
+                    <FremderText text={a.vorher} art="wert" darstellung="block" />
+                  </div>
+                  <div className={styles.seite}>
+                    <span className={styles.seiteName}>{t("apps.werkzeug.aenderung.nachher")}</span>
+                    <FremderText text={a.nachher} art="wert" darstellung="block" />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {!schemaPruefbar && status !== "entfernt" && (
@@ -338,7 +332,7 @@ export function WerkzeugKarte({
               {t("apps.werkzeug.nicht_angeboten")} {t("apps.werkzeug.standard")}.
             </span>
           )}
-          {status === "geaendert" && bisher !== undefined && (
+          {(status === "geaendert" || status === "neu") && bisher !== undefined && (
             <span>{t("apps.werkzeug.bisher", { art: artText(bisher) })}</span>
           )}
           {fassung && (

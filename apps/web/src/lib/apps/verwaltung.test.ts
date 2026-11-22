@@ -968,6 +968,47 @@ describe("Was hat sich geändert", () => {
     expect(ws.filter((x) => x.frueher !== undefined)).toHaveLength(1);
   });
 
+  it("nach Trennen und Neu verbinden ist ein früher bestätigtes, inzwischen geändertes Werkzeug „neu“ und trägt trotzdem den Vergleich mit der bestätigten Fassung", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u, 0);
+    await u.e.rufe(u.h.trennen, "DELETE", `/api/apps/${g.id}`, { params: { id: g.id } });
+    // Der Server hat das bestätigte Werkzeug inzwischen geändert; „suche“ blieb gleich.
+    u.zustand.liste = [
+      { ...ECHO, description: "Gibt Text zurück. Seit dem Trennen geändert." },
+      SUCHE,
+    ];
+    const r = await u.e.rufe(u.h.neu, "POST", `/api/apps/${g.id}/verbindung`, {
+      params: { id: g.id },
+      koerper: { token: TOKEN },
+    });
+    expect(r.status).toBe(200);
+    const f = fassungen(await verlauf(u, g.id, g.werkzeug));
+    const neueste = f[f.length - 1];
+    expect(neueste?.stand).toBe("neu");
+    expect(neueste?.frueher?.abdruck).toBe(g.abdruckAlt);
+    expect(neueste?.frueher?.modellText.beschreibung).toBe("Gibt Text zurück.");
+    const seite = await appsSeitenDaten(u.e.u.db);
+    const ws = seite.apps[0]?.werkzeuge as unknown as (Fassung & { id: string })[];
+    const echo = ws.find((x) => x.id === g.werkzeug);
+    expect(echo?.stand).toBe("neu");
+    expect(echo?.frueher?.abdruck).toBe(g.abdruckAlt);
+    // „suche“ wurde nie bestätigt: kein Vergleich.
+    expect(ws.filter((x) => x.frueher !== undefined)).toHaveLength(1);
+  });
+
+  it("nach Neu verbinden mit gleicher Fassung: „neu“ ohne Vergleich (es hat sich nichts geändert)", async () => {
+    const u = await umgebung();
+    const g = await geaendert(u, 0);
+    await u.e.rufe(u.h.trennen, "DELETE", `/api/apps/${g.id}`, { params: { id: g.id } });
+    await u.e.rufe(u.h.neu, "POST", `/api/apps/${g.id}/verbindung`, {
+      params: { id: g.id },
+      koerper: { token: TOKEN },
+    });
+    const f = fassungen(await verlauf(u, g.id, g.werkzeug));
+    expect(f[f.length - 1]?.stand).toBe("neu");
+    expect(f[f.length - 1]?.frueher).toBeUndefined();
+  });
+
   it("der Vergleich ändert nicht, was bestätigt wird: nur der Abdruck der neuen Fassung gilt", async () => {
     const u = await umgebung();
     const g = await geaendert(u);

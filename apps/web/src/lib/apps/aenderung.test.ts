@@ -149,8 +149,14 @@ describe("werkzeugEintrag mit früherer Fassung", () => {
     expect(e.fassung).toBe(`sha256:${"b".repeat(64)}`);
   });
 
-  it("nur eine geänderte Fassung zeigt Änderungen: neu oder bestätigt (auch mit früherer Fassung) nicht", () => {
-    for (const stand of ["neu", "bestaetigt", "entfernt"] as const) {
+  it("eine neue Fassung mit früher bestätigter Fassung zeigt Änderungen und bisherige Einstufung wie eine geänderte", () => {
+    const e = werkzeugEintrag(antwort({ stand: "neu", frueher: fassung() }));
+    expect(e.bisher).toBe("liest");
+    expect(e.aenderungen?.map((a) => a.feld)).toContain("beschreibung");
+  });
+
+  it("nur eine geänderte oder neue Fassung zeigt Änderungen: bestätigt oder entfernt (auch mit früherer Fassung) nicht", () => {
+    for (const stand of ["bestaetigt", "entfernt"] as const) {
       const e = werkzeugEintrag(antwort({ stand, frueher: fassung() }));
       expect(e.bisher, stand).toBeUndefined();
       expect(e.aenderungen, stand).toBeUndefined();

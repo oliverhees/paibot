@@ -92,7 +92,7 @@ export function werkzeugEintrag(w: WerkzeugAntwort): WerkzeugListeEintrag {
     schemaPruefbar: schema.vollstaendig,
     schemaTexte: schema.texte,
     ...(hinweis === undefined ? {} : { serverHinweis: hinweis }),
-    ...(w.frueher === undefined || w.stand !== "geaendert"
+    ...(w.frueher === undefined || (w.stand !== "geaendert" && w.stand !== "neu")
       ? {}
       : { bisher: bisherigeArt(w.frueher.klasse), aenderungen: aenderungenZwischen(w.frueher, w) }),
   };

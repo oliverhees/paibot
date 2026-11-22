@@ -23,7 +23,12 @@ import { appDienste } from "./dienste";
 import { fehlerOhneFremdtext, pruefbedingungAlsFeld } from "./fehler";
 import { mitSperrzeit, sperrfehlerAlsLimit } from "./sperre";
 import { tokenLesen, tokenPruefen, tokenVerschluesseln } from "./token";
-import { MAX_FASSUNGEN, vergleichsFassung, werkzeugeMitVergleich } from "./verlauf";
+import {
+  brauchtVergleich,
+  MAX_FASSUNGEN,
+  vergleichsFassung,
+  werkzeugeMitVergleich,
+} from "./verlauf";
 
 type App = repo.apps.App;
 
@@ -261,7 +266,7 @@ export async function appWerkzeugVerlauf(k: RoutenKontext<"appWerkzeugVerlauf">)
   const fassungen = verlauf
     .slice(-MAX_FASSUNGEN)
     .map((f) =>
-      werkzeugAnsicht(f, f.status === "geaendert" ? vergleichsFassung(verlauf, f) : undefined),
+      werkzeugAnsicht(f, brauchtVergleich(f) ? vergleichsFassung(verlauf, f) : undefined),
     );
   return { daten: { app: appAnsicht(app), fassungen } };
 }
