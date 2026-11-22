@@ -42,27 +42,29 @@
 //      endet mit „/“. Mit `pfad/datei.ts#name` muss „name“ zusätzlich in der Datei vorkommen.
 //      Codeblöcke zählen nicht; Angaben ohne „/“ oder ohne Dateiendung (`@paibot/db`, `/api/chat`)
 //      gelten nicht als Verweis.
-//   j) Keine versteckten Teile in docs/**/*.md: kein HTML-Kommentar außer dem Urheber-Kopf ganz am
-//      Anfang der Datei, kein unsichtbares, Bidi- oder Steuerzeichen (Fehler, nicht Warnung).
+//   j) Keine versteckten Teile in docs/**/*.md (Fehler, nicht Warnung): kein rohes HTML und kein
+//      Kommentar außer dem Urheber-Kopf ganz am Anfang der Datei, keine Link-Definition, Fußnote
+//      oder Verweis über eine Definition, keine Zeichenreferenz (`&#x41;`) außerhalb von Code, kein
+//      Zusatz hinter der Sprache eines Zauns und keine Sprache außerhalb der Liste, im Diagramm kein
+//      Kommentar und kein Screenreader-Text, kein unsichtbares, Bidi- oder Steuerzeichen. Was Code,
+//      Link oder HTML ist, sagt der Parser (scripts/doku-index/markdown.mjs). Die beiden Vorlagen
+//      dürfen HTML für ihre Platzhalter tragen, solange sie nicht in den Index kommen.
 //   k) Jede Seite docs/**/*.md steht in genau einer der beiden Listen in scripts/doku-umfang.mjs
 //      („in den Index“ / „nicht in den Index“).
 //   l) In den Seiten der Liste „in den Index“ kommt keine typische Form einer eingeschleusten
 //      Anweisung vor (Formen: scripts/doku-index/hilfen.mjs). Das ist eine Stichprobe, kein Schutz.
 //
-// Bewusst ohne Abhängigkeiten: Markdown wird mit einfachen Mustern gelesen. Codeblöcke,
-// Code in Backticks und HTML-Kommentare werden vorher entfernt.
+// Zu j) und der Überschriften-Prüfung wird jede Seite mit einem Markdown-Parser gelesen
+// (`mdast-util-from-markdown`, Pakete aus der Wurzel-`package.json`, siehe
+// scripts/doku-index/markdown.mjs). Die übrigen Prüfungen (a bis i) lesen Markdown weiter mit
+// einfachen Mustern: Codeblöcke und Code in Backticks werden vorher entfernt.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SONDERWERTE } from "./doku/lauf.mjs";
 import { ListenFehler, pruefeListe } from "./doku/liste.mjs";
-import {
-  findeEinschleusung,
-  findeRohesHtml,
-  findeUnerlaubtImTitel,
-  findeUnsichtbares,
-  zerlege,
-} from "./doku-index/hilfen.mjs";
+import { findeEinschleusung, findeUnerlaubtImTitel } from "./doku-index/hilfen.mjs";
+import { leseSeite } from "./doku-index/markdown.mjs";
 import { inDenIndex, nichtInDenIndex } from "./doku-umfang.mjs";
 
 const VORLAGE = "docs/VORLAGE-funktion.md";
@@ -544,44 +546,45 @@ function checkIndex(files) {
   }
 }
 
-/** j) Kommentare außer dem Urheber-Kopf am Anfang, rohes HTML, unsichtbare Zeichen. */
-function checkVersteckt(file, text) {
-  const normal = text.replace(/\r\n?/g, "\n");
-  let kopfEnde = 0;
-  if (normal.startsWith("<!--")) {
-    const ende = normal.indexOf("-->");
-    kopfEnde = ende === -1 ? 0 : ende + 3;
-  }
-  for (const treffer of normal.matchAll(/<!--/g)) {
-    if (treffer.index < kopfEnde) continue;
-    const zeile = normal.slice(0, treffer.index).split("\n").length;
-    error(
-      file,
-      `Zeile ${zeile}: Ein HTML-Kommentar steht nicht als Urheber-Kopf am Anfang der Datei.`,
-      "Den Kommentar entfernen; was gesagt werden soll, gehört als sichtbarer Text in die Seite.",
-    );
-  }
-  // Die Vorlagen tragen Platzhalter in spitzen Klammern und kommen nie in den Index.
-  const vorlage = file === VORLAGE || file === ENTWICKLER_VORLAGE;
-  for (const fund of vorlage ? [] : findeRohesHtml(normal)) {
-    error(
-      file,
-      `Zeile ${fund.zeile}: Rohes HTML im Fließtext (${fund.form}).`,
-      "Das Tag entfernen oder in Backticks setzen; die Seite nutzt nur Markdown, damit nichts Unsichtbares im Text steht.",
-    );
-  }
-  for (const fund of findeUnsichtbares(normal)) {
-    error(
-      file,
-      `Zeile ${fund.zeile}: Ein unsichtbares Zeichen (${fund.code}) steht im Text.`,
-      "Das Zeichen löschen (auch Bidi- und Steuerzeichen sind nicht erlaubt).",
-    );
+/**
+ * Darf ein HTML-Fund auf dieser Seite übergangen werden? Nur in den beiden Vorlagen, die ihre
+ * Platzhalter in spitzen Klammern tragen, und nur solange die Seite nicht in den Index kommt.
+ */
+export function htmlAusnahme(file, imIndex) {
+  return (file === VORLAGE || file === ENTWICKLER_VORLAGE) && !imIndex;
+}
+
+const AUSWEG_VERSTECKT = {
+  unsichtbar: "Das Zeichen löschen (auch Bidi- und Steuerzeichen sind nicht erlaubt).",
+  html: "Das HTML oder den Kommentar entfernen oder in Backticks setzen; die Seite nutzt nur Markdown, damit nichts Unsichtbares im Text steht. Was gesagt werden soll, gehört als sichtbarer Text in die Seite.",
+  definition:
+    "Die Definition löschen und den Link ausschreiben: [Text](Adresse). Eine Link-Definition zeigt auf der Seite nichts an.",
+  referenz: "Den Verweis ausschreiben: [Text](Adresse) bzw. ![Alt](Bild).",
+  fussnote: "Die Fußnote löschen; der Text gehört in den Satz oder in einen eigenen Absatz.",
+  "zaun-zusatz":
+    "Hinter der Sprache des Codeblocks nichts schreiben (```bash); der Zusatz erscheint auf der Seite nirgends.",
+  "zaun-sprache":
+    "Eine Sprache aus der Liste ERLAUBTE_SPRACHEN in scripts/doku-index/markdown.mjs nehmen oder keine angeben.",
+  mermaid:
+    "Kommentare (%%) und Texte für Screenreader (accTitle, accDescr) aus dem Diagramm nehmen; sie fehlen in der gezeichneten Fassung.",
+  zeichenreferenz:
+    "Das Zeichen selbst schreiben statt der Zeichenreferenz (&#x41; oder &amp;); in Backticks ist die Schreibweise erlaubt.",
+  unbekannt:
+    "Die Stelle in einfaches Markdown (Text, Liste, Tabelle, Code, Link, Bild) umschreiben.",
+};
+
+/** j) Verborgenes: rohes HTML und Kommentare, Definitionen, Zeichenreferenzen, unsichtbare Zeichen. */
+function checkVersteckt(file, funde) {
+  const ausnahme = htmlAusnahme(file, inDenIndex(file));
+  for (const fund of funde) {
+    if (fund.art === "html" && ausnahme) continue;
+    error(file, `Zeile ${fund.zeile}: ${fund.meldung}.`, AUSWEG_VERSTECKT[fund.art]);
   }
 }
 
 /** j2) Überschriften (und ihre Pfade und Anker) ohne Zeichen, die der Index-Bau ablehnt. */
-function checkUeberschriften(file, text) {
-  for (const teil of zerlege(text)) {
+function checkUeberschriften(file, abschnitte) {
+  for (const teil of abschnitte) {
     for (const feld of [teil.anker, teil.titel, ...teil.pfad]) {
       const code = findeUnerlaubtImTitel(feld);
       if (code !== null) {
@@ -649,11 +652,12 @@ export function pruefeDoku({ wurzel = PROJEKT, streng = false } = {}) {
   for (const file of scanned) meldeGeheimnisse(file, readText(file));
   for (const file of docs) {
     const text = readText(file);
-    checkVersteckt(file, text);
+    const seite = leseSeite(text);
+    checkVersteckt(file, seite.funde);
     checkUmfang(file);
     if (inDenIndex(file)) {
       checkEinschleusung(file, text);
-      checkUeberschriften(file, text);
+      checkUeberschriften(file, seite.abschnitte);
     }
   }
   checkIndex(docs);

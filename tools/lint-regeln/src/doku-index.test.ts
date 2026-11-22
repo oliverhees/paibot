@@ -137,7 +137,7 @@ describe("Bereinigung (L4-1)", () => {
       expect(
         () => baueIndex({ wurzel: dir, liste: A }),
         `U+${z.codePointAt(0)?.toString(16)}`,
-      ).toThrow(/Unsichtbares Zeichen/);
+      ).toThrow(/unsichtbares Zeichen/);
     }
   });
 
@@ -322,14 +322,14 @@ describe("Abbruch bei Verborgenem", () => {
   // Gegenprobe: die Abfrage auf `gelesen.funde` in `baueIndex` (scripts/doku-index.mjs) entfernen
   // → der Bau gelingt und die Fälle werden rot.
   it.each([
-    ["ein unsichtbares Zeichen", "En\u200bde.", /Zeile 5: Unsichtbares Zeichen \(U\+200B\)/],
+    ["ein unsichtbares Zeichen", "En\u200bde.", /Zeile 5: Ein unsichtbares Zeichen \(U\+200B\)/],
     ["ein Kommentar im Text", "Vor <!-- GEHEIM --> nach.", /Zeile 5: Rohes HTML/],
     ["eine Link-Definition", "Text.\n\n[//]: # (GEHEIM)", /Zeile 7: Link-Definition/],
     ["eine Zeichenreferenz", "Vor &#x41; nach.", /Zeile 5: Zeichenreferenz &#x41;/],
     [
       "ein Zusatz hinter der Sprache",
       "```bash GEHEIM\nls\n```",
-      /Zeile 5: Zusatz hinter der Sprache/,
+      /Zeile 5: Ein Zusatz hinter der Sprache/,
     ],
   ])(
     "%s: der Bau bricht ab und nennt Seite, Zeile und den Befehl für alle Stellen",

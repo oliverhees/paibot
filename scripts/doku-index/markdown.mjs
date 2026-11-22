@@ -119,7 +119,7 @@ export function findeVerborgenes(wurzel, text) {
   const funde = [];
   const melde = (zeile, art, meldung) => funde.push({ zeile, art, meldung });
   for (const fund of findeUnsichtbares(text)) {
-    melde(fund.zeile, "unsichtbar", `Unsichtbares Zeichen (${fund.code})`);
+    melde(fund.zeile, "unsichtbar", `Ein unsichtbares Zeichen (${fund.code})`);
   }
   const ohneReferenz = [];
   for (const knoten of alle(wurzel)) {
@@ -157,14 +157,18 @@ export function findeVerborgenes(wurzel, text) {
     if (knoten.type === "html") {
       ohneReferenz.push(bereich);
       if (!istKopf(knoten, wurzel) && !istErlaubtesTag(knoten.value)) {
-        melde(zeile, "html", "Rohes HTML im Fließtext");
+        melde(
+          zeile,
+          "html",
+          `Rohes HTML im Fließtext (${knoten.value.replace(/\s+/g, " ").slice(0, 24)})`,
+        );
       }
     } else if (knoten.type === "code" || knoten.type === "inlineCode") {
       ohneReferenz.push(bereich);
     }
     if (knoten.type === "code") {
       if (knoten.meta) {
-        melde(zeile, "zaun-zusatz", "Zusatz hinter der Sprache eines Codeblocks");
+        melde(zeile, "zaun-zusatz", "Ein Zusatz hinter der Sprache eines Codeblocks");
       }
       if (knoten.lang && !ERLAUBTE_SPRACHEN.includes(knoten.lang)) {
         melde(zeile, "zaun-sprache", `Sprache „${knoten.lang}“ des Codeblocks ist nicht erlaubt`);
