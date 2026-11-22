@@ -38,7 +38,7 @@ export default async function UnterhaltungSeite({
   const stelle = typeof roh === "string" && isId("message", roh) ? roh : undefined;
   if (!isId("conversation", id)) notFound();
   const db = datenbank();
-  const verlauf = await ladeVerlauf(db, id);
+  const verlauf = await ladeVerlauf(db, id, { mitSchritten: true });
   if (verlauf === undefined) notFound();
   const bereitschaft = await ladeBereitschaft(
     db,

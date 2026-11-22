@@ -16,6 +16,8 @@ export const CHAT_PFADE = {
   unterhaltung: (id: string) => `/api/unterhaltungen/${teil(id)}`,
   nachrichten: (id: string) => `/api/unterhaltungen/${teil(id)}/nachrichten`,
   schleuse: (id: string) => `/api/unterhaltungen/${teil(id)}/schleuse`,
+  laufWerkzeuge: (id: string, laufId: string) =>
+    `/api/unterhaltungen/${teil(id)}/laeufe/${teil(laufId)}/werkzeuge`,
   abbrechen: (id: string, laufId: string) =>
     `/api/unterhaltungen/${teil(id)}/laeufe/${teil(laufId)}/abbrechen`,
   suche: (suchwort: string, ab?: number) =>

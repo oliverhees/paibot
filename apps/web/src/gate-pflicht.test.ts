@@ -619,6 +619,21 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
     vorher: mitUnterhaltung,
     aufruf: async (s) => ({ params: { id: s.unterhaltung ?? "" } }),
   },
+  laufWerkzeuge: {
+    vorher: async () => {
+      const s = await mitUnterhaltung();
+      await rufe(s, "nachrichtSenden", {
+        params: { id: s.unterhaltung },
+        koerper: { text: "Hallo Pai", schleuse: "off" },
+      });
+      return s;
+    },
+    aufruf: async (s) => {
+      const lauf = await repo.runs.getActive(s.u.db, s.unterhaltung as never);
+      if (lauf === undefined) throw new Error("kein Lauf");
+      return { params: { id: s.unterhaltung ?? "", laufId: lauf.id } };
+    },
+  },
   bot: { vorher: einrichten, aufruf: async () => ({}) },
   anbieterListe: { vorher: einrichten, aufruf: async () => ({}) },
   anbieterVerbindungstest: {

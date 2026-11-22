@@ -2,7 +2,8 @@
  * PaiBot – Regel-Test: Welche Dateien Nachrichten lesen, steht fest. Wer eine neue Stelle
  * ergänzt, trägt sie hier und in der Tabelle „Wer liest Nachrichten“ in
  * `docs/entwickler/werkzeug-kern.md` ein und entscheidet dabei, ob sie nur End-Antworten sieht.
- * In der Web-App liest `listForConversation` nur mit `nurAntworten: true`.
+ * In der Web-App liest `listForConversation` nur mit `nurAntworten: true`; die eine Ausnahme ist der
+ * Lesestand für die Ansicht der Schritte (`ladeVerlauf` mit `mitSchritten`).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -205,6 +206,9 @@ const ERWARTET = [
   "packages/db/src/repo/suche.ts",
 ] as const;
 
+/** Die einzige Stelle der Web-App, die Zwischentexte lesen darf (für die Ansicht der Schritte). */
+const AUSNAHME_LESESTAND = "apps/web/src/lib/chat/laden.ts";
+
 const WURZELN = ["apps", "packages", "tools", "scripts", "deploy"] as const;
 
 function alleTexte(): Map<string, string> {
@@ -221,10 +225,14 @@ describe("Wer Nachrichten liest", () => {
     expect(leserDateien(alleTexte())).toEqual([...ERWARTET].sort());
   });
 
-  // Gegenprobe: `nurAntworten: true` aus einem Aufruf in `aktionen.ts` streichen → rot.
-  it("jeder Aufruf von `listForConversation` in der Web-App liest nur End-Antworten", () => {
+  // Gegenprobe: `nurAntworten: true` aus einem Aufruf in `aktionen.ts` streichen → rot; ein zweiter
+  // Aufruf ohne den Filter (außer in `laden.ts`) → rot.
+  it("jeder Aufruf von `listForConversation` in der Web-App liest nur End-Antworten, außer genau einem: dem Lesestand für die Ansicht", () => {
     const web = new Map([...alleTexte()].filter(([datei]) => datei.startsWith("apps/web/src/")));
-    expect(ohneNurAntworten(web)).toEqual([]);
+    // Die eine Ausnahme: `ladeVerlauf` liest mit der Option `mitSchritten` auch Zwischentexte (die
+    // Ansicht der Schritte); ohne die Option, für Datei, Suche und alle anderen, bleibt es beim Filter.
+    expect(ohneNurAntworten(web).map((f) => f.split(":")[0])).toEqual([AUSNAHME_LESESTAND]);
+    expect(read(AUSNAHME_LESESTAND)).toMatch(/nurAntworten:\s*!mitSchritten\b/);
     // Die Prüfung sieht die Aufrufe wirklich (sonst wäre sie leer und damit wertlos).
     const mit = [...web.values()].filter((t) => /messages\.listForConversation\(/.test(t));
     expect(mit.length).toBeGreaterThanOrEqual(2);

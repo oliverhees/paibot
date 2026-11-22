@@ -22,6 +22,7 @@ describe("CHAT_PFADE", () => {
     expect(CHAT_PFADE.nachrichten(id)).toBe(routenPfad("nachrichtSenden", { id }));
     expect(CHAT_PFADE.schleuse(id)).toBe(routenPfad("unterhaltungSchleuse", { id }));
     expect(CHAT_PFADE.abbrechen(id, laufId)).toBe(routenPfad("laufAbbrechen", { id, laufId }));
+    expect(CHAT_PFADE.laufWerkzeuge(id, laufId)).toBe(routenPfad("laufWerkzeuge", { id, laufId }));
     expect(CHAT_PFADE.suche("Äpfel & 50%")).toBe(
       `${routenPfad("suche", {})}?q=${encodeURIComponent("Äpfel & 50%")}`,
     );

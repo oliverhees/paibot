@@ -118,7 +118,28 @@ describe("Verlauf und Lese-Route", () => {
     expect(JSON.stringify(a.eintraege)).not.toContain("ZWISCHEN");
   });
 
-  it("GET /api/unterhaltungen/:id/nachrichten liefert keinen Zwischentext", async () => {
+  it("ladeVerlauf mit Schritten: auch die Zwischentexte; die Ansicht trennt sie von den Antworten", async () => {
+    const e = await eingerichtet();
+    const { id } = await mitZwischentexten(e, { laeufe: zweiFragen() });
+    const v = await ladeVerlauf(e.u.db, id, { mitSchritten: true });
+    expect(v?.nachrichten.map((m) => m.content)).toEqual([
+      "Frage 1",
+      "ZWISCHEN-A0",
+      "ZWISCHEN-A1",
+      "Antwort A",
+      "Frage 2",
+      "ZWISCHEN-B0",
+    ]);
+    if (v === undefined) throw new Error("kein Verlauf");
+    // Die Ansicht zeigt weiter nur die Antworten.
+    expect(texte(v)).toEqual(["du:Frage 1", "bot:Antwort A", "du:Frage 2", "ende:abgebrochen"]);
+    expect(JSON.stringify(ansichtAus(v).eintraege)).not.toContain("ZWISCHEN");
+    // Ohne die Option liest der Lesestand weiter nur End-Antworten (Datei, Suche und alle anderen).
+    const ohne = await verlaufVon(e, id);
+    expect(ohne.nachrichten.map((m) => m.content)).toEqual(["Frage 1", "Antwort A", "Frage 2"]);
+  });
+
+  it("GET /api/unterhaltungen/:id/nachrichten liefert die Zwischentexte mit `step`", async () => {
     const e = await eingerichtet();
     const { id } = await mitZwischentexten(e, { laeufe: zweiFragen() });
     const h = e.u.handler("nachrichten", nachrichtenLesen);
@@ -130,11 +151,13 @@ describe("Verlauf und Lese-Route", () => {
     const daten = r.body.daten as ChatVerlauf;
     expect(daten.nachrichten.map((m: Message) => m.content)).toEqual([
       "Frage 1",
+      "ZWISCHEN-A0",
+      "ZWISCHEN-A1",
       "Antwort A",
       "Frage 2",
+      "ZWISCHEN-B0",
     ]);
-    expect(daten.nachrichten.every((m: Message) => m.step === undefined)).toBe(true);
-    expect(JSON.stringify(r.body)).not.toContain("ZWISCHEN");
+    expect(daten.nachrichten.filter((m: Message) => m.step !== undefined)).toHaveLength(3);
     expect(daten.laeufe).toHaveLength(2);
   });
 });

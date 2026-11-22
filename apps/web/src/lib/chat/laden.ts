@@ -12,7 +12,7 @@
 import { type Database, repo } from "@paibot/db";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { ConversationEvent } from "@paibot/shared/ereignisse";
-import type { ConversationId, ModelId } from "@paibot/shared/ids";
+import type { ConversationId, MessageId, ModelId, RunId } from "@paibot/shared/ids";
 import type { Conversation, Provider, Settings } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { anbieterHerkunft, type UnterAnbieterListe } from "../modelle/herkunft";
@@ -21,11 +21,14 @@ import type {
   BelegKurz,
   ChatBereitschaft,
   ChatVerlauf,
+  LaufWerkzeuge,
   ModellInfo,
   ModellWahl,
   UnterhaltungInfo,
   UnterhaltungKurz,
+  WerkzeugAnzeige,
 } from "./typen";
+import { werkzeugeAnzeigen } from "./werkzeug-anzeige";
 
 /** So viele Unterhaltungen zeigt die Seitenleiste. */
 export const UNTERHALTUNGEN_GRENZE = 100;
@@ -131,20 +134,25 @@ async function laufEreignisse(
  * aktiven Laufs, letzte Nummer und Belege passen so zusammen; was danach kommt, liefert der
  * Ereignis-Strom ab `letzteSeq`. `undefined`, wenn es die Unterhaltung nicht gibt.
  *
- * Die Nachrichten sind nur deine und die End-Antworten des Bots; Zwischentexte eines Laufs mit
- * Werkzeugen (`step` gesetzt) sind nicht dabei. Eine spätere Anzeige der Schritte stellt das
- * bewusst um und trennt die Zwischentexte dann in der Ansicht.
+ * Die Nachrichten sind nur deine und die End-Antworten des Bots. Zwischentexte eines Laufs mit
+ * Werkzeugen (`step` gesetzt) kommen nur mit `mitSchritten` dazu, samt den Werkzeug-Aufrufen ihrer
+ * Schritte: Das ist die eine Stelle der Web-App, die sie liest (Seite und Lese-Route); die Ansicht
+ * trennt sie von den Antworten. Datei und Suche lesen weiter nur End-Antworten.
  */
 export async function ladeVerlauf(
   db: Database,
   id: ConversationId,
+  optionen: { mitSchritten?: boolean } = {},
 ): Promise<ChatVerlauf | undefined> {
+  const mitSchritten = optionen.mitSchritten === true;
   return db.transaction(async (tx) => {
     const unterhaltung = await repo.conversations.get(tx, id);
     if (unterhaltung === undefined) return undefined;
     const settings = await repo.settings.get(tx);
     const letzteSeq = await repo.events.lastSeq(tx, id);
-    const nachrichten = await repo.messages.listForConversation(tx, id, { nurAntworten: true });
+    const nachrichten = await repo.messages.listForConversation(tx, id, {
+      nurAntworten: !mitSchritten,
+    });
     const alleLaeufe = await repo.runs.listForConversation(tx, id, { limit: LAEUFE_GRENZE });
     const aktiverLauf = await repo.runs.getActive(tx, id);
     const ereignisse =
@@ -159,6 +167,7 @@ export async function ladeVerlauf(
       const info = await modellInfo(tx, modelId);
       if (info) modelle[modelId] = info;
     }
+    const werkzeuge = mitSchritten ? await ladeWerkzeuge(tx, nachrichten) : [];
     return {
       unterhaltung: unterhaltungInfo(unterhaltung, settings),
       nachrichten,
@@ -168,7 +177,48 @@ export async function ladeVerlauf(
       letzteSeq,
       belege,
       modelle,
+      ...(werkzeuge.length === 0 ? {} : { werkzeuge }),
     };
+  }, LESESTAND);
+}
+
+/**
+ * Werkzeug-Aufrufe der Zwischenschritte in `nachrichten` (ein Aufruf hängt immer an der Nachricht
+ * seines Schritts), als Projektion für die Anzeige.
+ */
+async function ladeWerkzeuge(
+  db: Database,
+  nachrichten: readonly { id: string; step?: number }[],
+): Promise<WerkzeugAnzeige[]> {
+  const ids = nachrichten.filter((m) => m.step !== undefined).map((m) => m.id as MessageId);
+  return werkzeugeAnzeigen(await repo.toolCalls.listForMessages(db, ids));
+}
+
+/** So viele letzte Antworten werden beim Lesen eines Laufs auf feste Antworten durchsucht. */
+const FESTE_FENSTER = 100;
+
+/**
+ * Was die Anzeige zu einem Lauf nachfragt: seine Werkzeug-Aufrufe als Projektion und die
+ * Kennungen seiner festen Antworten (Herkunft `fest`). `undefined`, wenn es den Lauf in dieser
+ * Unterhaltung nicht gibt. Nie das Ergebnis im Ganzen, nie Texte von Abschnitten.
+ */
+export async function ladeLaufWerkzeuge(
+  db: Database,
+  id: ConversationId,
+  runId: RunId,
+): Promise<LaufWerkzeuge | undefined> {
+  return db.transaction(async (tx) => {
+    const lauf = await repo.runs.get(tx, runId);
+    if (lauf === undefined || lauf.conversationId !== id) return undefined;
+    const werkzeuge = werkzeugeAnzeigen(await repo.toolCalls.listForRun(tx, runId));
+    const antworten = await repo.messages.listForConversation(tx, id, {
+      limit: FESTE_FENSTER,
+      nurAntworten: true,
+    });
+    const feste = antworten
+      .filter((m) => m.runId === runId && m.origin === "fest")
+      .map((m) => m.id);
+    return { werkzeuge, feste };
   }, LESESTAND);
 }
 

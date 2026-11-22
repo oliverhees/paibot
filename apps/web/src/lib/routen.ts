@@ -293,6 +293,13 @@ export const API_ROUTEN = {
     aktion: "schleuse.umschalten",
     eingabe: schleuseInput,
   },
+  laufWerkzeuge: {
+    methode: "GET",
+    pfad: "/api/unterhaltungen/:id/laeufe/:laufId/werkzeuge",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
   laufAbbrechen: {
     methode: "POST",
     pfad: "/api/unterhaltungen/:id/laeufe/:laufId/abbrechen",

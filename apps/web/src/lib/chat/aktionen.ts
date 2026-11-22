@@ -22,6 +22,7 @@ import { schleuseEingerichtet } from "../schleuse/schleuse";
 import type { Einreihen } from "../warteschlange";
 import {
   ladeBelege,
+  ladeLaufWerkzeuge,
   ladeUnterhaltungen,
   ladeVerlauf,
   schleuseVon,
@@ -150,12 +151,29 @@ export const unterhaltungSchleuse: RoutenAktion<"unterhaltungSchleuse"> = async 
   return { daten: { unterhaltung: unterhaltungInfo(neu, settings) } };
 };
 
-/** `GET /api/unterhaltungen/:id/nachrichten`: Verlauf in einem Lesestand. */
+/**
+ * `GET /api/unterhaltungen/:id/nachrichten`: Verlauf in einem Lesestand, mit den Zwischentexten
+ * und Werkzeug-Aufrufen der Schritte für die Anzeige (die Ansicht trennt sie von den Antworten).
+ */
 export const nachrichtenLesen: RoutenAktion<"nachrichten"> = async (k) => {
   const id = unterhaltungsId(k.params);
-  const verlauf = await ladeVerlauf(k.db, id);
+  const verlauf = await ladeVerlauf(k.db, id, { mitSchritten: true });
   if (verlauf === undefined) throw new PaiBotError("nicht_gefunden");
   return { daten: verlauf };
+};
+
+/**
+ * `GET /api/unterhaltungen/:id/laeufe/:laufId/werkzeuge`: die Werkzeug-Aufrufe eines Laufs als
+ * Projektion für die Anzeige (Zustand, Fundstellen, Kurzform der Frage, Belege) und die Kennungen
+ * seiner festen Antworten. Nur Läufe dieser Unterhaltung, sonst `nicht_gefunden`; ändert nichts.
+ */
+export const laufWerkzeugeLesen: RoutenAktion<"laufWerkzeuge"> = async (k) => {
+  const id = unterhaltungsId(k.params);
+  const laufId = k.params.laufId;
+  if (!isId("run", laufId)) throw new PaiBotError("nicht_gefunden");
+  const lauf = await ladeLaufWerkzeuge(k.db, id, laufId as RunId);
+  if (lauf === undefined) throw new PaiBotError("nicht_gefunden");
+  return { daten: lauf };
 };
 
 /**

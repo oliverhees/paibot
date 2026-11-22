@@ -70,6 +70,58 @@ export interface BelegKurz {
   ergebnis?: { status: "ok" | "error" | "cancelled" | "denied"; code?: ErrorCode };
 }
 
+/** Zustand eines Werkzeug-Aufrufs in Worten der Oberfläche (die fünf erreichbaren Zustände). */
+export type WerkzeugAnzeigeStatus =
+  | "laeuft"
+  | "fertig"
+  | "abgelehnt"
+  | "fehlgeschlagen"
+  | "abgebrochen";
+
+/** Eine Fundstelle eines Werkzeug-Ergebnisses: Seite, Anker und Titel, nie der Text des Abschnitts. */
+export interface QuelleAnzeige {
+  seite: string;
+  anker: string;
+  titel: string;
+}
+
+/**
+ * Ein Werkzeug-Aufruf in der Form, die zur Oberfläche geht (Projektion auf dem Server, nie die
+ * rohe Zeile): ohne das Ergebnis im Ganzen, ohne die Texte der Abschnitte, ohne Abdruck der
+ * Argumente.
+ */
+export interface WerkzeugAnzeige {
+  actionId: string;
+  runId: string;
+  step: number;
+  position: number;
+  /** Kennung des Werkzeugs; leer bei Aufrufen aus der Zeit davor. */
+  key: string;
+  /** Name des Werkzeugs, wie das Modell ihn nannte (geprüft; bei unbekanntem Werkzeug ein Platzhalter). */
+  name: string;
+  status: WerkzeugAnzeigeStatus;
+  code?: ErrorCode;
+  /** Höchstens zehn Fundstellen, nur aus dem gespeicherten Ergebnis. */
+  quellen?: QuelleAnzeige[];
+  /** Das Nachschlagen hat nichts gefunden. */
+  nichtsGefunden?: boolean;
+  /** Kurzform der Frage (höchstens 120 Zeichen), nur bei Werkzeugen mit bekanntem Feld. */
+  eingabeKurz?: string;
+  /** Name, den das Modell einem unbekannten Werkzeug gab (höchstens 64 Zeichen). */
+  nameVomModell?: string;
+  /** Beleg der Entscheidung des Tors zu diesem Aufruf. */
+  entscheidungBelegId?: string;
+  /** Beleg des Ergebnisses, sonst der Entscheidung. */
+  belegId?: string;
+}
+
+/** Antwort der Lese-Route zu den Werkzeug-Aufrufen eines Laufs. */
+export interface LaufWerkzeuge {
+  werkzeuge: WerkzeugAnzeige[];
+  /** Kennungen der Antworten dieses Laufs, die PaiBot selbst gegeben hat (nicht das Modell). */
+  feste: string[];
+}
+
 /** Alles, was die Chat-Ansicht beim Öffnen einer Unterhaltung braucht (ein Lesestand). */
 export interface ChatVerlauf {
   unterhaltung: UnterhaltungInfo;
@@ -86,6 +138,11 @@ export interface ChatVerlauf {
   belege: BelegKurz[];
   /** Modelle der Antworten (nach Modell-ID). */
   modelle: Record<string, ModellInfo>;
+  /**
+   * Werkzeug-Aufrufe der Zwischenschritte in `nachrichten` (nur mit Schritten gelesen und nur, wenn
+   * es welche gibt).
+   */
+  werkzeuge?: WerkzeugAnzeige[];
 }
 
 /** Ein Modell, mit dem der Bot antworten kann (für „neu erzeugen mit anderem Modell“). */
