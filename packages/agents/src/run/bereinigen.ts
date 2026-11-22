@@ -22,7 +22,7 @@ import type { JsonValue } from "@paibot/shared/motor";
  *   U+E0020–U+E007F, mit denen sich unsichtbarer Text verstecken lässt;
  * - Variationswähler (U+FE00–U+FE0F, U+E0100–U+E01EF), auch U+FE0F: Er ändert nur die
  *   Darstellung eines sichtbaren Zeichens (etwa ein Herz als Bild statt als Schrift), das Zeichen
- *   selbst bleibt; eine Folge solcher Wähler kann aber unsichtbar Daten tragen;
+ *   selbst bleibt; eine Reihe solcher Wähler kann aber unsichtbar Daten tragen;
  * - der unsichtbare Verbinder U+034F und die Füllzeichen U+115F, U+1160, U+3164, U+FFA0;
  * - Zeilen- und Absatztrenner U+2028, U+2029 (Zeilenumbruch bleibt U+000A).
  *
