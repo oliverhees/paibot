@@ -57,8 +57,11 @@ export type McpAnswer =
   | { kind: "normal" }
   /** Textergebnis; mit `isError` als Werkzeug-Fehler. */
   | { kind: "text"; text: string; isError?: boolean }
-  /** Ergebnis als SSE-Strom mit `notifications` Fortschrittsmeldungen davor. */
-  | { kind: "sse"; notifications?: number }
+  /**
+   * Ergebnis als SSE-Strom mit `notifications` Fortschrittsmeldungen davor; mit `thenEndless` bleibt
+   * der Strom nach dem Ergebnis offen und sendet weiter Meldungen, bis der Aufrufer schließt.
+   */
+  | { kind: "sse"; notifications?: number; thenEndless?: boolean }
   /**
    * Ergebnis als SSE-Strom, davor `count` Anfragen des Servers an den Client (Methode `method`,
    * Standard `sampling/createMessage`): prüft, dass der Client nicht auf jede einzeln antwortet.
@@ -498,6 +501,13 @@ export function createTestMcpServer(
         for (let i = 1; i <= (a.notifications ?? 1); i += 1)
           sseEvent(ex, progress(progressToken, i));
         sseEvent(ex, reply(normal()));
+        if (a.thenEndless === true) {
+          for (let step = 1; !ex.closed; step += 1) {
+            sseEvent(ex, progress(progressToken, step));
+            await sleep(10, ex);
+          }
+          return;
+        }
         ex.res.end();
         return;
       }
