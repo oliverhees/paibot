@@ -411,6 +411,9 @@ jobs:
             [ "$abschnitte" -ge 1 ] || { echo "$dienst: Index ohne Abschnitt"; exit 1; }
             echo "$dienst: Doku-Index ok ($abschnitte Abschnitte)"
           done
+          # Die Pakete wurden nur für den Index-Bau gebraucht. Spätere Schritte installieren in einem
+          # Container mit anderer Laufzeit selbst; dafür ist der Ordner wieder leer wie nach dem Checkout.
+          find . -name node_modules -type d -prune -exec rm -rf {} +
       - name: Zweiter Start macht nichts kaputt
         run: |
           set -eu
@@ -603,7 +606,7 @@ jobs:
             -e PAIBOT_TEST_FAKE_PROVIDER_CONTROL_KEY="$steuer_key" \
             -e PAIBOT_TEST_FAKE_PROVIDER_KEY="$anbieter_key" \
             node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a \
-            sh -c 'corepack enable && pnpm install --frozen-lockfile --filter "@paibot/durchstich..." > /dev/null && pnpm --filter @paibot/durchstich exec vitest run src/schleuse-vertrag.test.ts'
+            sh -c 'corepack enable && { pnpm install --frozen-lockfile --filter "@paibot/durchstich..." > /tmp/pnpm-install.log 2>&1 || { cat /tmp/pnpm-install.log; exit 1; }; } && pnpm --filter @paibot/durchstich exec vitest run src/schleuse-vertrag.test.ts'
           $testcompose down -v
       - name: Protokolle der Dienste im Fehlerfall
         if: failure()
