@@ -18,5 +18,18 @@ export * from "./grenzen";
 export * from "./namen";
 export * from "./schema";
 export * from "./struktur";
-export * from "./verbindung";
+// Aus der Verbindungs-Datei nur das, was von außen gebraucht wird. Ein Aufruf ohne Prüfung der
+// Argumente (`McpVerbindung.rufeAuf`) gehört nicht dazu: Aufgerufen wird nur über `rufeWerkzeugAuf`.
+export {
+  type AdressePruefung,
+  holeWerkzeuge,
+  type McpFetch,
+  type McpRohListe,
+  type McpVerbindungOptionen,
+  pruefeAdresse,
+  rufeWerkzeugAuf,
+  type WerkzeugAbruf,
+  type WerkzeugAbrufOptionen,
+  type WerkzeugAufrufOptionen,
+} from "./verbindung";
 export * from "./werkzeug";
