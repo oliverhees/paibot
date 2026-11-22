@@ -70,6 +70,7 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
   app_tools: {
     klasse: "A",
     geheim: "nein",
+    oeffentlich: ["tool_key"],
     grund: "Fassungen der Werkzeuge einer App, nur anhängen (Trigger); gültig ist die neueste.",
   },
   bot_app_grants: {
@@ -97,6 +98,7 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     klasse: "B",
     geheim: "je-ort-neu-verschluesselt",
     spalten: ["api_key_enc", "management_key_enc"],
+    oeffentlich: ["template_key"],
     grund:
       "Anbieter mit verschlüsselten Schlüsseln (`api_key_enc`, `management_key_enc`); wird geändert, es zählt der neueste Stand. Die Schlüssel gehen nie als Geheimtext zu einem anderen Ort, nur auf ausdrückliche Wahl am Zielort neu verschlüsselt.",
   },
@@ -130,6 +132,7 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
   tool_calls: {
     klasse: "B",
     geheim: "nein",
+    oeffentlich: ["tool_key"],
     grund: "Werkzeug-Aufrufe eines Laufs; der Zustand wird fortgeschrieben, es zählt der Endstand.",
   },
   apps: {
@@ -143,6 +146,7 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     klasse: "B",
     geheim: "nie",
     spalten: ["password_hash"],
+    oeffentlich: ["password_changed_at"],
     grund:
       "Der Besitzer mit Passwort-Abdruck, höchstens eine Zeile; wird geändert. Der Passwort-Abdruck ist ein Geheimnis und geht nie offen oder als Geheimtext zu einem anderen Ort; Änderungen laufen nur über einen gekoppelten, verschlüsselten Kanal.",
   },
@@ -152,6 +156,7 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     klasse: "C",
     geheim: "nie",
     spalten: ["private_key_enc"],
+    oeffentlich: ["public_key"],
     grund:
       "Signaturschlüssel der Installation; der private Teil verlässt den Ort nie. Der öffentliche Teil wird später über die Tabelle der Orte verteilt.",
   },
@@ -166,6 +171,7 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     klasse: "C",
     geheim: "nie",
     spalten: ["token_hash"],
+    oeffentlich: ["public_key"],
     grund: "Bekannte Geräte (Cookie-Abdrücke); gelten nur an dem Ort, der sie ausgestellt hat.",
   },
   rate_limits: {
@@ -223,8 +229,16 @@ export function abgleichKlassenFehler(
   return fehler;
 }
 
-/** Namen von Spalten, die nach einem Geheimnis aussehen: `…_enc`, `…_hash`, `token` oder `…_token`. */
-export const GEHEIMNIS_SPALTE = /(?:_enc|_hash)$|(?:^|_)token$/;
+/**
+ * Namen von Spalten, die nach einem Geheimnis aussehen: Namensteile `secret`, `password`/`passwd`,
+ * `private`, `cipher`, `credential`, `api_key`/`apikey`, Namen, die auf `token` oder `tokens`
+ * enden, und Endungen `_key`, `_enc`, `_hash`. Ausgenommen sind die Zähler für Token eines Modells
+ * (`max_output_tokens`, `output_tokens`, `input_tokens`, `max_input_tokens`). Was so heißt und
+ * kein Geheimnis ist (öffentliche Schlüssel, Kettenabdrücke, Zeitstempel), steht im Eintrag unter
+ * `oeffentlich`.
+ */
+export const GEHEIMNIS_SPALTE =
+  /^(?!(?:max_)?(?:input_|output_)tokens$).*(?:secret|passw(?:or)?d|private|cipher|credential|api_?key|(?:^|_)tokens?$|_key$|_enc$|_hash$)/i;
 
 /**
  * Prüft die Kennzeichnung der Geheimnisse. `spaltenJeTabelle` nennt je Tabelle ihre Spalten. Jede

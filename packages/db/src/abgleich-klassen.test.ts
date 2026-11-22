@@ -194,7 +194,9 @@ describe("Gegenproben der Prüfung", () => {
   });
 
   describe("Kennzeichnung der Geheimnisse", () => {
-    const SPALTEN = { eins: ["id", "key_enc", "pw_hash", "token", "api_token", "tokens"] };
+    const SPALTEN = {
+      eins: ["id", "key_enc", "pw_hash", "token", "api_token", "max_output_tokens"],
+    };
 
     it("Spalten, die nach einem Geheimnis aussehen, ohne Kennzeichnung: Meldung je Spalte", () => {
       expect(abgleichGeheimFehler(SPALTEN, ZUORDNUNG)).toEqual([
@@ -205,7 +207,7 @@ describe("Gegenproben der Prüfung", () => {
       ]);
     });
 
-    it("gekennzeichnete Spalten (Geheimnis oder öffentlich) sind in Ordnung; `tokens` ist kein Treffer", () => {
+    it("gekennzeichnete Spalten (Geheimnis oder öffentlich) sind in Ordnung; `max_output_tokens` ist kein Treffer", () => {
       const zuordnung = {
         ...ZUORDNUNG,
         eins: {
@@ -246,6 +248,68 @@ describe("Gegenproben der Prüfung", () => {
       expect(abgleichGeheimFehler({ eins: ["id"] }, zuordnung)).toEqual([
         "Tabelle eins: unbekannte Kennzeichnung vielleicht.",
       ]);
+    });
+  });
+
+  describe("Namensmuster für Geheimnisse (GEHEIMNIS_SPALTE)", () => {
+    it.each([
+      "api_key",
+      "apikey",
+      "webhook_secret",
+      "password",
+      "passwd",
+      "private_key",
+      "refresh_tokens",
+      "access_token",
+      "access_token_cipher",
+      "client_credentials",
+      "token",
+      "api_key_enc",
+      "pw_hash",
+      "signing_key",
+      "Token",
+    ])("%s sieht nach einem Geheimnis aus", (name) => {
+      expect(GEHEIMNIS_SPALTE.test(name)).toBe(true);
+    });
+
+    it.each([
+      "id",
+      "key",
+      "owner_id",
+      "created_at",
+      "tokens_in",
+      "tokens_out",
+      "max_output_tokens",
+      "output_tokens",
+      "max_tokens_per_run",
+      "daily_token_budget",
+      "history_token_limit",
+      "hash",
+      "signature",
+      "fingerprint",
+    ])("%s ist kein Treffer", (name) => {
+      expect(GEHEIMNIS_SPALTE.test(name)).toBe(false);
+    });
+
+    it("eine Spalte mit Klartext-Geheimnis in einer Tabelle ohne Kennzeichnung wird gemeldet", () => {
+      const spalten = {
+        eins: [
+          "id",
+          "api_key",
+          "webhook_secret",
+          "password",
+          "private_key",
+          "refresh_tokens",
+          "access_token_cipher",
+        ],
+      };
+      const fehler = abgleichGeheimFehler(spalten, ZUORDNUNG);
+      expect(fehler).toHaveLength(6);
+      for (const name of spalten.eins.slice(1)) {
+        expect(fehler).toContain(
+          `Spalte eins.${name} sieht nach einem Geheimnis aus und ist nicht gekennzeichnet.`,
+        );
+      }
     });
   });
 });
