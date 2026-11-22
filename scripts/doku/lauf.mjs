@@ -92,8 +92,13 @@ export const ANBIETER_STANDARD = Object.freeze({
   chunkDelayMs: 0,
   holdAfterChunks: 0,
   // Routing-Regel und Anbieter-Liste wie bei einem Vermittler (nur Beispiel-Daten).
-  routingRules: [{ name: "EU Beispiel", provider: "beispiel-eu", model: "beispiel/allrounder" }],
-  providers: [{ slug: "beispiel-eu", name: "Beispiel EU-Anbieter", headquarters: "NL" }],
+  routingRules: [
+    { name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/allrounder" },
+    { name: "Zweite Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/kompakt" },
+    { name: "Dritte Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/kompakt" },
+    { name: "Regel nur per Name", provider: "beispiel-nord", model: "beispiel/kompakt" },
+  ],
+  providers: [{ slug: "beispiel-nord", name: "Beispiel-Anbieter Nord", headquarters: "NL" }],
 });
 
 /** Felder, die ein Schritt „anbieter“ am Test-Anbieter setzen darf. */
@@ -111,6 +116,7 @@ export const SONDERWERTE = Object.freeze({
   "$einrichtungs-code": "einrichtungsCode",
   $passwort: "passwort",
   "$anbieter-schluessel": "anbieterSchluessel",
+  $verwaltungsschluessel: "verwaltungsschluessel",
 });
 
 /**

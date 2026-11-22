@@ -20,6 +20,7 @@ import {
   TEST_CODE,
   TEST_PASSWORT,
   TEST_SCHLUESSEL,
+  TEST_VERWALTUNGSSCHLUESSEL,
   TEST_VORLAGEN_URL,
   testUmgebung,
   vorabDose,
@@ -60,20 +61,20 @@ describe("POST /api/anbieter/:id/regeln", () => {
     const vorher = await letzteNummer(e.u);
     const r = await e.rufe(hinzu, "POST", `/api/anbieter/${e.id}/regeln`, {
       params: { id: e.id },
-      koerper: { name: "EU Beispiel" },
+      koerper: { name: "Beispiel-Regel" },
     });
     expect(r.status).toBe(201);
     expect(r.body).toMatchObject({
       ok: true,
       daten: {
-        regel: { name: "EU Beispiel" },
-        servedBy: { provider: "beispiel-eu", model: "beispiel/modell-1" },
+        regel: { name: "Beispiel-Regel" },
+        servedBy: { provider: "beispiel-nord", model: "beispiel/modell-1" },
       },
     });
-    expect(e.u.regelAufrufe).toEqual(["EU Beispiel"]);
+    expect(e.u.regelAufrufe).toEqual(["Beispiel-Regel"]);
     const anbieter = await repo.providers.get(e.u.db, e.id as ProviderId);
     if (anbieter === undefined) throw new Error("kein Anbieter");
-    expect(await regelnVon(e.u.db, anbieter)).toMatchObject([{ name: "EU Beispiel" }]);
+    expect(await regelnVon(e.u.db, anbieter)).toMatchObject([{ name: "Beispiel-Regel" }]);
     const belege = await belegeSeit(e.u, vorher);
     expect(belege.map((b) => `${b.typ}:${b.aktion}`)).toEqual([
       "decision:anbieter.speichern",
@@ -111,7 +112,7 @@ describe("POST /api/anbieter/:id/regeln", () => {
   it("Namen mit Steuerzeichen oder Leerraum am Rand: 400 ohne Anfrage beim Anbieter", async () => {
     const e = await mitEurouter();
     const { hinzu } = regelRouten(e);
-    for (const name of ["EU‮Beispiel", " EU Beispiel", ""]) {
+    for (const name of ["EU‮Beispiel", " Beispiel-Regel", ""]) {
       const r = await e.rufe(hinzu, "POST", `/api/anbieter/${e.id}/regeln`, {
         params: { id: e.id },
         koerper: { name },
@@ -127,7 +128,7 @@ describe("POST /api/anbieter/:id/regeln", () => {
     const [anbieter] = await repo.providers.list(e.u.db);
     const r = await e.rufe(hinzu, "POST", `/api/anbieter/${anbieter?.id}/regeln`, {
       params: { id: anbieter?.id ?? "" },
-      koerper: { name: "EU Beispiel" },
+      koerper: { name: "Beispiel-Regel" },
     });
     expect(r.status).toBe(400);
     expect(e.u.regelAufrufe).toEqual([]);
@@ -138,13 +139,13 @@ describe("POST /api/anbieter/:id/regeln", () => {
     const { hinzu } = regelRouten(e);
     const ohne = await anfrage(e.u, hinzu, "POST", `/api/anbieter/${e.id}/regeln`, {
       params: { id: e.id },
-      koerper: { name: "EU Beispiel" },
+      koerper: { name: "Beispiel-Regel" },
     });
     expect(ohne.status).toBe(401);
     const ohnePruef = await anfrage(e.u, hinzu, "POST", `/api/anbieter/${e.id}/regeln`, {
       dose: e.dose,
       params: { id: e.id },
-      koerper: { name: "EU Beispiel" },
+      koerper: { name: "Beispiel-Regel" },
       pruefzeichen: null,
     });
     expect(ohnePruef.status).toBe(403);
@@ -157,7 +158,7 @@ describe("DELETE /api/anbieter/:id/regeln/:modellId", () => {
     const { hinzu, weg } = regelRouten(e);
     const r = await e.rufe(hinzu, "POST", `/api/anbieter/${e.id}/regeln`, {
       params: { id: e.id },
-      koerper: { name: "EU Beispiel" },
+      koerper: { name: "Beispiel-Regel" },
     });
     const regelId = (r.body as { daten: { regel: { id: string } } }).daten.regel.id;
     const vorher = await letzteNummer(e.u);
@@ -237,7 +238,7 @@ describe("Einrichtung mit Anbieter-Wahl", () => {
         setupCode: TEST_CODE,
         apiKey: TEST_SCHLUESSEL,
         templateKey: "eurouter",
-        ruleNames: ["EU Beispiel", "Falsch"],
+        ruleNames: ["Beispiel-Regel", "Falsch"],
       },
     });
     expect(r.status).toBe(200);
@@ -245,7 +246,7 @@ describe("Einrichtung mit Anbieter-Wahl", () => {
       daten: {
         modelle: [],
         regeln: [
-          { name: "EU Beispiel", ok: true, servedBy: { provider: "beispiel-eu" } },
+          { name: "Beispiel-Regel", ok: true, servedBy: { provider: "beispiel-nord" } },
           { name: "Falsch", ok: false },
         ],
       },
@@ -266,7 +267,7 @@ describe("Einrichtung mit Anbieter-Wahl", () => {
         setupCode: TEST_CODE,
         apiKey: "beispiel-falsch-1",
         templateKey: "eurouter",
-        ruleNames: ["EU Beispiel"],
+        ruleNames: ["Beispiel-Regel"],
       },
     });
     expect(falsch.body).toMatchObject({ fehler: { felder: [{ feld: "apiKey" }] } });
@@ -280,17 +281,17 @@ describe("Einrichtung mit Anbieter-Wahl", () => {
         setupCode: TEST_CODE,
         apiKey: TEST_SCHLUESSEL,
         templateKey: "eurouter",
-        ruleNames: ["EU Beispiel", "Zweite Regel"],
+        ruleNames: ["Beispiel-Regel", "Zweite Regel"],
       },
     });
-    expect(u.regelAufrufe).toEqual(["EU Beispiel", "Zweite Regel"]);
+    expect(u.regelAufrufe).toEqual(["Beispiel-Regel", "Zweite Regel"]);
     const r = await anfrage(u, abschluss, "POST", "/api/einrichtung", {
       dose,
       koerper: {
         ...grund,
         apiKey: TEST_SCHLUESSEL,
         templateKey: "eurouter",
-        ruleNames: ["EU Beispiel", "Zweite Regel"],
+        ruleNames: ["Beispiel-Regel", "Zweite Regel"],
         ruleName: "Zweite Regel",
       },
     });
@@ -299,17 +300,129 @@ describe("Einrichtung mit Anbieter-Wahl", () => {
       daten: { anbieter: true, anbieterName: "EUrouter", modell: "Zweite Regel" },
     });
     // Gemerkt: keine zweite Anfrage beim Anbieter.
-    expect(u.regelAufrufe).toEqual(["EU Beispiel", "Zweite Regel"]);
+    expect(u.regelAufrufe).toEqual(["Beispiel-Regel", "Zweite Regel"]);
     const [anbieter] = await repo.providers.list(u.db);
     expect(anbieter?.templateKey).toBe("eurouter");
     if (anbieter === undefined) throw new Error("kein Anbieter");
     expect((await regelnVon(u.db, anbieter)).map((r2) => r2.name)).toEqual([
-      "EU Beispiel",
+      "Beispiel-Regel",
       "Zweite Regel",
     ]);
     const bot = await repo.bots.getDefault(u.db);
     const modell = await repo.models.get(u.db, bot?.modelId as never);
     expect(modell?.slug).toBe("rule:Zweite Regel");
+  });
+
+  it("Einrichtung mit zweitem Schlüssel: Test nennt je Regel die Angabe, Abschluss speichert Schlüssel und Vorgaben", async () => {
+    const { u, test, abschluss, dose } = await vorab();
+    u.zustand.kontoRegeln = [
+      { name: "Beispiel-Regel", policy: { data_residency: "EU" } },
+      { name: "Zweite Regel", policy: { data_residency: "US" } },
+    ];
+    const koerper = {
+      setupCode: TEST_CODE,
+      apiKey: TEST_SCHLUESSEL,
+      templateKey: "eurouter",
+      ruleNames: ["Beispiel-Regel", "Zweite Regel"],
+      managementKey: TEST_VERWALTUNGSSCHLUESSEL,
+    };
+    const t1 = await anfrage(u, test, "POST", "/api/einrichtung/verbindungstest", {
+      dose,
+      koerper,
+    });
+    expect(t1.status).toBe(200);
+    expect(t1.body).toMatchObject({
+      daten: {
+        regeln: [
+          { name: "Beispiel-Regel", eu: true },
+          { name: "Zweite Regel", eu: false },
+        ],
+      },
+    });
+    const r = await anfrage(u, abschluss, "POST", "/api/einrichtung", {
+      dose,
+      koerper: {
+        ...grund,
+        apiKey: TEST_SCHLUESSEL,
+        templateKey: "eurouter",
+        ruleNames: ["Beispiel-Regel", "Zweite Regel"],
+        ruleName: "Zweite Regel",
+        managementKey: TEST_VERWALTUNGSSCHLUESSEL,
+      },
+    });
+    expect(r.status).toBe(200);
+    const mitSchluessel = await repo.providers.getWithKey(
+      u.db,
+      (await repo.providers.list(u.db))[0]?.id as never,
+    );
+    expect(mitSchluessel?.managementKeyEnc).toMatch(/^v2:/);
+    expect(JSON.stringify(r.body)).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
+    // Der Beleg zum Anbieter trägt den Fakt „zweiter Schlüssel“, nie den Schlüssel.
+    const belege = JSON.stringify((await repo.belege.listPage(u.db, { limit: 200 })).items);
+    expect(belege).toContain('"managementKeySet":true');
+    expect(belege).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
+    const regeln = await regelnVon(u.db, mitSchluessel?.provider as never);
+    expect(regeln.map((x) => [x.name, x.vorgabe?.policy.data_residency])).toEqual([
+      ["Beispiel-Regel", "EU"],
+      ["Zweite Regel", "US"],
+    ]);
+  });
+
+  it("Einrichtung mit zweitem Schlüssel, der die Regeln nicht lesen darf: Fehler am Feld, nichts eingerichtet", async () => {
+    const { u, test, abschluss, dose } = await vorab();
+    u.zustand.listeErsatz = { ok: false, code: "nicht_erlaubt" };
+    const grundKoerper = {
+      apiKey: TEST_SCHLUESSEL,
+      templateKey: "eurouter",
+      ruleNames: ["Beispiel-Regel"],
+      managementKey: TEST_VERWALTUNGSSCHLUESSEL,
+    };
+    const t1 = await anfrage(u, test, "POST", "/api/einrichtung/verbindungstest", {
+      dose,
+      koerper: { setupCode: TEST_CODE, ...grundKoerper },
+    });
+    expect(t1.body).toMatchObject({
+      fehler: {
+        text: "Dieser Schlüssel darf die Regeln nicht lesen.",
+        felder: [{ feld: "managementKey" }],
+      },
+    });
+    const r = await anfrage(u, abschluss, "POST", "/api/einrichtung", {
+      dose,
+      koerper: { ...grund, ...grundKoerper },
+    });
+    expect(r.status).toBe(502);
+    expect(await repo.settings.isSetupComplete(u.db)).toBe(false);
+  });
+
+  it("ohne zweiten Schlüssel: keine Angabe je Regel und keine Kennzeichnung", async () => {
+    const { u, test, dose } = await vorab();
+    const r = await anfrage(u, test, "POST", "/api/einrichtung/verbindungstest", {
+      dose,
+      koerper: {
+        setupCode: TEST_CODE,
+        apiKey: TEST_SCHLUESSEL,
+        templateKey: "eurouter",
+        ruleNames: ["Beispiel-Regel"],
+      },
+    });
+    const regeln = (r.body as unknown as { daten: { regeln: { eu?: boolean }[] } }).daten.regeln;
+    expect(regeln[0]?.eu).toBeUndefined();
+    expect(u.listeAufrufe).toEqual([]);
+  });
+
+  it("zweiter Schlüssel ohne Regeln oder bei Mistral: abgewiesen", async () => {
+    const { u, test, dose } = await vorab();
+    const r = await anfrage(u, test, "POST", "/api/einrichtung/verbindungstest", {
+      dose,
+      koerper: {
+        setupCode: TEST_CODE,
+        apiKey: TEST_SCHLUESSEL,
+        templateKey: "mistral",
+        managementKey: TEST_VERWALTUNGSSCHLUESSEL,
+      },
+    });
+    expect(r.status).toBe(400);
   });
 
   it("Abschluss mit einer nicht geprüften, unbekannten Regel: 400, nichts eingerichtet", async () => {

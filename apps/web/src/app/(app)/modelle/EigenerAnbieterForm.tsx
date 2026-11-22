@@ -142,8 +142,20 @@ export function EigenerAnbieterForm({
         value={werte.region}
         optionen={EIGENE_REGIONEN.map((r) => ({ wert: r, text: t(`modelle.eigen.ort.${r}`) }))}
         onChange={(e) => aendern({ region: e.target.value as EigenWerte["region"] })}
-        hilfe={lokal ? t("modelle.eigen.ort.hilfe.local") : t("modelle.eigen.ort.hilfe")}
+        hilfe={
+          lokal
+            ? t("modelle.eigen.ort.hilfe.local")
+            : werte.region === "non_eu"
+              ? t("modelle.eigen.ort.hilfe.non_eu")
+              : t("modelle.eigen.ort.hilfe")
+        }
       />
+      {werte.region === "non_eu" && (
+        <div className={styles.meldung} data-art="warn" role="note">
+          <Icon name="info" />
+          <p>{t("modelle.eigen.warnung.non_eu")}</p>
+        </div>
+      )}
       {unverschluesselt(werte.baseUrl, werte.region) && (
         <div className={styles.meldung} data-art="warn">
           <Icon name="info" />

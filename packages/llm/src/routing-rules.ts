@@ -9,7 +9,7 @@
  * @since     2026-11-21
  */
 
-import { anzeigeText } from "@paibot/shared/anzeigetext";
+import { ahmtKennzeichnungNach, anzeigeText } from "@paibot/shared/anzeigetext";
 import {
   SERVED_MODEL_PATTERN,
   SERVED_PROVIDER_PATTERN,
@@ -47,6 +47,7 @@ export function supportsRoutingRules(templateKey: ProviderTemplateKey): boolean 
 export function isRoutingRuleName(name: string): boolean {
   return (
     anzeigeText(name, ROUTING_RULE_NAME_MAX_CHARS) === name &&
+    !ahmtKennzeichnungNach(name) &&
     !/\s{2,}/.test(name) &&
     Array.from(name).length <= ROUTING_RULE_NAME_MAX_CHARS
   );

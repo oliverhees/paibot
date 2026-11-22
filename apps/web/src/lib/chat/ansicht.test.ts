@@ -672,13 +672,13 @@ describe("Herkunft der Antwort", () => {
     const g = glueck(ev);
     const fertig = g.liste.map((e) =>
       e.type === "message.completed"
-        ? { ...e, data: { ...e.data, servedBy: { provider: "beispiel-eu", model: "b/m" } } }
+        ? { ...e, data: { ...e.data, servedBy: { provider: "beispiel-nord", model: "b/m" } } }
         : e,
     ) as typeof g.liste;
     const a = ereignisseAnwenden(leereAnsicht(), fertig, {});
     const antwort = a.eintraege[1];
     expect(antwort?.art === "nachricht" && antwort.servedBy).toEqual({
-      provider: "beispiel-eu",
+      provider: "beispiel-nord",
       model: "b/m",
     });
     // Ohne bekanntes Modell: nur der Name, keine Region und kein „EU“.

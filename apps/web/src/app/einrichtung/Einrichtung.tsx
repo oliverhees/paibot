@@ -38,6 +38,8 @@ interface RegelErgebnis {
   name: string;
   ok: boolean;
   herkunft?: string;
+  /** Nur mit zweitem Schlüssel gelesen: Satz zur Kennzeichnung bzw. zur Datenresidenz der Regel. */
+  vorgabeText?: string;
   text?: string;
   ausweg?: string;
 }
@@ -87,6 +89,7 @@ const FELD_ZU_SCHRITT: Record<string, Schritt> = {
   apiKey: "schluessel",
   templateKey: "anbieter",
   ruleNames: "schluessel",
+  managementKey: "schluessel",
   ruleName: "modell",
   modelSlug: "modell",
   schleuseModeDefault: "schleuse",
@@ -154,6 +157,7 @@ export function Einrichtung({
   const [passwort, setPasswort] = useState("");
   const [passwort2, setPasswort2] = useState("");
   const [schluessel, setSchluessel] = useState("");
+  const [verwaltungsschluessel, setVerwaltungsschluessel] = useState("");
   const [modelle, setModelle] = useState<Modell[] | undefined>();
   const [testLaeuft, setTestLaeuft] = useState(false);
   const [codeLaeuft, setCodeLaeuft] = useState(false);
@@ -309,6 +313,9 @@ export function Einrichtung({
         apiKey: schluessel,
         ...(wahl === undefined ? {} : { templateKey: wahl }),
         ...(mitRegeln ? { ruleNames: namen } : {}),
+        ...(mitRegeln && verwaltungsschluessel.trim() !== ""
+          ? { managementKey: verwaltungsschluessel }
+          : {}),
       },
     );
     setTestLaeuft(false);
@@ -342,6 +349,7 @@ export function Einrichtung({
 
   function spaeterEintragen() {
     setSchluessel("");
+    setVerwaltungsschluessel("");
     testZuruecksetzen();
     fehlerSetzen("schluessel", undefined);
     gehe("schleuse");
@@ -359,6 +367,9 @@ export function Einrichtung({
       ...(mitSchluessel && !mitRegeln && modell !== undefined ? { modelSlug: modell } : {}),
       ...(mitSchluessel && mitRegeln ? { ruleNames: okRegeln } : {}),
       ...(mitSchluessel && mitRegeln && regel !== undefined ? { ruleName: regel } : {}),
+      ...(mitSchluessel && mitRegeln && verwaltungsschluessel.trim() !== ""
+        ? { managementKey: verwaltungsschluessel }
+        : {}),
       schleuseModeDefault: schleuse ? "on" : "off",
       botName: botName.trim(),
       ...(zeitzone ? { timezone: zeitzone } : {}),
@@ -692,6 +703,22 @@ export function Einrichtung({
                           </p>
                         </fieldset>
                       )}
+                      {mitRegeln && (
+                        <TextField
+                          label={t("verwaltung.feld")}
+                          type="password"
+                          name="managementKey"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className={styles.mono}
+                          value={verwaltungsschluessel}
+                          onChange={(e) => {
+                            setVerwaltungsschluessel(e.target.value);
+                            testZuruecksetzen();
+                          }}
+                          hilfe={`${t("verwaltung.feld.hilfe", { anbieter })} ${t("verwaltung.text", { anbieter })}`}
+                        />
+                      )}
                       <span>
                         <Button
                           art="zweit"
@@ -735,7 +762,7 @@ export function Einrichtung({
                                       : t("anbieterwahl.regel.nicht_ok", { name: r.name })}
                                   </strong>{" "}
                                   {r.ok
-                                    ? (r.herkunft ?? "")
+                                    ? [r.herkunft, r.vorgabeText].filter(Boolean).join(". ")
                                     : [r.text, r.ausweg].filter(Boolean).join(" ")}
                                 </span>
                               </li>
