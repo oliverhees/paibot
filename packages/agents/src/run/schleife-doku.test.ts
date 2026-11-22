@@ -540,7 +540,7 @@ describe("Kein weiterer Modell-Schritt bei „nichts gefunden“", () => {
     const [, zweiter] = await repo.toolCalls.listForRun(env.db, runId);
     const gespeichert = zweiter?.output as ToolEnvelope & { gekuerzt?: boolean };
     expect(gespeichert).toMatchObject({ status: "ok", gekuerzt: true });
-    const stand = (gespeichert as { inhalt: { stand: string } }).inhalt.stand;
+    const stand = (gespeichert as unknown as { inhalt: { stand: string } }).inhalt.stand;
     expect(stand).not.toBe(echt.stand);
     expect(echt.stand.startsWith(stand)).toBe(true);
     const ergebnisse = results(await env.receipts(), "werkzeug.aufrufen");
