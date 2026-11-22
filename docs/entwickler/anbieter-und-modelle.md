@@ -97,7 +97,7 @@ Routen aus `apps/web/src/lib/routen.ts#API_ROUTEN` (Zugang `besitzer`):
 | `POST /api/anbieter/:id/regeln/neu-pruefen`      | `anbieter.speichern` (Limit `verbindungstest`) |
 | `PUT /api/bot/modell`                            | `modell.waehlen` (siehe [Bot](bot.md))         |
 
-Die Seite „Modell und Anbieter“ liest die Modell-Liste beim Öffnen über `POST /api/anbieter/:id/modelle/lesen`; gespeichert wird erst bei „Liste abgleichen“ oder beim Übernehmen eines noch nicht gespeicherten Modells (`apps/web/src/app/(app)/modelle/ModelleAnsicht.tsx#listeLaden`). Der Fakt `managementKeySet` der Aktion `anbieter.speichern` (`packages/shared/src/actions.ts`) hält fest, ob ein zweiter Schlüssel hinterlegt ist, nie den Schlüssel.
+Die Seite „Modell und Anbieter“ liest die Modell-Liste beim Öffnen über `POST /api/anbieter/:id/modelle/lesen`; gespeichert wird erst bei „Liste abgleichen“ oder beim Übernehmen eines noch nicht gespeicherten Modells (`apps/web/src/app/(app)/modelle/ModelleAnsicht.tsx#listeLaden`). Der Fakt `managementKeySet` der Aktion `anbieter.speichern` (`packages/shared/src/actions.ts`) hält fest, ob ein zweiter Schlüssel hinterlegt ist, nie den Schlüssel. Auch der Beleg beim Ändern eines Anbieters nennt ihn (`apps/web/src/lib/modelle/anbieter.ts#anbieterAendern`); der zweite Schlüssel bleibt dabei, wie er ist.
 
 Route-Dateien unter `apps/web/src/app/api/anbieter/`. Die Aktion `modell.anfragen` des Bots beschreibt [Chat](chat.md).
 

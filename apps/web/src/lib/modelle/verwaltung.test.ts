@@ -258,6 +258,29 @@ describe("Belege: jede Änderung schreibt Entscheidung und Ergebnis (Tor-Fassung
     // Der Schlüssel steht in keinem dieser Belege.
     expect(await belegeAlsTextLokal(e)).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
   });
+
+  it("Anbieter ändern: der Beleg nennt, ob ein zweiter Schlüssel hinterlegt ist", async () => {
+    const e = await mitEurouter();
+    const aendern = async (name: string) => {
+      const vorher = await letzteNummer(e.u);
+      const r = await e.rufe(e.r.anbieterAendern, "PUT", `/api/anbieter/${e.id}`, {
+        params: { id: e.id },
+        koerper: { ...EUROUTER, name },
+      });
+      expect(r.status).toBe(200);
+      const belege = await belegeSeit(e.u, vorher);
+      expect(belege.map((b) => `${b.typ}:${b.aktion}`)).toEqual([
+        "decision:anbieter.speichern",
+        "result:anbieter.speichern",
+      ]);
+      return JSON.stringify(belege);
+    };
+    expect(await aendern("EUrouter privat")).toContain('"managementKeySet":false');
+    expect((await e.setzen()).status).toBe(200);
+    const mit = await aendern("EUrouter Konto");
+    expect(mit).toContain('"managementKeySet":true');
+    expect(mit).not.toContain(TEST_VERWALTUNGSSCHLUESSEL);
+  });
 });
 
 describe("Fehler beim Lesen der Liste", () => {
