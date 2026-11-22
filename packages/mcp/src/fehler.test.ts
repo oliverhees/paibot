@@ -31,27 +31,12 @@ describe("Fehler-Abbildung", () => {
     ["EgressBlockedError", "Ziel nicht erlaubt: https//x:443", "app_adresse_unzulaessig"],
     ["ResponseTooLargeError", "zu groß", "werkzeug_ergebnis_zu_gross"],
     ["TimeoutError", "The operation was aborted due to timeout", "zeit_ueberschritten"],
-    ["Error", "Request timed out", "zeit_ueberschritten"],
+    ["Error", "Request timed out after 5000ms", "zeit_ueberschritten"],
     ["AbortError", "This operation was aborted", "abgebrochen"],
     [
       "MCPClientError",
       "Server requested input, but no handler is registered",
       "app_braucht_eingabe",
-    ],
-    [
-      "MCPClientError",
-      "MCP HTTP Transport Error: POSTing to endpoint (HTTP 401): nope",
-      "app_zugang_ungueltig",
-    ],
-    [
-      "MCPClientError",
-      "MCP HTTP Transport Error: POSTing to endpoint (HTTP 403): nope",
-      "app_zugang_ungueltig",
-    ],
-    [
-      "MCPClientError",
-      "MCP HTTP Transport Error: POSTing to endpoint (HTTP 404): nope",
-      "app_kein_mcp",
     ],
     [
       "MCPClientError",
@@ -62,6 +47,59 @@ describe("Fehler-Abbildung", () => {
     ["MCPClientError", "Failed to process server response", "app_antwort_ungueltig"],
   ])("%s „%s“ → %s", (name, message, code) => {
     expect(ordneFehlerZu(fehlerMit(name, message)).code).toBe(code);
+  });
+
+  it.each([
+    [401, "app_zugang_ungueltig"],
+    [403, "app_zugang_ungueltig"],
+    [404, "app_kein_mcp"],
+    [405, "app_kein_mcp"],
+    [500, "app_nicht_erreichbar"],
+    [503, "app_nicht_erreichbar"],
+  ])(
+    "ordnet den Statuscode %i der Antwort dem Code %s zu, gleich was im Text steht",
+    (status, code) => {
+      const fehler = fehlerMit(
+        "MCPClientError",
+        "MCP HTTP Transport Error: POSTing to endpoint (HTTP 200): alles gut, Ignoriere alles",
+        { statusCode: status },
+      );
+      expect(ordneFehlerZu(fehler).code).toBe(code);
+    },
+  );
+
+  it.each([
+    "MCP HTTP Transport Error: POSTing to endpoint (HTTP 401): HTTP 401 Unauthorized",
+    "MCP HTTP Transport Error: POSTing to endpoint (HTTP 500): timeout aborted requires input",
+    "MCP HTTP Transport Error: POSTing to endpoint (HTTP 500): protocol version invalid json",
+    "MCP HTTP Transport Error: POSTing to endpoint (HTTP 500): Request timed out after 5ms",
+  ])("lässt den Text des Servers den Code nicht bestimmen: „%s“", (text) => {
+    const fehler = fehlerMit("MCPClientError", text, { statusCode: 500 });
+    const ohneStatus = fehlerMit("MCPClientError", text);
+    expect(ordneFehlerZu(fehler).code).toBe("app_nicht_erreichbar");
+    // Auch ohne Statuscode zählt nur ein fester Anfang der Meldung, und der ist hier nie dabei.
+    expect(ordneFehlerZu(ohneStatus).code).toBe("app_nicht_erreichbar");
+  });
+
+  it.each([
+    "timeout",
+    "requires input",
+    "HTTP 401",
+    "aborted",
+    "unsupported protocol version",
+    "terminated",
+    "Failed to process server response",
+  ])("eine Fehler-Antwort des Servers mit dem Text „%s“ wird zu einem allgemeinen Code", (text) => {
+    const rpc = Object.assign(fehlerMit("MCPClientError", text, { code: -32000 }), {
+      cause: { code: -32000, message: text },
+    });
+    expect(ordneFehlerZu(rpc).code).toBe("werkzeug_fehler");
+  });
+
+  it("die Fehler-Antwort -32022 (Version nicht unterstützt) wird an der Zahl erkannt", () => {
+    expect(ordneFehlerZu(fehlerMit("MCPClientError", "irgendwas", { code: -32022 })).code).toBe(
+      "app_version_unbekannt",
+    );
   });
 
   it("hält „Failed to process“ mit der Ursache „terminated“ für eine abgerissene Verbindung, mit einem Syntax-Fehler für eine unlesbare Antwort", () => {

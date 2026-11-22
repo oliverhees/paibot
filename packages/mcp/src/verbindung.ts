@@ -15,7 +15,7 @@
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import { bereinigeText } from "./bereinigen";
 import { ergebnisZuText, type McpErgebnis } from "./ergebnis";
-import { McpSchichtFehler, ordneFehlerZu } from "./fehler";
+import { McpSchichtFehler, ordneFehlerZu, ordneStatusZu } from "./fehler";
 import { type McpGrenzen, mitStandardGrenzen } from "./grenzen";
 import { bereiteWerkzeugeAuf, type McpWerkzeugBereinigt, type McpWerkzeugRoh } from "./werkzeug";
 
@@ -125,12 +125,96 @@ async function mitFrist<T>(
   }
 }
 
+/**
+ * Die einzigen Methoden, die die Schicht selbst nach draußen schickt: Aufbau (`initialize`,
+ * `notifications/initialized` bzw. `server/discover`), Liste und Aufruf. Das Beenden der Sitzung
+ * geht als `DELETE` ohne Körper. Alles andere, auch jede Antwort auf eine Anfrage des Servers,
+ * bleibt lokal.
+ */
+export const ERLAUBTE_AUSGEHENDE_METHODEN: ReadonlySet<string> = new Set([
+  "initialize",
+  "notifications/initialized",
+  "server/discover",
+  "tools/list",
+  "tools/call",
+]);
+
+const MAX_ANFRAGE_KOERPER = 1_048_576;
+
+type AusgehendeArt = "erlaubt" | "antwort" | "verboten";
+
+/** Ordnet den Körper eines ausgehenden POST ein: eigene Anfrage, Antwort auf den Server, verboten. */
+function ordneAusgehendeAnfrageEin(koerper: unknown): AusgehendeArt {
+  if (typeof koerper !== "string" || koerper.length > MAX_ANFRAGE_KOERPER) return "verboten";
+  let json: unknown;
+  try {
+    json = JSON.parse(koerper);
+  } catch {
+    return "verboten";
+  }
+  if (typeof json !== "object" || json === null || Array.isArray(json)) return "verboten";
+  const eintrag = json as { method?: unknown; result?: unknown; error?: unknown };
+  if (typeof eintrag.method === "string") {
+    return ERLAUBTE_AUSGEHENDE_METHODEN.has(eintrag.method) ? "erlaubt" : "verboten";
+  }
+  // Antwort der Bibliothek auf eine Anfrage des Servers: nie nach draußen.
+  if ("result" in eintrag || "error" in eintrag) return "antwort";
+  return "verboten";
+}
+
+/** Zählt die Ereignisse (Leerzeilen) eines Ereignis-Stroms; darüber endet der Strom mit einem Fehler. */
+function begrenzeEreignisse(
+  antwort: Response,
+  maxEreignisse: number,
+  melde: (fehler: McpSchichtFehler) => void,
+): Response {
+  const art = antwort.headers.get("content-type") ?? "";
+  if (antwort.body === null || !/text\/event-stream/i.test(art)) return antwort;
+  let ereignisse = 0;
+  let vorherNeueZeile = false;
+  const zaehler = new TransformStream<Uint8Array, Uint8Array>({
+    transform(stueck, steuerung) {
+      for (const byte of stueck) {
+        if (byte === 0x0d) continue;
+        if (byte === 0x0a) {
+          if (vorherNeueZeile) {
+            ereignisse += 1;
+            vorherNeueZeile = false;
+            continue;
+          }
+          vorherNeueZeile = true;
+        } else {
+          vorherNeueZeile = false;
+        }
+      }
+      if (ereignisse > maxEreignisse) {
+        const fehler = new McpSchichtFehler("app_zu_viele_anfragen");
+        melde(fehler);
+        steuerung.error(fehler);
+        return;
+      }
+      steuerung.enqueue(stueck);
+    },
+  });
+  return new Response(antwort.body.pipeThrough(zaehler), {
+    status: antwort.status,
+    statusText: antwort.statusText,
+    headers: antwort.headers,
+  });
+}
+
 /** Begrenzt die Bytes einer Antwort; darüber wird der Strom mit einem Fehler beendet. */
-function begrenzeAntwort(antwort: Response, maxBytes: number): Response {
+function begrenzeAntwort(
+  antwort: Response,
+  maxBytes: number,
+  melde: (fehler: McpSchichtFehler) => void,
+): Response {
   const laenge = Number(antwort.headers.get("content-length"));
   if (Number.isFinite(laenge) && laenge > maxBytes) {
     void antwort.body?.cancel().catch(() => undefined);
-    throw new McpSchichtFehler("werkzeug_ergebnis_zu_gross");
+    const fehler = new McpSchichtFehler("werkzeug_ergebnis_zu_gross");
+    melde(fehler);
+    throw fehler;
   }
   if (antwort.body === null) return antwort;
   let gelesen = 0;
@@ -138,7 +222,9 @@ function begrenzeAntwort(antwort: Response, maxBytes: number): Response {
     transform(stueck, steuerung) {
       gelesen += stueck.byteLength;
       if (gelesen > maxBytes) {
-        steuerung.error(new McpSchichtFehler("werkzeug_ergebnis_zu_gross"));
+        const fehler = new McpSchichtFehler("werkzeug_ergebnis_zu_gross");
+        melde(fehler);
+        steuerung.error(fehler);
         return;
       }
       steuerung.enqueue(stueck);
@@ -161,7 +247,12 @@ export function baueSicheresFetch(
   phase: () => Phase,
   verbindungSignal: AbortSignal,
   grenzen: McpGrenzen,
+  /** Wird gerufen, wenn die Schicht selbst die Verbindung wegen einer Grenze abbricht. */
+  melde: (fehler: McpSchichtFehler) => void = () => undefined,
+  /** Wird mit dem Statuscode der ersten Fehler-Antwort (ab 400) gerufen. */
+  meldeStatus: (status: number) => void = () => undefined,
 ): McpFetch {
+  let ausgehend = 0;
   return async (eingabe, init) => {
     if (phase() === "zu") throw new McpSchichtFehler("verbindung_geschlossen");
     const ziel =
@@ -186,8 +277,24 @@ export function baueSicheresFetch(
     const methode = (init?.method ?? "GET").toUpperCase();
     // Kein eigener Ereignis-Strom: Der Server bekommt keine Gelegenheit, dauerhaft zu senden.
     if (methode === "GET") return new Response(null, { status: 405 });
+    if (methode !== "POST" && methode !== "DELETE") {
+      throw new McpSchichtFehler("app_adresse_unzulaessig");
+    }
     if (phase() === "schliesst" && methode !== "DELETE") {
       throw new McpSchichtFehler("verbindung_geschlossen");
+    }
+    if (methode === "POST") {
+      // Nur die Anfragen, die die Schicht selbst braucht. Ein Server, der im Strom tausende
+      // Anfragen stellt, bekommt auf keine eine Antwort nach draußen (und kein Zugangsdatum).
+      const art = ordneAusgehendeAnfrageEin(init?.body);
+      if (art === "antwort") return new Response(null, { status: 202 });
+      if (art === "verboten") throw new McpSchichtFehler("app_antwort_ungueltig");
+    }
+    ausgehend += 1;
+    if (ausgehend > grenzen.maxAnfragen) {
+      const fehler = new McpSchichtFehler("app_zu_viele_anfragen");
+      melde(fehler);
+      throw fehler;
     }
     const signale = [verbindungSignal];
     if (init?.signal) signale.push(init.signal);
@@ -197,7 +304,12 @@ export function baueSicheresFetch(
       credentials: "omit",
       signal: AbortSignal.any(signale),
     });
-    return begrenzeAntwort(antwort, grenzen.maxAntwortBytes);
+    if (antwort.status >= 400) meldeStatus(antwort.status);
+    return begrenzeAntwort(
+      begrenzeEreignisse(antwort, grenzen.maxEreignisse, melde),
+      grenzen.maxAntwortBytes,
+      melde,
+    );
   };
 }
 
@@ -224,12 +336,24 @@ export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise
   const vonAussen = () => verbindungAbbruch.abort(new McpSchichtFehler("abgebrochen"));
   optionen.signal?.addEventListener("abort", vonAussen, { once: true });
   const loeseAussen = () => optionen.signal?.removeEventListener("abort", vonAussen);
+  // Hat die Schicht die Verbindung selbst wegen einer Grenze abgebrochen, gilt dieser Grund und
+  // nicht der Folgefehler der Bibliothek.
+  let eigenerGrund: McpSchichtFehler | undefined;
+  let ersterStatus: number | undefined;
+  const zuordnen = (fehler: unknown): McpSchichtFehler =>
+    fehler instanceof McpSchichtFehler ? fehler : (eigenerGrund ?? ordneFehlerZu(fehler));
   const sicheresFetch = baueSicheresFetch(
     optionen.fetch,
     adresse.url,
     () => phase,
     verbindungAbbruch.signal,
     grenzen,
+    (fehler) => {
+      eigenerGrund ??= fehler;
+    },
+    (status) => {
+      ersterStatus ??= status;
+    },
   );
 
   let client: MCPClient;
@@ -258,7 +382,17 @@ export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise
     phase = "zu";
     loeseAussen();
     verbindungAbbruch.abort(new McpSchichtFehler("verbindung_geschlossen"));
-    throw ordneFehlerZu(fehler);
+    // Beim Verbinden gilt, wenn möglich, die erste Fehler-Antwort: Die Bibliothek versucht nach
+    // einer gescheiterten Entdeckung noch den alten Weg, und dessen Fehler sagt weniger.
+    const nachStatus = ersterStatus === undefined ? undefined : ordneStatusZu(ersterStatus);
+    if (
+      nachStatus !== undefined &&
+      !(fehler instanceof McpSchichtFehler) &&
+      eigenerGrund === undefined
+    ) {
+      throw new McpSchichtFehler(nachStatus, ordneFehlerZu(fehler).technisch);
+    }
+    throw zuordnen(fehler);
   }
   const serverName = bereinigeText(String(client.serverInfo?.name ?? ""), {
     maxZeichen: 100,
@@ -311,7 +445,7 @@ export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise
           },
         );
       } catch (fehler) {
-        throw ordneFehlerZu(fehler);
+        throw zuordnen(fehler);
       }
     },
 
@@ -330,7 +464,7 @@ export async function oeffneVerbindung(optionen: McpVerbindungOptionen): Promise
         );
         return ergebnisZuText(roh, grenzen);
       } catch (fehler) {
-        throw ordneFehlerZu(fehler);
+        throw zuordnen(fehler);
       }
     },
 

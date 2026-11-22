@@ -19,6 +19,13 @@ export interface McpGrenzen {
   schliessenMs: number;
   /** Höchstzahl der Seiten beim Holen der Liste. */
   maxSeiten: number;
+  /**
+   * Höchstzahl der Anfragen, die eine Verbindung tatsächlich nach draußen schickt (Aufbau, alle
+   * Seiten der Liste, Aufruf, Beenden). Der echte Bedarf liegt bei höchstens `maxSeiten` + 5.
+   */
+  maxAnfragen: number;
+  /** Höchstzahl der Ereignisse in einer Antwort als Ereignis-Strom; darüber endet die Verbindung. */
+  maxEreignisse: number;
   /** Höchstzahl der Werkzeuge je Server; weitere werden nicht übernommen. */
   maxWerkzeuge: number;
   /** Höchstzahl der Bytes einer Antwort des Servers (die Schicht begrenzt sie selbst, zusätzlich zur Hülle). */
@@ -50,6 +57,8 @@ export const STANDARD_GRENZEN: Readonly<McpGrenzen> = Object.freeze({
   aufrufMs: 30_000,
   schliessenMs: 3_000,
   maxSeiten: 10,
+  maxAnfragen: 32,
+  maxEreignisse: 2_000,
   maxWerkzeuge: 200,
   maxAntwortBytes: 2 * 1024 * 1024,
   maxArgumenteBytes: 8 * 1024,

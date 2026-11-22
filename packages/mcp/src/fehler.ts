@@ -18,6 +18,7 @@ export const MCP_FEHLERCODES = [
   "app_version_unbekannt",
   "app_braucht_eingabe",
   "app_antwort_ungueltig",
+  "app_zu_viele_anfragen",
   "werkzeug_ergebnis_zu_gross",
   "werkzeug_schema_nicht_pruefbar",
   "werkzeug_argumente_ungueltig",
@@ -38,6 +39,7 @@ export const MCP_FEHLERTEXTE: Readonly<Record<McpFehlerCode, string>> = Object.f
   app_version_unbekannt: "Die App spricht eine Protokoll-Version, die PaiBot nicht kennt.",
   app_braucht_eingabe: "Die App braucht eine Eingabe, die PaiBot nicht liefern kann.",
   app_antwort_ungueltig: "Die Antwort der App ist nicht lesbar.",
+  app_zu_viele_anfragen: "Die App hat zu viele Anfragen gestellt.",
   werkzeug_ergebnis_zu_gross: "Das Ergebnis des Werkzeugs ist zu groß.",
   werkzeug_schema_nicht_pruefbar: "PaiBot kann die Eingaben dieses Werkzeugs nicht sicher prüfen.",
   werkzeug_argumente_ungueltig: "Die Eingaben passen nicht zum Werkzeug.",
@@ -65,9 +67,35 @@ export class McpSchichtFehler extends Error {
 
 const MAX_URSACHEN = 6;
 
-/** Namen aller Fehler in der Kette von `cause` (flach, höchstens sechs). */
-function ursachenKette(fehler: unknown): { name: string; message: string; status?: number }[] {
-  const kette: { name: string; message: string; status?: number }[] = [];
+/**
+ * Code zu einem Statuscode der HTTP-Antwort, soweit der Status allein ihn bestimmt: Zugang abgelehnt,
+ * kein MCP-Server oder (Zeit, Last, Fehler im Server) nicht erreichbar. Sonst `undefined`.
+ */
+export function ordneStatusZu(status: number): McpFehlerCode | undefined {
+  if (status === 401 || status === 403) return "app_zugang_ungueltig";
+  if (status === 404 || status === 405 || status === 406 || status === 415) return "app_kein_mcp";
+  if (status === 408 || status === 429 || status >= 500) return "app_nicht_erreichbar";
+  return undefined;
+}
+
+interface KettenGlied {
+  name: string;
+  /** Wortlaut des Fehlers; leer, wenn er vom Server stammt (Fehler-Antwort des Servers). */
+  message: string;
+  /** Statuscode der HTTP-Antwort (nur als Zahl, nie aus dem Text gelesen). */
+  status?: number;
+  /** Textcode der Laufzeit (z. B. `ECONNRESET`). */
+  textCode?: string;
+  /** Zahlencode einer Fehler-Antwort des Servers (JSON-RPC). */
+  rpcCode?: number;
+}
+
+/**
+ * Glieder der Kette von `cause` (flach, höchstens sechs). Bei einer Fehler-Antwort des Servers
+ * (Zahlencode, Text vom Server) endet die Kette dort und ihr Wortlaut wird nicht übernommen.
+ */
+function ursachenKette(fehler: unknown): KettenGlied[] {
+  const kette: KettenGlied[] = [];
   const gesehen = new Set<unknown>();
   let aktuell: unknown = fehler;
   while (aktuell !== undefined && aktuell !== null && kette.length < MAX_URSACHEN) {
@@ -78,21 +106,55 @@ function ursachenKette(fehler: unknown): { name: string; message: string; status
       name?: unknown;
       message?: unknown;
       status?: unknown;
+      statusCode?: unknown;
+      code?: unknown;
       cause?: unknown;
     };
+    const rpcCode = typeof eintrag.code === "number" ? eintrag.code : undefined;
+    const status =
+      typeof eintrag.statusCode === "number"
+        ? eintrag.statusCode
+        : typeof eintrag.status === "number"
+          ? eintrag.status
+          : undefined;
     kette.push({
       name: typeof eintrag.name === "string" ? eintrag.name.slice(0, 64) : "Error",
-      message: typeof eintrag.message === "string" ? eintrag.message.slice(0, 2_000) : "",
-      ...(typeof eintrag.status === "number" ? { status: eintrag.status } : {}),
+      message:
+        rpcCode !== undefined || typeof eintrag.message !== "string"
+          ? ""
+          : eintrag.message.slice(0, 2_000),
+      ...(status === undefined ? {} : { status }),
+      ...(typeof eintrag.code === "string" ? { textCode: eintrag.code.slice(0, 32) } : {}),
+      ...(rpcCode === undefined ? {} : { rpcCode }),
     });
+    if (rpcCode !== undefined) break;
     aktuell = eintrag.cause;
   }
   return kette;
 }
 
+/** Feste Anfänge von Meldungen der Bibliothek und der Laufzeit; der Rest der Meldung zählt nie. */
+const MELDUNG_ZEIT =
+  /^(?:Request timed out after \d+ms|MCP client initialization timed out after \d+ms)/;
+const MELDUNG_ABBRUCH =
+  /^(?:Request was aborted|MCP client initialization was aborted|This operation was aborted)/;
+const MELDUNG_EINGABE =
+  /^(?:Input-required results are not supported|Request still requires input|Server requested input, but no handler|Unsupported input request)/;
+const MELDUNG_VERSION =
+  /^(?:MCP server rejected protocol version|Server does not support the requested protocol version|Server's protocol version is not supported)/;
+const MELDUNG_NETZ =
+  /^(?:fetch failed|terminated|other side closed|read ECONNRESET|connect ECONNREFUSED|getaddrinfo ENOTFOUND|socket hang up)/i;
+const MELDUNG_ANTWORT =
+  /^(?:Failed to (?:process|parse) server response|MCP HTTP Transport Error: Failed to parse message|Server sent invalid initialize result|Modern MCP result is missing resultType)/;
+const CODE_NETZ =
+  /^(?:ECONN\w+|ENOTFOUND|EPIPE|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH|UND_ERR_(?:SOCKET|CONNECT\w*|CLOSED))$/;
+const NAMEN_ANTWORT: ReadonlySet<string> = new Set(["SyntaxError", "ZodError", "$ZodError"]);
+
 /**
  * Ordnet einen beliebigen Fehler (aus der Bibliothek, dem Netz oder der Ausgangs-Hülle) einem Code
- * zu. Erkennt nur an Namen und festen Wortlauten; der Text des Fehlers wird nie weitergegeben.
+ * zu. Maßgeblich sind Fehlerart, Statuscode, Zahlencode und die festen Anfänge der Meldungen der
+ * Bibliothek; was der Server in einen Text schreibt, steuert den Code nicht. Was sich so nicht
+ * sicher einordnen lässt, wird zu einem allgemeinen Code.
  */
 export function ordneFehlerZu(fehler: unknown): McpSchichtFehler {
   if (fehler instanceof McpSchichtFehler) return fehler;
@@ -103,47 +165,35 @@ export function ordneFehlerZu(fehler: unknown): McpSchichtFehler {
     ursache = (ursache as { cause?: unknown }).cause;
   }
   const kette = ursachenKette(fehler);
-  const namen = kette.map((eintrag) => eintrag.name);
-  const technisch = namen[0];
-  const hat = (muster: RegExp) => kette.some((eintrag) => muster.test(eintrag.message));
-  const hatName = (name: string) => namen.includes(name);
+  const technisch = kette[0]?.name;
+  const hat = (muster: RegExp) => kette.some((glied) => muster.test(glied.message));
+  const hatName = (name: string) => kette.some((glied) => glied.name === name);
 
   if (hatName("EgressBlockedError"))
     return new McpSchichtFehler("app_adresse_unzulaessig", technisch);
   if (hatName("ResponseTooLargeError")) {
     return new McpSchichtFehler("werkzeug_ergebnis_zu_gross", technisch);
   }
-  if (hatName("TimeoutError") || hat(/timed out|timeout/i)) {
+  if (hatName("TimeoutError") || hat(MELDUNG_ZEIT)) {
     return new McpSchichtFehler("zeit_ueberschritten", technisch);
   }
-  if (hatName("AbortError") || hat(/aborted/i))
+  if (hatName("AbortError") || hat(MELDUNG_ABBRUCH))
     return new McpSchichtFehler("abgebrochen", technisch);
-  if (hat(/requested input|requires input|input[-_ ]required/i)) {
-    return new McpSchichtFehler("app_braucht_eingabe", technisch);
-  }
-  const status = kette.map((eintrag) => eintrag.status).find((s) => s !== undefined);
-  const statusAusText = /\bHTTP\s+(\d{3})\b|\bstatus(?:\s+code)?[:\s]+(\d{3})\b/i.exec(
-    kette.map((eintrag) => eintrag.message).join(" "),
-  );
-  const httpStatus =
-    status ?? (statusAusText ? Number(statusAusText[1] ?? statusAusText[2]) : undefined);
-  if (httpStatus === 401 || httpStatus === 403) {
-    return new McpSchichtFehler("app_zugang_ungueltig", technisch);
-  }
-  if (httpStatus === 404 || httpStatus === 405 || httpStatus === 406 || httpStatus === 415) {
-    return new McpSchichtFehler("app_kein_mcp", technisch);
-  }
-  if (hat(/unsupported protocol|protocol version/i)) {
-    return new McpSchichtFehler("app_version_unbekannt", technisch);
-  }
-  if (
-    hat(
-      /terminated|fetch failed|econnreset|econnrefused|enotfound|socket|other side closed|network/i,
-    )
-  ) {
+  if (hat(MELDUNG_EINGABE)) return new McpSchichtFehler("app_braucht_eingabe", technisch);
+  // Statuscode der Antwort (als Zahl am Fehler, nie aus dem Text gelesen).
+  const status = kette.map((glied) => glied.status).find((s) => s !== undefined);
+  const nachStatus = status === undefined ? undefined : ordneStatusZu(status);
+  if (nachStatus !== undefined) return new McpSchichtFehler(nachStatus, technisch);
+  // Fehler-Antwort des Servers im Protokoll: nur der Zahlencode zählt, nie sein Text.
+  const rpc = kette.find((glied) => glied.rpcCode !== undefined);
+  if (rpc?.rpcCode === -32022) return new McpSchichtFehler("app_version_unbekannt", technisch);
+  if (hat(MELDUNG_VERSION)) return new McpSchichtFehler("app_version_unbekannt", technisch);
+  if (kette.some((glied) => glied.textCode !== undefined && CODE_NETZ.test(glied.textCode))) {
     return new McpSchichtFehler("app_nicht_erreichbar", technisch);
   }
-  if (hat(/failed to process|invalid|parse|unexpected token|json/i)) {
+  if (hat(MELDUNG_NETZ)) return new McpSchichtFehler("app_nicht_erreichbar", technisch);
+  if (rpc !== undefined) return new McpSchichtFehler("werkzeug_fehler", technisch);
+  if (kette.some((glied) => NAMEN_ANTWORT.has(glied.name)) || hat(MELDUNG_ANTWORT)) {
     return new McpSchichtFehler("app_antwort_ungueltig", technisch);
   }
   return new McpSchichtFehler("app_nicht_erreichbar", technisch);

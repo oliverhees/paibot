@@ -25,8 +25,10 @@ import {
 } from "../../../tools/test-mcp-server/src/presets";
 import { createEgressFetch, egressTargetOf } from "../../llm/src/egress";
 import { McpSchichtFehler } from "./fehler";
+import { STANDARD_GRENZEN } from "./grenzen";
 import {
   baueSicheresFetch,
+  ERLAUBTE_AUSGEHENDE_METHODEN,
   holeWerkzeuge,
   type McpFetch,
   type McpVerbindungOptionen,
@@ -414,7 +416,12 @@ describe("Das hineingereichte fetch (jede Anfrage, nur die eine Adresse)", () =>
 
   describe("baueSicheresFetch", () => {
     const ENDPUNKT = new URL("https://beispiel.invalid/mcp");
-    const GRENZEN = { maxAntwortBytes: 1_000 } as Parameters<typeof baueSicheresFetch>[4];
+    const GRENZEN = {
+      maxAntwortBytes: 1_000,
+      maxAnfragen: 32,
+      maxEreignisse: 2_000,
+    } as Parameters<typeof baueSicheresFetch>[4];
+    const LISTE = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
     function bau(phase: "offen" | "schliesst" | "zu" = "offen") {
       const aufrufe: { url: string; init: RequestInit | undefined }[] = [];
       const basis: McpFetch = async (eingabe, init) => {
@@ -433,7 +440,7 @@ describe("Das hineingereichte fetch (jede Anfrage, nur die eine Adresse)", () =>
 
     it("reicht Anfragen an genau diese Adresse weiter und erzwingt redirect error", async () => {
       const { f, aufrufe } = bau();
-      await f(ENDPUNKT.href, { method: "POST", redirect: "follow", body: "{}" });
+      await f(ENDPUNKT.href, { method: "POST", redirect: "follow", body: LISTE });
       expect(aufrufe).toHaveLength(1);
       expect(aufrufe[0]?.init?.redirect).toBe("error");
       expect(aufrufe[0]?.init?.credentials).toBe("omit");
@@ -481,6 +488,105 @@ describe("Das hineingereichte fetch (jede Anfrage, nur die eine Adresse)", () =>
       expect(schliesst.aufrufe).toHaveLength(1);
     });
 
+    it.each([
+      "initialize",
+      "notifications/initialized",
+      "server/discover",
+      "tools/list",
+      "tools/call",
+    ])("lässt die eigene Anfrage %s hinaus", async (methode) => {
+      const { f, aufrufe } = bau();
+      await f(ENDPUNKT.href, {
+        method: "POST",
+        body: JSON.stringify({ jsonrpc: "2.0", method: methode }),
+      });
+      expect(aufrufe).toHaveLength(1);
+    });
+
+    it.each([
+      ["sampling/createMessage", { jsonrpc: "2.0", id: 1, method: "sampling/createMessage" }],
+      ["ping", { jsonrpc: "2.0", id: 1, method: "ping" }],
+      ["resources/read", { jsonrpc: "2.0", id: 1, method: "resources/read" }],
+      ["Methode ist keine Zeichenkette", { jsonrpc: "2.0", id: 1, method: 5 }],
+      ["Sammel-Anfrage", [{ jsonrpc: "2.0", id: 1, method: "tools/list" }]],
+      ["weder Anfrage noch Antwort", { jsonrpc: "2.0", id: 1 }],
+    ])("lehnt %s lokal ab, ohne etwas zu senden", async (_name, koerper) => {
+      const { f, aufrufe } = bau();
+      await expect(
+        f(ENDPUNKT.href, { method: "POST", body: JSON.stringify(koerper) }),
+      ).rejects.toMatchObject({ code: "app_antwort_ungueltig" });
+      expect(aufrufe).toHaveLength(0);
+    });
+
+    it("lehnt einen POST ohne lesbaren Körper und andere Verben ab, ohne etwas zu senden", async () => {
+      const { f, aufrufe } = bau();
+      for (const init of [
+        { method: "POST" },
+        { method: "POST", body: "kein json" },
+        { method: "POST", body: new Uint8Array([1]) },
+        { method: "PUT", body: LISTE },
+      ] as RequestInit[]) {
+        await expect(f(ENDPUNKT.href, init)).rejects.toBeInstanceOf(McpSchichtFehler);
+      }
+      expect(aufrufe).toHaveLength(0);
+    });
+
+    it("beantwortet eine Antwort auf eine Server-Anfrage lokal mit 202, ohne etwas zu senden", async () => {
+      const { f, aufrufe } = bau();
+      const antwort = await f(ENDPUNKT.href, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}` },
+        body: JSON.stringify({ jsonrpc: "2.0", id: "s1", error: { code: -32601, message: "x" } }),
+      });
+      expect(antwort.status).toBe(202);
+      expect(aufrufe).toHaveLength(0);
+    });
+
+    it("lässt höchstens maxAnfragen Anfragen hinaus, dann ein fester Fehlercode", async () => {
+      const { f, aufrufe } = bau();
+      const eng = baueSicheresFetch(
+        async () => new Response("ok"),
+        ENDPUNKT,
+        () => "offen",
+        new AbortController().signal,
+        { ...GRENZEN, maxAnfragen: 3 },
+      );
+      for (let i = 0; i < 3; i += 1) await eng(ENDPUNKT.href, { method: "POST", body: LISTE });
+      await expect(eng(ENDPUNKT.href, { method: "POST", body: LISTE })).rejects.toMatchObject({
+        code: "app_zu_viele_anfragen",
+      });
+      await expect(eng(ENDPUNKT.href, { method: "DELETE" })).rejects.toMatchObject({
+        code: "app_zu_viele_anfragen",
+      });
+      expect(aufrufe).toHaveLength(0);
+      void f;
+    });
+
+    it("beendet einen Ereignis-Strom mit zu vielen Ereignissen mit festem Fehlercode", async () => {
+      const ereignis = 'event: message\ndata: {"jsonrpc":"2.0","method":"x"}\n\n';
+      const strom: McpFetch = async () =>
+        new Response(ereignis.repeat(50), { headers: { "content-type": "text/event-stream" } });
+      const f = baueSicheresFetch(strom, ENDPUNKT, () => "offen", new AbortController().signal, {
+        ...GRENZEN,
+        maxEreignisse: 10,
+        maxAntwortBytes: 1_000_000,
+      });
+      const antwort = await f(ENDPUNKT.href, { method: "POST", body: LISTE });
+      await expect(antwort.text()).rejects.toMatchObject({ code: "app_zu_viele_anfragen" });
+      // Gleich viele Ereignisse wie erlaubt gehen durch; ein JSON-Körper wird nicht gezählt.
+      const f2 = baueSicheresFetch(
+        async () =>
+          new Response(ereignis.repeat(10), { headers: { "content-type": "text/event-stream" } }),
+        ENDPUNKT,
+        () => "offen",
+        new AbortController().signal,
+        { ...GRENZEN, maxEreignisse: 10, maxAntwortBytes: 1_000_000 },
+      );
+      expect(
+        (await (await f2(ENDPUNKT.href, { method: "POST", body: LISTE })).text()).length,
+      ).toBeGreaterThan(0);
+    });
+
     it("begrenzt die Antwort nach Bytes: Content-Length und Strom", async () => {
       const gross: McpFetch = async () =>
         new Response("x".repeat(5_000), { headers: { "content-length": "5000" } });
@@ -491,7 +597,7 @@ describe("Das hineingereichte fetch (jede Anfrage, nur die eine Adresse)", () =>
         new AbortController().signal,
         GRENZEN,
       );
-      await expect(f1(ENDPUNKT.href, { method: "POST" })).rejects.toMatchObject({
+      await expect(f1(ENDPUNKT.href, { method: "POST", body: LISTE })).rejects.toMatchObject({
         code: "werkzeug_ergebnis_zu_gross",
       });
       const strom: McpFetch = async () => new Response(new Blob(["x".repeat(5_000)]).stream());
@@ -502,9 +608,113 @@ describe("Das hineingereichte fetch (jede Anfrage, nur die eine Adresse)", () =>
         new AbortController().signal,
         GRENZEN,
       );
-      const antwort = await f2(ENDPUNKT.href, { method: "POST" });
+      const antwort = await f2(ENDPUNKT.href, { method: "POST", body: LISTE });
       await expect(antwort.text()).rejects.toMatchObject({ code: "werkzeug_ergebnis_zu_gross" });
     });
+  });
+});
+
+describe("Flut von Anfragen des Servers im Ereignis-Strom", () => {
+  const ANFRAGEN = 20_000;
+  const fluten = (n: number): McpToolSpec => werkzeug("flut", { kind: "serverRequests", count: n });
+
+  it.each(["modern", "legacy"] as const)(
+    "nur Anfragen der Schicht gehen hinaus, nie ein Zugangsdatum in Antworten an den Server; Aufruf endet mit festem Code (%s)",
+    async (protokoll) => {
+      const { s, url } = await starte({ tools: [fluten(ANFRAGEN)], token: TOKEN }, protokoll);
+      const werk = await hole(url, "flut", { token: TOKEN });
+      const z = zaehlend();
+      const vorher = s.requests.length;
+      const ergebnis = await rufeWerkzeugAuf({
+        ...BASIS,
+        adresse: url,
+        fetch: z.fetch,
+        token: TOKEN,
+        werkzeug: werk,
+        argumente: {},
+      });
+      expect(ergebnis).toMatchObject({ status: "fehler", fehlercode: "app_zu_viele_anfragen" });
+      expect(z.aufrufe.length).toBeLessThanOrEqual(STANDARD_GRENZEN.maxAnfragen);
+      const amServer = s.requests.slice(vorher);
+      expect(amServer.length).toBeLessThanOrEqual(STANDARD_GRENZEN.maxAnfragen);
+      // Jede Anfrage am Server ist eine eigene der Schicht, keine Antwort auf eine Server-Anfrage.
+      for (const r of amServer) {
+        if (r.method === "DELETE") continue;
+        expect(ERLAUBTE_AUSGEHENDE_METHODEN.has(r.rpcMethod ?? "")).toBe(true);
+      }
+    },
+  );
+
+  it.each(["modern", "legacy"] as const)(
+    "auch ohne Grenze für Ereignisse: es gehen nur die nötigen Anfragen hinaus (%s)",
+    async (protokoll) => {
+      const { s, url } = await starte({ tools: [fluten(ANFRAGEN)], token: TOKEN }, protokoll);
+      const werk = await hole(url, "flut", { token: TOKEN });
+      const z = zaehlend();
+      const vorher = s.requests.length;
+      const ergebnis = await rufeWerkzeugAuf({
+        ...BASIS,
+        adresse: url,
+        fetch: z.fetch,
+        token: TOKEN,
+        werkzeug: werk,
+        argumente: {},
+        grenzen: { maxEreignisse: 1_000_000, maxAntwortBytes: 16 * 1024 * 1024, aufrufMs: 60_000 },
+      });
+      expect(ergebnis.status).toBe("ok");
+      // Aufbau, ein Aufruf, Beenden: weit unter 20 000.
+      expect(z.aufrufe.length).toBeLessThanOrEqual(6);
+      for (const r of s.requests.slice(vorher)) {
+        if (r.method === "DELETE") continue;
+        expect(ERLAUBTE_AUSGEHENDE_METHODEN.has(r.rpcMethod ?? "")).toBe(true);
+      }
+    },
+  );
+});
+
+describe("Verbindung nach dem Ergebnis schließen", () => {
+  it.each(["modern", "legacy"] as const)(
+    "der Server sieht das Ende des Stroms, auch wenn er nach dem Ergebnis weitersenden will (%s)",
+    async (protokoll) => {
+      const { s, url } = await starte(
+        { tools: [werkzeug("offen", { kind: "sse", thenEndless: true })] },
+        protokoll,
+      );
+      const werk = await hole(url, "offen");
+      const ergebnis = await rufeWerkzeugAuf({
+        ...BASIS,
+        adresse: url,
+        fetch: echtesFetch as McpFetch,
+        werkzeug: werk,
+        argumente: {},
+      });
+      expect(ergebnis.status).toBe("ok");
+      const aufruf = () => s.requests.find((r) => r.rpcMethod === "tools/call");
+      for (let i = 0; i < 100 && aufruf()?.closedByClient !== true; i += 1) {
+        await new Promise((fertig) => setTimeout(fertig, 20));
+      }
+      expect(aufruf()?.closedByClient).toBe(true);
+    },
+  );
+
+  it("schließt auch im Fehlerfall (Werkzeug meldet einen Fehler)", async () => {
+    const { s, url } = await starte({
+      tools: [werkzeug("fehl", { kind: "text", text: "kaputt", isError: true })],
+    });
+    const werk = await hole(url, "fehl");
+    const z = zaehlend();
+    const ergebnis = await rufeWerkzeugAuf({
+      ...BASIS,
+      adresse: url,
+      fetch: z.fetch,
+      werkzeug: werk,
+      argumente: {},
+    });
+    expect(ergebnis.status).toBe("fehler");
+    // Danach geht nichts mehr hinaus.
+    const anzahl = s.requests.length;
+    await new Promise((fertig) => setTimeout(fertig, 300));
+    expect(s.requests.length).toBe(anzahl);
   });
 });
 
