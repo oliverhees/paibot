@@ -11,8 +11,7 @@
 import { sha256DigestSchema } from "@paibot/shared/grundtypen";
 import { APP_ACCESS_LEVELS, APP_TOOL_CLASSES } from "@paibot/shared/tor-fassung-3";
 import { z } from "zod";
-import { MAX_ADRESSE_ZEICHEN } from "./adresse";
-import { MAX_TOKEN_ZEICHEN } from "./token";
+import { MAX_ADRESSE_ZEICHEN, MAX_TOKEN_ZEICHEN } from "./grenzen";
 
 /** Kurzname einer App: Teil der Modell-Namen, deshalb kurz (höchstens 32 Zeichen). */
 export const KURZNAME_MUSTER = /^[a-z0-9][a-z0-9-]{0,31}$/;

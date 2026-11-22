@@ -16,9 +16,7 @@ import { appTokenBinding, secretAad } from "@paibot/shared/bindung";
 import { PaiBotError } from "@paibot/shared/fehler";
 import type { AppId } from "@paibot/shared/ids";
 import type { ZugangsDienste } from "../zugang/dienste";
-
-/** Längster Token, den die Web-App annimmt. */
-export const MAX_TOKEN_ZEICHEN = 4096;
+import { MAX_TOKEN_ZEICHEN } from "./grenzen";
 
 /** Sichtbare ASCII-Zeichen ohne Leerzeichen, so wie sie als `Authorization: Bearer …` gehen. */
 const TOKEN_MUSTER = /^[\x21-\x7E]+$/;

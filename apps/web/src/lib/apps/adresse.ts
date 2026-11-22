@@ -18,9 +18,7 @@ import { PaiBotError } from "@paibot/shared/fehler";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import type { AppId } from "@paibot/shared/ids";
 import { appOriginSchema } from "@paibot/shared/tor-fassung-3";
-
-/** Längste Adresse, die die Web-App liest. */
-export const MAX_ADRESSE_ZEICHEN = 2000;
+import { MAX_ADRESSE_ZEICHEN } from "./grenzen";
 
 /** Die Prüfungen der Vorbedingung `app_adresse_erlaubt`, gerechnet aus der Eingabe. */
 export interface AdressFakten {
