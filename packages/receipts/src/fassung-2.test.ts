@@ -138,11 +138,9 @@ class Kette {
     aendern: (decision: Roh) => void = () => {},
   ): Promise<ReceiptEntry> {
     const action = sampleAction(type) as ActionRequest;
-    const decided = evaluate(
-      action,
-      facts as never,
-      this.snapshot as RuleSnapshot,
-    ) as unknown as Roh;
+    const decided = evaluate(action, facts as never, this.snapshot as RuleSnapshot, {
+      format: 2,
+    }) as unknown as Roh;
     const { matchedRules, ...rest } = decided;
     const decision: Roh = { gateFormat: 2, ...rest, rules: matchedRules };
     aendern(decision);
@@ -164,7 +162,7 @@ function decisions(kette: Kette) {
 const STANDARD = [...ACTIVE_STANDARD_RULES];
 
 describe("Belege der Fassung 2 schreiben und prüfen", () => {
-  it("jede neue Entscheidung trägt gateFormat 2 und Vorbedingungen, die Kette ist vertrauenswürdig", async () => {
+  it("jede neue Entscheidung trägt die aktuelle Fassung (3) und Vorbedingungen, die Kette ist vertrauenswürdig", async () => {
     const kette = await Kette.neu(STANDARD);
     for (const type of ["nachricht.senden", "modell.anfragen", "werkzeug.aufrufen"] as const) {
       await kette.run(type, sampleFacts(type) as Roh);
@@ -176,12 +174,12 @@ describe("Belege der Fassung 2 schreiben und prüfen", () => {
     expect(decisions(kette)).toHaveLength(4);
     for (const entry of decisions(kette)) {
       if (entry.body.type !== "decision") continue;
-      expect(entry.body.decision.gateFormat).toBe(2);
+      expect(entry.body.decision.gateFormat).toBe(3);
       expect(Array.isArray(entry.body.decision.preconditions)).toBe(true);
       expect(Object.hasOwn(entry.body.decision, "caps")).toBe(
         entry.body.action.type === "werkzeug.aufrufen",
       );
-      expect(decisionFormat(entry.body)).toStrictEqual({ status: "passt", format: 2 });
+      expect(decisionFormat(entry.body)).toStrictEqual({ status: "passt", format: 3 });
       expect(reevaluate(entry, (kette.snapshot as RuleSnapshot).rules).status).toBe("ok");
     }
     const report = await kette.pruefe();

@@ -80,10 +80,10 @@ describe("Schreiben: nur die aktuelle Fassung", () => {
 
   it("Fassung 2 steht im Beleg, mit Vorbedingungen", () => {
     const body = buildReceipt(draftWith(GATE_FORMAT), link());
-    expect(GATE_FORMAT).toBe(2);
+    expect(GATE_FORMAT).toBe(3);
     expect(body.type).toBe("decision");
     const decision = (body as { decision: Record<string, unknown> }).decision;
-    expect(decision.gateFormat).toBe(2);
+    expect(decision.gateFormat).toBe(3);
     expect(Array.isArray(decision.preconditions)).toBe(true);
   });
 });

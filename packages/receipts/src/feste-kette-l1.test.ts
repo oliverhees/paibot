@@ -48,7 +48,10 @@ describe("feste Kette vom Stand mit Tor-Fassung 1", () => {
     expect(all[1]?.type).toBe("key_change");
     const decisions = all.filter((b): b is Decided => b.type === "decision");
     const results = all.filter((b): b is Resulted => b.type === "result");
-    expect(new Set(decisions.map((b) => b.action.type))).toEqual(new Set(STORED_ACTION_TYPES));
+    // Die Aktionen für Apps gibt es erst ab Fassung 3, nicht in dieser Kette.
+    expect(new Set(decisions.map((b) => b.action.type))).toEqual(
+      new Set(STORED_ACTION_TYPES.filter((type) => !type.startsWith("app."))),
+    );
     const verletzt = new Set(
       decisions.flatMap((b) =>
         b.decision.limits.filter((l) => l.result === "verletzt").map((l) => l.name),
