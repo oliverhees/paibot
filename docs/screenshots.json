@@ -384,6 +384,84 @@
       {
         "warteAufText": "2 von 2 Regeln geprüft."
       }
+    ],
+    "chat-nachschlagen-senden": [
+      {
+        "anbieter": {
+          "script": {
+            "steps": [
+              {
+                "toolCalls": [
+                  {
+                    "name": "doku_nachschlagen",
+                    "arguments": {
+                      "frage": "Tagesbudget einstellen"
+                    }
+                  }
+                ]
+              },
+              {
+                "text": "Das Tagesbudget stellst du in den Einstellungen ein."
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tippe": "Nachricht",
+        "text": "Wie stelle ich das Tagesbudget ein?"
+      },
+      {
+        "taste": "Enter"
+      },
+      {
+        "warteAufText": "Das Tagesbudget stellst du in den Einstellungen ein."
+      },
+      {
+        "warteAuf": "[data-baustein='werkzeug-zeile'][data-status='fertig']"
+      },
+      {
+        "warteAuf": "button[aria-label^='Beleg prüfen']"
+      }
+    ],
+    "chat-nichts-gefunden-senden": [
+      {
+        "anbieter": {
+          "script": {
+            "steps": [
+              {
+                "toolCalls": [
+                  {
+                    "name": "doku_nachschlagen",
+                    "arguments": {
+                      "frage": "Wie verbinde ich Telegram?"
+                    }
+                  }
+                ]
+              },
+              {
+                "text": "In der Doku finde ich dazu nichts; mehr kann ich dir dazu nicht sagen."
+              }
+            ]
+          }
+        }
+      },
+      {
+        "tippe": "Nachricht",
+        "text": "Wie verbinde ich Telegram?"
+      },
+      {
+        "taste": "Enter"
+      },
+      {
+        "warteAufText": "In der Doku finde ich dazu nichts; mehr kann ich dir dazu nicht sagen."
+      },
+      {
+        "warteAuf": "[data-baustein='werkzeug-zeile'][data-status='fertig']"
+      },
+      {
+        "warteAuf": "button[aria-label^='Beleg prüfen']"
+      }
     ]
   },
   "aufnahmen": [
@@ -1013,7 +1091,7 @@
           }
         },
         {
-          "warteAufText": "Abgebrochen. Der Text bis hierhin bleibt stehen."
+          "warteAufText": "Abgebrochen, bevor Pai geantwortet hat."
         }
       ],
       "verdecke": [
@@ -1022,6 +1100,85 @@
         "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
       ],
       "beschreibung": "Chat: Antwort mit „Stopp“ abgebrochen, der Text bis dahin bleibt"
+    },
+    {
+      "name": "chat-nachschlagen",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-nachschlagen-senden"
+        },
+        {
+          "klick": "[data-baustein='werkzeug-zeile'] button[aria-expanded]"
+        },
+        {
+          "warteAuf": "ul[aria-label='Quellen aus der Doku']"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: Pai hat in der Doku nachgeschlagen, die Werkzeug-Zeile ist aufgeklappt mit Quellen, Regel und Beleg, darunter die Antwort"
+    },
+    {
+      "name": "chat-nichts-gefunden",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-nichts-gefunden-senden"
+        },
+        {
+          "warteAufText": "nichts gefunden"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: Die Doku enthält nichts zur Frage, die Werkzeug-Zeile sagt „nichts gefunden“, darunter die Antwort des Modells"
+    },
+    {
+      "name": "chat-schritte-aus",
+      "pfad": "/",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "ablauf": "chat-nachschlagen-senden"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Schritte",
+            "genau": false
+          }
+        },
+        {
+          "warteAuf": "button[aria-pressed='false']"
+        }
+      ],
+      "verdecke": [
+        "[class*='_zeit']",
+        "[class*='_tag']",
+        "button[aria-label^='Beleg prüfen'] >> text=/B-\\d{4}/"
+      ],
+      "beschreibung": "Chat: Knopf „Schritte“ ausgeschaltet, die Werkzeug-Zeile und die Beleg-Zeile sind verborgen, die Antwort bleibt"
     },
     {
       "name": "chat-beleg",

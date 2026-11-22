@@ -91,6 +91,8 @@ export const ANBIETER_STANDARD = Object.freeze({
   firstChunkDelayMs: 0,
   chunkDelayMs: 0,
   holdAfterChunks: 0,
+  // Kein Ablauf aus einer früheren Aufnahme (null löscht ihn).
+  script: null,
   // Routing-Regel und Anbieter-Liste wie bei einem Vermittler (nur Beispiel-Daten).
   routingRules: [
     { name: "Beispiel-Regel", provider: "beispiel-nord", model: "beispiel/allrounder" },
@@ -109,6 +111,7 @@ export const ANBIETER_FELDER = Object.freeze({
   chunkDelayMs: "zahl",
   holdAfterChunks: "zahl",
   models: "modelle",
+  script: "ablauf",
 });
 
 /** Sonderwerte für `tippe`: Platzhalter statt Geheimnis in docs/screenshots.json. */

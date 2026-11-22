@@ -88,6 +88,19 @@ function pruefeAnbieter(wo, wert) {
       fehler(`${wo}: „anbieter.${feld}“ ist eine ganze Zahl von 0 bis 600000.`);
     }
     if (
+      art === "ablauf" &&
+      (!v ||
+        typeof v !== "object" ||
+        Array.isArray(v) ||
+        !Array.isArray(v.steps) ||
+        v.steps.length === 0 ||
+        !v.steps.every((x) => x && typeof x === "object" && !Array.isArray(x)))
+    ) {
+      fehler(
+        `${wo}: „anbieter.${feld}“ ist ein Ablauf mit einer Liste „steps“ (je Schritt ein Objekt).`,
+      );
+    }
+    if (
       art === "modelle" &&
       (!Array.isArray(v) ||
         v.length === 0 ||

@@ -48,6 +48,8 @@
 //                 { "gehe": "/pfad" }    { "ablauf": "<Name aus „ablaeufe“>" }
 //                 { "zeige": "<CSS>" }  (in den sichtbaren Bereich scrollen)
 //                 { "anbieter": { "reply": "…", "chunkDelayMs": 200 } }  (Test-Anbieter, nur diese Aufnahme)
+//                   Mit "script": { "steps": [ … ] } bekommt der Test-Anbieter einen festen Ablauf, z. B. einen
+//                   Werkzeug-Wunsch und danach die Antwort (Form wie `FakeScript` in tools/fake-provider).
 //               Ziel-Objekt: genau eines von css, beschriftung, rolle (mit name), text; dazu
 //               "genau": false für Teil-Treffer. Sonderwerte für „text“: $einrichtungs-code,
 //               $passwort, $anbieter-schluessel (nie echte Werte in die Liste schreiben).

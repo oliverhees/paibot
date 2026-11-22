@@ -37,6 +37,7 @@ const lauf = await laden<{
   leseLauf: (datei: string) => Record<string, unknown> | undefined;
   aendereLauf: (aenderung: unknown, datei: string) => Record<string, unknown>;
   loescheLauf: (datei: string) => void;
+  ANBIETER_STANDARD: { script: unknown };
 }>("scripts/doku/lauf.mjs");
 const datenbank = await laden<{
   loescheDatenbank: (
@@ -361,6 +362,21 @@ describe("Beispiel-Umgebung: Datenschleuse, Test-Anbieter, verdeckte Stellen", (
         pruefe([{ name: "x", pfad: "/", vorher: [{ anbieter: { chunkDelayMs: -1 } }] }]),
       ),
     ).toContain("ganze Zahl");
+  });
+
+  // Gegenprobe: die Prüfung der Art „ablauf“ in `scripts/doku/liste.mjs` entfernen → zweiter Teil rot.
+  it("„anbieter“ nimmt einen Ablauf („script“) mit Schritten an und lehnt andere Formen ab", () => {
+    const ablauf = { steps: [{ toolCalls: [{ name: "x", arguments: {} }] }, { text: "Fertig." }] };
+    const [a] = pruefe([{ name: "a", pfad: "/", vorher: [{ anbieter: { script: ablauf } }] }]);
+    expect(a?.vorher).toEqual([{ anbieter: { script: ablauf } }]);
+    for (const schlecht of [[], { steps: [] }, { steps: ["x"] }, "text", null]) {
+      expect(
+        fehlerText(() =>
+          pruefe([{ name: "x", pfad: "/", vorher: [{ anbieter: { script: schlecht } }] }]),
+        ),
+      ).toContain("ein Ablauf mit einer Liste");
+    }
+    expect(lauf.ANBIETER_STANDARD.script).toBeNull();
   });
 
   it("„verdecke“ ist eine Liste von CSS-Selectoren, Standard leer", () => {
