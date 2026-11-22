@@ -569,6 +569,12 @@ const AUSWEG_VERSTECKT = {
     "Kommentare (%%) und Texte für Screenreader (accTitle, accDescr) aus dem Diagramm nehmen; sie fehlen in der gezeichneten Fassung.",
   zeichenreferenz:
     "Das Zeichen selbst schreiben statt der Zeichenreferenz (&#x41; oder &amp;); in Backticks ist die Schreibweise erlaubt.",
+  tabelle:
+    "Die überzähligen Zellen entfernen oder die Kopfzeile um Spalten erweitern; eine Zeile mit mehr Zellen als Spalten wird auf der Seite gekürzt.",
+  groesse:
+    "Die Seite aufteilen; sie ist größer als die Grenze GRENZE_SEITE_BYTES in scripts/doku-index/markdown.mjs.",
+  tiefe:
+    "Die Verschachtelung (Zitate, Listen) flacher machen; die Grenze steht in GRENZE_TIEFE in scripts/doku-index/markdown.mjs.",
   unbekannt:
     "Die Stelle in einfaches Markdown (Text, Liste, Tabelle, Code, Link, Bild) umschreiben.",
 };

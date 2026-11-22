@@ -22,8 +22,10 @@
 //
 // Der Bau bereinigt nichts still. Er bricht mit Ausgang 1 ab, wenn eine Seite etwas enthält, das auf
 // der dargestellten Seite nichts anzeigt (rohes HTML, Kommentar außer dem Urheber-Kopf, Link-Definition,
-// Fußnote, Zeichenreferenz, unsichtbares Zeichen, Zusatz hinter der Sprache eines Zauns), wenn ein Wort
-// im Text eines Abschnitts auf der Seite nicht zu sehen ist (Fehler beim Schneiden), wenn eine Seite
+// Fußnote, Zeichenreferenz, unsichtbares Zeichen, Zusatz hinter der Sprache eines Zauns, Tabellenzeile
+// mit mehr Zellen als Spalten, zu große oder zu tief verschachtelte Seite), wenn ein Wort im Text eines
+// Abschnitts nicht im sichtbaren Text derselben Seite steht (Fehler beim Schneiden; die Gegenprobe
+// vergleicht nur mit dem Baum der Seite und fängt nicht, was der Baum selbst als Text führt), wenn eine Seite
 // der Liste fehlt, ein Muster auf keine Datei passt, der Index keinen Abschnitt hat, größer als 4 MB
 // ist, eine Kennung doppelt vorkommt oder ein Titel bzw. Pfad ein Zeichen enthält, das dort nicht
 // stehen darf (Zeilenumbruch, Tabulator, leeres Braille-Zeichen, Zeichen für den privaten Gebrauch).

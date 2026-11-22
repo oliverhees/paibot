@@ -65,6 +65,19 @@ const BEKANNTE_KNOTEN = new Set([
   "html",
 ]);
 
+/**
+ * Größte Seite in Bytes (UTF-8). Die größte Seite unter `docs/` hat heute rund 68 000 Bytes; die
+ * Grenze liegt gut beim Fünffachen darüber. Eine größere Seite wird gemeldet, bevor der Parser
+ * sie liest, weil er bei sehr großen, tief verschachtelten Seiten sehr langsam wird.
+ */
+export const GRENZE_SEITE_BYTES = 350 * 1024;
+
+/**
+ * Größte Tiefe des Baums (Wurzel = Ebene 0). Die echten Seiten reichen heute nur wenige Ebenen
+ * tief; wer mehr verschachtelt (Zitate, Listen), hat die Seite falsch gebaut.
+ */
+export const GRENZE_TIEFE = 50;
+
 const ZEICHENREFERENZ = /&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/g;
 const MERMAID_VERBOTEN = /%%|\baccTitle\b|\baccDescr\b/;
 const WORT = /[\p{L}\p{N}]{3,}/gu;
@@ -74,10 +87,34 @@ function parse(text) {
   return fromMarkdown(text, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
 }
 
-/** Alle Knoten unter `knoten` (einschließlich seiner selbst), in Dokument-Reihenfolge. */
+/**
+ * Alle Knoten unter `knoten` (einschließlich seiner selbst), in Dokument-Reihenfolge. Ohne
+ * Rekursion, damit auch ein sehr tiefer Baum den Aufrufstapel nicht sprengt.
+ */
 function* alle(knoten) {
-  yield knoten;
-  for (const kind of knoten.children ?? []) yield* alle(kind);
+  const stapel = [knoten];
+  while (stapel.length > 0) {
+    const aktuell = stapel.pop();
+    yield aktuell;
+    const kinder = aktuell.children ?? [];
+    for (let i = kinder.length - 1; i >= 0; i -= 1) stapel.push(kinder[i]);
+  }
+}
+
+/**
+ * Die Tiefe des Baums (Wurzel = 0), ohne Rekursion. Hört auf, sobald `grenze` überschritten ist,
+ * und gibt dann einen Knoten dieser Tiefe mit zurück: { tiefe, knoten }.
+ */
+function messeTiefe(wurzel, grenze) {
+  const stapel = [[wurzel, 0]];
+  let tiefste = { tiefe: 0, knoten: wurzel };
+  while (stapel.length > 0) {
+    const [knoten, tiefe] = stapel.pop();
+    if (tiefe > tiefste.tiefe) tiefste = { tiefe, knoten };
+    if (tiefe > grenze) return tiefste;
+    for (const kind of knoten.children ?? []) stapel.push([kind, tiefe + 1]);
+  }
+  return tiefste;
 }
 
 /**
@@ -113,7 +150,8 @@ function zeileVon(text, offset) {
  * Findet alles, was auf der dargestellten Seite nichts anzeigt oder was der Parser anders deutet,
  * als es aussieht. Gibt [{ zeile, art, meldung }] zurück, nach Zeile sortiert. `art` ist ein fester
  * Schlüssel: `unsichtbar`, `html`, `definition`, `fussnote`, `referenz`, `zaun-zusatz`,
- * `zaun-sprache`, `mermaid`, `zeichenreferenz`, `unbekannt`.
+ * `zaun-sprache`, `mermaid`, `zeichenreferenz`, `tabelle`, `unbekannt`. Die Größe und die Tiefe
+ * prüft `leseSeite` vor bzw. nach dem Parsen (Arten `groesse` und `tiefe`).
  */
 export function findeVerborgenes(wurzel, text) {
   const funde = [];
@@ -121,8 +159,21 @@ export function findeVerborgenes(wurzel, text) {
   for (const fund of findeUnsichtbares(text)) {
     melde(fund.zeile, "unsichtbar", `Ein unsichtbares Zeichen (${fund.code})`);
   }
+  const spaltenVon = new Map();
+  for (const knoten of alle(wurzel)) {
+    if (knoten.type === "table") {
+      for (const zeile of knoten.children) spaltenVon.set(zeile, knoten.align.length);
+    }
+  }
   const ohneReferenz = [];
   for (const knoten of alle(wurzel)) {
+    if (knoten.type === "tableRow" && knoten.children.length > spaltenVon.get(knoten)) {
+      melde(
+        knoten.position?.start.line ?? 1,
+        "tabelle",
+        `Tabellenzeile mit mehr Zellen als Spalten (${knoten.children.length} statt ${spaltenVon.get(knoten)}); die überzähligen Zellen zeigt die Seite nicht an`,
+      );
+    }
     const zeile = knoten.position?.start.line ?? 1;
     const bereich = knoten.position
       ? [knoten.position.start.offset, knoten.position.end.offset]
@@ -288,8 +339,36 @@ function sichtbarerText(wurzel) {
  * Zeilenenden) an den Parser.
  */
 export function leseSeite(roh) {
+  const bytes = Buffer.byteLength(roh, "utf8");
+  if (bytes > GRENZE_SEITE_BYTES) {
+    return {
+      funde: [
+        {
+          zeile: 1,
+          art: "groesse",
+          meldung: `Die Seite ist mit ${bytes} Bytes größer als erlaubt (${GRENZE_SEITE_BYTES} Bytes)`,
+        },
+      ],
+      abschnitte: [],
+      sichtbar: "",
+    };
+  }
   const text = normalisiere(roh);
   const wurzel = parse(text);
+  const tiefste = messeTiefe(wurzel, GRENZE_TIEFE);
+  if (tiefste.tiefe > GRENZE_TIEFE) {
+    return {
+      funde: [
+        {
+          zeile: tiefste.knoten.position?.start.line ?? 1,
+          art: "tiefe",
+          meldung: `Der Baum der Seite ist tiefer als ${GRENZE_TIEFE} Ebenen (zu viele verschachtelte Zitate oder Listen)`,
+        },
+      ],
+      abschnitte: [],
+      sichtbar: "",
+    };
+  }
   return {
     funde: findeVerborgenes(wurzel, text),
     abschnitte: zerlege(wurzel, text),
@@ -300,7 +379,10 @@ export function leseSeite(roh) {
 /**
  * Gegenprobe für das Schneiden: Jedes Wort (drei oder mehr Buchstaben oder Ziffern) im Text der
  * Abschnitte muss im sichtbaren Text der Seite oder in `ERLAUBTE_SPRACHEN` vorkommen. Gibt das
- * erste Wort zurück, das fehlt, sonst `null`. Das prüft nur das Schneiden, nicht den Parser.
+ * erste Wort zurück, das fehlt, sonst `null`. Verglichen wird mit dem sichtbaren Text aus demselben
+ * Baum der ganzen Seite: Das fängt Wörter, die beim Schneiden aus Teilen hineinkommen, die der
+ * Baum nicht als Text führt (Bild-Alt-Text, Link-Ziele, HTML). Es fängt nicht, wenn der Baum selbst
+ * etwas Unsichtbares als Text führt; dafür sind `findeVerborgenes` und der Parser da.
  */
 export function pruefeWorte(abschnitte, sichtbar) {
   const erlaubt = new Set([...(sichtbar.match(WORT) ?? []), ...ERLAUBTE_SPRACHEN]);

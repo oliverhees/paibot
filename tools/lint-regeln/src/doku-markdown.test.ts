@@ -25,13 +25,22 @@ interface Teil {
   anker: string;
   text: string;
 }
-const { leseSeite, pruefeWorte, ERLAUBTE_SPRACHEN, ERLAUBTE_TAGS } = (await import(
+const {
+  leseSeite,
+  pruefeWorte,
+  ERLAUBTE_SPRACHEN,
+  ERLAUBTE_TAGS,
+  GRENZE_SEITE_BYTES,
+  GRENZE_TIEFE,
+} = (await import(
   pathToFileURL(path.join(ROOT, "scripts", "doku-index", "markdown.mjs")).href
 )) as {
   leseSeite: (roh: string) => { funde: Fund[]; abschnitte: Teil[]; sichtbar: string };
   pruefeWorte: (a: Teil[], sichtbar: string) => { wort: string; titel: string } | null;
   ERLAUBTE_SPRACHEN: string[];
   ERLAUBTE_TAGS: string[];
+  GRENZE_SEITE_BYTES: number;
+  GRENZE_TIEFE: number;
 };
 
 const KOPF = "<!--\n * PaiBot – Test\n-->\n\n";
@@ -266,5 +275,68 @@ describe("Wort-Gegenprobe", () => {
   it("Nummern geordneter Listen zählen als sichtbar", () => {
     const seite = leseSeite(`${KOPF}# T\n\n100. Eins\n101. Zwei\n`);
     expect(pruefeWorte(seite.abschnitte, seite.sichtbar)).toBeNull();
+  });
+});
+
+describe("Tabellen, Tiefe und Größe", () => {
+  // Gegenprobe: die Prüfung auf `tableRow` in `findeVerborgenes` (scripts/doku-index/markdown.mjs)
+  // entfernen → der Fall mit der überzähligen Zelle wird rot.
+  it("eine Tabellenzeile mit mehr Zellen als Spalten ist ein Fund mit Zeile", () => {
+    const funde = leseSeite(`${KOPF}# T\n\n| a | b |\n| - | - |\n| 1 | 2 | GEHEIM |\n`).funde;
+    expect(funde).toHaveLength(1);
+    expect(funde[0]).toMatchObject({ art: "tabelle", zeile: 9 });
+    expect(funde[0]?.meldung).toMatch(/Tabellenzeile mit mehr Zellen als Spalten/);
+  });
+
+  it("eine überzählige Zelle in der Kopfzeile selbst gibt es nicht: sie legt die Spalten fest", () => {
+    expect(arten("| a | b | c |\n| - | - | - |\n| 1 | 2 | 3 |\n")).toEqual([]);
+  });
+
+  it("eine Zeile mit genau so vielen oder mit weniger Zellen ist erlaubt", () => {
+    expect(arten("| a | b |\n| - | - |\n| 1 | 2 |\n| 3 |\n")).toEqual([]);
+  });
+
+  it("jede überzählige Zeile wird gemeldet, nicht nur die erste", () => {
+    const roh = "| a |\n| - |\n| 1 | x |\n| 2 |\n| 3 | y | z |\n";
+    expect(arten(roh)).toEqual(["tabelle", "tabelle"]);
+  });
+
+  // Gegenprobe: die Tiefenprüfung in `leseSeite` entfernen → der Durchlauf wirft einen RangeError.
+  it("5 000 verschachtelte Zitate: ein Fund, kein Wurf", () => {
+    const roh = `${KOPF}${"> ".repeat(5000)}Text\n`;
+    let seite: ReturnType<typeof leseSeite> | undefined;
+    expect(() => {
+      seite = leseSeite(roh);
+    }).not.toThrow();
+    expect(seite?.funde.map((f) => f.art)).toEqual(["tiefe"]);
+    expect(seite?.funde[0]?.meldung).toContain(`${GRENZE_TIEFE} Ebenen`);
+  });
+
+  it("knapp unter der Tiefe ist erlaubt, knapp darüber ein Fund", () => {
+    const zitate = (n: number) => `${KOPF}${"> ".repeat(n)}Text\n`;
+    // Wurzel, n Zitate, Absatz, Text: n + 2 Ebenen.
+    expect(leseSeite(zitate(GRENZE_TIEFE - 2)).funde).toEqual([]);
+    expect(leseSeite(zitate(GRENZE_TIEFE - 1)).funde.map((f) => f.art)).toEqual(["tiefe"]);
+  });
+
+  // Gegenprobe: die Prüfung auf `GRENZE_SEITE_BYTES` in `leseSeite` entfernen → kein Fund.
+  it("eine zu große Seite ist ein Fund, bevor der Parser sie liest", () => {
+    const zeile = "Ein Satz auf der Seite.\n";
+    const gross = `${KOPF}# T\n\n${zeile.repeat(Math.ceil(GRENZE_SEITE_BYTES / zeile.length) + 1)}`;
+    const seite = leseSeite(gross);
+    expect(seite.funde.map((f) => f.art)).toEqual(["groesse"]);
+    expect(seite.abschnitte).toEqual([]);
+  });
+
+  it("eine Seite knapp unter der Grenze ist erlaubt; die Grenze zählt Bytes, nicht Zeichen", () => {
+    const kopf = `${KOPF}# T\n\n`;
+    const fuell = (n: number, zeichen: string) => `${kopf}${zeichen.repeat(n)}\n`;
+    const frei = GRENZE_SEITE_BYTES - Buffer.byteLength(`${kopf}\n`);
+    expect(leseSeite(fuell(frei, "a")).funde).toEqual([]);
+    expect(leseSeite(fuell(frei + 1, "a")).funde.map((f) => f.art)).toEqual(["groesse"]);
+    // „ä“ hat zwei Bytes: halb so viele Zeichen reichen für dieselbe Größe.
+    expect(leseSeite(fuell(Math.floor(frei / 2) + 1, "ä")).funde.map((f) => f.art)).toEqual([
+      "groesse",
+    ]);
   });
 });

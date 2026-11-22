@@ -892,6 +892,7 @@ describe("doku:check – Verborgenes, vom Parser gelesen", () => {
     "zaun-sprache": "Sprache „geheim“",
     mermaid: "Diagramm",
     html: "Rohes HTML",
+    tabelle: "Tabellenzeile mit mehr Zellen als Spalten",
   } as const;
   it.each([
     ["eine Kommentar-Definition", "definition", "[//]: # (GEHEIM)"],
@@ -902,6 +903,7 @@ describe("doku:check – Verborgenes, vom Parser gelesen", () => {
     ["eine Fußnote ohne Verweis", "fussnote", "[^1]: GEHEIM"],
     ["Zeichenreferenzen für Tag-Zeichen", "zeichenreferenz", "a&#xE0047;&#xE0045;b"],
     ["ein benanntes Zeichen", "zeichenreferenz", "a&shy;b"],
+    ["eine überzählige Tabellenzelle", "tabelle", "| a | b |\n| - | - |\n| 1 | 2 | GEHEIM |"],
     ["ein Zusatz hinter der Sprache", "zaun-zusatz", "```bash GEHEIM\nls\n```"],
     ["eine Sprache außerhalb der Liste", "zaun-sprache", "```geheim\nls\n```"],
     ["ein Diagramm-Kommentar", "mermaid", "```mermaid\nflowchart LR\n  A --> B\n  %% GEHEIM\n```"],
@@ -925,6 +927,17 @@ describe("doku:check – Verborgenes, vom Parser gelesen", () => {
     expect(ergebnis.fehler.every((f) => f.fix.length > 10)).toBe(true);
   });
 
+  // Gegenprobe: die Tiefenprüfung in `leseSeite` (scripts/doku-index/markdown.mjs) entfernen →
+  // der Check wirft einen RangeError statt einer Meldung.
+  it("5 000 verschachtelte Zitate und eine zu große Seite sind Fehler mit Meldung, kein Absturz", () => {
+    const tief = meldung("> ".repeat(5000) + "Text", "tief");
+    expect(tief.code).toBe(1);
+    expect(tief.ausgabe).toMatch(/Zeile \d+: Der Baum der Seite ist tiefer als 50 Ebenen/);
+    const gross = meldung("Satz. ".repeat(70_000), "gross");
+    expect(gross.code).toBe(1);
+    expect(gross.ausgabe).toMatch(/Zeile 1: Die Seite ist mit \d+ Bytes größer als erlaubt/);
+  });
+
   it("jede Form hat ihre Art im Text der Meldung", () => {
     const text = (satz: string) => meldung(satz, "art").ausgabe;
     expect(text("[//]: # (x)")).toContain("Link-Definition");
@@ -935,6 +948,7 @@ describe("doku:check – Verborgenes, vom Parser gelesen", () => {
 
   it.each([
     ["eine Tabelle", "| a | b |\n| - | - |\n| 1 | 2 |"],
+    ["eine Tabelle mit einer Zeile mit weniger Zellen", "| a | b |\n| - | - |\n| 1 | 2 |\n| 3 |"],
     ["Inline-Code mit < und einer Zeichenreferenz", "Schreibe `<b>` und `&#x41;`."],
     ["ein Codeblock mit HTML", "```text\n<div hidden>x</div>\n```"],
     ["Adress-Verweise im Netz und per E-Mail", "<https://paibot.de/x> und <hi@paibot.de>"],

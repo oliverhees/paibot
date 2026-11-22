@@ -284,13 +284,16 @@ describe("Abbruch beim Bau (L4-8)", () => {
   });
 
   it("über 4 MB bricht ab, knapp darunter nicht", () => {
-    const gross = `# T\n\n## Eins\n\n${"x".repeat(4 * 1024 * 1024)}\n`;
-    const dir = projekt({ "docs/funktion-a.md": gross });
-    expect(() => baueIndex({ wurzel: dir, liste: A })).toThrow(/höchstens 4194304/);
-    const klein = projekt({
-      "docs/funktion-a.md": `# T\n\n## Eins\n\n${"x".repeat(3 * 1024 * 1024)}\n`,
-    });
-    expect(baueIndex({ wurzel: klein, liste: A }).index.abschnitte.length).toBe(1);
+    // Jede Seite bleibt unter der Größe je Seite; erst alle zusammen sprengen die Grenze.
+    const seiten = (anzahl: number) =>
+      Object.fromEntries(
+        Array.from({ length: anzahl }, (_, i) => [
+          `docs/funktion-${i}.md`,
+          `# T\n\n## Eins\n\n${"x".repeat(300 * 1024)}\n`,
+        ]),
+      );
+    expect(() => baueIndex({ wurzel: projekt(seiten(14)), liste: A })).toThrow(/höchstens 4194304/);
+    expect(baueIndex({ wurzel: projekt(seiten(13)), liste: A }).index.abschnitte.length).toBe(13);
   });
 
   it("eine doppelte Kennung bricht ab", () => {
@@ -326,6 +329,17 @@ describe("Abbruch bei Verborgenem", () => {
     ["ein Kommentar im Text", "Vor <!-- GEHEIM --> nach.", /Zeile 5: Rohes HTML/],
     ["eine Link-Definition", "Text.\n\n[//]: # (GEHEIM)", /Zeile 7: Link-Definition/],
     ["eine Zeichenreferenz", "Vor &#x41; nach.", /Zeile 5: Zeichenreferenz &#x41;/],
+    [
+      "eine Tabellenzeile mit mehr Zellen als Spalten",
+      "| a | b |\n| - | - |\n| 1 | 2 | GEHEIM |",
+      /Zeile 7: Tabellenzeile mit mehr Zellen als Spalten/,
+    ],
+    [
+      "5 000 verschachtelte Zitate",
+      `${"> ".repeat(5000)}Text`,
+      /Der Baum der Seite ist tiefer als 50 Ebenen/,
+    ],
+    ["eine zu große Seite", `${"Satz. ".repeat(70_000)}`, /größer als erlaubt/],
     [
       "ein Zusatz hinter der Sprache",
       "```bash GEHEIM\nls\n```",
