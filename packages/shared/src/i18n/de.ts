@@ -258,6 +258,7 @@ export const de = {
   "pruefung.laeuft": "Prüfung läuft …",
   "pruefung.gueltig": "gültig",
   "pruefung.ungueltig": "ungültig bei Eintrag {seq}",
+  "pruefung.ungueltig_ohne_stelle": "ungültig",
   "pruefung.offen": "noch nicht geprüft",
   "pruefung.server": "vom Server geprüft",
   "pruefung.inhalt.ok": "Inhalt unverändert",
