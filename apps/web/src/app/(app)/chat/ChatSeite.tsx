@@ -696,7 +696,7 @@ export function ChatSeite({
         }
       >
         {n.text === "" ? (
-          <span className={styles.leise}>{t("chat.antwort.schreibt", { name: botName })}</span>
+          <span className={styles.leise}>{t("chat.antwort.denkt", { name: botName })}</span>
         ) : (
           <Markdown
             text={n.text}
@@ -1041,7 +1041,7 @@ export function ChatSeite({
                 ) : undefined
               }
             >
-              <span className={styles.leise}>{t("chat.antwort.schreibt", { name: botName })}</span>
+              <span className={styles.leise}>{t("chat.antwort.denkt", { name: botName })}</span>
             </ChatBubble>
           )}
         </div>

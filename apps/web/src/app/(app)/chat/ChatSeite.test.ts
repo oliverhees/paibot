@@ -214,6 +214,32 @@ describe("Chat-Ansicht", () => {
     expect(aus).toContain('aria-busy="true"');
   });
 
+  it("leere Antwortblase im Lauf sagt „denkt nach“, nicht „schreibt“", () => {
+    const runId = newId("run");
+    const antwort = newId("message");
+    const user = newId("message");
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: BEREIT,
+        verlauf: verlauf({
+          nachrichten: [
+            msg({ id: user as never, role: "user", content: "Zähl bitte", status: "complete" }),
+            msg({
+              id: antwort as never,
+              role: "assistant",
+              content: "",
+              status: "streaming",
+              runId: runId as never,
+            }),
+          ],
+          aktiverLauf: { id: runId, status: "running" } as Run,
+        }),
+      }),
+    );
+    expect(aus).toContain("Pai denkt nach …");
+    expect(aus).not.toContain("Pai schreibt …");
+  });
+
   it("Knöpfe unter der Antwort: jeder trägt einen eigenen Namen für Bildschirmleser", () => {
     const user = newId("message");
     const aus = renderToStaticMarkup(

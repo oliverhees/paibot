@@ -189,6 +189,7 @@ export const de = {
   "chat.senden": "Senden",
   "chat.stopp": "Stopp",
   "chat.antwort.schreibt": "{name} schreibt …",
+  "chat.antwort.denkt": "{name} denkt nach …",
   "chat.antwort.abgebrochen": "Abgebrochen",
   "chat.antwort.fehlgeschlagen": "Keine Antwort",
   "chat.antwort.fertig": "Antwort von {name}",
