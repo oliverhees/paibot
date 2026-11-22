@@ -673,13 +673,21 @@ describe("Fremde Inhalte an Nachrichten", () => {
     const frage2 = messageRow(konv.id);
     await db.insert(messageTable).values(frage2 as never);
     const lauf2 = runRow({ conversationId: konv.id, triggerMessageId: frage2.id, botId });
-    await db
-      .insert(runs)
-      .values({ ...lauf2, status: "succeeded" } as never)
-      .catch(() => undefined);
+    await db.insert(runs).values({ ...lauf2, status: "succeeded" } as never);
+    // Lauf 2 ist ein eigener Lauf: Seine Antwort erbt vom gekennzeichneten Lauf 1 nichts.
+    const antwort2 = await messages.insert(db, {
+      conversationId: konv.id,
+      role: "assistant",
+      runId: lauf2.id,
+      step: 0,
+    });
+    expect(await messages.anyUntrusted(db, [antwort2.id])).toBe(false);
     for (let i = 0; i < 50; i++)
       await messages.insert(db, { conversationId: konv.id, role: "user" });
-    expect(await messages.anyUntrusted(db, [erste.id])).toBe(true);
+    expect(await messages.untrustedIds(db, [erste.id, zweite.id, antwort2.id])).toEqual([
+      erste.id,
+      zweite.id,
+    ]);
     // Nachrichten anderer Läufe erben nicht.
     const unbelastet = await messages.insert(db, { conversationId: konv.id, role: "user" });
     expect(await messages.anyUntrusted(db, [unbelastet.id])).toBe(false);
