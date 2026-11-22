@@ -83,6 +83,9 @@ describe("Akteur besitzer nur im Besitzer-Weg: Gegenproben (muss rot sein)", () 
     "Schlüssel in Anführungszeichen": 'export const a = { "actor": "besitzer" };',
     "einfache Anführungszeichen": "export const a = { actor: 'besitzer' };",
     "Vorlagen-Text": "export const a = { actor: `besitzer` };",
+    "mit as const": 'export const a = { actor: "besitzer" as const };',
+    "tief in einer Anfrage":
+      'export const a = { type: "t", target: {}, nested: { actor: "besitzer" } };',
     "Spread mit eigenem Akteur": 'export const a = { ...anfrage, actor: "besitzer" };',
     "Object.assign": 'export const a = Object.assign({}, { actor: "besitzer" });',
     Bedingung: 'export const a = { actor: kaputt ? "besitzer" : botActor(x) };',
