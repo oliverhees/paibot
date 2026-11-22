@@ -300,6 +300,10 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
     "packages/gate/src/fassungen/fassung-2.ts": "Vertrag Fassung 2: Art des Akteurs je Aktion",
     "packages/gate/src/fassungen/fassung-3.ts": "Vertrag Fassung 3: Art des Akteurs je Aktion",
     "packages/shared/src/tor-fassung-3.ts": "Vertrag Fassung 3: Art des Akteurs der neuen Aktionen",
+    "packages/gate/src/fassungen/fassung-4.ts":
+      "Vertrag Fassung 4: Art des Akteurs je Aktion; liest die Art aus dem Akteur der Anfrage, baut keinen",
+    "packages/shared/src/tor-fassung-4.ts":
+      "Vertrag Fassung 4: Art des Akteurs der neuen Aktionen (nur Besitzer-Aktionen)",
     "packages/db/src/rollen.ts": "Datenbank-Rolle mit dem Namen besitzer (kein Akteur)",
     // Anzeige und Wegweiser der Web-App.
     "apps/web/src/lib/routen.ts": "Zugang je Route (Sitzung nötig)",
