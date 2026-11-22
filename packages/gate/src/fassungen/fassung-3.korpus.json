@@ -280,6 +280,11 @@
             "value": true
           },
           {
+            "fact": "trigger",
+            "op": "eq",
+            "value": "chat"
+          },
+          {
             "fact": "toolSource",
             "op": "eq",
             "value": "mcp"
@@ -9520,6 +9525,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -9654,6 +9660,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -9788,6 +9795,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -10073,6 +10081,11 @@
               "fact": "botOfConversation",
               "op": "eq",
               "value": true
+            },
+            {
+              "fact": "trigger",
+              "op": "eq",
+              "value": "chat"
             },
             {
               "fact": "toolSource",
@@ -10227,6 +10240,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -10361,6 +10375,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -10495,6 +10510,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "keiner",
@@ -10629,6 +10645,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "neu",
         "appAccess": "lesen",
@@ -10763,6 +10780,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "geaendert",
         "appAccess": "lesen",
@@ -10897,6 +10915,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "entfernt",
         "appAccess": "lesen",
@@ -11031,6 +11050,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "gesperrt",
         "appAccess": "lesen",
@@ -11165,6 +11185,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -11175,11 +11196,11 @@
       },
       "rules": "standard",
       "expected": {
-        "outcome": "allow",
-        "stage": "execute",
+        "outcome": "ask",
+        "stage": "ask",
         "matchedRules": [
           {
-            "id": "R-014",
+            "id": "R-005",
             "version": 1
           }
         ],
@@ -11264,6 +11285,141 @@
       }
     },
     {
+      "name": "R-014 ausloeser automation fremd",
+      "action": {
+        "actionId": "akt_01m7zempyyfap0hpt7j2ydvc4v",
+        "type": "werkzeug.aufrufen",
+        "actor": "bot:bot_01m7zempyk3eb6zpcpyc3d7328",
+        "target": {
+          "conversationId": "unt_01m7zempyqasb34830zmcrxq8e",
+          "runId": "lau_01m7zempyqkqfhqyxdd34y0bhe",
+          "botId": "bot_01m7zempyk3eb6zpcpyc3d7328"
+        }
+      },
+      "facts": {
+        "botOfConversation": true,
+        "runRunning": true,
+        "argsDigest": "hmac-sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "killSwitch": false,
+        "toolRegistered": true,
+        "toolOffered": true,
+        "inputValid": true,
+        "untrustedInput": true,
+        "step": 0,
+        "callIndexInStep": 0,
+        "maxCallsPerStep": 8,
+        "callsInRun": 0,
+        "maxCallsPerRun": 16,
+        "trigger": "automation",
+        "toolName": "linear__list_issues",
+        "toolSource": "mcp",
+        "toolServer": "linear",
+        "toolKind": "lesen",
+        "toolKey": "mcp/linear/list_issues",
+        "toolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "toolReach": "nach_aussen",
+        "toolForeign": true,
+        "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
+        "toolVersion": 1,
+        "toolStatus": "bestaetigt",
+        "appAccess": "lesen",
+        "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "confirmedToolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "confirmedTargetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "stepAppId": "app_01m7zempyqasb34830zmcrxq8a"
+      },
+      "rules": "standard",
+      "expected": {
+        "outcome": "ask",
+        "stage": "ask",
+        "matchedRules": [
+          {
+            "id": "R-005",
+            "version": 1
+          }
+        ],
+        "limits": [
+          {
+            "name": "schleuse_gefordert",
+            "result": "entfaellt"
+          },
+          {
+            "name": "anbieter_region",
+            "result": "entfaellt"
+          },
+          {
+            "name": "laenge",
+            "result": "entfaellt"
+          },
+          {
+            "name": "tagesbudget",
+            "result": "entfaellt"
+          },
+          {
+            "name": "not_aus",
+            "result": "ok",
+            "value": false
+          },
+          {
+            "name": "lauf_schritte",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_aufrufe",
+            "result": "ok",
+            "value": 0
+          },
+          {
+            "name": "lauf_token",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_zugriff",
+            "result": "ok",
+            "value": "lesen"
+          },
+          {
+            "name": "werkzeug_bestaetigt",
+            "result": "ok",
+            "value": "bestaetigt"
+          },
+          {
+            "name": "app_ziel",
+            "result": "ok"
+          },
+          {
+            "name": "eine_app_je_schritt",
+            "result": "ok"
+          }
+        ],
+        "preconditions": [
+          {
+            "name": "lauf_laeuft",
+            "result": "ok"
+          },
+          {
+            "name": "werkzeug_angeboten",
+            "result": "ok"
+          },
+          {
+            "name": "eingabe_gueltig",
+            "result": "ok"
+          },
+          {
+            "name": "aufrufe_je_schritt",
+            "result": "ok"
+          }
+        ],
+        "caps": [
+          {
+            "name": "fremd_dann_fragen",
+            "result": "nicht_noetig"
+          }
+        ]
+      }
+    },
+    {
       "name": "R-014 zweiter schritt ohne fremde inhalte",
       "action": {
         "actionId": "akt_01m7zempyyfap0hpt7j2ydvc4v",
@@ -11299,6 +11455,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -11433,6 +11590,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -11567,6 +11725,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "geaendert",
         "appAccess": "lesen",
@@ -11701,6 +11860,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -11835,6 +11995,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8b",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8d",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -11969,6 +12130,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -12103,6 +12265,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -12237,6 +12400,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8b",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8d",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -12371,6 +12535,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8b",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8d",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -12505,6 +12670,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "neu",
         "appAccess": "keiner",
@@ -12639,6 +12805,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -12773,6 +12940,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -12907,6 +13075,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13041,6 +13210,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13175,6 +13345,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13309,6 +13480,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13443,6 +13615,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13577,6 +13750,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13711,6 +13885,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8b",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8d",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13845,6 +14020,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -13979,6 +14155,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "keiner",
@@ -14113,6 +14290,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "keiner",
@@ -14267,6 +14445,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -14552,6 +14731,11 @@
               "fact": "botOfConversation",
               "op": "eq",
               "value": true
+            },
+            {
+              "fact": "trigger",
+              "op": "eq",
+              "value": "chat"
             },
             {
               "fact": "toolSource",
@@ -14725,6 +14909,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -15218,6 +15403,132 @@
         "toolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
         "toolReach": "nach_aussen",
         "toolForeign": true,
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
+        "toolVersion": 1,
+        "toolStatus": "bestaetigt",
+        "appAccess": "lesen",
+        "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "confirmedToolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "confirmedTargetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "stepAppId": "app_01m7zempyqasb34830zmcrxq8a"
+      },
+      "rules": "standard",
+      "expected": {
+        "outcome": "deny",
+        "stage": "ask",
+        "matchedRules": [],
+        "limits": [
+          {
+            "name": "schleuse_gefordert",
+            "result": "entfaellt"
+          },
+          {
+            "name": "anbieter_region",
+            "result": "entfaellt"
+          },
+          {
+            "name": "laenge",
+            "result": "entfaellt"
+          },
+          {
+            "name": "tagesbudget",
+            "result": "entfaellt"
+          },
+          {
+            "name": "not_aus",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_schritte",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_aufrufe",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_token",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_zugriff",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_bestaetigt",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_ziel",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eine_app_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "preconditions": [
+          {
+            "name": "lauf_laeuft",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_angeboten",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eingabe_gueltig",
+            "result": "entfaellt"
+          },
+          {
+            "name": "aufrufe_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "caps": [
+          {
+            "name": "fremd_dann_fragen",
+            "result": "entfaellt"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ungueltig app-werkzeug ohne appToolId",
+      "action": {
+        "actionId": "akt_01m7zempyyfap0hpt7j2ydvc4v",
+        "type": "werkzeug.aufrufen",
+        "actor": "bot:bot_01m7zempyk3eb6zpcpyc3d7328",
+        "target": {
+          "conversationId": "unt_01m7zempyqasb34830zmcrxq8e",
+          "runId": "lau_01m7zempyqkqfhqyxdd34y0bhe",
+          "botId": "bot_01m7zempyk3eb6zpcpyc3d7328"
+        }
+      },
+      "facts": {
+        "botOfConversation": true,
+        "runRunning": true,
+        "argsDigest": "hmac-sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "killSwitch": false,
+        "toolRegistered": true,
+        "toolOffered": true,
+        "inputValid": true,
+        "untrustedInput": false,
+        "step": 0,
+        "callIndexInStep": 0,
+        "maxCallsPerStep": 8,
+        "callsInRun": 0,
+        "maxCallsPerRun": 16,
+        "trigger": "chat",
+        "toolName": "linear__list_issues",
+        "toolSource": "mcp",
+        "toolServer": "linear",
+        "toolKind": "lesen",
+        "toolKey": "mcp/linear/list_issues",
+        "toolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "toolReach": "nach_aussen",
+        "toolForeign": true,
+        "appId": "app_01m7zempyqasb34830zmcrxq8a",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -15343,6 +15654,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
         "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
@@ -15467,6 +15779,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "appAccess": "lesen",
         "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
@@ -15591,6 +15904,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
@@ -15715,6 +16029,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -15839,6 +16154,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -15963,6 +16279,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -16087,6 +16404,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -16210,6 +16528,123 @@
         "maxCallsPerRun": 16,
         "trigger": "chat",
         "appId": "app_01m7zempyqasb34830zmcrxq8a"
+      },
+      "rules": "standard",
+      "expected": {
+        "outcome": "deny",
+        "stage": "ask",
+        "matchedRules": [],
+        "limits": [
+          {
+            "name": "schleuse_gefordert",
+            "result": "entfaellt"
+          },
+          {
+            "name": "anbieter_region",
+            "result": "entfaellt"
+          },
+          {
+            "name": "laenge",
+            "result": "entfaellt"
+          },
+          {
+            "name": "tagesbudget",
+            "result": "entfaellt"
+          },
+          {
+            "name": "not_aus",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_schritte",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_aufrufe",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_token",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_zugriff",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_bestaetigt",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_ziel",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eine_app_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "preconditions": [
+          {
+            "name": "lauf_laeuft",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_angeboten",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eingabe_gueltig",
+            "result": "entfaellt"
+          },
+          {
+            "name": "aufrufe_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "caps": [
+          {
+            "name": "fremd_dann_fragen",
+            "result": "entfaellt"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ungueltig eingebaut mit appToolId",
+      "action": {
+        "actionId": "akt_01m7zempyyfap0hpt7j2ydvc4v",
+        "type": "werkzeug.aufrufen",
+        "actor": "bot:bot_01m7zempyk3eb6zpcpyc3d7328",
+        "target": {
+          "conversationId": "unt_01m7zempyqasb34830zmcrxq8e",
+          "runId": "lau_01m7zempyqkqfhqyxdd34y0bhe",
+          "botId": "bot_01m7zempyk3eb6zpcpyc3d7328"
+        }
+      },
+      "facts": {
+        "botOfConversation": true,
+        "runRunning": true,
+        "toolName": "doku_nachschlagen",
+        "toolSource": "eingebaut",
+        "toolKind": "lesen",
+        "argsDigest": "hmac-sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "killSwitch": false,
+        "toolKey": "eingebaut/doku.nachschlagen",
+        "toolDigest": "sha256:d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0",
+        "toolReach": "intern",
+        "toolForeign": false,
+        "toolRegistered": true,
+        "toolOffered": true,
+        "inputValid": true,
+        "untrustedInput": false,
+        "step": 0,
+        "callIndexInStep": 0,
+        "maxCallsPerStep": 8,
+        "callsInRun": 0,
+        "maxCallsPerRun": 16,
+        "trigger": "chat",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c"
       },
       "rules": "standard",
       "expected": {
@@ -16796,6 +17231,7 @@
         "toolReach": "intern",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -16921,6 +17357,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": false,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -17046,6 +17483,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -17171,6 +17609,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -17296,6 +17735,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -17420,6 +17860,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -17545,6 +17986,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "schreiben",
@@ -17670,6 +18112,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "alt",
         "appAccess": "lesen",
@@ -17795,6 +18238,259 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "bot_01m7zempyk3eb6zpcpyc3d7328",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
+        "toolVersion": 1,
+        "toolStatus": "bestaetigt",
+        "appAccess": "lesen",
+        "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "confirmedToolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "confirmedTargetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "stepAppId": "app_01m7zempyqasb34830zmcrxq8a"
+      },
+      "rules": "standard",
+      "expected": {
+        "outcome": "deny",
+        "stage": "ask",
+        "matchedRules": [],
+        "limits": [
+          {
+            "name": "schleuse_gefordert",
+            "result": "entfaellt"
+          },
+          {
+            "name": "anbieter_region",
+            "result": "entfaellt"
+          },
+          {
+            "name": "laenge",
+            "result": "entfaellt"
+          },
+          {
+            "name": "tagesbudget",
+            "result": "entfaellt"
+          },
+          {
+            "name": "not_aus",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_schritte",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_aufrufe",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_token",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_zugriff",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_bestaetigt",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_ziel",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eine_app_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "preconditions": [
+          {
+            "name": "lauf_laeuft",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_angeboten",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eingabe_gueltig",
+            "result": "entfaellt"
+          },
+          {
+            "name": "aufrufe_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "caps": [
+          {
+            "name": "fremd_dann_fragen",
+            "result": "entfaellt"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ungueltig app-werkzeug werkzeug-kennung falscher art",
+      "action": {
+        "actionId": "akt_01m7zempyyfap0hpt7j2ydvc4v",
+        "type": "werkzeug.aufrufen",
+        "actor": "bot:bot_01m7zempyk3eb6zpcpyc3d7328",
+        "target": {
+          "conversationId": "unt_01m7zempyqasb34830zmcrxq8e",
+          "runId": "lau_01m7zempyqkqfhqyxdd34y0bhe",
+          "botId": "bot_01m7zempyk3eb6zpcpyc3d7328"
+        }
+      },
+      "facts": {
+        "botOfConversation": true,
+        "runRunning": true,
+        "argsDigest": "hmac-sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "killSwitch": false,
+        "toolRegistered": true,
+        "toolOffered": true,
+        "inputValid": true,
+        "untrustedInput": false,
+        "step": 0,
+        "callIndexInStep": 0,
+        "maxCallsPerStep": 8,
+        "callsInRun": 0,
+        "maxCallsPerRun": 16,
+        "trigger": "chat",
+        "toolName": "linear__list_issues",
+        "toolSource": "mcp",
+        "toolServer": "linear",
+        "toolKind": "lesen",
+        "toolKey": "mcp/linear/list_issues",
+        "toolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "toolReach": "nach_aussen",
+        "toolForeign": true,
+        "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "app_01m7zempyqasb34830zmcrxq8a",
+        "toolVersion": 1,
+        "toolStatus": "bestaetigt",
+        "appAccess": "lesen",
+        "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "confirmedToolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "confirmedTargetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "stepAppId": "app_01m7zempyqasb34830zmcrxq8a"
+      },
+      "rules": "standard",
+      "expected": {
+        "outcome": "deny",
+        "stage": "ask",
+        "matchedRules": [],
+        "limits": [
+          {
+            "name": "schleuse_gefordert",
+            "result": "entfaellt"
+          },
+          {
+            "name": "anbieter_region",
+            "result": "entfaellt"
+          },
+          {
+            "name": "laenge",
+            "result": "entfaellt"
+          },
+          {
+            "name": "tagesbudget",
+            "result": "entfaellt"
+          },
+          {
+            "name": "not_aus",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_schritte",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_aufrufe",
+            "result": "entfaellt"
+          },
+          {
+            "name": "lauf_token",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_zugriff",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_bestaetigt",
+            "result": "entfaellt"
+          },
+          {
+            "name": "app_ziel",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eine_app_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "preconditions": [
+          {
+            "name": "lauf_laeuft",
+            "result": "entfaellt"
+          },
+          {
+            "name": "werkzeug_angeboten",
+            "result": "entfaellt"
+          },
+          {
+            "name": "eingabe_gueltig",
+            "result": "entfaellt"
+          },
+          {
+            "name": "aufrufe_je_schritt",
+            "result": "entfaellt"
+          }
+        ],
+        "caps": [
+          {
+            "name": "fremd_dann_fragen",
+            "result": "entfaellt"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ungueltig app-werkzeug werkzeug-kennung als text",
+      "action": {
+        "actionId": "akt_01m7zempyyfap0hpt7j2ydvc4v",
+        "type": "werkzeug.aufrufen",
+        "actor": "bot:bot_01m7zempyk3eb6zpcpyc3d7328",
+        "target": {
+          "conversationId": "unt_01m7zempyqasb34830zmcrxq8e",
+          "runId": "lau_01m7zempyqkqfhqyxdd34y0bhe",
+          "botId": "bot_01m7zempyk3eb6zpcpyc3d7328"
+        }
+      },
+      "facts": {
+        "botOfConversation": true,
+        "runRunning": true,
+        "argsDigest": "hmac-sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "killSwitch": false,
+        "toolRegistered": true,
+        "toolOffered": true,
+        "inputValid": true,
+        "untrustedInput": false,
+        "step": 0,
+        "callIndexInStep": 0,
+        "maxCallsPerStep": 8,
+        "callsInRun": 0,
+        "maxCallsPerRun": 16,
+        "trigger": "chat",
+        "toolName": "linear__list_issues",
+        "toolSource": "mcp",
+        "toolServer": "linear",
+        "toolKind": "lesen",
+        "toolKey": "mcp/linear/list_issues",
+        "toolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "toolReach": "nach_aussen",
+        "toolForeign": true,
+        "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "list_issues",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -17920,6 +18616,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -18045,6 +18742,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 0,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -18170,6 +18868,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1.5,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -18295,6 +18994,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -18420,6 +19120,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -18657,6 +19358,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -18830,6 +19532,7 @@
         "toolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
         "toolReach": "nach_aussen",
         "toolForeign": true,
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -18894,6 +19597,98 @@
       ]
     },
     {
+      "name": "G-06 bis G-40 ohne appToolId",
+      "action": {
+        "type": "werkzeug.aufrufen"
+      },
+      "facts": {
+        "botOfConversation": true,
+        "runRunning": true,
+        "argsDigest": "hmac-sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "killSwitch": false,
+        "toolRegistered": true,
+        "toolOffered": true,
+        "inputValid": true,
+        "untrustedInput": false,
+        "step": 0,
+        "callIndexInStep": 0,
+        "maxCallsPerStep": 8,
+        "callsInRun": 0,
+        "maxCallsPerRun": 16,
+        "trigger": "chat",
+        "toolName": "linear__list_issues",
+        "toolSource": "mcp",
+        "toolServer": "linear",
+        "toolKind": "lesen",
+        "toolKey": "mcp/linear/list_issues",
+        "toolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "toolReach": "nach_aussen",
+        "toolForeign": true,
+        "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "toolVersion": 1,
+        "toolStatus": "bestaetigt",
+        "appAccess": "lesen",
+        "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "confirmedToolDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "confirmedTargetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+        "stepAppId": "app_01m7zempyqasb34830zmcrxq8a"
+      },
+      "expected": [
+        {
+          "name": "schleuse_gefordert",
+          "result": "entfaellt"
+        },
+        {
+          "name": "anbieter_region",
+          "result": "entfaellt"
+        },
+        {
+          "name": "laenge",
+          "result": "entfaellt"
+        },
+        {
+          "name": "tagesbudget",
+          "result": "entfaellt"
+        },
+        {
+          "name": "not_aus",
+          "result": "ok",
+          "value": false
+        },
+        {
+          "name": "lauf_schritte",
+          "result": "entfaellt"
+        },
+        {
+          "name": "lauf_aufrufe",
+          "result": "ok",
+          "value": 0
+        },
+        {
+          "name": "lauf_token",
+          "result": "entfaellt"
+        },
+        {
+          "name": "app_zugriff",
+          "result": "ok",
+          "value": "lesen"
+        },
+        {
+          "name": "werkzeug_bestaetigt",
+          "result": "ok",
+          "value": "bestaetigt"
+        },
+        {
+          "name": "app_ziel",
+          "result": "ok"
+        },
+        {
+          "name": "eine_app_je_schritt",
+          "result": "ok"
+        }
+      ]
+    },
+    {
       "name": "G-06 bis G-40 ohne toolVersion",
       "action": {
         "type": "werkzeug.aufrufen"
@@ -18922,6 +19717,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
         "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
@@ -19013,6 +19809,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "appAccess": "lesen",
         "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
@@ -19103,6 +19900,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "targetDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
@@ -19193,6 +19991,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -19284,6 +20083,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -19375,6 +20175,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -19466,6 +20267,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -19556,6 +20358,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -19811,6 +20614,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -19903,6 +20707,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -19995,6 +20800,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": true,
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": "lesen",
@@ -20087,6 +20893,7 @@
         "toolReach": "nach_aussen",
         "toolForeign": true,
         "appId": "app_01m7zempyqasb34830zmcrxq8a",
+        "appToolId": "wzg_01m7zempyqasb34830zmcrxq8c",
         "toolVersion": 1,
         "toolStatus": "bestaetigt",
         "appAccess": true,

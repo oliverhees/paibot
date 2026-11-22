@@ -34,8 +34,8 @@ const EINGEFROREN: Readonly<Record<string, string>> = {
   "./fassung-1.korpus.json": "51e1e509336dca9eb0fe5505c1bc0bd4afbd45c5ba956cd2d3b2e3a944e80338",
   "./fassung-2.ts": "193b69a6f94c942502afa374375305f8dd1bacbde0a05591c887645616544e28",
   "./fassung-2.korpus.json": "41263028e1219cd4ee01a8778544a9697f379a66471f9ea1ec44bf94ee727653",
-  "./fassung-3.ts": "1760a3839e7eaa170e684055014b6fd5d48de3ec8b78201193bc472151d63186",
-  "./fassung-3.korpus.json": "2a0b299bb8053eeea843c63901718b95aa8927a22d418c76ed0fe419854e946d",
+  "./fassung-3.ts": "2160046e50c9262cccb12419a5e7a36405ac7f21f7fca202c27c49b7582196fd",
+  "./fassung-3.korpus.json": "2f345c2787ca57684601959c4ea11002b2888b98045c5d82cfc3f2ec1bbee84a",
   "../../../receipts/src/testdaten/kette-vor-fassung.jsonl":
     "9ad3e785369d054078213238428d7cbfbda5212758d66ec39c093cfba100b295",
   "../../../receipts/src/testdaten/kette-l1.jsonl":

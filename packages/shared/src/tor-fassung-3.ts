@@ -162,11 +162,17 @@ export const APP_ACTION_SHAPES = {
  */
 export const MCP_TOOL_CALL_FACTS = {
   appId,
+  /** Kennung des Werkzeugs der App in der Datenbank (`wzg_…`), wie beim Bestätigen. */
+  appToolId,
   /** Fassung des Werkzeugs in der Datenbank. */
   toolVersion: positiveIntSchema,
   /** Stand des Werkzeugs (Grenze G-07). */
   toolStatus: z.enum(APP_TOOL_STATUSES),
-  /** Zugriff dieses Bots auf die App (Grenze G-06). */
+  /**
+   * Zugriff dieses Bots auf die App (Grenze G-06). Ist die App getrennt oder hat sie keine gültige
+   * Anmeldung, liefert der Aufrufer `keiner`, auch wenn ein früher gesetzter Zugriff noch
+   * gespeichert ist; das Tor lehnt den Aufruf dann ab (G-06, Fehlercode `werkzeug_kein_zugriff`).
+   */
   appAccess: z.enum(APP_ACCESS_LEVELS),
   /** Abdruck von App-Kennung und voller Adresse, an die der Aufruf geht (Grenze G-08). */
   targetDigest: sha256DigestSchema,
@@ -253,8 +259,9 @@ export const ERROR_CODES_3 = Object.keys(ERROR_STATUS_3) as [ErrorCode3, ...Erro
 /**
  * Standard-Regel R-014: Der Bot der Unterhaltung darf ein App-Werkzeug aufrufen, das der Besitzer
  * als „lesen“ bestätigt hat, wenn der Besitzer dem Bot Lese-Zugriff auf die App gegeben hat.
- * Priorität 90 wie R-010, also vor R-005. Wegen `botOfConversation eq true` gilt sie nur im Chat
- * mit dem Bot selbst. Die Grenzen G-06 bis G-08 und G-40 gelten zusätzlich; keine Regel hebt sie
+ * Priorität 90 wie R-010, also vor R-005. Wegen `botOfConversation eq true` und `trigger eq chat`
+ * gilt sie nur in einem Lauf, den der Besitzer im Chat mit dem Bot selbst angestoßen hat; ein Lauf
+ * mit anderem Auslöser (etwa einer Automation) liest so nie in Apps. Die Grenzen G-06 bis G-08 und G-40 gelten zusätzlich; keine Regel hebt sie
  * auf. Die Regel steht in keiner Datenbank, bis Fassung 3 in Kraft ist.
  */
 export const R014_V1 = {
@@ -266,6 +273,7 @@ export const R014_V1 = {
   conditions: [
     { fact: "akteur", op: "eq", value: "bot" },
     { fact: "botOfConversation", op: "eq", value: true },
+    { fact: "trigger", op: "eq", value: "chat" },
     { fact: "toolSource", op: "eq", value: "mcp" },
     { fact: "toolKind", op: "eq", value: "lesen" },
     { fact: "appAccess", op: "eq", value: "lesen" },

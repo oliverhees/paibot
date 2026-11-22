@@ -111,6 +111,7 @@ describe("Vertrag der Fassung 3: R-014", () => {
       op: "eq",
       value: true,
     });
+    expect(R014_V1.conditions).toContainEqual({ fact: "trigger", op: "eq", value: "chat" });
     expect(R014_V1.conditions).toContainEqual({ fact: "toolSource", op: "eq", value: "mcp" });
     expect(R014_V1.conditions).toContainEqual({ fact: "appAccess", op: "eq", value: "lesen" });
     expect(R014_V1.conditions).toContainEqual({ fact: "toolKind", op: "eq", value: "lesen" });
@@ -136,6 +137,13 @@ describe("Vertrag der Fassung 3: Aktionen und Kennungen", () => {
     expect(ID_PREFIX.tool).toBe("wzg");
     expect(idSchema("app").safeParse(APP).success).toBe(true);
     expect(idSchema("tool").safeParse(APP).success).toBe(false);
+  });
+
+  it("am Aufruf steht die Kennung des Werkzeugs der App (`wzg_…`), keine andere Art", () => {
+    const werkzeug = "wzg_01m7zempyqasb34830zmcrxq8c";
+    expect(MCP_TOOL_CALL_FACTS.appToolId.safeParse(werkzeug).success).toBe(true);
+    expect(MCP_TOOL_CALL_FACTS.appToolId.safeParse(APP).success).toBe(false);
+    expect(Object.keys(MCP_TOOL_CALL_FACTS).slice(0, 2)).toEqual(["appId", "appToolId"]);
   });
 
   it("Origin einer App nur mit https", () => {

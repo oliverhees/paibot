@@ -136,6 +136,7 @@ const toolGateFacts = {
  */
 const appToolFacts = {
   appId: appId.optional(),
+  appToolId: appToolId.optional(),
   toolVersion: positiveInt.optional(),
   toolStatus: appToolStatus.optional(),
   appAccess: appAccess.optional(),
