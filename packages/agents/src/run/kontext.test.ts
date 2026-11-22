@@ -109,3 +109,16 @@ describe("chooseRoute", () => {
     });
   });
 });
+
+// Noch nicht gebaut: Fälle für Anfragen mit Werkzeugen, je mit Gegenprobe im Kommentar.
+describe("Abdruck und Zeichen der Anfrage mit Werkzeugen", () => {
+  // Gegenprobe: Werkzeug-Liste nicht im Abdruck → gleicher Abdruck.
+  it.todo("andere Beschreibung eines angebotenen Werkzeugs → anderer requestDigest");
+  it.todo("andere Hülle im Verlauf des Laufs → anderer requestDigest");
+  // Gegenprobe: Vorsatz v2 auch ohne Werkzeuge.
+  it.todo("ohne Werkzeuge und ohne Schritte: Abdruck gleich wie bisher (v1)");
+  // Gegenprobe: Werkzeug-Liste und Hüllen nicht zählen.
+  it.todo("requestChars zählt Werkzeug-Liste, Aufrufe und Hüllen mit");
+  // Gegenprobe: currentAnswers ohne Filter auf step.
+  it.todo("currentAnswers zählt nur End-Antworten (step leer)");
+});
