@@ -258,7 +258,11 @@ describe("Chat: Name und Kennzeichnung sind getrennte Elemente", () => {
   const conversationId = newId("conversation");
   const GEFAELSCHT = "EU laut Regel in deinem EUrouter-Konto";
 
-  function seite(vorgabeDazu: ReturnType<typeof vorgabe> | undefined, name = GEFAELSCHT) {
+  function seite(
+    vorgabeDazu: ReturnType<typeof vorgabe> | undefined,
+    name = GEFAELSCHT,
+    antwort: { createdAt?: string; modelId?: boolean } = {},
+  ) {
     const modell = {
       name,
       herkunft: "über EUrouter",
@@ -283,13 +287,13 @@ describe("Chat: Name und Kennzeichnung sind getrennte Elemente", () => {
             {
               id: newId("message"),
               conversationId,
-              createdAt: "2026-11-21T13:31:00.000Z",
+              createdAt: antwort.createdAt ?? "2026-11-21T13:31:00.000Z",
               role: "assistant",
               content: "Gern.",
               status: "complete",
               runId: newId("run"),
               route: "direkt",
-              modelId: "mod_a",
+              ...(antwort.modelId === false ? {} : { modelId: "mod_a" }),
             } as unknown as Message,
           ],
           laeufe: [],
@@ -327,5 +331,22 @@ describe("Chat: Name und Kennzeichnung sind getrennte Elemente", () => {
     const html = seite(vorgabe({ data_residency: "EU" }), "Beispiel-Regel");
     expect(html).toContain('role="note"');
     expect(html).toContain('aria-label="Kennzeichnung von PaiBot: EU laut Regel in deinem Konto');
+  });
+
+  it("eine alte Antwort trägt die Kennzeichnung nur, wenn die Vorgabe schon zur Zeit der Antwort galt", () => {
+    const eu = vorgabe({ data_residency: "EU" });
+    // Antwort vor der Prüfung der Vorgabe (10:00): keine Kennzeichnung, nur die Angabe des Anbieters.
+    const alt = seite(eu, "Beispiel-Regel", { createdAt: "2026-11-21T09:00:00.000Z" });
+    expect(anzahl(alt, 'data-art="kennzeichnung"')).toBe(0);
+    expect(alt).toContain("über EUrouter");
+    // Antwort nach der Prüfung: Kennzeichnung.
+    const neu = seite(eu, "Beispiel-Regel", { createdAt: "2026-11-21T11:00:00.000Z" });
+    expect(anzahl(neu, 'data-art="kennzeichnung"')).toBe(1);
+  });
+
+  it("eine Antwort ohne eigene Modell-Angabe nimmt vom Bot von heute nie eine Kennzeichnung", () => {
+    const html = seite(vorgabe({ data_residency: "EU" }), "Beispiel-Regel", { modelId: false });
+    expect(anzahl(html, 'data-art="kennzeichnung"')).toBe(0);
+    expect(html).toContain("„Beispiel-Regel“");
   });
 });

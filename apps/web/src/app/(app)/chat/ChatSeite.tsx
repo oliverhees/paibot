@@ -63,6 +63,7 @@ import {
   leereAnsicht,
   neuErzeugbar,
   neuErzeugt,
+  ohneVorgabe,
   sendenGesperrt,
 } from "../../../lib/chat/ansicht";
 import {
@@ -632,7 +633,9 @@ export function ChatSeite({
             zustandText: t("chat.beleg.zeile"),
             onPruefen: () => oeffneBeleg(b.id),
           };
-    const modell = n.modell ?? bereitschaft.modell;
+    // Ohne eigene Modell-Angabe der Nachricht gilt das heutige Modell des Bots nur dem Namen nach:
+    // seine Vorgabe sagt nichts darüber, was zur Zeit der Antwort galt.
+    const modell = n.modell ?? (bereitschaft.modell && ohneVorgabe(bereitschaft.modell));
     if (n.route === undefined || modell === undefined) {
       return beleg ? (
         <div className={styles.nurBeleg}>
