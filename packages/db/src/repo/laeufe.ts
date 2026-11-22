@@ -34,11 +34,15 @@ import { withTransaction } from "./transaktion";
 
 export type FinalRunStatus = Extract<RunStatus, "succeeded" | "failed" | "cancelled" | "denied">;
 
-/** Erlaubte Wege: Zielstatus → Status, aus denen man dorthin wechseln darf. */
+/**
+ * Erlaubte Wege: Zielstatus → Status, aus denen man dorthin wechseln darf. In dieser Fassung führt
+ * kein Weg nach `waiting_approval` (wie der Trigger `runs_regeln`, Migration 0014); die Wege
+ * hinaus bleiben für Läufe aus der Zeit davor.
+ */
 export const RUN_TRANSITIONS: Readonly<Record<RunStatus, readonly RunStatus[]>> = {
   queued: [],
   running: ["queued"],
-  waiting_approval: ["running"],
+  waiting_approval: [],
   succeeded: ["running", "waiting_approval"],
   failed: ["queued", "running", "waiting_approval"],
   cancelled: ["queued", "running", "waiting_approval"],

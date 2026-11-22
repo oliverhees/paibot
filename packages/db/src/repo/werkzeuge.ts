@@ -18,9 +18,12 @@ import {
   PaiBotError,
   type ReceiptId,
   type RunId,
+  type Sha256Digest,
   type ToolCallRecord,
   type ToolCallStatus,
+  type ToolKey,
   type ToolKind,
+  type ToolReach,
   type ToolSource,
   toIsoTime,
 } from "@paibot/shared";
@@ -29,16 +32,20 @@ import type { Database } from "../client";
 import { type ToolCallRow, toolCalls } from "../schema";
 import { StatuswechselError, standardFehler, uebersetzen } from "./fehler";
 
-/** Erlaubte Wege: Zielzustand → Zustände, aus denen man dorthin wechseln darf. */
+/**
+ * Erlaubte Wege: Zielzustand → Zustände, aus denen man dorthin wechseln darf. Spiegel des Triggers
+ * `tool_calls_regeln` (Migration 0014; ein Test vergleicht beide über alle Paare): In dieser
+ * Fassung führt kein Weg nach `waiting_approval` oder `approved` und keiner hinaus.
+ */
 export const TOOL_CALL_TRANSITIONS: Readonly<Record<ToolCallStatus, readonly ToolCallStatus[]>> = {
   requested: [],
-  waiting_approval: ["requested"],
-  approved: ["waiting_approval"],
-  running: ["requested", "approved"],
+  waiting_approval: [],
+  approved: [],
+  running: ["requested"],
   succeeded: ["running"],
   failed: ["running"],
-  denied: ["requested", "waiting_approval"],
-  cancelled: ["requested", "waiting_approval", "approved", "running"],
+  denied: ["requested"],
+  cancelled: ["requested", "running"],
 };
 
 export interface ToolCallCreate {
@@ -54,6 +61,19 @@ export interface ToolCallCreate {
   kind: ToolKind;
   input: unknown;
   argsDigest: HmacDigest;
+  /** Kennung des Werkzeugs, z. B. `eingebaut/doku.nachschlagen`. */
+  toolKey: ToolKey;
+  /** Abdruck der Beschreibung des Werkzeugs, wie sie das Modell in diesem Schritt sah. */
+  toolDigest: Sha256Digest;
+  reach: ToolReach;
+  /** Das Werkzeug liefert Inhalte von außerhalb von PaiBot. */
+  foreignContent: boolean;
+  /** Schritt des Laufs, ab 0. */
+  step: number;
+  /** Der Lauf hatte vor diesem Aufruf schon fremde Inhalte gelesen. */
+  untrustedInput: boolean;
+  /** Roher Name des Modells, nur wenn `name` der Platzhalter ist; schon bereinigt und gekürzt. */
+  rawName?: string;
 }
 
 function toToolCall(row: ToolCallRow): ToolCallRecord {
@@ -79,6 +99,15 @@ function toToolCall(row: ToolCallRow): ToolCallRecord {
     createdAt: toIsoTime(row.createdAt),
     updatedAt: toIsoTime(row.updatedAt),
     ...(row.finishedAt === null ? {} : { finishedAt: toIsoTime(row.finishedAt) }),
+    ...(row.toolKey === null ? {} : { toolKey: row.toolKey }),
+    ...(row.toolDigest === null ? {} : { toolDigest: row.toolDigest }),
+    ...(row.reach === null ? {} : { reach: row.reach }),
+    ...(row.foreignContent === null ? {} : { foreignContent: row.foreignContent }),
+    ...(row.step === null ? {} : { step: row.step }),
+    ...(row.untrustedInput === null ? {} : { untrustedInput: row.untrustedInput }),
+    ...(row.rawName === null ? {} : { rawName: row.rawName }),
+    ...(row.outputTruncated === null ? {} : { outputTruncated: row.outputTruncated }),
+    ...(row.outputChars === null ? {} : { outputChars: row.outputChars }),
   };
 }
 
@@ -101,6 +130,13 @@ export async function create(db: Database, input: ToolCallCreate): Promise<ToolC
           kind: input.kind,
           input: input.input,
           argsDigest: input.argsDigest,
+          toolKey: input.toolKey,
+          toolDigest: input.toolDigest,
+          reach: input.reach,
+          foreignContent: input.foreignContent,
+          step: input.step,
+          untrustedInput: input.untrustedInput,
+          rawName: input.rawName ?? null,
         })
         .returning(),
     standardFehler,

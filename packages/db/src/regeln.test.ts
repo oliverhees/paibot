@@ -58,10 +58,16 @@ describe("Standard-Regeln", () => {
 
   it("werden beim erneuten Ausführen der Migrationen nicht verdoppelt", async () => {
     const { db, client } = await createTestDb();
-    for (const datei of ["0003_standard_regeln.sql", "0005_haertung.sql"]) {
+    for (const datei of [
+      "0003_standard_regeln.sql",
+      "0005_haertung.sql",
+      "0014_werkzeug_kern.sql",
+    ]) {
       const sql = readFileSync(path.join(MIGRATIONS_FOLDER, datei), "utf8");
-      const einfuegen = sql.slice(sql.lastIndexOf('INSERT INTO "rules"'));
-      await client.exec(einfuegen);
+      const ab = sql.lastIndexOf('INSERT INTO "rules"');
+      const ende = sql.indexOf("DO NOTHING;", ab) + "DO NOTHING;".length;
+      expect(ab).toBeGreaterThanOrEqual(0);
+      await client.exec(sql.slice(ab, ende));
     }
     expect(await db.select().from(rules)).toHaveLength(STANDARD_RULE_VERSIONS.length);
   });

@@ -24,12 +24,13 @@ const nach = (basis: Date, ms: number) => new Date(basis.getTime() + ms);
 
 describe("runs", () => {
   let db: Database;
+  let client: Awaited<ReturnType<typeof createTestDb>>["client"];
   let botId: ReturnType<typeof newId<"bot">>;
   let conversationId: ReturnType<typeof newId<"conversation">>;
   let triggerMessageId: ReturnType<typeof newId<"message">>;
 
   beforeEach(async () => {
-    db = (await createTestDb()).db;
+    ({ db, client } = await createTestDb());
     botId = (await bots.create(db, { name: "Pai", avatarShape: "blatt", color: "blau" })).id;
     conversationId = (await conversations.create(db, { botId, title: "U" })).id;
     triggerMessageId = (await messages.insert(db, { conversationId, role: "user", content: "Hi" }))
@@ -51,9 +52,22 @@ describe("runs", () => {
   async function laufend(id: LaufId) {
     await runs.markRunning(db, id);
   }
+  /**
+   * Setzt einen Lauf direkt in der Tabelle auf `status`, mit abgeschalteten Triggern (nur im Test):
+   * So entstehen Läufe aus der Zeit vor dem Trigger `runs_regeln` (z. B. `waiting_approval`).
+   */
+  async function setzeDirekt(id: LaufId, status: RunStatus) {
+    await client.exec("set session_replication_role = replica");
+    try {
+      await db.update(laeufeTabelle).set({ status }).where(eq(laeufeTabelle.id, id));
+    } finally {
+      await client.exec("set session_replication_role = origin");
+    }
+  }
+  /** Ein wartender Lauf aus der Zeit davor; heute führt kein Weg dorthin. */
   async function wartend(id: LaufId) {
     await runs.markRunning(db, id);
-    await runs.markWaiting(db, id);
+    await setzeDirekt(id, "waiting_approval");
   }
 
   it.each([
@@ -128,7 +142,7 @@ describe("runs", () => {
         const cid = (await conversations.create(db, { botId, title: `${von}>${nach}` })).id;
         const lauf = await runs.create(db, { conversationId: cid, triggerMessageId, botId });
         // `von` herstellen (direkt in der Tabelle, der Ablauf darum geht es hier nicht).
-        await db.update(laeufeTabelle).set({ status: von }).where(eq(laeufeTabelle.id, lauf.id));
+        await setzeDirekt(lauf.id, von);
         const versuch = wechsle(lauf.id, nach);
         if (erlaubt) {
           expect((await versuch).status).toBe(nach);
@@ -207,7 +221,7 @@ describe("runs", () => {
     await runs.markRunning(db, alt, { now: T0 });
     const wartend = await mach();
     await runs.markRunning(db, wartend, { now: T0 });
-    await runs.markWaiting(db, wartend);
+    await setzeDirekt(wartend, "waiting_approval");
     const fertig = await mach();
     await runs.markRunning(db, fertig, { now: T0 });
     await runs.finish(db, fertig, { status: "succeeded" });
@@ -235,8 +249,7 @@ describe("runs", () => {
 
   it("resume beendet den wartenden Lauf und legt einen neuen mit resumesRunId an", async () => {
     const lauf = await anlegen();
-    await runs.markRunning(db, lauf.id);
-    await runs.markWaiting(db, lauf.id);
+    await wartend(lauf.id);
     const neu = await runs.resume(db, lauf.id);
     expect(neu).toMatchObject({
       status: "queued",

@@ -554,13 +554,15 @@ describe("Regelstand: geprüft, bevor entschieden wird", () => {
       sampleFacts("nachricht.senden"),
       okExecute(log),
     );
-    const snapshot = await ruleSnapshot(ACTIVE_STANDARD_RULES, 7);
+    // Ohne Angabe ist der Stand die Zahl der Regeln im Schnappschuss (die aktiven Standard-Regeln).
+    const stand = ACTIVE_STANDARD_RULES.length;
+    const snapshot = await ruleSnapshot(ACTIVE_STANDARD_RULES, stand);
     const r001 = snapshot.rules.find((rule) => rule.id === "R-001");
     expect(dec(entries)?.decision).toEqual({ ...result.decision, gateFormat: GATE_FORMAT });
     expect(result.decision).toMatchObject({
       outcome: "allow",
       matchedRules: [{ id: "R-001", version: 1, hash: r001?.hash }],
-      ruleStand: 7,
+      ruleStand: stand,
       preconditions: [
         { name: "unterhaltung_vorhanden", result: "ok" },
         { name: "kein_lauf_aktiv", result: "ok" },

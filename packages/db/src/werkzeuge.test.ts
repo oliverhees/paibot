@@ -22,6 +22,7 @@ import {
   keyRow,
   messageRow,
   runRow,
+  sha256Digest,
   toolCallRow,
 } from "./testdaten";
 import { createTestDb, type TestDb } from "./testing";
@@ -53,6 +54,20 @@ async function fehler(
 async function weistAb(row: object, code: string, constraint: string) {
   const f = await fehler(ctx.db.insert(toolCalls).values(row as never));
   expect({ code: f.code, constraint: f.constraint }).toEqual({ code, constraint });
+}
+
+/**
+ * Wie `weistAb`, aber mit abgeschalteten Triggern (`session_replication_role = replica`, nur in
+ * diesem Test): Zeilen in späteren Zuständen lässt der Trigger `tool_calls_regeln` nie direkt zu;
+ * so bleibt sichtbar, dass auch der CHECK sie abweist. CHECKs gelten weiter.
+ */
+async function weistAbOhneTrigger(row: object, code: string, constraint: string) {
+  await ctx.client.exec("set session_replication_role = replica");
+  try {
+    await weistAb(row, code, constraint);
+  } finally {
+    await ctx.client.exec("set session_replication_role = origin");
+  }
 }
 
 beforeEach(async () => {
@@ -158,17 +173,17 @@ describe("tool_calls (Schema)", () => {
       "tool_calls_decision_receipt_id_format",
     ],
   ])("weist ab: %s", async (_name, abweichung, code, constraint) => {
-    await weistAb(toolCallRow(ids, abweichung as never), code, constraint);
+    await weistAbOhneTrigger(toolCallRow(ids, abweichung as never), code, constraint);
   });
 
   it("weist ein Ende ohne Ergebnis und ein Ergebnis ohne Ende ab", async () => {
     const entschieden = { decisionReceiptId: belegIds[0] };
-    await weistAb(
+    await weistAbOhneTrigger(
       toolCallRow(ids, { ...entschieden, status: "succeeded", finishedAt: new Date() }),
       CHECK,
       "tool_calls_ergebnis_nur_wenn_erledigt",
     );
-    await weistAb(
+    await weistAbOhneTrigger(
       toolCallRow(ids, { ...entschieden, status: "succeeded", resultStatus: "ok" }),
       CHECK,
       "tool_calls_ergebnis_nur_wenn_erledigt",
@@ -192,14 +207,14 @@ describe("tool_calls (Schema)", () => {
       "tool_calls_conversation_id_conversations_id_fk",
     );
     await weistAb(
-      toolCallRow(ids, { status: "waiting_approval", decisionReceiptId: newId("receipt") }),
+      toolCallRow(ids, { decisionReceiptId: newId("receipt") }),
       FOREIGN_KEY,
       "tool_calls_decision_receipt_id_belege_id_fk",
     );
   });
 
   it("eindeutig: Stelle und Aufruf-Kennung je Antwort, Beleg je Aufruf", async () => {
-    const erster = toolCallRow(ids, { status: "waiting_approval", decisionReceiptId: belegIds[0] });
+    const erster = toolCallRow(ids, { decisionReceiptId: belegIds[0] });
     await ctx.db.insert(toolCalls).values(erster);
     await weistAb(toolCallRow(ids, { callId: "anders" }), UNIQUE, "tool_calls_stelle_eindeutig");
     await weistAb(
@@ -208,7 +223,7 @@ describe("tool_calls (Schema)", () => {
       "tool_calls_call_id_eindeutig",
     );
     await weistAb(
-      toolCallRow(ids, { position: 2, status: "waiting_approval", decisionReceiptId: belegIds[0] }),
+      toolCallRow(ids, { position: 2, decisionReceiptId: belegIds[0] }),
       UNIQUE,
       "tool_calls_decision_receipt_id_eindeutig",
     );
@@ -220,9 +235,7 @@ describe("tool_calls (Schema)", () => {
   });
 
   it("verschwinden mit ihrer Unterhaltung, die Belege bleiben", async () => {
-    await ctx.db
-      .insert(toolCalls)
-      .values(toolCallRow(ids, { status: "waiting_approval", decisionReceiptId: belegIds[0] }));
+    await ctx.db.insert(toolCalls).values(toolCallRow(ids, { decisionReceiptId: belegIds[0] }));
     await ctx.db.delete(conversations).where(eq(conversations.id, ids.conversationId));
     expect(await ctx.db.select().from(toolCalls)).toEqual([]);
     expect(await ctx.db.select().from(belege)).toHaveLength(4);
@@ -241,6 +254,12 @@ describe("toolCalls (Zugriff)", () => {
       kind: "lesen",
       input: { datum: "2026-11-20" },
       argsDigest: hmacDigest() as never,
+      toolKey: "eingebaut/kalender.lesen",
+      toolDigest: sha256Digest() as never,
+      reach: "intern",
+      foreignContent: false,
+      step: 0,
+      untrustedInput: false,
     });
     expect(record.status).toBe("requested");
     expect(toolCallSchema.safeParse(record).success).toBe(true);
@@ -268,17 +287,15 @@ describe("toolCalls (Zugriff)", () => {
     expect(toolCallSchema.safeParse(fertig).success).toBe(true);
   });
 
-  it("fragen: wartet → Besitzer stimmt zu → läuft; die Wartenden lassen sich finden", async () => {
+  it("fragen: kein Weg nach „wartet auf Freigabe“, die Zeile bleibt angefragt", async () => {
     const id = await neu();
-    await calls.recordDecision(ctx.db, id, {
-      outcome: "ask",
-      decisionReceiptId: belegIds[0] as ReceiptId,
-    });
-    expect((await calls.listWaiting(ctx.db, ids.conversationId)).map((c) => c.actionId)).toEqual([
-      id,
-    ]);
-    expect((await calls.approve(ctx.db, id)).status).toBe("approved");
-    expect((await calls.markRunning(ctx.db, id)).status).toBe("running");
+    await expect(
+      calls.recordDecision(ctx.db, id, {
+        outcome: "ask",
+        decisionReceiptId: belegIds[0] as ReceiptId,
+      }),
+    ).rejects.toThrow();
+    expect((await calls.get(ctx.db, id))?.status).toBe("requested");
     expect(await calls.listWaiting(ctx.db, ids.conversationId)).toEqual([]);
   });
 
@@ -296,14 +313,9 @@ describe("toolCalls (Zugriff)", () => {
       errorCode: "abgelehnt",
     });
 
-    const vomBesitzer = await neu(1);
-    await calls.recordDecision(ctx.db, vomBesitzer, {
-      outcome: "ask",
-      decisionReceiptId: belegIds[2] as ReceiptId,
-    });
-    expect((await calls.rejectByOwner(ctx.db, vomBesitzer, { output: "Nein." })).status).toBe(
-      "denied",
-    );
+    const angefragt = await neu(1);
+    await expect(calls.rejectByOwner(ctx.db, angefragt, { output: "Nein." })).rejects.toThrow();
+    expect((await calls.get(ctx.db, angefragt))?.status).toBe("requested");
   });
 
   it("weist unerlaubte Wechsel ab und meldet unbekannte Aufrufe", async () => {
