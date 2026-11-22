@@ -246,7 +246,7 @@ Eine Nachricht wird in diesen Schritten zur Antwort:
 2. **Abholen (Worker):** Der Worker holt den Auftrag ab und liest Lauf, Unterhaltung, Bot, Einstellungen, Modell, Anbieter, Verlauf und den Tagesverbrauch **in einem Lesestand**. Der Lauf geht auf „läuft“ (Ereignis `run.started`).
 3. **Fakten bilden:** Aus der Datenbank, nie aus dem Text der Nachricht: Anbieter, Region, Ziel-Adresse (als Abdruck), Weg (direkt oder Datenschleuse), ob die Datenschleuse erreichbar ist, Länge der Anfrage, Ausgabegrenze, Tagesverbrauch, Not-Aus.
 4. **Tor:** Aktion `modell.anfragen` mit dem Bot als Akteur. Der Beleg „Entscheidung“ enthält die Fakten und eine Prüfsumme der ausgehenden Anfrage, nicht den Text.
-5. **Antwort:** Nur wenn das Tor erlaubt, entsteht der Zugang zum Modell, und nur innerhalb dieser einen Ausführung. Der Motor macht genau einen Modell-Schritt. Text-Stücke gehen gebündelt als `text.delta` an die Seite. Am Ende wird die Antwort mit Modell, Weg und Token-Zahlen gespeichert (`message.completed`).
+5. **Antwort:** Nur wenn das Tor erlaubt, entsteht der Zugang zum Modell, und nur innerhalb dieser einen Ausführung. In dieser Version hat Pai keine Werkzeuge; der Motor macht deshalb genau einen Modell-Schritt. Gibt es später Werkzeuge, kann eine Antwort mehrere Schritte machen, und jeder Schritt und jeder Werkzeug-Aufruf geht einzeln durchs Tor. Text-Stücke gehen gebündelt als `text.delta` an die Seite. Am Ende wird die Antwort mit Modell, Weg und Token-Zahlen gespeichert (`message.completed`).
 6. **Ergebnis:** Der Beleg „Ergebnis“ enthält Status, Token-Zahlen und eine Prüfsumme der Antwort, nie den Text. Danach ist der Lauf fertig, und die Unterhaltung nimmt die nächste Nachricht an.
 
 Was die Seite live bekommt (über den Ereignis-Strom der Unterhaltung):
@@ -281,7 +281,8 @@ Beteiligte Teile: `apps/web/src/app/(app)/chat/` und `apps/web/src/lib/chat/` (S
 
 ## Grenzen
 
-- Der Bot hat in dieser Fassung **keine Werkzeuge**: Er kann nichts auslösen, nichts speichern, nichts nachschlagen. Wünscht ein Modell trotzdem ein Werkzeug, endet die Antwort mit „Das Tor hat die Aktion abgelehnt.“, und nichts wird ausgeführt. Werkzeuge sind geplant; die Stelle dafür ist in der Lauf-Steuerung vorgesehen.
+- Der Bot hat in dieser Fassung **keine Werkzeuge**: Er kann nichts auslösen, nichts speichern, nichts nachschlagen. Wünscht ein Modell trotzdem ein Werkzeug, lehnt das Tor jeden Wunsch mit Beleg ab, die Antwort endet mit „Dieses Werkzeug gibt es hier nicht.“, und nichts wird ausgeführt. Werkzeuge sind geplant.
+- **Länge einer Antwort:** Eine Antwort darf höchstens so viel schreiben, wie die Ausgabegrenze deines Bots erlaubt, und zusammen mit der Anfrage nicht mehr Token verbrauchen als „Token je Antwort“ (Startwert 60 000, in dieser Version nicht einstellbar). Hat dein Bot eine sehr hohe Ausgabegrenze, kann eine Antwort deshalb kürzer begrenzt sein als die Ausgabegrenze. Reicht der Rest nicht mehr für eine Antwort, lehnt das Tor ab; greift die Grenze mitten in einer Antwort mit mehreren Schritten, schreibt PaiBot einen festen Satz, dass es aufgehört hat.
 - **Kein automatisches Wiederholen:** Scheitert eine Anfrage beim Anbieter, schickst du die Nachricht selbst noch einmal.
 - **Kein Rückfall auf direkt:** Ist die Datenschleuse an, aber nicht erreichbar, geht die Nachricht gar nicht raus.
 - Älterer Verlauf wird abgeschnitten, nicht zusammengefasst. Bei sehr langen Unterhaltungen „vergisst“ der Bot den Anfang.

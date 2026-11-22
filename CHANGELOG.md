@@ -55,6 +55,9 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 
 ### Geändert
 
+- Die Lauf-Steuerung kann mehrere Schritte je Antwort machen; jeder Schritt und jeder spätere Werkzeug-Aufruf geht einzeln durchs Tor, mit den Grenzen aus den Einstellungen. In dieser Version gibt es noch kein Werkzeug, eine Antwort macht also weiter genau einen Schritt ([Chat](docs/funktion-chat.md), [Das Tor](docs/funktion-tor.md))
+- Die Länge einer Antwort folgt zusätzlich der Grenze „Token je Antwort“ ([Chat](docs/funktion-chat.md#grenzen))
+- Wünscht ein Modell ein Werkzeug, das es nicht gibt, ist jeder Wunsch mit Beleg abgelehnt; die Antwort endet mit „Dieses Werkzeug gibt es hier nicht.“
 - Die Datenbank hat getrennte Rollen für Migrationen und für die App; die App läuft mit der eingeschränkten Rolle ([Installation](docs/installation.md))
 - Docker Compose: internes Netz für die Datenbank, Pflichtwerte, gehärtete Container, Healthchecks für Web-App und Worker
 - Die Tests laufen auch gegen eine echte Postgres-Datenbank (eine Variable genügt, siehe [Entwickeln und Testen](docs/entwickeln.md))
