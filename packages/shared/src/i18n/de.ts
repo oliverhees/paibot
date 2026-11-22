@@ -22,6 +22,7 @@ export const de = {
   "seite.bot": "Bot",
   "seite.modelle": "Modell und Anbieter",
   "seite.datenschleuse": "Datenschleuse",
+  "seite.apps": "Apps",
   "seite.belege": "Belege",
   "seite.einstellungen": "Einstellungen",
   "seite.info": "Info",
@@ -1933,12 +1934,6 @@ export const de = {
   "aktion.app.zugriff_setzen": "Zugriff eines Bots auf eine App gesetzt",
   "aktion.app.trennen": "App getrennt",
   "regel.R-014": "Bot liest in Apps mit Lese-Zugriff",
-  // Zusatz nur auf der Seite „Was dein Bot darf“, nie in Belegen, Schritten und der Tor-Seite: Dort
-  // bleibt der Titel der Regel, wie er ist. Solange es für Apps keine Oberfläche gibt, soll die Seite
-  // keine Erlaubnis für etwas zeigen, das niemand benutzen kann. Mit „in der Oberfläche“ ist gemeint:
-  // nicht überhaupt (die Routen gibt es), sondern für dich in PaiBot. Mit der Oberfläche für Apps entfällt
-  // der Zusatz wieder (mit seinem Eintrag in `apps/web/src/lib/bot/bot.ts`).
-  "bot.darf.zusatz.R-014": "Apps lassen sich in der Oberfläche noch nicht verbinden",
   "regel.G-06": "Zugriff des Bots auf die App",
   "regel.G-07": "Werkzeug bestätigt und unverändert",
   "regel.G-08": "Adresse der App unverändert",
@@ -2261,6 +2256,10 @@ export const de = {
   "apps.form.adresse.hilfe": "Nur öffentliche https-Adressen, zum Beispiel https://…/mcp",
   "apps.form.adresse.leer": "Gib die Adresse des Servers ein.",
   "apps.form.adresse.kein_https": "Die Adresse muss mit https:// beginnen.",
+  "apps.form.adresse.port": "Es ist nur der Port 443 erlaubt. Lass die Port-Angabe weg.",
+  "apps.form.adresse.zusatz":
+    "Die Adresse darf keinen Abfrage-Teil (?…) und keinen Anker (#…) enthalten.",
+  "apps.form.adresse.vorschau": "PaiBot verbindet sich mit:",
   "apps.form.adresse.zugang":
     "Schreib keine Zugangsdaten in die Adresse. Dafür gibt es das Feld Token.",
   "apps.form.token": "Token (wenn die App einen verlangt)",
@@ -2343,6 +2342,36 @@ export const de = {
   "apps.zugriff.text.lesen.leer":
     "{name} darf lesen, aber noch ist kein Werkzeug als „liest“ bestätigt. Dann bekommt der Bot nichts.",
   "apps.zugriff.notaus": "Not-Aus aktiv: Der Zugriff lässt sich gerade nicht ändern.",
+  // Seite „Apps“
+  "apps.seite.einleitung":
+    "Verbinde Apps (MCP-Server mit öffentlicher https-Adresse). Du siehst, was jedes Werkzeug dem Modell sagt, stufst es selbst ein und gibst einem Bot höchstens Lese-Zugriff.",
+  "apps.seite.verbinden": "App verbinden",
+  "apps.seite.laedt": "Apps werden geladen …",
+  "apps.seite.fehler.titel": "Die Apps lassen sich gerade nicht laden",
+  "apps.seite.fehler.text": "PaiBot kommt nicht an die Liste deiner Apps.",
+  "apps.seite.fehler.ausweg": "Lade die Seite neu. Hilft das nicht, schau in den Selbsttest.",
+  "apps.seite.fehler.neu": "Seite neu laden",
+  "apps.seite.verbunden.eins": "App verbunden. PaiBot hat 1 Werkzeug gefunden: Stufe es unten ein.",
+  "apps.seite.verbunden.mehr":
+    "App verbunden. PaiBot hat {anzahl} Werkzeuge gefunden: Stufe sie unten ein.",
+  "apps.seite.verbunden.hinweis":
+    "Bis du sie als „liest“ bestätigt hast, bekommt kein Bot ein Werkzeug dieser App.",
+  "apps.seite.nicht_pruefbar":
+    "Diese Werkzeuge kann PaiBot nicht prüfen. Es zeigt sie nicht an und bietet sie keinem Bot an:",
+  "apps.seite.erneut.fertig": "Die Liste wurde neu abgerufen.",
+  "apps.seite.aktion.warten": "Versuche es in {sekunden} Sekunden noch einmal.",
+  "apps.seite.zugriff.titel": "Zugriff der Bots",
+  "apps.seite.zugriff.keine": "Es gibt noch keinen Bot.",
+  "apps.seite.getrennt.titel": "Getrennte Apps",
+  "apps.seite.getrennt.text":
+    "Eine getrennte App hat keinen Token mehr und bekommt keinen Aufruf. Zum Neu verbinden trägst du sie noch einmal ein.",
+  "apps.seite.getrennt.am": "getrennt am {datum}",
+  "apps.seite.trennen.titel": "App trennen?",
+  "apps.seite.trennen.text":
+    "PaiBot löscht den hinterlegten Token, und kein Bot sieht danach noch Werkzeuge dieser App.",
+  "apps.seite.trennen.bestaetigen": "Trennen",
+  "apps.seite.trennen.abbrechen": "Abbrechen",
+  "apps.seite.schliessen": "Schließen",
   // Lauf mit mehreren Schritten: fester Satz am Ende einer Grenze, Texte der Werkzeug-Hülle
   "lauf.grenze.antwort":
     "Für diese Frage bräuchte ich mehr, als die Grenze „{titel}“ erlaubt. Ich habe nach {n} Schritten aufgehört; frag gern enger nach.",
@@ -2410,5 +2439,5 @@ export const de = {
   "werkzeug.titel.doku_nachschlagen": "In der Doku nachschlagen",
   // „Was dein Bot darf“: das Werkzeug ehrlich benannt
   "bot.darf.werkzeug_doku":
-    "{name} kann in der Doku dieser PaiBot-Version nachschlagen, ohne vorher zu fragen und jedes Mal mit Beleg. Das Werkzeug selbst liest nur die mitgelieferte Doku und ruft nichts im Netz auf. Was es findet, geht wie der übrige Chat mit der nächsten Anfrage an den Anbieter deines Modells. Weitere Werkzeuge kannst du noch nicht einschalten.",
+    "{name} kann in der Doku dieser PaiBot-Version nachschlagen, ohne vorher zu fragen und jedes Mal mit Beleg. Das Werkzeug selbst liest nur die mitgelieferte Doku und ruft nichts im Netz auf. Was es findet, geht wie der übrige Chat mit der nächsten Anfrage an den Anbieter deines Modells. Weitere Werkzeuge bekommt {name} nur aus Apps, die du verbunden, eingestuft und freigegeben hast, und nur lesende.",
 } as const satisfies Record<string, string | readonly string[]>;

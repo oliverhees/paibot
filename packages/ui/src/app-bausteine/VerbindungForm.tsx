@@ -17,7 +17,7 @@ import { Icon } from "../basis/Icon";
 import { klassen } from "../basis/klassen";
 import { TextField } from "../felder/TextField";
 import { AppFehler, type AppFehlerArt } from "./AppFehler";
-import { type AdressePruefung, pruefeAdresse } from "./adresse";
+import { type AdressePruefung, normalisierteAdresse, pruefeAdresse } from "./adresse";
 import styles from "./Verbindung.module.css";
 
 export interface VerbindungDaten {
@@ -48,6 +48,8 @@ const ADRESSE_FEHLER: Partial<Record<AdressePruefung, () => string>> = {
   befehl: () =>
     `${t("apps.fehler.befehl_nicht_erlaubt.titel")}. ${t("apps.fehler.befehl_nicht_erlaubt.ausweg")}`,
   zugang_in_adresse: () => t("apps.form.adresse.zugang"),
+  port: () => t("apps.form.adresse.port"),
+  zusatz: () => t("apps.form.adresse.zusatz"),
 };
 
 /**
@@ -70,6 +72,8 @@ export function VerbindungForm({
   const [ersetzen, setErsetzen] = useState(false);
   const [pruefung, setPruefung] = useState<AdressePruefung>("ok");
   const tokenFeldZeigen = !tokenGesetzt || ersetzen;
+  // So verbindet sich PaiBot (Name in Punycode, ohne Zusätze); nur, solange die Eingabe taugt.
+  const vorschau = pruefeAdresse(adresse) === "ok" ? normalisierteAdresse(adresse) : undefined;
 
   const absenden = (e: FormEvent) => {
     e.preventDefault();
@@ -107,6 +111,11 @@ export function VerbindungForm({
           setPruefung("ok");
         }}
       />
+      {vorschau !== undefined && (
+        <p className={styles.leise} data-vorschau="">
+          {t("apps.form.adresse.vorschau")} <code>{vorschau}</code>
+        </p>
+      )}
       {tokenFeldZeigen ? (
         <TextField
           label={t("apps.form.token")}

@@ -117,3 +117,21 @@ export function zielAus(roh: string, appId: AppId): GeprueftesZiel {
     url: bereinigt,
   };
 }
+
+/**
+ * Fester Satz, warum eine Adresse nicht erlaubt ist: der erste verletzte Punkt aus den Fakten.
+ * Nennt nie etwas aus der Adresse selbst (dort könnte ein Schlüssel stehen).
+ */
+export function adressGrund(fakten: AdressFakten): string | undefined {
+  if (!fakten.addressHttps) return "Nur https-Adressen sind erlaubt.";
+  if (fakten.addressUserinfo) {
+    return "Die Adresse darf keinen Benutzer- oder Passwort-Teil enthalten. Dafür gibt es das Feld Token.";
+  }
+  if (!fakten.addressPublic) {
+    return "Nur öffentliche Adressen sind erlaubt: keine IP-Adresse und kein interner Name.";
+  }
+  if (!fakten.addressPort443) return "Nur der Port 443 ist erlaubt.";
+  if (fakten.addressQuery) return "Die Adresse darf keinen Abfrage-Teil (?…) enthalten.";
+  if (fakten.addressFragment) return "Die Adresse darf keinen Anker (#…) enthalten.";
+  return undefined;
+}

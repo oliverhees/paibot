@@ -187,6 +187,18 @@ describe("App verbinden", () => {
     ["interner Name", "https://postgres/mcp"],
     ["anderer Port", "https://mcp.beispiel.de:8443/mcp"],
   ];
+  // Der feste Grund in der Antwort: der erste verletzte Punkt, nie ein Stück der Adresse.
+  const GRUND: Record<string, string> = {
+    http: "Nur https-Adressen sind erlaubt.",
+    "Benutzer-Teil": "Die Adresse darf keinen Benutzer- oder Passwort-Teil enthalten.",
+    "Abfrage-Teil mit Token": "Die Adresse darf keinen Abfrage-Teil (?…) enthalten.",
+    Anker: "Die Adresse darf keinen Anker (#…) enthalten.",
+    IPv4: "Nur öffentliche Adressen sind erlaubt",
+    Schleife: "Nur öffentliche Adressen sind erlaubt",
+    "Metadaten-Adresse": "Nur öffentliche Adressen sind erlaubt",
+    "interner Name": "Nur öffentliche Adressen sind erlaubt",
+    "anderer Port": "Nur der Port 443 ist erlaubt.",
+  };
   for (const [name, adresse] of ABGELEHNT) {
     it(`${name}: abgelehnt vor jeder Verbindung, mit Beleg-Paar, ohne Token in Antwort und Beleg`, async () => {
       const u = await umgebung();
@@ -196,6 +208,9 @@ describe("App verbinden", () => {
       });
       expect(r.status).toBe(400);
       expect(r.body.fehler?.code).toBe("app_adresse_unzulaessig");
+      const grund = (r.body as { fehler?: { text?: string } }).fehler?.text ?? "";
+      expect(grund, name).toContain(GRUND[name] ?? "(fehlt)");
+      expect(grund).not.toContain(TOKEN);
       // Keine Verbindung, nichts gespeichert.
       expect(u.zustand.aufrufe).toHaveLength(0);
       expect(await repo.apps.list(u.e.u.db)).toEqual([]);

@@ -12,12 +12,12 @@
  */
 
 import { type Database, repo } from "@paibot/db";
-import { PaiBotError } from "@paibot/shared/fehler";
+import { isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
 import { type AppId, type AppToolId, type BotId, isId, newId } from "@paibot/shared/ids";
 import type { RoutenKontext } from "../api/route";
 import { type AbgleichErgebnis, abgleichen, listeAbrufen } from "./abgleich";
-import { zielAus } from "./adresse";
+import { type AdressFakten, adressGrund, zielAus } from "./adresse";
 import { appAnsicht, werkzeugAnsicht } from "./anzeige";
 import { appDienste } from "./dienste";
 import { fehlerOhneFremdtext, pruefbedingungAlsFeld } from "./fehler";
@@ -40,6 +40,23 @@ async function appVon(db: Database, id: string | undefined): Promise<App> {
   const app = await repo.apps.get(db, id);
   if (app === undefined) throw new PaiBotError("nicht_gefunden");
   return app;
+}
+
+/**
+ * Lehnt das Tor die Adresse ab (`app_adresse_unzulaessig`), steht in der Antwort der feste Grund
+ * (https, öffentlich, Port 443, kein Benutzer-, Abfrage- oder Anker-Teil) statt des allgemeinen
+ * Satzes. Der Beleg bleibt, wie das Tor ihn geschrieben hat.
+ */
+async function mitAdressGrund<T>(fakten: AdressFakten, arbeit: () => Promise<T>): Promise<T> {
+  try {
+    return await arbeit();
+  } catch (fehler) {
+    const grund = adressGrund(fakten);
+    if (isPaiBotError(fehler) && fehler.code === "app_adresse_unzulaessig" && grund !== undefined) {
+      throw new PaiBotError("app_adresse_unzulaessig", { text: grund });
+    }
+    throw fehler;
+  }
 }
 
 /** Eingabefehler für ein einzelnes Feld (etwa ein belegter Kurzname). */
@@ -111,48 +128,50 @@ export async function appVerbinden(k: RoutenKontext<"appVerbinden">) {
   const kurzname = await freierKurzname(k.db, eingabe.kurzname, host);
   const name = eingabe.name ?? host;
   const anmeldung = token === undefined ? "keine" : "token";
-  const ergebnis = await k.tor(
-    k.nachweis,
-    { type: "app.verbinden", target: { appId } },
-    {
-      created: true,
-      authKind: anmeldung,
-      tokenSet: token !== undefined,
-      targetOrigin: ziel.origin,
-      targetDigest: ziel.digest,
-      ...ziel.fakten,
-    },
-    async () => {
-      try {
-        const abruf = await appDienste().werkzeugeAbrufen({
-          adresse: ziel.url,
-          appKurzname: kurzname,
-          bekannteNamen: new Map(),
-          ...(token === undefined ? {} : { token }),
-        });
-        const gespeichert = await repo.withTransaction(k.db, async (tx) => {
-          // Erst `apps`, dann `app_tools`, nie umgekehrt; die Anfrage nach draußen ist schon vorbei.
-          const app = await repo.apps
-            .create(tx, {
-              id: appId,
-              shortName: kurzname,
-              name,
-              url: ziel.url,
-              authKind: anmeldung,
-              ...(token === undefined
-                ? {}
-                : { tokenEnc: tokenVerschluesseln(k.dienste, appId, ziel.url, token) }),
-            })
-            .catch((fehler: unknown) => {
-              throw pruefbedingungAlsFeld(fehler, "url");
-            });
-          return { app, abgleich: await abgleichen(tx, appId, abruf) };
-        });
-        return { value: gespeichert, result: { status: "ok" } };
-      } catch (fehler) {
-        throw fehlerOhneFremdtext(fehler);
-      }
-    },
+  const ergebnis = await mitAdressGrund(ziel.fakten, () =>
+    k.tor(
+      k.nachweis,
+      { type: "app.verbinden", target: { appId } },
+      {
+        created: true,
+        authKind: anmeldung,
+        tokenSet: token !== undefined,
+        targetOrigin: ziel.origin,
+        targetDigest: ziel.digest,
+        ...ziel.fakten,
+      },
+      async () => {
+        try {
+          const abruf = await appDienste().werkzeugeAbrufen({
+            adresse: ziel.url,
+            appKurzname: kurzname,
+            bekannteNamen: new Map(),
+            ...(token === undefined ? {} : { token }),
+          });
+          const gespeichert = await repo.withTransaction(k.db, async (tx) => {
+            // Erst `apps`, dann `app_tools`, nie umgekehrt; die Anfrage nach draußen ist schon vorbei.
+            const app = await repo.apps
+              .create(tx, {
+                id: appId,
+                shortName: kurzname,
+                name,
+                url: ziel.url,
+                authKind: anmeldung,
+                ...(token === undefined
+                  ? {}
+                  : { tokenEnc: tokenVerschluesseln(k.dienste, appId, ziel.url, token) }),
+              })
+              .catch((fehler: unknown) => {
+                throw pruefbedingungAlsFeld(fehler, "url");
+              });
+            return { app, abgleich: await abgleichen(tx, appId, abruf) };
+          });
+          return { value: gespeichert, result: { status: "ok" } };
+        } catch (fehler) {
+          throw fehlerOhneFremdtext(fehler);
+        }
+      },
+    ),
   );
   const { app, abgleich } = ergebnis.value;
   return { daten: { app: appAnsicht(app), ...abgleichAnsicht(abgleich) }, status: 201 };

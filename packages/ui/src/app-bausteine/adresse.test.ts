@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { kurzAdresse, pruefeAdresse } from "./adresse";
+import { kurzAdresse, normalisierteAdresse, pruefeAdresse } from "./adresse";
 
 describe("Adresse prüfen", () => {
   it("nimmt öffentliche https-Adressen", () => {
@@ -37,5 +37,38 @@ describe("Adresse prüfen", () => {
       "host.example/pfad/mcp?…",
     );
     expect(kurzAdresse("https://host.example/")).toBe("host.example");
+  });
+
+  it("erkennt einen anderen Port als 443, einen Abfrage-Teil und einen Anker schon vor dem Absenden", () => {
+    expect(pruefeAdresse("https://aufgaben.beispiel.example:8443/mcp")).toBe("port");
+    expect(pruefeAdresse("https://aufgaben.beispiel.example:443/mcp")).toBe("ok");
+    expect(pruefeAdresse("https://aufgaben.beispiel.example/mcp?token=geheim")).toBe("zusatz");
+    expect(pruefeAdresse("https://aufgaben.beispiel.example/mcp#x")).toBe("zusatz");
+  });
+});
+
+describe("Adresse normalisiert", () => {
+  it("zeigt den Namen in Punycode, wie PaiBot sich verbindet", () => {
+    expect(normalisierteAdresse("https://BÜCHER.example/mcp")).toBe(
+      "https://xn--bcher-kva.example/mcp",
+    );
+  });
+
+  it("lässt Port 443, Groß-/Kleinschreibung des Namens und den Schrägstrich am Ende weg", () => {
+    expect(normalisierteAdresse("  https://Mcp.Beispiel.DE:443/mcp  ")).toBe(
+      "https://mcp.beispiel.de/mcp",
+    );
+    expect(normalisierteAdresse("https://mcp.beispiel.de/")).toBe("https://mcp.beispiel.de");
+    expect(normalisierteAdresse("https://mcp.beispiel.de/mcp/")).toBe(
+      "https://mcp.beispiel.de/mcp",
+    );
+  });
+
+  it("gibt für alles, was keine https-Adresse ist, nichts zurück, und nie Abfrage-Teil oder Zugangsdaten", () => {
+    expect(normalisierteAdresse("npx server")).toBeUndefined();
+    expect(normalisierteAdresse("http://a.example")).toBeUndefined();
+    expect(normalisierteAdresse("https://nutzer:pw@a.example/mcp?k=1#x")).toBe(
+      "https://a.example/mcp",
+    );
   });
 });
