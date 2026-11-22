@@ -25,21 +25,122 @@ const COREPACK_STELLEN = [
   ".github/workflows/ci.yml",
 ] as const;
 
-/** Alle Dateien, in denen ein Node-Image stehen darf: Dockerfiles, Compose-Dateien, Skripte, CI. */
-function dateienMitImages(): string[] {
-  const dateien = [
-    "apps/web/Dockerfile",
-    "tools/fake-provider/Dockerfile",
-    "deploy/sicherung.sh",
-    "deploy/sicherung-db.sh",
-  ];
-  for (const ordner of ["deploy", ".github/workflows"]) {
-    for (const name of readdirSync(path.join(ROOT, ordner))) {
-      if (/\.(ya?ml)$/.test(name)) dateien.push(`${ordner}/${name}`);
+const AUSGELASSEN = new Set([
+  "node_modules",
+  ".git",
+  ".turbo",
+  ".next",
+  "dist",
+  "build",
+  "coverage",
+]);
+
+/** Sucht selbst alle Dockerfiles, Skripte und YAML-Dateien (ohne node_modules und Bau-Ordner). */
+function dateienSuchen(ordner = ROOT, unten = ""): string[] {
+  const treffer: string[] = [];
+  for (const eintrag of readdirSync(ordner, { withFileTypes: true })) {
+    if (AUSGELASSEN.has(eintrag.name)) continue;
+    const rel = unten === "" ? eintrag.name : `${unten}/${eintrag.name}`;
+    if (eintrag.isDirectory()) {
+      treffer.push(...dateienSuchen(path.join(ordner, eintrag.name), rel));
+    } else if (
+      eintrag.isFile() &&
+      (/^Dockerfile/.test(eintrag.name) || /\.(sh|ya?ml)$/.test(eintrag.name)) &&
+      eintrag.name !== "pnpm-lock.yaml"
+    ) {
+      treffer.push(rel);
     }
   }
-  return [...new Set(dateien)];
+  return treffer.sort();
 }
+
+/** Zeilen mit `\` am Ende werden zu einer Zeile; Kommentarzeilen fallen weg. */
+function befehlszeilen(text: string): string[] {
+  return text
+    .replace(/\\\r?\n\s*/g, " ")
+    .split("\n")
+    .filter((z) => !z.trimStart().startsWith("#"));
+}
+
+interface BildBezug {
+  zeile: string;
+  bild: string;
+  tag: string | undefined;
+  digest: string | undefined;
+}
+
+/**
+ * Findet jeden Bezug auf ein Node-Image: nach `FROM`, nach `image:` und jede Angabe `node:<Tag>`
+ * oder `node@sha256:…` (auch ohne Tag oder mit Tag wie `lts-alpine`, `current`, `alpine`).
+ */
+function bildBezuege(text: string): BildBezug[] {
+  const bezuege: BildBezug[] = [];
+  const muster = /(?:^|[\s=])(node(?::([\w.-]+))?(?:@sha256:([0-9a-f]{64}))?)(?=[\s"']|$)/g;
+  for (const zeile of befehlszeilen(text)) {
+    const bezug = /^\s*FROM\s+(?:--\S+\s+)*(\S+)|^\s*(?:-\s+)?image:\s*["']?([^\s"']+)/i.exec(
+      zeile,
+    );
+    const gefunden = new Set<string>();
+    const kandidat = bezug?.[1] ?? bezug?.[2];
+    if (kandidat && /^node(?:[:@]|$)/.test(kandidat)) gefunden.add(kandidat);
+    for (const m of zeile.matchAll(muster)) {
+      const hatZusatz = m[2] !== undefined || m[3] !== undefined;
+      if (hatZusatz) gefunden.add(m[1] as string);
+    }
+    for (const bild of gefunden) {
+      const m = /^node(?::([\w.-]+))?(?:@sha256:([0-9a-f]{64}))?$/.exec(bild);
+      if (m) bezuege.push({ zeile: zeile.trim(), bild, tag: m[1], digest: m[2] });
+    }
+  }
+  return bezuege;
+}
+
+/** Fehler eines einzelnen Bezugs: ohne Tag mit Ziffer als Hauptversion oder ohne Digest. */
+function bildFehler(text: string, datei: string): string[] {
+  const fehler: string[] = [];
+  for (const b of bildBezuege(text)) {
+    if (!b.tag || !/^[0-9]+/.test(b.tag))
+      fehler.push(`${datei}: kein fester Tag mit Hauptversion: ${b.bild}`);
+    if (!b.digest) fehler.push(`${datei}: kein Digest: ${b.bild}`);
+  }
+  return fehler;
+}
+
+/** Fehler für `npm`-Aufrufe: nur `npm ci --prefix … --ignore-scripts` ist erlaubt. */
+function npmFehler(text: string, datei: string): string[] {
+  const fehler: string[] = [];
+  for (const zeile of befehlszeilen(text)) {
+    for (const m of zeile.matchAll(/(?<![\w./-])npm\s+(\S+)([^;&|]*)/g)) {
+      const befehl = m[1] as string;
+      const rest = m[2] as string;
+      if (/^(install|i|add|isntall|in|ins|inst|insta|instal|update|up|upgrade)$/.test(befehl)) {
+        fehler.push(`${datei}: npm ${befehl} ist nicht erlaubt: ${zeile.trim()}`);
+      } else if (befehl === "ci") {
+        if (!rest.includes("--prefix") || !rest.includes("--ignore-scripts")) {
+          fehler.push(`${datei}: npm ci ohne --prefix und --ignore-scripts: ${zeile.trim()}`);
+        }
+      }
+    }
+    if (/(?<![\w./-])npm\b[^;&|]*(\s-g\b|--global\b|--location(=|\s+)global\b)/.test(zeile)) {
+      fehler.push(`${datei}: globale Installation: ${zeile.trim()}`);
+    }
+  }
+  return fehler;
+}
+
+/** Hauptversion des Image-Tags gegen `.nvmrc` und `engines.node`. */
+function versionsFehler(tag: string | undefined, nvmrc: string, engines: string): string[] {
+  const fehler: string[] = [];
+  const bild = /^([0-9]+)/.exec(tag ?? "")?.[1];
+  const nvm = /^v?([0-9]+)/.exec(nvmrc.trim())?.[1];
+  const eng = /^>=\s*([0-9]+)/.exec(engines.trim())?.[1];
+  if (!bild) fehler.push("Image-Tag ohne Hauptversion");
+  if (bild !== nvm) fehler.push(`Image ${bild} gegen .nvmrc ${nvm}`);
+  if (bild !== eng) fehler.push(`Image ${bild} gegen engines.node ${eng}`);
+  return fehler;
+}
+
+const DATEIEN = dateienSuchen();
 
 describe("corepack nur aus der gesperrten Liste", () => {
   const lock = JSON.parse(lesen("deploy/corepack/package-lock.json")) as {
@@ -90,26 +191,107 @@ describe("corepack nur aus der gesperrten Liste", () => {
   });
 });
 
-describe("Node-Images", () => {
-  const treffer: { datei: string; bild: string; digest: string | undefined }[] = [];
-  for (const datei of dateienMitImages()) {
-    for (const m of lesen(datei).matchAll(/\bnode:[0-9][\w.-]*(?:@sha256:([0-9a-f]{64}))?/g)) {
-      treffer.push({ datei, bild: m[0], digest: m[1] });
+describe("Dateisuche", () => {
+  it("findet die Dockerfiles, Skripte und YAML-Dateien selbst", () => {
+    for (const erwartet of [
+      "apps/web/Dockerfile",
+      "tools/fake-provider/Dockerfile",
+      "deploy/sicherung.sh",
+      "deploy/docker-compose.yml",
+      ".github/workflows/ci.yml",
+    ]) {
+      expect(DATEIEN, erwartet).toContain(erwartet);
     }
-  }
-
-  it("es gibt Node-Images zu prüfen", () => {
-    expect(treffer.length).toBeGreaterThan(0);
+    expect(DATEIEN.some((d) => d.includes("node_modules"))).toBe(false);
   });
 
-  it("jedes Node-Image ist mit Digest festgelegt", () => {
-    for (const t of treffer) expect(t.digest, `${t.datei}: ${t.bild}`).toBeDefined();
+  it("jede Datei mit `corepack enable` holt corepack aus der gesperrten Liste", () => {
+    const mit = DATEIEN.filter((d) => /corepack enable/.test(lesen(d)));
+    expect(mit.length).toBeGreaterThan(0);
+    for (const d of mit) expect(lesen(d), d).toContain("deploy/corepack/package-lock.json");
+  });
+});
+
+describe("npm in allen gefundenen Dateien", () => {
+  it("kein npm install, keine globale Installation, npm ci nur mit --prefix und --ignore-scripts", () => {
+    const fehler = DATEIEN.flatMap((d) => npmFehler(lesen(d), d));
+    expect(fehler).toEqual([]);
+  });
+
+  it("Gegenprobe: die erlaubte Form besteht", () => {
+    expect(
+      npmFehler("RUN npm ci --prefix /opt/corepack --no-audit --no-fund --ignore-scripts", "probe"),
+    ).toEqual([]);
+    expect(npmFehler("pnpm install --frozen-lockfile", "probe")).toEqual([]);
+  });
+
+  it.each([
+    "RUN npm install -g corepack",
+    "RUN npm i corepack",
+    "RUN npm add corepack",
+    "RUN npm install --global corepack",
+    "RUN npm install --location=global corepack",
+    "RUN npm install --location global corepack",
+    "RUN npm ci --prefix /opt/corepack",
+    "RUN npm ci --ignore-scripts",
+    "RUN npm update corepack",
+    "RUN npm ci --prefix /x --ignore-scripts && npm install corepack",
+  ])("Gegenprobe rot: %s", (zeile) => {
+    expect(npmFehler(zeile, "probe").length).toBeGreaterThan(0);
+  });
+});
+
+describe("Node-Images", () => {
+  const alle = DATEIEN.flatMap((datei) => bildBezuege(lesen(datei)).map((b) => ({ datei, ...b })));
+  const ALTER_DIGEST = `sha256:${"a".repeat(64)}`;
+
+  it("es gibt Node-Images zu prüfen", () => {
+    expect(alle.length).toBeGreaterThan(0);
+  });
+
+  it("jedes Node-Image hat einen festen Tag mit Hauptversion und einen Digest", () => {
+    const fehler = DATEIEN.flatMap((d) => bildFehler(lesen(d), d));
+    expect(fehler).toEqual([]);
   });
 
   it("alle Node-Images nennen denselben Digest und denselben Tag", () => {
-    const digests = new Set(treffer.map((t) => t.digest));
-    const tags = new Set(treffer.map((t) => t.bild.split("@")[0]));
-    expect([...digests], JSON.stringify(treffer)).toHaveLength(1);
+    const digests = new Set(alle.map((t) => t.digest));
+    const tags = new Set(alle.map((t) => t.tag));
+    expect([...digests], JSON.stringify(alle)).toHaveLength(1);
     expect([...tags]).toHaveLength(1);
+  });
+
+  it("die Hauptversion des Image-Tags stimmt mit .nvmrc und engines.node überein", () => {
+    const engines = (JSON.parse(lesen("package.json")) as { engines: { node: string } }).engines
+      .node;
+    expect(versionsFehler(alle[0]?.tag, lesen(".nvmrc"), engines)).toEqual([]);
+  });
+
+  it.each([
+    ["FROM node:lts-alpine AS run"],
+    ["FROM node:alpine AS run"],
+    ["FROM node:current"],
+    ["FROM node AS run"],
+    ["FROM node:26-alpine AS run"],
+    [`FROM node@${ALTER_DIGEST}`],
+    [`FROM --platform=linux/amd64 node:lts-alpine@${ALTER_DIGEST}`],
+    ["    image: node:current"],
+    ["    image: node"],
+    ["docker run --rm node:lts-alpine sh -c true"],
+    ["NODE_IMAGE=node:alpine"],
+  ])("Gegenprobe rot: %s", (zeile) => {
+    expect(bildFehler(zeile, "probe").length).toBeGreaterThan(0);
+  });
+
+  it("Gegenprobe: ein festes Image mit Tag und Digest besteht", () => {
+    expect(bildFehler(`FROM node:26-alpine@${ALTER_DIGEST} AS build`, "probe")).toEqual([]);
+    expect(bildFehler("RUN node -v && node build.mjs", "probe")).toEqual([]);
+  });
+
+  it("Gegenprobe rot: .nvmrc 22 und engines >=22 fallen auf", () => {
+    expect(versionsFehler("26-alpine", "22\n", ">=26").length).toBeGreaterThan(0);
+    expect(versionsFehler("26-alpine", "26\n", ">=22").length).toBeGreaterThan(0);
+    expect(versionsFehler("lts-alpine", "26\n", ">=26").length).toBeGreaterThan(0);
+    expect(versionsFehler("26-alpine", "26\n", ">=26")).toEqual([]);
   });
 });

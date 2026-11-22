@@ -31,6 +31,15 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+  # corepack in fester Fassung (Bau, Sicherung, CI). Ein Update ändert nur package.json und
+  # package-lock.json; ein Dockerfile-Update (Node-Digest) macht den Gleichheits-Test in
+  # tools/lint-regeln/src/werkzeug-gesperrt.test.ts rot, bis ci.yml, deploy/sicherung.sh und
+  # die Compose-Datei im selben Commit nachgezogen sind.
+  - package-ecosystem: npm
+    directory: /deploy/corepack
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
   - package-ecosystem: docker-compose
     directory: /deploy
     schedule:

@@ -40,7 +40,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 
 ## Aufbau des Monorepos
 
-pnpm-Workspace mit den Ordnern `apps/*`, `packages/*` und `tools/*` (`pnpm-workspace.yaml`), gebaut mit Turborepo (`turbo.json`). Node.js steht in `.nvmrc` (26), pnpm in `package.json` (Feld `packageManager`).
+pnpm-Workspace mit den Ordnern `apps/*`, `packages/*` und `tools/*` (`pnpm-workspace.yaml`), gebaut mit Turborepo (`turbo.json`). Node.js steht in `.nvmrc` (26), pnpm in `package.json` (Feld `packageManager`). In der CI nimmt `setup-node` aus `.nvmrc` die jeweils neueste 26er-Fassung, die Docker-Images sind dagegen mit Digest auf Node 26.13.1 gepinnt; die CI kann also eine neuere Fassung als die Images nutzen. Das Werkzeug `corepack` kommt in Images, Sicherung und CI aus `deploy/corepack` (Fassung und Prüfsummen in `package.json` und `package-lock.json`, installiert mit `npm ci --ignore-scripts`). Dependabot beobachtet diesen Ordner (`.github/dependabot.yml`); hebt ein Dockerfile-Update den Node-Digest, wird `tools/lint-regeln/src/werkzeug-gesperrt.test.ts` rot, bis `ci.yml`, `deploy/sicherung.sh` und die Compose-Datei im selben Commit nachgezogen sind.
 
 | Ordner                 | Paket                   | Inhalt                                                                     |
 | ---------------------- | ----------------------- | -------------------------------------------------------------------------- |

@@ -227,7 +227,7 @@ PaiBot wird laufend gebaut. Den Stand zeigen die [Issues und Meilensteine](https
 
 > PaiBot ist im Bau. Zum Ausprobieren mit Datenbank, Einrichtung und Chat: [Installation mit Docker Compose](docs/installation.md). Der Schnellstart unten ist für die Entwicklung.
 
-**Voraussetzungen:** Node.js 26 und pnpm 10
+**Voraussetzungen:** Node.js 26 und pnpm 10 Node 26 bringt corepack nicht mehr mit. pnpm 10.28.0 bekommst du zum Beispiel so (selbst ausprobiert mit Node v26.13.1; geprüft wird dabei nur die Prüfsumme der npm-Registry, nicht die sha512 aus `packageManager`): `npm install --prefix ~/.pnpm-10.28.0 pnpm@10.28.0 --ignore-scripts` und dann `~/.pnpm-10.28.0/node_modules/.bin` in den `PATH` aufnehmen.
 
 ```bash
 git clone https://github.com/oliverhees/paibot.git
