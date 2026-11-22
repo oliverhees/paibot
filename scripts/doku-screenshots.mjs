@@ -360,6 +360,15 @@ function watch(context, page, baseUrl) {
   const problems = [];
   const host = new URL(baseUrl).host;
   page.on("pageerror", (error) => problems.push(`Fehler in der Seite: ${error.message}`));
+  // Antworten der App mit Fehlerstatus merken, damit ein Fehlschlag ihre Ursache nennen kann.
+  page.on("response", (antwort) => {
+    if (antwort.url().includes("/api/") && antwort.status() >= 400) {
+      problems.antworten ??= [];
+      problems.antworten.push(
+        `${antwort.status()} ${antwort.request().method()} ${antwort.url().replace(baseUrl, "")}`,
+      );
+    }
+  });
   page.on("console", (message) => {
     const type = message.type();
     if (type !== "error" && type !== "warning") return;
@@ -391,9 +400,10 @@ async function shoot(browser, entry, baseUrl) {
   // „Anker kopieren“ und ähnliche Knöpfe schreiben in die Zwischenablage
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseUrl });
   let page;
+  let problems;
   try {
     page = await context.newPage();
-    const problems = watch(context, page, baseUrl);
+    problems = watch(context, page, baseUrl);
     // Meldungen der Content-Security-Policy kommen als Ereignis in der Seite; das Skript dafür
     // läuft über das Werkzeug des Browsers, nicht als Teil der Seite.
     await page.addInitScript(() => {
@@ -504,6 +514,13 @@ async function shoot(browser, entry, baseUrl) {
       mkdirSync(path.dirname(datei), { recursive: true });
       await page?.screenshot({ path: datei });
       error.message += `\n     Bild des Zustands: ${datei}`;
+      if (problems?.antworten?.length) {
+        error.message += `\n     Fehlerantworten der App: ${problems.antworten.slice(-5).join("; ")}`;
+      }
+      // Auch der Text der Seite, denn der Rest hinter dem Bildrand ist im Bild nicht zu sehen.
+      const text = await page?.locator("main").textContent({ timeout: 2000 });
+      if (text)
+        error.message += `\n     Text der Seite (Ende): ${text.slice(-700).replace(/\s+/g, " ")}`;
     } catch {
       // kein Bild möglich
     }

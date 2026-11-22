@@ -1840,7 +1840,7 @@ export const de = {
   "verwaltung.neu.eine.label": "Vorgaben der Regel „{name}“ erneut prüfen",
   "verwaltung.neu.alle": "Alle Regeln erneut prüfen",
   "verwaltung.neu.fehler": "Nicht erneut geprüft",
-  "verwaltung.neu.ok": "Erneut gelesen: {anzahl} Regeln aktualisiert.",
+  "verwaltung.neu.ok": "Erneut gelesen. Aktualisiert: {anzahl}.",
   "verwaltung.neu.entfernt":
     "Nicht mehr in deiner Liste: {namen}. Ihre Vorgaben sind entfernt, die Kennzeichnung entfällt.",
   "verwaltung.neu.unveraendert":

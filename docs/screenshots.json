@@ -3616,6 +3616,33 @@
       "breite": 1440,
       "hoehe": 900,
       "warteAuf": "main",
+      "name": "modelle-regel-neu-pruefen",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Alle Regeln erneut prüfen"
+          }
+        },
+        {
+          "warteAufText": "Erneut gelesen."
+        },
+        {
+          "zeige": "section:has(h2:has-text('Routing-Regel für'))"
+        }
+      ],
+      "beschreibung": "„Alle Regeln erneut prüfen“: Meldung mit der Zahl der gelesenen Regeln"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
       "name": "modelle-regeln-konto",
       "vorher": [
         {
@@ -3649,18 +3676,13 @@
           "ablauf": "eurouter-anzeigen"
         },
         {
-          "klick": {
-            "rolle": "button",
-            "name": "Regeln aus meinem Konto zeigen"
-          }
-        },
-        {
-          "warteAufText": "Eingeschaltete Regeln in deinem Konto"
+          "tippe": "Name der Routing-Regel",
+          "text": "Zweite Beispiel-Regel"
         },
         {
           "klick": {
             "rolle": "button",
-            "name": "Regel „Zweite Beispiel-Regel“ prüfen und hinzufügen"
+            "name": "Regel prüfen und hinzufügen"
           }
         },
         {
@@ -3684,33 +3706,6 @@
         }
       ],
       "beschreibung": "Regel mit anderer Datenresidenz und eine nur per Name geprüfte Regel: beide ohne Kennzeichnung, mit Satz dazu"
-    },
-    {
-      "pfad": "/modelle",
-      "zustand": "mit-beispieldaten",
-      "anmeldung": true,
-      "breite": 1440,
-      "hoehe": 900,
-      "warteAuf": "main",
-      "name": "modelle-regel-neu-pruefen",
-      "vorher": [
-        {
-          "ablauf": "eurouter-anzeigen"
-        },
-        {
-          "klick": {
-            "rolle": "button",
-            "name": "Alle Regeln erneut prüfen"
-          }
-        },
-        {
-          "warteAufText": "Erneut gelesen:"
-        },
-        {
-          "zeige": "section:has(h2:has-text('Routing-Regel für'))"
-        }
-      ],
-      "beschreibung": "„Alle Regeln erneut prüfen“: Meldung mit der Zahl der gelesenen Regeln"
     },
     {
       "pfad": "/modelle",
@@ -3767,7 +3762,8 @@
         {
           "klick": {
             "rolle": "button",
-            "name": "Schreib mir eine freundliche Absage für einen Termin."
+            "name": "Freundliche Terminabsage",
+            "genau": false
           }
         },
         {

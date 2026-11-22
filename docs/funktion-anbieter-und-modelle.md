@@ -134,7 +134,7 @@ Mit dem normalen Schlüssel kann PaiBot nicht lesen, was eine Regel vorgibt. Mit
     ![Karte „Routing-Regel“ mit „Zweite Beispiel-Regel“ (Datenresidenz „US“, keine Kennzeichnung) und „Regel nur per Name“ („Nur per Name geprüft“); darüber der Hinweis, dass die Regel nicht in der Liste des Kontos steht](assets/screenshots/modelle-regel-ohne-kennzeichnung.png)
 34. Klicke bei einer Regel „Erneut prüfen“ oder oben „Alle Regeln erneut prüfen“, um die Vorgaben neu zu lesen. Eine Angabe, die älter als 14 Tage ist, bleibt sichtbar, zeigt aber „zuletzt geprüft am …“ und „länger nicht geprüft“. Ist eine Regel in einer vollständig gelesenen Liste nicht mehr zu finden (oder ausgeschaltet), entfällt ihre Kennzeichnung; bei einer möglicherweise unvollständigen Liste bleibt sie unverändert.
 
-    ![Nach „Alle Regeln erneut prüfen“: Meldung „Erneut gelesen: 2 Regeln aktualisiert.“](assets/screenshots/modelle-regel-neu-pruefen.png)
+    ![Nach „Alle Regeln erneut prüfen“: Meldung „Erneut gelesen. Aktualisiert: 1.“](assets/screenshots/modelle-regel-neu-pruefen.png)
 35. Kann eine Regel ausweichen, sagt PaiBot es: „Kann auf … ausweichen“, wenn die Regel Ausweich-Modelle nennt, oder „Kann ausweichen“, wenn sie es erlaubt. Wer tatsächlich antwortet, steht an jeder Antwort. Dieselbe Regel hat in echten Aufrufen schon von verschiedenen Anbietern geantwortet.
 36. Wähle die Regel und klicke „Modell übernehmen“. Im Chat steht die Marke im Kopf und in der Zeile unter der Antwort, mit dem Datum.
 
