@@ -11,12 +11,18 @@
  */
 
 import { createGate, type Execute, evaluate, GATE_FORMATS, ruleSnapshot } from "@paibot/gate";
-import { ACTIONS, type ActionRequest, type ActionType } from "@paibot/shared/aktionen";
+import {
+  ACTIONS,
+  type ActionRequest,
+  type ActionType,
+  STORED_ACTION_TYPES,
+} from "@paibot/shared/aktionen";
 import { RECEIPT_CHAIN_FORMAT, type ReceiptBody, type ReceiptEntry } from "@paibot/shared/belege";
 import { isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import { ACTIVE_STANDARD_RULES, type RuleDefinition, type RuleSnapshot } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
+import korpus3 from "../../gate/src/fassungen/fassung-3.korpus.json";
 import { sampleAction, sampleFacts } from "../../gate/src/testdaten";
 import { digestBytes, hashReceipt } from "./hash";
 import { decisionFormat, reevaluate } from "./nachrechnen";
@@ -302,6 +308,64 @@ describe("Aktionen, die Fassung 2 nicht kennt", () => {
       expect(GATE_FORMATS[2].actions).not.toContain(type);
     },
   );
+
+  const APP_AKTIONEN = STORED_ACTION_TYPES.filter((type) => type.startsWith("app."));
+
+  it("die Aktionen für Apps sind die vier der Fassung 3, und Fassung 2 kennt keine davon", () => {
+    expect(APP_AKTIONEN).toEqual([
+      "app.verbinden",
+      "app.werkzeuge_bestaetigen",
+      "app.zugriff_setzen",
+      "app.trennen",
+    ]);
+    for (const type of APP_AKTIONEN) expect(GATE_FORMATS[2].actions).not.toContain(type);
+  });
+
+  it.each(APP_AKTIONEN)("%s mit gateFormat 2: fassung_unpassend, ungültig", async (type) => {
+    const kette = await Kette.neu(STANDARD);
+    // Inhalt so, wie Fassung 3 ihn entschieden hat, aber als Fassung 2 ausgegeben.
+    const action = sampleAction(type) as ActionRequest;
+    const facts = sampleFacts(type) as Roh;
+    const decided = evaluate(action, facts as never, kette.snapshot as RuleSnapshot, {
+      format: 3,
+    }) as unknown as Roh;
+    expect(decided.outcome).toBe("allow");
+    const { matchedRules, ...rest } = decided;
+    await kette.roh({
+      type: "decision",
+      action,
+      decision: { gateFormat: 2, ...rest, rules: matchedRules },
+      facts,
+    });
+    const report = await kette.pruefe();
+    expect(report.verdict.level).toBe("ungueltig");
+    expect(report.verdict.findings).toContainEqual({ problem: "fassung_unpassend", seq: 2 });
+  });
+
+  it("ein Werkzeug-Aufruf mit den Fakten einer App als gateFormat 2: fassung_unpassend, ungültig", async () => {
+    const kette = await Kette.neu(STANDARD);
+    const fall = (
+      korpus3 as unknown as { cases: { name: string; action: Roh; facts: Roh }[] }
+    ).cases.find((entry) => entry.name === "R-014 passt");
+    expect(fall).toBeDefined();
+    const { action, facts } = fall as { action: Roh; facts: Roh };
+    expect(facts.toolSource).toBe("mcp");
+    expect(facts.appId).toBeDefined();
+    const decided = evaluate(action as never, facts as never, kette.snapshot as RuleSnapshot, {
+      format: 3,
+    }) as unknown as Roh;
+    expect(decided.outcome).toBe("allow");
+    const { matchedRules, ...rest } = decided;
+    await kette.roh({
+      type: "decision",
+      action,
+      decision: { gateFormat: 2, ...rest, rules: matchedRules },
+      facts,
+    });
+    const report = await kette.pruefe();
+    expect(report.verdict.level).toBe("ungueltig");
+    expect(report.verdict.findings).toContainEqual({ problem: "fassung_unpassend", seq: 2 });
+  });
 });
 
 describe("Deckel D-01 im Beleg", () => {
