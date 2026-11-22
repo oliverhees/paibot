@@ -8,8 +8,19 @@
  * @since     2026-11-22
  */
 
-import { type Database, messages as messagesTable, repo } from "@paibot/db";
-import { createTestDb, type TestDb } from "@paibot/db/testing";
+import {
+  createDb,
+  type Database,
+  messages as messagesTable,
+  repo,
+  toolCalls as toolCallsTable,
+} from "@paibot/db";
+import {
+  createPostgresTestDatabase,
+  createTestDb,
+  TEST_DATABASE_URL_ENV,
+  type TestDb,
+} from "@paibot/db/testing";
 import { createFakeProvider, type FakeProvider, type FakeScript } from "@paibot/fake-provider";
 import type { Gate } from "@paibot/gate";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
@@ -20,9 +31,9 @@ import type { AppToolClass } from "@paibot/shared/tor-fassung-3";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createAiSdkMotor } from "../motor-aisdk";
 import { type RunSetup, setupRun } from "../testing/lauf-umgebung";
-import { createToolRegistry } from "../werkzeuge/register";
+import { createToolRegistry, emptyToolRegistry } from "../werkzeuge/register";
 import { AppListeFehler } from "./app-anschluss";
-import { zielAbdruck } from "./app-werkzeuge";
+import { ladeAppWerkzeuge, leseAufrufFakten, zielAbdruck } from "./app-werkzeuge";
 import { executeRun } from "./ausfuehren";
 import {
   abdruck,
@@ -51,7 +62,11 @@ beforeAll(async () => {
 afterAll(async () => {
   await provider.stop();
 });
-afterEach(() => provider.reset());
+const aufraeumen: (() => Promise<unknown>)[] = [];
+afterEach(async () => {
+  provider.reset();
+  for (const schritt of aufraeumen.splice(0).reverse()) await schritt().catch(() => undefined);
+});
 
 /** Besitzer-Aktion über das echte Tor; `ausfuehren` läuft nur nach „erlaubt“. */
 async function alsBesitzer<T>(
@@ -181,9 +196,24 @@ async function setup(
     ohneAnschluss?: boolean;
     anschluss?: Parameters<typeof erzeugeTestAnschluss>[1];
     tuning?: Parameters<typeof setupRun>[2]["tuning"];
+    /** Adresse eines Test-Servers: dann läuft alles gegen eine eigene Datenbank auf echtem Postgres. */
+    postgres?: string;
   } = {},
-): Promise<Env & { apps: TestApp[] }> {
-  const { db, client } = await createTestDb();
+): Promise<Env & { apps: TestApp[]; datenbankUrl?: string }> {
+  let db: Database;
+  let client: TestDb["client"];
+  let datenbankUrl: string | undefined;
+  if (options.postgres === undefined) {
+    ({ db, client } = await createTestDb());
+  } else {
+    const datenbank = await createPostgresTestDatabase(options.postgres);
+    const verbindung = createDb(datenbank.url);
+    aufraeumen.push(() => datenbank.drop());
+    aufraeumen.push(() => verbindung.sql.end({ timeout: 1 }));
+    db = verbindung.db;
+    client = undefined as never;
+    datenbankUrl = datenbank.url;
+  }
   const env = await setupRun(db, RECEIPT_TOOLS, {
     providerBaseUrl: providerUrl,
     providerKey: PROVIDER_KEY,
@@ -201,6 +231,7 @@ async function setup(
     apps,
     anschluss,
     client,
+    ...(datenbankUrl === undefined ? {} : { datenbankUrl }),
     async ask(text = "Wie ist der Stand?") {
       const { runId } = await env.queueMessage(text);
       const outcome = await executeRun(runId, env.deps, never());
@@ -515,6 +546,15 @@ describe("Werkzeuge aus Apps: Änderungen und Grenzen", () => {
     const f = aufrufe[1]?.facts as Record<string, unknown>;
     expect(f.toolStatus).toBe("bestaetigt");
     expect(f.toolDigest).not.toBe(f.confirmedToolDigest);
+    // Festgelegt: Die Zeile des Aufrufs nennt die Fassung, die das Modell angeboten bekam (zusammen
+    // mit dem angebotenen Abdruck); der Beleg nennt die Fassung, die zum Zeitpunkt des Aufrufs gilt.
+    const zeilen = (await env.db.select().from(toolCallsTable)).sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+    const angeboten = zeilen[0]?.toolVersion as number;
+    expect(zeilen.map((z) => z.toolVersion)).toEqual([angeboten, angeboten]);
+    expect(f.toolVersion as number).toBeGreaterThan(angeboten);
+    expect(zeilen[1]?.toolDigest).toBe(f.toolDigest);
   });
 
   // Gegenprobe: `toolKind` aus dem Angebot des Laufs (call.kind) statt aus der Einstufung lesen →
@@ -870,5 +910,216 @@ describe("Werkzeuge aus Apps: Änderungen und Grenzen", () => {
     );
     await env.ask();
     expect(frei).toEqual(["liste:true", "aufruf:true"]);
+  });
+});
+
+describe("Abruf der Listen beim Lauf-Start", () => {
+  const eine = (e: RunSetup, kurzname: string, klasse: AppToolClass | null = "lesen") =>
+    richteAppEin(e, {
+      kurzname,
+      botId: e.botId,
+      werkzeuge: [{ name: "suche", klasse }],
+    });
+
+  // Gegenprobe: die Apps nacheinander statt gleichzeitig abrufen → höchstens 1 gleichzeitig, rot.
+  it("die Listen mehrerer Apps werden gleichzeitig abgerufen", async () => {
+    let gleichzeitig = 0;
+    let spitze = 0;
+    const env = await setup(
+      eineAntwort,
+      async (e) => [await eine(e, "eins"), await eine(e, "zwei"), await eine(e, "drei")],
+      {
+        anschluss: {
+          beimListe: async () => {
+            gleichzeitig += 1;
+            spitze = Math.max(spitze, gleichzeitig);
+            await new Promise((r) => setTimeout(r, 50));
+            gleichzeitig -= 1;
+          },
+        },
+      },
+    );
+    await env.ask();
+    expect(env.anschluss.protokoll.listen.sort()).toEqual(["drei", "eins", "zwei"]);
+    expect(spitze).toBeGreaterThanOrEqual(2);
+  });
+
+  // Gegenprobe: die Gesamtfrist weglassen → der Lauf wartet auf die hängende App bis zum Testende, rot.
+  it("eine App, die nicht antwortet, hält den Lauf nicht länger auf als die Gesamtfrist; die anderen bleiben", async () => {
+    const env = await setup(
+      { steps: [{ toolCalls: [aufruf("schnell__suche")] }, { text: ANSWER_TEXT }] },
+      async (e) => [await eine(e, "haengt"), await eine(e, "schnell")],
+      {
+        tuning: { appAbrufMs: 400 },
+        anschluss: {
+          // Die hängende App ignoriert das Signal und antwortet nie.
+          beimListe: async (app) => {
+            if (app.kurzname === "haengt") await new Promise(() => undefined);
+          },
+        },
+      },
+    );
+    const start = Date.now();
+    const { outcome } = await env.ask();
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    // Gesamtfrist 400 ms, großzügiger Spielraum für eine ausgelastete Maschine, weit unter der Testgrenze.
+    expect(Date.now() - start).toBeLessThan(15_000);
+    expect(env.anschluss.protokoll.aufrufe.map((a) => a.app)).toEqual(["schnell"]);
+    // Von der hängenden App steht nichts im Angebot.
+    const body = provider.requests.find((r) => r.path.endsWith("/chat/completions"))?.body as {
+      tools?: { function: { name: string } }[];
+    };
+    expect(body.tools?.map((t) => t.function.name)).toEqual(["schnell__suche"]);
+  });
+
+  // Gegenprobe: für jede App die Werkzeuge aller anderen Apps einzeln lesen (wie vorher) → Zahl wächst mit N², rot.
+  it("die Datenbank wird nicht im Quadrat der App-Zahl abgefragt", async () => {
+    const env = await setup(eineAntwort, async (e) =>
+      Promise.all(["a1", "a2", "a3", "a4", "a5", "a6"].map((n) => eine(e, n))),
+    );
+    let abfragen = 0;
+    const zaehlend = new Proxy(env.db, {
+      get(ziel, name, empfaenger) {
+        const wert = Reflect.get(ziel, name, empfaenger);
+        if (name === "selectDistinctOn" && typeof wert === "function") {
+          return (...args: unknown[]) => {
+            abfragen += 1;
+            return (wert as (...a: unknown[]) => unknown).apply(ziel, args);
+          };
+        }
+        return typeof wert === "function" ? wert.bind(ziel) : wert;
+      },
+    }) as Database;
+    await ladeAppWerkzeuge({
+      db: zaehlend,
+      anschluss: env.deps.apps,
+      basis: await emptyToolRegistry(),
+      botId: env.botId,
+      killSwitch: false,
+      signal: new AbortController().signal,
+      gesamtfristMs: 5_000,
+    });
+    // Eine Abfrage je App, nicht 6 · 6.
+    expect(abfragen).toBeLessThanOrEqual(6);
+    expect(abfragen).toBeGreaterThan(0);
+  });
+
+  // Gegenprobe: den Vergleich mit der erwarteten App und dem erwarteten Werkzeug entfernen → die Fakten
+  // eines anderen Werkzeugs werden geliefert, rot.
+  it("gehört die frische Zeile nicht zu der angebotenen App und dem angebotenen Werkzeug, gibt es keine Fakten", async () => {
+    const env = await setup(eineAntwort, async (e) => [
+      await eine(e, "notizen"),
+      await eine(e, "wiki"),
+    ]);
+    const [notiz, wiki] = env.apps as [TestApp, TestApp];
+    const werkzeugeVon = async (a: TestApp) =>
+      (await repo.apps.currentTools(env.db, a.id)).find((t) => t.originalName === "suche");
+    const toolNotiz = await werkzeugeVon(notiz);
+    const toolWiki = await werkzeugeVon(wiki);
+    const fakten = (modelName: string, erwartet: { appId: AppId; appToolId: AppToolId }) =>
+      leseAufrufFakten({ db: env.db, botId: env.botId, modelName, erwartet });
+    // passend
+    expect(
+      await fakten("notizen__suche", {
+        appId: notiz.id,
+        appToolId: toolNotiz?.toolId as AppToolId,
+      }),
+    ).toMatchObject({ appId: notiz.id, toolStatus: "bestaetigt", appAccess: "lesen" });
+    // falsche App, falsches Werkzeug, beides
+    expect(
+      await fakten("notizen__suche", { appId: wiki.id, appToolId: toolNotiz?.toolId as AppToolId }),
+    ).toBeUndefined();
+    expect(
+      await fakten("notizen__suche", { appId: notiz.id, appToolId: toolWiki?.toolId as AppToolId }),
+    ).toBeUndefined();
+    expect(
+      await fakten("notizen__suche", { appId: wiki.id, appToolId: toolWiki?.toolId as AppToolId }),
+    ).toBeUndefined();
+  });
+
+  // Gegenprobe: alle lesbaren Apps abrufen, auch ohne bestätigtes Werkzeug → Abruf, rot.
+  it("eine App, in der der Besitzer noch nichts bestätigt hat, wird nicht abgerufen", async () => {
+    const env = await setup(eineAntwort, async (e) => [
+      await eine(e, "offen", null),
+      await eine(e, "gesperrt", "gesperrt"),
+    ]);
+    await env.ask();
+    expect(env.anschluss.protokoll.listen).toEqual([]);
+  });
+
+  // Gegenprobe: neue Werkzeuge beim Lauf-Start wieder in die Datenbank schreiben → mehr Zeilen, rot.
+  it("ein neues Werkzeug des Servers wird beim Lauf-Start nicht in die Datenbank geschrieben; ein bekanntes, geändertes wird wie bisher gesperrt", async () => {
+    const env = await setup(eineAntwort, async (e) => [await eine(e, "notizen")]);
+    const a = env.apps[0] as TestApp;
+    // Der Server nennt jetzt ein zweites, unbekanntes Werkzeug und hat „suche“ geändert.
+    a.werkzeuge.push({ name: "frisch", klasse: null });
+    env.anschluss.aendereWerkzeug(a, "suche", "7");
+    await env.ask();
+    const zeilen = await repo.apps.currentTools(env.db, a.id);
+    expect(zeilen.map((z) => z.originalName)).toEqual(["suche"]);
+    expect(zeilen[0]?.status).toBe("geaendert");
+    // Nie angeboten.
+    const body = (provider.requests.find((r) => r.path.endsWith("/chat/completions"))?.body ??
+      {}) as { tools?: unknown };
+    expect(body.tools).toBeUndefined();
+  });
+
+  it("ein entferntes Werkzeug wird gekennzeichnet und taucht nicht mehr in den bekannten Namen auf", async () => {
+    const env = await setup(eineAntwort, async (e) => [await eine(e, "notizen")]);
+    const a = env.apps[0] as TestApp;
+    a.werkzeuge.length = 0;
+    await env.ask();
+    const zeilen = await repo.apps.currentTools(env.db, a.id);
+    expect(zeilen.map((z) => [z.originalName, z.status])).toEqual([["suche", "entfernt"]]);
+  });
+});
+
+const postgresUrl = process.env[TEST_DATABASE_URL_ENV];
+
+describe.skipIf(postgresUrl === undefined)("Werkzeuge aus Apps gegen echtes Postgres", () => {
+  // Gegenprobe: den Abruf der Liste in einer Transaktion halten, die eine Fassung schreibt (die Datenbank
+  // sperrt dabei die App-Zeile) → die zweite Verbindung wartet bis zur Zeitgrenze, „gesperrt“, rot.
+  it("der Worker hält während des Abrufs und des Aufrufs keine Sperre auf der App-Zeile: eine zweite Verbindung ändert sie sofort", async () => {
+    const protokoll: string[] = [];
+    let zweite: { unsafe(q: string): Promise<unknown> } & ((
+      s: TemplateStringsArray,
+      ...v: unknown[]
+    ) => Promise<unknown>) = undefined as never;
+    let appId: AppId | undefined;
+    const aendern = async (wo: string) => {
+      try {
+        await (zweite as unknown as (
+          s: TemplateStringsArray,
+          ...v: unknown[]
+        ) => Promise<unknown>)`update apps set updated_at = updated_at where id = ${appId as string}`;
+        protokoll.push(`${wo}:frei`);
+      } catch {
+        protokoll.push(`${wo}:gesperrt`);
+      }
+    };
+    const env = await setup(
+      { steps: [{ toolCalls: [aufruf("notizen__suche")] }, { text: ANSWER_TEXT }] },
+      async (e) => [
+        await richteAppEin(e, {
+          kurzname: "notizen",
+          botId: e.botId,
+          werkzeuge: [{ name: "suche", klasse: "lesen", beimAufruf: () => aendern("aufruf") }],
+        }),
+      ],
+      {
+        postgres: postgresUrl as string,
+        anschluss: { beimListe: () => aendern("liste") },
+      },
+    );
+    appId = env.apps[0]?.id;
+    const zweiteVerbindung = createDb(env.datenbankUrl as string);
+    aufraeumen.push(() => zweiteVerbindung.sql.end({ timeout: 1 }));
+    const reserviert = await zweiteVerbindung.sql.reserve();
+    aufraeumen.push(async () => reserviert.release());
+    await reserviert.unsafe("set lock_timeout = '500ms'");
+    zweite = reserviert as never;
+    const { outcome } = await env.ask();
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    expect(protokoll).toEqual(["liste:frei", "aufruf:frei"]);
   });
 });
