@@ -4,6 +4,9 @@
  * brauchen Tests der Web-App und des Workers weder das Paket des Servers zu importieren noch einen
  * Prozess zu starten. Nur für Tests; der Server lauscht nur auf 127.0.0.1.
  *
+ * Ein Server je Vitest-Projekt, Zustand geteilt: Eine weitere Testdatei muss Verhalten und Protokoll
+ * selbst zurücksetzen (`/_steuerung/zuruecksetzen`) oder serielle Läufe nutzen.
+ *
  * @author    Oliver Hees
  * @link      https://paibot.de
  * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.

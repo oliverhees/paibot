@@ -11,6 +11,13 @@
  * @since     2026-11-22
  */
 
+// Kopie: `apps/web/src/lib/apps/testdaten/test-server.ts` und `apps/worker/src/testdaten/test-server.ts`
+// müssen gleich bleiben (Web und Worker dürfen keinen gemeinsamen Code teilen, den sie importieren);
+// ein Test in `tools/lint-regeln` vergleicht beide. Änderungen immer in beiden Dateien.
+// Ein Server je Vitest-Projekt, Zustand geteilt: Verhalten und Protokoll gelten für alle Testdateien
+// des Projekts. Jede Testdatei setzt den Zustand selbst zurück (`zuruecksetzen()`, vor jedem Test)
+// oder läuft mit seriellen Läufen (`--no-file-parallelism`).
+
 import { createServer } from "node:net";
 import { inject } from "vitest";
 
