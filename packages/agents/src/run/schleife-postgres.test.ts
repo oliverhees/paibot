@@ -224,6 +224,28 @@ describe.skipIf(baseUrl === undefined)("Schleife gegen Postgres", () => {
   });
 
   describe("Schritt-Ende", () => {
+    // Gegenprobe: Nachricht außerhalb der Transaktion des Schritt-Endes anlegen → sie bleibt stehen, rot.
+    it("Fehler mitten in der Transaktion des Schritt-Endes: keine halbe Nachricht, keine Zeilen, kein Werkzeug", async () => {
+      const u = await umgebung(SCRIPTS.textDannAufruf, {}, {});
+      u.deps.tools = await createToolRegistry(
+        createTestTools({ allowedByR010: "test_lesen" }).tools,
+      );
+      const zweite = createDb(u.url).sql;
+      cleanup.push(() => zweite.end({ timeout: 1 }));
+      await zweite.unsafe(`create function test_scheitern() returns trigger language plpgsql as $$
+        begin raise exception 'eingespielter Fehler'; end $$`);
+      await zweite.unsafe(
+        "create trigger test_scheitern before insert on tool_calls for each row execute function test_scheitern()",
+      );
+      const { runId, lauf } = await u.starten();
+      expect(await lauf).toMatchObject({ fehler: expect.anything() });
+      const nachrichten = (
+        await repo.messages.listForConversation(u.env.db, u.env.conversationId, { limit: 50 })
+      ).filter((m) => m.runId === runId);
+      expect(nachrichten).toEqual([]);
+      expect(await repo.toolCalls.listForRun(u.env.db, runId)).toEqual([]);
+    }, 30_000);
+
     // Gegenprobe: failRun liest draft.delta als Text → End-Antwort entsteht, rot.
     it("Absturz mitten im Schritt (Lauf ohne Herzschlag, Aufräumen): keine Nachricht mit leerem step, draft.delta bleibt nur Ereignis", async () => {
       const u = await umgebung(SCRIPTS.abbruchEntwurf);

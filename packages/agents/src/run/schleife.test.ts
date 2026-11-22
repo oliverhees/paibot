@@ -1130,6 +1130,26 @@ describe("Chat ohne Werkzeuge", () => {
 });
 
 describe("Denk-Text", () => {
+  // Der echte Motor gibt Denk-Text gar nicht heraus; die Steuerung verwirft ihn zusätzlich
+  // (Gegenprobe mit Motor-Attrappe in `schleife-attrappe.test.ts`).
+  it("der echte Motor liefert zu einem Drehbuch mit Denk-Text kein Ereignis, das ihn enthält", async () => {
+    const env = await setup(SCRIPTS.mitDenkText, { tools: { allowedByR010: "test_lesen" } });
+    const echt = env.deps.motor;
+    const ereignisse: unknown[] = [];
+    env.deps.motor = {
+      ...echt,
+      async *runTurn(input, signal) {
+        for await (const event of echt.runTurn(input, signal)) {
+          ereignisse.push(event);
+          yield event;
+        }
+      },
+    };
+    expect((await env.ask()).outcome).toMatchObject({ status: "succeeded" });
+    expect(JSON.stringify(ereignisse)).toContain("text-delta");
+    expect(JSON.stringify(ereignisse)).not.toContain(REASONING_MARKER);
+  });
+
   // Gegenprobe: reasoning als Text durchreichen → Merkmal in Nachricht bzw. Anfrage, rot.
   it("Denk-Text (auch JSON-artig) steht nicht in Nachricht, draft.delta, nächster Anfrage oder Argumenten", async () => {
     const env = await setup(SCRIPTS.mitDenkText, { tools: { allowedByR010: "test_lesen" } });

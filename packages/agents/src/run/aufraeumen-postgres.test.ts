@@ -599,6 +599,149 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     expect((await pruefen(env, true)).verdict.level).toBe("vertrauenswuerdig");
   }, 60_000);
 
+  /** Zeile `tool_calls` zur Entscheidung `action` (gebunden an deren Beleg), Zustand `running`. */
+  async function laufendeZeile(
+    lauf: Awaited<ReturnType<typeof haengenderLauf>>,
+    actionId: string,
+    kind: "lesen" | "schreiben",
+    reach: "intern" | "nach_aussen",
+  ) {
+    const { env, runId } = lauf;
+    const antwort = await repo.messages.insert(env.db, {
+      conversationId: env.conversationId,
+      role: "assistant",
+      status: "complete",
+      runId,
+      step: 0,
+    });
+    await repo.toolCalls.create(env.db, {
+      actionId: actionId as never,
+      conversationId: env.conversationId,
+      runId,
+      messageId: antwort.id,
+      position: 0,
+      callId: "c0",
+      name: "werkzeug",
+      source: "eingebaut",
+      kind,
+      input: {},
+      argsDigest: `hmac-sha256:${"b".repeat(64)}` as never,
+      toolKey: "eingebaut/notiz.schreiben" as never,
+      toolDigest: `sha256:${"4d".repeat(32)}` as never,
+      reach,
+      foreignContent: false,
+      step: 0,
+      untrustedInput: false,
+    });
+    const entscheidung = (await env.receipts()).find(
+      (e) => e.body.type === "decision" && e.body.action.actionId === actionId,
+    );
+    await repo.toolCalls.recordDecision(env.db, actionId as never, {
+      outcome: "allow",
+      decisionReceiptId: entscheidung?.id as never,
+    });
+  }
+
+  // Gegenprobe: Code für einen erlaubten, nie beendeten Aufruf immer `unterbrochen` → rot.
+  it("schreibendes Werkzeug: Absturz nach „erlaubt“, vor dem Ergebnis → Aufräumen ausgang_unbekannt, kein zweiter Aufruf", async () => {
+    const lauf = await haengenderLauf();
+    const { env, runId, sql } = lauf;
+    const { action } = await werkzeugEntscheidung(
+      lauf,
+      werkzeugFakten("eingebaut/notiz.schreiben", "schreiben", "nach_aussen"),
+      true,
+    );
+    await laufendeZeile(lauf, action.actionId, "schreiben", "nach_aussen");
+    await failStaleRuns(
+      { db: env.db, clock: spaeter, receipts: env.writer },
+      { staleAfterMs: 60_000 },
+    );
+    expect(await ergebnisVon(env, action.actionId)).toEqual({
+      status: "error",
+      code: "ausgang_unbekannt",
+    });
+    expect(await repo.toolCalls.get(env.db, action.actionId)).toMatchObject({
+      status: "cancelled",
+      errorCode: "ausgang_unbekannt",
+    });
+    expect((await repo.runs.get(env.db, runId))?.status).toBe("failed");
+    // Nie wiederholt: Der Trigger lässt keinen Weg zurück nach `running` zu.
+    const zurueck =
+      await sql`update tool_calls set status = 'running' where action_id = ${action.actionId}`.then(
+        () => undefined,
+        (error: { code?: string }) => error.code,
+      );
+    expect(zurueck).toBe("23001");
+    const entscheidungen = (await env.receipts()).filter(
+      (e) => e.body.type === "decision" && e.body.action.actionId === action.actionId,
+    );
+    expect(entscheidungen).toHaveLength(1);
+    expect((await pruefen(env, true)).verdict.level).toBe("vertrauenswuerdig");
+  }, 60_000);
+
+  // Gegenprobe: fehlende Wirkung wie „intern“ zählen (milder Code) → `unterbrochen`, rot.
+  it("Entscheidung „erlaubt“ ohne toolReach in den Fakten: Ergebnis ausgang_unbekannt, gleich streng wie die Zeile", async () => {
+    const lauf = await haengenderLauf();
+    const { env, runId } = lauf;
+    const action: ActionRequest<"werkzeug.aufrufen"> = {
+      actionId: newId("action"),
+      type: "werkzeug.aufrufen",
+      actor: `bot:${env.botId}`,
+      target: { conversationId: env.conversationId, runId, botId: env.botId },
+    };
+    const volle = werkzeugFakten("eingebaut/doku.nachschlagen", "lesen", "intern");
+    const snapshot = await repo.rules.loadSnapshot(env.db);
+    const decision = evaluate(
+      action,
+      volle,
+      await ruleSnapshot(
+        [...snapshot.rules, { ...ALLES_ERLAUBT, seq: snapshot.stand + 1 }],
+        snapshot.stand + 1,
+      ),
+    );
+    expect(decision.outcome).toBe("allow");
+    // Fakten ohne Wirkung (wie eine ältere Entscheidung); der heutige Schreiber nähme sie nicht an.
+    const { toolReach: _ohne, ...facts } = volle;
+    const schluessel = await letzteSchluessel?.current();
+    if (schluessel === undefined) throw new Error("kein Schlüssel");
+    const kopf = (await env.receipts()).at(-1);
+    const body = {
+      v: 1,
+      id: newId("receipt"),
+      seq: (kopf?.seq ?? 0) + 1,
+      time: new Date().toISOString(),
+      prev: kopf?.hash,
+      keyId: schluessel.keyId,
+      type: "decision",
+      action,
+      decision: { ...decision, rules: decision.matchedRules, gateFormat: GATE_FORMAT },
+      facts,
+    } as unknown as ReceiptBody;
+    const hash = await hashReceipt(body);
+    await env.db.insert(belege).values({
+      seq: body.seq,
+      id: body.id,
+      entryType: "decision",
+      actionId: action.actionId,
+      action: action.type,
+      actor: action.actor,
+      conversationId: env.conversationId,
+      body,
+      prevHash: body.prev,
+      hash,
+      keyId: schluessel.keyId,
+      signature: signReceipt(hash, schluessel.privateKey),
+    });
+    await failStaleRuns(
+      { db: env.db, clock: spaeter, receipts: env.writer },
+      { staleAfterMs: 60_000 },
+    );
+    expect(await ergebnisVon(env, action.actionId)).toEqual({
+      status: "error",
+      code: "ausgang_unbekannt",
+    });
+  }, 60_000);
+
   it("Entscheidung der Tor-Fassung 1 (vor dem Update) mit Not-Aus: das Aufräumen schreibt „angehalten“", async () => {
     const lauf = await haengenderLauf();
     const { env, runId } = lauf;
