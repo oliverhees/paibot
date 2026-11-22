@@ -13,22 +13,30 @@
 //   pnpm doku:index                          Index im Projektstamm bauen
 //   node scripts/doku-index.mjs --wurzel <ordner>   anderen Projektordner nehmen (für Tests)
 //
-// Der Index enthält je Überschrift (## und ###) einen Abschnitt mit bereinigtem Text: ohne
-// HTML-Kommentare, Tags, Bilder und unsichtbare Zeichen, Links als ihr Text; dazu je Abschnitt
-// den Pfad der Überschriften von der Seite abwärts bis zur eigenen (`pfad`). Dazu den Stand
-// (Version aus package.json und Prüfsumme über die Abschnitte). Die Datei ist erzeugt und gehört
-// nicht ins Repo; das Image bekommt sie beim Bau (apps/web/Dockerfile).
+// Der Index enthält je Überschrift (# bis ###) einen Abschnitt mit dem Text darunter: Bilder fallen
+// ganz weg, Links stehen als ihr Text, der Urheber-Kopf und Diagramm-Blöcke fehlen, Code bleibt
+// unverändert; dazu je Abschnitt den Pfad der Überschriften von der Seite abwärts bis zur eigenen
+// (`pfad`). Dazu den Stand (Version aus package.json und Prüfsumme über die Abschnitte). Jede
+// Seite liest `scripts/doku-index/markdown.mjs` mit einem Markdown-Parser. Die Datei ist erzeugt
+// und gehört nicht ins Repo; das Image bekommt sie beim Bau (apps/web/Dockerfile).
 //
-// Der Bau bricht mit Ausgang 1 ab, wenn eine Seite der Liste fehlt, ein Muster auf keine Datei
-// passt, der Index keinen Abschnitt hat, größer als 4 MB ist, eine Kennung doppelt vorkommt oder ein
-// Titel bzw. Pfad ein Zeichen enthält, das dort nicht stehen darf (Zeilenumbruch, Tabulator,
-// leeres Braille-Zeichen, Zeichen für den privaten Gebrauch).
+// Der Bau bereinigt nichts still. Er bricht mit Ausgang 1 ab, wenn eine Seite etwas enthält, das auf
+// der dargestellten Seite nichts anzeigt (rohes HTML, Kommentar außer dem Urheber-Kopf, Link-Definition,
+// Fußnote, Zeichenreferenz, unsichtbares Zeichen, Zusatz hinter der Sprache eines Zauns, Tabellenzeile
+// mit mehr Zellen als Spalten, zu große oder zu tief verschachtelte Seite), wenn ein Wort im Text eines
+// Abschnitts nicht im sichtbaren Text derselben Seite steht (Fehler beim Schneiden; die Gegenprobe
+// vergleicht nur mit dem Baum der Seite und fängt nicht, was der Baum selbst als Text führt), wenn eine Seite
+// der Liste fehlt, ein Muster auf keine Datei passt, der Index keinen Abschnitt hat, größer als 4 MB
+// ist, eine Kennung doppelt vorkommt oder ein Titel bzw. Pfad ein Zeichen enthält, das dort nicht
+// stehen darf (Zeilenumbruch, Tabulator, leeres Braille-Zeichen, Zeichen für den privaten Gebrauch).
+// Das Skript braucht die Pakete aus der Wurzel-`package.json` (`pnpm install`).
 // Kein Zeitstempel und nichts Zufälliges: zweimal bauen ergibt dieselben Bytes.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { findeUnerlaubtImTitel, zerlege } from "./doku-index/hilfen.mjs";
+import { findeUnerlaubtImTitel } from "./doku-index/hilfen.mjs";
+import { leseSeite, pruefeWorte } from "./doku-index/markdown.mjs";
 import { IN_DEN_INDEX, passtAuf } from "./doku-umfang.mjs";
 
 const PROJEKT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -115,7 +123,21 @@ export function baueIndex({
   const ids = new Set();
   for (const datei of seitenImIndex(wurzelPfad, liste)) {
     const seite = datei.slice("docs/".length);
-    for (const teil of zerlege(readFileSync(path.join(wurzelPfad, datei), "utf8"))) {
+    const gelesen = leseSeite(readFileSync(path.join(wurzelPfad, datei), "utf8"));
+    const fund = gelesen.funde[0];
+    if (fund) {
+      throw new IndexFehler(
+        `In ${datei} Zeile ${fund.zeile}: ${fund.meldung}. \`pnpm doku:check --streng\` zeigt alle Stellen.`,
+      );
+    }
+    // Gegenprobe für das Schneiden: kein Wort im Text, das auf der Seite nicht zu sehen ist.
+    const fremd = pruefeWorte(gelesen.abschnitte, gelesen.sichtbar);
+    if (fremd) {
+      throw new IndexFehler(
+        `In ${datei} steht im Abschnitt „${fremd.titel}“ das Wort „${fremd.wort}“, das auf der Seite nicht zu sehen ist: interner Fehler beim Schneiden; bitte melden.`,
+      );
+    }
+    for (const teil of gelesen.abschnitte) {
       const id = `${seite}#${teil.anker}`;
       for (const feld of [seite, teil.anker, teil.titel, ...teil.pfad]) {
         const code = findeUnerlaubtImTitel(feld);

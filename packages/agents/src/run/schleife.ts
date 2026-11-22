@@ -572,7 +572,7 @@ async function insertCalls(
 function stepFinished(
   run: Run,
   step: number,
-  ending: "antwort" | "zwischentext" | "verworfen",
+  ending: "antwort" | "zwischentext",
   servedBy?: ServedBy,
 ) {
   return {

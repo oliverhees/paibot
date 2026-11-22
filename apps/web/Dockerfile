@@ -39,7 +39,9 @@ COPY --from=build --chown=paibot:paibot /app/packages/db/drizzle ./packages/db/d
 # Der Worker ist eine einzelne Datei ohne eigene node_modules (pg-native bleibt bewusst draußen).
 COPY --from=build --chown=paibot:paibot /app/apps/worker/dist/worker.mjs ./apps/worker/dist/worker.mjs
 # Index der Doku dieser Version (eine Kopie für Web und Worker); gehört root und ist nur lesbar,
-# damit die App ihn zur Laufzeit nicht ändern kann.
+# damit die App ihn zur Laufzeit nicht ändern kann. Der Ordner wird vorher angelegt: Sonst
+# bekäme er die Rechte der Datei und wäre für die App nicht zu betreten.
+RUN mkdir -p /app/doku-index && chmod 0555 /app/doku-index
 COPY --from=build --chown=root:root --chmod=0444 /app/doku-index/doku-index.json ./doku-index/doku-index.json
 USER paibot
 # Läuft als Nicht-Root und verträgt ein schreibgeschütztes Dateisystem (read_only im Compose);

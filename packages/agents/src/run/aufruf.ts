@@ -312,8 +312,6 @@ export interface CallOutcome {
   code?: ErrorCode;
   /** Der Lauf wurde während des Werkzeugs angehalten. */
   aborted: boolean;
-  /** Das Tor hat erlaubt und das Werkzeug ist zu Ende gelaufen (mit Ergebnis oder Werkzeug-Fehler). */
-  ausgefuehrt: boolean;
 }
 
 /** Code, mit dem ein abgebrochener Aufruf endet: streng, wenn er gewirkt haben könnte. */
@@ -508,7 +506,6 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
       status: envelope.status === "ok" ? "ok" : "fehler",
       ...(envelope.status === "ok" ? {} : { code: envelope.code }),
       aborted: false,
-      ausgefuehrt: true,
       chars: contentChars(envelope as unknown as JsonValue),
     };
   } catch (error) {
@@ -548,7 +545,6 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         status: "abgelehnt",
         code: decision.errorCode,
         aborted: false,
-        ausgefuehrt: false,
         chars: contentChars(envelope as unknown as JsonValue),
       };
     }
@@ -561,7 +557,6 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
         status: "fehler",
         code,
         aborted: true,
-        ausgefuehrt: false,
         chars: 0,
       };
     }

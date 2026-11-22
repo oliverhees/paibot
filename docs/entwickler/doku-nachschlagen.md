@@ -34,7 +34,7 @@ Entscheidungen, wie sie im Code stehen:
 | `packages/agents/src/werkzeuge/doku/gleiche-woerter.ts` | feste Listen `STOPPWOERTER` und `GLEICHE_WOERTER`                                                      |
 | `packages/agents/src/werkzeuge/doku/werkzeug.ts`        | Eintrag fürs Register (`dokuNachschlagen`), Schemas, Beschreibung, Quellen (`dokuQuellen`)             |
 | `packages/agents/src/werkzeuge/beleg-felder.ts`         | `docStand` und `found` aus der gespeicherten Hülle (`belegFelder`, `dokuAusHuelle`)                    |
-| `packages/agents/src/run/aufruf.ts`                     | setzt die Beleg-Felder in den Ergebnis-Beleg und meldet `ausgefuehrt` und `doku` an die Schleife       |
+| `packages/agents/src/run/aufruf.ts`                     | setzt die Beleg-Felder in den Ergebnis-Beleg                                                           |
 | `packages/agents/src/run/schleife.ts`                   | gibt die Ergebnisse der Aufrufe an den nächsten Schritt, gibt die Werkzeuge des Laufs an die Anweisung |
 | `packages/agents/src/prompt.ts`                         | `SATZ_DOKU`, `SATZ_OHNE_WERKZEUGE`, `buildSystemPrompt` mit den Werkzeugen des Laufs                   |
 | `packages/agents/src/werkzeuge/eingebaut.ts`            | `builtinTools`: nimmt den Doku-Index entgegen, liefert in dieser Fassung keine Werkzeuge               |
