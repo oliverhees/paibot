@@ -10,6 +10,7 @@
  * @since     2026-11-22
  */
 
+import { readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -153,5 +154,14 @@ describe("Laden und Fehler der Seite", () => {
     expect(html).toContain("Die Apps lassen sich gerade nicht laden");
     expect(html).toContain("Seite neu laden");
     expect(html).not.toContain("geheim");
+  });
+
+  // Gegenprobe: die Aufrufstelle schickt einen festen falschen Abdruck → rot.
+  describe("Aufrufstelle des Einstufens", () => {
+    it("die Ansicht schickt den Körper aus `einstufenKoerper` mit dem Abdruck der gezeigten Fassung", () => {
+      const quelle = readFileSync(new URL("./AppsAnsicht.tsx", import.meta.url), "utf8");
+      expect(quelle).toContain("einstufenKoerper(art, fassung)");
+      expect(quelle).not.toMatch(/gesehenerAbdruck/);
+    });
   });
 });

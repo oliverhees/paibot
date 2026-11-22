@@ -90,6 +90,9 @@ export function werkzeugEintrag(w: WerkzeugAntwort): WerkzeugListeEintrag {
  */
 const MAX_TIEFE = 64;
 
+/** Name der Wurzel des Schemas in der Liste der Texte. */
+const WURZEL = "(Werkzeug)";
+
 function alsText(wert: unknown): string | undefined {
   if (typeof wert === "string") return wert;
   if (typeof wert === "number" || typeof wert === "boolean" || wert === null) return String(wert);
@@ -135,14 +138,13 @@ export function schemaTexteVollstaendig(schema: unknown): SchemaTexteErgebnis {
       return;
     }
     gesehen.add(knoten);
-    if (pfad !== "") {
-      if (typeof knoten.description === "string")
-        nimm(pfad, "feldbeschreibung", knoten.description);
-      if (Array.isArray(knoten.enum)) for (const v of knoten.enum) nimm(pfad, "enum", v);
-      if ("default" in knoten) nimm(pfad, "default", knoten.default);
-      if (Array.isArray(knoten.examples))
-        for (const v of knoten.examples) nimm(pfad, "beispiel", v);
-    }
+    // Auch die Wurzel des Schemas geht ans Modell (ihre Beschreibung bleibt erhalten): Sie steht
+    // unter dem Namen „(Werkzeug)“ in der Liste, nicht unter einem Feld.
+    const ort = pfad === "" ? WURZEL : pfad;
+    if (typeof knoten.description === "string") nimm(ort, "feldbeschreibung", knoten.description);
+    if (Array.isArray(knoten.enum)) for (const v of knoten.enum) nimm(ort, "enum", v);
+    if ("default" in knoten) nimm(ort, "default", knoten.default);
+    if (Array.isArray(knoten.examples)) for (const v of knoten.examples) nimm(ort, "beispiel", v);
     if (istObjekt(knoten.properties)) {
       for (const [name, kind] of Object.entries(knoten.properties)) {
         const kindPfad = pfad === "" ? name : `${pfad}.${name}`;
