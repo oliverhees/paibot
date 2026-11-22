@@ -1121,6 +1121,14 @@ describe("Chat ohne Werkzeuge", () => {
     const env = await setup(SCRIPTS.aufrufOhneWerkzeuge, { tools: false });
     const { runId, outcome } = await env.ask();
     expect(outcome).toMatchObject({ status: "failed", code: "werkzeug_unbekannt" });
+    // Ergebnis von modell.anfragen ist `ok` (das Modell hat geantwortet), der Lauf endet trotzdem
+    // mit werkzeug_unbekannt; die Prüfung der Kette (wie auf der Belege-Seite) bleibt vertrauenswürdig.
+    expect(results(await env.receipts(), "modell.anfragen")).toMatchObject([
+      { result: { status: "ok" } },
+    ]);
+    const bericht = (await env.verify()) as unknown as { ok: boolean; verdict: { level: string } };
+    expect(bericht.ok).toBe(true);
+    expect(bericht.verdict.level).toBe("vertrauenswuerdig");
     expect(chats()).toHaveLength(1);
     const { row, decision } = await onlyCall(env, runId);
     expect(decision?.facts).toMatchObject({ toolOffered: false, toolRegistered: false });
