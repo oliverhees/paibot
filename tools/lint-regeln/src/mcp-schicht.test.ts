@@ -178,27 +178,42 @@ describe("MCP-Schicht: keine Umgehung der Sperren (muss rot sein)", () => {
 });
 
 describe("MCP-Schicht: der Test-Schalter für Adressen steht nirgends im Betriebs-Code", () => {
-  /** Dateien, in denen `erlaubeHttp` vorkommen darf: die Definition und Tests. */
+  /**
+   * Der Schalter ist ein eigener Parameter der Funktionen `…Intern` in `packages/mcp/src/verbindung.ts`,
+   * nie ein Feld der Optionen. Ihre Namen dürfen nur in der Definition, in Tests und in den Proben der
+   * Schicht vorkommen, in jeder Datei, egal wie sie die Schicht erreicht. Das ist eine Suche nach
+   * Namen: Sie hält Eingaben, Spreads und `Proxy` ab (die Funktionen lesen den Schalter nie aus den
+   * Optionen) und meldet jeden Code im Repo, der die internen Funktionen nennt oder die Datei
+   * `verbindung.ts` über einen relativen Pfad einbindet. Wer den Schalter mit eigenem Code aus
+   * einem Betriebs-Paket erreichen will, muss die Datei lesen und die Prüfung hier ändern; die
+   * Ausgangs-Hülle bleibt der eigentliche Schutz.
+   */
   const ERLAUBT = (datei: string) =>
     datei === "packages/mcp/src/verbindung.ts" ||
     /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(datei) ||
     datei.startsWith("packages/mcp/src/spike/") ||
     datei.startsWith("tools/lint-regeln/");
 
-  /** Dateien, die die MCP-Schicht benutzen (ein gleichnamiger Parameter anderswo zählt nicht). */
-  const NUTZT_SCHICHT =
-    /@paibot\/mcp|\boeffneVerbindung\b|\bholeWerkzeuge\b|\brufeWerkzeugAuf\b|\bpruefeAdresse\b/;
+  const SCHALTER =
+    /\b(?:holeWerkzeugeIntern|rufeWerkzeugAufIntern|oeffneVerbindungIntern|pruefeAdresseMitSchalter|InterneOptionen)\b/;
 
-  /** Gibt die Dateien zurück, die den Schalter außerhalb des Erlaubten benutzen. */
+  /** Ein relativer Import oder `require`/`import()` in das Quellverzeichnis dieses Pakets von außerhalb. */
+  const RELATIV_IN_PAKET =
+    /(?:from\s*|import\s*\(\s*|require\s*\(\s*|import\s+)["'](?:\.{1,2}\/)+[^"']*(?:\/mcp\/src\/|\/mcp\/src["'])[^"']*["']/;
+
+  /** Gibt die Dateien zurück, die den Schalter außerhalb des Erlaubten nennen. */
   function verstoesse(dateien: { datei: string; text: string }[]): string[] {
     return dateien
       .filter(
-        (f) => !ERLAUBT(f.datei) && /\berlaubeHttp\b/.test(f.text) && NUTZT_SCHICHT.test(f.text),
+        (f) =>
+          !ERLAUBT(f.datei) &&
+          (SCHALTER.test(f.text) ||
+            (!f.datei.startsWith("packages/mcp/") && RELATIV_IN_PAKET.test(f.text))),
       )
       .map((f) => f.datei);
   }
 
-  it("kein Quelltext außer der Definition und Tests nennt erlaubeHttp", () => {
+  it("kein Quelltext außer der Definition und Tests nennt den Schalter oder bindet das Paket relativ ein", () => {
     const liste = execFileSync(
       "git",
       ["ls-files", "-z", "--", "*.ts", "*.tsx", "*.js", "*.mjs", "*.cjs"],
@@ -218,14 +233,56 @@ describe("MCP-Schicht: der Test-Schalter für Adressen steht nirgends im Betrieb
     expect(verstoesse(dateien)).toEqual([]);
   });
 
-  it("die Prüfung schlägt an, wenn Betriebs-Code den Schalter setzt (Gegenprobe)", () => {
+  it("die Prüfung schlägt an, wenn Betriebs-Code den Schalter nennt oder die Datei relativ einbindet (Gegenprobe)", () => {
     expect(
       verstoesse([
-        { datei: "apps/worker/src/x.ts", text: "oeffneVerbindung({ erlaubeHttp: true })" },
-        { datei: "packages/mcp/src/verbindung.ts", text: "erlaubeHttp" },
-        { datei: "packages/mcp/src/x.test.ts", text: "erlaubeHttp" },
+        { datei: "apps/worker/src/x.ts", text: "holeWerkzeugeIntern(o, { erlaubeHttp: true })" },
+        { datei: "apps/worker/src/y.ts", text: "pruefeAdresseMitSchalter(a, true)" },
+        {
+          datei: "apps/worker/src/z.ts",
+          text: 'import { oeffneVerbindung } from "../../../packages/mcp/src/verbindung";',
+        },
+        {
+          datei: "apps/web/src/w.ts",
+          text: 'const m = await import("../../../packages/mcp/src/verbindung");',
+        },
+        {
+          datei: "packages/mcp/src/index.ts",
+          text: "export { InterneOptionen } from './verbindung'",
+        },
+        { datei: "packages/mcp/src/verbindung.ts", text: "holeWerkzeugeIntern" },
+        { datei: "packages/mcp/src/x.test.ts", text: "holeWerkzeugeIntern" },
+        { datei: "apps/worker/src/ok.ts", text: 'import { holeWerkzeuge } from "@paibot/mcp";' },
       ]),
-    ).toEqual(["apps/worker/src/x.ts"]);
+    ).toEqual([
+      "apps/worker/src/x.ts",
+      "apps/worker/src/y.ts",
+      "apps/worker/src/z.ts",
+      "apps/web/src/w.ts",
+      "packages/mcp/src/index.ts",
+    ]);
+  });
+
+  it("das Paket lässt von außen nur den einen Einstieg zu (kein Weg zu `verbindung.ts`)", () => {
+    const paket = JSON.parse(
+      readFileSync(path.join(ROOT, "packages/mcp/package.json"), "utf8"),
+    ) as {
+      exports?: unknown;
+    };
+    expect(paket.exports).toEqual({ ".": "./src/index.ts" });
+  });
+
+  it("die öffentlichen Optionen enthalten keinen Schalter für Adressen", () => {
+    const text = readFileSync(path.join(ROOT, "packages/mcp/src/verbindung.ts"), "utf8");
+    const start = text.indexOf("export interface McpVerbindungOptionen");
+    const optionen = text.slice(start, text.indexOf("\n}\n", start));
+    expect(start).toBeGreaterThan(0);
+    expect(optionen).not.toMatch(/erlaubeHttp|erlaube|TEST_/);
+    const abruf = text.slice(
+      text.indexOf("export interface WerkzeugAbrufOptionen"),
+      text.indexOf("export interface WerkzeugAbruf {"),
+    );
+    expect(abruf).not.toMatch(/erlaubeHttp/);
   });
 });
 

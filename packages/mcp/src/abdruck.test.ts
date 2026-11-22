@@ -48,15 +48,19 @@ describe("Abdruck eines Werkzeugs", () => {
       name: "suchen",
     };
     expect(abdruckVonWert(umgestellt)).toBe(abdruckVonWert(WERKZEUG));
-    const [a] = bereiteWerkzeugeAuf([WERKZEUG], { appKurzname: "app" });
-    const [b] = bereiteWerkzeugeAuf([umgestellt], { appKurzname: "app" });
+    const [a] = bereiteWerkzeugeAuf([WERKZEUG], { appKurzname: "app", bekannteNamen: new Map() });
+    const [b] = bereiteWerkzeugeAuf([umgestellt], { appKurzname: "app", bekannteNamen: new Map() });
     expect(a?.abdruck).toBe(b?.abdruck);
   });
 
   it("ändert sich schon bei einem einzigen unsichtbaren Zeichen in der Beschreibung", () => {
-    const [vorher] = bereiteWerkzeugeAuf([WERKZEUG], { appKurzname: "app" });
+    const [vorher] = bereiteWerkzeugeAuf([WERKZEUG], {
+      appKurzname: "app",
+      bekannteNamen: new Map(),
+    });
     const [nachher] = bereiteWerkzeugeAuf([{ ...WERKZEUG, description: "Sucht Einträge.​" }], {
       appKurzname: "app",
+      bekannteNamen: new Map(),
     });
     // Die bereinigte Beschreibung ist gleich, der Abdruck der Rohform nicht.
     expect(nachher?.beschreibung).toBe(vorher?.beschreibung);
