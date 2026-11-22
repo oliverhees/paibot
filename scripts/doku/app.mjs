@@ -18,7 +18,8 @@
 //   1. Wegwerf-Datenbank (siehe scripts/doku/datenbank.mjs): eigener Postgres aus dem System oder
 //      eine eigene Datenbank auf PAIBOT_DOKU_DATABASE_URL.
 //   2. Test-Anbieter (tools/fake-provider) nur an 127.0.0.1, Port PAIBOT_DOKU_ANBIETER_PORT
-//      (Standard 18080, fest, weil die Adresse in der Einrichtung als Name des Anbieters erscheint).
+//      (Standard 18097; die Adresse erscheint in der Einrichtung als Name des Anbieters, deshalb gilt
+//      derselbe Port für alle Aufnahmen; Einträge mit eigener Adresse nehmen `$anbieter-adresse`).
 //      Beispiel-Modelle mit erfundenen Namen, Schlüssel ist ein Wegwerf-Wert.
 //   3. Migrations-Schritt wie der Einmal-Dienst `migrate` (PAIBOT_ROLE=migrate, mit dem Zugang des
 //      Tabellen-Besitzers): Migrationen, App-Rolle anlegen, Rechte prüfen, Ende mit Exit 0.
@@ -88,7 +89,7 @@ if (optionen.length > 0) {
 // biome-ignore lint/suspicious/noUndeclaredEnvVars: nur für dieses Skript, kein Turborepo-Task
 const DB_VERWALTER = process.env.PAIBOT_DOKU_DATABASE_URL;
 // biome-ignore lint/suspicious/noUndeclaredEnvVars: nur für dieses Skript, kein Turborepo-Task
-const ANBIETER_PORT = Number(process.env.PAIBOT_DOKU_ANBIETER_PORT ?? 18080);
+const ANBIETER_PORT = Number(process.env.PAIBOT_DOKU_ANBIETER_PORT ?? 18097);
 
 const log = (text) => console.log(`[doku:app] ${text}`);
 

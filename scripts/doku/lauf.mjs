@@ -120,6 +120,8 @@ export const SONDERWERTE = Object.freeze({
   $passwort: "passwort",
   "$anbieter-schluessel": "anbieterSchluessel",
   $verwaltungsschluessel: "verwaltungsschluessel",
+  // Adresse des Test-Anbieters dieses Laufs unter dem Namen `localhost`, mit seinem Port.
+  "$anbieter-adresse": "anbieterUrl",
 });
 
 /**
@@ -139,6 +141,7 @@ export function setzeSonderwert(text, lauf) {
   if (typeof wert !== "string" || wert === "") {
     throw new Error(`Für „${text}“ fehlt der Wert. Läuft \`pnpm doku:app\`?`);
   }
+  if (text === "$anbieter-adresse") return `http://localhost:${new URL(wert).port}/v1`;
   return wert;
 }
 

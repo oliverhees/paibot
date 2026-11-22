@@ -3315,7 +3315,7 @@
         },
         {
           "tippe": "Adresse (Basis-URL)",
-          "text": "http://localhost:18080/v1"
+          "text": "$anbieter-adresse"
         },
         {
           "warteAufText": "Die Verbindung ist unverschlüsselt"
@@ -3371,7 +3371,7 @@
         },
         {
           "tippe": "Adresse (Basis-URL)",
-          "text": "http://localhost:18080/v1"
+          "text": "$anbieter-adresse"
         },
         {
           "tippe": {

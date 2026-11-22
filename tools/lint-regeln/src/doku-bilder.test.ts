@@ -197,6 +197,18 @@ describe("Sonderwerte und Lauf-Datei", () => {
     expect(lauf.setzeSonderwert("$$5", werte)).toBe("$5");
   });
 
+  // Gegenprobe: den Port fest auf 18080 setzen → rot.
+  it("$anbieter-adresse folgt dem Port des Test-Anbieters des Laufs (kein fest eingetragener Port)", () => {
+    const mit = (anbieterUrl: string) => ({ ...werte, anbieterUrl });
+    expect(lauf.setzeSonderwert("$anbieter-adresse", mit("http://127.0.0.1:18097"))).toBe(
+      "http://localhost:18097/v1",
+    );
+    expect(lauf.setzeSonderwert("$anbieter-adresse", mit("http://127.0.0.1:23456"))).toBe(
+      "http://localhost:23456/v1",
+    );
+    expect(() => lauf.setzeSonderwert("$anbieter-adresse", werte)).toThrow("fehlt der Wert");
+  });
+
   it("unbekannter Sonderwert oder fehlender Wert ist ein Fehler", () => {
     expect(() => lauf.setzeSonderwert("$geheim", werte)).toThrow("Unbekannter Sonderwert");
     expect(() => lauf.setzeSonderwert("$passwort", {})).toThrow("fehlt der Wert");
