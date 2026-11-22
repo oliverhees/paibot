@@ -1083,7 +1083,7 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     const lesen = async () =>
       (
         await test.client.query<{ z: unknown }>(
-          "select to_jsonb(t) as z from tool_calls t order by position",
+          "select to_jsonb(t) - 'app_id' - 'app_tool_id' - 'tool_version' as z from tool_calls t order by position",
         )
       ).rows;
     const vorher = await lesen();
