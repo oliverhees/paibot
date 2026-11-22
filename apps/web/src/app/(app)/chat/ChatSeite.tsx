@@ -60,6 +60,7 @@ import {
   belegZurAntwort,
   ereignisAnwenden,
   gesendet,
+  kopfModell as kopfModellVon,
   leereAnsicht,
   neuErzeugbar,
   neuErzeugt,
@@ -190,7 +191,11 @@ export function ChatSeite({
   const [ansicht, setAnsicht] = useState(() =>
     verlauf ? ansichtAus(verlauf, kontext) : leereAnsicht(),
   );
-  const kopfModell = bereitschaft.modell;
+  // Der Kopf zeigt die Kennzeichnung nur, solange kein Lauf mit „Regel unbekannt“ endete.
+  const kopfModell = useMemo(
+    () => kopfModellVon(bereitschaft.modell, ansicht.eintraege),
+    [bereitschaft.modell, ansicht.eintraege],
+  );
   const [text, setText] = useState("");
   const avatar = useChatAvatar();
   const { neuesAnfangen, blickNeu } = avatar;

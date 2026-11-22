@@ -112,6 +112,25 @@ export function modellZurAntwort(modell: ModellInfo, antwortZeit: string): Model
     : ohneVorgabe(modell);
 }
 
+/**
+ * Das Modell des Bots für den Chat-Kopf. Endete nach der Prüfung der Vorgabe ein Lauf mit „Regel
+ * unbekannt“ (der Anbieter kennt die Regel nicht mehr), steht die Vorgabe nicht mehr da: Die Marke
+ * verschwindet sofort und nicht erst nach erneutem Prüfen.
+ */
+export function kopfModell(
+  modell: ModellInfo | undefined,
+  eintraege: readonly AnsichtEintrag[],
+): ModellInfo | undefined {
+  const v = modell?.vorgabe;
+  if (modell === undefined || v === undefined) return modell;
+  const geprueft = Date.parse(v.geprueftAm);
+  const widerlegt = eintraege.some(
+    (e) =>
+      e.art === "lauf-ende" && e.code === "regel_unbekannt" && !(Date.parse(e.zeit) < geprueft),
+  );
+  return widerlegt ? ohneVorgabe(modell) : modell;
+}
+
 function ausNachricht(m: Message, modelle: Record<string, ModellInfo>): AnsichtNachricht | null {
   if (m.role === "system") return null;
   const info = m.modelId === undefined ? undefined : modelle[m.modelId];

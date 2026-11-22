@@ -22,6 +22,7 @@ import {
   type ChatAnsicht,
   ereignisseAnwenden,
   gesendet,
+  kopfModell,
   leereAnsicht,
   neuErzeugbar,
   neuErzeugt,
@@ -759,5 +760,66 @@ describe("Vorgabe der Regel zur Zeit der Antwort", () => {
     expect(modell?.name).toBe("Beispiel-Modell A");
     expect(modell?.herkunft).toBe("über EUrouter");
     expect(modell?.vorgabe).toBeUndefined();
+  });
+});
+
+describe("Chat-Kopf nach „Regel unbekannt“", () => {
+  const ENDE_UM = new Date(Date.UTC(2026, 10, 21, 10, 0, 5));
+  const modellGeprueft = (am: Date) => ({
+    name: "Beispiel-Regel",
+    herkunft: "über EUrouter",
+    vorgabe: vorgabeAus({ data_residency: "EU" }, am, am, "Europe/Berlin"),
+  });
+  const mitEnde = (code: "regel_unbekannt" | "anbieter_nicht_erreichbar") => {
+    const ev = folge();
+    const g = glueck(ev);
+    const a = ereignisseAnwenden(leereAnsicht(), g.liste.slice(0, 4), KONTEXT);
+    return ereignisseAnwenden(a, [
+      ev("run.failed", { runId: g.runId, code, text: "Das hat nicht geklappt." }, g.runId),
+    ]);
+  };
+
+  it("die Marke verschwindet sofort, wenn ein Lauf danach mit „Regel unbekannt“ endet", () => {
+    const a = mitEnde("regel_unbekannt");
+    const vorher = modellGeprueft(new Date(ENDE_UM.getTime() - 3_600_000));
+    expect(kopfModell(vorher, a.eintraege)?.vorgabe).toBeUndefined();
+    expect(kopfModell(vorher, a.eintraege)?.name).toBe("Beispiel-Regel");
+  });
+
+  it("Gegenprobe: anderer Fehler, oder die Vorgabe wurde nach dem Fehler neu gelesen: die Marke bleibt", () => {
+    const vorher = modellGeprueft(new Date(ENDE_UM.getTime() - 3_600_000));
+    expect(
+      kopfModell(vorher, mitEnde("anbieter_nicht_erreichbar").eintraege)?.vorgabe,
+    ).toBeDefined();
+    const nachher = modellGeprueft(new Date(ENDE_UM.getTime() + 3_600_000));
+    expect(kopfModell(nachher, mitEnde("regel_unbekannt").eintraege)?.vorgabe).toBeDefined();
+    expect(kopfModell(vorher, [])?.vorgabe).toBeDefined();
+    expect(kopfModell(undefined, mitEnde("regel_unbekannt").eintraege)).toBeUndefined();
+  });
+
+  it("auch nach dem Neuladen: ein beendeter Lauf mit „Regel unbekannt“ im Verlauf", () => {
+    const run = newId("run");
+    const verlauf: ChatVerlauf = {
+      unterhaltung: { id: conversationId, titel: "Test", schleuse: "off" },
+      nachrichten: [],
+      laeufe: [
+        {
+          id: run,
+          conversationId,
+          triggerMessageId: newId("message"),
+          status: "failed",
+          errorCode: "regel_unbekannt",
+          createdAt: ENDE_UM.toISOString(),
+          finishedAt: ENDE_UM.toISOString(),
+        } as unknown as Run,
+      ],
+      ereignisse: [],
+      letzteSeq: 0,
+      belege: [],
+      modelle: {},
+    };
+    const a = ansichtAus(verlauf, {});
+    const vorher = modellGeprueft(new Date(ENDE_UM.getTime() - 3_600_000));
+    expect(kopfModell(vorher, a.eintraege)?.vorgabe).toBeUndefined();
   });
 });
