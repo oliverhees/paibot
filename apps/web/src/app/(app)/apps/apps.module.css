@@ -1,0 +1,128 @@
+/**
+ * PaiBot – Stile der Seite „Apps“.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-22
+ */
+
+.laedt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.seitenFehler {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: var(--schrift-m);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.seitenFehler p {
+  margin: 0 0 6px;
+}
+
+.fett {
+  font-weight: 600;
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kopfzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.innen {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.zugriffe {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.zugriffTitel {
+  margin: 0;
+  font-size: var(--schrift-m);
+  font-weight: 600;
+}
+
+.meldung {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.meldungFehler {
+  composes: meldung;
+  border-color: var(--danger);
+}
+
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+  line-height: 1.5;
+}
+
+.nichtPruefbar {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  font-size: var(--schrift-s);
+}
+
+.getrennt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.getrenntZeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: var(--schrift-s);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .kopfzeile {
+    align-items: stretch;
+  }
+}

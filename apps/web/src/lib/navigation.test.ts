@@ -72,12 +72,13 @@ describe("Menü „Du“", () => {
 });
 
 describe("Navigation", () => {
-  it("zeigt die Arbeits-Seiten Belege, Regeln, Datenschleuse, Modell und Anbieter in dieser Reihenfolge", () => {
+  it("zeigt die Arbeits-Seiten Belege, Regeln, Datenschleuse, Modell und Anbieter, Apps in dieser Reihenfolge", () => {
     expect(NAVIGATION.map((e) => e.href)).toEqual([
       "/belege",
       "/regeln",
       "/datenschleuse",
       "/modelle",
+      "/apps",
     ]);
     expect(NAVIGATION.find((e) => e.id === "regeln")?.text).toBe("Regeln");
   });
@@ -95,6 +96,7 @@ describe("Navigation", () => {
       "/": t("seite.chat"),
       "/belege": t("seite.belege"),
       "/belege/[id]": t("seite.belege"),
+      "/apps": t("seite.apps"),
       "/bot": t("seite.bot"),
       "/datenschleuse": t("seite.datenschleuse"),
       "/einstellungen": t("seite.einstellungen"),

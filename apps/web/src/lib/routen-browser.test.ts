@@ -75,7 +75,15 @@ function browserHuelle(start: string): { dateien: string[]; verboten: string[] }
 describe("routen.ts im Browser", () => {
   // Gegenprobe: in `apps/eingaben.ts` die Grenzwerte wieder aus `./adresse` oder `./token` holen →
   // die Hülle enthält `@paibot/mcp` bzw. `@paibot/crypto`, der Test wird rot.
-  for (const start of ["routen.ts", "sse/client-kern.ts"]) {
+  // Die Seite „Apps“ läuft im Browser: Ihre Ansicht und alles, was sie importiert, bleibt ohne
+  // Server-Code (Token-Verschlüsselung, MCP-Schicht).
+  for (const start of [
+    "routen.ts",
+    "sse/client-kern.ts",
+    "../app/(app)/apps/AppsAnsicht.tsx",
+    "apps/ansicht.ts",
+    "apps/pfade.ts",
+  ]) {
     it(`${start}: keine Server-Pakete in den Importen`, () => {
       const huelle = browserHuelle(path.join(HIER, start));
       expect(huelle.verboten).toEqual([]);

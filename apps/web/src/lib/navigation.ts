@@ -26,13 +26,14 @@ export const BOT_ADRESSE = "/bot";
 
 /**
  * Arbeits-Seiten in der Reihenfolge der Oberfläche: Belege, Regeln, Datenschleuse, Modell und
- * Anbieter. Persönliches (Zugang, Einstellungen, Hilfe, Info, Abmelden) steht im Menü „Du“.
+ * Anbieter, Apps. Persönliches (Zugang, Einstellungen, Hilfe, Info, Abmelden) steht im Menü „Du“.
  */
 export const NAVIGATION: readonly NavigationsEintrag[] = [
   { id: "belege", text: t("seite.belege"), href: "/belege", icon: "beleg" },
   { id: "regeln", text: t("seite.regeln"), href: "/regeln", icon: "regeln" },
   { id: "datenschleuse", text: t("seite.datenschleuse"), href: "/datenschleuse", icon: "schleuse" },
   { id: "modelle", text: t("seite.modelle"), href: "/modelle", icon: "server" },
+  { id: "apps", text: t("seite.apps"), href: "/apps", icon: "web" },
 ];
 
 /** Ziele im Menü „Du“ innerhalb der App. */
