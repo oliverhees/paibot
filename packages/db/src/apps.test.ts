@@ -433,6 +433,28 @@ describe("Adress- und Token-Wechsel, Trennen", () => {
     ]);
   });
 
+  it("toolHistory liefert höchstens `limit` Fassungen: die jüngsten, älteste zuerst", async () => {
+    const app = await mitBestaetigtemWerkzeug();
+    await apps.changeAccess(db, app.id, {
+      tokenEnc: `v2:${"d".repeat(16)}:${"e".repeat(22)}:${"f".repeat(40)}`,
+    });
+    const [t] = await apps.currentTools(db, app.id);
+    if (t === undefined) throw new Error("Werkzeug fehlt");
+    const alle = await apps.toolHistory(db, t.toolId);
+    expect(alle.length).toBeGreaterThanOrEqual(3);
+    const zwei = await apps.toolHistory(db, t.toolId, 2);
+    expect(zwei.map((x) => x.version)).toEqual(alle.slice(-2).map((x) => x.version));
+    expect((await apps.toolHistory(db, t.toolId, 1)).map((x) => x.version)).toEqual([
+      alle[alle.length - 1]?.version,
+    ]);
+    // Eine unbrauchbare Grenze ist ein Fehler, nie „alles“.
+    for (const grenze of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      await expect(apps.toolHistory(db, t.toolId, grenze)).rejects.toThrow();
+    }
+    // Ohne Angabe gilt die Obergrenze des Repositories.
+    expect(apps.MAX_TOOL_HISTORY).toBeGreaterThanOrEqual(50);
+  });
+
   it("Adresswechsel: alle Werkzeuge wieder „neu“, auch die gesperrten", async () => {
     const app = await mitBestaetigtemWerkzeug();
     const [t] = await apps.currentTools(db, app.id);

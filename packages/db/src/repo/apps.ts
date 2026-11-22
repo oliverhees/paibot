@@ -351,14 +351,27 @@ export async function currentTool(db: Database, toolId: AppToolId): Promise<AppT
   return row === undefined ? undefined : toTool(row);
 }
 
-/** Alle Fassungen eines Werkzeugs, älteste zuerst. */
-export async function toolHistory(db: Database, toolId: AppToolId): Promise<AppTool[]> {
+/** So viele Fassungen eines Werkzeugs gibt `toolHistory` höchstens zurück (die jüngsten). */
+export const MAX_TOOL_HISTORY = 200;
+
+/**
+ * Die jüngsten Fassungen eines Werkzeugs (höchstens `limit`, Standard `MAX_TOOL_HISTORY`), älteste
+ * zuerst. Die Grenze gilt schon in der Abfrage: Die Tabelle wächst mit jedem Abgleich, der eine
+ * neue Fassung anlegt, und eine Anzeige braucht nie alle.
+ */
+export async function toolHistory(
+  db: Database,
+  toolId: AppToolId,
+  limit: number = MAX_TOOL_HISTORY,
+): Promise<AppTool[]> {
+  if (!Number.isInteger(limit) || limit < 1) throw new PaiBotError("intern");
   const rows = await db
     .select()
     .from(appTools)
     .where(eq(appTools.toolId, toolId))
-    .orderBy(asc(appTools.version));
-  return rows.map(toTool);
+    .orderBy(desc(appTools.version))
+    .limit(limit);
+  return rows.reverse().map(toTool);
 }
 
 /**
