@@ -174,7 +174,7 @@ Am Handy steht das Suchfeld oben im Menü; ein Tipp auf einen Treffer schließt 
 
    ![Neu erzeugte Antwort an Max Mustermann, darunter die Zeile mit Beleg, Weg und Modell und „Fassung 2 von 2“ mit Pfeilen und dem Knopf „Neu erzeugen“](assets/screenshots/chat-neu-erzeugt.png)
 
-3. Mit den Pfeilen **‹** und **›** blätterst du zwischen den Fassungen. Eine ältere ist als „Frühere Fassung 1 von 2“ gekennzeichnet, mit dem Satz „Ersetzt durch eine neuere Fassung.“ Jede Fassung hat ihren eigenen Beleg.
+3. Mit den Pfeilen **‹** und **›** blätterst du zwischen den Fassungen. Eine ältere ist als „Frühere Fassung 1 von 2“ gekennzeichnet, mit dem Satz „Ersetzt durch eine neuere Fassung.“ Jede Fassung hat ihren eigenen Beleg. Für Bildschirmleser heißen die Pfeile „Zur vorigen Fassung der Antwort“ und „Zur nächsten Fassung der Antwort“, der kleine Pfeil neben „Neu erzeugen“ heißt „Neu erzeugen: weitere Möglichkeiten“.
 
    ![Zurückgeblättert zur ersten Fassung: der alte Text steht unverändert da, darunter „Frühere Fassung 1 von 2“ und „Ersetzt durch eine neuere Fassung.“](assets/screenshots/chat-fassung-frueher.png)
 

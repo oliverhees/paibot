@@ -214,6 +214,37 @@ describe("Chat-Ansicht", () => {
     expect(aus).toContain('aria-busy="true"');
   });
 
+  it("Knöpfe unter der Antwort: jeder trägt einen eigenen Namen für Bildschirmleser", () => {
+    const user = newId("message");
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, {
+        bereitschaft: {
+          ...BEREIT,
+          modellId: "mod_a",
+          waehlbar: [
+            { id: "mod_a", name: "Beispiel-Modell A", herkunft: "über EUrouter" },
+            { id: "mod_b", name: "Beispiel-Modell B", herkunft: "über EUrouter" },
+          ],
+        },
+        verlauf: verlauf({
+          nachrichten: [
+            msg({ id: user as never, role: "user", content: "Hallo", status: "complete" }),
+            msg({ role: "assistant", content: "Erste Fassung.", status: "complete" }),
+            msg({ role: "assistant", content: "Zweite Fassung.", status: "complete" }),
+          ],
+        }),
+      }),
+    );
+    const namen = [...aus.matchAll(/<button[^>]*aria-label="([^"]*)"/g)].map((m) => m[1]);
+    expect(namen).toContain("Zur vorigen Fassung der Antwort");
+    expect(namen).toContain("Zur nächsten Fassung der Antwort");
+    expect(namen).toContain("Neu erzeugen: weitere Möglichkeiten");
+    expect(namen).not.toContain("Antwort neu erzeugen");
+    expect(new Set(namen).size).toBe(namen.length);
+    // der sichtbare Knopf heißt weiter „Neu erzeugen“; kein Pfeil trägt denselben Namen
+    expect(namen).not.toContain("Neu erzeugen");
+  });
+
   it("abgelehnter Lauf: Grund, Ausweg und Link zur passenden Seite, nie ein roher Fehler", () => {
     const user = newId("message");
     const aus = renderToStaticMarkup(
