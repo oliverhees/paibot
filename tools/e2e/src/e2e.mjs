@@ -1126,13 +1126,13 @@ async function main() {
       throw new Error("Neu erzeugen schickte nicht genau eine Anfrage an den Anbieter.");
     }
     // Zur ersten Fassung blättern: die alte Antwort steht unverändert da.
-    await verlauf.getByRole("button", { name: "Vorige Fassung" }).click();
+    await verlauf.getByRole("button", { name: "Zur vorigen Fassung der Antwort" }).click();
     await verlauf.getByText("Frühere Fassung 1 von 2").waitFor();
     await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).last().waitFor();
     // Nach dem Neuladen sind beide Fassungen da, die neueste vorn.
     await seite.reload();
     await verlauf.getByText(ZWEITE, { exact: true }).waitFor();
-    await verlauf.getByRole("button", { name: "Vorige Fassung" }).click();
+    await verlauf.getByRole("button", { name: "Zur vorigen Fassung der Antwort" }).click();
     await verlauf.getByText(BEISPIEL_ANTWORT, { exact: true }).last().waitFor();
     await stack.anbieter.verhalten({ reply: BEISPIEL_ANTWORT, holdAfterChunks: 0 });
   });
