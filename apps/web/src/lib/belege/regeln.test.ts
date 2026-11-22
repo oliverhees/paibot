@@ -23,10 +23,12 @@ describe("Regeln-Liste", () => {
     }
   });
 
-  it("blendet G-17 und die Vorbedingungen V-12 bis V-14 aus (nur für Werkzeuge)", () => {
-    expect(NUR_WERKZEUG_GRENZEN).toEqual(["G-17"]);
-    expect(grenzenEintraege().map((g) => g.nr)).not.toContain("G-17");
+  it("blendet G-17, die Grenzen für Apps und die Vorbedingungen V-12 bis V-14, V-19, V-38 aus (nur für Werkzeuge und Apps)", () => {
+    expect(NUR_WERKZEUG_GRENZEN).toEqual(["G-17", "G-06", "G-07", "G-08", "G-40"]);
+    const grenzen = grenzenEintraege().map((g) => g.nr);
+    for (const id of NUR_WERKZEUG_GRENZEN) expect(grenzen).not.toContain(id);
     const vorbedingungen = vorbedingungenEintraege().map((v) => v.nr);
-    for (const id of ["V-12", "V-13", "V-14"]) expect(vorbedingungen).not.toContain(id);
+    for (const id of ["V-12", "V-13", "V-14", "V-19", "V-38"])
+      expect(vorbedingungen).not.toContain(id);
   });
 });
