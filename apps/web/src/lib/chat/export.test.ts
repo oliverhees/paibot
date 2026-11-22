@@ -18,6 +18,7 @@ import { dateinameAus } from "../api/client";
 import { Keksdose, TEST_PASSWORT, TEST_SCHLUESSEL } from "../zugang/testing";
 import {
   exportDateiname,
+  inDerDatei,
   sichererInhalt,
   unterhaltungAlsMarkdown,
   unterhaltungExportieren,
@@ -256,6 +257,23 @@ describe("Markdown der Datei", () => {
     expect(md).toContain("<div>im Block bleibt alles</div>");
     expect(md).toContain("danach \\<u>wieder entschärft\\</u>");
     expect(md.split("\n")[0]).toBe("# Titel \\<img src=x>");
+  });
+
+  it("Zwischentexte stehen nicht in der Datei und zählen nicht", () => {
+    const lauf = newId("run");
+    const nachrichten = [
+      nachricht({ role: "user", content: "Hallo" }),
+      nachricht({ role: "assistant", content: "ZWISCHEN-0", runId: lauf, step: 0 }),
+      nachricht({ role: "assistant", content: "ZWISCHEN-1", runId: lauf, step: 1 }),
+      nachricht({ role: "assistant", content: "Endantwort", runId: lauf }),
+    ];
+    const md = unterhaltungAlsMarkdown({ ...basis, nachrichten });
+    expect(md).not.toContain("ZWISCHEN");
+    expect(md).toContain("Endantwort");
+    expect(md).toContain("Nachrichten: 2");
+    // keine „Fassung 3 von 3“ aus den Zwischentexten
+    expect(md).not.toContain("Fassung");
+    expect(nachrichten.filter(inDerDatei)).toHaveLength(2);
   });
 
   it("gewöhnlicher Text bleibt unverändert", () => {

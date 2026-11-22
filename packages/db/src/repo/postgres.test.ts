@@ -15,7 +15,7 @@ import { createDb } from "../client";
 import { runMigrations } from "../migrate";
 import { MIGRATIONS_FOLDER } from "../testing";
 import { bots, conversations, events, messages, rateLimit, runs, search } from "./index";
-import { mitCode } from "./testhilfe";
+import { mitCode, pruefeZwischentexte } from "./testhilfe";
 
 const URL_ENV = process.env.PAIBOT_TEST_DATABASE_URL;
 
@@ -193,5 +193,9 @@ describe.skipIf(URL_ENV === undefined)("Zugriffsfunktionen gegen echtes Postgres
     expect(await treffer("0%")).toBe(1);
     expect(await treffer("%%")).toBe(0);
     expect(await treffer("_bermorgen")).toBe(0);
+  });
+
+  it("Suche: Zwischentexte eines Laufs mit Werkzeugen sind keine Treffer, Blättern zählt richtig", async () => {
+    await pruefeZwischentexte(db, botId);
   });
 });

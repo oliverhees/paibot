@@ -14,7 +14,9 @@ import {
   cleanJson,
   cleanText,
   hasUnwanted,
+  jsonHasKeyClash,
   jsonHasNonInteger,
+  jsonHasProtoKey,
   jsonHasUnwanted,
   RAW_NAME_MAX_CHARS,
   rawToolName,
@@ -103,5 +105,143 @@ describe("Bereinigen", () => {
     expect(jsonHasNonInteger({ zahl: 1.5 })).toBe(true);
     expect(jsonHasNonInteger([1, [2, { a: 2 ** 60 }]])).toBe(true);
     expect(jsonHasNonInteger({ a: 1, b: [2, 3] })).toBe(false);
+  });
+});
+
+describe("Schlüssel __proto__ und doppelte Schlüssel", () => {
+  /** Ein Schlüssel, der erst durch das Bereinigen zu `__proto__` wird (unsichtbares Zeichen mittendrin). */
+  const GETARNT = "__pro\u200bto__";
+
+  // Gegenprobe: Prüfung auf `__proto__` aus `jsonHasUnwanted` entfernen → die ersten drei Fälle rot.
+  it("eine Eingabe mit dem Schlüssel __proto__ gilt als unerwünscht, auch verschachtelt und getarnt", () => {
+    expect(jsonHasUnwanted(JSON.parse('{"__proto__":{"frage":"x"}}'))).toBe(true);
+    expect(jsonHasUnwanted(JSON.parse('{"a":{"__proto__":1}}'))).toBe(true);
+    expect(jsonHasUnwanted(JSON.parse('{"a":[{"b":{"__proto__":null}}]}'))).toBe(true);
+    expect(jsonHasUnwanted(JSON.parse(`{"${GETARNT}":1}`))).toBe(true);
+    expect(jsonHasProtoKey(JSON.parse(`{"a":{"${GETARNT}":1}}`))).toBe(true);
+    expect(jsonHasUnwanted({ frage: "x" })).toBe(false);
+    // Schlüssel, die nur ähnlich heißen, bleiben erlaubt (als eigene Eigenschaft ohne Wirkung).
+    expect(jsonHasUnwanted({ constructor: "x", prototype: "y", proto: "z", __proto: 1 })).toBe(
+      false,
+    );
+  });
+
+  // Gegenprobe: Prüfung auf doppelte Schlüssel aus `jsonHasUnwanted` entfernen → rot.
+  it("zwei Schlüssel, die bereinigt gleich sind, machen die Eingabe unerwünscht (kein stilles Überschreiben)", () => {
+    const zerlegt = JSON.parse('{"e\u0301":1,"\u00e9":2}');
+    expect(Object.keys(zerlegt)).toHaveLength(2);
+    expect(jsonHasKeyClash(zerlegt)).toBe(true);
+    expect(jsonHasUnwanted(zerlegt)).toBe(true);
+    expect(jsonHasKeyClash({ a: { "k\u200b": 1, k: 2 } })).toBe(true);
+    expect(jsonHasKeyClash([{ a: 1 }, { b: 2 }])).toBe(false);
+    expect(jsonHasUnwanted({ a: 1, b: 2, é: 3 })).toBe(false);
+  });
+
+  // Gegenprobe: in `cleanJson` wieder `out[cleanText(key)] = …` schreiben → rot.
+  it.each([
+    ["roh", '{"__proto__":{"x":"gefahr"},"y":"ok"}'],
+    ["getarnt", `{"${GETARNT}":{"x":"gefahr"},"y":"ok"}`],
+  ])(
+    "cleanJson (%s): __proto__ bleibt eigene Eigenschaft, der Prototyp bleibt Object.prototype",
+    (_name, text) => {
+      const ergebnis = cleanJson(JSON.parse(text)) as Record<string, unknown>;
+      expect(Object.hasOwn(ergebnis, "__proto__")).toBe(true);
+      expect(Object.getPrototypeOf(ergebnis)).toBe(Object.prototype);
+      expect(ergebnis.x).toBeUndefined();
+      expect(Object.keys(ergebnis).sort()).toEqual(["__proto__", "y"]);
+      expect(JSON.stringify(ergebnis)).toContain('"__proto__":{"x":"gefahr"}');
+      expect(({} as Record<string, unknown>).x).toBeUndefined();
+    },
+  );
+});
+
+describe("Alle standardmäßig unsichtbaren Zeichen", () => {
+  // Gegenprobe: die Liste der ersten Fassung (ohne `Default_Ignorable_Code_Point`) → jede Zeile rot.
+  it.each([
+    ["U+17B4", "\u{17b4}"],
+    ["U+17B5", "\u{17b5}"],
+    ["U+180B", "\u{180b}"],
+    ["U+180C", "\u{180c}"],
+    ["U+180D", "\u{180d}"],
+    ["U+180F", "\u{180f}"],
+    ["U+2065", "\u{2065}"],
+    ["U+FFF0", "\u{fff0}"],
+    ["U+FFF1", "\u{fff1}"],
+    ["U+FFF2", "\u{fff2}"],
+    ["U+FFF3", "\u{fff3}"],
+    ["U+FFF4", "\u{fff4}"],
+    ["U+FFF5", "\u{fff5}"],
+    ["U+FFF6", "\u{fff6}"],
+    ["U+FFF7", "\u{fff7}"],
+    ["U+FFF8", "\u{fff8}"],
+    ["U+E0000", "\u{e0000}"],
+    ["U+E0002", "\u{e0002}"],
+    ["U+E0080", "\u{e0080}"],
+    ["U+E01F0", "\u{e01f0}"],
+    ["U+E0FFF", "\u{e0fff}"],
+  ])("%s wird erkannt und entfernt, auch in Schlüsseln und im rohen Namen", (_name, zeichen) => {
+    expect(hasUnwanted(`a${zeichen}b`)).toBe(true);
+    expect(cleanText(`a${zeichen}b`)).toBe("ab");
+    expect(jsonHasUnwanted({ q: `a${zeichen}b` })).toBe(true);
+    expect(jsonHasUnwanted({ [`k${zeichen}`]: 1 })).toBe(true);
+    expect(cleanJson({ [`k${zeichen}`]: [`a${zeichen}b`] })).toEqual({ k: ["ab"] });
+    expect(rawToolName(zeichen.repeat(64))).toBeUndefined();
+    expect(rawToolName(`x${zeichen}y`)).toBe("xy");
+  });
+
+  // Gegenprobe: `\p{Co}` bzw. U+2800 aus `rawToolName` entfernen → die jeweilige Zeile rot.
+  it.each([
+    ["U+2800 (leeres Braille-Muster)", "\u2800"],
+    ["U+E000 (privater Gebrauch)", "\ue000"],
+    ["U+F0000 (privater Gebrauch, Ebene 15)", "\u{f0000}"],
+  ])("roher Name: %s entfällt, im Text bleibt es stehen", (_name, zeichen) => {
+    expect(rawToolName(zeichen.repeat(64))).toBeUndefined();
+    expect(rawToolName(`x${zeichen}y`)).toBe("xy");
+    expect(cleanText(`a${zeichen}b`)).toBe(`a${zeichen}b`);
+    expect(hasUnwanted(`a${zeichen}b`)).toBe(false);
+  });
+
+  // Gegenprobe: `\p{Lo}` in die Liste aufnehmen → rot.
+  it("sichtbare Zeichen bleiben: Buchstaben ohne Wähler, Khmer, Hindi, Braille-Punkte", () => {
+    const sichtbar = [
+      "\u1820\u1821\u1822\u1823", // mongolische Buchstaben ohne Variationswähler
+      "\u1780\u1781\u1782\u17b6", // Khmer-Buchstaben und -Vokal
+      "\u0939\u093f\u0928\u094d\u0926\u0940", // Hindi ohne Verbinder
+      "\u2801\u2803\u2809", // Braille-Punkte (nicht U+2800)
+    ];
+    for (const text of sichtbar) {
+      expect(cleanText(text), text).toBe(text.normalize("NFC"));
+      expect(hasUnwanted(text), text).toBe(false);
+      expect(rawToolName(text), text).toBe(text.normalize("NFC"));
+    }
+  });
+});
+
+// Diese Fälle belegen den Absatz „Sichtbare Folgen des Entfernens“ in `docs/entwickler/werkzeug-kern.md`.
+describe("Sichtbare Folgen des Entfernens", () => {
+  it("ZWNJ und ZWJ fallen weg; Emoji-Folgen zerfallen in ihre Teile", () => {
+    expect(cleanText("\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645")).toBe(
+      "\u0645\u06cc\u062e\u0648\u0627\u0647\u0645",
+    );
+    // Familie: Mann, Frau, Mädchen mit Verbindern → drei Personen
+    expect(cleanText("\u{1f468}\u200d\u{1f469}\u200d\u{1f467}")).toBe(
+      "\u{1f468}\u{1f469}\u{1f467}",
+    );
+    // Regenbogenflagge: Flagge, Wähler, Verbinder, Regenbogen → Flagge und Regenbogen
+    expect(cleanText("\u{1f3f3}\ufe0f\u200d\u{1f308}")).toBe("\u{1f3f3}\u{1f308}");
+    // Flagge aus Tag-Zeichen (England) → schwarze Flagge
+    expect(cleanText("\u{1f3f4}\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}")).toBe(
+      "\u{1f3f4}",
+    );
+  });
+
+  it("die sichtbaren Format-Zeichen U+0600 und U+06DD verschwinden", () => {
+    expect(cleanText("a\u0600\u06ddb")).toBe("ab");
+  });
+
+  it("Umlaute, ß, €, Pfeile, Häkchen und Emoji mit Hautton bleiben", () => {
+    const sichtbar = "\u00e4\u00f6\u00fc\u00df \u20ac \u2192\u2190 \u2713\u2714 \u{1f44d}\u{1f3fd}";
+    expect(cleanText(sichtbar)).toBe(sichtbar);
+    expect(hasUnwanted(sichtbar)).toBe(false);
   });
 });

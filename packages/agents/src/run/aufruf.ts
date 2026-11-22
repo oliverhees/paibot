@@ -32,7 +32,9 @@ import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
 import {
   cleanJson,
   cleanText,
+  jsonHasKeyClash,
   jsonHasNonInteger,
+  jsonHasProtoKey,
   jsonHasUnwanted,
   rawToolName,
 } from "./bereinigen";
@@ -600,7 +602,13 @@ function outcomeEnvelope(
   const checked = tool.definition.output.safeParse(outcome.output);
   if (!checked.success)
     return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
+  // Kein stilles Überschreiben und nie ein Schlüssel `__proto__` (auch nicht erst durch das
+  // Bereinigen): so ein Ergebnis geht nicht an das Modell.
+  if (jsonHasKeyClash(checked.data as JsonValue))
+    return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   const cleaned = cleanJson(checked.data as JsonValue);
+  if (jsonHasProtoKey(cleaned))
+    return codeEnvelope(key, "fehler", "werkzeug_fehler", errorEnvelopeText("werkzeug_fehler"));
   const limit = Math.max(
     0,
     Math.min(tool.definition.limits.maxOutputChars, settings.toolResultMaxChars, stepCharsLeft),
