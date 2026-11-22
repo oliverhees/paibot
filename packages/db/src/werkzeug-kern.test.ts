@@ -25,11 +25,12 @@ import {
   toolCallSchema,
   ZERO_PREV,
 } from "@paibot/shared";
+import { toolEnvelopeSchema } from "@paibot/shared/werkzeug";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Database } from "./client";
 import { toolCalls as calls, events, messages as nachrichten, settings } from "./repo";
 import { TOOL_CALL_TRANSITIONS } from "./repo/werkzeuge";
-import { belege, bots, conversations, installationKeys, messages, runs } from "./schema";
+import { belege, bots, conversations, installationKeys, messages, runs, toolCalls } from "./schema";
 import {
   belegRow,
   botRow,
@@ -355,6 +356,66 @@ for (const umgebung of umgebungen) {
         expect(fertig.status).toBe("succeeded");
         const b = await neu(1);
         expect((await calls.cancel(u.db, b.actionId, { output: null })).status).toBe("cancelled");
+      });
+    });
+
+    describe("Offene Aufrufe eines Laufs beenden (Aufräumen)", () => {
+      it("angefragt → unterbrochen, laufend je nach Wirkung, ohne Wirkung wie nach außen; nie wiederholt", async () => {
+        const ids = await lauf();
+        const zeile = async (
+          position: number,
+          status: "requested" | "running",
+          abweichung: Record<string, unknown> = {},
+        ) => {
+          const row = { ...toolCallRow(ids, { position, callId: `c${position}` }), ...abweichung };
+          await u.db.insert(toolCalls).values(row);
+          if (status === "running") {
+            await u.q(
+              "update tool_calls set status = 'running', decision_receipt_id = $2 where action_id = $1",
+              [row.actionId, beleg()],
+            );
+          }
+          return row.actionId;
+        };
+        const a = await zeile(0, "requested");
+        const b = await zeile(1, "running");
+        const c = await zeile(2, "running", {
+          kind: "schreiben",
+          toolKey: "eingebaut/notiz.schreiben",
+        });
+        const d = await zeile(3, "running", { reach: "nach_aussen" });
+        // Zeile aus der Zeit vor den Pflicht-Angaben (ohne Kennung und Wirkung).
+        const e = await aufrufEinfuegen("running", { toolKey: null, reach: null });
+        await u.ohneTrigger(
+          "update tool_calls set run_id = $2, message_id = $3, position = 4 where action_id = $1",
+          [e, ids.runId, ids.messageId],
+        );
+        expect(await calls.endOpenForRun(u.db, ids.runId)).toBe(5);
+        const ende = Object.fromEntries(
+          (await calls.listForRun(u.db, ids.runId)).map((x) => [
+            x.actionId,
+            [
+              x.status,
+              x.resultStatus,
+              x.errorCode,
+              (x.output as { code?: string } | undefined)?.code ?? null,
+            ],
+          ]),
+        );
+        expect(ende).toEqual({
+          [a]: ["cancelled", "error", "unterbrochen", "unterbrochen"],
+          [b]: ["cancelled", "error", "unterbrochen", "unterbrochen"],
+          [c]: ["cancelled", "error", "ausgang_unbekannt", "ausgang_unbekannt"],
+          [d]: ["cancelled", "error", "ausgang_unbekannt", "ausgang_unbekannt"],
+          [e]: ["cancelled", "error", "ausgang_unbekannt", null],
+        });
+        const huelle = (await calls.get(u.db, c))?.output;
+        expect(toolEnvelopeSchema.safeParse(huelle).success).toBe(true);
+        expect(await calls.endOpenForRun(u.db, ids.runId)).toBe(0);
+        const f = await fehler(
+          u.q("update tool_calls set status = 'running' where action_id = $1", [a]),
+        );
+        expect(f.code).toBe(RESTRICT);
       });
     });
 

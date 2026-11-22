@@ -27,6 +27,8 @@ import {
   type ToolSource,
   toIsoTime,
 } from "@paibot/shared";
+import { errorText } from "@paibot/shared/texte";
+import { type ToolEnvelope, toolEnvelopeSchema } from "@paibot/shared/werkzeug";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { type ToolCallRow, toolCalls } from "../schema";
@@ -327,4 +329,55 @@ export function cancel(
     errorCode: input.errorCode ?? "unterbrochen",
     finishedAt: input.now ?? new Date(),
   });
+}
+
+/**
+ * Code, mit dem ein offener Aufruf beim Aufräumen endet: `requested` war noch nicht beim Werkzeug
+ * (`unterbrochen`). Bei `running` ist nicht bekannt, ob er gewirkt hat, wenn er schreibt oder
+ * nach außen wirkt; ohne gespeicherte Wirkung (Zeilen aus der Zeit davor) zählt er wie „nach
+ * außen“ (`ausgang_unbekannt`). Sonst `unterbrochen`.
+ */
+export function openCallEndCode(
+  row: Pick<ToolCallRow, "status" | "kind" | "reach">,
+): "unterbrochen" | "ausgang_unbekannt" {
+  if (row.status !== "running") return "unterbrochen";
+  return row.kind === "schreiben" || row.reach === "nach_aussen" || row.reach === null
+    ? "ausgang_unbekannt"
+    : "unterbrochen";
+}
+
+/**
+ * Beendet alle offenen Aufrufe (`requested`, `running`) eines Laufs, z. B. beim Aufräumen nach
+ * einem Absturz: Zustand `cancelled`, Ergebnis `error` mit `openCallEndCode`, für das Modell die
+ * feste Hülle mit Code und Text (ohne Kennung des Werkzeugs, also bei Zeilen aus der Zeit davor:
+ * `null`). Nie wiederholt: Aus `cancelled` führt kein Weg zurück; ein zweiter Aufruf ändert
+ * nichts. Gibt die Anzahl der beendeten Aufrufe zurück.
+ */
+export async function endOpenForRun(
+  db: Database,
+  runId: RunId,
+  input: { now?: Date } = {},
+): Promise<number> {
+  const offen = await db
+    .select()
+    .from(toolCalls)
+    .where(and(eq(toolCalls.runId, runId), inArray(toolCalls.status, ["requested", "running"])))
+    .orderBy(asc(toolCalls.createdAt), asc(toolCalls.messageId), asc(toolCalls.position));
+  const now = input.now ?? new Date();
+  for (const row of offen) {
+    const code = openCallEndCode(row);
+    const huelle: ToolEnvelope | null =
+      row.toolKey === null
+        ? null
+        : toolEnvelopeSchema.parse({
+            paibot: "werkzeug-ergebnis",
+            werkzeug: row.toolKey,
+            art: "daten",
+            status: "fehler",
+            code,
+            text: errorText(code),
+          });
+    await cancel(db, row.actionId, { output: huelle, errorCode: code, now });
+  }
+  return offen.length;
 }

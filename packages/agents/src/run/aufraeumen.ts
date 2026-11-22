@@ -38,11 +38,12 @@ export interface StaleRunOptions {
  * nach `cancelledStaleAfterMs`), und Läufe, die länger
  * als `queuedStaleAfterMs` in `queued` stehen (z. B. weil ihr Auftrag verloren ging). Jeder wird
  * auf `failed` mit Code `unterbrochen` gesetzt; eine noch streamende Antwort wird mit dem bis dahin
- * gestreamten Text als `failed` abgeschlossen; Ereignis `run.failed`. Gibt es zu einer schon
- * belegten Entscheidung `modell.anfragen` dieses Laufs noch kein Ergebnis, schreibt der
- * Beleg-Schreiber (`deps.receipts`) das Ergebnis `error`/`unterbrochen`. Für den Start des
- * Workers und danach regelmäßig (etwa nach einem Ausfall der Datenbank). Liefert die betroffenen
- * Läufe.
+ * gestreamten Text als `failed` abgeschlossen; offene Werkzeug-Aufrufe enden als `cancelled`
+ * (`repo.toolCalls.endOpenForRun`); Ereignis `run.failed`. Gibt es zu einer schon belegten
+ * Entscheidung `modell.anfragen` oder `werkzeug.aufrufen` dieses Laufs noch kein Ergebnis, schreibt
+ * der Beleg-Schreiber (`deps.receipts`) ein passendes Ergebnis (`closeOpenDecisions`). Für den
+ * Start des Workers und danach regelmäßig (etwa nach einem Ausfall der Datenbank). Liefert die
+ * betroffenen Läufe.
  */
 export async function failStaleRuns(
   deps: Pick<RunDeps, "db" | "clock"> & Partial<Pick<RunDeps, "receipts">>,
@@ -82,6 +83,8 @@ async function failRun(db: Database, run: Run, now: Date): Promise<boolean> {
   try {
     await repo.withTransaction(db, async (tx) => {
       await repo.runs.finish(tx, run.id, { status: "failed", errorCode: STALE_CODE, now });
+      // Offene Werkzeug-Aufrufe des toten Laufs enden mit ihm (nie wiederholt).
+      await repo.toolCalls.endOpenForRun(tx, run.id, { now });
       const streaming = await tx.query.messages.findMany({
         columns: { id: true },
         where: (t, { and, eq }) => and(eq(t.runId, run.id), eq(t.status, "streaming")),
@@ -123,10 +126,26 @@ async function streamedText(db: Database, run: Run, messageId: MessageId): Promi
   }
 }
 
+/** Aktionen eines Laufs, deren Entscheidungen beim Aufräumen ein Ergebnis bekommen. */
+const LAUF_AKTIONEN = ["modell.anfragen", "werkzeug.aufrufen"] as const;
+
 /**
- * Schreibt für jede Entscheidung `modell.anfragen` des Laufs ohne Ergebnis ein Ergebnis: nach einer
- * Ablehnung („nicht erlaubt“) dasselbe Ergebnis „abgelehnt“ mit demselben Code wie im Tor, nach
- * einer Erlaubnis „unterbrochen“. Nur so passt das Ergebnis zur Entscheidung und die Kette bleibt gültig.
+ * Code für eine erlaubte, nie beendete Entscheidung: Bei einem Werkzeug, das schreibt oder nach
+ * außen wirkt, ist nicht bekannt, ob es schon gewirkt hat (`ausgang_unbekannt`); sonst `unterbrochen`.
+ */
+function erlaubtOhneEnde(action: string, facts: Record<string, unknown>): ErrorCode {
+  if (action !== "werkzeug.aufrufen") return STALE_CODE;
+  return facts.toolKind === "schreiben" || facts.toolReach === "nach_aussen"
+    ? "ausgang_unbekannt"
+    : STALE_CODE;
+}
+
+/**
+ * Schreibt für jede Entscheidung `modell.anfragen` oder `werkzeug.aufrufen` des Laufs ohne Ergebnis
+ * ein Ergebnis: nach einer Ablehnung oder „fragen“ dasselbe Ergebnis „abgelehnt“ mit demselben Code
+ * wie im Tor, nach einer Erlaubnis „unterbrochen“ (bei einem Werkzeug, das schreibt oder nach
+ * außen wirkt, `ausgang_unbekannt`). Nur so passt das Ergebnis zur Entscheidung und die Kette
+ * bleibt gültig.
  */
 async function closeOpenDecisions(
   db: Database,
@@ -136,10 +155,10 @@ async function closeOpenDecisions(
 ): Promise<void> {
   const decisions = await db.query.belege.findMany({
     columns: { actionId: true, body: true },
-    where: (t, { and, eq, sql }) =>
+    where: (t, { and, eq, inArray, sql }) =>
       and(
         eq(t.entryType, "decision"),
-        eq(t.action, "modell.anfragen"),
+        inArray(t.action, [...LAUF_AKTIONEN]),
         eq(t.conversationId, run.conversationId),
         sql`${t.body}->'action'->'target'->>'runId' = ${run.id}`,
       ),
@@ -157,7 +176,10 @@ async function closeOpenDecisions(
       action: decision.body.action as ActionRequest,
       result:
         entschieden.outcome === "allow"
-          ? { status: "error", code: STALE_CODE }
+          ? {
+              status: "error",
+              code: erlaubtOhneEnde(decision.body.action.type, decision.body.facts ?? {}),
+            }
           : {
               status: "denied",
               code: denialCode({ ...entschieden, preconditions: entschieden.preconditions ?? [] }),
