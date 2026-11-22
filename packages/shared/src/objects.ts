@@ -209,6 +209,12 @@ export const botSchema = z.strictObject({
   avatarShape: avatarShapeSchema,
   color: botColorSchema,
   maxOutputTokens: positiveIntSchema,
+  /** Aufgabe des Bots in seinem Team, ein Satz; leer bei einem einzelnen Bot. */
+  role: z.string().max(200),
+  /** Ein pausierter Bot antwortet nicht und ruft keine Werkzeuge auf. */
+  paused: z.boolean(),
+  /** Das Team des Bots; fehlt bei einem einzelnen Bot. */
+  teamId: idSchema("team").optional(),
   createdAt: isoTimeSchema,
   updatedAt: isoTimeSchema,
 });

@@ -125,6 +125,9 @@ export function toBot(row: BotRow): Bot {
     avatarShape: row.avatarShape,
     color: row.color,
     maxOutputTokens: row.maxOutputTokens,
+    role: row.role,
+    paused: row.paused,
+    ...wennGesetzt("teamId", row.teamId),
     createdAt: toIsoTime(row.createdAt),
     updatedAt: toIsoTime(row.updatedAt),
   };

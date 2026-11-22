@@ -125,6 +125,8 @@ describe("Fachobjekte", () => {
           avatarShape: "blatt",
           color: "limette",
           maxOutputTokens: 2048,
+          role: "",
+          paused: false,
           createdAt: time,
           updatedAt: time,
         },
@@ -191,6 +193,26 @@ describe("Fachobjekte", () => {
       expect(schema.parse(value)).toEqual(value);
       expect(schema.safeParse({ ...value, unbekannt: 1 }).success).toBe(false);
     }
+  });
+
+  it("ein Bot im Team trägt Aufgabe und Team; ohne Pause-Angabe ist er ungültig", () => {
+    const bot = {
+      id: newId("bot"),
+      name: "Ideen",
+      instructions: "",
+      avatarShape: "blatt",
+      color: "limette",
+      maxOutputTokens: 2048,
+      role: "Sammelt Themen.",
+      paused: true,
+      teamId: newId("team"),
+      createdAt: time,
+      updatedAt: time,
+    };
+    expect(botSchema.parse(bot)).toEqual(bot);
+    const { paused: _p, ...ohnePause } = bot;
+    expect(botSchema.safeParse(ohnePause).success).toBe(false);
+    expect(botSchema.safeParse({ ...bot, role: "x".repeat(201) }).success).toBe(false);
   });
 
   it("ein Faden hat ein Team und keinen Bot", () => {

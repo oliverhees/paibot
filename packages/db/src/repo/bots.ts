@@ -122,6 +122,28 @@ export async function setModel(
   return row === undefined ? undefined : toBot(row);
 }
 
+/**
+ * Pausiert einen Bot oder hebt die Pause auf. `undefined`, wenn es ihn nicht gibt. Der Stand gilt
+ * sofort: Das Tor liest ihn bei jeder Anfrage frisch (`readBotPaused` in den Läufen), auch mitten
+ * in einem Lauf.
+ */
+export async function setPaused(
+  db: Database,
+  id: BotId,
+  paused: boolean,
+): Promise<Bot | undefined> {
+  const [row] = await uebersetzen(
+    () =>
+      db
+        .update(bots)
+        .set({ paused, updatedAt: sql`pg_catalog.now()` })
+        .where(eq(bots.id, id))
+        .returning(),
+    standardFehler,
+  );
+  return row === undefined ? undefined : toBot(row);
+}
+
 /** Namen der Fremdschlüssel, die das Löschen eines Bots verhindern. */
 const FK_LAEUFE = "runs_bot_id_bots_id_fk";
 const FK_STANDARD_BOT = "settings_default_bot_id_bots_id_fk";
