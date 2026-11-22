@@ -24,7 +24,7 @@ import {
   type RunId,
   type ServedBy,
 } from "@paibot/shared";
-import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { conversations, messages } from "../schema";
 import { toMessage } from "./abbildung";
@@ -49,6 +49,8 @@ export interface MessageCreate {
   step?: number;
   /** Fester Text von PaiBot statt Text des Modells; Standard `modell`. */
   origin?: MessageOrigin;
+  /** Die Nachricht enthält oder stützt sich auf fremde Inhalte; nur setzen, nie zurücknehmen. */
+  untrusted?: boolean;
 }
 
 /** Abschluss einer streamenden Antwort. */
@@ -91,6 +93,7 @@ export async function insert(db: Database, input: MessageCreate): Promise<Messag
             errorCode: input.errorCode ?? null,
             step: input.step ?? null,
             ...(input.origin === undefined ? {} : { origin: input.origin }),
+            ...(input.untrusted === true ? { untrusted: true } : {}),
           })
           .returning();
         if (row === undefined) throw new PaiBotError("intern");
@@ -195,4 +198,43 @@ export async function tokensSince(db: Database, since: Date): Promise<number> {
     .from(messages)
     .where(and(eq(messages.role, "assistant"), gte(messages.createdAt, since)));
   return Number(row?.total ?? 0);
+}
+
+/**
+ * Kennzeichnet alle Nachrichten eines Laufs als „fremder Inhalt“ (nur setzen, nie zurücknehmen).
+ * Spätere Nachrichten desselben Laufs erben das Kennzeichen beim Anlegen (Trigger der
+ * Datenbank). Gibt die Zahl der gekennzeichneten Nachrichten zurück.
+ */
+export async function markRunUntrusted(db: Database, runId: RunId): Promise<number> {
+  const rows = await db
+    .update(messages)
+    .set({ untrusted: true })
+    .where(and(eq(messages.runId, runId), eq(messages.untrusted, false)))
+    .returning({ id: messages.id });
+  return rows.length;
+}
+
+/** Kennzeichnet eine einzelne Nachricht als „fremder Inhalt“. */
+export async function markUntrusted(db: Database, id: MessageId): Promise<void> {
+  await db.update(messages).set({ untrusted: true }).where(eq(messages.id, id));
+}
+
+/** Trägt mindestens eine dieser Nachrichten das Kennzeichen „fremder Inhalt“? */
+export async function anyUntrusted(db: Database, ids: readonly MessageId[]): Promise<boolean> {
+  if (ids.length === 0) return false;
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(messages)
+    .where(and(inArray(messages.id, [...ids]), eq(messages.untrusted, true)));
+  return (row?.n ?? 0) > 0;
+}
+
+/** Die Nachrichten dieser Liste, die das Kennzeichen „fremder Inhalt“ tragen. */
+export async function untrustedIds(db: Database, ids: readonly MessageId[]): Promise<MessageId[]> {
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({ id: messages.id })
+    .from(messages)
+    .where(and(inArray(messages.id, [...ids]), eq(messages.untrusted, true)));
+  return rows.map((r) => r.id);
 }
