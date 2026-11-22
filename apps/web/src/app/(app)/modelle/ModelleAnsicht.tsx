@@ -370,7 +370,9 @@ export function ModelleAnsicht(props: ModelleAnsichtProps) {
         setUebernimmt(false);
         setModellMeldung({
           art: "fehler",
-          text: abgleich.ok ? t("modelle.liste.leer", { anbieter: name }) : abgleich.fehler.text,
+          text: abgleich.ok
+            ? t("modelle.liste.leer", { anbieter: satzName })
+            : abgleich.fehler.text,
           ...(!abgleich.ok && abgleich.fehler.ausweg ? { ausweg: abgleich.fehler.ausweg } : {}),
         });
         return;
