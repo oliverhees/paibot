@@ -17,13 +17,15 @@ export interface TestAbschnitt {
   seite: string;
   anker: string;
   titel: string;
+  /** Überschriften von der Seite abwärts bis zur eigenen (Fassung 2). */
+  pfad: string[];
   text: string;
 }
 
 /** Eine Index-Datei, wie `scripts/doku-index.mjs` sie schreibt. */
 export interface TestIndex {
   format: "pb-doku-index";
-  v: 1;
+  v: 2;
   stand: { version: string; pruefsumme: string };
   abschnitte: TestAbschnitt[];
 }
@@ -31,8 +33,15 @@ export interface TestIndex {
 /** Version in den Test-Indizes. */
 export const TEST_VERSION = "9.9.9-test";
 
-function abschnitt(seite: string, anker: string, titel: string, text: string): TestAbschnitt {
-  return { id: `${seite}#${anker}`, seite, anker, titel, text };
+/** Ein Test-Abschnitt; `darueber` sind die Überschriften über ihm (ohne die eigene). */
+export function abschnitt(
+  seite: string,
+  anker: string,
+  titel: string,
+  text: string,
+  darueber: readonly string[] = [],
+): TestAbschnitt {
+  return { id: `${seite}#${anker}`, seite, anker, titel, pfad: [...darueber, titel], text };
 }
 
 /**
@@ -47,9 +56,9 @@ export function indexAus(
 ): TestIndex {
   return {
     format: "pb-doku-index",
-    v: 1,
+    v: 2,
     stand: { version, pruefsumme },
-    abschnitte: abschnitte.map((a) => ({ ...a })),
+    abschnitte: abschnitte.map((a) => ({ ...a, pfad: [...a.pfad] })),
   };
 }
 
@@ -87,7 +96,7 @@ export const KLEIN: readonly TestAbschnitt[] = [
   ),
 ];
 
-/** Wort, das in `VIELE_TREFFER` in jedem Abschnitt steht, im ersten auch im Titel. */
+/** Wort, das in `VIELE_TREFFER` in jedem Abschnitt steht, im zweiten auch im Titel. */
 export const VIELES_WORT = "Laterne";
 
 /** Wort, das in `LANG` erst weit hinten im Text steht (prüft das Fenster um den ersten Treffer). */
@@ -111,7 +120,7 @@ export const VIELE_TREFFER: readonly TestAbschnitt[] = Array.from({ length: 6 },
   abschnitt(
     "beispiel-viele.md",
     `teil-${i}`,
-    i === 0 ? `${VIELES_WORT} im Titel` : `Teil ${i}`,
+    i === 1 ? `${VIELES_WORT} im Titel` : `Teil ${i}`,
     `${VIELES_WORT} ${i}. ${FUELLSATZ.repeat(40)}`.slice(0, 2000),
   ),
 );
@@ -185,7 +194,7 @@ export function grosseAbschnitte(zielZeichen: number): TestAbschnitt[] {
   const abschnitte: TestAbschnitt[] = [];
   let laenge = 0;
   for (let i = 0; laenge < zielZeichen; i++) {
-    const woerter = Array.from({ length: 300 }, () => vorrat[naechstes() % vorrat.length]);
+    const woerter = Array.from({ length: 300 }, () => vorrat[(naechstes() >>> 16) % vorrat.length]);
     const text = `${woerter.join(" ")}.`;
     const a = abschnitt(`gross-${Math.floor(i / 20)}.md`, `teil-${i}`, `Teil ${i}`, text);
     laenge += JSON.stringify(a).length + 6;
