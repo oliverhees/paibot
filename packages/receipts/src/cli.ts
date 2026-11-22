@@ -201,14 +201,20 @@ function printReport(report: ChainReport, io: CliIo): number {
   // Belege aus einer neueren Fassung machen sie „nicht vollständig prüfbar“.
   // Ein Rückschritt der Fassung ändert die Stufe nicht, aber die Kette heißt dann nicht „gültig“.
   const warnung = (verdict.notes ?? []).length > 0;
+  // Das Gesamtergebnis (und damit der Exit-Code) kommt aus einer Quelle; die erste Zeile
+  // richtet sich danach. Ein Fund ohne fehlerhaften Beleg (z. B. Kette kürzer als der Anker)
+  // heißt dort ebenfalls „ungültig“.
+  const exit = exitCode(verdict.level);
   const ergebnis =
     failure !== undefined
       ? t("pruefung.ungueltig", { seq: failure.seq })
-      : verdict.level === "nicht_pruefbar"
-        ? t("pruefung.nicht_pruefbar")
-        : warnung && verdict.level === "vertrauenswuerdig"
-          ? t("pruefung.mit_warnung")
-          : t("pruefung.gueltig");
+      : exit === CLI_EXIT.ungueltig
+        ? t("pruefung.ungueltig_ohne_stelle")
+        : exit === CLI_EXIT.nichtPruefbar
+          ? t("pruefung.nicht_pruefbar")
+          : warnung && verdict.level === "vertrauenswuerdig"
+            ? t("pruefung.mit_warnung")
+            : t("pruefung.gueltig");
   io.out(t("belege.befehl.kette", { ergebnis, anzahl: report.checked }));
   if (failure === undefined && report.head !== undefined) {
     io.out(t("belege.befehl.kopf", report.head));
@@ -231,8 +237,13 @@ function printReport(report: ChainReport, io: CliIo): number {
   }
   if (verdict.anchor === "fehlt") io.out(t("belege.anker.ohne"));
 
-  if (verdict.level === "vertrauenswuerdig") return CLI_EXIT.gueltig;
-  if (verdict.level === "vertrauen_gebrochen") return CLI_EXIT.vertrauenGebrochen;
-  if (verdict.level === "nicht_pruefbar") return CLI_EXIT.nichtPruefbar;
+  return exit;
+}
+
+/** Exit-Code zur Stufe des Urteils: die einzige Stelle, die Stufe und Ausgang verbindet. */
+function exitCode(level: ChainReport["verdict"]["level"]): number {
+  if (level === "vertrauenswuerdig") return CLI_EXIT.gueltig;
+  if (level === "vertrauen_gebrochen") return CLI_EXIT.vertrauenGebrochen;
+  if (level === "nicht_pruefbar") return CLI_EXIT.nichtPruefbar;
   return CLI_EXIT.ungueltig;
 }
