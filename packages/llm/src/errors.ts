@@ -49,6 +49,31 @@ function statusOf(value: object): number | undefined {
   return undefined;
 }
 
+/** Meldung von EUrouter bei einer unbekannten Regel (HTTP 400, `rule_name` ohne passende Regel). */
+const RULE_UNKNOWN_TEXT = /^Routing rule with name .* not found/i;
+
+/** Ist das die Antwort „Regel unbekannt“? Nur Status 400 und der Text im Körper zählen. */
+function isRuleUnknown(error: object): boolean {
+  if (statusOf(error) !== 400) return false;
+  const record = error as Record<string, unknown>;
+  const body = record.responseBody;
+  if (typeof body === "string" && body.length <= 16 * 1024) {
+    try {
+      const parsed = JSON.parse(body) as { error?: { message?: unknown } };
+      const message = parsed?.error?.message;
+      if (typeof message === "string" && RULE_UNKNOWN_TEXT.test(message)) return true;
+    } catch {
+      return false;
+    }
+  }
+  const data = record.data;
+  if (data && typeof data === "object") {
+    const message = (data as { error?: { message?: unknown } }).error?.message;
+    return typeof message === "string" && RULE_UNKNOWN_TEXT.test(message);
+  }
+  return false;
+}
+
 function mapStatus(status: number): MotorErrorCode {
   if (status === 401 || status === 403) return "schluessel_ungueltig";
   if (status === 402 || status === 429) return "limit_erreicht";
@@ -94,6 +119,7 @@ function mapValue(error: unknown, depth: number): MotorErrorCode | undefined {
         depth < MAX_DEPTH && "cause" in error ? mapValue(record.cause, depth + 1) : undefined;
       return inner ?? "intern";
     }
+    if (isRuleUnknown(error)) return "regel_unbekannt";
     return mapStatus(status);
   }
 

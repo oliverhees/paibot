@@ -8,7 +8,16 @@
  * @since     2026-11-20
  */
 
-import { type Model, type ModelId, newId, PaiBotError, type ProviderId } from "@paibot/shared";
+import {
+  type Model,
+  type ModelId,
+  newId,
+  PaiBotError,
+  type ProviderId,
+  type RulePolicy,
+  type RulePolicySource,
+  rulePolicySchema,
+} from "@paibot/shared";
 import { and, asc, eq } from "drizzle-orm";
 import type { Database } from "../client";
 import { models } from "../schema";
@@ -122,4 +131,72 @@ export async function setEnabled(
 export async function remove(db: Database, id: ModelId): Promise<boolean> {
   const geloescht = await db.delete(models).where(eq(models.id, id)).returning({ id: models.id });
   return geloescht.length > 0;
+}
+
+/** Gelesene Vorgaben einer Routing-Regel mit Herkunft und Zeitpunkt der Prüfung. */
+export interface StoredRulePolicy {
+  policy: RulePolicy;
+  source: RulePolicySource;
+  checkedAt: Date;
+}
+
+function toStoredPolicy(row: {
+  rulePolicy: unknown;
+  rulePolicySource: string | null;
+  rulePolicyCheckedAt: Date | null;
+}): StoredRulePolicy | undefined {
+  if (row.rulePolicy === null || row.rulePolicySource !== "verwaltungsschluessel") return undefined;
+  if (row.rulePolicyCheckedAt === null) return undefined;
+  const parsed = rulePolicySchema.safeParse(row.rulePolicy);
+  if (!parsed.success) return undefined;
+  return {
+    policy: parsed.data,
+    source: row.rulePolicySource,
+    checkedAt: row.rulePolicyCheckedAt,
+  };
+}
+
+/** Speichert die Vorgaben einer Regel (mit Herkunft und Zeit) oder entfernt sie (`null`). */
+export async function setRulePolicy(
+  db: Database,
+  id: ModelId,
+  value: { policy: RulePolicy; source: RulePolicySource; checkedAt: Date } | null,
+): Promise<boolean> {
+  const rows = await db
+    .update(models)
+    .set(
+      value === null
+        ? { rulePolicy: null, rulePolicySource: null, rulePolicyCheckedAt: null }
+        : {
+            rulePolicy: rulePolicySchema.parse(value.policy),
+            rulePolicySource: value.source,
+            rulePolicyCheckedAt: value.checkedAt,
+          },
+    )
+    .where(eq(models.id, id))
+    .returning({ id: models.id });
+  return rows.length > 0;
+}
+
+/** Gespeicherte Vorgaben der Modelle (Regeln) eines Anbieters, nach Kennung des Modells. */
+export async function rulePolicies(
+  db: Database,
+  providerId: ProviderId,
+): Promise<Record<string, StoredRulePolicy>> {
+  const rows = await db.select().from(models).where(eq(models.providerId, providerId));
+  const result: Record<string, StoredRulePolicy> = {};
+  for (const row of rows) {
+    const stored = toStoredPolicy(row);
+    if (stored !== undefined) result[row.id] = stored;
+  }
+  return result;
+}
+
+/** Gespeicherte Vorgaben eines Modells (einer Regel), falls es welche gibt. */
+export async function rulePolicyOf(
+  db: Database,
+  id: ModelId,
+): Promise<StoredRulePolicy | undefined> {
+  const [row] = await db.select().from(models).where(eq(models.id, id));
+  return row === undefined ? undefined : toStoredPolicy(row);
 }

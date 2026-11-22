@@ -48,11 +48,13 @@ export async function modelleSeitenDaten(
   const anbieterListe = await repo.providers.list(db);
   const bot = await repo.bots.getDefault(db);
   const modell = bot === undefined ? undefined : await modellVon(db, bot);
+  const einstellungen = await repo.settings.get(db);
+  const kontext = { jetzt: d.uhr.now(), zeitzone: einstellungen?.timezone ?? "Europe/Berlin" };
   const regeln: Record<string, RegelEintrag[]> = {};
   const alteEintraege: Record<string, AlterEintrag[]> = {};
   for (const a of anbieterListe) {
     if (a.templateKey !== "eurouter") continue;
-    regeln[a.id] = await regelnVon(db, a);
+    regeln[a.id] = await regelnVon(db, a, kontext);
     alteEintraege[a.id] = await alteModelleVon(db, a);
   }
   const eurouter = anbieterListe.find((a) => a.templateKey === "eurouter");

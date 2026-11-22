@@ -248,7 +248,7 @@
       },
       {
         "tippe": "Name der Regel 1",
-        "text": "EU Beispiel"
+        "text": "Beispiel-Regel"
       },
       {
         "klick": {
@@ -326,6 +326,63 @@
       },
       {
         "warteAuf": "[data-fassung='stille']"
+      }
+    ],
+    "einrichtung-eurouter-regeln-eu": [
+      {
+        "ablauf": "einrichtung-bis-anbieter"
+      },
+      {
+        "klick": {
+          "rolle": "radio",
+          "name": "EUrouter",
+          "genau": false
+        }
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weiter"
+        }
+      },
+      {
+        "warteAufText": "Deine Routing-Regeln"
+      },
+      {
+        "tippe": {
+          "beschriftung": "Schlüssel für EUrouter"
+        },
+        "text": "$anbieter-schluessel"
+      },
+      {
+        "tippe": "Name der Regel 1",
+        "text": "Beispiel-Regel"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Weitere Regel"
+        }
+      },
+      {
+        "tippe": "Name der Regel 2",
+        "text": "Zweite Beispiel-Regel"
+      },
+      {
+        "tippe": {
+          "beschriftung": "Zweiter Schlüssel (Verwaltungsschlüssel)",
+          "genau": false
+        },
+        "text": "$verwaltungsschluessel"
+      },
+      {
+        "klick": {
+          "rolle": "button",
+          "name": "Schlüssel und Regeln prüfen"
+        }
+      },
+      {
+        "warteAufText": "2 von 2 Regeln geprüft."
       }
     ]
   },
@@ -455,6 +512,23 @@
         }
       ],
       "beschreibung": "Einrichtung mit EUrouter: Schlüssel und zwei Regel-Namen geprüft, eine funktioniert, eine nicht"
+    },
+    {
+      "breite": 1440,
+      "hoehe": 900,
+      "zustand": "frisch",
+      "pfad": "/einrichtung",
+      "warteAuf": "h1",
+      "name": "einrichtung-regeln-zweiter-schluessel",
+      "vorher": [
+        {
+          "ablauf": "einrichtung-eurouter-regeln-eu"
+        },
+        {
+          "zeige": "button:has-text('Weiter')"
+        }
+      ],
+      "beschreibung": "Einrichtung mit EUrouter und zweitem Schlüssel: je Regel steht, ob sie „EU laut Regel“ meldet, mit Datum"
     },
     {
       "breite": 1440,
@@ -3370,7 +3444,7 @@
         },
         {
           "tippe": "Name der Routing-Regel",
-          "text": "EU Beispiel"
+          "text": "Beispiel-Regel"
         },
         {
           "klick": {
@@ -3382,7 +3456,7 @@
           "warteAufText": "funktioniert und ist gespeichert"
         }
       ],
-      "beschreibung": "EUrouter hinzugefügt, Regel „EU Beispiel“ geprüft und gespeichert, mit dem Anbieter, der geantwortet hat"
+      "beschreibung": "EUrouter hinzugefügt, Regel „Beispiel-Regel“ geprüft und gespeichert, mit dem Anbieter, der geantwortet hat"
     },
     {
       "pfad": "/modelle",
@@ -3429,6 +3503,379 @@
         }
       ],
       "beschreibung": "Routing-Regel auf dem Handy"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-zweiter-schluessel-403",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "zeige": "section:has(h2:text-is('Zweiter Schlüssel (freiwillig)'))"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Zweiten Schlüssel eintragen"
+          }
+        },
+        {
+          "tippe": {
+            "beschriftung": "Zweiter Schlüssel (Verwaltungsschlüssel)",
+            "genau": false
+          },
+          "text": "$anbieter-schluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Prüfen und speichern"
+          }
+        },
+        {
+          "warteAufText": "Dieser Schlüssel darf die Regeln nicht lesen"
+        },
+        {
+          "zeige": "section:has(h2:text-is('Zweiter Schlüssel (freiwillig)'))"
+        }
+      ],
+      "beschreibung": "Zweiter Schlüssel: der normale Schlüssel darf die Regeln nicht lesen, rote Meldung mit Ausweg, nichts gespeichert"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-zweiter-schluessel",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "zeige": "section:has(h2:text-is('Zweiter Schlüssel (freiwillig)'))"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Zweiten Schlüssel eintragen"
+          }
+        },
+        {
+          "tippe": {
+            "beschriftung": "Zweiter Schlüssel (Verwaltungsschlüssel)",
+            "genau": false
+          },
+          "text": "$verwaltungsschluessel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Prüfen und speichern"
+          }
+        },
+        {
+          "warteAufText": "funktioniert und ist gespeichert"
+        },
+        {
+          "zeige": "section:has(h2:text-is('Zweiter Schlüssel (freiwillig)'))"
+        }
+      ],
+      "beschreibung": "Zweiter Schlüssel gespeichert: „hinterlegt“, die Vorgaben der gespeicherten Regeln sind gelesen"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-regel-eu-laut-regel",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "zeige": "section:has(h2:has-text('Routing-Regel für'))"
+        }
+      ],
+      "beschreibung": "Regel „Beispiel-Regel“ mit „EU laut Regel“, Datum der Prüfung und dem Hinweis, dass sie ausweichen kann",
+      "ausschnitt": "section:has(h2:has-text('Routing-Regel für'))"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-regel-neu-pruefen",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Alle Regeln erneut prüfen"
+          }
+        },
+        {
+          "warteAufText": "Erneut gelesen."
+        },
+        {
+          "zeige": "section:has(h2:has-text('Routing-Regel für'))"
+        }
+      ],
+      "beschreibung": "„Alle Regeln erneut prüfen“: Meldung mit der Zahl der gelesenen Regeln"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-regeln-konto",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Regeln aus meinem Konto zeigen"
+          }
+        },
+        {
+          "warteAufText": "Eingeschaltete Regeln in deinem Konto"
+        },
+        {
+          "zeige": "text=Eingeschaltete Regeln in deinem Konto"
+        }
+      ],
+      "beschreibung": "Regeln aus dem Konto: nur eingeschaltete, mit „EU laut Regel“ nur bei der Regel, die es meldet"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-regel-ohne-kennzeichnung",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "tippe": "Name der Routing-Regel",
+          "text": "Zweite Beispiel-Regel"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Regel prüfen und hinzufügen"
+          }
+        },
+        {
+          "warteAufText": "„Zweite Beispiel-Regel“ funktioniert und ist gespeichert"
+        },
+        {
+          "tippe": "Name der Routing-Regel",
+          "text": "Regel nur per Name"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Regel prüfen und hinzufügen"
+          }
+        },
+        {
+          "warteAufText": "steht nicht in der Liste deines Kontos"
+        },
+        {
+          "zeige": "section:has(h2:has-text('Routing-Regel für'))"
+        }
+      ],
+      "beschreibung": "Regel mit anderer Datenresidenz und eine nur per Name geprüfte Regel: beide ohne Kennzeichnung, mit Satz dazu"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-regel-uebernommen",
+      "vorher": [
+        {
+          "ablauf": "eurouter-anzeigen"
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Beispiel-Regel",
+            "genau": false,
+            "nr": 0
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Modell übernehmen"
+          }
+        },
+        {
+          "warteAufText": "arbeitet jetzt mit Beispiel-Regel"
+        },
+        {
+          "zeige": "section:has(h2:has-text('Routing-Regel für'))"
+        }
+      ],
+      "beschreibung": "Die Regel „Beispiel-Regel“ als Modell des Bots übernommen"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "chat-regel-eu-laut-regel",
+      "vorher": [
+        {
+          "gehe": "/"
+        },
+        {
+          "anbieter": {
+            "reply": "Gern, hier ist ein Entwurf. Soll ich einen neuen Termin vorschlagen?"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Freundliche Terminabsage",
+            "genau": false
+          }
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "Soll ich einen neuen Termin vorschlagen?"
+        },
+        {
+          "warteAuf": "button[aria-label^='Beleg prüfen']"
+        }
+      ],
+      "beschreibung": "Chat mit der Regel: Marke „EU laut Regel“ im Kopf und in der Zeile unter der Antwort, mit Datum und Hinweis aufs Ausweichen",
+      "verdecke": ["[class*='_zeit']", "[class*='_tag']"]
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-modell-zurueck",
+      "vorher": [
+        {
+          "klick": {
+            "css": "select[name=anbieter]"
+          }
+        },
+        {
+          "taste": "ArrowUp"
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "Beispiel-Modell Allrounder"
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Beispiel-Modell Allrounder",
+            "genau": false
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Modell übernehmen"
+          }
+        },
+        {
+          "warteAufText": "arbeitet jetzt mit Beispiel-Modell Allrounder"
+        }
+      ],
+      "beschreibung": "Zurück zum ersten Anbieter: der Bot arbeitet wieder mit dem Beispiel-Modell"
+    },
+    {
+      "pfad": "/modelle",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "name": "modelle-eigen-ausserhalb-eu",
+      "vorher": [
+        {
+          "zeige": "section:has(h2:text-is('Anbieter hinzufügen'))"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Anbieter hinzufügen"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "radio",
+            "name": "Eigener oder lokaler Anbieter",
+            "genau": false
+          }
+        },
+        {
+          "warteAufText": "Neuer eigener Anbieter"
+        },
+        {
+          "tippe": "Name",
+          "text": "Dienst in Übersee"
+        },
+        {
+          "tippe": "Adresse (Basis-URL)",
+          "text": "https://dienst.example/v1"
+        },
+        {
+          "klick": {
+            "css": "select[name=region]"
+          }
+        },
+        {
+          "taste": "ArrowDown"
+        },
+        {
+          "taste": "Enter"
+        },
+        {
+          "warteAufText": "lehnt das Tor jede Antwort dieses Anbieters ab"
+        },
+        {
+          "zeige": "button:has-text('Testen und speichern')"
+        }
+      ],
+      "beschreibung": "Eigener Anbieter mit Ort „außerhalb der EU“: Warnung, dass das Tor jede Antwort ablehnt, und wie man es ändert"
     },
     {
       "pfad": "/modelle",

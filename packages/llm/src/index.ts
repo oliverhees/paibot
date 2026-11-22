@@ -29,6 +29,7 @@ export {
 } from "./pinned-fetch";
 export * from "./route";
 export * from "./routing-rules";
+export * from "./routing-rules-liste";
 export * from "./schleuse";
 export * from "./schleuse-zugang";
 export * from "./schluessel";

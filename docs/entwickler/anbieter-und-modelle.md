@@ -24,6 +24,10 @@ Belegte Entscheidungen im Code:
 - **Schlüssel nie zurück an den Browser:** Kopfkommentar in `apps/web/src/lib/modelle/anbieter.ts`; die Seite bekommt nur „Schlüssel gesetzt“ (`apps/web/src/lib/modelle/seite.ts`, Kopfkommentar).
 - **Routing-Regel statt Modell (EUrouter):** Eine Regel steht als Modell-Eintrag `rule:<Name>` (`packages/llm/src/routing-rules.ts#ROUTING_RULE_SLUG_PREFIX`); im Chat ersetzt die `fetch`-Hülle des Zugangs `model` durch `rule_name` (`packages/llm/src/resolve-model.ts`, Funktion `withRuleName`). Über die Datenschleuse wird eine Regel abgelehnt (`packages/llm/src/resolve-model.ts#resolveModel`, Zweig `facts.route === "schleuse"`).
 - **Herkunft nie pauschal aus einer Vorlage:** Angezeigt wird, wer laut Antwort geantwortet hat (`provider`/`model` aus den rohen Strom-Stücken, `packages/agents/src/motor-aisdk.ts`, `includeRawChunks`; `packages/llm/src/routing-rules.ts#servedByOf`), bei EUrouter mit Sitz laut der öffentlichen Anbieter-Liste (`apps/web/src/lib/modelle/unter-anbieter.ts`, 24 Stunden gemerkt, `LISTE_GUELTIG_MS`); bei eigenen Anbietern „laut deiner Einstellung“ (`apps/web/src/lib/modelle/herkunft.ts`, Kopfkommentar).
+- **Zweiter Schlüssel getrennt und nur für die Regel-Liste:** Er liegt in `providers.management_key_enc` und ist mit `providerManagementKeyBinding` (Zweck `management_key`) gebunden (`packages/shared/src/bindung.ts`); der Chat-Zugang liest nur `api_key_enc` (`packages/llm/src/resolve-model.ts`). Den Aufruf der Regel-Liste macht allein `readRoutingRules` (`packages/llm/src/routing-rules-liste.ts`); die Quelltext-Prüfung `apps/web/src/verwaltungsschluessel-quelltext.test.ts` hält fest, welche Dateien den Schlüssel und den Aufruf kennen.
+- **Kennzeichnung „EU“ nur mit belegter Vorgabe:** `istEuBelegt` ist wahr, wenn `rule_policy.data_residency === "EU"` (`apps/web/src/lib/modelle/vorgabe.ts#istEuBelegt`); die Vorgaben stammen aus der Regel-Liste des Kontos (`packages/shared/src/regelliste.ts#policyOf`). Nie aus Name, Beschreibung, Vorlage oder Region.
+- **Regel-Liste streng gelesen:** Zod prüft `{ data: [ { name, enabled, … } ] }`, Zusatzfelder und Kennungen werden verworfen (`packages/shared/src/regelliste.ts#routingRulesResponseSchema`); eine andere Form ergibt „unerwartete Form“ statt einer Vermutung.
+- **Regel nicht mehr da:** HTTP 400 mit „Routing rule with name … not found“ wird zum Fehlercode `regel_unbekannt` (`packages/llm/src/errors.ts#isRuleUnknown`, Vertrag `packages/shared/src/motor.ts#MOTOR_ERROR_CODES`).
 - **Adresse festgenagelt:** Verbunden wird genau mit den vorher geprüften Adressen (`packages/llm/src/pinned-fetch.ts`, Kopfkommentar); `fetch` erreicht nur das erlaubte Ziel (`packages/llm/src/egress.ts#createEgressFetch`).
 
 ## Aufbau
@@ -41,6 +45,10 @@ Belegte Entscheidungen im Code:
 | `packages/llm/src/schluessel.ts`             | Anbieter-Schlüssel verschlüsseln und umbinden                                                                      |
 | `packages/llm/src/templates.ts`              | Vorlagen `PROVIDER_TEMPLATES` (EUrouter, Mistral AI) und `CUSTOM_PROVIDER_TEMPLATE`                                |
 | `packages/llm/src/routing-rules.ts`          | Routing-Regeln: Eintrag `rule:<Name>`, Prüfung `checkRoutingRule`, `servedByOf`                                    |
+| `packages/llm/src/routing-rules-liste.ts`    | Regel-Liste des Kontos holen (`readRoutingRules`), Fehlerfälle als eigene Ergebnisse                               |
+| `packages/shared/src/regelliste.ts`          | Antwort der Regel-Liste lesen (`parseRoutingRules`), Vorgaben übernehmen (`policyOf`), Hinweis auf weitere Seiten  |
+| `apps/web/src/lib/modelle/verwaltung.ts`     | zweiter Schlüssel setzen und entfernen, Regeln aus dem Konto zeigen, erneut prüfen, Vorgaben anwenden              |
+| `apps/web/src/lib/modelle/vorgabe.ts`        | Kennzeichnung, Alter der Angabe (`VORGABE_ALT_TAGE`), Ausweichen in Worten (läuft im Browser)                      |
 | `apps/web/src/lib/modelle/regeln.ts`         | Regeln prüfen, kurz merken, speichern und entfernen                                                                |
 | `apps/web/src/lib/modelle/herkunft.ts`       | Herkunfts-Angabe für Seitenleiste und Antwortzeile (`antwortHerkunft`, `anbieterHerkunft`)                         |
 | `apps/web/src/lib/modelle/unter-anbieter.ts` | Anbieter-Liste von EUrouter holen und merken (nur Name und Sitz)                                                   |
@@ -59,10 +67,10 @@ Datenfluss einer Modell-Anfrage (Worker):
 
 ## Datenmodell und Migrationen
 
-| Tabelle     | Schema                               | Wofür                                                                            |
-| ----------- | ------------------------------------ | -------------------------------------------------------------------------------- |
-| `providers` | `packages/db/src/schema/anbieter.ts` | Anbieter mit Vorlage, Basis-URL, Region, verschlüsseltem Schlüssel, letztem Test |
-| `models`    | `packages/db/src/schema/anbieter.ts` | Modelle eines Anbieters; `models_provider_slug_eindeutig`                        |
+| Tabelle     | Schema                               | Wofür                                                                                                                                                                                  |
+| ----------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `providers` | `packages/db/src/schema/anbieter.ts` | Anbieter mit Vorlage, Basis-URL, Region, verschlüsseltem Schlüssel (`api_key_enc`) und zweitem Schlüssel (`management_key_enc`), letztem Test                                          |
+| `models`    | `packages/db/src/schema/anbieter.ts` | Modelle eines Anbieters; `models_provider_slug_eindeutig`; `rule_policy`, `rule_policy_source`, `rule_policy_checked_at` für die gelesenen Vorgaben einer Regel (alle drei oder keine) |
 
 Eindeutig ist auch die Basis-URL (`providers_base_url_eindeutig`); die App prüft zusätzlich mit normalisierter Adresse (ein `/` am Ende zählt nicht) und meldet `modelle.eigen.adresse_doppelt` (`apps/web/src/lib/modelle/anbieter.ts#adresseNormal`).
 
@@ -72,17 +80,24 @@ Migrationen: `packages/db/drizzle/0001_basis.sql` (Tabellen), `packages/db/drizz
 
 Routen aus `apps/web/src/lib/routen.ts#API_ROUTEN` (Zugang `besitzer`):
 
-| Route                                       | Aktion                                         |
-| ------------------------------------------- | ---------------------------------------------- |
-| `GET /api/anbieter`                         | – (lesend)                                     |
-| `POST /api/anbieter`                        | `anbieter.speichern`                           |
-| `PUT /api/anbieter/:id`                     | `anbieter.speichern`                           |
-| `DELETE /api/anbieter/:id`                  | `anbieter.loeschen`                            |
-| `POST /api/anbieter/verbindungstest`        | – (nicht verändernd, speichert nichts)         |
-| `POST /api/anbieter/:id/modelle`            | `anbieter.speichern`                           |
-| `POST /api/anbieter/:id/regeln`             | `anbieter.speichern` (Limit `verbindungstest`) |
-| `DELETE /api/anbieter/:id/regeln/:modellId` | `anbieter.speichern`                           |
-| `PUT /api/bot/modell`                       | `modell.waehlen` (siehe [Bot](bot.md))         |
+| Route                                            | Aktion                                         |
+| ------------------------------------------------ | ---------------------------------------------- |
+| `GET /api/anbieter`                              | – (lesend)                                     |
+| `POST /api/anbieter`                             | `anbieter.speichern`                           |
+| `PUT /api/anbieter/:id`                          | `anbieter.speichern`                           |
+| `DELETE /api/anbieter/:id`                       | `anbieter.loeschen`                            |
+| `POST /api/anbieter/verbindungstest`             | – (nicht verändernd, speichert nichts)         |
+| `POST /api/anbieter/:id/modelle`                 | `anbieter.speichern`                           |
+| `POST /api/anbieter/:id/regeln`                  | `anbieter.speichern` (Limit `verbindungstest`) |
+| `DELETE /api/anbieter/:id/regeln/:modellId`      | `anbieter.speichern`                           |
+| `POST /api/anbieter/:id/modelle/lesen`           | – (lesend, schreibt nichts)                    |
+| `PUT /api/anbieter/:id/verwaltungsschluessel`    | `anbieter.speichern` (Limit `verbindungstest`) |
+| `DELETE /api/anbieter/:id/verwaltungsschluessel` | `anbieter.speichern`                           |
+| `POST /api/anbieter/:id/regeln/liste`            | – (lesend, Limit `verbindungstest`)            |
+| `POST /api/anbieter/:id/regeln/neu-pruefen`      | `anbieter.speichern` (Limit `verbindungstest`) |
+| `PUT /api/bot/modell`                            | `modell.waehlen` (siehe [Bot](bot.md))         |
+
+Die Seite „Modell und Anbieter“ liest die Modell-Liste beim Öffnen über `POST /api/anbieter/:id/modelle/lesen`; gespeichert wird erst bei „Liste abgleichen“ oder beim Übernehmen eines noch nicht gespeicherten Modells (`apps/web/src/app/(app)/modelle/ModelleAnsicht.tsx#listeLaden`). Der Fakt `managementKeySet` der Aktion `anbieter.speichern` (`packages/shared/src/actions.ts`) hält fest, ob ein zweiter Schlüssel hinterlegt ist, nie den Schlüssel.
 
 Route-Dateien unter `apps/web/src/app/api/anbieter/`. Die Aktion `modell.anfragen` des Bots beschreibt [Chat](chat.md).
 
@@ -90,25 +105,30 @@ Route-Dateien unter `apps/web/src/app/api/anbieter/`. Die Aktion `modell.anfrage
 
 - **Basis-URL-Prüfung:** beim Eintragen und bei jeder Nutzung (`packages/llm/src/egress.ts#checkProviderBaseUrl`); Namen der eigenen Dienste (`postgres`, `datenschleuse`, `web`, `worker`) sind immer gesperrt (`packages/llm/src/egress.ts#INTERNAL_SERVICE_HOSTS`).
 - **Grenzen der Antwort:** Chat-Antwort bis 64 MiB (`packages/llm/src/resolve-model.ts#CHAT_RESPONSE_LIMITS`), Modell-Liste bis 5 000 000 Byte (`MAX_BODY_BYTES` in `packages/llm/src/models.ts`), Fehlerkörper bis 64 KiB, Entpacken höchstens 500-fach ab 1 MiB, Zeile bis 1 MiB, Kopfzeilen bis 16 KiB (`packages/llm/src/pinned-fetch.ts#PINNED_MAX_ERROR_BODY_BYTES`, `packages/llm/src/pinned-fetch.ts#PINNED_MAX_DECODE_RATIO`, `packages/llm/src/pinned-fetch.ts#PINNED_MAX_LINE_BYTES`, `packages/llm/src/pinned-fetch.ts#PINNED_MAX_HEADER_BYTES`).
+- **Zweiter Schlüssel:** getrennt gebunden verschlüsselt, nie in Antwort, Beleg oder Log (Test `apps/web/src/lib/modelle/verwaltung.test.ts`); Kennungen des Kontos (`id`, `user_id`, `org_id`, `workspace_id`, `api_key_id`) und `description` werden nie gespeichert (`packages/shared/src/regelliste.ts`).
 - **Region:** G-02 prüft bei `modell.anfragen`, dass der Anbieter aktiv ist und die Region passt (`packages/gate/src/limits/index.ts#limitAnbieterRegion`).
 - **Rate-Limit:** Verbindungstest nach der Einrichtung `verbindungstest` 10 je Minute (`packages/shared/src/constants.ts#RATE_LIMITS`).
 - **Fehler ohne Schlüssel:** Fehler werden auf feste Codes abgebildet (`packages/llm/src/errors.ts#mapProviderError`); `JSON.stringify`, `console.log` und `util.inspect` zeigen vom Zugang nur eine Zusammenfassung (Kommentar an `resolveModel`).
 
 ## Tests
 
-| Test                                                                                    | Prüft                                                                      |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `packages/llm/src/egress.test.ts`                                                       | Basis-URL-Prüfung und Ausgangs-Liste                                       |
-| `packages/llm/src/pinned-fetch.test.ts`, `packages/llm/src/pinned-grenzen.test.ts`      | Strom, Abbruch, Entpacken, TLS, Proxy; Grenzen und `Host`                  |
-| `packages/llm/src/resolve-model.test.ts`, `packages/llm/src/resolve-model-ziel.test.ts` | Zugang gegen Berechtigung; Ziel-Bindung, verborgener Schlüssel, Lebenszeit |
-| `packages/llm/src/models.test.ts`                                                       | Modell-Liste und Verbindungstest                                           |
-| `packages/llm/src/schluessel.test.ts`                                                   | Schlüssel verschlüsseln und umbinden                                       |
-| `packages/llm/src/route-schleuse-errors.test.ts`                                        | Weg, Datenschleuse, Fehler-Abbildung                                       |
-| `apps/web/src/lib/modelle/anbieter.test.ts`                                             | Routen: Sitzung, Prüfzeichen, Tor, Belege; Schlüssel in keiner Antwort     |
-| `apps/web/src/lib/modelle/eigener-anbieter.test.ts`                                     | eigene und lokale Anbieter, Sperre der eigenen Dienste                     |
-| `packages/agents/src/motor-netz.test.ts`                                                | Motor erreicht nur das Ziel aus dem Modell-Zugang                          |
-| `packages/llm/src/routing-rules.test.ts`, `packages/agents/src/motor-regel.test.ts`     | `rule_name` statt `model`, Prüfung einer Regel, Herkunft aus dem Strom     |
-| `apps/web/src/lib/modelle/regeln.test.ts`, `apps/web/src/lib/modelle/herkunft.test.ts`  | Regel-Routen, früherer Eintrag; Herkunft ohne pauschales „EU“              |
+| Test                                                                                                                                                | Prüft                                                                                                    |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `packages/llm/src/egress.test.ts`                                                                                                                   | Basis-URL-Prüfung und Ausgangs-Liste                                                                     |
+| `packages/llm/src/pinned-fetch.test.ts`, `packages/llm/src/pinned-grenzen.test.ts`                                                                  | Strom, Abbruch, Entpacken, TLS, Proxy; Grenzen und `Host`                                                |
+| `packages/llm/src/resolve-model.test.ts`, `packages/llm/src/resolve-model-ziel.test.ts`                                                             | Zugang gegen Berechtigung; Ziel-Bindung, verborgener Schlüssel, Lebenszeit                               |
+| `packages/llm/src/models.test.ts`                                                                                                                   | Modell-Liste und Verbindungstest                                                                         |
+| `packages/llm/src/schluessel.test.ts`                                                                                                               | Schlüssel verschlüsseln und umbinden                                                                     |
+| `packages/llm/src/route-schleuse-errors.test.ts`                                                                                                    | Weg, Datenschleuse, Fehler-Abbildung                                                                     |
+| `apps/web/src/lib/modelle/anbieter.test.ts`                                                                                                         | Routen: Sitzung, Prüfzeichen, Tor, Belege; Schlüssel in keiner Antwort                                   |
+| `apps/web/src/lib/modelle/eigener-anbieter.test.ts`                                                                                                 | eigene und lokale Anbieter, Sperre der eigenen Dienste                                                   |
+| `packages/agents/src/motor-netz.test.ts`                                                                                                            | Motor erreicht nur das Ziel aus dem Modell-Zugang                                                        |
+| `packages/llm/src/routing-rules.test.ts`, `packages/agents/src/motor-regel.test.ts`                                                                 | `rule_name` statt `model`, Prüfung einer Regel, Herkunft aus dem Strom                                   |
+| `packages/shared/src/regelliste.test.ts`, `packages/llm/src/routing-rules-liste.test.ts`                                                            | Regel-Liste lesen: belegte Form, Kennungen weg, 403/401/Zeit/Form, weitere Seiten; „Regel unbekannt“     |
+| `apps/web/src/lib/modelle/verwaltung.test.ts`, `apps/web/src/lib/modelle/vorgabe.test.ts`, `apps/web/src/app/(app)/modelle/vorgabe-ansicht.test.ts` | zweiter Schlüssel, Kennzeichnung nur mit Beleg, Alter, Erneut prüfen, Chat, Seite öffnen schreibt nichts |
+| `apps/web/src/verwaltungsschluessel-quelltext.test.ts`                                                                                              | wer den zweiten Schlüssel kennt                                                                          |
+| `packages/db/src/repo/regel-vorgaben-postgres.test.ts`                                                                                              | Vorgaben und zweiter Schlüssel gegen echtes Postgres                                                     |
+| `apps/web/src/lib/modelle/regeln.test.ts`, `apps/web/src/lib/modelle/herkunft.test.ts`                                                              | Regel-Routen, früherer Eintrag; Herkunft ohne pauschales „EU“                                            |
 
 Ausführen:
 
@@ -122,4 +142,8 @@ pnpm --filter @paibot/web test
 - **Prüfung „Bot schreibt“ vor dem Tor:** `anbieterLoeschen` prüft vor dem Aufruf des Tors, ob gerade ein Lauf mit dem Anbieter schreibt, und wirft dann `lauf_aktiv` ohne Beleg; ein Lauf, der danach beginnt, ist nicht abgefangen (`apps/web/src/lib/modelle/anbieter.ts#anbieterLoeschen`; Anwender-Doku, Abschnitt „Grenzen“).
 - **Zwei Vorlagen:** `PROVIDER_TEMPLATES` kennt EUrouter und Mistral AI; alles andere ist ein eigener Anbieter (`packages/llm/src/templates.ts#PROVIDER_TEMPLATES`).
 - **Region der Vorlagen technisch:** G-02 stützt sich auf die gespeicherte Region; bei den Vorlagen ist sie fest `eu` (`packages/llm/src/templates.ts#PROVIDER_TEMPLATES`). Das ist keine geprüfte Herkunft und wird nicht als „EU“ angezeigt.
-- **Keine Vorgaben einer Regel lesbar:** Mit dem normalen Schlüssel liest PaiBot keine Vorgaben einer Routing-Regel; die Spalten dafür sind vorbereitet, aber ungenutzt (`packages/db/drizzle/0012_anbieter_wahl.sql`).
+- **Vorgaben nur mit zweitem Schlüssel lesbar:** Ohne ihn gibt es keine Kennzeichnung (`apps/web/src/lib/modelle/vorgabe.ts#istEuBelegt`). Belegt ist die Form der Regel-Liste nur aus einem echten Aufruf (vier Regeln, alle `data_residency: "EU"`); andere Werte, Seiten und ob ein Schlüssel nur zum Lesen reicht sind nicht geprüft (`packages/shared/src/regelliste.ts`, Kopfkommentar).
+- **Vorgaben hängen am Namen:** Beim Ändern oder Entfernen des Chat-Schlüssels (`apps/web/src/lib/modelle/anbieter.ts#anbieterAendern`) und beim Setzen oder Entfernen des zweiten Schlüssels (`apps/web/src/lib/modelle/verwaltung.ts#vorgabenLoeschen`) werden alle gelesenen Vorgaben des Eintrags gelöscht; ob beide Schlüssel zum selben Konto gehören, ist nicht prüfbar.
+- **Namen:** Ein Name mit dem Wortlaut der Kennzeichnung ist kein Regel-Name (`packages/shared/src/anzeigetext.ts#ahmtKennzeichnungNach`, benutzt in `packages/llm/src/routing-rules.ts#isRoutingRuleName`, `packages/shared/src/inputs.ts` und `packages/shared/src/regelliste.ts`); ein doppelter Name in der Liste hat keine Vorgaben (`ListedRule.nichtEindeutig`).
+- **Tor und Vorgabe unabhängig:** G-02 stützt sich auf die gespeicherte Region (bei Vorlagen `eu`) und kennt `rule_policy` nicht; meldet eine Regel eine andere Datenresidenz, lässt das Tor sie durch, und nur die Kennzeichnung entfällt (`packages/gate/src/limits/index.ts#limitAnbieterRegion`).
+- **Eigener Anbieter „außerhalb der EU“:** Das Tor lehnt jede Antwort ab (`non_eu` ist nicht `eu` oder `local`); Formular und Seite warnen (`apps/web/src/app/(app)/modelle/EigenerAnbieterForm.tsx`).

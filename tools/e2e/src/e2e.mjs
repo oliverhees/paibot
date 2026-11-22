@@ -503,6 +503,32 @@ async function main() {
     await seite.getByRole("article").getByText("stimmt", { exact: true }).waitFor();
   });
 
+  await schritt(
+    "Modell und Anbieter: Öffnen und Neuladen schreibt keine Belege",
+    seite,
+    async () => {
+      // Die Seite zeigt die Modell-Liste des Anbieters; das Öffnen darf nichts speichern (kein Beleg
+      // „Anbieter gespeichert“). Gezählt wird die Nummer des neuesten Belegs vor und nach dem Öffnen.
+      const kopf = () =>
+        seite.evaluate(async () => {
+          const r = await fetch("/api/belege?limit=1");
+          const j = await r.json();
+          return j.daten.items[0]?.seq ?? 0;
+        });
+      const vorher = await kopf();
+      await seite.goto(`${app}/modelle`);
+      await seite.getByRole("radio").first().waitFor();
+      await seite.reload();
+      await seite.getByRole("radio").first().waitFor();
+      const nachher = await kopf();
+      if (nachher !== vorher) {
+        throw new Error(
+          `Das Öffnen hat ${nachher - vorher} Beleg(e) geschrieben (Nummer ${vorher} → ${nachher}).`,
+        );
+      }
+    },
+  );
+
   // ---- Seiten „Modell und Anbieter“ und „Bot“: ändern, speichern, prüfen, Beleg -------------------
   const NEUER_SCHLUESSEL = `Beispiel-${randomBytes(12).toString("base64url")}`;
   let anbieterPfad;
@@ -510,11 +536,11 @@ async function main() {
     (await stack.anbieter.anfragen()).filter((a) => a.path.includes("chat")).at(-1);
   await schritt("Modell und Anbieter: falscher Schlüssel wird abgelehnt", seite, async () => {
     const modelleAnfrage = seite.waitForRequest((r) =>
-      /\/api\/anbieter\/[^/]+\/modelle$/.test(r.url()),
+      /\/api\/anbieter\/[^/]+\/modelle\/lesen$/.test(r.url()),
     );
     await seite.goto(`${app}/modelle`);
-    anbieterPfad = new URL((await modelleAnfrage).url()).pathname.replace(/\/modelle$/, "");
-    // Erst wenn die Liste da ist, hat der Abgleich seinen Beleg geschrieben.
+    anbieterPfad = new URL((await modelleAnfrage).url()).pathname.replace(/\/modelle\/lesen$/, "");
+    // Die Seite liest die Liste nur (ohne zu speichern); erst wenn sie da ist, geht es weiter.
     await seite.getByRole("radio", { name: /Beispiel-Modell Allrounder/ }).waitFor();
     const belegeVorher = await belegeZaehlen(seite, app, "anbieter.speichern");
     const anfragenVorher = (await stack.anbieter.anfragen()).length;
@@ -544,8 +570,8 @@ async function main() {
   await schritt("Modell und Anbieter: Schlüssel ersetzen, wirkt, mit Beleg", seite, async () => {
     // Der Anbieter wechselt seinen Schlüssel: Der gespeicherte gilt nicht mehr.
     await stack.anbieter.verhalten({ apiKey: NEUER_SCHLUESSEL });
-    // Mit dem alten Schlüssel scheitern der Abgleich der Liste und der Test (absichtlich).
-    erwarte(`${anbieterPfad}/modelle`, FALSCHER_SCHLUESSEL_STATUS);
+    // Mit dem alten Schlüssel scheitern das Lesen der Liste und der Test (absichtlich).
+    erwarte(`${anbieterPfad}/modelle/lesen`, FALSCHER_SCHLUESSEL_STATUS);
     erwarte("/api/anbieter/verbindungstest", FALSCHER_SCHLUESSEL_STATUS);
     await seite.goto(`${app}/modelle`);
     await seite.getByRole("button", { name: "Liste neu laden" }).waitFor();

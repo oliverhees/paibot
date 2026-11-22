@@ -1781,6 +1781,104 @@ export const de = {
     "Die gewählte Routing-Regel gibt es bei deinem Anbieter nicht mehr, oder sie ist ausgeschaltet.",
   "fehler.regel_unbekannt.ausweg":
     "Wähl unter „Modell und Anbieter“ in den Einstellungen eine Regel neu.",
+  // Zweiter Schlüssel (nur zum Lesen der Routing-Regeln)
+  "verwaltung.fehler.nicht_erlaubt": "Dieser Schlüssel darf die Regeln nicht lesen.",
+  "verwaltung.fehler.nicht_erlaubt.ausweg":
+    "Leg in deinem Konto bei {anbieter} unter „Settings“ → „Management keys“ einen Verwaltungsschlüssel an und trag ihn hier ein. Ohne ihn funktionieren deine Regeln weiter, nur ohne Kennzeichnung.",
+  "verwaltung.fehler.schluessel_ungueltig":
+    "{anbieter} hat den zweiten Schlüssel nicht angenommen.",
+  "verwaltung.fehler.schluessel_ungueltig.ausweg":
+    "Prüf, ob du den ganzen Schlüssel kopiert hast, und ob er in deinem Konto bei {anbieter} noch gilt.",
+  "verwaltung.fehler.zeit":
+    "{anbieter} hat auf die Frage nach deinen Regeln nicht rechtzeitig geantwortet.",
+  "verwaltung.fehler.zeit.ausweg": "Versuch es gleich noch einmal.",
+  "verwaltung.fehler.form":
+    "Die Antwort von {anbieter} auf die Frage nach deinen Regeln hat eine Form, die PaiBot nicht kennt.",
+  "verwaltung.fehler.form.ausweg":
+    "Es wurde nichts gespeichert. Deine Regeln funktionieren weiter, nur ohne Kennzeichnung.",
+  "verwaltung.fehler.kein_schluessel": "Für diesen Anbieter ist kein zweiter Schlüssel hinterlegt.",
+  "verwaltung.fehler.kein_schluessel.ausweg": "Trag ihn unter „Zweiter Schlüssel“ ein.",
+  "verwaltung.schluessel.unlesbar": "Der gespeicherte zweite Schlüssel lässt sich nicht lesen.",
+  "verwaltung.schluessel.unlesbar.ausweg": "Trag den zweiten Schlüssel neu ein.",
+  "verwaltung.hinweis.nicht_in_liste":
+    "Die Regel „{name}“ steht nicht in der Liste deines Kontos oder ist dort ausgeschaltet. Sie ist per Name geprüft und gespeichert, ohne Kennzeichnung.",
+  "verwaltung.hinweis.nicht_gesehen_unvollstaendig":
+    "Die Regel „{name}“ war nicht in der gelesenen Liste, und die Liste ist möglicherweise unvollständig. Sie ist per Name geprüft und gespeichert, ohne Kennzeichnung.",
+  "verwaltung.hinweis.nicht_eindeutig":
+    "Der Name „{name}“ kommt in der Liste deines Kontos mehrfach vor. PaiBot kann nicht sagen, welche Regel gilt, und kennzeichnet sie nicht. Die Regel ist per Name geprüft und gespeichert.",
+  "verwaltung.liste.nicht_eindeutig":
+    "Name nicht eindeutig: kommt in deinem Konto mehrfach vor. Keine Kennzeichnung.",
+  "verwaltung.neu.mehrdeutig": "Name nicht eindeutig: {namen}. Keine Kennzeichnung.",
+  "verwaltung.titel": "Zweiter Schlüssel (freiwillig)",
+  "verwaltung.text":
+    "Mit einem Verwaltungsschlüssel aus deinem Konto bei {anbieter} liest PaiBot, was deine Routing-Regeln vorgeben, zum Beispiel die Datenresidenz. Nur dann kann eine Regel „EU laut Regel“ tragen. PaiBot benutzt den Schlüssel nur dafür, nie für Chat-Anfragen, und zeigt ihn nie wieder an.",
+  "verwaltung.status.gesetzt": "Zweiter Schlüssel hinterlegt",
+  "verwaltung.status.fehlt": "Kein zweiter Schlüssel: Regeln sind nur per Name geprüft",
+  "verwaltung.feld": "Zweiter Schlüssel (Verwaltungsschlüssel)",
+  "verwaltung.feld.hilfe":
+    "Du findest ihn in deinem Konto bei {anbieter} unter „Settings“ → „Management keys“.",
+  "verwaltung.feld.leer": "Gib den zweiten Schlüssel ein.",
+  "verwaltung.eintragen": "Zweiten Schlüssel eintragen",
+  "verwaltung.ersetzen": "Zweiten Schlüssel ersetzen",
+  "verwaltung.speichern": "Prüfen und speichern",
+  "verwaltung.speichert": "Wird geprüft …",
+  "verwaltung.entfernen": "Zweiten Schlüssel entfernen",
+  "verwaltung.gespeichert":
+    "Der zweite Schlüssel funktioniert und ist gespeichert. Die Vorgaben deiner gespeicherten Regeln sind gelesen.",
+  "verwaltung.entfernt":
+    "Der zweite Schlüssel ist entfernt. Die gelesenen Vorgaben deiner Regeln sind gelöscht; die Kennzeichnung entfällt.",
+  "verwaltung.fehler.titel": "Zweiter Schlüssel nicht gespeichert",
+  "verwaltung.holen": "Regeln aus meinem Konto zeigen",
+  "verwaltung.holen.laeuft": "Deine Regeln werden gelesen …",
+  "verwaltung.liste.titel": "Eingeschaltete Regeln in deinem Konto",
+  "verwaltung.liste.leer": "In deinem Konto ist keine Regel eingeschaltet.",
+  "verwaltung.liste.unvollstaendig":
+    "Liste möglicherweise unvollständig: Die Antwort deutet auf weitere Seiten hin, die PaiBot nicht geholt hat. Trag eine fehlende Regel unten per Name ein.",
+  "verwaltung.liste.uebersprungen":
+    "{anzahl} eingeschaltete Regeln werden nicht angeboten, weil ihr Name nicht unverändert übernommen werden kann.",
+  "verwaltung.liste.hinzufuegen": "Hinzufügen",
+  "verwaltung.liste.hinzufuegen.label": "Regel „{name}“ prüfen und hinzufügen",
+  "verwaltung.liste.gespeichert": "gespeichert",
+  "verwaltung.liste.stand": "Gelesen am {datum}",
+  "verwaltung.neu.eine": "Erneut prüfen",
+  "verwaltung.neu.eine.label": "Vorgaben der Regel „{name}“ erneut prüfen",
+  "verwaltung.neu.alle": "Alle Regeln erneut prüfen",
+  "verwaltung.neu.fehler": "Nicht erneut geprüft",
+  "verwaltung.neu.ok": "Erneut gelesen. Aktualisiert: {anzahl}.",
+  "verwaltung.neu.entfernt":
+    "Nicht mehr in deiner Liste: {namen}. Ihre Vorgaben sind entfernt, die Kennzeichnung entfällt.",
+  "verwaltung.neu.unveraendert":
+    "Nicht gesehen, die Liste ist möglicherweise unvollständig: {namen}. Unverändert gelassen.",
+
+  // Vorgaben einer Regel: Kennzeichnung nur mit Beleg, Ausweichen, Alter
+  "vorgabe.eu.marke": "EU laut Regel",
+  "vorgabe.eu.satz": "EU laut Regel in deinem {anbieter}-Konto, geprüft am {datum}.",
+  "vorgabe.eu.satz_alt":
+    "EU laut Regel in deinem {anbieter}-Konto, zuletzt geprüft am {datum}. Das ist länger her: Prüf noch einmal.",
+  "vorgabe.eu.hinweis":
+    "Das ist die Angabe der Regel in deinem Konto, keine Rechtsaussage und keine eigene Prüfung von PaiBot.",
+  "vorgabe.residenz.keine": "Die Regel nennt keine Datenresidenz. Keine Kennzeichnung.",
+  "vorgabe.residenz.anders":
+    "Die Regel nennt als Datenresidenz „{wert}“ (geprüft am {datum}). Keine Kennzeichnung.",
+  "vorgabe.nur_name":
+    "Nur per Name geprüft: Was die Regel vorgibt, ist nicht gelesen. Keine Kennzeichnung.",
+  "vorgabe.ausweichen.modelle": "Kann auf {modelle} ausweichen.",
+  "vorgabe.ausweichen.erlaubt":
+    "Kann ausweichen: Die Regel erlaubt es. Wer antwortet, steht an jeder Antwort.",
+  "vorgabe.eu.kurz": "EU laut Regel in deinem Konto, geprüft am {datum}",
+  "vorgabe.eu.kurz_alt": "EU laut Regel in deinem Konto, zuletzt geprüft am {datum}",
+  "vorgabe.ausweichen.kurz_modelle": "kann auf {modelle} ausweichen",
+  "vorgabe.ausweichen.kurz_erlaubt": "kann ausweichen (Regel erlaubt es)",
+  "vorgabe.zuletzt": "Zuletzt geprüft am {datum}",
+  "vorgabe.alt": "länger nicht geprüft",
+
+  // Eigener Anbieter „außerhalb der EU“
+  "modelle.eigen.warnung.non_eu":
+    "Mit „außerhalb der EU“ lehnt das Tor jede Antwort dieses Anbieters ab, und PaiBot schickt ihm nichts. Wähl „EU“ nur, wenn der Dienst wirklich in der EU läuft, oder „lokal“ für deinen eigenen Rechner. Du kannst den Ort später ändern.",
+  "modelle.eigen.ort.hilfe.non_eu":
+    "Achtung: Bei „außerhalb der EU“ lässt das Tor keine Antwort dieses Anbieters zu.",
+  "modelle.eigen.non_eu.hinweis":
+    "Der Ort dieses Anbieters ist „außerhalb der EU“. Das Tor lehnt deshalb jede Antwort ab. Öffne „Ändern“ und wähl den Ort, der stimmt.",
 
   // Tor-Fassung 2: Werkzeug-Verträge, neue Grenzen, Vorbedingungen und Deckel
   "fehler.freigabe_noetig":

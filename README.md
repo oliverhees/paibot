@@ -192,24 +192,36 @@ Diese Version ist zum Ausprobieren gedacht. Nutze sie mit Beispiel-Daten und ein
 
 ## Roadmap
 
-Gebaut wird zwischen den Folgen der YouTube-Serie, in Coding-Sessions der Community auf [aiianer.de](https://aiianer.de) und im Livestream. Die Folgen zeigen, wie man PaiBot installiert, benutzt und ausbaut. Jede Folge bekommt einen eigenen Git-Tag (`folge-00`, `folge-01`, …), so kannst du jeden Stand nachbauen. Die Reihenfolge kann sich ändern, und die Community stimmt ab, welche Funktion als Nächstes kommt.
+PaiBot wird laufend gebaut. Den Stand zeigen die [Issues und Meilensteine](https://github.com/oliverhees/paibot/milestones) dieses Repos und der [Bauplan](https://paibot.de/bauplan). Termine gibt es nicht.
 
-- 🗺️ [Bauplan](https://paibot.de/bauplan): der aktuelle Stand
-- 🗳️ [Mitentscheiden](https://paibot.de/mitentscheiden): welche Funktion kommt als Nächstes?
-- 📖 [Doku](https://paibot.de/doku): installieren und benutzen
+**Fertig** (mit Anleitung in der [Doku](docs/README.md)):
 
-- [x] **Folge 0** – Gerüst, Lizenz, CI
-- [ ] **Folge 1** – Die Idee
-- [ ] **Folge 2** – Der Server: PaiBot geht online
-- [ ] **Folge 3** – Die Datenschleuse
-- [ ] PaiBot auf deinem Rechner mit lokaler KI
-- [ ] Der erste Bot
-- [ ] Apps anbinden per MCP
-- [ ] Der Browser-Agent
-- [ ] Bots im Team
-- [ ] Routinen
-- [ ] Die App fürs Handy
-- [ ] … und was die Community sich wünscht
+- [Einrichtung und Zugang](docs/funktion-einrichtung-und-zugang.md)
+- [Chat](docs/funktion-chat.md)
+- [Bot](docs/funktion-bot.md)
+- [Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md)
+- [Datenschleuse](docs/funktion-datenschleuse.md) (zuschaltbar)
+- [Belege](docs/funktion-belege.md)
+- [Das Tor und die Regeln](docs/funktion-tor.md)
+- [Einstellungen und Info](docs/funktion-einstellungen.md)
+- [Selbsttest](docs/funktion-selbsttest.md)
+
+**Im Bau** (noch nicht nutzbar):
+
+- Bots nutzen Werkzeuge. Das erste soll in der Doku nachschlagen. Die Grundlage in der Datenbank ist da, in der App ist davon noch nichts zu sehen ([Werkzeug-Kern](docs/entwickler/werkzeug-kern.md)).
+- Teamchat: Es gibt erst Bausteine der Oberfläche und Regeln, noch keine Funktion in der App ([Teamchat](docs/entwickler/teamchat.md)).
+
+**Geplant:**
+
+- Apps anbinden über MCP
+- Bots im Team
+- Zweiter Faktor und Notfall-Zugang
+- „Pai lernt dazu“
+- Automationen
+- Desktop-App als Begleit-App
+- Browser-Agent
+
+**Mitentscheiden:** Auf [paibot.de/mitentscheiden](https://paibot.de/mitentscheiden) schlägst du Funktionen vor und stimmst für Vorschläge anderer. Dafür brauchst du eine bestätigte E-Mail-Adresse; neue Vorschläge erscheinen nach Freigabe. Je mehr Stimmen ein Vorschlag hat, desto eher kommt er dran.
 
 ## Schnellstart
 
@@ -323,7 +335,7 @@ Regelmäßig, mehrmals pro Woche. Abonniere den Kanal und gib dem Repo einen Ste
 ## Mitmachen und Community
 
 - ⭐ **Gib dem Repo einen Stern**, wenn dir das Projekt gefällt – das hilft enorm.
-- 🗳️ **Entscheide mit:** auf [paibot.de/mitentscheiden](https://paibot.de/mitentscheiden) stimmst du ab, was als Nächstes kommt. Den Stand siehst du im [Bauplan](https://paibot.de/bauplan), die Anleitungen in der [Doku](https://paibot.de/doku).
+- 🗳️ **Entscheide mit:** auf [paibot.de/mitentscheiden](https://paibot.de/mitentscheiden) schlägst du Funktionen vor und stimmst für Vorschläge anderer (bestätigte E-Mail-Adresse nötig). Den Stand siehst du im [Bauplan](https://paibot.de/bauplan), die Anleitungen in der [Doku](docs/README.md).
 - 💬 **Community auf [aiianer.de](https://aiianer.de):** Deep Dives zu jeder Folge, gemeinsame Coding-Sessions zum Mitbauen und Hilfe, wenn es hakt.
 - 🐛 **Fehler oder Ideen?** Eröffne ein [Issue](https://github.com/oliverhees/paibot/issues/new/choose).
 - 🛠️ **Selbst beitragen?** Lies zuerst [`CONTRIBUTING.md`](CONTRIBUTING.md) (Beitragsvereinbarung nötig).

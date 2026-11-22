@@ -28,6 +28,8 @@ import type { RoutenKontext } from "../api/route";
 import type { EinrichtungsAnbieter } from "../umgebung";
 import type { ZugangsDienste } from "../zugang/dienste";
 import { antwortHerkunft, type UnterAnbieterListe } from "./herkunft";
+import { vorgabeFuerNeueRegel } from "./verwaltung";
+import { type RegelVorgabe, vorgabeAus } from "./vorgabe";
 
 /** Ergebnis der Prüfung eines Namens, wie die Oberfläche es zeigt (nie mit Schlüssel). */
 export interface RegelErgebnis {
@@ -37,15 +39,21 @@ export interface RegelErgebnis {
   servedBy?: ServedBy;
   /** Herkunft in Worten, z. B. „Antwort von Nebul · Sitz Niederlande laut EUrouter“. */
   herkunft?: string;
+  /** Mit zweitem Schlüssel gelesen: Die Regel meldet `data_residency: "EU"`. */
+  eu?: boolean;
+  /** Mit zweitem Schlüssel gelesen: Satz zur Kennzeichnung bzw. zur Residenz, mit Datum. */
+  vorgabeText?: string;
   /** Satz zum Fehler mit Ausweg (nur bei Misserfolg). */
   text?: string;
   ausweg?: string;
 }
 
-/** Gespeicherter Eintrag einer Regel. */
+/** Gespeicherter Eintrag einer Regel, mit den gelesenen Vorgaben, falls es welche gibt. */
 export interface RegelEintrag {
   id: ModelId;
   name: string;
+  /** Nur mit zweitem Schlüssel gelesen; fehlt bei Regeln, die nur per Name geprüft wurden. */
+  vorgabe?: RegelVorgabe;
 }
 
 /** So lange gilt eine geprüfte Regel als geprüft (zwischen Prüfen und Abschließen). */
@@ -137,13 +145,36 @@ export async function regelnPruefen(
   return ergebnisse;
 }
 
-/** Gespeicherte Regeln eines Anbieters (nur wählbare Einträge mit Regel-Kennung). */
-export async function regelnVon(db: Database, anbieter: Provider): Promise<RegelEintrag[]> {
+/**
+ * Gespeicherte Regeln eines Anbieters (nur wählbare Einträge mit Regel-Kennung), mit den gelesenen
+ * Vorgaben. `jetzt` und `zeitzone` bestimmen, ob eine Angabe als länger nicht geprüft gilt.
+ */
+export async function regelnVon(
+  db: Database,
+  anbieter: Provider,
+  kontext: { jetzt: Date; zeitzone: string } = { jetzt: new Date(), zeitzone: "Europe/Berlin" },
+): Promise<RegelEintrag[]> {
   if (!supportsRoutingRules(anbieter.templateKey)) return [];
   const eintraege: RegelEintrag[] = [];
+  const vorgaben = await repo.models.rulePolicies(db, anbieter.id as ProviderId);
   for (const m of await repo.models.list(db, { providerId: anbieter.id as ProviderId })) {
     const name = routingRuleNameOf(anbieter.templateKey, m.slug);
-    if (name !== undefined && m.enabled) eintraege.push({ id: m.id as ModelId, name });
+    if (name === undefined || !m.enabled) continue;
+    const gespeichert = vorgaben[m.id];
+    eintraege.push({
+      id: m.id as ModelId,
+      name,
+      ...(gespeichert === undefined
+        ? {}
+        : {
+            vorgabe: vorgabeAus(
+              gespeichert.policy,
+              gespeichert.checkedAt,
+              kontext.jetzt,
+              kontext.zeitzone,
+            ),
+          }),
+    });
   }
   return eintraege.sort((a, b) => a.name.localeCompare(b.name, "de"));
 }
@@ -197,7 +228,10 @@ function gespeicherterSchluessel(d: ZugangsDienste, anbieter: Provider, enc: str
  * gespeichert (`eingabe_ungueltig` am Feld `name`, mit Ausweg).
  */
 export async function anbieterRegelHinzufuegen(k: RoutenKontext<"anbieterRegelHinzufuegen">) {
-  const { provider, apiKeyEnc } = await anbieterMitRegeln(k.db, k.params.id ?? "");
+  const { provider, apiKeyEnc, managementKeyEnc } = await anbieterMitRegeln(
+    k.db,
+    k.params.id ?? "",
+  );
   const name = k.eingabe.name;
   const schluessel = gespeicherterSchluessel(k.dienste, provider, apiKeyEnc);
   const [ergebnis] = await regelnPruefen(k.dienste, provider, schluessel, [name]);
@@ -211,6 +245,9 @@ export async function anbieterRegelHinzufuegen(k: RoutenKontext<"anbieterRegelHi
     });
   }
   const providerId = provider.id as ProviderId;
+  // Mit zweitem Schlüssel: Vorgaben der Regel aus der Liste des Kontos (nur lesend, vor dem Tor).
+  const vorgabe = await vorgabeFuerNeueRegel(k.dienste, provider, managementKeyEnc, name);
+  const jetzt = k.dienste.uhr.now();
   const gespeichert = await k.tor(
     k.nachweis,
     { type: "anbieter.speichern", target: { providerId } },
@@ -222,14 +259,35 @@ export async function anbieterRegelHinzufuegen(k: RoutenKontext<"anbieterRegelHi
         displayName: name,
       });
       if (!m.enabled) await repo.models.setEnabled(k.db, m.id as ModelId, true);
+      if (vorgabe.policy !== undefined) {
+        await repo.models.setRulePolicy(k.db, m.id as ModelId, {
+          policy: vorgabe.policy,
+          source: "verwaltungsschluessel",
+          checkedAt: jetzt,
+        });
+      }
       await repo.providers.setCheckResult(k.db, providerId, { ok: true, at: k.dienste.uhr.now() });
       return { value: m, result: { status: "ok" } };
     },
   );
-  const regel: RegelEintrag = { id: gespeichert.value.id as ModelId, name };
+  const regel: RegelEintrag = {
+    id: gespeichert.value.id as ModelId,
+    name,
+    ...(vorgabe.policy === undefined
+      ? {}
+      : {
+          vorgabe: vorgabeAus(
+            vorgabe.policy,
+            jetzt,
+            jetzt,
+            (await repo.settings.get(k.db))?.timezone ?? "Europe/Berlin",
+          ),
+        }),
+  };
   return {
     daten: {
       regel,
+      ...(vorgabe.hinweis === undefined ? {} : { hinweis: vorgabe.hinweis }),
       ...(ergebnis.servedBy === undefined ? {} : { servedBy: ergebnis.servedBy }),
       ...(ergebnis.herkunft === undefined ? {} : { herkunft: ergebnis.herkunft }),
     },

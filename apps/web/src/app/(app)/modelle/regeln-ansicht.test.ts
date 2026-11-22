@@ -71,13 +71,13 @@ describe("Karte Routing-Regeln", () => {
       h(RegelnKarte, {
         anbieter: EUROUTER,
         botName: "Pai",
-        regeln: [{ id: "mod_01JD0000000000000000000010", name: "EU Beispiel" }],
+        regeln: [{ id: "mod_01JD0000000000000000000010", name: "Beispiel-Regel" }],
         alte: [],
         onRegeln: nichts,
         onModell: nichts,
       }),
     );
-    expect(html).toContain("EU Beispiel");
+    expect(html).toContain("Beispiel-Regel");
     expect(html).toContain(t("regelkarte.name.feld"));
     expect(html).toContain(t("anbieterwahl.regeln.kosten", { anbieter: "EUrouter" }));
     expect(html).not.toContain(t("regelkarte.alt.hinweis", { name: "Pai", anbieter: "EUrouter" }));

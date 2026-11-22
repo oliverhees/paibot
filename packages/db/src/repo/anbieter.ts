@@ -35,6 +35,8 @@ export interface ProviderCreate {
    * (`providerSecretBinding`); `v1` nur noch aus alten Daten.
    */
   apiKeyEnc?: string;
+  /** Zweiter Schlüssel (nur zum Lesen der Routing-Regeln), bereits verschlüsselt und gebunden. */
+  managementKeyEnc?: string;
   region: Region;
   country?: string;
   enabled?: boolean;
@@ -46,6 +48,8 @@ export interface ProviderPatch {
   name?: string;
   baseUrl?: string;
   apiKeyEnc?: string | null;
+  /** Zweiter Schlüssel (nur zum Lesen der Routing-Regeln), bereits verschlüsselt; `null` entfernt ihn. */
+  managementKeyEnc?: string | null;
   region?: Region;
   country?: string | null;
   enabled?: boolean;
@@ -68,6 +72,7 @@ export async function create(db: Database, input: ProviderCreate): Promise<Provi
           name: input.name,
           baseUrl: input.baseUrl,
           apiKeyEnc: input.apiKeyEnc ?? null,
+          managementKeyEnc: input.managementKeyEnc ?? null,
           region: input.region,
           country: input.country ?? null,
           enabled: input.enabled ?? true,
@@ -88,12 +93,13 @@ export async function get(db: Database, id: ProviderId): Promise<Provider | unde
 export async function getWithKey(
   db: Database,
   id: ProviderId,
-): Promise<{ provider: Provider; apiKeyEnc?: string } | undefined> {
+): Promise<{ provider: Provider; apiKeyEnc?: string; managementKeyEnc?: string } | undefined> {
   const [row] = await db.select().from(providers).where(eq(providers.id, id));
   if (row === undefined) return undefined;
   return {
     provider: toProvider(row),
     ...(row.apiKeyEnc === null ? {} : { apiKeyEnc: row.apiKeyEnc }),
+    ...(row.managementKeyEnc === null ? {} : { managementKeyEnc: row.managementKeyEnc }),
   };
 }
 
