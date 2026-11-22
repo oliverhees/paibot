@@ -232,6 +232,18 @@ describe("App verbinden", () => {
     await ohneToken(u);
   });
 
+  it("ungültige gespeicherte Namen sind ein Fehler der Daten, kein Fehler der App: intern mit festem Satz", async () => {
+    const u = await umgebung();
+    const d = daten(await verbinden(u));
+    u.zustand.fehler = new McpSchichtFehler("namen_ungueltig");
+    const r = await u.e.rufe(u.h.abrufen, "POST", `/api/apps/${d.app.id}/werkzeuge`, {
+      params: { id: d.app.id },
+    });
+    expect(r.status).toBe(500);
+    expect(r.body.fehler?.code).toBe("intern");
+    expect(JSON.stringify(r.body)).toContain("gespeicherten Werkzeug-Namen");
+  });
+
   it("ein Datenbankfehler mit der Zeile (samt verschlüsseltem Token) im Text erreicht keine Antwort", async () => {
     const u = await umgebung();
     const echt = repo.apps.create;
