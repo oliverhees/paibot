@@ -664,7 +664,7 @@ describe("Fremde Inhalte an Nachrichten", () => {
       step: 1,
     });
     expect(await messages.untrustedIds(db, [erste.id, zweite.id])).toEqual([erste.id, zweite.id]);
-    // Lauf 2 ohne Werkzeug: sein Verlauf enthält die gekennzeichnete Antwort; M7 kennzeichnet die
+    // Lauf 2 ohne Werkzeug: sein Verlauf enthält die gekennzeichnete Antwort; das spätere Paket für den Lauf kennzeichnet die
     // Antworten dieses Laufs, 50 weitere Nachrichten ändern daran nichts.
     const frage2 = messageRow(konv.id);
     await db.insert(messageTable).values(frage2 as never);
