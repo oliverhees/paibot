@@ -348,7 +348,7 @@ Fehler legst du mit `failNext` bzw. `…/fehler` fest:
 - Die Steuerung unter `/_steuerung/` antwortet ohne Schlüssel nur auf Anfragen von derselben Maschine (Loopback). Mit `FAKE_PROVIDER_CONTROL_KEY` verlangt sie die Kopfzeile `x-steuerung-schluessel` mit diesem Wert. Binde ihn trotzdem nie an ein offenes Netz, ein Container gehört in ein internes Netz.
 - Er bildet das Format nach, das PaiBot heute nutzt (OpenAI-kompatibel), nicht jeden Anbieter. Was echte Anbieter zusätzlich oder anders senden, taucht im Drehbuch nur auf, wenn du es dort nachstellst.
 - Nur Chat und Modell-Liste sind nachgebildet (keine Einbettungen, keine Bilder).
-- Ein Compose-Testprofil mit dem Image, ein Netz ohne Internet in Docker und der nächtliche Lauf mit Datenschleuse sind geplant, aber noch nicht gebaut. Die Ende-zu-Ende-Prüfung läuft heute ohne Docker, mit der Netz-Sperre in den Node-Prozessen (siehe oben).
+- Gebaut ist der Docker-Stack ohne Weg nach draußen: der CI-Job `ohne-internet` mit `deploy/docker-compose.ohne-internet.yml` (siehe oben). Noch nicht gebaut sind Playwright-Tests im Compose-Stack und der nächtliche Lauf mit Datenschleuse. Die Browser-Prüfung mit Playwright läuft heute ohne Docker, mit der Netz-Sperre in den Node-Prozessen (siehe oben).
 
 ## Fehlerbehebung
 
