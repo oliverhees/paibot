@@ -19,6 +19,7 @@ import { PaiBotError } from "@paibot/shared/fehler";
 import type { AppId, BotId } from "@paibot/shared/ids";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { belegeAlsText, belegeSeit, eingerichtet, letzteNummer } from "../modelle/testing";
+import { bekannteNamenVon, MAX_BEKANNTE_NAMEN } from "./abgleich";
 import { _ersetzeAppDienste, type AppAbruf } from "./dienste";
 import {
   appsListe,
@@ -242,6 +243,37 @@ describe("App verbinden", () => {
     expect(r.status).toBe(500);
     expect(r.body.fehler?.code).toBe("intern");
     expect(JSON.stringify(r.body)).toContain("gespeicherten Werkzeug-Namen");
+    // Ehrlich und mit Ausweg, ohne die Art des Fehlers zu ändern.
+    const fehler = (r.body as { fehler?: { text?: string; ausweg?: string } }).fehler;
+    expect(fehler?.text).toContain("zu viele Werkzeuge gemeldet");
+    expect(fehler?.ausweg).toBe("Trenne die App und verbinde sie neu.");
+  });
+
+  it("entfernte Werkzeuge füllen die Namen nicht auf: alle übrigen Namen und die jüngsten entfernten, höchstens MAX_BEKANNTE_NAMEN", async () => {
+    const jetzt = Date.UTC(2026, 10, 22);
+    const werkzeug = (name: string, status: string, alter: number) =>
+      ({
+        originalName: name,
+        modelName: `beispiel__${name}`,
+        status,
+        createdAt: new Date(jetzt - alter * 1000),
+      }) as unknown as repo.apps.AppTool;
+    // 3 000 entfernte (je Sekunde ein Alter mehr) und 3 gemeldete.
+    const viele = Array.from({ length: 3000 }, (_, i) => werkzeug(`weg${i}`, "entfernt", i + 10));
+    const aktuelle = ["a1", "a2", "a3"].map((n) => werkzeug(n, "bestaetigt", 100_000));
+    const spion = vi.spyOn(repo.apps, "currentTools").mockResolvedValue([...viele, ...aktuelle]);
+    try {
+      const namen = await bekannteNamenVon({} as never, "app_x" as AppId);
+      expect(namen.size).toBe(MAX_BEKANNTE_NAMEN);
+      for (const n of ["a1", "a2", "a3"]) expect(namen.has(n)).toBe(true);
+      // die jüngsten entfernten zuerst: weg0 ist das jüngste, weg2999 das älteste
+      expect(namen.has("weg0")).toBe(true);
+      expect(namen.has("weg2999")).toBe(false);
+      // und das Ergebnis passt in das, was die Schicht annimmt (höchstens 2 000)
+      expect(namen.size).toBeLessThanOrEqual(2000);
+    } finally {
+      spion.mockRestore();
+    }
   });
 
   it("ein Datenbankfehler mit der Zeile (samt verschlüsseltem Token) im Text erreicht keine Antwort", async () => {

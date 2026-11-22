@@ -22,10 +22,16 @@ import { ERROR_CODES, isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 export function fehlerOhneFremdtext(fehler: unknown): PaiBotError {
   if (isPaiBotError(fehler)) return fehler;
   if (fehler instanceof McpSchichtFehler) {
-    // Die gespeicherten Namen sind kaputt: ein Fehler der Daten in PaiBot, nicht der App. Der Satz
-    // der Schicht ist fest und nennt nichts vom Server.
-    if (fehler.code === "namen_ungueltig")
-      return new PaiBotError("intern", { text: fehler.message });
+    // Die gespeicherten Namen sind unbrauchbar oder es sind zu viele: ein Fehler der Daten in
+    // PaiBot, nicht der App. Der Satz ist fest und nennt nichts vom Server. Die Art des Fehlers
+    // bleibt `intern`; der Ausweg sagt, was zu tun ist (die App erscheint danach neu, mit anderem
+    // Kurznamen).
+    if (fehler.code === "namen_ungueltig") {
+      return new PaiBotError("intern", {
+        text: "Die gespeicherten Werkzeug-Namen dieser App sind unbrauchbar, oder die App hat zu viele Werkzeuge gemeldet.",
+        ausweg: "Trenne die App und verbinde sie neu.",
+      });
+    }
     const code = (ERROR_CODES as readonly string[]).includes(fehler.code)
       ? (fehler.code as (typeof ERROR_CODES)[number])
       : "app_nicht_erreichbar";

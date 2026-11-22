@@ -38,10 +38,29 @@ export interface AbgleichErgebnis {
   abgeschnitten: boolean;
 }
 
-/** Gespeicherte Zuordnung Original-Name → Modell-Name einer App, immer frisch aus der Datenbank. */
+/**
+ * Höchstens so viele gespeicherte Namen einer App gehen an die Schicht. Sie nimmt nur eine begrenzte
+ * Zahl an (2 000) und lehnt mehr als Fehler der Daten ab; die Grenze hier liegt darunter.
+ */
+export const MAX_BEKANNTE_NAMEN = 1500;
+
+/**
+ * Gespeicherte Zuordnung Original-Name → Modell-Name einer App, immer frisch aus der Datenbank.
+ * Werkzeuge, die der Server nicht mehr meldet (`entfernt`), sammeln sich über die Zeit an. Zuerst
+ * kommen deshalb alle Namen der übrigen Werkzeuge, dann die der entfernten, die zuletzt angelegten
+ * zuerst, solange Platz bleibt. Die Namen vergibt am Ende die Datenbank; ein weggelassener Name eines
+ * entfernten Werkzeugs ändert nichts an den gespeicherten.
+ */
 export async function bekannteNamenVon(db: Database, appId: App["id"]) {
   const gespeichert = await repo.apps.currentTools(db, appId);
-  return new Map(gespeichert.map((tool) => [tool.originalName, tool.modelName]));
+  const aktuelle = gespeichert.filter((tool) => tool.status !== "entfernt");
+  const entfernte = gespeichert
+    .filter((tool) => tool.status === "entfernt")
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const platz = Math.max(0, MAX_BEKANNTE_NAMEN - aktuelle.length);
+  return new Map(
+    [...aktuelle, ...entfernte.slice(0, platz)].map((tool) => [tool.originalName, tool.modelName]),
+  );
 }
 
 /** Holt die Liste über die Schicht (mit den gespeicherten Namen) und trennt sie nach Prüfbarkeit. */
