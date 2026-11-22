@@ -177,6 +177,22 @@ export const laufWerkzeugeLesen: RoutenAktion<"laufWerkzeuge"> = async (k) => {
 };
 
 /**
+ * Ein Faden (Unterhaltung eines Teams, ohne eigenen Bot) nimmt in dieser Fassung keine Nachricht an
+ * und startet keinen Lauf: Wer antwortet, entscheidet erst die Zusammenarbeit im Team. Der feste
+ * Hinweis kommt vor jeder Änderung; es entsteht weder eine Nachricht noch ein Lauf.
+ */
+export const FADEN_OHNE_LAUF_TEXT = "In einem Faden antwortet noch kein Bot.";
+export const FADEN_OHNE_LAUF_AUSWEG = "Schreibe im Chat mit einem einzelnen Bot.";
+function keinLaufImFaden(unterhaltung: { kind: string } | undefined): void {
+  if (unterhaltung?.kind === "faden") {
+    throw new PaiBotError("abgelehnt", {
+      text: FADEN_OHNE_LAUF_TEXT,
+      ausweg: FADEN_OHNE_LAUF_AUSWEG,
+    });
+  }
+}
+
+/**
  * `POST /api/unterhaltungen/:id/nachrichten`: Nachricht senden. Weicht der Schalter vom Modus der
  * Unterhaltung ab, wird zuerst die Datenschleuse umgeschaltet (eigene Aktion). Danach entscheidet
  * das Tor über `nachricht.senden`; erst mit Erlaubnis entstehen in EINER Transaktion Nachricht,
@@ -189,6 +205,7 @@ export function nachrichtSenden(einreihen: Einreihen): RoutenAktion<"nachrichtSe
     const { text, schleuse } = k.eingabe;
     const settings = await repo.settings.get(k.db);
     let unterhaltung = await repo.conversations.get(k.db, id);
+    keinLaufImFaden(unterhaltung);
     if (unterhaltung !== undefined) {
       const vorher = schleuseVon(unterhaltung, settings);
       if (schleuse !== vorher) unterhaltung = await schleuseUmschalten(k, id, schleuse, vorher);
@@ -285,6 +302,7 @@ export function antwortNeuErzeugen(einreihen: Einreihen): RoutenAktion<"antwortN
     if (!isId("message", antwortId)) throw new PaiBotError("nicht_gefunden");
     const settings = await repo.settings.get(k.db);
     const unterhaltung = await repo.conversations.get(k.db, id);
+    keinLaufImFaden(unterhaltung);
     const verlauf =
       unterhaltung === undefined
         ? []

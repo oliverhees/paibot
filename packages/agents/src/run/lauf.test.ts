@@ -9,7 +9,7 @@
  * @since     2026-11-20
  */
 
-import { repo } from "@paibot/db";
+import { repo, teams, conversations as unterhaltungen } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import { evaluate, ruleSnapshot } from "@paibot/gate";
 import { providerTargetFacts } from "@paibot/llm";
@@ -481,6 +481,24 @@ describe("Reihenfolge und Zustand", () => {
     const env = await setup([finish()]);
     const outcome = await executeRun(newId("run"), env.deps, never());
     expect(outcome).toMatchObject({ status: "failed", code: "nicht_gefunden" });
+  });
+
+  // Gegenprobe: die Prüfung `conversation.kind === "faden"` in `loadRunContext` entfernen → das Modell
+  // wird gefragt (motor.calls ist 1) und es entsteht eine Antwort im Faden (rot).
+  it("ein Lauf in einem Faden endet mit nicht_gefunden: kein Modell gefragt, keine Antwort", async () => {
+    const env = await setup([text("ok"), finish()]);
+    const team = newId("team");
+    const faden = newId("conversation");
+    await env.db.insert(teams).values({ id: team, name: "Studio" });
+    await env.db
+      .insert(unterhaltungen)
+      .values({ id: faden, kind: "faden", teamId: team, title: "Ein Faden" });
+    const { runId } = await env.queueMessage("Hallo Team", faden);
+    const outcome = await executeRun(runId, env.deps, never());
+    expect(outcome).toMatchObject({ runId, status: "failed", code: "nicht_gefunden" });
+    expect(env.motor.calls).toHaveLength(0);
+    const nachrichten = await repo.messages.listForConversation(env.db, faden);
+    expect(nachrichten.map((m) => m.role)).toEqual(["user"]);
   });
 
   it("Verlauf: höchstens historyMaxMessages Nachrichten, älteres abgeschnitten, auslösende Nachricht immer dabei", async () => {

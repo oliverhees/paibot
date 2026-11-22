@@ -84,7 +84,8 @@ export async function loadRunContext(
       if (settings === undefined || settings.setupCompletedAt === undefined) {
         return { found: true, run, missing: "einrichtung_offen" };
       }
-      if (conversation === undefined || bot === undefined) {
+      // Ein Faden (Unterhaltung eines Teams) startet in dieser Fassung keinen Lauf.
+      if (conversation === undefined || bot === undefined || conversation.kind === "faden") {
         return { found: true, run, missing: "nicht_gefunden" };
       }
       const model = bot.modelId === undefined ? undefined : await repo.models.get(tx, bot.modelId);

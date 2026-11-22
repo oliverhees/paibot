@@ -10,11 +10,11 @@
  * @since     2026-11-21
  */
 
-import { repo } from "@paibot/db";
+import { conversations, repo, teams } from "@paibot/db";
 import { type ConversationId, type MessageId, newId } from "@paibot/shared/ids";
 import { describe, expect, it, vi } from "vitest";
 import { anfrage, Keksdose } from "../zugang/testing";
-import { antwortNeuErzeugen } from "./aktionen";
+import { antwortNeuErzeugen, FADEN_OHNE_LAUF_AUSWEG, FADEN_OHNE_LAUF_TEXT } from "./aktionen";
 import { belegeDer, eingerichtet, ketteGueltig, neueUnterhaltung, type Umgebung } from "./testing";
 
 vi.setConfig({ testTimeout: 60_000 });
@@ -105,6 +105,33 @@ describe("POST /api/unterhaltungen/:id/antworten/:antwortId/neu", () => {
     expect(d?.body.type === "decision" && d.body.decision.outcome).toBe("allow");
     expect(erg?.body.type === "result" && erg.body.result.status).toBe("ok");
     expect(await ketteGueltig(e.u)).toBe(true);
+  });
+
+  // Gegenprobe: `keinLaufImFaden` aus `antwortNeuErzeugen` entfernen → der Fall endet anders (404 oder Lauf; rot).
+  it("Faden: fester Hinweis, kein Lauf, keine Änderung", async () => {
+    const e = await eingerichtet();
+    const team = newId("team");
+    const faden = newId("conversation") as ConversationId;
+    await e.u.db.insert(teams).values({ id: team, name: "Studio" });
+    await e.u.db
+      .insert(conversations)
+      .values({ id: faden, kind: "faden", teamId: team, title: "Ein Faden" });
+    await repo.messages.insert(e.u.db, { conversationId: faden, role: "user", content: "Los" });
+    const antwort = await repo.messages.insert(e.u.db, {
+      conversationId: faden,
+      role: "assistant",
+      content: "Fertig.",
+    });
+    const r = await neu(e, faden, antwort.id);
+    expect(r.status).toBe(403);
+    expect(r.body.fehler).toMatchObject({
+      code: "abgelehnt",
+      text: FADEN_OHNE_LAUF_TEXT,
+      ausweg: FADEN_OHNE_LAUF_AUSWEG,
+    });
+    expect(await repo.runs.getActive(e.u.db, faden)).toBeUndefined();
+    expect(e.schlange.jobs).toEqual([]);
+    expect(await belegeDer(e.u, "antwort.neu_erzeugen")).toEqual([]);
   });
 
   it("während eine Antwort läuft: abgelehnt (V-02), nichts entsteht", async () => {

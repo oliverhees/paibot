@@ -10,7 +10,7 @@
  * @since     2026-11-21
  */
 
-import { repo } from "@paibot/db";
+import { conversations, repo, teams } from "@paibot/db";
 import { type ConversationId, ID_PREFIX, newId } from "@paibot/shared/ids";
 import type { Message } from "@paibot/shared/objekte";
 import { describe, expect, it, vi } from "vitest";
@@ -154,6 +154,25 @@ describe("POST /api/unterhaltungen/:id/export", () => {
     expect(inhalt).toContain("# Noch leer");
     expect(inhalt).toContain("Diese Unterhaltung hat noch keine Nachricht.");
     expect(antwort.headers.get("x-pb-nachrichten")).toBe("0");
+  });
+
+  // Der Schutz gegen `u.botId` ohne Wert steht in der Typprüfung (`tsc`): Zur Laufzeit liefert die
+  // Abfrage mit leerem Wert nur keine Zeile. Der Test hält fest, dass ein Faden ohne Bot sich sichern lässt.
+  it("Faden ohne Bot: Datei mit Titel und Nachrichten, kein Fehler", async () => {
+    const e = await eingerichtet();
+    const team = newId("team");
+    const id = newId("conversation") as ConversationId;
+    await e.u.db.insert(teams).values({ id: team, name: "Studio" });
+    await e.u.db
+      .insert(conversations)
+      .values({ id, kind: "faden", teamId: team, title: "Ein Faden" });
+    await repo.messages.insert(e.u.db, { conversationId: id, role: "user", content: "Los geht's" });
+    const antwort = await exportieren(e, id);
+    expect(antwort.status).toBe(200);
+    const inhalt = await antwort.text();
+    expect(inhalt).toContain("# Ein Faden");
+    expect(inhalt).toContain("Los geht's");
+    expect(antwort.headers.get("x-pb-nachrichten")).toBe("1");
   });
 });
 

@@ -9,7 +9,7 @@
  * @since     2026-11-21
  */
 
-import { repo } from "@paibot/db";
+import { conversations, repo, teams } from "@paibot/db";
 import { verifyChain } from "@paibot/receipts";
 import { newId, type RunId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
@@ -26,6 +26,8 @@ import {
   vorabDose,
 } from "../zugang/testing";
 import {
+  FADEN_OHNE_LAUF_AUSWEG,
+  FADEN_OHNE_LAUF_TEXT,
   laufAbbrechen,
   nachrichtenLesen,
   nachrichtSenden,
@@ -342,6 +344,29 @@ describe("Nachricht senden", () => {
     expect(r.body.fehler?.code).toBe("nicht_gefunden");
     expect((await senden(e, "kaputt")).status).toBe(404);
     expect(e.einreihen.jobs).toEqual([]);
+  });
+
+  // Gegenprobe: `keinLaufImFaden` aus `nachrichtSenden` entfernen → 404 statt des festen Hinweises, und
+  // ohne die Prüfung in `nachrichtSenden` (Bot fehlt) bliebe es bei `nicht_gefunden` (rot).
+  it("Faden: fester Hinweis, keine Nachricht, kein Lauf, keine Änderung", async () => {
+    const e = await eingerichtet();
+    const team = newId("team");
+    const faden = newId("conversation");
+    await e.u.db.insert(teams).values({ id: team, name: "Studio" });
+    await e.u.db
+      .insert(conversations)
+      .values({ id: faden, kind: "faden", teamId: team, title: "Ein Faden" });
+    const r = await senden(e, faden);
+    expect(r.status).toBe(403);
+    expect(r.body.fehler).toMatchObject({
+      code: "abgelehnt",
+      text: FADEN_OHNE_LAUF_TEXT,
+      ausweg: FADEN_OHNE_LAUF_AUSWEG,
+    });
+    expect(await repo.messages.listForConversation(e.u.db, faden as never)).toEqual([]);
+    expect(await repo.runs.getActive(e.u.db, faden as never)).toBeUndefined();
+    expect(e.einreihen.jobs).toEqual([]);
+    expect(await belegTypen(e.u, 1)).not.toContain("decision:nachricht.senden");
   });
 
   it("Länge: leer und über der Grenze abgewiesen, genau an der Grenze erlaubt", async () => {

@@ -267,7 +267,8 @@ export const unterhaltungExportieren: RoutenAktion<"unterhaltungExport"> = async
   const verlauf = await ladeVerlauf(k.db, conversationId);
   const u = verlauf === undefined ? undefined : await repo.conversations.get(k.db, conversationId);
   const settings = await repo.settings.get(k.db);
-  const bot = u === undefined ? undefined : await repo.bots.get(k.db, u.botId);
+  // Ein Faden hat keinen eigenen Bot: Der Bot bleibt dann leer (die Datei nennt ihn nicht).
+  const bot = u?.botId === undefined ? undefined : await repo.bots.get(k.db, u.botId);
   const nachrichten = verlauf?.nachrichten.filter(inDerDatei) ?? [];
   const jetzt = k.dienste.uhr.now();
   const zeitzone = settings?.timezone ?? "Europe/Berlin";
