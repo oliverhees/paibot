@@ -55,8 +55,23 @@ describe("zweiter Schlüssel im Quelltext", () => {
       "apps/web/src/lib/zugang/einrichtung.ts",
       "packages/db/src/repo/abbildung.ts",
       "packages/db/src/repo/anbieter.ts",
+      "packages/db/src/schema/abgleich-klassen.ts",
       "packages/db/src/schema/anbieter.ts",
     ]);
+  });
+
+  it("der Vertrag der Abgleich-Klassen nennt nur den Spaltennamen, nie den Wert", () => {
+    // `abgleich-klassen.ts` steht in der Liste oben, weil es die Spalte als Text kennzeichnet
+    // („enthält ein Geheimnis“). Es liest, schreibt und importiert nichts davon: der Name kommt nur
+    // als Zeichenkette vor, nie als Feld (`managementKeyEnc`), und die Datei hat keine Importe.
+    const text = ohneKommentare(
+      readFileSync(path.join(WURZEL, "packages/db/src/schema/abgleich-klassen.ts"), "utf8"),
+    );
+    expect(text).not.toMatch(/^\s*import\s/m);
+    // Ohne Zeichenketten bleibt kein Vorkommen übrig: Der Name steht nur in Texten.
+    const ohneTexte = text.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+    expect(ohneTexte).not.toMatch(/managementKeyEnc|management_key_enc/);
+    expect(text).toMatch(/"management_key_enc"/);
   });
 
   it("die Regel-Liste wird nur von der Verwaltung, der Einrichtung und den Diensten gelesen", () => {
