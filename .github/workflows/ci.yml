@@ -241,6 +241,60 @@ jobs:
       - name: Browser-Tests der Oberfläche
         run: pnpm --filter @paibot/ui test:browser
 
+  # Seite „Apps“ im echten Browser (scripts/apps-browser.mjs): Texte einer feindlichen App nur als Text,
+  # Token nach dem Absenden nirgends, Einstufen mit dem Abdruck der gezeigten Fassung, Fehlerwege mit
+  # Ausweg. Der Lauf startet die Web-App im Produktions-Build mit einer Wegwerf-Datenbank auf dem
+  # Dienst-Container und räumt am Ende alles ab.
+  apps-browser:
+    runs-on: ubuntu-latest
+    needs: check
+    timeout-minutes: 20
+    services:
+      # Gleicher Dienst-Container wie im Job e2e; das Skript legt eine eigene Wegwerf-Datenbank und
+      # Rolle an und löscht beides am Ende.
+      postgres:
+        image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
+        env:
+          # Mindestens 24 Zeichen: Der Migrations-Schritt startet sonst im Produktions-Modus nicht.
+          POSTGRES_PASSWORD: ci-wegwerf-nur-fuer-die-e2e-pruefung
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      PAIBOT_DOKU_DATABASE_URL: postgres://postgres:ci-wegwerf-nur-fuer-die-e2e-pruefung@127.0.0.1:5432/postgres
+      # Fest gepinnt, gleiche Fassung wie in den Jobs e2e und browser (tools/e2e/playwright-ci).
+      PLAYWRIGHT_VERSION: 1.63.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Playwright und Chromium installieren (gepinnt)
+        run: |
+          set -eu
+          pw="$RUNNER_TEMP/playwright"
+          mkdir -p "$pw"
+          cp tools/e2e/playwright-ci/package.json tools/e2e/playwright-ci/package-lock.json "$pw/"
+          gesperrt=$(node -e "console.log(require('$pw/package-lock.json').packages['node_modules/playwright'].version)")
+          [ "$gesperrt" = "$PLAYWRIGHT_VERSION" ] || { echo "package-lock.json: Playwright $gesperrt statt $PLAYWRIGHT_VERSION"; exit 1; }
+          npm ci --prefix "$pw" --no-audit --no-fund --ignore-scripts
+          echo "NODE_PATH=$pw/node_modules" >> "$GITHUB_ENV"
+          node "$pw/node_modules/playwright/cli.js" install --with-deps chromium
+          version=$(node -e "console.log(require('$pw/node_modules/playwright/package.json').version)")
+          [ "$version" = "$PLAYWRIGHT_VERSION" ] || { echo "Playwright $version statt $PLAYWRIGHT_VERSION"; exit 1; }
+      - run: pnpm build
+      - name: Seite „Apps“ im Browser
+        run: pnpm doku:app -- pnpm apps:browser
+
   # Docker-Stack ohne Weg nach draußen (deploy/docker-compose.ohne-internet.yml): Das Netz
   # paibot-aussen ist intern, der Test-Anbieter steht im selben Netz. Geprüft wird von innen über
   # HTTP (Einrichtung, Chat, Belege) und mit einer Netz-Probe aus web und worker.

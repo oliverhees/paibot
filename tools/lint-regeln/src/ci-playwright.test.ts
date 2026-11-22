@@ -49,4 +49,20 @@ describe("Playwright in der CI", () => {
     expect(block).not.toMatch(/npm install/);
     expect(block).toContain("--ignore-scripts");
   });
+
+  // Gegenprobe: den Job „apps-browser“ oder seinen Schritt aus der CI nehmen → rot.
+  it("die Seite „Apps“ läuft im echten Browser in der CI, mit Datenbank und gebautem Stand", () => {
+    const start = ci.indexOf("\n  apps-browser:");
+    expect(start).toBeGreaterThan(-1);
+    const rest = ci.slice(start + 1);
+    const job = rest.slice(0, rest.search(/\n {2}[a-z-]+:\n/));
+    expect(job).toContain("needs: check");
+    expect(job).toContain("image: postgres:17-alpine@sha256:");
+    expect(job).toContain("PAIBOT_DOKU_DATABASE_URL: postgres://");
+    expect(job).toContain("run: pnpm build");
+    expect(job).toContain("pnpm doku:app -- pnpm apps:browser");
+    // Playwright wie in den anderen Jobs: gepinnt, aus der Liste mit Prüfsummen.
+    expect(job).toContain('npm ci --prefix "$pw"');
+    expect(job).toContain("PLAYWRIGHT_VERSION: 1.63.0");
+  });
 });
