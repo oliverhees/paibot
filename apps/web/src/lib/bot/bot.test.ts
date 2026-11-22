@@ -115,8 +115,23 @@ describe("PUT /api/bot", () => {
 describe("Was dein Bot darf", () => {
   it("leitet aus den Standard-Regeln ab: antworten und in der Doku lesen erlaubt, andere Werkzeuge nur mit Frage, G-01 nie", () => {
     const rechte = botRechte(ACTIVE_STANDARD_RULES);
-    expect(rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010"]);
+    // R-014 (Bot liest in Apps mit Lese-Zugriff) erlaubt, gehört also zu „Darf“, nicht zu „Fragt“
+    // oder „Nie“: Wirkung `allow`, gilt für den Akteur „Bot“. Ohne Zugriff und ohne bestätigtes
+    // Werkzeug greift sie nie; das sichern die Grenzen G-06 bis G-08 des Tors, nicht diese Seite.
+    expect(rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010", "R-014"]);
     expect(rechte.erlaubt[1]?.text).toBe("Bot liest in der Doku seiner Version");
+    // Auf der Seite mit Zusatz, der heute stimmt: Apps lassen sich noch nicht verbinden. Der Titel der
+    // Regel selbst (Belege, Tor-Seite, Schritte im Chat) bleibt, wie er ist.
+    expect(rechte.erlaubt[2]?.text).toBe(
+      "Bot liest in Apps mit Lese-Zugriff (Apps lassen sich in dieser Version noch nicht verbinden)",
+    );
+    expect(rechte.erlaubt[2]?.text.startsWith(t("regel.R-014"))).toBe(true);
+    expect(t("regel.R-014")).toBe("Bot liest in Apps mit Lese-Zugriff");
+    // Die anderen Zeilen bekommen keinen Zusatz.
+    expect(rechte.erlaubt[0]?.text).toBe(t("regel.R-002"));
+    expect(rechte.erlaubt[1]?.text).toBe("Bot liest in der Doku seiner Version");
+    expect(rechte.fragt.map((r) => r.id)).not.toContain("R-014");
+    expect(rechte.nie.map((r) => r.id)).not.toContain("R-014");
     expect(rechte.fragt.map((r) => r.id)).toEqual(["R-005"]);
     expect(rechte.nie.map((r) => r.id)).toEqual(["G-01"]);
     expect(rechte.erlaubt[0]?.text).toBe(t("regel.R-002"));
@@ -131,7 +146,9 @@ describe("Was dein Bot darf", () => {
   it("die Seite bekommt die Rechte aus der Datenbank", async () => {
     const e = await eingerichtet();
     const daten = await botSeitenDaten(e.u.db);
-    expect(daten?.rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010"]);
+    expect(daten?.rechte.erlaubt.map((r) => r.id)).toEqual(["R-002", "R-010", "R-014"]);
+    expect(daten?.rechte.fragt.map((r) => r.id)).toEqual(["R-005"]);
+    expect(daten?.rechte.nie.map((r) => r.id)).toEqual(["G-01"]);
     expect(daten?.modell?.displayName).toBe("Beispiel-Modell A");
   });
 

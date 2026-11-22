@@ -17,7 +17,7 @@ import { TOOL_NAME_PATTERN } from "@paibot/shared/objekte";
 import type { ToolDefinition, ToolKey } from "@paibot/shared/werkzeug";
 import { toolKeySchema } from "@paibot/shared/werkzeug";
 import { z } from "zod";
-import { hasUnwanted } from "../run/bereinigen";
+import { cleanText, hasUnwanted } from "../run/bereinigen";
 import { builtinTools } from "./eingebaut";
 
 /** Ein Werkzeug im Register: eingefrorene Beschreibung, Abdruck und Angebot an das Modell. */
@@ -40,9 +40,30 @@ export interface ToolPlaceholder {
   readonly foreignContent: true;
 }
 
+/** Ein Werkzeug, das beim Aufbau nicht ins Register kam (nur mit `ausschliessen`). */
+export interface ExcludedTool {
+  /** Kennung, wie die Beschreibung sie nannte (höchstens 128 Zeichen). */
+  readonly key: string;
+  /** Warum es fehlt; immer ein `ToolRegistryError` mit festem Text. */
+  readonly fehler: ToolRegistryError;
+}
+
+/** Optionen für `createToolRegistry`. */
+export interface ToolRegistryOptions {
+  /**
+   * Ein Werkzeug, dessen Beschreibung nicht passt oder dessen Abdruck sich nicht rechnen lässt,
+   * wird ausgeschlossen und in `ausgeschlossen` gemeldet; die anderen bleiben. Ohne die Option
+   * (Standard) bricht der Aufbau beim ersten Fehler mit einem `ToolRegistryError` ab. Gedacht für
+   * Werkzeuge aus fremden Quellen: Ein einzelnes kaputtes Schema darf nicht alle anderen mitreißen.
+   */
+  ausschliessen?: boolean;
+}
+
 export interface ToolRegistry {
   /** Alle Werkzeuge in fester Reihenfolge. */
   readonly tools: readonly RegisteredTool[];
+  /** Werkzeuge, die beim Aufbau ausgeschlossen wurden (leer ohne `ausschliessen`). */
+  readonly ausgeschlossen: readonly ExcludedTool[];
   byModelName(name: string): RegisteredTool | undefined;
   readonly placeholder: ToolPlaceholder;
 }
@@ -93,15 +114,106 @@ function isStrictObject(schema: unknown): boolean {
 /** Namen, die jedes Objekt über seinen Prototyp schon „hat“ (`constructor`, `toString`, `__proto__` …). */
 const PROTOTYPE_NAMES: ReadonlySet<string> = new Set(Object.getOwnPropertyNames(Object.prototype));
 
+/** Tiefste Verschachtelung, die das Register liest; darüber gilt das Schema als nicht lesbar. */
+const MAX_SCHEMA_DEPTH = 32;
+
+type SchemaDef = { type?: string } & Record<string, unknown>;
+
+/** Feste Namen, die ein Schlüssel-Schema vorgibt: `enum`, `literal` und Vereinigungen davon. */
+function fixedNames(schema: unknown, depth = 0): string[] {
+  if (depth > MAX_SCHEMA_DEPTH || typeof schema !== "object" || schema === null) return [];
+  const def = (schema as { _zod?: { def?: SchemaDef } })._zod?.def;
+  if (def === undefined) return [];
+  switch (def.type) {
+    case "enum":
+      return Object.values((def.entries as Record<string, unknown>) ?? {}).map(String);
+    case "literal":
+      return Array.isArray(def.values) ? def.values.map(String) : [];
+    case "union":
+      return Array.isArray(def.options)
+        ? def.options.flatMap((option) => fixedNames(option, depth + 1))
+        : [];
+    case "optional":
+    case "nullable":
+    case "readonly":
+    case "default":
+      return fixedNames(def.innerType, depth + 1);
+    default:
+      return [];
+  }
+}
+
 /**
- * Hat das Schema auf oberster Ebene ein Feld mit einem Namen aus `Object.prototype`? zod liest ein
- * fehlendes Feld über den Prototyp: `z.object({ constructor: z.unknown() }).safeParse({})` gelingt
- * mit einer Funktion als Wert. Ein Objekt-Schema wird über seine Felder gelesen; andere Schemas
- * (Liste, Vereinigung, Umhüllung) kann das Register nicht sicher lesen und lässt sie unberührt.
+ * Hat das Schema auf irgendeiner Ebene ein Feld mit einem Namen aus `Object.prototype`? zod liest
+ * ein fehlendes Feld über den Prototyp: `z.object({ constructor: z.unknown() }).safeParse({})`
+ * gelingt mit einer Funktion als Wert. Das gilt auf jeder Ebene, auch in `optional`, Liste,
+ * Vereinigung, Schnitt, Tupel, Schlüssel-Wert-Liste und `lazy`. Das Register geht das Schema
+ * deshalb ganz durch (jedes Schema nur einmal, ein Kreis über `lazy` endet). Ein Schema, das tiefer
+ * als `MAX_SCHEMA_DEPTH` liegt oder sich nicht lesen lässt (`lazy` wirft), wird mit einem eigenen
+ * festen Grund abgewiesen (`ToolRegistryError`, „Schema nicht lesbar“).
  */
-function hasPrototypeField(schema: unknown): boolean {
-  if (!(schema instanceof z.ZodObject)) return false;
-  return Object.getOwnPropertyNames(schema.shape).some((name) => PROTOTYPE_NAMES.has(name));
+function hasPrototypeField(schema: unknown, seen = new Set<unknown>(), depth = 0): boolean {
+  if (depth > MAX_SCHEMA_DEPTH) throw new ToolRegistryError("Schema nicht lesbar");
+  if (typeof schema !== "object" || schema === null || seen.has(schema)) return false;
+  const def = (schema as { _zod?: { def?: SchemaDef } })._zod?.def;
+  if (def === undefined) return false;
+  seen.add(schema);
+  const next = (child: unknown) => hasPrototypeField(child, seen, depth + 1);
+  const all = (children: unknown) => Array.isArray(children) && children.some(next);
+  switch (def.type) {
+    case "object": {
+      const shape = def.shape as Record<string, unknown> | undefined;
+      if (shape === undefined) return false;
+      return (
+        Object.getOwnPropertyNames(shape).some((name) => PROTOTYPE_NAMES.has(name)) ||
+        Object.getOwnPropertyNames(shape).some((name) => next(shape[name])) ||
+        next(def.catchall)
+      );
+    }
+    case "array":
+      return next(def.element);
+    case "optional":
+    case "nullable":
+    case "default":
+    case "prefault":
+    case "nonoptional":
+    case "readonly":
+    case "catch":
+    case "promise":
+    case "success":
+      return next(def.innerType);
+    case "union":
+      return all(def.options);
+    case "intersection":
+      return next(def.left) || next(def.right);
+    case "tuple":
+      return all(def.items) || next(def.rest);
+    case "record":
+      // Feste Schlüssel (`enum`, `literal`) legt zod als eigene Felder an, auch `constructor`.
+      return (
+        fixedNames(def.keyType).some((name) => PROTOTYPE_NAMES.has(name)) ||
+        next(def.keyType) ||
+        next(def.valueType)
+      );
+    case "map":
+      return next(def.keyType) || next(def.valueType);
+    case "set":
+      return next(def.valueType);
+    case "pipe":
+      return next(def.in) || next(def.out);
+    case "lazy": {
+      let inner: unknown;
+      try {
+        inner = (def.getter as () => unknown)();
+      } catch {
+        // Der Text der Bibliothek oder des fremden Codes wird nie weitergegeben.
+        throw new ToolRegistryError("Schema nicht lesbar");
+      }
+      return next(inner);
+    }
+    default:
+      return false;
+  }
 }
 
 function check(def: ToolDefinition<JsonValue, JsonValue>): void {
@@ -135,48 +247,88 @@ function check(def: ToolDefinition<JsonValue, JsonValue>): void {
 }
 
 /**
+ * Die Kennung für die Liste der Ausgeschlossenen: nur ein Text, nie ein Aufruf von `toString` oder
+ * eines Getters (fremder Code kann werfen), von Steuer-, Bidi- und unsichtbaren Zeichen befreit
+ * und höchstens 128 Zeichen lang. Alles andere bekommt einen festen Ersatz.
+ */
+function kennungFuerMeldung(original: unknown): string {
+  const ersatz = "(ohne Kennung)";
+  try {
+    const key = (original as { key?: unknown } | null | undefined)?.key;
+    if (typeof key !== "string") return ersatz;
+    const sauber = Array.from(cleanText(key)).slice(0, 128).join("");
+    return sauber === "" ? ersatz : sauber;
+  } catch {
+    return ersatz;
+  }
+}
+
+/** Prüft eine Beschreibung und baut ihr Werkzeug im Register (ohne es einzutragen). */
+async function buildTool(
+  original: ToolDefinition<JsonValue, JsonValue>,
+  keys: ReadonlySet<string>,
+  names: ReadonlyMap<string, RegisteredTool>,
+): Promise<RegisteredTool> {
+  check(original);
+  if (keys.has(original.key)) throw new ToolRegistryError("Kennung doppelt");
+  if (names.has(original.modelName)) throw new ToolRegistryError("Name doppelt");
+  const inputSchema = z.toJSONSchema(original.input) as { [key: string]: JsonValue };
+  const definition = Object.freeze({
+    ...original,
+    limits: Object.freeze({ ...original.limits }),
+  }) as ToolDefinition<JsonValue, JsonValue>;
+  const toolDigest = await toolDefinitionDigest({
+    description: definition.description,
+    foreignContent: definition.foreignContent,
+    inputSchema,
+    key: definition.key,
+    kind: definition.kind,
+    modelName: definition.modelName,
+    reach: definition.reach,
+    source: definition.source,
+    version: definition.version,
+  });
+  const spec: ToolSpec = deepFreeze({
+    name: definition.modelName,
+    description: definition.description,
+    inputSchema,
+  });
+  return Object.freeze({ definition, toolDigest, spec });
+}
+
+/**
  * Baut ein Register aus Beschreibungen. Wirft (`ToolRegistryError`) bei doppelter Kennung oder
  * doppeltem Namen, ungültigem Namen oder Namen mit „__“, ungültiger Beschreibung (leer, über
  * 1 000 Zeichen, Steuer-, Bidi- oder unsichtbare Zeichen), unbekannter Aktion des Tors, Eingabe
- * ohne strenges Objekt, bei einem Feld in Eingabe- oder Ausgabe-Schema (oberste Ebene), das wie
+ * ohne strenges Objekt, bei einem Feld in Eingabe- oder Ausgabe-Schema (auf jeder Ebene), das wie
  * ein Name aus `Object.prototype` heißt, und bei der Kennung des Platzhalters. Der Abdruck jeder Beschreibung wird
- * hier einmal gerechnet; Beschreibung, Grenzen und Angebot sind danach eingefroren.
+ * hier einmal gerechnet; Beschreibung, Grenzen und Angebot sind danach eingefroren. Jeder Fehler ist
+ * ein `ToolRegistryError` mit festem Text (nie der Text der Bibliothek). Mit `ausschliessen` fällt
+ * nur das fehlerhafte Werkzeug heraus (siehe `ausgeschlossen`), die anderen bleiben.
  */
 export async function createToolRegistry(
   defs: readonly ToolDefinition<JsonValue, JsonValue>[],
+  options: ToolRegistryOptions = {},
 ): Promise<ToolRegistry> {
   const keys = new Set<string>();
   const names = new Map<string, RegisteredTool>();
   const tools: RegisteredTool[] = [];
+  const ausgeschlossen: ExcludedTool[] = [];
   for (const original of defs) {
-    check(original);
-    if (keys.has(original.key)) throw new ToolRegistryError("Kennung doppelt");
-    if (names.has(original.modelName)) throw new ToolRegistryError("Name doppelt");
-    keys.add(original.key);
-    const inputSchema = z.toJSONSchema(original.input) as { [key: string]: JsonValue };
-    const definition = Object.freeze({
-      ...original,
-      limits: Object.freeze({ ...original.limits }),
-    }) as ToolDefinition<JsonValue, JsonValue>;
-    const toolDigest = await toolDefinitionDigest({
-      description: definition.description,
-      foreignContent: definition.foreignContent,
-      inputSchema,
-      key: definition.key,
-      kind: definition.kind,
-      modelName: definition.modelName,
-      reach: definition.reach,
-      source: definition.source,
-      version: definition.version,
-    });
-    const spec: ToolSpec = deepFreeze({
-      name: definition.modelName,
-      description: definition.description,
-      inputSchema,
-    });
-    const tool: RegisteredTool = Object.freeze({ definition, toolDigest, spec });
-    tools.push(tool);
-    names.set(definition.modelName, tool);
+    try {
+      const tool = await buildTool(original, keys, names);
+      keys.add(tool.definition.key);
+      names.set(tool.definition.modelName, tool);
+      tools.push(tool);
+    } catch (error) {
+      // Ein Fehler der Bibliothek (etwa beim Umwandeln des Schemas) trägt nie seinen Text weiter.
+      const fehler =
+        error instanceof ToolRegistryError
+          ? error
+          : new ToolRegistryError("Beschreibung nicht lesbar");
+      if (options.ausschliessen !== true) throw fehler;
+      ausgeschlossen.push(Object.freeze({ key: kennungFuerMeldung(original), fehler }));
+    }
   }
   const placeholder: ToolPlaceholder = Object.freeze({
     toolKey: PLACEHOLDER_TOOL_KEY,
@@ -188,6 +340,7 @@ export async function createToolRegistry(
   } as const);
   return Object.freeze({
     tools: Object.freeze(tools),
+    ausgeschlossen: Object.freeze(ausgeschlossen),
     byModelName: (name: string) => names.get(name),
     placeholder,
   });

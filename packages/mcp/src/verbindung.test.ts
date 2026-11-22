@@ -919,6 +919,42 @@ describe("Seiten und Höchstzahlen", () => {
   });
 });
 
+describe("keine Fähigkeiten angemeldet", () => {
+  /** Sammelt alle Angaben zu den Fähigkeiten des Clients aus dem Körper einer Anfrage. */
+  function faehigkeitenAus(koerper: unknown): unknown[] {
+    const gefunden: unknown[] = [];
+    const params = (koerper as { params?: Record<string, unknown> } | null)?.params;
+    if (params === undefined) return gefunden;
+    if ("capabilities" in params) gefunden.push(params.capabilities);
+    const meta = params._meta as Record<string, unknown> | undefined;
+    if (meta !== undefined && "io.modelcontextprotocol/clientCapabilities" in meta) {
+      gefunden.push(meta["io.modelcontextprotocol/clientCapabilities"]);
+    }
+    return gefunden;
+  }
+
+  it.each(PROTOKOLLE)(
+    "der Aufbau (%s) meldet keine einzige Fähigkeit an: kein sampling, roots oder elicitation",
+    async (protokoll) => {
+      const { s, url } = await starte({}, protokoll);
+      const werk = await hole(url, "echo");
+      await rufeWerkzeugAuf({
+        ...BASIS,
+        adresse: url,
+        fetch: echtesFetch as McpFetch,
+        werkzeug: werk,
+        argumente: { text: "x" },
+      });
+      const angaben = s.requests
+        .filter((r) => r.method === "POST")
+        .flatMap((r) => faehigkeitenAus(r.body));
+      // Es muss mindestens eine Angabe geben, sonst prüft der Test nichts.
+      expect(angaben.length).toBeGreaterThan(0);
+      for (const angabe of angaben) expect(angabe).toEqual({});
+    },
+  );
+});
+
 describe("Zeit und Abbruch", () => {
   const KURZ = { aufrufMs: 400, listeMs: 1_500, schliessenMs: 300 };
 
@@ -1214,6 +1250,37 @@ describe("Die Ausgangs-Hülle des Systems (Adressen, Größe, Weiterleitung)", (
         holeWerkzeuge({ ...BASIS, adresse: "https://app.beispiel.invalid/mcp", fetch: f }),
       ),
     ).toBe("app_adresse_unzulaessig");
+    expect(s.requests.length).toBe(0);
+  });
+
+  it("lehnt einen Namen ab, der erst öffentlich und bei der nächsten Auflösung privat antwortet (Rebinding)", async () => {
+    const { s } = await starte();
+    const antworten: string[][] = [];
+    const lookup = async () => {
+      // Die erste Auflösung ist öffentlich, jede weitere zeigt auf Loopback.
+      const antwort = antworten.length === 0 ? ["93.184.216.34"] : ["127.0.0.1"];
+      antworten.push(antwort);
+      return antwort;
+    };
+    const nachBasis: string[] = [];
+    // Nur Tests dürfen ein eigenes `fetch` unter der Hülle haben; es antwortet nie mit einem Server.
+    const basis = (async (eingabe: unknown) => {
+      nachBasis.push(String(eingabe));
+      return new Response("{}", { status: 400, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    const f = createEgressFetch([{ protocol: "https:", host: "app.beispiel.invalid" }], basis, {
+      lookup,
+    }) as McpFetch;
+    const code = await fehlerCode(
+      holeWerkzeuge({ ...BASIS, adresse: "https://app.beispiel.invalid/mcp", fetch: f }),
+    );
+    // Die erste, öffentliche Auflösung darf durch; sobald ein Name auf Loopback zeigt, geht nichts
+    // mehr hinaus, und die Schicht meldet die Adresse als unzulässig.
+    expect(antworten.length).toBeGreaterThanOrEqual(2);
+    expect(antworten[0]).toEqual(["93.184.216.34"]);
+    expect(antworten.slice(1).every((a) => a[0] === "127.0.0.1")).toBe(true);
+    expect(nachBasis.length).toBe(1);
+    expect(code).toBe("app_adresse_unzulaessig");
     expect(s.requests.length).toBe(0);
   });
 

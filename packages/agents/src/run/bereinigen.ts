@@ -200,6 +200,86 @@ export function jsonHasNonJson(value: unknown): boolean {
   return true;
 }
 
+/**
+ * Zieht aus einem Wert, den Code eines Werkzeugs geliefert hat, eine reine JSON-Kopie und prüft
+ * dabei die Grenzen (Tiefe, Knoten, Zeichen, Schlüssel je Objekt). Jede Eigenschaft wird genau
+ * einmal gelesen: Ein Getter oder Proxy, der beim nächsten Lesen etwas anderes liefert, kann danach
+ * nichts mehr ändern, denn alles Weitere rechnet nur auf der Kopie. Ohne Rekursion, mit eigenem
+ * Stapel. `undefined` heißt: nicht zulässig. Das gilt für zu große, zu tiefe, zu breite und
+ * kreisförmige Werte und für alles, was kein JSON ist: Funktion, Symbol, BigInt, `undefined`, `NaN`
+ * und `Infinity`, `Date`, `Map`, Klassen und Objekte mit fremdem Prototyp. Ein Lesefehler (ein
+ * Getter wirft) endet ebenfalls als `undefined`.
+ */
+export function reineKopie(
+  value: unknown,
+  limits: JsonPruefungGrenzen = ERGEBNIS_PRUEFUNG_GRENZEN,
+): JsonValue | undefined {
+  type Ziel = JsonValue[] | { [key: string]: JsonValue };
+  const wurzel: JsonValue[] = [null];
+  const stapel: { quelle: unknown; ziel: Ziel; schluessel: string | number; tiefe: number }[] = [
+    { quelle: value, ziel: wurzel, schluessel: 0, tiefe: 1 },
+  ];
+  let nodes = 0;
+  let chars = 0;
+  const setze = (ziel: Ziel, schluessel: string | number, wert: JsonValue) => {
+    if (Array.isArray(ziel)) ziel[schluessel as number] = wert;
+    else setOwn(ziel, schluessel as string, wert);
+  };
+  try {
+    for (let aufgabe = stapel.pop(); aufgabe !== undefined; aufgabe = stapel.pop()) {
+      if (++nodes > limits.nodes) return undefined;
+      const { quelle, ziel, schluessel, tiefe } = aufgabe;
+      if (quelle === null || typeof quelle === "boolean") {
+        setze(ziel, schluessel, quelle);
+      } else if (typeof quelle === "number") {
+        if (!Number.isFinite(quelle)) return undefined;
+        setze(ziel, schluessel, quelle);
+      } else if (typeof quelle === "string") {
+        chars += quelle.length;
+        if (chars > limits.chars) return undefined;
+        setze(ziel, schluessel, quelle);
+      } else if (typeof quelle === "object") {
+        if (tiefe > limits.depth) return undefined;
+        if (Array.isArray(quelle)) {
+          if (Object.getPrototypeOf(quelle) !== Array.prototype) return undefined;
+          // Die Länge genau einmal lesen: Ein Proxy darf sie nicht während des Kopierens wachsen lassen.
+          const laenge = quelle.length;
+          if (nodes + laenge > limits.nodes) return undefined;
+          const kopie: JsonValue[] = [];
+          setze(ziel, schluessel, kopie);
+          for (let i = 0; i < laenge; i++) {
+            stapel.push({ quelle: quelle[i], ziel: kopie, schluessel: i, tiefe: tiefe + 1 });
+          }
+        } else {
+          const proto = Object.getPrototypeOf(quelle);
+          if (proto !== Object.prototype && proto !== null) return undefined;
+          if (quelle === Object.prototype) return undefined;
+          const namen = Object.keys(quelle);
+          if (limits.keys !== undefined && namen.length > limits.keys) return undefined;
+          if (nodes + namen.length > limits.nodes) return undefined;
+          const kopie: { [key: string]: JsonValue } = {};
+          setze(ziel, schluessel, kopie);
+          for (const name of namen) {
+            chars += name.length;
+            if (chars > limits.chars) return undefined;
+            stapel.push({
+              quelle: (quelle as Record<string, unknown>)[name],
+              ziel: kopie,
+              schluessel: name,
+              tiefe: tiefe + 1,
+            });
+          }
+        }
+      } else {
+        return undefined;
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return wurzel[0];
+}
+
 /** Jede Zeichenkette eines JSON-Werts (auch Schlüssel) bereinigt; die Form bleibt gleich. */
 export function cleanJson(value: JsonValue): JsonValue {
   if (typeof value === "string") return cleanText(value);

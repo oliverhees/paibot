@@ -94,7 +94,7 @@
             "patterns": [
               {
                 "group": ["ai/*", "@ai-sdk/*"],
-                "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
               },
               {
                 "group": ["**/apps/**"],
@@ -148,7 +148,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -213,7 +213,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -277,7 +277,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -340,7 +340,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -403,7 +403,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -461,7 +461,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -517,7 +517,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -575,7 +575,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -636,7 +636,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -693,7 +693,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -754,7 +754,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -841,7 +841,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -901,7 +901,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*", "!@ai-sdk/mcp"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -982,7 +982,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*", "!@ai-sdk/mcp"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -1044,7 +1044,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -1107,7 +1107,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -1167,7 +1167,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**", "!**/lib/apps/**", "!./apps/**"],
@@ -1214,7 +1214,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -1264,7 +1264,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],
@@ -1328,7 +1328,7 @@
                   },
                   {
                     "group": ["@ai-sdk/*", "!@ai-sdk/openai-compatible"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   }
                 ]
               }
@@ -1383,7 +1383,7 @@
                   },
                   {
                     "group": ["ai/*", "@ai-sdk/*", "!@ai-sdk/openai-compatible"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   }
                 ]
               }
@@ -1426,7 +1426,7 @@
                 "patterns": [
                   {
                     "group": ["ai/*", "@ai-sdk/*"],
-                    "message": "Die Modell-Bibliothek nutzt nur der Motor (packages/agents/src/motor-aisdk.ts)."
+                    "message": "Die Modell-Bibliothek (ai, @ai-sdk/*) nutzt nur der Motor (packages/agents/src/motor-aisdk.ts); @ai-sdk/mcp nutzt nur die Verbindung der MCP-Schicht (packages/mcp/src/verbindung.ts)."
                   },
                   {
                     "group": ["**/apps/**"],

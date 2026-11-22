@@ -70,7 +70,7 @@ export const apps = pgTable(
     check("apps_name_laenge", sql`char_length(${t.name}) between 1 and 100`),
     check(
       "apps_url_format",
-      sql`char_length(${t.url}) <= 2000 and ${matches(t.url, "^[!-~]+$")} and ${matches(t.url, '^https://[^/?#@\\s]+(/[^?#\\s"\\\\]*)?$')} and not (${matches(t.url, "/$")})`,
+      sql`char_length(${t.url}) <= 2000 and ${matches(t.url, "^[!-~]+$")} and ${matches(t.url, '^https://[^/?#@\\s"\\\\]+(/[^?#\\s"\\\\]*)?$')} and not (${matches(t.url, "/$")})`,
     ),
     inListCheck("apps_auth_kind_werte", t.authKind, APP_AUTH_KINDS),
     inListCheck("apps_state_werte", t.state, APP_STATES),

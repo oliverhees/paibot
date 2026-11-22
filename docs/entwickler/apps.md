@@ -1,5 +1,5 @@
 <!--
-PaiBot – Entwickler-Seite: die MCP-Schicht in `packages/mcp` (fremde MCP-Server nur lesend ansprechen) und die App-Verwaltung in der Web-App (Routen); noch nicht im Lauf angeschlossen.
+PaiBot – Entwickler-Seite: die MCP-Schicht in `packages/mcp` (fremde MCP-Server nur lesend ansprechen) und die App-Verwaltung in der Web-App (Routen); noch nicht im Lauf angeschlossen (die Datenbank für Apps steht, siehe `apps-datenmodell.md`).
 
 Autor:     Oliver Hees
 Website:   https://paibot.de
@@ -53,7 +53,7 @@ Datenfluss eines Aufrufs (`rufeWerkzeugAuf`): Der Prüfer des Werkzeugs (`pruefe
 
 ## Datenmodell und Migrationen
 
-Keine eigenen Tabellen, keine Migration. Die Schicht liest und schreibt keine Datenbank; was sie liefert (Abdruck, Modell-Form, Status-Gründe), soll eine spätere Anbindung speichern.
+Die Schicht selbst hat keine eigenen Tabellen und keine Migration; sie liest und schreibt keine Datenbank. Die Tabellen für Apps, Werkzeuge und Zugriffe gibt es (Paket `packages/db`, beschrieben in [Apps: Datenmodell](apps-datenmodell.md)); die Schicht greift aber nicht darauf zu. Was sie liefert (Abdruck, Modell-Form, Status-Gründe), soll eine spätere Anbindung dort speichern.
 
 ## Schnittstellen
 
@@ -120,19 +120,21 @@ Die Routen verbinden eine App, zeigen und bestätigen ihre Werkzeuge, setzen den
 
 ## Tests
 
-| Test                                        | Prüft                                                                                                                                                   |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/mcp/src/verbindung.test.ts`       | Liste und Aufruf in beiden Protokoll-Fassungen gegen den Test-Server, Zugang, Adresse, erzwungenes `fetch`, Zeit, Abbruch, Größe, Hülle                 |
-| `packages/mcp/src/struktur.test.ts`         | 10 000 Ebenen, eine Million Schlüssel, Kreis, Typen, verbotene Schlüssel; die Verarbeiter werfen nie                                                    |
-| `packages/mcp/src/schema.test.ts`           | Kürzung, Bereinigung, abgewiesene Stichwörter, Namen aus `Object.prototype`, Prüf-Schema für Argumente                                                  |
-| `packages/mcp/src/werkzeug.test.ts`         | Beschreibung, Hinweise nur als Anzeige, Namen, Abgleich der Liste                                                                                       |
-| `packages/mcp/src/ergebnis.test.ts`         | fester Satz bei `isError`, Kürzung, Medien, strukturierter Inhalt                                                                                       |
-| `packages/mcp/src/bereinigen.test.ts`       | unsichtbare Zeichen, Bilder und ihre Umgehungen, Länge, Kombinationszeichen, Zeit bei verwinkelten Eingaben                                             |
-| `packages/mcp/src/index.test.ts`            | Liste der Exporte: kein Aufruf ohne Prüfung der Argumente                                                                                               |
-| `packages/mcp/src/abdruck.test.ts`          | Abdruck stabil bei anderer Reihenfolge, empfindlich schon bei einem unsichtbaren Zeichen                                                                |
-| `packages/mcp/src/namen.test.ts`            | eindeutige Namen, Kollisionen, 64 Zeichen, bekannte Namen bleiben stabil                                                                                |
-| `packages/mcp/src/fehler.test.ts`           | feste Texte, Zuordnung, kein Text des Servers und kein Zugangsdatum                                                                                     |
-| `tools/lint-regeln/src/mcp-schicht.test.ts` | Importsperren, Regel gegen eigenen Netz-Zugriff und gegen Umgehungen, Test-Schalter nur in Definition und Tests (Biome läuft wirklich, mit Gegenproben) |
+| Test                                        | Prüft                                                                                                                                                                                        |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/mcp/src/verbindung.test.ts`       | Liste und Aufruf in beiden Protokoll-Fassungen gegen den Test-Server, Zugang, Adresse, erzwungenes `fetch`, Zeit, Abbruch, Größe, Hülle                                                      |
+| `packages/mcp/src/verbindung-frist.test.ts` | die eigene Frist der Schicht (Aufruf, Liste, Öffnen, Schließen, Abbruch von außen) gilt auch, wenn die Bibliothek durch eine Attrappe ersetzt ist, die keine Frist einhält und nie antwortet |
+| `packages/mcp/vitest.config.ts`             | Zeitgrenze der Tests im Paket: 30 Sekunden je Test und je Vorbereitung statt der Standardzeit von 5 Sekunden, weil echte Test-Server auf einer ausgelasteten Maschine länger brauchen        |
+| `packages/mcp/src/struktur.test.ts`         | 10 000 Ebenen, eine Million Schlüssel, Kreis, Typen, verbotene Schlüssel; die Verarbeiter werfen nie                                                                                         |
+| `packages/mcp/src/schema.test.ts`           | Kürzung, Bereinigung, abgewiesene Stichwörter, Namen aus `Object.prototype`, Prüf-Schema für Argumente                                                                                       |
+| `packages/mcp/src/werkzeug.test.ts`         | Beschreibung, Hinweise nur als Anzeige, Namen, Abgleich der Liste                                                                                                                            |
+| `packages/mcp/src/ergebnis.test.ts`         | fester Satz bei `isError`, Kürzung, Medien, strukturierter Inhalt                                                                                                                            |
+| `packages/mcp/src/bereinigen.test.ts`       | unsichtbare Zeichen, Bilder und ihre Umgehungen, Länge, Kombinationszeichen, Zeit bei verwinkelten Eingaben                                                                                  |
+| `packages/mcp/src/index.test.ts`            | Liste der Exporte: kein Aufruf ohne Prüfung der Argumente                                                                                                                                    |
+| `packages/mcp/src/abdruck.test.ts`          | Abdruck stabil bei anderer Reihenfolge, empfindlich schon bei einem unsichtbaren Zeichen                                                                                                     |
+| `packages/mcp/src/namen.test.ts`            | eindeutige Namen, Kollisionen, 64 Zeichen, bekannte Namen bleiben stabil                                                                                                                     |
+| `packages/mcp/src/fehler.test.ts`           | feste Texte, Zuordnung, kein Text des Servers und kein Zugangsdatum                                                                                                                          |
+| `tools/lint-regeln/src/mcp-schicht.test.ts` | Importsperren, Regel gegen eigenen Netz-Zugriff und gegen Umgehungen, Test-Schalter nur in Definition und Tests (Biome läuft wirklich, mit Gegenproben)                                      |
 
 Ausführen:
 
@@ -145,7 +147,7 @@ Der Test-Server (`tools/test-mcp-server/src/index.ts#createTestMcpServer`) ist n
 
 ## Bekannte Schwächen
 
-- **Nicht im Lauf angeschlossen:** Die Web-App verwaltet Apps (Routen unten), aber kein Lauf ruft ein App-Werkzeug auf: Weder der Worker noch die Lauf-Steuerung benutzen die Schicht, und es gibt keine Oberfläche dafür.
+- **Nicht im Lauf angeschlossen:** Die Web-App verwaltet Apps (Routen unten), aber kein Lauf ruft ein App-Werkzeug auf: Weder der Worker noch die Lauf-Steuerung benutzen die Schicht, und es gibt keine Oberfläche dafür. Die Tabellen und die Fassung 3 des Tors stehen ([Apps: Datenmodell](apps-datenmodell.md)).
 - **Namen vergibt die Schicht und, für die gespeicherten Werkzeuge, die Datenbank:** `vergebeModellNamen` in der Schicht und `repo.apps.sehen` in der Datenbank vergeben je eigene Namen. Maßgeblich sind die gespeicherten der Datenbank; wer die Schicht aufruft, reicht sie immer als `bekannteNamen` hinein (die Schicht übernimmt sie unverändert, siehe „Modell-Namen bleiben stabil“). Die Namen, die die Schicht für neue Werkzeuge berechnet, werden dann nicht benutzt. `namenZumSpeichern` der Schicht benutzt die Web-App nicht, weil die Datenbank die Namen vergibt.
 - **Adress-Klassen prüft die Hülle:** Private und interne Ziele sperrt allein die Ausgangs-Hülle; ohne sie (mit dem globalen `fetch`) wären sie offen (`packages/mcp/src/verbindung.ts#pruefeAdresse`).
 - **Rechenzeit:** Das Aufbereiten einer Liste kostet messbar Rechenzeit, begrenzt durch Seitenzahl, Größe und Zeit der Schicht. Die Aufbereitung nicht im Web-Prozess ausführen, sondern im Worker oder mit einer Grenze je Anfrage. Die Routen der App-Verwaltung rufen sie trotzdem im Web-Prozess auf; dort begrenzen Zeit, Seitenzahl und Größe der Schicht den Abruf, und ein Abruf zählt auf das Limit des Verbindungstests (`apps/web/src/lib/routen.ts`).

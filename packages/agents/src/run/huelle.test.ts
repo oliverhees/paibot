@@ -447,3 +447,51 @@ describe("Kürzen bleibt linear", () => {
     expect(verworfen).toBeGreaterThan(5);
   });
 });
+
+// Gegenprobe: In `fitBounds` wieder auf 4 000 Zeichen (Code-Punkte) statt 4 000 UTF-16-Einheiten
+// kürzen → die Fälle mit Emoji werden rot. Die Hülle erlaubt höchstens 4 000 UTF-16-Einheiten je
+// Zeichenkette (`String.length`), ein Emoji zählt dort doppelt.
+describe("Kürzen auf UTF-16-Einheiten", () => {
+  const MAX = BOUNDED_JSON_LIMITS.text;
+  const ohneEinzelnesErsatzzeichen = (text: string) =>
+    !/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(text);
+
+  it("4 000 Emoji im großzügigen Limit: gekürzt auf höchstens 4 000 Einheiten, ohne zerrissenes Paar", () => {
+    const cut = truncateContent({ t: "😀".repeat(4000) }, 20_000);
+    expect(cut).toBeDefined();
+    const t = (cut?.inhalt as { t: string } | undefined)?.t ?? "";
+    expect(t.length).toBeLessThanOrEqual(MAX);
+    expect(t.length).toBe(MAX);
+    expect(ohneEinzelnesErsatzzeichen(t)).toBe(true);
+    expect(cut?.gekuerzt).toBe(true);
+    expect(boundedJsonSchema.safeParse(cut?.inhalt).success).toBe(true);
+  });
+
+  it("ein Paar genau an der Grenze wird nicht zerrissen: 3 999 Zeichen und ein Emoji", () => {
+    const cut = truncateContent({ t: `${"a".repeat(3999)}😀` }, 20_000);
+    expect(cut).toBeDefined();
+    const t = (cut?.inhalt as { t: string } | undefined)?.t ?? "";
+    expect(t).toBe("a".repeat(3999));
+    expect(cut?.gekuerzt).toBe(true);
+  });
+
+  it("genau 2 000 Emoji (4 000 Einheiten) bleiben unverändert", () => {
+    const wert = { t: "😀".repeat(2000) };
+    const cut = truncateContent(wert, 20_000);
+    expect(cut?.inhalt).toEqual(wert);
+    expect(cut?.gekuerzt).toBe(false);
+  });
+
+  it("Text ohne Emoji verhält sich wie vorher: 5 000 Zeichen werden 4 000", () => {
+    const cut = truncateContent({ t: "x".repeat(5000) }, 20_000);
+    expect((cut?.inhalt as { t: string } | undefined)?.t).toHaveLength(MAX);
+  });
+
+  it("zu lange Texte mit Emoji sind nie ok mit zu langer Zeichenkette in der Hülle", () => {
+    for (const laenge of [2001, 2500, 4000, 6000]) {
+      const cut = truncateContent({ l: ["😀".repeat(laenge)] }, 100_000);
+      expect(cut, `Länge ${laenge}`).toBeDefined();
+      expect(boundedJsonSchema.safeParse(cut?.inhalt).success).toBe(true);
+    }
+  });
+});

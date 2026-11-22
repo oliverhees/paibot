@@ -65,7 +65,7 @@ CREATE TABLE "public"."apps" (
 	CONSTRAINT "apps_id_format" CHECK ("public"."apps"."id" ~ '^app_[0-7][0-9a-hjkmnp-tv-z]{25}$'),
 	CONSTRAINT "apps_short_name_format" CHECK ("public"."apps"."short_name" ~ '^[a-z0-9][a-z0-9_-]{0,63}$' and not ("public"."apps"."short_name" ~ '__')),
 	CONSTRAINT "apps_name_laenge" CHECK (char_length("public"."apps"."name") between 1 and 100),
-	CONSTRAINT "apps_url_format" CHECK (char_length("public"."apps"."url") <= 2000 and "public"."apps"."url" ~ '^[!-~]+$' and "public"."apps"."url" ~ '^https://[^/?#@\s]+(/[^?#\s"\\]*)?$' and not ("public"."apps"."url" ~ '/$')),
+	CONSTRAINT "apps_url_format" CHECK (char_length("public"."apps"."url") <= 2000 and "public"."apps"."url" ~ '^[!-~]+$' and "public"."apps"."url" ~ '^https://[^/?#@\s"\\]+(/[^?#\s"\\]*)?$' and not ("public"."apps"."url" ~ '/$')),
 	CONSTRAINT "apps_auth_kind_werte" CHECK ("public"."apps"."auth_kind" in ('keine', 'token')),
 	CONSTRAINT "apps_state_werte" CHECK ("public"."apps"."state" in ('verbunden', 'getrennt')),
 	CONSTRAINT "apps_token_format" CHECK ("public"."apps"."token_enc" is null or "public"."apps"."token_enc" ~ '^v2:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$'),
@@ -129,8 +129,9 @@ ON CONFLICT ("id", "version") DO NOTHING;
 --> statement-breakpoint
 -- Abdruck des Ziels einer App (wie `appTargetDigestInput` im Code): „sha256:“ und Hex von SHA-256
 -- über den Präfix, eine neue Zeile und das JSON mit Kennung und Adresse. Die Adresse der Tabelle
--- besteht nur aus sichtbaren ASCII-Zeichen ohne Anführungszeichen und Rückstrich (CHECK), das JSON
--- braucht also keine Maskierung.
+-- besteht nur aus sichtbaren ASCII-Zeichen und enthält nirgends, auch nicht im Host, ein
+-- Anführungszeichen oder einen Rückstrich (CHECK `apps_url_format`); das JSON braucht also keine
+-- Maskierung.
 CREATE FUNCTION paibot_app_ziel_abdruck(app_id text, url text) RETURNS text
 LANGUAGE plpgsql IMMUTABLE
 SET search_path = pg_catalog, public
@@ -257,7 +258,10 @@ DECLARE
   prev public.app_tools%ROWTYPE;
   gleich boolean;
 BEGIN
-  SELECT * INTO app FROM public.apps WHERE id = NEW.app_id;
+  -- Die App-Zeile wird gesperrt, bis diese Transaktion endet: Ändert eine andere Verbindung
+  -- gleichzeitig Adresse, Zugang oder Verbindungsnummer, wartet sie, und ihr Trigger sieht danach
+  -- die hier angelegte Fassung (und setzt sie auf „neu“).
+  SELECT * INTO app FROM public.apps WHERE id = NEW.app_id FOR SHARE;
   IF NOT FOUND OR app.state <> 'verbunden' THEN
     RAISE EXCEPTION 'Werkzeuge gibt es nur für eine verbundene App.'
       USING ERRCODE = 'check_violation';
@@ -358,7 +362,19 @@ SET search_path = pg_catalog, public
 AS $$
 DECLARE
   app public.apps%ROWTYPE;
+  hoechste bigint;
 BEGIN
+  -- Die Nummer vergibt die Datenbank und sie steigt immer (wie bei den Regeln): Sonst könnte eine
+  -- selbst gesetzte hohe Nummer für immer gelten und ein späterer Widerruf bliebe wirkungslos.
+  IF NEW.seq IS DISTINCT FROM pg_catalog.currval('public.bot_app_grants_seq_seq'::pg_catalog.regclass) THEN
+    RAISE EXCEPTION 'Die Nummer eines Zugriffs vergibt die Datenbank.'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  SELECT pg_catalog.max(g.seq) INTO hoechste FROM public.bot_app_grants g;
+  IF hoechste IS NOT NULL AND NEW.seq <= hoechste THEN
+    RAISE EXCEPTION 'Die Nummer eines Zugriffs muss höher sein als jede vorhandene.'
+      USING ERRCODE = 'check_violation';
+  END IF;
   SELECT * INTO app FROM public.apps WHERE id = NEW.app_id;
   IF NOT FOUND OR app.state <> 'verbunden' OR NEW.connection_no <> app.connection_no THEN
     RAISE EXCEPTION 'Zugriff gibt es nur für eine verbundene App und ihre jetzige Verbindung.'
@@ -380,6 +396,10 @@ BEGIN
       USING ERRCODE = 'restrict_violation';
   END IF;
   RETURN NEW;
+EXCEPTION
+  WHEN object_not_in_prerequisite_state THEN
+    RAISE EXCEPTION 'Die Nummer eines Zugriffs vergibt die Datenbank.'
+      USING ERRCODE = 'check_violation';
 END;
 $$;
 --> statement-breakpoint
