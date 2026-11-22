@@ -237,6 +237,7 @@ describe("Differenz: Schema fürs Modell gegen die Texte der Oberfläche", () =>
       dependentSchemas: { a: { description: MARKE } },
       dependentRequired: { a: [MARKE] },
       if: { description: MARKE },
+      // biome-ignore lint/suspicious/noThenProperty: `then` ist ein JSON-Schema-Stichwort (if/then/else)
       then: { description: MARKE },
       else: { description: MARKE },
       prefixItems: [{ type: "string", description: MARKE }],
