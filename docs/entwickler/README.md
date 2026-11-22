@@ -28,6 +28,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | Einstellungen und Info  | [einstellungen.md](einstellungen.md)                   | [funktion-einstellungen.md](../funktion-einstellungen.md)                   |
 | Selbsttest              | [selbsttest.md](selbsttest.md)                         | [funktion-selbsttest.md](../funktion-selbsttest.md)                         |
 | Sicherung               | [sicherung.md](sicherung.md)                           | [sicherung.md](../sicherung.md)                                             |
+| Installierbare Web-App  | [web-app.md](web-app.md)                               | [installation.md](../installation.md#als-web-app-installieren)              |
 | Team-Entwurf (Format)   | [team-entwurf.md](team-entwurf.md)                     | folgt mit der Oberfläche                                                    |
 | Doku-Index im Image     | [doku-index.md](doku-index.md)                         | –                                                                           |
 | Teamchat (Regeln)       | [teamchat.md](teamchat.md)                             | –                                                                           |
