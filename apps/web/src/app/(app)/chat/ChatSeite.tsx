@@ -32,6 +32,7 @@ import {
   Select,
   Startbereich,
   StartStilleSitz,
+  StatusChip,
   TextField,
   tageszeitIn,
 } from "@paibot/ui";
@@ -88,11 +89,13 @@ import type {
   BelegKurz,
   ChatBereitschaft,
   ChatVerlauf,
+  ModellInfo,
   ModellWahl,
   UnterhaltungInfo,
 } from "../../../lib/chat/typen";
+import { regelImSatz } from "../../../lib/modelle/ansicht";
 import { antwortHerkunft } from "../../../lib/modelle/herkunft";
-import { antwortKurz, euMarke, euSatz } from "../../../lib/modelle/vorgabe";
+import { ausweichKurz, euMarke, euSatz, kennzeichnungKurz } from "../../../lib/modelle/vorgabe";
 import { entwurfLesen, entwurfMerken } from "../../../lib/speicher";
 import { useConversationEvents } from "../../../lib/sse/use-conversation-events";
 import { BelegeFlaeche } from "./BelegeFlaeche";
@@ -152,6 +155,21 @@ function Fehlerhinweis({
   );
 }
 
+/** Name des Modells im Kopf; der Name einer Routing-Regel ist frei vergebener Text. */
+function modellName(modell: ModellInfo): string {
+  return modell.anbieter?.templateKey === "eurouter" ? regelImSatz(modell.name) : modell.name;
+}
+
+/** Beschriftung des Modell-Knopfs im Kopf; die Kennzeichnung von PaiBot steht getrennt vom Namen. */
+function kopfBeschriftung(modell: ModellInfo): string {
+  const kennzeichnung = euSatz(modell.vorgabe, modell.anbieter?.name ?? "EUrouter");
+  const name = modellName(modell);
+  const region = modell.herkunft ?? "";
+  return kennzeichnung === undefined
+    ? t("chat.kopf.modell", { name, region })
+    : t("chat.kopf.modell_kennzeichnung", { name, region, kennzeichnung });
+}
+
 export function ChatSeite({
   bereitschaft,
   verlauf,
@@ -171,6 +189,7 @@ export function ChatSeite({
   const [ansicht, setAnsicht] = useState(() =>
     verlauf ? ansichtAus(verlauf, kontext) : leereAnsicht(),
   );
+  const kopfModell = bereitschaft.modell;
   const [text, setText] = useState("");
   const avatar = useChatAvatar();
   const { neuesAnfangen, blickNeu } = avatar;
@@ -500,38 +519,19 @@ export function ChatSeite({
           <span className={styles.nurBreit}>{t("chat.kopf.schritte")}</span>
           <span className={styles.nurLesbar}>{t("chat.kopf.schritte_label")}</span>
         </button>
-        {bereitschaft.modell && (
+        {kopfModell && (
           <Link
             href="/modelle"
             prefetch={false}
             className={styles.modellKnopf}
-            aria-label={t("chat.kopf.modell", {
-              name: bereitschaft.modell.name,
-              region: [
-                bereitschaft.modell.herkunft,
-                euSatz(
-                  bereitschaft.modell.vorgabe,
-                  bereitschaft.modell.anbieter?.name ?? "EUrouter",
-                ),
-              ]
-                .filter(Boolean)
-                .join(". "),
-            })}
+            aria-label={kopfBeschriftung(kopfModell)}
           >
-            <span className={styles.nurBreit}>{bereitschaft.modell.name}</span>
-            {bereitschaft.modell.herkunft && (
-              <span className={styles.region}>{bereitschaft.modell.herkunft}</span>
-            )}
-            {euMarke(bereitschaft.modell.vorgabe) !== undefined && (
-              <span
-                className={styles.region}
-                title={euSatz(
-                  bereitschaft.modell.vorgabe,
-                  bereitschaft.modell.anbieter?.name ?? "EUrouter",
-                )}
-              >
-                {euMarke(bereitschaft.modell.vorgabe)}
-              </span>
+            <span className={styles.nurBreit}>{modellName(kopfModell)}</span>
+            {kopfModell.herkunft && <span className={styles.region}>{kopfModell.herkunft}</span>}
+            {euMarke(kopfModell.vorgabe) !== undefined && (
+              <StatusChip art="eu" className={styles.kennzeichnung}>
+                {euMarke(kopfModell.vorgabe) ?? ""}
+              </StatusChip>
             )}
           </Link>
         )}
@@ -571,7 +571,7 @@ export function ChatSeite({
     ),
     [
       bereitschaft.botFarbe,
-      bereitschaft.modell,
+      kopfModell,
       avatar.avatarRef,
       avatarZ,
       botName,
@@ -640,9 +640,9 @@ export function ChatSeite({
         </div>
       ) : null;
     }
-    // Die Kennzeichnung steht vorn: Die Zeile kürzt hinten mit „…“.
+    const kennzeichnung = kennzeichnungKurz(modell.vorgabe);
     const herkunft = [
-      ...antwortKurz(modell.vorgabe),
+      ausweichKurz(modell.vorgabe),
       antwortHerkunft(modell.anbieter, n.servedBy, bereitschaft.unterAnbieter),
     ]
       .filter((teil): teil is string => teil !== undefined)
@@ -651,7 +651,12 @@ export function ChatSeite({
       <AntwortZeile
         {...(beleg ? { beleg } : {})}
         schleuse={wegAngabe(n.route)}
-        modell={{ name: modell.name, ...(herkunft === "" ? {} : { herkunft }) }}
+        modell={{
+          name: modell.name,
+          ...(modell.anbieter?.templateKey === "eurouter" ? { nameFrei: true } : {}),
+          ...(kennzeichnung === undefined ? {} : { kennzeichnung }),
+          ...(herkunft === "" ? {} : { herkunft }),
+        }}
       />
     );
   }

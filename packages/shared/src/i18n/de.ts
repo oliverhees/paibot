@@ -568,6 +568,8 @@ export const de = {
   "chat.kopf.schritte_label": "Beleg-Zeilen unter den Antworten zeigen",
   "chat.kopf.menue": "Weitere Aktionen",
   "chat.kopf.modell": "Modell {name}, Herkunft {region}. Ändern unter „Modell und Anbieter“.",
+  "chat.kopf.modell_kennzeichnung":
+    "Modell {name}, Herkunft {region}. Kennzeichnung von PaiBot: {kennzeichnung}. Ändern unter „Modell und Anbieter“.",
   "chat.menue.belege": "Belege dieser Unterhaltung",
   "chat.umbenennen.titel": "Unterhaltung umbenennen",
   "chat.umbenennen.feld": "Titel",
@@ -1852,6 +1854,7 @@ export const de = {
 
   // Vorgaben einer Regel: Kennzeichnung nur mit Beleg, Ausweichen, Alter
   "vorgabe.eu.marke": "EU laut Regel",
+  "antwort.kennzeichnung": "Kennzeichnung von PaiBot: {text}",
   "vorgabe.eu.satz": "EU laut Regel in deinem {anbieter}-Konto, geprüft am {datum}.",
   "vorgabe.eu.satz_alt":
     "EU laut Regel in deinem {anbieter}-Konto, zuletzt geprüft am {datum}. Das ist länger her: Prüf noch einmal.",

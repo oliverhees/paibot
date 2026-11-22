@@ -42,6 +42,36 @@ export interface ModellAngabe {
   region?: "eu" | "non_eu" | "local";
   /** Belegbare Herkunft in Worten; geht vor `region`. Fehlt beides, steht nur der Name. */
   herkunft?: string;
+  /**
+   * Der Name ist frei vergebener Text (z. B. der Name einer Routing-Regel aus dem Konto). Er steht
+   * dann als schlichter Text in Anführungszeichen und nie in der Gestalt einer Kennzeichnung.
+   */
+  nameFrei?: boolean;
+  /**
+   * Kennzeichnung von PaiBot (z. B. „EU laut Regel …“) als eigenes Element mit eigenem Rahmen. Sie
+   * kommt nie aus dem Namen, sondern nur von hier.
+   */
+  kennzeichnung?: string;
+}
+
+function nameText(modell: ModellAngabe): string {
+  return modell.nameFrei === true ? `„${modell.name}“` : modell.name;
+}
+
+/** Eigenes Element für die Kennzeichnung von PaiBot, für Bildschirmleser getrennt benannt. */
+export function Kennzeichnung({ text, voll = false }: { text: string; voll?: boolean }) {
+  return (
+    <span
+      className={styles.kennzeichnung}
+      data-art={voll ? "kennzeichnung-voll" : "kennzeichnung"}
+      role="note"
+      aria-label={t("antwort.kennzeichnung", { text })}
+      title={text}
+    >
+      <Icon name="check" />
+      <span>{text}</span>
+    </span>
+  );
 }
 
 function herkunftText(modell: ModellAngabe): string | undefined {
@@ -140,23 +170,36 @@ export function SchleuseHinweis({
   );
 }
 
-/** Teil „Modell“: Name und Herkunft; schmal nur die Herkunft. */
+/**
+ * Teil „Modell“: Name (bei frei vergebenem Namen in Anführungszeichen), die Kennzeichnung von
+ * PaiBot als eigenes Element und die Herkunft; schmal nur Kennzeichnung und Herkunft.
+ */
 export function ModellHerkunft({ modell }: { modell: ModellAngabe }) {
   const region = herkunftText(modell);
-  if (region === undefined) {
+  const name = nameText(modell);
+  const kennzeichnung = modell.kennzeichnung;
+  if (region === undefined && kennzeichnung === undefined) {
     return (
-      <span className={klassen(styles.teil, styles.modell)} title={modell.name}>
-        <span>{modell.name}</span>
+      <span className={klassen(styles.teil, styles.modell)} title={name}>
+        <span>{name}</span>
       </span>
     );
   }
   return (
-    <span className={klassen(styles.teil, styles.modell)} title={`${modell.name} · ${region}`}>
-      <span className={styles.lang}>{modell.name}</span>
-      <span className={styles.lang} aria-hidden="true">
-        ·
-      </span>
-      <span>{region}</span>
+    <span
+      className={klassen(styles.teil, styles.modell)}
+      title={[name, region].filter((x) => x !== undefined).join(" · ")}
+    >
+      <span className={styles.lang}>{name}</span>
+      {kennzeichnung !== undefined && <Kennzeichnung text={kennzeichnung} />}
+      {region !== undefined && (
+        <>
+          <span className={styles.lang} aria-hidden="true">
+            ·
+          </span>
+          <span>{region}</span>
+        </>
+      )}
     </span>
   );
 }
@@ -197,7 +240,12 @@ export function AntwortZeile({ beleg, schleuse, modell, details }: AntwortZeileP
             </li>
           )}
           <li>{schleuseText(schleuse)}</li>
-          <li>{region === undefined ? modell.name : `${modell.name} · ${region}`}</li>
+          <li>{region === undefined ? nameText(modell) : `${nameText(modell)} · ${region}`}</li>
+          {modell.kennzeichnung !== undefined && (
+            <li>
+              <Kennzeichnung text={modell.kennzeichnung} voll />
+            </li>
+          )}
         </ul>
         {details}
       </div>
