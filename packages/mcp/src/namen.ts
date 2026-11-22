@@ -33,6 +33,53 @@ export function bereinigeNamensteil(original: string): string {
   return ersetzt.length === 0 ? "werkzeug" : ersetzt;
 }
 
+/** Höchstens so viele gespeicherte Namen je App (auch Namen von Werkzeugen, die es nicht mehr gibt). */
+const MAX_GESPEICHERTE_NAMEN = 2_000;
+/** Höchstens so viele Namen anderer Apps der Installation. */
+const MAX_NAMEN_ANDERER_APPS = 50_000;
+/** Ein Original-Name ist höchstens so lang (wie beim Aufbereiten der Liste). */
+const MAX_ORIGINAL_NAME = 256;
+
+/**
+ * Prüft die Zuordnung, die der Aufrufer aus der Datenbank übergibt, **ohne zu werfen** und ohne
+ * etwas zu verbinden: `bekannt` ist eine Map mit Original-Name (Text, 1 bis 256 Zeichen) → Modell-Name
+ * (Text nach `MODELL_NAME_MUSTER`, beginnt mit `<kurzname>__`, je Name nur einmal, nicht in
+ * `bereitsVergeben`), höchstens 2 000 Einträge; `bereitsVergeben` (falls angegeben) ist ein Set aus
+ * Texten, höchstens 50 000. `true` heißt: `vergebeModellNamen` wirft mit diesen Werten nicht.
+ */
+export function pruefeNamenZuordnung(
+  appKurzname: string,
+  bekannt: ReadonlyMap<string, string>,
+  bereitsVergeben?: ReadonlySet<string>,
+): boolean {
+  if (typeof appKurzname !== "string" || !APP_KURZNAME_MUSTER.test(appKurzname)) return false;
+  const vorsatz = `${appKurzname}${NAMEN_TRENNER}`;
+  if (vorsatz.length + MIN_TEIL > MAX_LAENGE) return false;
+  if (bereitsVergeben !== undefined) {
+    if (!(bereitsVergeben instanceof Set) || bereitsVergeben.size > MAX_NAMEN_ANDERER_APPS) {
+      return false;
+    }
+    for (const name of bereitsVergeben) if (typeof name !== "string") return false;
+  }
+  if (!(bekannt instanceof Map) || bekannt.size > MAX_GESPEICHERTE_NAMEN) return false;
+  const gesehen = new Set<string>();
+  for (const [original, name] of bekannt) {
+    if (
+      typeof original !== "string" ||
+      original.length === 0 ||
+      original.length > MAX_ORIGINAL_NAME
+    ) {
+      return false;
+    }
+    if (typeof name !== "string" || !name.startsWith(vorsatz) || !MODELL_NAME_MUSTER.test(name)) {
+      return false;
+    }
+    if (gesehen.has(name) || bereitsVergeben?.has(name) === true) return false;
+    gesehen.add(name);
+  }
+  return true;
+}
+
 export interface ModellNameEintrag {
   /** Name genau wie vom Server geliefert; nur für den Aufruf an den Server. */
   original: string;

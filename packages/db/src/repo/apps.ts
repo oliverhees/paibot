@@ -607,7 +607,12 @@ export interface AccessSet {
 /** Setzt den Zugriff eines Bots auf eine verbundene App (hängt eine Zeile an). */
 export async function setAccess(db: Database, input: AccessSet): Promise<void> {
   await withTransaction(db, async (tx) => {
-    const app = await get(tx, input.appId);
+    // Die Zeile der App wird gesperrt (`for share`), bis die Transaktion endet: Trennt eine andere
+    // Verbindung die App gleichzeitig, wartet sie, und die neue Zeile gehört sicher zu einer
+    // Verbindung, die noch galt. Ohne die Sperre könnte sie nach dem Lesen trennen (und neu
+    // verbinden), und die Zugriffs-Zeile entstünde für eine schon beendete Verbindung.
+    const [zeile] = await tx.select().from(apps).where(eq(apps.id, input.appId)).for("share");
+    const app = zeile === undefined ? undefined : toApp(zeile);
     if (app === undefined || app.state !== "verbunden") throw new PaiBotError("nicht_gefunden");
     await uebersetzen(
       () =>

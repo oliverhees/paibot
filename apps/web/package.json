@@ -16,6 +16,7 @@
     "@paibot/gate": "workspace:*",
     "@paibot/jobs": "workspace:*",
     "@paibot/llm": "workspace:*",
+    "@paibot/mcp": "workspace:*",
     "@paibot/receipts": "workspace:*",
     "@paibot/shared": "workspace:*",
     "@paibot/ui": "workspace:*",
