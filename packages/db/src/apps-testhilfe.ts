@@ -15,6 +15,7 @@ import {
   type AppId,
   type AppToolId,
   appTargetDigestInput,
+  type ConversationId,
   type KeyId,
   newId,
   type ReceiptBody,
@@ -80,7 +81,7 @@ export class BelegKette {
     await this.db.insert(belege).values({
       ...row,
       action: input.type,
-      conversationId: null,
+      conversationId: (input.target.conversationId as ConversationId | undefined) ?? null,
       body: neuerKoerper,
     } as typeof belege.$inferInsert);
     this.prevHash = row.hash;
