@@ -930,7 +930,7 @@ describe("doku:check – Verborgenes, vom Parser gelesen", () => {
   // Gegenprobe: die Tiefenprüfung in `leseSeite` (scripts/doku-index/markdown.mjs) entfernen →
   // der Check wirft einen RangeError statt einer Meldung.
   it("5 000 verschachtelte Zitate und eine zu große Seite sind Fehler mit Meldung, kein Absturz", () => {
-    const tief = meldung("> ".repeat(5000) + "Text", "tief");
+    const tief = meldung(`${"> ".repeat(5000)}Text`, "tief");
     expect(tief.code).toBe(1);
     expect(tief.ausgabe).toMatch(/Zeile \d+: Der Baum der Seite ist tiefer als 50 Ebenen/);
     const gross = meldung("Satz. ".repeat(70_000), "gross");
