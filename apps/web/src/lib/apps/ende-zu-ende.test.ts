@@ -222,7 +222,8 @@ describe("Verbinden bis Trennen gegen den Test-Server", () => {
     });
     const u = await umgebung();
     const r = await verbinden(u);
-    expect(r.status).toBeGreaterThanOrEqual(400);
+    expect(r.status).toBe(502);
+    expect(r.body.fehler?.code).toBe("app_nicht_erreichbar");
     expect(JSON.stringify(r.body)).not.toContain("Zu schnell");
     expect(await repo.apps.list(u.e.u.db)).toHaveLength(0);
   });
