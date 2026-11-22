@@ -24,6 +24,17 @@ import {
 
 const routen = Object.entries(API_ROUTEN) as [RoutenName, (typeof API_ROUTEN)[RoutenName]][];
 
+/**
+ * Besitzer-Aktionen, die noch keine Route haben: Die Routen kommen mit der App-Verwaltung, danach
+ * entfällt diese Liste (dann muss sie leer sein, der Test unten hält das fest).
+ */
+const NOCH_OHNE_ROUTE: readonly string[] = [
+  "app.verbinden",
+  "app.werkzeuge_bestaetigen",
+  "app.zugriff_setzen",
+  "app.trennen",
+];
+
 describe("API-Routen", () => {
   it("jede Kombination aus Methode und Pfad gibt es nur einmal", () => {
     const keys = routen.map(([, r]) => `${r.methode} ${r.pfad}`);
@@ -52,14 +63,36 @@ describe("API-Routen", () => {
   it("jede speicherbare Aktion des Besitzers hat eine Route, Aktionen eines Bots keine", () => {
     const genutzt = new Set<string>(routen.map(([, r]) => ("aktion" in r ? r.aktion : "")));
     const nochNichtSpeicherbar = new Set<string>(UNSTORED_ACTION_TYPES);
+    const nochOhneRoute = new Set<string>(NOCH_OHNE_ROUTE);
     for (const aktion of ACTION_TYPES) {
       if (ACTIONS[aktion].actor === "bot") {
         expect(genutzt.has(aktion), aktion).toBe(false);
         continue;
       }
       if (nochNichtSpeicherbar.has(aktion)) continue;
+      // Ausdrücklich gelistet: noch ohne Route (siehe `NOCH_OHNE_ROUTE`, der Test darunter hält die Liste klein).
+      if (nochOhneRoute.has(aktion)) continue;
       expect(genutzt.has(aktion), aktion).toBe(
         !(FOLGE_AKTIONEN as readonly string[]).includes(aktion),
+      );
+    }
+  });
+
+  // Das Sicherheitsnetz oben bleibt: Die Ausnahme ist genau diese Liste, und jede Aktion darin hat
+  // wirklich noch keine Route. Kommt eine Route dazu, muss die Aktion aus der Liste raus; kommt eine
+  // Aktion ohne Route dazu, die nicht in der Liste steht, wird der Test oben rot.
+  it("die Ausnahmeliste enthält genau die vier Aktionen der App-Verwaltung, und keine davon hat schon eine Route", () => {
+    expect([...NOCH_OHNE_ROUTE].sort()).toEqual([
+      "app.trennen",
+      "app.verbinden",
+      "app.werkzeuge_bestaetigen",
+      "app.zugriff_setzen",
+    ]);
+    const genutzt = new Set<string>(routen.map(([, r]) => ("aktion" in r ? r.aktion : "")));
+    for (const aktion of NOCH_OHNE_ROUTE) {
+      expect(ACTIONS[aktion as keyof typeof ACTIONS].actor, aktion).toBe("besitzer");
+      expect(genutzt.has(aktion), `${aktion} hat schon eine Route: aus der Liste nehmen`).toBe(
+        false,
       );
     }
   });
