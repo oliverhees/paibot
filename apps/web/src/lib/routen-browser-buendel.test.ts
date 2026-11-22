@@ -1,6 +1,6 @@
 /**
- * PaiBot – Test: Was die Seite „Apps“ und die Pfade der Web-App im Browser mitbringen. Der Test
- * baut dieselben Einstiege wie `routen-browser.test.ts` mit esbuild für den Browser (`bundle`,
+ * PaiBot – Test: Was die Client-Teile der Seite „Apps“ und die Pfade der Web-App im Browser
+ * mitbringen. Der Test baut die Einstiege (siehe `EINSTIEGE`) mit esbuild für den Browser (`bundle`,
  * `platform: "browser"`, mit dem Alias `@/`) und prüft die Liste der eingebundenen Dateien: Weder
  * Server-, Tor- noch Datenbank-Code, weder die Token-Verschlüsselung noch die MCP-Schicht noch
  * `node:*` dürfen darin stecken. Anders als die Suche in `routen-browser.test.ts`, die nur
@@ -29,11 +29,17 @@ const { builtinModules } = process.getBuiltinModule("node:module");
 /** Module von Node, mit und ohne Vorsilbe `node:`. */
 const NODE_MODULE = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
 
-/** Dieselben Einstiege wie in `routen-browser.test.ts`, relativ zu `apps/web/src`. */
+/**
+ * Einstiege, die im Browser laufen, relativ zu `apps/web/src`: die Dateien mit `"use client"` unter
+ * `app/(app)/apps/` (`AppsAnsicht.tsx`, `error.tsx`) und die Dateien der Web-App, die der Browser
+ * lädt. `page.tsx` und `loading.tsx` laufen auf dem Server und gehören nicht dazu. Kommt eine
+ * weitere Client-Datei oder Ansicht dazu, gehört sie hierher.
+ */
 const EINSTIEGE = [
   "lib/routen.ts",
   "lib/sse/client-kern.ts",
   "app/(app)/apps/AppsAnsicht.tsx",
+  "app/(app)/apps/error.tsx",
   "lib/apps/ansicht.ts",
   "lib/apps/pfade.ts",
 ];
@@ -99,7 +105,7 @@ async function buendeln(einstieg: BuildOptions): Promise<Ergebnis> {
   };
 }
 
-describe("Browser-Bündel der Seite „Apps“ und der Pfade", () => {
+describe("Browser-Bündel der Client-Teile der Seite „Apps“ und der Pfade", () => {
   for (const start of EINSTIEGE) {
     it(`${start}: kein Server-, Tor-, Datenbank- oder Token-Code im Bündel`, async () => {
       const ergebnis = await buendeln({ entryPoints: [path.join(SRC, start)] });
