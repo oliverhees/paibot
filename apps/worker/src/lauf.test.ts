@@ -13,6 +13,7 @@ import type { executeRun, RunDeps } from "@paibot/agents";
 import { type Database, repo } from "@paibot/db";
 import { createTestDb } from "@paibot/db/testing";
 import type { RunJob } from "@paibot/jobs";
+import { newId } from "@paibot/shared/ids";
 import { errorText } from "@paibot/shared/texte";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createRunHandler } from "./lauf";
@@ -225,5 +226,60 @@ describe("Auftrag bearbeiten", () => {
     const all = lines.join("\n");
     expect(all).not.toContain(GEHEIMER_TEXT);
     expect(all).not.toContain("schluessel-abc-123");
+  });
+
+  // Gegenprobe: In `failRun` das Aufräumen der offenen Aufrufe und Nachrichten entfernen →
+  // die Zeile bleibt `requested`, die Nachricht `streaming`.
+  it("Lauf-Steuerung wirft mit offenem Werkzeug-Aufruf und streamender Antwort: beides wird mit dem Lauf beendet", async () => {
+    const runs = createRunHandler({
+      db,
+      executeRun: broken,
+      prepareRunDeps: fakeRunDeps,
+      log,
+      secrets: [],
+    });
+    const job = await queuedRun();
+    const run = await repo.runs.get(db, job.runId);
+    const antwort = await repo.messages.insert(db, {
+      conversationId: job.conversationId,
+      role: "assistant",
+      status: "streaming",
+      runId: job.runId,
+      step: 0,
+    });
+    const actionId = newId("action");
+    await repo.toolCalls.create(db, {
+      actionId,
+      conversationId: job.conversationId,
+      runId: job.runId,
+      messageId: antwort.id,
+      position: 0,
+      callId: "c0",
+      name: "werkzeug",
+      source: "eingebaut",
+      kind: "lesen",
+      input: {},
+      argsDigest: `hmac-sha256:${"b".repeat(64)}` as never,
+      toolKey: "eingebaut/doku.nachschlagen" as never,
+      toolDigest: `sha256:${"4d".repeat(32)}` as never,
+      reach: "intern",
+      foreignContent: false,
+      step: 0,
+      untrustedInput: false,
+    });
+    expect(run?.status).toBe("queued");
+    await runs.handler(job, signal());
+
+    expect((await repo.runs.get(db, job.runId))?.status).toBe("failed");
+    expect(await repo.toolCalls.get(db, actionId)).toMatchObject({
+      status: "cancelled",
+      resultStatus: "error",
+      errorCode: "unterbrochen",
+    });
+    expect(await repo.toolCalls.endOpenForRun(db, job.runId)).toBe(0);
+    const nachricht = await repo.messages.get(db, antwort.id);
+    expect(nachricht).toMatchObject({ status: "failed", errorCode: "intern" });
+    const events = await repo.events.listSince(db, job.conversationId);
+    expect(events.map((e) => e.type)).toEqual(["run.failed"]);
   });
 });

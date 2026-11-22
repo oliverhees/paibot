@@ -125,24 +125,39 @@ async function finishedRunsWithOpenToolDecisions(db: Database): Promise<Run[]> {
   return runs;
 }
 
+/**
+ * Beendet, was ein gescheiterter Lauf offen lässt, in der Transaktion des Aufrufers: offene
+ * Werkzeug-Aufrufe enden mit ihm (nie wiederholt), eine noch streamende Antwort wird mit dem bis
+ * dahin gestreamten Text als `failed` mit `code` abgeschlossen. Gemeinsam genutzt vom Aufräumen
+ * hängender Läufe und vom Worker, wenn die Lauf-Steuerung wirft.
+ */
+export async function closeOpenRunWork(
+  tx: Database,
+  run: Pick<Run, "id" | "conversationId">,
+  code: ErrorCode,
+  now?: Date,
+): Promise<void> {
+  await repo.toolCalls.endOpenForRun(tx, run.id, now === undefined ? {} : { now });
+  const streaming = await tx.query.messages.findMany({
+    columns: { id: true },
+    where: (t, { and, eq }) => and(eq(t.runId, run.id), eq(t.status, "streaming")),
+  });
+  for (const message of streaming) {
+    await repo.messages.finalize(tx, message.id, {
+      status: "failed",
+      content: await streamedText(tx, run, message.id),
+      errorCode: code,
+    });
+  }
+}
+
 /** Beendet einen Lauf als fehlgeschlagen; `false`, wenn ihn inzwischen ein anderer beendet hat. */
 async function failRun(db: Database, run: Run, now: Date): Promise<boolean> {
   try {
     await repo.withTransaction(db, async (tx) => {
       await repo.runs.finish(tx, run.id, { status: "failed", errorCode: STALE_CODE, now });
       // Offene Werkzeug-Aufrufe des toten Laufs enden mit ihm (nie wiederholt).
-      await repo.toolCalls.endOpenForRun(tx, run.id, { now });
-      const streaming = await tx.query.messages.findMany({
-        columns: { id: true },
-        where: (t, { and, eq }) => and(eq(t.runId, run.id), eq(t.status, "streaming")),
-      });
-      for (const message of streaming) {
-        await repo.messages.finalize(tx, message.id, {
-          status: "failed",
-          content: await streamedText(tx, run, message.id),
-          errorCode: STALE_CODE,
-        });
-      }
+      await closeOpenRunWork(tx, run, STALE_CODE, now);
       await repo.events.append(tx, {
         conversationId: run.conversationId,
         type: "run.failed",
@@ -157,7 +172,11 @@ async function failRun(db: Database, run: Run, now: Date): Promise<boolean> {
 }
 
 /** Text, der für eine Nachricht schon als `text.delta` geschrieben wurde. */
-async function streamedText(db: Database, run: Run, messageId: MessageId): Promise<string> {
+async function streamedText(
+  db: Database,
+  run: Pick<Run, "conversationId">,
+  messageId: MessageId,
+): Promise<string> {
   let text = "";
   let afterSeq = 0;
   for (;;) {
