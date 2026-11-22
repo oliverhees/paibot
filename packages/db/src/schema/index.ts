@@ -8,6 +8,7 @@
  * @since     2026-11-20
  */
 
+export * from "./abgleich-klassen";
 export * from "./anbieter";
 export * from "./apps";
 export * from "./schleuse";
