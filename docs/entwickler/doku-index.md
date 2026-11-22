@@ -14,7 +14,7 @@ Seit:      2026-11-21
 
 ## Zweck und Entscheidung
 
-Das Image soll die Doku der eigenen Version enthalten, damit später etwas in ihr nachschlagen kann, ohne Internet. Dieser Stand baut nur die Grundlage: einen bereinigten Text-Index im Image. Es gibt noch kein Werkzeug, keine Suche und nichts in der Oberfläche, und nichts liest den Index zur Laufzeit.
+Das Image enthält die Doku der eigenen Version, damit der Bot in ihr nachschlagen kann, ohne Internet. Diese Seite beschreibt den Index selbst: einen bereinigten Text-Index im Image. Lader, Suche und das Werkzeug „In der Doku nachschlagen“ beschreibt [In der Doku nachschlagen](doku-nachschlagen.md); das Werkzeug ist gebaut, aber noch nicht eingeschaltet, und zur Laufzeit liest noch nichts den Index.
 
 Welche Seiten hinein kommen, legen zwei feste Listen fest (`scripts/doku-umfang.mjs#IN_DEN_INDEX` und `scripts/doku-umfang.mjs#NICHT_IN_DEN_INDEX`). In den Index kommt die Anwender-Doku. Entwickler-Seiten, die Vorlage, die Beitragsvereinbarung und die Lizenzpolitik bleiben draußen: Sie helfen der Person nicht bei der Bedienung, und Vertrags- und Lizenztexte sollen nicht aus dem Zusammenhang gerissen zitiert werden. Eine Seite unter `docs/`, die in keiner der Listen steht, ist ein Fehler von `pnpm doku:check`; so muss jede neue Seite bewusst eingeordnet werden.
 
@@ -74,7 +74,11 @@ interface DokuIndex {
 | Umgebungsvariable | `PAIBOT_DOKU_INDEX` | `apps/web/Dockerfile`    |
 | Befehl (Prüfung)  | `pnpm doku:check`   | `scripts/doku-check.mjs` |
 
-Keine Route, keine Aktion, kein Ereignis: Es liest noch niemand den Index. Der Bau bricht mit Ausgang 1 und einer Meldung ab, wenn eine Seite der Liste fehlt, ein Muster auf keine Datei passt, der Index keinen Abschnitt hat, größer als 4 MB ist oder eine Kennung doppelt vorkommt (`scripts/doku-index.mjs#GRENZE_BYTES`).
+Keine Route, keine Aktion, kein Ereignis. Gelesen wird der Index nur vom Lader des Werkzeugs (`packages/agents/src/werkzeuge/doku/index-laden.ts#ladeDokuIndex`), der nur die Fassung 2 annimmt und zur Laufzeit noch nicht aufgerufen wird. Der Bau bricht mit Ausgang 1 und einer Meldung ab, wenn eine Seite der Liste fehlt, ein Muster auf keine Datei passt, der Index keinen Abschnitt hat, größer als 4 MB ist oder eine Kennung doppelt vorkommt (`scripts/doku-index.mjs#GRENZE_BYTES`).
+
+## Suche
+
+Gesucht wird im Worker, im Speicher, mit einer festen Regel ohne Netz: Normalisieren, Stoppwörter, gleiche Wörter, jeder Begriff muss vorkommen, Titel und Pfad der Überschriften zählen mehr als der Text. Die Regel steht wörtlich in [In der Doku nachschlagen](doku-nachschlagen.md#suche) (`packages/agents/src/werkzeuge/doku/suche.ts#sucheImIndex`).
 
 ## Sicherheit
 
