@@ -167,8 +167,9 @@ export const messageSchema = z.strictObject({
   origin: messageOriginSchema.optional(),
   /**
    * Die Nachricht enthält oder stützt sich auf fremde Inhalte (etwa aus einer App). Fehlt das
-   * Feld, gilt `false`. Nur gesetzt, wenn es `true` ist; Altclients kennen es nicht und bleiben
-   * kompatibel.
+   * Feld, gilt `false`. Nur gesetzt, wenn es `true` ist. Clients, die unbekannte Felder
+   * durchlassen, bleiben kompatibel; ein Client mit dem alten, strengen Schema lehnt eine Nachricht
+   * mit diesem Feld ab.
    */
   untrusted: z.boolean().optional(),
   createdAt: isoTimeSchema,

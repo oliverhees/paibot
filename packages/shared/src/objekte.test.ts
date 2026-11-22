@@ -427,7 +427,7 @@ describe("Konstanten", () => {
       createdAt: time,
     } as const;
 
-    it("ist optional und ein Wahrheitswert: eine Nachricht ohne das Feld bleibt gültig (Altclients)", () => {
+    it("ist optional und ein Wahrheitswert: eine Nachricht ohne das Feld bleibt gültig", () => {
       expect(messageSchema.safeParse(basis).success).toBe(true);
       expect(messageSchema.safeParse({ ...basis, untrusted: true }).success).toBe(true);
       expect(messageSchema.safeParse({ ...basis, untrusted: false }).success).toBe(true);
