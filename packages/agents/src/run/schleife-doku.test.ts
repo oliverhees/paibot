@@ -22,6 +22,7 @@ import type { ActionRequest, Facts } from "@paibot/shared/aktionen";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { RunId } from "@paibot/shared/ids";
 import type { JsonValue } from "@paibot/shared/motor";
+import { t } from "@paibot/shared/texte";
 import { ACTIVE_STANDARD_RULES, type RuleDefinition } from "@paibot/shared/tor";
 import type { ToolDefinition, ToolEnvelope } from "@paibot/shared/werkzeug";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -142,7 +143,7 @@ function chats() {
   return provider.requests.filter((r) => r.path.endsWith("/chat/completions"));
 }
 
-type Body = { messages: { role: string; content: unknown }[] };
+type Body = { messages: { role: string; content: unknown }[]; tools?: unknown };
 const body = (i: number) => chats()[i]?.body as Body;
 
 function bodies(entries: readonly ReceiptEntry[]) {
@@ -631,6 +632,50 @@ describe("Nachschlagen ohne Fundstelle: der Lauf geht weiter", () => {
       ["assistant", ZWEITER_SCHRITT],
     ]);
     expect(JSON.stringify(sichtbar)).not.toContain(ENTWURF);
+  });
+});
+
+describe("Nachschlagen ohne Fund in jedem Schritt: die Grenzen halten den Lauf an", () => {
+  // Gegenprobe: `maxStepsPerRun` auf 16 (Höchstwert der Datenbank) anheben → der Lauf läuft über 8 Schritte hinaus
+  // (hier: `expect(chats()).toHaveLength(8)` wird rot).
+  it("ein Aufruf je Schritt: nach 8 Schritten endet der Lauf mit dem festen Satz, 8 Anfragen, 7 ausgeführte Aufrufe, je einer mit Beleg", async () => {
+    const env = await setup(DOKU_SCRIPTS.endlosNichts);
+    const { runId, outcome } = await env.ask(FRAGE_FALLE);
+    expect(outcome).toMatchObject({ status: "failed", code: "schritte_aufgebraucht" });
+    expect(chats()).toHaveLength(8);
+    expect(body(7).tools).toBeUndefined();
+    expect(env.zaehler.n).toBe(7);
+    const entscheidungen = decisions(await env.receipts(), "werkzeug.aufrufen");
+    expect(entscheidungen.filter((d) => d.decision.outcome === "allow")).toHaveLength(7);
+    // Der Wunsch im letzten Schritt wird belegt abgelehnt, das Werkzeug läuft dort nicht.
+    expect(entscheidungen).toHaveLength(8);
+    expect(entscheidungen.at(-1)?.decision.outcome).toBe("deny");
+    const ergebnisse = results(await env.receipts(), "werkzeug.aufrufen");
+    expect(ergebnisse.filter((r) => r.result.status === "ok")).toHaveLength(7);
+    expect(ergebnisse).toHaveLength(8);
+    expect((await botNachrichten(env, runId)).at(-1)).toMatchObject({
+      origin: "fest",
+      content: t("lauf.schritte.antwort"),
+    });
+    expect(await env.verify()).toMatchObject({ ok: true });
+  });
+
+  // Gegenprobe: `maxToolCallsPerRun` auf 64 anheben → `expect(env.zaehler.n).toBe(16)` wird rot.
+  it("fünf Aufrufe je Schritt: nach 16 Aufrufen im Lauf werden weitere belegt abgelehnt, der Lauf endet nach 8 Schritten", async () => {
+    const env = await setup(DOKU_SCRIPTS.endlosVieleNichts);
+    const { runId, outcome } = await env.ask(FRAGE_FALLE);
+    expect(outcome).toMatchObject({ status: "failed", code: "schritte_aufgebraucht" });
+    expect(chats()).toHaveLength(8);
+    expect(env.zaehler.n).toBe(16);
+    const zeilen = await repo.toolCalls.listForRun(env.db, runId);
+    expect(zeilen.filter((z) => z.status === "succeeded")).toHaveLength(16);
+    expect(zeilen.filter((z) => z.status === "denied").length).toBe(zeilen.length - 16);
+    const ergebnisse = results(await env.receipts(), "werkzeug.aufrufen");
+    expect(ergebnisse.filter((r) => r.result.status === "ok")).toHaveLength(16);
+    const abgelehnt = ergebnisse.filter((r) => r.result.status === "denied");
+    expect(abgelehnt.length).toBeGreaterThan(0);
+    expect(abgelehnt.some((r) => r.result.code === "limit_erreicht")).toBe(true);
+    expect(await env.verify()).toMatchObject({ ok: true });
   });
 });
 

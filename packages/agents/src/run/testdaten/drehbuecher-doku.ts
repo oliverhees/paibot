@@ -136,6 +136,21 @@ export const DOKU_SCRIPTS = {
       { text: ANTWORT_OHNE_WUNSCH },
     ],
   },
+  /** Endlos: jeder Schritt schlägt wieder nach und findet nie etwas, ein Aufruf je Schritt. */
+  endlosNichts: {
+    steps: [{ text: ENTWURF, toolCalls: [doku({ frage: FRAGE_FALLE })] }],
+    after: "letzten-wiederholen",
+  },
+  /** Endlos mit fünf Aufrufen je Schritt (unter der Grenze je Schritt, über der Grenze je Lauf). */
+  endlosVieleNichts: {
+    steps: [
+      {
+        text: ENTWURF,
+        toolCalls: Array.from({ length: 5 }, (_, i) => doku({ frage: `${FRAGE_FALLE} ${i}` })),
+      },
+    ],
+    after: "letzten-wiederholen",
+  },
   /** Kein Werkzeug-Wunsch, obwohl das Werkzeug angeboten ist. */
   ohneWunsch: { steps: [{ text: ANTWORT_OHNE_WUNSCH }] },
 } satisfies Record<string, Script>;
