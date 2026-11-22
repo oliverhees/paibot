@@ -3774,6 +3774,20 @@
         },
         {
           "warteAuf": "button[aria-label^='Beleg prüfen']"
+        },
+        {
+          "gehe": "/modelle"
+        },
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Schreib mir eine freundliche Absage",
+            "genau": false,
+            "nr": 0
+          }
+        },
+        {
+          "warteAuf": "button[aria-label^='Beleg prüfen']"
         }
       ],
       "beschreibung": "Chat mit der Regel: Marke „EU laut Regel“ im Kopf und in der Zeile unter der Antwort, mit Datum und Hinweis aufs Ausweichen",

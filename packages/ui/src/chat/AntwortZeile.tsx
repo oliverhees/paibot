@@ -51,7 +51,14 @@ export interface ModellAngabe {
    * Kennzeichnung von PaiBot (z. B. „EU laut Regel …“) als eigenes Element mit eigenem Rahmen. Sie
    * kommt nie aus dem Namen, sondern nur von hier.
    */
-  kennzeichnung?: string;
+  kennzeichnung?: KennzeichnungAngabe;
+}
+
+export interface KennzeichnungAngabe {
+  /** Kurze Marke, z. B. „EU laut Regel“. */
+  marke: string;
+  /** Ganzer Satz mit Herkunft und Datum; steht im Titel, für Bildschirmleser und aufgeklappt. */
+  satz: string;
 }
 
 function nameText(modell: ModellAngabe): string {
@@ -59,17 +66,23 @@ function nameText(modell: ModellAngabe): string {
 }
 
 /** Eigenes Element für die Kennzeichnung von PaiBot, für Bildschirmleser getrennt benannt. */
-export function Kennzeichnung({ text, voll = false }: { text: string; voll?: boolean }) {
+export function Kennzeichnung({
+  angabe,
+  voll = false,
+}: {
+  angabe: KennzeichnungAngabe;
+  voll?: boolean;
+}) {
   return (
     <span
       className={styles.kennzeichnung}
       data-art={voll ? "kennzeichnung-voll" : "kennzeichnung"}
       role="note"
-      aria-label={t("antwort.kennzeichnung", { text })}
-      title={text}
+      aria-label={t("antwort.kennzeichnung", { text: angabe.satz })}
+      title={angabe.satz}
     >
       <Icon name="check" />
-      <span>{text}</span>
+      <span>{voll ? angabe.satz : angabe.marke}</span>
     </span>
   );
 }
@@ -191,7 +204,7 @@ export function ModellHerkunft({ modell }: { modell: ModellAngabe }) {
       title={[name, region].filter((x) => x !== undefined).join(" · ")}
     >
       <span className={styles.lang}>{name}</span>
-      {kennzeichnung !== undefined && <Kennzeichnung text={kennzeichnung} />}
+      {kennzeichnung !== undefined && <Kennzeichnung angabe={kennzeichnung} />}
       {region !== undefined && (
         <>
           <span className={styles.lang} aria-hidden="true">
@@ -243,7 +256,7 @@ export function AntwortZeile({ beleg, schleuse, modell, details }: AntwortZeileP
           <li>{region === undefined ? nameText(modell) : `${nameText(modell)} · ${region}`}</li>
           {modell.kennzeichnung !== undefined && (
             <li>
-              <Kennzeichnung text={modell.kennzeichnung} voll />
+              <Kennzeichnung angabe={modell.kennzeichnung} voll />
             </li>
           )}
         </ul>

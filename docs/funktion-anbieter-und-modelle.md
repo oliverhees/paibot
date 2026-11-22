@@ -136,11 +136,11 @@ Mit dem normalen Schlüssel kann PaiBot nicht lesen, was eine Regel vorgibt. Mit
 
     ![Nach „Alle Regeln erneut prüfen“: Meldung „Erneut gelesen. Aktualisiert: 1.“](assets/screenshots/modelle-regel-neu-pruefen.png)
 35. Kann eine Regel ausweichen, sagt PaiBot es: „Kann auf … ausweichen“, wenn die Regel Ausweich-Modelle nennt, oder „Kann ausweichen“, wenn sie es erlaubt. Wer tatsächlich antwortet, steht an jeder Antwort. Dieselbe Regel hat in echten Aufrufen schon von verschiedenen Anbietern geantwortet.
-36. Wähle die Regel und klicke „Modell übernehmen“. Im Chat steht die Marke im Kopf und in der Zeile unter der Antwort, mit dem Datum. Der Name der Regel steht dort als schlichter Text in Anführungszeichen; die Kennzeichnung ist ein eigenes Element mit eigenem Rahmen. Was in Anführungszeichen steht, hast du vergeben, die Kennzeichnung kommt von PaiBot.
+36. Wähle die Regel und klicke „Modell übernehmen“. Im Chat steht die Marke im Kopf und in der Zeile unter der Antwort. Fährst du mit der Maus darüber oder klappst die Zeile auf, steht der ganze Satz mit Herkunft und Datum da. Der Name der Regel steht dort als schlichter Text in Anführungszeichen; die Kennzeichnung ist ein eigenes Element mit eigenem Rahmen. Was in Anführungszeichen steht, hast du vergeben, die Kennzeichnung kommt von PaiBot.
 
     ![Karte „Routing-Regel“ nach „Modell übernehmen“: „Pai arbeitet jetzt mit Beispiel-Regel.“](assets/screenshots/modelle-regel-uebernommen.png)
 
-    ![Chat: im Kopf „Beispiel-Regel“ mit „EU laut Regel“; unter der Antwort „EU laut Regel in deinem Konto, geprüft am …“ und „kann auf … ausweichen“](assets/screenshots/chat-regel-eu-laut-regel.png)
+    ![Chat: im Kopf „Beispiel-Regel“ mit „EU laut Regel“; unter der Antwort die Marke „EU laut Regel“ als eigenes Element und „kann auf … ausweichen“](assets/screenshots/chat-regel-eu-laut-regel.png)
 37. Mit „Zweiten Schlüssel entfernen“ löschst du den Schlüssel und die gelesenen Vorgaben. Die Regeln bleiben, die Kennzeichnung entfällt.
 
     ![Zurück beim ersten Anbieter: „Pai arbeitet jetzt mit Beispiel-Modell Allrounder.“](assets/screenshots/modelle-modell-zurueck.png)

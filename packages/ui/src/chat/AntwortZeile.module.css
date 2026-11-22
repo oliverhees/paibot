@@ -144,7 +144,7 @@ button.teil:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-width: 0;
+  flex: none;
   border: 1px solid var(--eu);
   border-radius: var(--radius-pill);
   background: var(--eu-soft);
@@ -157,9 +157,7 @@ button.teil:focus-visible {
 }
 
 .kennzeichnung > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kennzeichnung svg {

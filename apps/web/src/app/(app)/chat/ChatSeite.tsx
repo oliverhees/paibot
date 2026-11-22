@@ -648,7 +648,8 @@ export function ChatSeite({
         </div>
       ) : null;
     }
-    const kennzeichnung = kennzeichnungKurz(modell.vorgabe);
+    const satz = kennzeichnungKurz(modell.vorgabe);
+    const marke = euMarke(modell.vorgabe);
     const herkunft = [
       ausweichKurz(modell.vorgabe),
       antwortHerkunft(modell.anbieter, n.servedBy, bereitschaft.unterAnbieter),
@@ -662,7 +663,7 @@ export function ChatSeite({
         modell={{
           name: modell.name,
           ...(modell.anbieter?.templateKey === "eurouter" ? { nameFrei: true } : {}),
-          ...(kennzeichnung === undefined ? {} : { kennzeichnung }),
+          ...(satz === undefined || marke === undefined ? {} : { kennzeichnung: { marke, satz } }),
           ...(herkunft === "" ? {} : { herkunft }),
         }}
       />
