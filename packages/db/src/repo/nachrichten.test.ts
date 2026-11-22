@@ -116,4 +116,34 @@ describe("Nachrichten mit Schritten", () => {
     expect(frage.origin).toBe("modell");
     expect(frage).not.toHaveProperty("step");
   });
+  // Gegenprobe: `untrusted` in `finalize` nicht in den Schreibvorgang übernehmen → die Antwort bleibt ohne Kennzeichen.
+  it("finalize setzt das Kennzeichen „fremder Inhalt“ im selben Schreibvorgang, nur wenn verlangt", async () => {
+    const neueAntwort = async () => {
+      // Je Antwort eine eigene Unterhaltung: In einer läuft immer nur ein Lauf.
+      const eigene = (await conversations.create(db, { botId, title: "Kennzeichen" })).id;
+      const frage = await messages.insert(db, {
+        conversationId: eigene,
+        role: "user",
+        content: "f",
+      });
+      const lauf = await runs.create(db, {
+        conversationId: eigene,
+        triggerMessageId: frage.id,
+        botId,
+      });
+      return messages.insert(db, {
+        conversationId: eigene,
+        role: "assistant",
+        status: "streaming",
+        content: "",
+        runId: lauf.id,
+      });
+    };
+    const mit = await neueAntwort();
+    const ohne = await neueAntwort();
+    await messages.finalize(db, mit.id, { status: "complete", content: "a", untrusted: true });
+    await messages.finalize(db, ohne.id, { status: "complete", content: "b" });
+    expect(await messages.anyUntrusted(db, [mit.id])).toBe(true);
+    expect(await messages.anyUntrusted(db, [ohne.id])).toBe(false);
+  });
 });

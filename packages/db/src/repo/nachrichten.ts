@@ -65,6 +65,11 @@ export interface MessageFinalize {
   errorCode?: ErrorCode;
   /** Wer laut Antwort der Schnittstelle geantwortet hat; nur geprüfte Werte (`servedBySchema`). */
   servedBy?: ServedBy;
+  /**
+   * Kennzeichen „fremder Inhalt“ im selben Schreibvorgang wie der Abschluss (nur setzen, nie
+   * zurücknehmen): So gibt es kein Fenster, in dem eine abgeschlossene Antwort ohne Kennzeichen steht.
+   */
+  untrusted?: boolean;
 }
 
 /**
@@ -173,6 +178,7 @@ export async function finalize(
         ? {}
         : { servedProvider: input.servedBy.provider }),
       ...(input.servedBy?.model === undefined ? {} : { servedModel: input.servedBy.model }),
+      ...(input.untrusted === true ? { untrusted: true } : {}),
     })
     .where(and(eq(messages.id, id), eq(messages.status, "streaming")))
     .returning();

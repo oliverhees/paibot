@@ -658,13 +658,15 @@ async function saveLiveStep(
   if (end.kind !== "succeeded" && stream.messageId === undefined) return undefined;
   const messageId = await stream.ensureMessage();
   const model = s.input.model;
+  const untrusted = s.untrusted;
+  // Das Kennzeichen „fremder Inhalt“ wird im selben Schreibvorgang wie der Abschluss gesetzt.
   const base = {
     content: stream.text,
     modelId: context.model.id,
     providerId: context.provider.provider.id,
     route: model.route,
+    ...(untrusted ? { untrusted: true } : {}),
   };
-  const untrusted = s.untrusted;
   await write(() =>
     repo.withTransaction(deps.db, async (tx) => {
       if (end.kind === "succeeded" && calls.length === 0) {
@@ -762,6 +764,7 @@ async function saveHeldStep(
         tokensOut: tokens.output,
         ...(servedBy === undefined ? {} : { servedBy }),
         ...(errorCode === undefined ? {} : { errorCode }),
+        ...(untrusted ? { untrusted: true } : {}),
       });
       if (calls.length > 0) await insertCalls(tx, run, message.id, step, calls, untrusted);
       await repo.events.append(

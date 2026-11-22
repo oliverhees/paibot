@@ -18,7 +18,12 @@ import {
 } from "@paibot/agents";
 import { type DerivedKey, decryptSecret } from "@paibot/crypto";
 import { type Database, repo } from "@paibot/db";
-import { createEgressFetch, egressTargetOf } from "@paibot/llm";
+import {
+  createEgressFetch,
+  egressTargetOf,
+  type HostLookup,
+  INTERNAL_SERVICE_HOSTS,
+} from "@paibot/llm";
 import {
   holeWerkzeuge,
   type McpFetch,
@@ -30,6 +35,16 @@ import { appTokenBinding, secretAad } from "@paibot/shared/bindung";
 import type { AppId } from "@paibot/shared/ids";
 import { consoleLog, type WorkerLog } from "./protokoll";
 
+/** Die Adresse hat keinen oder den Standard-Port 443. */
+function standardPort(adresse: string): boolean {
+  try {
+    const port = new URL(adresse).port;
+    return port === "" || port === "443";
+  } catch {
+    return false;
+  }
+}
+
 export interface AppAnschlussOptionen {
   db: Database;
   /** Schlüssel, mit dem die Zugangsdaten der Apps verschlüsselt sind (`secrets-v1`). */
@@ -40,6 +55,8 @@ export interface AppAnschlussOptionen {
    * selbst mit den geprüften Adressen.
    */
   basisFetch?: typeof fetch;
+  /** Namensauflösung der Hülle. Nur für Tests; im Betrieb löst das System auf. */
+  lookup?: HostLookup;
 }
 
 /**
@@ -64,10 +81,13 @@ export function baueAppAnschluss(optionen: AppAnschlussOptionen): AppAnschluss {
     ) {
       return undefined;
     }
-    const huelle = createEgressFetch(
-      [egressTargetOf(gespeichert.url)],
-      optionen.basisFetch,
-    ) as McpFetch;
+    // Nur der Standard-Port: Eine Adresse mit anderem Port wird nicht verwendet.
+    if (!standardPort(gespeichert.url)) return undefined;
+    // Genau ein Ziel, nie öffentlich erreichbar gemachte eigene Dienste (Datenbank, Web, Worker).
+    const ziel = { ...egressTargetOf(gespeichert.url), denyAddressesOf: INTERNAL_SERVICE_HOSTS };
+    const huelle = createEgressFetch([ziel], optionen.basisFetch, {
+      ...(optionen.lookup === undefined ? {} : { lookup: optionen.lookup }),
+    }) as McpFetch;
     if (gespeichert.authKind !== "token") return { fetch: huelle };
     const tokenEnc = await repo.apps.getTokenEnc(optionen.db, app.id);
     if (tokenEnc === undefined) return undefined;

@@ -159,6 +159,55 @@ describe("Anschluss an Apps im Worker", () => {
     expect(basisFetch).not.toHaveBeenCalled();
   });
 
+  // Gegenprobe: `denyAddressesOf` aus dem Ziel entfernen → ein Name, der auf die Adresse eines eigenen Dienstes
+  // zeigt, wird erlaubt und die Anfrage geht an das Basis-fetch, rot.
+  it("die Hülle lehnt einen Namen ab, der auf die Adresse eines eigenen Dienstes zeigt", async () => {
+    const app = await neueApp();
+    holeWerkzeuge.mockResolvedValue({
+      werkzeuge: [],
+      serverName: "x",
+      seiten: 0,
+      abgeschnitten: false,
+    });
+    const lookup = async (host: string) =>
+      host === "mcp.notizen.beispiel.test" || host === "postgres" ? ["93.184.216.34"] : [];
+    await baueAppAnschluss({
+      db,
+      secretsKey,
+      log,
+      basisFetch: basisFetch as unknown as typeof fetch,
+      lookup,
+    })
+      .neuerLauf()
+      .holeListe({
+        app: info(app as never),
+        bekannteNamen: new Map(),
+        bereitsVergeben: new Set(),
+        signal: new AbortController().signal,
+      });
+    const huelle = holeWerkzeuge.mock.calls[0]?.[0].fetch as typeof fetch;
+    await expect(huelle(URL_APP, { method: "POST" })).rejects.toThrow();
+    expect(basisFetch).not.toHaveBeenCalled();
+  });
+
+  // Gegenprobe: die Prüfung des Ports entfernen → die Liste einer Adresse mit Port 8443 wird abgerufen, rot.
+  it("eine gespeicherte Adresse mit einem anderen Port als 443 wird nicht verwendet: keine Anfrage", async () => {
+    const app = await neueApp({ url: "https://mcp.notizen.beispiel.test:8443/mcp" });
+    const lauf = anschluss().neuerLauf();
+    const fehler = await lauf
+      .holeListe({
+        app: info(app as never),
+        bekannteNamen: new Map(),
+        bereitsVergeben: new Set(),
+        signal: new AbortController().signal,
+      })
+      .catch((e) => e);
+    expect(fehler).toBeInstanceOf(AppListeFehler);
+    expect(fehler.grund).toBe("nicht_erreichbar");
+    expect(holeWerkzeuge).not.toHaveBeenCalled();
+    expect(rufeWerkzeugAuf).not.toHaveBeenCalled();
+  });
+
   it("ungültige gespeicherte Namen sind ein fester Grund, nie der Text der Schicht", async () => {
     const app = await neueApp();
     holeWerkzeuge.mockRejectedValue(new McpSchichtFehler("namen_ungueltig"));

@@ -348,6 +348,26 @@ describe("Werkzeuge aus Apps im Lauf", () => {
     expect(env.anschluss.protokoll.aufrufe).toEqual([]);
   });
 
+  // Gegenprobe: die Bedingung „Lauf gehört zum Bot der Unterhaltung“ entfernen → Abruf, rot.
+  it("nur im Chat mit dem eigenen Bot: gehört der Lauf nicht zum Bot der Unterhaltung, geht kein Abruf hinaus", async () => {
+    const env = await setup(eineAntwort, async (e) => [await notizen(e)]);
+    const anderer = await repo.bots.create(env.db, {
+      name: "Anderer",
+      modelId: (await repo.bots.get(env.db, env.botId))?.modelId as never,
+      avatarShape: "blatt",
+      color: "limette",
+    });
+    // Auch der andere Bot darf in der App lesen; nur der Ort (Unterhaltung eines anderen Bots) passt nicht.
+    await setzeZugriff(env, env.apps[0]?.id as AppId, anderer.id, "lesen");
+    const { runId } = await env.queueMessage("Wie ist der Stand?");
+    await env.client.query("update runs set bot_id = $1 where id = $2", [anderer.id, runId]);
+    await executeRun(runId, env.deps, never());
+    expect(env.anschluss.protokoll.listen).toEqual([]);
+    const body = (provider.requests.find((r) => r.path.endsWith("/chat/completions"))?.body ??
+      {}) as { tools?: unknown };
+    expect(body.tools).toBeUndefined();
+  });
+
   // Gegenprobe: alle verbundenen Apps abrufen statt nur die mit Zugriff → Abruf, rot.
   it("ein Bot ohne Zugriff löst keinen Abruf aus und bekommt keine Werkzeuge der App", async () => {
     const env = await setup(eineAntwort, async (e) => [
@@ -416,6 +436,40 @@ async function bestaetigeNeueFassung(
   app.version.set(name, zeichen);
 }
 
+/** Der Besitzer stuft ein Werkzeug anders ein (gleicher Abdruck, neue Fassung in der Datenbank). */
+async function stufeUm(
+  env: { db: Database; gate: Gate },
+  app: TestApp,
+  name: string,
+  klasse: AppToolClass,
+) {
+  const zeile = (await repo.apps.currentTools(env.db, app.id)).find((t) => t.originalName === name);
+  if (zeile === undefined) throw new Error("Werkzeug fehlt");
+  const ziel = await zielAbdruck(app.id, app.info.url);
+  await alsBesitzer(
+    env.gate,
+    "app.werkzeuge_bestaetigen",
+    { appId: app.id, toolId: zeile.toolId },
+    {
+      credential: "sitzung",
+      toolClass: klasse,
+      toolVersion: zeile.version,
+      toolDigest: zeile.toolDigest,
+      seenToolDigest: zeile.toolDigest,
+      toolStatus: zeile.status,
+      targetDigest: ziel,
+    },
+    (actionId) =>
+      repo.apps.einstufen(env.db, {
+        toolId: zeile.toolId,
+        toolClass: klasse,
+        actionId,
+        seenDigest: zeile.toolDigest,
+        targetDigest: ziel,
+      }),
+  );
+}
+
 /** Wahr, wenn auf dieser Verbindung gerade keine Transaktion offen ist. */
 async function keineTransaktionOffen(client: TestDb["client"]): Promise<boolean> {
   // `now()` bleibt innerhalb einer Transaktion gleich und springt außerhalb von Abfrage zu Abfrage.
@@ -462,6 +516,53 @@ describe("Werkzeuge aus Apps: Änderungen und Grenzen", () => {
     expect(f.toolStatus).toBe("bestaetigt");
     expect(f.toolDigest).not.toBe(f.confirmedToolDigest);
   });
+
+  // Gegenprobe: `toolKind` aus dem Angebot des Laufs (call.kind) statt aus der Einstufung lesen →
+  // der Aufruf nach „schreiben“ bekommt wieder „lesen“ und wird erlaubt bzw. nicht abgelehnt, rot.
+  it.each([
+    ["schreiben", "schreiben", "bestaetigt"],
+    ["gesperrt", "schreiben", "gesperrt"],
+  ] as const)(
+    "stuft der Besitzer das Werkzeug zwischen Schritt 0 und 1 als „%s“ um, wird der Aufruf in Schritt 1 nicht erlaubt: Art und Stand kommen aus der Datenbank, nie vom Lauf-Start",
+    async (klasse, erwarteteArt, erwarteterStand) => {
+      let env: (Env & { apps: TestApp[] }) | undefined;
+      env = await setup(
+        {
+          steps: [
+            { toolCalls: [aufruf("notizen__suche", "a")] },
+            { toolCalls: [aufruf("notizen__suche", "b")] },
+            { text: ANSWER_TEXT },
+          ],
+        },
+        async (e) => [
+          await richteAppEin(e, {
+            kurzname: "notizen",
+            botId: e.botId,
+            werkzeuge: [
+              {
+                name: "suche",
+                klasse: "lesen",
+                beimAufruf: async () => {
+                  if (env === undefined) return;
+                  await stufeUm(env, env.apps[0] as TestApp, "suche", klasse);
+                },
+              },
+            ],
+          }),
+        ],
+      );
+      await env.ask();
+      // Nur der erste Aufruf ging an die App.
+      expect(env.anschluss.protokoll.aufrufe.map((a) => a.argumente)).toEqual([{ q: "a" }]);
+      const aufrufe = entscheidungen(await env.receipts(), "werkzeug.aufrufen");
+      expect(aufrufe[0]?.decision.outcome).toBe("allow");
+      expect(aufrufe[1]?.decision.outcome).not.toBe("allow");
+      expect(aufrufe[1]?.facts).toMatchObject({
+        toolKind: erwarteteArt,
+        toolStatus: erwarteterStand,
+      });
+    },
+  );
 
   // Gegenprobe: App-Zeile nicht prüfen (Zugriff aus dem Start) → Aufruf läuft nach dem Trennen, rot.
   it("trennt der Besitzer die App zwischen den Schritten, wird der nächste Aufruf abgelehnt", async () => {
@@ -592,6 +693,35 @@ describe("Werkzeuge aus Apps: Änderungen und Grenzen", () => {
     const antworten = nachrichten.filter((m) => m.role === "assistant");
     expect(antworten.length).toBeGreaterThanOrEqual(3);
     expect(antworten.every((m) => m.untrusted)).toBe(true);
+  });
+
+  // Gegenprobe: das Kennzeichen in einem eigenen Schreibvorgang nach dem Abschluss setzen (wie vorher) → der Trigger
+  // der Test-Datenbank lässt das nicht zu, der Lauf scheitert bzw. die Antwort bleibt ohne Kennzeichen, rot.
+  it("das Kennzeichen „fremder Inhalt“ steht im selben Schreibvorgang wie der Abschluss der Antwort: ein späteres Setzen scheitert, ohne dass etwas fehlt", async () => {
+    const env = await setup(
+      { steps: [{ toolCalls: [aufruf("notizen__suche")] }, { text: ANSWER_TEXT }] },
+      async (e) => [await notizen(e)],
+    );
+    await env.ask("Lauf 1");
+    provider.configure({ reply: ANSWER_TEXT, script: eineAntwort });
+    // Ab jetzt darf keine abgeschlossene Nachricht mehr nachträglich gekennzeichnet werden.
+    await env.client.exec(`
+      create function test_nur_im_abschluss() returns trigger language plpgsql as $$
+      begin
+        if new.untrusted and not old.untrusted and old.status = 'complete' then
+          raise exception 'Kennzeichen nach dem Abschluss';
+        end if;
+        return new;
+      end $$;
+      create trigger test_nur_im_abschluss before update on messages
+        for each row execute function test_nur_im_abschluss();
+    `);
+    const { runId, outcome } = await env.ask("Lauf 2");
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    const antworten = (await env.db.select().from(messagesTable))
+      .filter((m) => m.runId === runId && m.role === "assistant")
+      .map((m) => m.untrusted);
+    expect(antworten).toEqual([true]);
   });
 
   it("eine neue Runde: steht keine gekennzeichnete Antwort mehr im gesendeten Verlauf, ist die Anfrage nicht mehr fremd", async () => {

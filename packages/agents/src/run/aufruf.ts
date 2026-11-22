@@ -398,11 +398,7 @@ export interface CallInput {
 }
 
 /** Feste Fakten für einen App-Aufruf, dessen Werkzeug oder App es nicht mehr gibt: das Tor lehnt ab. */
-function fehlendeAppFakten(
-  appId: AppId,
-  appToolId: AppToolId,
-  angeboten: Sha256Digest,
-): AppAufrufFakten {
+function fehlendeAppFakten(appId: AppId, appToolId: AppToolId): AppAufrufFakten {
   const nichts = `sha256:${"0".repeat(64)}` as Sha256Digest;
   return {
     appId,
@@ -411,7 +407,6 @@ function fehlendeAppFakten(
     toolStatus: "entfernt",
     toolKind: "schreiben",
     appAccess: "keiner",
-    toolDigest: angeboten,
     targetDigest: nichts,
     confirmedToolDigest: nichts,
     confirmedTargetDigest: nichts,
@@ -445,9 +440,8 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
           db,
           botId: run.botId,
           modelName: call.name,
-          angebotenDigest: call.toolDigest,
         }),
-      )) ?? fehlendeAppFakten(bezug.appId, bezug.appToolId, call.toolDigest);
+      )) ?? fehlendeAppFakten(bezug.appId, bezug.appToolId);
     if (input.stepApp !== undefined) input.stepApp.appId ??= appFakten.appId;
   }
   const appFaktenFuerTor =

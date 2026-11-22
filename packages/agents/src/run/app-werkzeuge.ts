@@ -167,15 +167,13 @@ export interface AppAufrufFakten {
   readonly toolStatus: AppToolStatus;
   readonly toolKind: "lesen" | "schreiben";
   readonly appAccess: AppAccessLevel;
-  readonly toolDigest: Sha256Digest;
   readonly targetDigest: Sha256Digest;
   readonly confirmedToolDigest: Sha256Digest;
   readonly confirmedTargetDigest: Sha256Digest;
 }
 
 /**
- * Liest die Fakten für einen Aufruf direkt vor dem Aufruf aus der Datenbank. `angebotenDigest` ist
- * der Abdruck, den das Modell beim Start des Laufs angeboten bekam. Alles, was das Tor über das
+ * Liest die Fakten für einen Aufruf direkt vor dem Aufruf aus der Datenbank. Alles, was das Tor über das
  * Werkzeug erfährt, kommt aus derselben Zeile (`toolByModelName`): Stand, Einstufung, Fassung und
  * Abdruck der Bestätigung. `toolKind` kommt allein aus der Einstufung des Besitzers, nie aus
  * Hinweisen des Servers. Ist das Werkzeug nicht mehr bestätigt, steht das in `toolStatus`; das
@@ -185,7 +183,6 @@ export async function leseAufrufFakten(input: {
   db: Database;
   botId: BotId;
   modelName: string;
-  angebotenDigest: Sha256Digest;
 }): Promise<AppAufrufFakten | undefined> {
   const { db } = input;
   const tool = await repo.apps.toolByModelName(db, input.modelName);
@@ -201,7 +198,6 @@ export async function leseAufrufFakten(input: {
     toolStatus: tool.status,
     toolKind: tool.toolClass === "lesen" ? "lesen" : "schreiben",
     appAccess,
-    toolDigest: input.angebotenDigest,
     targetDigest: ziel,
     confirmedToolDigest: tool.toolDigest,
     // Ohne gespeichertes Ziel der Bestätigung gibt es nichts, was passen könnte.
