@@ -12,6 +12,7 @@
 import { toolDefinitionDigest } from "@paibot/gate";
 import { TOOL_GATE_ACTIONS } from "@paibot/shared/aktionen";
 import type { Sha256Digest } from "@paibot/shared/grundtypen";
+import type { AppId, AppToolId } from "@paibot/shared/ids";
 import type { JsonValue, ToolSpec } from "@paibot/shared/motor";
 import { TOOL_NAME_PATTERN } from "@paibot/shared/objekte";
 import type { ToolDefinition, ToolKey } from "@paibot/shared/werkzeug";
@@ -20,8 +21,20 @@ import { z } from "zod";
 import { cleanText, hasUnwanted } from "../run/bereinigen";
 import { builtinTools } from "./eingebaut";
 
+/** Woher ein Werkzeug aus einer App kommt; nur bei Werkzeugen mit Quelle `mcp` gesetzt. */
+export interface AppBezug {
+  readonly appId: AppId;
+  readonly appToolId: AppToolId;
+  /** Name beim Server; geht nie an das Modell. */
+  readonly originalName: string;
+  /** Kurzname der App (Spalte `server` der Aufrufe). */
+  readonly kurzname: string;
+}
+
 /** Ein Werkzeug im Register: eingefrorene Beschreibung, Abdruck und Angebot an das Modell. */
 export interface RegisteredTool {
+  /** Nur bei Werkzeugen aus einer App (Quelle `mcp`). */
+  readonly app?: AppBezug;
   readonly definition: ToolDefinition<JsonValue, JsonValue>;
   /** Abdruck der Beschreibung, einmal beim Aufbau gerechnet. */
   readonly toolDigest: Sha256Digest;
@@ -76,10 +89,28 @@ export const MAX_TOOL_DESCRIPTION_CHARS = 1000;
 
 /** Fehler beim Aufbau des Registers; der Start bricht damit ab. */
 export class ToolRegistryError extends Error {
+  /** Der feste Grund ohne Vorsatz; nie Text aus einer Beschreibung oder einer Bibliothek. */
+  readonly grund: string;
   constructor(reason: string) {
     super(`Werkzeug-Register: ${reason}`);
     this.name = "ToolRegistryError";
+    this.grund = reason;
   }
+}
+
+/**
+ * Macht aus jedem Fehler beim Aufbau einen neuen `ToolRegistryError` aus festen Texten. Ein
+ * Fehler, der kein `ToolRegistryError` ist, bekommt den festen Grund „Beschreibung nicht lesbar“.
+ * Der Test auf die Klasse steht in einem eigenen `try`: Ein Objekt, dessen Prüfung wirft (etwa ein
+ * Proxy mit `getPrototypeOf`), lässt nie seinen Text heraus.
+ */
+export function festerFehler(error: unknown): ToolRegistryError {
+  try {
+    if (error instanceof ToolRegistryError) return new ToolRegistryError(error.grund);
+  } catch {
+    // fällt auf den festen Grund zurück
+  }
+  return new ToolRegistryError("Beschreibung nicht lesbar");
 }
 
 /** Feste Beschreibung des Platzhalters; nur ihr Abdruck geht in die Fakten. */
@@ -119,28 +150,12 @@ const MAX_SCHEMA_DEPTH = 32;
 
 type SchemaDef = { type?: string } & Record<string, unknown>;
 
-/** Feste Namen, die ein Schlüssel-Schema vorgibt: `enum`, `literal` und Vereinigungen davon. */
-function fixedNames(schema: unknown, depth = 0): string[] {
-  if (depth > MAX_SCHEMA_DEPTH || typeof schema !== "object" || schema === null) return [];
-  const def = (schema as { _zod?: { def?: SchemaDef } })._zod?.def;
-  if (def === undefined) return [];
-  switch (def.type) {
-    case "enum":
-      return Object.values((def.entries as Record<string, unknown>) ?? {}).map(String);
-    case "literal":
-      return Array.isArray(def.values) ? def.values.map(String) : [];
-    case "union":
-      return Array.isArray(def.options)
-        ? def.options.flatMap((option) => fixedNames(option, depth + 1))
-        : [];
-    case "optional":
-    case "nullable":
-    case "readonly":
-    case "default":
-      return fixedNames(def.innerType, depth + 1);
-    default:
-      return [];
-  }
+/** Die festen Namen, die ein Schlüssel-Schema vorgibt; leer bei freien Schlüsseln. */
+function festeSchluessel(schema: unknown): string[] {
+  if (typeof schema !== "object" || schema === null) return [];
+  const values = (schema as { _zod?: { values?: unknown } })._zod?.values;
+  if (!(values instanceof Set)) return [];
+  return Array.from(values, String);
 }
 
 /**
@@ -189,9 +204,10 @@ function hasPrototypeField(schema: unknown, seen = new Set<unknown>(), depth = 0
     case "tuple":
       return all(def.items) || next(def.rest);
     case "record":
-      // Feste Schlüssel (`enum`, `literal`) legt zod als eigene Felder an, auch `constructor`.
+      // Feste Schlüssel legt zod als eigene Felder an, auch `constructor`. Welche es sind, sagt das
+      // Schema selbst (`_zod.values`), egal wie es umhüllt ist (`catch`, `prefault`, `pipe` …).
       return (
-        fixedNames(def.keyType).some((name) => PROTOTYPE_NAMES.has(name)) ||
+        festeSchluessel(def.keyType).some((name) => PROTOTYPE_NAMES.has(name)) ||
         next(def.keyType) ||
         next(def.valueType)
       );
@@ -248,16 +264,15 @@ function check(def: ToolDefinition<JsonValue, JsonValue>): void {
 
 /**
  * Die Kennung für die Liste der Ausgeschlossenen: nur ein Text, nie ein Aufruf von `toString` oder
- * eines Getters (fremder Code kann werfen), von Steuer-, Bidi- und unsichtbaren Zeichen befreit
- * und höchstens 128 Zeichen lang. Alles andere bekommt einen festen Ersatz.
+ * eines Getters (fremder Code kann werfen), und nur, wenn er das Schema für Werkzeug-Kennungen
+ * erfüllt (kein Zeilenumbruch, kein Tabulator, höchstens 140 Zeichen). Alles andere bekommt einen
+ * festen Ersatz.
  */
-function kennungFuerMeldung(original: unknown): string {
+export function kennungFuerMeldung(key: unknown): string {
   const ersatz = "(ohne Kennung)";
   try {
-    const key = (original as { key?: unknown } | null | undefined)?.key;
-    if (typeof key !== "string") return ersatz;
-    const sauber = Array.from(cleanText(key)).slice(0, 128).join("");
-    return sauber === "" ? ersatz : sauber;
+    if (typeof key !== "string" || !toolKeySchema.safeParse(key).success) return ersatz;
+    return Array.from(cleanText(key)).slice(0, 128).join("") || ersatz;
   } catch {
     return ersatz;
   }
@@ -321,13 +336,17 @@ export async function createToolRegistry(
       names.set(tool.definition.modelName, tool);
       tools.push(tool);
     } catch (error) {
-      // Ein Fehler der Bibliothek (etwa beim Umwandeln des Schemas) trägt nie seinen Text weiter.
-      const fehler =
-        error instanceof ToolRegistryError
-          ? error
-          : new ToolRegistryError("Beschreibung nicht lesbar");
+      // Ein Fehler der Bibliothek (etwa beim Umwandeln des Schemas) trägt nie seinen Text weiter;
+      // eingetragen wird immer ein neuer Fehler aus festen Texten.
+      const fehler = festerFehler(error);
       if (options.ausschliessen !== true) throw fehler;
-      ausgeschlossen.push(Object.freeze({ key: kennungFuerMeldung(original), fehler }));
+      let kennung: unknown;
+      try {
+        kennung = (original as { key?: unknown } | null | undefined)?.key;
+      } catch {
+        kennung = undefined;
+      }
+      ausgeschlossen.push(Object.freeze({ key: kennungFuerMeldung(kennung), fehler }));
     }
   }
   const placeholder: ToolPlaceholder = Object.freeze({

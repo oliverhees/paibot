@@ -230,6 +230,7 @@ const ERWARTET = [
   // Lauf-Steuerung: Verlauf ans Modell, Aufräumen, Schreiben von Antworten
   "packages/agents/src/run/aufraeumen.ts",
   "packages/agents/src/run/kontext.ts",
+  "packages/agents/src/run/nahtstellen.ts",
   "packages/agents/src/run/schleife.ts",
   "packages/agents/src/run/strom.ts",
   // Zugriffsfunktionen

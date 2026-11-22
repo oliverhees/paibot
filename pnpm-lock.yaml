@@ -114,6 +114,9 @@ importers:
       '@paibot/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@paibot/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@paibot/receipts':
         specifier: workspace:*
         version: link:../../packages/receipts

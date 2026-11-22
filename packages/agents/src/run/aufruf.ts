@@ -22,7 +22,14 @@ import {
 import type { ReceiptResult } from "@paibot/shared/belege";
 import { type ErrorCode, PaiBotError } from "@paibot/shared/fehler";
 import type { HmacDigest, Sha256Digest } from "@paibot/shared/grundtypen";
-import { type ActionId, type ConversationId, newId, type RunId } from "@paibot/shared/ids";
+import {
+  type ActionId,
+  type AppId,
+  type AppToolId,
+  type ConversationId,
+  newId,
+  type RunId,
+} from "@paibot/shared/ids";
 import type { JsonValue, ToolCall, ToolResult } from "@paibot/shared/motor";
 import { TOOL_NAME_PATTERN, type ToolKind, type ToolSource } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
@@ -30,10 +37,12 @@ import type { GatePermit } from "@paibot/shared/tor";
 import type { ToolEnvelope, ToolKey } from "@paibot/shared/werkzeug";
 import { belegFelder } from "../werkzeuge/beleg-felder";
 import type { RegisteredTool, ToolRegistry } from "../werkzeuge/register";
+import { type AppAufrufFakten, leseAufrufFakten } from "./app-werkzeuge";
 import {
   cleanJson,
   cleanText,
   ERGEBNIS_PRUEFUNG_GRENZEN,
+  JSON_PRUEFUNG_GRENZEN,
   jsonHasKeyClash,
   jsonHasNonInteger,
   jsonHasNonJson,
@@ -77,6 +86,8 @@ export interface PreparedCall {
   /** Bereinigter roher Name, nur wenn `name` der Platzhalter ist. */
   rawName?: string;
   tool?: RegisteredTool;
+  /** Kurzname der App bei einem Werkzeug aus einer App (Spalte `server`). */
+  server?: string;
   toolKey: ToolKey;
   toolDigest: Sha256Digest;
   source: ToolSource;
@@ -152,9 +163,17 @@ export function prepareCalls(
     let issue: PreparedCall["issue"];
     let accepted: JsonValue | undefined;
     // Als Allererstes, vor jedem rekursiven Prüfen oder Bereinigen: zu tief oder zu groß → ungültig.
-    const oversize = call.rawInput === undefined && jsonUeberGrenzen(call.input);
-    if (call.rawInput === undefined && !oversize && isPlainObject(call.input)) {
-      const value = call.input;
+    // Die Eingabe des Modells wird genau einmal in eine reine Kopie gelesen (wie das Ergebnis eines
+    // Werkzeugs); die Kopie prüft dieselben Grenzen (Tiefe, Größe, Kreise) und weist alles ab, was
+    // kein JSON ist. Alles Weitere rechnet nur auf der Kopie: Ein Getter oder Proxy kann so nicht
+    // beim Prüfen etwas anderes zeigen als beim Weitergeben, und ein Lesefehler macht die Eingabe
+    // ungültig, ohne dass sein Text irgendwohin kommt.
+    const objekt = call.rawInput === undefined && isPlainObject(call.input);
+    const kopie = objekt ? reineKopie(call.input, JSON_PRUEFUNG_GRENZEN) : undefined;
+    const oversize =
+      call.rawInput === undefined && (objekt ? kopie === undefined : jsonUeberGrenzen(call.input));
+    if (kopie !== undefined && isPlainObject(kopie)) {
+      const value = kopie;
       if (jsonHasUnwanted(value) || jsonHasNonInteger(value)) {
         inputValid = false;
       } else if (def !== undefined) {
@@ -181,21 +200,27 @@ export function prepareCalls(
     const toolKey = tool?.definition.key ?? placeholder.toolKey;
     const toolDigest = tool?.toolDigest ?? placeholder.toolDigest;
     // Ein zu tiefer oder zu großer Wert wird nicht zu Text gemacht (`JSON.stringify` würde werfen).
-    const fullText = oversize ? "" : inputText(call);
-    let args: JsonValue = inputValid && accepted !== undefined ? accepted : { roh: fullText };
+    // Nur bei einer ungültigen Eingabe gebraucht; bei einer gültigen wird das Original nicht noch
+    // einmal gelesen (ein Getter könnte dann etwas anderes zeigen als die geprüfte Kopie).
+    let fullTextCache: string | undefined;
+    const fullText = (): string => {
+      fullTextCache ??= oversize ? "" : inputText(call);
+      return fullTextCache;
+    };
+    let args: JsonValue = inputValid && accepted !== undefined ? accepted : { roh: fullText() };
     let argsDigest: HmacDigest;
     try {
       argsDigest = digestOf(input, actionId, args, toolDigest, toolKey);
     } catch {
       // Der Abdruck wirft z. B. bei Gleitkommazahlen; dann gilt die Eingabe als ungültig.
       inputValid = false;
-      args = { roh: fullText };
+      args = { roh: fullText() };
       argsDigest = digestOf(input, actionId, args, toolDigest, toolKey);
     }
     const storedInput: JsonValue = deepFreeze(
       inputValid && accepted !== undefined
         ? accepted
-        : { roh: Array.from(cleanText(fullText)).slice(0, MAX_STORED_RAW_INPUT_CHARS).join("") },
+        : { roh: Array.from(cleanText(fullText())).slice(0, MAX_STORED_RAW_INPUT_CHARS).join("") },
     );
 
     return {
@@ -206,6 +231,7 @@ export function prepareCalls(
       name,
       ...(rawName === undefined ? {} : { rawName }),
       ...(tool === undefined ? {} : { tool }),
+      ...(tool?.app === undefined ? {} : { server: tool.app.kurzname }),
       toolKey,
       toolDigest,
       source: def?.source ?? placeholder.source,
@@ -364,6 +390,27 @@ export interface CallInput {
   guardSignal: AbortSignal;
   untrusted: (input: { runId: RunId; historyRunIds: readonly RunId[] }) => Promise<boolean>;
   trigger: Facts<"werkzeug.aufrufen">["trigger"];
+  /**
+   * Die App des ersten App-Aufrufs dieses Schritts. Die Steuerung führt sie von Aufruf zu Aufruf
+   * mit; der erste Aufruf an eine App setzt sie, und das Modell kann sie nie beeinflussen.
+   */
+  stepApp?: { appId: AppId | undefined };
+}
+
+/** Feste Fakten für einen App-Aufruf, dessen Werkzeug oder App es nicht mehr gibt: das Tor lehnt ab. */
+function fehlendeAppFakten(appId: AppId, appToolId: AppToolId): AppAufrufFakten {
+  const nichts = `sha256:${"0".repeat(64)}` as Sha256Digest;
+  return {
+    appId,
+    appToolId,
+    toolVersion: 1,
+    toolStatus: "entfernt",
+    toolKind: "schreiben",
+    appAccess: "keiner",
+    targetDigest: nichts,
+    confirmedToolDigest: nichts,
+    confirmedTargetDigest: nichts,
+  };
 }
 
 /**
@@ -382,10 +429,41 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
     runId: run.id,
     historyRunIds: input.historyRunIds,
   });
+  // Werkzeug aus einer App: alle Fakten direkt vor dem Aufruf frisch aus der Datenbank, aus
+  // derselben Zeile; nichts davon stammt vom Lauf-Start, vom Modell oder von der App.
+  const bezug = call.tool?.app;
+  let appFakten: AppAufrufFakten | undefined;
+  if (bezug !== undefined) {
+    appFakten =
+      (await write(() =>
+        leseAufrufFakten({
+          db,
+          botId: run.botId,
+          modelName: call.name,
+        }),
+      )) ?? fehlendeAppFakten(bezug.appId, bezug.appToolId);
+    if (input.stepApp !== undefined) input.stepApp.appId ??= appFakten.appId;
+  }
+  const appFaktenFuerTor =
+    appFakten === undefined
+      ? {}
+      : {
+          appId: appFakten.appId,
+          appToolId: appFakten.appToolId,
+          toolVersion: appFakten.toolVersion,
+          toolStatus: appFakten.toolStatus,
+          appAccess: appFakten.appAccess,
+          targetDigest: appFakten.targetDigest,
+          confirmedToolDigest: appFakten.confirmedToolDigest,
+          confirmedTargetDigest: appFakten.confirmedTargetDigest,
+          stepAppId: input.stepApp?.appId ?? appFakten.appId,
+        };
   const facts: Facts<"werkzeug.aufrufen"> = {
+    ...appFaktenFuerTor,
+    ...(call.server === undefined ? {} : { toolServer: call.server }),
     toolName: call.name,
     toolSource: call.source,
-    toolKind: call.kind,
+    toolKind: appFakten === undefined ? call.kind : appFakten.toolKind,
     toolKey: call.toolKey,
     toolDigest: call.toolDigest,
     toolReach: call.reach,

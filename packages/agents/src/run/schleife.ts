@@ -18,7 +18,7 @@ import { type ActionRequest, botActor } from "@paibot/shared/aktionen";
 import type { ReceiptResult } from "@paibot/shared/belege";
 import { type ErrorCode, isPaiBotError } from "@paibot/shared/fehler";
 import type { HmacDigest, ServedBy } from "@paibot/shared/grundtypen";
-import { type MessageId, newId } from "@paibot/shared/ids";
+import { type AppId, type MessageId, newId } from "@paibot/shared/ids";
 import type {
   MotorErrorCode,
   MotorEvent,
@@ -33,6 +33,7 @@ import { errorText, isTextKey, t } from "@paibot/shared/texte";
 import { LIMITS_BY_ID } from "@paibot/shared/tor";
 import { buildSystemPrompt } from "../prompt";
 import { emptyToolRegistry, type RegisteredTool, type ToolRegistry } from "../werkzeuge/register";
+import { ladeAppWerkzeuge } from "./app-werkzeuge";
 import { cancelCall, type PreparedCall, prepareCalls, runToolCall } from "./aufruf";
 import { createDraftStream, pieces } from "./entwurf";
 import { plainText } from "./huelle";
@@ -152,7 +153,21 @@ export async function runLoop(
   if (!isReady(context)) return { end: { kind: "failed", code: "kein_modell" } };
   const { db } = deps;
   const run = context.run;
-  const registry: ToolRegistry = deps.tools ?? (await emptyToolRegistry());
+  const basisRegister: ToolRegistry = deps.tools ?? (await emptyToolRegistry());
+  // Werkzeuge aus Apps gibt es nur im Chat mit dem eigenen Bot. Der Not-Aus-Wert ist derselbe, der
+  // in Schritt 0 als Fakt an das Tor geht (`context.settings`): doppelte Prüfung, erst die Sperre
+  // vor dem Abruf, dann das Tor.
+  const appWerkzeuge = await write(() =>
+    ladeAppWerkzeuge({
+      db,
+      anschluss: run.botId === context.conversation.botId ? deps.apps : undefined,
+      basis: basisRegister,
+      botId: run.botId,
+      killSwitch: context.settings.killSwitch,
+      signal: guard.signal,
+    }),
+  );
+  const registry: ToolRegistry = appWerkzeuge.registry;
   const werkzeuge = werkzeugeFuerLauf(run, registry);
   const mode: Mode = werkzeuge.length === 0 ? "ohne_werkzeuge" : "mit_werkzeugen";
   const stand = kettenStand(run);
@@ -180,6 +195,21 @@ export async function runLoop(
     ...(lastMessageId === undefined ? {} : { messageId: lastMessageId }),
   });
 
+  // Alle Nachrichten dieses Laufs als „fremder Inhalt“ kennzeichnen, sobald die Anfrage oder ein
+  // erfolgreicher Aufruf dieses Laufs fremde Inhalte hat (nur setzen, nie zurücknehmen). Das
+  // Kennzeichen setzt die Steuerung nach jedem Schritt selbst; verlassen wird sich darauf nicht
+  // allein auf die Vererbung in der Datenbank.
+  const kennzeichne = async (anfrageHatFremdes: boolean): Promise<void> => {
+    const fremd =
+      anfrageHatFremdes ||
+      (await untrustedInput(db, {
+        runId: run.id,
+        historyRunIds: base.runIds,
+        historyMessageIds: base.messageIds,
+      }));
+    if (fremd) await write(() => repo.messages.markRunUntrusted(db, run.id));
+  };
+
   for (let step = 0; ; step++) {
     const settings = step === 0 ? context.settings : await write(() => freshSettings(db));
     const last = step >= settings.maxStepsPerRun - 1;
@@ -193,7 +223,11 @@ export async function runLoop(
     const history = [...base.history, ...runHistory];
     const specs = offered.map((tool) => tool.spec);
     const inputChars = requestChars(system, history, specs);
-    const untrusted = await untrustedInput(db, { runId: run.id, historyRunIds: base.runIds });
+    const untrusted = await untrustedInput(db, {
+      runId: run.id,
+      historyRunIds: base.runIds,
+      historyMessageIds: base.messageIds,
+    });
     const ausgabe = ausgabeGrenze({
       botMaxOutputTokens: context.bot.maxOutputTokens,
       maxRunTokens: settings.maxTokensPerRun,
@@ -306,14 +340,18 @@ export async function runLoop(
 
     lastModel = { route: value.model.route, label: value.model.label };
     if (value.messageId !== undefined) lastMessageId = value.messageId;
+    await kennzeichne(untrusted);
     if (value.end.kind !== "succeeded" || value.calls.length === 0) return withMessage(value.end);
 
     // Wünsche des Schritts, je einzeln durchs Tor, nacheinander in der Reihenfolge des Modells.
     const results: ToolResult[] = [];
     let stepChars = 0;
+    // Im Schritt nur Aufrufe an die App des ersten App-Aufrufs; die Steuerung führt sie mit.
+    const stepApp: { appId: AppId | undefined } = { appId: undefined };
     for (const [i, call] of value.calls.entries()) {
       if (guard.reason !== undefined) {
         await cancelOpen(db, run, value.calls.slice(i));
+        await kennzeichne(untrusted);
         return withMessage(stopEnd(guard.reason));
       }
       const outcome = await runToolCall({
@@ -327,17 +365,23 @@ export async function runLoop(
         historyRunIds: base.runIds,
         stepCharsLeft: settings.toolResultsMaxCharsPerStep - stepChars,
         guardSignal: guard.signal,
-        untrusted: (input) => untrustedInput(db, input),
+        // Fremde Inhalte zählen je Anfrage: Aufrufe desselben Schritts haben alle den Wert der
+        // Anfrage, die sie erzeugte; ein Ergebnis aus diesem Schritt ändert ihn nicht.
+        untrusted: async () => untrusted,
         trigger: laufAusloeser(run),
+        stepApp,
       });
       stand.aufrufe += 1;
       if (outcome.status === "ok") stepChars += outcome.chars;
       if (outcome.aborted) {
         await cancelOpen(db, run, value.calls.slice(i + 1));
+        await kennzeichne(untrusted);
         return withMessage(stopEnd(guard.reason ?? "abbruch"));
       }
       results.push(outcome.result);
     }
+    // Nach den Ergebnissen: war eines fremd, tragen alle bisherigen Nachrichten dieses Laufs das Kennzeichen.
+    await kennzeichne(untrusted);
     stand.token = addiereToken(stand.token, addiereToken(value.tokens.input, value.tokens.output));
     stand.schritte += 1;
 
@@ -541,6 +585,14 @@ async function insertCalls(
       callId: call.storedCallId,
       name: call.name,
       source: call.source,
+      ...(call.server === undefined ? {} : { server: call.server }),
+      ...(call.tool?.app === undefined
+        ? {}
+        : {
+            appId: call.tool.app.appId,
+            appToolId: call.tool.app.appToolId,
+            toolVersion: call.tool.definition.version,
+          }),
       kind: call.kind,
       input: call.storedInput,
       argsDigest: call.argsDigest,
@@ -606,13 +658,15 @@ async function saveLiveStep(
   if (end.kind !== "succeeded" && stream.messageId === undefined) return undefined;
   const messageId = await stream.ensureMessage();
   const model = s.input.model;
+  const untrusted = s.untrusted;
+  // Das Kennzeichen „fremder Inhalt“ wird im selben Schreibvorgang wie der Abschluss gesetzt.
   const base = {
     content: stream.text,
     modelId: context.model.id,
     providerId: context.provider.provider.id,
     route: model.route,
+    ...(untrusted ? { untrusted: true } : {}),
   };
-  const untrusted = s.untrusted;
   await write(() =>
     repo.withTransaction(deps.db, async (tx) => {
       if (end.kind === "succeeded" && calls.length === 0) {
@@ -710,6 +764,7 @@ async function saveHeldStep(
         tokensOut: tokens.output,
         ...(servedBy === undefined ? {} : { servedBy }),
         ...(errorCode === undefined ? {} : { errorCode }),
+        ...(untrusted ? { untrusted: true } : {}),
       });
       if (calls.length > 0) await insertCalls(tx, run, message.id, step, calls, untrusted);
       await repo.events.append(

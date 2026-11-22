@@ -20,6 +20,7 @@ import { builtinTools } from "./eingebaut";
 import {
   createShippedRegistry,
   createToolRegistry,
+  festerFehler,
   PLACEHOLDER_TOOL_KEY,
   ToolRegistryError,
 } from "./register";
@@ -350,18 +351,31 @@ describe("Kennung im Ausschluss-Zweig", () => {
     }
   });
 
-  it("Steuer-, Bidi- und unsichtbare Zeichen und Länge: die gemeldete Kennung ist bereinigt und höchstens 128 Zeichen lang", async () => {
+  // Gegenprobe: die Kennung ohne Prüfung gegen das Schema der Kennungen übernehmen → die Fälle werden rot.
+  it("nur eine Kennung, die das Schema für Werkzeug-Kennungen erfüllt, wird gemeldet; sonst der feste Ersatz", async () => {
+    const schlechte = [
+      "eingebaut/a\u202eb\u0007c\u200bd\u2066",
+      `eingebaut/${"x".repeat(500)}`,
+      "eingebaut/a\nb",
+      "eingebaut/a\tb",
+      "eingebaut/a\r\nb",
+      "Eingebaut/groß",
+    ];
     const registry = await createToolRegistry(
       [
-        mit({ key: "eingebaut/a\u202eb\u0007c\u200bd\u2066" as never }),
-        mit({ key: `eingebaut/${"x".repeat(500)}` as never, modelName: "lang__x" }),
+        ...schlechte.map((key, i) =>
+          mit({ key: key as never, modelName: `schlecht_${i}`, description: `Nr. ${i}` }),
+        ),
+        mit({ key: "eingebaut/gut.eins" as never, modelName: "gut_eins", description: "" }),
         lesen(),
       ],
       { ausschliessen: true },
     );
-    const [a, b] = registry.ausgeschlossen;
-    expect(a?.key).toBe("eingebaut/abcd");
-    expect(b?.key.length).toBeLessThanOrEqual(128);
+    const keys = registry.ausgeschlossen.map((e) => e.key);
+    expect(keys.slice(0, schlechte.length)).toEqual(schlechte.map(() => "(ohne Kennung)"));
+    // Eine gültige Kennung bleibt, wie sie ist.
+    expect(keys.at(-1)).toBe("eingebaut/gut.eins");
+    for (const key of keys) expect(key).not.toMatch(/[\n\t\r]/u);
   });
 });
 
@@ -398,5 +412,82 @@ describe("Grund bei einem Schema, das das Register nicht lesen kann", () => {
 
   it("ein echter Feldname meldet weiter den Feldnamen", async () => {
     expect(await grund(z.object({ constructor: z.unknown() }))).toContain("Object.prototype");
+  });
+});
+
+// Gegenprobe: bei `record` die festen Schlüssel aus dem Aufbau des Schemas nachbauen statt aus
+// `_zod.values` zu lesen → diese Fälle kommen ins Register, und zod legt für `{}` eine Funktion
+// `constructor` an.
+describe("Feste Schlüssel, die das Schema selbst nennt (egal wie es umhüllt ist)", () => {
+  const FAELLE: [string, z.ZodType][] = [
+    ["enum mit catch", z.record(z.enum(["constructor"]).catch("constructor"), z.unknown())],
+    ["enum mit prefault", z.record(z.enum(["constructor"]).prefault("constructor"), z.unknown())],
+    [
+      "literal mit pipe",
+      z.record((z.literal("constructor") as z.ZodType).pipe(z.string()) as never, z.unknown()),
+    ],
+    [
+      "optional dann nonoptional",
+      z.record(z.enum(["constructor"]).optional().nonoptional() as never, z.unknown()),
+    ],
+    [
+      "enum mit transform (Ausgabe)",
+      z.record(z.enum(["constructor"]).transform((name) => name) as never, z.unknown()),
+    ],
+  ];
+  for (const [name, schema] of FAELLE) {
+    it(`${name}: Eingabe und Ausgabe werden abgewiesen`, async () => {
+      await expect(
+        createToolRegistry([mit({ input: z.strictObject({ a: schema }) as never })]),
+      ).rejects.toThrow(ToolRegistryError);
+      await expect(
+        createToolRegistry([mit({ output: z.strictObject({ a: schema }) as never })]),
+      ).rejects.toThrow(ToolRegistryError);
+    });
+  }
+});
+
+// Gegenprobe: den Test auf die Klasse (`instanceof`) wieder ohne eigenes `try` im `catch` lassen →
+// der Proxy lässt seinen Text heraus oder bricht den Aufbau trotz Ausschluss ab.
+describe("Ein Fehler, dessen Prüfung selbst wirft", () => {
+  it("festerFehler gibt immer einen neuen Fehler aus festen Texten zurück", () => {
+    const gift = new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error("fremder Text");
+        },
+      },
+    );
+    const fehler = festerFehler(gift);
+    expect(fehler).toBeInstanceOf(ToolRegistryError);
+    expect(fehler.message).toBe("Werkzeug-Register: Beschreibung nicht lesbar");
+    // ein echter Fehler des Registers behält seinen festen Grund, kommt aber als neues Objekt
+    const echt = new ToolRegistryError("Name doppelt");
+    const kopie = festerFehler(echt);
+    expect(kopie).not.toBe(echt);
+    expect(kopie.message).toBe(echt.message);
+  });
+
+  it("im Ausschluss-Zweig steht immer ein neuer Fehler aus festen Texten, nie der fremde Text", async () => {
+    // Eine Beschreibung, deren Eingabe-Schema beim Lesen einen Fehler mit Proxy-Prototyp wirft.
+    const gift = new Proxy(new Error("GEHEIM-4711"), {
+      getPrototypeOf() {
+        throw new Error("GEHEIM-4711");
+      },
+    });
+    const boese = {
+      ...lesen(),
+      get description(): string {
+        throw gift;
+      },
+    } as unknown as ToolDefinition<JsonValue, JsonValue>;
+    const registry = await createToolRegistry([boese, lesen()], { ausschliessen: true });
+    expect(registry.tools.map((t) => t.definition.modelName)).toEqual(["test_lesen"]);
+    expect(registry.ausgeschlossen).toHaveLength(1);
+    expect(registry.ausgeschlossen[0]?.fehler.message).toBe(
+      "Werkzeug-Register: Beschreibung nicht lesbar",
+    );
+    expect(JSON.stringify(registry.ausgeschlossen)).not.toContain("GEHEIM-4711");
   });
 });

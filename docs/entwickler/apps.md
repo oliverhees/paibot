@@ -1,5 +1,5 @@
 <!--
-PaiBot – Entwickler-Seite: die MCP-Schicht in `packages/mcp` (fremde MCP-Server nur lesend ansprechen) und die App-Verwaltung in der Web-App (Routen); noch nicht im Lauf angeschlossen (die Datenbank für Apps steht, siehe `apps-datenmodell.md`).
+PaiBot – Entwickler-Seite: die MCP-Schicht in `packages/mcp` (fremde MCP-Server nur lesend ansprechen) die App-Verwaltung in der Web-App (Routen) und den Anschluss im Lauf (Worker); eine Oberfläche dafür gibt es noch nicht (die Datenbank für Apps steht, siehe `apps-datenmodell.md`).
 
 Autor:     Oliver Hees
 Website:   https://paibot.de
@@ -10,7 +10,7 @@ Seit:      2026-11-22
 
 # Apps (MCP-Schicht) – für Entwickler
 
-**Anwender-Doku:** noch keine. Die Schicht ist gebaut und getestet, aber an keine Stelle von PaiBot angeschlossen: kein Tor, keine Datenbank, kein Worker, keine Route der Web-App benutzt sie (`packages/mcp/src/index.ts`; kein anderes Paket und keine App hat `@paibot/mcp` als Abhängigkeit). Die Anwender-Seite kommt mit der Funktion, die sie benutzt.
+**Anwender-Doku:** noch keine. Die Schicht wird von den Routen der App-Verwaltung (Web-App: nur die Liste) und vom Anschluss im Worker (Liste und Aufruf) benutzt, aber es gibt keine Oberfläche, mit der sich eine App verbinden ließe. Die Anwender-Seite kommt mit der Oberfläche.
 
 ## Zweck und Entscheidung
 
@@ -160,7 +160,7 @@ Der Test-Server (`tools/test-mcp-server/src/index.ts#createTestMcpServer`) ist n
 
 ## Bekannte Schwächen
 
-- **Nicht im Lauf angeschlossen:** Die Web-App verwaltet Apps (Routen unten), aber kein Lauf ruft ein App-Werkzeug auf: Weder der Worker noch die Lauf-Steuerung benutzen die Schicht, und es gibt keine Oberfläche dafür. Die Tabellen und die Fassung 3 des Tors stehen ([Apps: Datenmodell](apps-datenmodell.md)).
+- **Keine Oberfläche:** Die Web-App verwaltet Apps über Routen (unten) und der Lauf ruft bestätigte, lesende App-Werkzeuge im Direkt-Chat auf (Anschluss im Worker, siehe [Werkzeug-Kern](werkzeug-kern.md)); eine Oberfläche, mit der sich eine App verbinden und bestätigen ließe, gibt es noch nicht, und der Anschluss im Worker lief bisher nicht gegen den echten Test-Server durch die echte Hülle. Die Tabellen und die Fassung 3 des Tors stehen ([Apps: Datenmodell](apps-datenmodell.md)).
 - **Namen vergibt die Schicht und, für die gespeicherten Werkzeuge, die Datenbank:** `vergebeModellNamen` in der Schicht und `repo.apps.sehen` in der Datenbank vergeben je eigene Namen. Maßgeblich sind die gespeicherten der Datenbank; wer die Schicht aufruft, reicht sie immer als `bekannteNamen` hinein (die Schicht übernimmt sie unverändert, siehe „Modell-Namen bleiben stabil“). Die Namen, die die Schicht für neue Werkzeuge berechnet, werden dann nicht benutzt. `namenZumSpeichern` der Schicht benutzt die Web-App nicht, weil die Datenbank die Namen vergibt.
 - **Zugriff und gleichzeitiges Trennen (nur der Trigger):** `repo.apps.setAccess` sperrt die Zeile der App; wer dagegen direkt in `bot_app_grants` schreibt (nicht über diese Funktion), hat die Sperre nicht: Der Trigger der Zugriffs-Tabelle liest die App-Zeile ohne Sperre (`packages/db/drizzle/0016_*.sql`, Funktion `paibot_bot_app_grants_regeln`). Trennt eine andere Verbindung die App genau zwischen dem Lesen des Triggers und dem Ende des Einfügens (schon reines Trennen reicht, ein erneutes Verbinden ist dazu nicht nötig), kann eine Zeile für eine schon beendete Verbindung entstehen; der geltende Zugriff bleibt richtig, nur das Protokoll zeigt sie. Eine Sperre im Trigger bräuchte eine neue Migration.
 - **Adress-Klassen prüft die Hülle:** Private und interne Ziele sperrt allein die Ausgangs-Hülle; ohne sie (mit dem globalen `fetch`) wären sie offen (`packages/mcp/src/verbindung.ts#pruefeAdresse`).

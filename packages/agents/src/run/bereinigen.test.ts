@@ -543,9 +543,9 @@ describe("Reine Kopie: die Länge einer Liste wird einmal gelesen", () => {
         return Reflect.get(ziel, schluessel, empfaenger);
       },
     });
-    const start = performance.now();
     const kopie = reineKopie({ a: proxy });
-    expect(performance.now() - start).toBeLessThan(200);
+    // Die Zahl der Lesungen trägt den Test; eine feste Zeitgrenze würde auf einer ausgelasteten
+    // Maschine zufällig rot.
     expect(lesungen).toBeLessThanOrEqual(3);
     // Kopiert wird nur, was bei der einzigen Lesung galt (Länge 1), oder gar nichts.
     expect([undefined, { a: [1] }]).toContainEqual(kopie);

@@ -566,15 +566,16 @@ describe("Vorprüfung auch für den Wert nach dem Schema", () => {
 });
 
 // Schemas mit Feldern aus `Object.prototype` (auch verschachtelt, auch feste Schlüsselnamen in einer
-// Schlüssel-Wert-Liste) lehnt schon das Register beim Aufbau ab (`werkzeuge/register.test.ts`).
-// Hier geht es um Werte, die kein JSON sind und die ein registriertes Schema trotzdem liefern kann
-// (`Date`, `Map`, Klassen). Ein `Date`, eine `Map` oder eine Klasse sind keine Funktion: Der Abdruck
-// und die Hülle würden sie nicht abweisen, `cleanJson` machte daraus still `{}`, und das Modell
-// bekäme ein leeres Objekt statt des Werts.
+// Schlüssel-Wert-Liste) weist das Register beim Aufbau ab, soweit es sie lesen kann
+// (`werkzeuge/register.test.ts`); es liest die festen Schlüssel aus dem Schema selbst, ein Schema
+// mit Schlüsseln, die erst beim Prüfen entstehen, erkennt es nicht. Darum ist dieser Test keine
+// Doppelung: Hier geht es um Werte, die kein JSON sind und die ein registriertes Schema trotzdem
+// liefern kann (`Date`, `Map`, Klassen). Ein `Date`, eine `Map` oder eine Klasse sind keine Funktion:
+// Der Abdruck und die Hülle würden sie nicht abweisen, `cleanJson` machte daraus still `{}`, und das
+// Modell bekäme ein leeres Objekt statt des Werts.
 // Gegenprobe für Ergebnisse: In `reineKopie` die Prüfung auf Prototyp und Typ entfernen → die Fälle
 // unten werden rot. Für Eingaben ruft `prepareCalls` `jsonHasNonJson` auf den Wert nach dem Schema
-// auf; auch von einem registrierten Werkzeug aus kann er erreicht werden (früher z. B. mit einem
-// Schlüssel-Wert-Schema mit festem Namen `constructor`, das das Register jetzt abweist). Der Fall
+// auf; das ist die zweite Hürde für die Eingabe (`reineKopie` gilt für Ergebnisse). Der Fall
 // „Eingabe“ unten sichert den Aufruf mit einem Spy und einem von Hand gebauten Register.
 describe("Werte, die kein JSON sind, erreichen nie Werkzeug oder Modell", () => {
   class Eigene {
@@ -688,5 +689,34 @@ describe("Wert, der sich beim Lesen ändert", () => {
     const huelle = huelleAus(tool, proxy);
     expect(performance.now() - start).toBeLessThan(400);
     expect(["ok", "fehler"]).toContain(huelle.status);
+  });
+});
+
+// Gegenprobe: `reineKopie` für die Eingabe in `prepareCalls` entfernen und den Wert direkt prüfen →
+// der Getter wird mehrfach gelesen, geprüft wird ein anderer Wert als der, der weiterläuft; rot.
+describe("Die Eingabe des Modells wird genau einmal in eine reine Kopie gelesen", () => {
+  it("ein Getter, der bei jedem Lesen etwas anderes liefert, wird nur einmal gelesen; weiter geht, was geprüft wurde", async () => {
+    let lesungen = 0;
+    const eingabe = {
+      get q() {
+        lesungen += 1;
+        return lesungen === 1 ? "erste Lesung" : "ZWEITE LESUNG";
+      },
+    };
+    const [call] = await prepare([wish({ input: eingabe as never })]);
+    expect(lesungen).toBe(1);
+    expect(call?.inputValid).toBe(true);
+    expect(call?.storedInput).toEqual({ q: "erste Lesung" });
+  });
+
+  it("ein Getter, der wirft, macht die Eingabe ungültig und lässt keinen Text heraus", async () => {
+    const eingabe = {
+      get q(): string {
+        throw new Error("GEHEIM-4711");
+      },
+    };
+    const [call] = await prepare([wish({ input: eingabe as never })]);
+    expect(call?.inputValid).toBe(false);
+    expect(JSON.stringify(call?.storedInput)).not.toContain("GEHEIM-4711");
   });
 });
