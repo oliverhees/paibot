@@ -10,6 +10,7 @@
  */
 
 export * from "./testing/contract-tests";
+export * from "./testing/doku-index";
 export * from "./testing/fake-motor";
 export * from "./testing/lauf-umgebung";
 export * from "./testing/werkzeuge";

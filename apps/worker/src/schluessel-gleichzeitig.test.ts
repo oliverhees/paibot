@@ -13,7 +13,7 @@
 
 import { randomBytes } from "node:crypto";
 import { executeRun } from "@paibot/agents";
-import { createFakeMotor, setupRun } from "@paibot/agents/testing";
+import { createFakeMotor, setupRun, testDokuEnv } from "@paibot/agents/testing";
 import {
   decryptSecret,
   deriveKey,
@@ -86,7 +86,7 @@ describe.skipIf(BASE_URL === undefined)("Signaturschlüssel bei gleichzeitigen L
       error: (m: string) => lines.push(`error ${m}`),
     };
     // Wie im Worker: eine Quelle für alle Läufe, Vorbereitung je Lauf.
-    const source = buildRunDeps(db, { PAIBOT_SECRET: secret });
+    const source = buildRunDeps(db, { PAIBOT_SECRET: secret, ...testDokuEnv() });
     const runs = createRunHandler({
       db,
       executeRun,

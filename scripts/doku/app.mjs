@@ -38,6 +38,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { legeDatenbankAn, loescheDatenbank, starteEigenenServer } from "./datenbank.mjs";
+import { baueDokuIndex } from "./index-bauen.mjs";
 import { starteKontoAttrappe } from "./konto-attrappe.mjs";
 import {
   ANBIETER_STANDARD,
@@ -483,6 +484,8 @@ async function main() {
     PAIBOT_SECRET: geheimnis,
     DATABASE_URL: db.app,
     MIGRATIONS_DIR: path.join(lauf, "packages", "db", "drizzle"),
+    // Der Worker startet nur mit gültigem Doku-Index der Version.
+    PAIBOT_DOKU_INDEX: baueDokuIndex(ROOT),
   };
   // Wie der Einmal-Dienst `migrate`: einziger Prozess mit dem Zugang des Tabellen-Besitzers, ohne
   // PAIBOT_SECRET. Web-App und Worker bekommen danach nur die App-Rolle.

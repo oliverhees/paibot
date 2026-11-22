@@ -14,6 +14,7 @@ import type { JsonValue } from "@paibot/shared/motor";
 import type { ToolDefinition } from "@paibot/shared/werkzeug";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { testDokuIndex } from "../testing/doku-index";
 import { createTestTools } from "../testing/werkzeuge";
 import { builtinTools } from "./eingebaut";
 import {
@@ -164,10 +165,11 @@ describe("Register der Werkzeuge", () => {
 
 describe("Register der Auslieferung", () => {
   // Gegenprobe: Sperre in `createShippedRegistry` entfernen → Test rot.
-  it("ist in dieser Fassung leer und enthält kein test_*", async () => {
-    expect(builtinTools()).toEqual([]);
-    const shipped = await createShippedRegistry();
-    expect(shipped.tools).toEqual([]);
+  it("enthält mit Index genau das Nachschlagen in der Doku und kein test_*; ohne Index wirft der Aufbau", async () => {
+    expect(() => builtinTools()).toThrow("Doku-Index fehlt");
+    await expect(createShippedRegistry()).rejects.toThrow("Doku-Index fehlt");
+    const shipped = await createShippedRegistry(builtinTools({ dokuIndex: testDokuIndex() }));
+    expect(shipped.tools.map((tool) => tool.spec.name)).toEqual(["doku_nachschlagen"]);
     expect(shipped.tools.some((tool) => tool.spec.name.startsWith("test_"))).toBe(false);
   });
 

@@ -565,7 +565,7 @@ export const de = {
     "Das Tagesbudget ist für heute aufgebraucht. Du kannst es unter Einstellungen › Grenzen erhöhen oder leeren. Sonst zählt der Verbrauch ab Mitternacht in deiner Zeitzone wieder bei null.",
   "chat.ziel.grenzen": "Zu den Grenzen",
   "chat.kopf.schritte": "Schritte",
-  "chat.kopf.schritte_label": "Beleg-Zeilen unter den Antworten zeigen",
+  "chat.kopf.schritte_label": "Werkzeug- und Beleg-Zeilen im Verlauf zeigen oder verbergen",
   "chat.kopf.menue": "Weitere Aktionen",
   "chat.kopf.modell": "Modell {name}, Herkunft {region}. Ändern unter „Modell und Anbieter“.",
   "chat.kopf.modell_kennzeichnung":
@@ -2353,4 +2353,7 @@ export const de = {
   "schritte.antwort.werkzeuge": "{n} Werkzeuge",
   // Werkzeug „In der Doku nachschlagen“
   "werkzeug.titel.doku_nachschlagen": "In der Doku nachschlagen",
+  // „Was dein Bot darf“: das Werkzeug ehrlich benannt
+  "bot.darf.werkzeug_doku":
+    "{name} kann in der Doku dieser PaiBot-Version nachschlagen, ohne vorher zu fragen und jedes Mal mit Beleg. Das Werkzeug liest nur die mitgelieferte Doku und schickt nichts nach außen. Andere Werkzeuge hat {name} in dieser Version nicht.",
 } as const satisfies Record<string, string | readonly string[]>;

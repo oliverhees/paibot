@@ -13,7 +13,7 @@
 
 import { randomBytes } from "node:crypto";
 import { createToolRegistry, executeRun } from "@paibot/agents";
-import { createFakeMotor, createTestTools, setupRun } from "@paibot/agents/testing";
+import { createFakeMotor, createTestTools, setupRun, testDokuEnv } from "@paibot/agents/testing";
 import { createDb, type Database, repo } from "@paibot/db";
 import {
   createPostgresTestDatabase,
@@ -86,7 +86,7 @@ describe.skipIf(BASE_URL === undefined)("gleichzeitige Läufe mit Werkzeugen", (
       warn: (m: string) => lines.push(`warn ${m}`),
       error: (m: string) => lines.push(`error ${m}`),
     };
-    const source = buildRunDeps(db, { PAIBOT_SECRET: secret });
+    const source = buildRunDeps(db, { PAIBOT_SECRET: secret, ...testDokuEnv() });
     const runs = createRunHandler({
       db,
       executeRun,

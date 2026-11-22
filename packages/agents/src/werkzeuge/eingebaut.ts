@@ -1,6 +1,7 @@
 /**
- * PaiBot – Die eingebauten Werkzeuge der Auslieferung. Das Werkzeug „In der Doku nachschlagen“
- * ist gebaut (`doku/werkzeug.ts`), in dieser Fassung aber noch nicht eingeschaltet.
+ * PaiBot – Die eingebauten Werkzeuge der Auslieferung: „In der Doku nachschlagen“
+ * (`doku/werkzeug.ts`). Es braucht den geladenen Doku-Index; ohne ihn gibt es keine Werkzeuge,
+ * sondern einen Fehler.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -12,20 +13,25 @@
 import type { JsonValue } from "@paibot/shared/motor";
 import type { ToolDefinition } from "@paibot/shared/werkzeug";
 import type { GeladenerDokuIndex } from "./doku/suche";
+import { dokuNachschlagen } from "./doku/werkzeug";
 
 /** Was die eingebauten Werkzeuge zum Aufbau brauchen. */
 export interface EingebauteTeile {
-  /** Geladener Doku-Index (`ladeDokuIndex`); wird erst mit dem Einschalten genutzt. */
+  /** Geladener Doku-Index (`ladeDokuIndex`); ohne ihn wirft `builtinTools`. */
   dokuIndex?: GeladenerDokuIndex;
 }
 
 /**
- * Alle eingebauten Werkzeuge in fester Reihenfolge. In dieser Fassung leer, auch mit Doku-Index:
- * Das Nachschlagen in der Doku wird erst zusammen mit der Anzeige der Schritte im Chat
- * eingeschaltet.
+ * Alle eingebauten Werkzeuge in fester Reihenfolge: das Nachschlagen in der Doku. Fehlt der
+ * Doku-Index, wirft die Funktion; es gibt nie still ein Register ohne das Werkzeug.
  */
 export function builtinTools(
-  _teile: EingebauteTeile = {},
+  teile: EingebauteTeile = {},
 ): readonly ToolDefinition<JsonValue, JsonValue>[] {
-  return [];
+  if (teile.dokuIndex === undefined) {
+    throw new Error(
+      "Doku-Index fehlt: das Werkzeug „In der Doku nachschlagen“ lässt sich nicht bauen.",
+    );
+  }
+  return [dokuNachschlagen(teile.dokuIndex) as unknown as ToolDefinition<JsonValue, JsonValue>];
 }

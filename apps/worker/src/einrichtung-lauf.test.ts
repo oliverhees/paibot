@@ -14,7 +14,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { executeRun } from "@paibot/agents";
-import { createFakeMotor } from "@paibot/agents/testing";
+import { createFakeMotor, testDokuEnv } from "@paibot/agents/testing";
 import {
   deriveKey,
   encryptSecret,
@@ -39,7 +39,7 @@ const ANTWORT = "Hallo, hier antwortet der Bot aus der Einrichtung.";
  * (Schlüssel, Start-Beleg, dann die Aktionen über das Tor), alles in einer Transaktion.
  */
 async function wieDieEinrichtung(db: Database, secret: string) {
-  const master = loadMasterSecret({ PAIBOT_SECRET: secret });
+  const master = loadMasterSecret({ PAIBOT_SECRET: secret, ...testDokuEnv() });
   const belege = deriveKey(master, "keys-v1");
   const geheimnisse = deriveKey(master, "secrets-v1");
   const uhr = { now: () => new Date() };
@@ -200,7 +200,7 @@ describe("Einrichtung und Worker", () => {
       return { runId: lauf.id };
     });
 
-    const deps = await buildRunDeps(db, { PAIBOT_SECRET: secret }).prepare();
+    const deps = await buildRunDeps(db, { PAIBOT_SECRET: secret, ...testDokuEnv() }).prepare();
     const motor = createFakeMotor([
       { type: "text-delta", text: ANTWORT },
       { type: "finish", finishReason: "stop", usage: { input: 3, output: 9 } },
@@ -226,7 +226,10 @@ describe("Einrichtung und Worker", () => {
     const { db } = await createTestDb();
     await wieDieEinrichtung(db, randomBytes(32).toString("base64"));
     await expect(
-      buildRunDeps(db, { PAIBOT_SECRET: randomBytes(32).toString("base64") }).prepare(),
+      buildRunDeps(db, {
+        PAIBOT_SECRET: randomBytes(32).toString("base64"),
+        ...testDokuEnv(),
+      }).prepare(),
     ).rejects.toThrow();
   });
 });

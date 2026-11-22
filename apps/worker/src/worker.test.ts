@@ -10,7 +10,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import type { RunDeps, RunOutcome } from "@paibot/agents";
+import { DokuIndexFehler, type RunDeps, type RunOutcome } from "@paibot/agents";
 import type { Database } from "@paibot/db";
 import type { MigrationState, RoleCheck } from "@paibot/db/migrate";
 import type { Queue, RunJob, RunJobHandler } from "@paibot/jobs";
@@ -397,6 +397,29 @@ describe("Start", () => {
     expect(calls.indexOf("prepare")).toBeLessThan(calls.indexOf("failStaleRuns mit Belegen"));
     expect(lines).toContain("info Veraltete Läufe aufgeräumt: 0.");
     await worker.stop();
+  });
+
+  // Gegenprobe: den Fehler von `prepare` im Worker schlucken → rot.
+  it("startet nicht, wenn der Doku-Index fehlt oder ungültig ist: kein „Bereit“, eine klare Zeile, alles geschlossen", async () => {
+    const { deps, lines, calls } = fakeDeps();
+    const original = deps.buildRunDeps;
+    deps.buildRunDeps = (db, env) => {
+      const source = original(db, env);
+      return {
+        base: source.base,
+        prepare: async () => {
+          throw new DokuIndexFehler("Datei fehlt oder ist nicht lesbar");
+        },
+      };
+    };
+    await startFails(runWorker(CONFIG, ENV, deps), "intern");
+    expect(lines.some((l) => l.startsWith("error Start fehlgeschlagen: DokuIndexFehler"))).toBe(
+      true,
+    );
+    expect(lines.some((l) => l.includes("pnpm doku:index"))).toBe(true);
+    expect(lines.some((l) => l.includes("Bereit"))).toBe(false);
+    expect(calls).toContain("queue.stop");
+    expect(calls.at(-1)).toBe("db.close");
   });
 
   it("bricht ab, wenn das Aufräumen an der Datenbank scheitert, und schließt alles", async () => {

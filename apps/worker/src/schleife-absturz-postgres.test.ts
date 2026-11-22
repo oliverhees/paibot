@@ -20,7 +20,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createFakeMotor, setupRun } from "@paibot/agents/testing";
+import { createFakeMotor, setupRun, testDokuEnv } from "@paibot/agents/testing";
 import { createDb, repo } from "@paibot/db";
 import {
   createPostgresTestDatabase,
@@ -173,6 +173,7 @@ describe.skipIf(BASE_URL === undefined)("Worker mitten im Werkzeug beendet", () 
           DATABASE_URL: testDb.url,
           MIGRATIONS_DIR: MIGRATIONS_FOLDER,
           NODE_ENV: "test",
+          ...testDokuEnv(),
         },
         stdio: ["ignore", "pipe", "pipe"],
       });

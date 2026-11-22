@@ -25,6 +25,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { legeDatenbankAn, starteEigenenServer } from "../../../scripts/doku/datenbank.mjs";
+import { baueDokuIndex } from "../../../scripts/doku/index-bauen.mjs";
 import { wegwerfWert } from "../../../scripts/doku/lauf.mjs";
 import { starteAttrappe } from "../../../scripts/doku/schleuse-attrappe.mjs";
 
@@ -282,6 +283,8 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
       PAIBOT_SECRET: randomBytes(32).toString("base64"),
       DATABASE_URL: db.app,
       MIGRATIONS_DIR: migrationen,
+      // Der Worker startet nur mit gültigem Doku-Index der Version.
+      PAIBOT_DOKU_INDEX: baueDokuIndex(ROOT),
     };
 
     log("Migrations-Schritt (Tabellen-Besitzer, ohne PAIBOT_SECRET) …");

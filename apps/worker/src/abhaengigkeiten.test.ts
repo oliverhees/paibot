@@ -10,8 +10,11 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { executeRun } from "@paibot/agents";
-import { createFakeMotor, setupRun } from "@paibot/agents/testing";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { DokuIndexFehler, executeRun } from "@paibot/agents";
+import { createFakeMotor, setupRun, testDokuEnv, testDokuIndexText } from "@paibot/agents/testing";
 import {
   deriveKey,
   encryptSecret,
@@ -53,7 +56,7 @@ describe("buildRunDeps", () => {
     const key = await repo.installationKeys.getActive(db);
     expect(key?.privateKeyEnc.startsWith("v2:")).toBe(true);
 
-    const prepared = await buildRunDeps(db, { PAIBOT_SECRET: secret }).prepare();
+    const prepared = await buildRunDeps(db, { PAIBOT_SECRET: secret, ...testDokuEnv() }).prepare();
     const before = (await setup.receipts()).length;
     const { runId } = await setup.queueMessage("Hallo");
     const outcome = await executeRun(
@@ -71,7 +74,10 @@ describe("buildRunDeps", () => {
   it("ein Schlüssel mit fremder Bindung wird nicht geladen (Fehler, kein stiller Ersatz)", async () => {
     const { db } = await createTestDb();
     const secret = randomBytes(32).toString("base64");
-    const keysKey = deriveKey(loadMasterSecret({ PAIBOT_SECRET: secret }), "keys-v1");
+    const keysKey = deriveKey(
+      loadMasterSecret({ PAIBOT_SECRET: secret, ...testDokuEnv() }),
+      "keys-v1",
+    );
     const pair = generateSigningKey();
     const id = newId("key") as KeyId;
     await repo.installationKeys.create(db, {
@@ -82,13 +88,16 @@ describe("buildRunDeps", () => {
       }),
       fingerprint: fingerprint(pair.publicKey),
     });
-    await expect(buildRunDeps(db, { PAIBOT_SECRET: secret }).prepare()).rejects.toThrow();
+    await expect(
+      buildRunDeps(db, { PAIBOT_SECRET: secret, ...testDokuEnv() }).prepare(),
+    ).rejects.toThrow();
   });
 
   it("vor der Einrichtung ohne Schlüssel: prepare gelingt, ein Beleg scheitert mit einrichtung_offen", async () => {
     const { db } = await createTestDb();
     const prepared = await buildRunDeps(db, {
       PAIBOT_SECRET: randomBytes(32).toString("base64"),
+      ...testDokuEnv(),
     }).prepare();
     await expect(
       prepared.receipts?.appendResult({
@@ -108,7 +117,7 @@ describe("buildRunDeps", () => {
     const { db } = await createTestDb();
     const secret = randomBytes(32).toString("base64");
     // Dieselbe Quelle wie im laufenden Worker: vor der Einrichtung gebaut und vorbereitet.
-    const source = buildRunDeps(db, { PAIBOT_SECRET: secret });
+    const source = buildRunDeps(db, { PAIBOT_SECRET: secret, ...testDokuEnv() });
     await source.prepare();
 
     const setup = await setupRun(db, TOOLS, {
@@ -192,6 +201,48 @@ describe("buildRunDeps", () => {
       });
     } finally {
       await schleuse.close();
+    }
+  });
+});
+
+describe("Doku-Index beim Start", () => {
+  const secret = () => randomBytes(32).toString("base64");
+
+  // Gegenprobe: den Fehler beim Laden in `buildShipped` schlucken (leeres Register) → die
+  // Fälle „fehlt“ und „ungültig“ werden rot.
+  it("mit gültigem Index hat das Register genau das Nachschlagen in der Doku", async () => {
+    const { db } = await createTestDb();
+    const prepared = await buildRunDeps(db, {
+      PAIBOT_SECRET: secret(),
+      ...testDokuEnv(),
+    }).prepare();
+    expect(prepared.tools?.tools.map((tool) => tool.spec.name)).toEqual(["doku_nachschlagen"]);
+  });
+
+  it("ohne lesbaren oder mit ungültigem Index wirft prepare, die Meldung nennt den Weg und keinen Inhalt", async () => {
+    const { db } = await createTestDb();
+    const ordner = mkdtempSync(path.join(tmpdir(), "paibot-worker-index-"));
+    try {
+      const geheim = "GEHEIMER-INHALT-4711";
+      const kaputt = path.join(ordner, "kaputt.json");
+      writeFileSync(kaputt, `{"format": "${geheim}", "v": 2`);
+      const falsch = path.join(ordner, "falsch.json");
+      writeFileSync(falsch, testDokuIndexText().replace("Tagesbudget", geheim));
+      const faelle = [path.join(ordner, "gibt-es-nicht.json"), kaputt, falsch];
+      for (const pfad of faelle) {
+        const quelle = buildRunDeps(db, { PAIBOT_SECRET: secret(), PAIBOT_DOKU_INDEX: pfad });
+        const fehler = await quelle.prepare().then(
+          () => undefined,
+          (e: unknown) => e,
+        );
+        expect(fehler).toBeInstanceOf(DokuIndexFehler);
+        const text = String((fehler as Error).message);
+        expect(text).toContain("pnpm doku:index");
+        expect(text).toContain("PAIBOT_DOKU_INDEX");
+        expect(text).not.toContain(geheim);
+      }
+    } finally {
+      rmSync(ordner, { recursive: true, force: true });
     }
   });
 });

@@ -10,10 +10,13 @@
  */
 
 import {
+  builtinTools,
   createAiSdkMotor,
   createShippedRegistry,
+  dokuIndexPfad,
   executeRun,
   failStaleRuns,
+  ladeDokuIndex,
   RUN_TUNING,
   type RunDeps,
   readSchleuseStatus,
@@ -107,12 +110,20 @@ export function buildRunDeps(db: Database, env: Env): RunDepsSource {
   };
 
   // Register der Werkzeuge: einmal je Prozess gebaut und geprüft (bricht bei einem Fehler ab).
+  // Dazu gehört der Doku-Index der installierten Version: Fehlt er oder ist er ungültig, wirft
+  // `prepare()` beim Start, und der Worker startet nicht (die Meldung nennt `pnpm doku:index`
+  // und `PAIBOT_DOKU_INDEX`, nie Inhalt aus der Datei). Ohne Angabe gilt
+  // `doku-index/doku-index.json` im Arbeitsordner.
   let shipped: Promise<ToolRegistry> | undefined;
+  const buildShipped = async (): Promise<ToolRegistry> => {
+    const dokuIndex = await ladeDokuIndex(dokuIndexPfad(env, process.cwd()));
+    return createShippedRegistry(builtinTools({ dokuIndex }));
+  };
 
   return {
     base,
     async prepare() {
-      shipped ??= createShippedRegistry();
+      shipped ??= buildShipped();
       base.tools ??= await shipped;
       try {
         await holder.load();

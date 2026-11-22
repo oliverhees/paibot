@@ -285,7 +285,7 @@ export function BotAnsicht({ daten, onGespeichert }: BotAnsichtProps) {
         <RechteListe titel={t("bot.darf.erlaubt")} art="ok" eintraege={daten.rechte.erlaubt} />
         <RechteListe titel={t("bot.darf.fragt")} art="warn" eintraege={daten.rechte.fragt} />
         <RechteListe titel={t("bot.darf.nie")} art="fehler" eintraege={daten.rechte.nie} />
-        <p className={styles.text}>{t("bot.darf.werkzeuge", { name: gespeichert.name })}</p>
+        <p className={styles.text}>{t("bot.darf.werkzeug_doku", { name: gespeichert.name })}</p>
         <Link href="/belege" prefetch={false} className={styles.link}>
           {t("bot.darf.belege")}
         </Link>

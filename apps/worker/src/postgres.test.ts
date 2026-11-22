@@ -11,7 +11,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { createFakeMotor, setupRun } from "@paibot/agents/testing";
+import { createFakeMotor, setupRun, testDokuEnv } from "@paibot/agents/testing";
 import { createDb, repo } from "@paibot/db";
 import {
   createPostgresTestDatabase,
@@ -57,6 +57,7 @@ describe.skipIf(BASE_URL === undefined)("Worker gegen echtes Postgres", () => {
       DATABASE_URL: testDb.url,
       MIGRATIONS_DIR: MIGRATIONS_FOLDER,
       NODE_ENV: "test",
+      ...testDokuEnv(),
     };
     const motor = createFakeMotor((input) => [
       { type: "text-delta", text: `Antwort auf ${input.history.length} Nachrichten.` },
@@ -118,10 +119,11 @@ describe.skipIf(BASE_URL === undefined)("Worker gegen echtes Postgres", () => {
           "run.queued",
           "run.started",
           "beleg.created",
+          "draft.delta",
+          "step.finished",
           "message.created",
           "text.delta",
           "message.completed",
-          "step.finished",
           "beleg.created",
         ]);
       }

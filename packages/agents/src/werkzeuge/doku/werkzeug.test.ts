@@ -189,9 +189,10 @@ describe("Keine Pfade, kein Netz", () => {
   });
 });
 
+// Gegenprobe: `builtinTools` liefert `[]` → rot.
 describe("Auslieferung", () => {
-  it("in dieser Fassung bietet die Auslieferung noch kein eingebautes Werkzeug an, auch mit Doku-Index", () => {
-    expect(builtinTools()).toEqual([]);
-    expect(builtinTools({ dokuIndex: index })).toEqual([]);
+  it("die Auslieferung bietet das Nachschlagen in der Doku an; ohne Doku-Index wirft sie", () => {
+    expect(builtinTools({ dokuIndex: index }).map((w) => w.key)).toEqual([DOKU_TOOL_KEY]);
+    expect(() => builtinTools()).toThrow("Doku-Index fehlt");
   });
 });
