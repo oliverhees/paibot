@@ -503,6 +503,126 @@ async function main() {
     await seite.getByRole("article").getByText("stimmt", { exact: true }).waitFor();
   });
 
+  // ---- Werkzeug „In der Doku nachschlagen“ und der Knopf „Schritte“ --------------------------------
+  // Der Test-Anbieter wünscht im ersten Schritt das Werkzeug und antwortet im zweiten mit Text.
+  const NACHSCHLAGEN_FRAGE = "Wie stelle ich das Tagesbudget ein?";
+  const NACHSCHLAGEN_ANTWORT = "Das Tagesbudget stellst du in den Einstellungen ein.";
+  const OHNE_FUND_FRAGE = "Wie verbinde ich Telegram?";
+  const OHNE_FUND_ANTWORT =
+    "In der Doku finde ich dazu nichts; mehr kann ich dir dazu nicht sagen.";
+  /** Chat-Anfragen des Test-Anbieters, die diese Nachricht (und nur diese) betreffen. */
+  const chatAnfragenMit = async (text) =>
+    (await stack.anbieter.anfragen()).filter(
+      (a) => a.path.endsWith("/chat/completions") && JSON.stringify(a.body).includes(text),
+    );
+  const verlaufVon = (seite) => seite.getByRole("log", { name: "Verlauf" });
+  async function nachrichtSenden(seite, text) {
+    await seite.goto(`${app}/`);
+    await seite.getByRole("textbox", { name: "Nachricht" }).fill(text);
+    await seite.getByRole("button", { name: "Senden" }).click();
+  }
+  await schritt(
+    "Doku nachschlagen: Werkzeug-Zeile mit Quellen, Antwort, Beleg gültig",
+    seite,
+    async () => {
+      await stack.anbieter.verhalten({
+        script: {
+          steps: [
+            {
+              toolCalls: [
+                { name: "doku_nachschlagen", arguments: { frage: "Tagesbudget einstellen" } },
+              ],
+            },
+            { text: NACHSCHLAGEN_ANTWORT },
+          ],
+        },
+      });
+      await nachrichtSenden(seite, NACHSCHLAGEN_FRAGE);
+      const verlauf = verlaufVon(seite);
+      await verlauf.getByText(NACHSCHLAGEN_ANTWORT, { exact: true }).waitFor({ timeout: 60_000 });
+      const zeile = verlauf.locator('[data-baustein="werkzeug-zeile"]');
+      if ((await zeile.count()) !== 1) throw new Error("Es fehlt genau eine Werkzeug-Zeile.");
+      const text = ((await zeile.textContent()) ?? "").replace(/\s+/g, " ");
+      for (const muss of ["In der Doku nachschlagen", "fertig", "Abschnitt"]) {
+        if (!text.includes(muss))
+          throw new Error(`Die Werkzeug-Zeile nennt „${muss}“ nicht: ${text}`);
+      }
+      if (text.includes("nichts gefunden")) throw new Error("Die Zeile sagt „nichts gefunden“.");
+      await zeile.getByRole("button").first().click();
+      const quellen = zeile
+        .getByRole("list", { name: "Quellen aus der Doku" })
+        .getByRole("listitem");
+      if ((await quellen.count()) < 1) throw new Error("Die Zeile zeigt keine Quellen.");
+      if (!(await zeile.getByText("R-010").count())) throw new Error("Die Regel R-010 fehlt.");
+      // Die Antwort steht einmal in der Blase, ohne Hinweis „nicht vom Modell“.
+      if ((await verlauf.getByText(NACHSCHLAGEN_ANTWORT, { exact: true }).count()) !== 1) {
+        throw new Error("Die Antwort steht nicht genau einmal im Verlauf.");
+      }
+      if (await verlauf.getByText("nicht vom Modell").count()) {
+        throw new Error("Eine Antwort des Modells trägt den Hinweis „nicht vom Modell“.");
+      }
+      // Beim Anbieter: zwei Anfragen, die zweite trägt das Ergebnis des Werkzeugs als Daten.
+      const anfragen = await chatAnfragenMit(NACHSCHLAGEN_FRAGE);
+      if (anfragen.length !== 2)
+        throw new Error(`Der Anbieter bekam ${anfragen.length} Anfragen statt 2.`);
+      const nachricht = anfragen[1].body.messages.find((m) => m.role === "tool");
+      if (!nachricht || !String(nachricht.content).includes("Tagesbudget")) {
+        throw new Error("Die zweite Anfrage trägt kein Ergebnis des Werkzeugs mit dem Abschnitt.");
+      }
+      // Der Beleg des Aufrufs ist gültig.
+      await neuestenBelegPruefen(seite, app, "werkzeug.aufrufen");
+    },
+  );
+  await schritt(
+    "Doku nachschlagen: nichts gefunden, danach antwortet das Modell",
+    seite,
+    async () => {
+      await stack.anbieter.verhalten({
+        script: {
+          steps: [
+            { toolCalls: [{ name: "doku_nachschlagen", arguments: { frage: OHNE_FUND_FRAGE } }] },
+            { text: OHNE_FUND_ANTWORT },
+          ],
+        },
+      });
+      await nachrichtSenden(seite, OHNE_FUND_FRAGE);
+      const verlauf = verlaufVon(seite);
+      await verlauf.getByText(OHNE_FUND_ANTWORT, { exact: true }).waitFor({ timeout: 60_000 });
+      const zeile = verlauf.locator('[data-baustein="werkzeug-zeile"]');
+      if ((await zeile.count()) !== 1) throw new Error("Es fehlt genau eine Werkzeug-Zeile.");
+      const text = ((await zeile.textContent()) ?? "").replace(/\s+/g, " ");
+      if (!text.includes("nichts gefunden"))
+        throw new Error(`Die Zeile sagt nicht „nichts gefunden“: ${text}`);
+      // Die Antwort ist die des Modells: kein fester Satz von PaiBot, kein Hinweis „nicht vom Modell“.
+      if (await verlauf.getByText("nicht vom Modell").count()) {
+        throw new Error("Nach „nichts gefunden“ erscheint ein fester Satz von PaiBot.");
+      }
+      const anfragen = await chatAnfragenMit(OHNE_FUND_FRAGE);
+      if (anfragen.length !== 2)
+        throw new Error(`Der Anbieter bekam ${anfragen.length} Anfragen statt 2.`);
+    },
+  );
+  await schritt("Knopf „Schritte“: Werkzeug-Zeile aus, an", seite, async () => {
+    const knopf = seite.getByRole("button", { name: /Schritte/ });
+    const zeile = verlaufVon(seite).locator('[data-baustein="werkzeug-zeile"]');
+    if ((await knopf.getAttribute("aria-pressed")) !== "true" || (await zeile.count()) !== 1) {
+      throw new Error("Anfangs müssen Knopf „Schritte“ an und die Werkzeug-Zeile da sein.");
+    }
+    await knopf.click();
+    if ((await knopf.getAttribute("aria-pressed")) !== "false")
+      throw new Error("Der Knopf ist nicht aus.");
+    if ((await zeile.count()) !== 0)
+      throw new Error("Die Werkzeug-Zeile steht trotz „Schritte“ aus da.");
+    // Die Antwort des Modells bleibt.
+    await verlaufVon(seite).getByText(OHNE_FUND_ANTWORT, { exact: true }).waitFor();
+    await knopf.click();
+    await zeile.first().waitFor({ timeout: 10_000 });
+    if ((await knopf.getAttribute("aria-pressed")) !== "true" || (await zeile.count()) !== 1) {
+      throw new Error("Mit „Schritte“ an muss die Werkzeug-Zeile wieder da sein.");
+    }
+    await stack.anbieter.verhalten({ script: null, reply: BEISPIEL_ANTWORT });
+  });
+
   await schritt(
     "Modell und Anbieter: Öffnen und Neuladen schreibt keine Belege",
     seite,
@@ -710,9 +830,27 @@ async function main() {
       throw new Error("Die ganze Antwort ist schon da, obwohl der Anbieter angehalten hat.");
     }
   });
+  await schritt("Handy: Neuladen mitten in der Antwort", handySeite, async () => {
+    // Der Lauf geht weiter; die Seite zeigt den vorläufigen Text wieder, nicht als Antwort.
+    await handySeite.reload();
+    await handySeite.getByText(HANDY_ANTWORT.slice(0, 16), { exact: false }).waitFor();
+    await handySeite.getByRole("button", { name: "Stopp" }).waitFor();
+    await handySeite.locator('[data-baustein="vorlaeufiger-text"]').waitFor();
+  });
   await schritt("Handy: Stopp bricht die Antwort beim Anbieter ab", handySeite, async () => {
     await handySeite.getByRole("button", { name: "Stopp" }).click();
-    await handySeite.getByText("Abgebrochen. Der Text bis hierhin bleibt stehen.").waitFor();
+    // Der Text bis zum Stopp ist keine Antwort: Er steht eingeklappt als Zwischenschritt, darunter
+    // sagt PaiBot, dass abgebrochen wurde, bevor das Modell geantwortet hat.
+    await handySeite.getByText(/Abgebrochen, bevor .* geantwortet hat\./).waitFor();
+    await handySeite.getByText("Zwischenschritt – vorläufig, nicht geprüft").waitFor();
+    if (
+      await handySeite
+        .getByText(/^Gern\. Das hier ist/)
+        .first()
+        .isVisible()
+    ) {
+      throw new Error("Der Text bis zum Stopp steht ausgeklappt oder als Antwort da.");
+    }
     // Gegenprobe beim Anbieter: Die Verbindung zur letzten Chat-Anfrage wurde vom Aufrufer
     // geschlossen, nicht vom Anbieter beendet.
     let letzte;
