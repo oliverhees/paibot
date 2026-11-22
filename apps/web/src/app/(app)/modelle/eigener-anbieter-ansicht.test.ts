@@ -173,4 +173,12 @@ describe("Quelltext der Seite", () => {
     expect(quelle).toContain("{!bearbeiten && anbieter !== undefined && (");
     expect(quelle).not.toMatch(/hidden=\{bearbeiten\}/);
   });
+
+  it("der Name des Anbieters steht in Sätzen nur über anbieterImSatz („für Lokaler Anbieter“ wäre holprig)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const quelle = readFileSync(new URL("./ModelleAnsicht.tsx", import.meta.url), "utf8");
+    expect(quelle).toContain("anbieterImSatz");
+    expect(quelle).not.toMatch(/anbieter: name\b/);
+    expect(quelle).not.toMatch(/anbieter: (weg|neu)\.name/);
+  });
 });

@@ -681,7 +681,6 @@ export const de = {
   "modelle.liste.anzahl": "{anzahl} Modelle",
   "modelle.liste.neu_laden": "Liste neu laden",
   "modelle.liste.name": "Modelle von {anbieter}",
-  "modelle.herkunft": "über {anbieter} · {region}",
   "modelle.aktuell": "aktuell",
   "modelle.aktuell.text": "{name} arbeitet mit {modell}.",
   "modelle.aktuell.keins": "{name} hat noch kein Modell.",

@@ -31,10 +31,10 @@ Den Anbieter verbindest du meist schon in der Einrichtung. Danach änderst du al
 3. Klicke „Schlüssel ersetzen“ und füge den neuen Schlüssel in das Feld ein.
 4. Klicke „Verbindung testen“. Nimmt der Anbieter den Schlüssel nicht an, steht rot darunter, was du tun kannst; gespeichert ist dann nichts.
 
-   ![Feld „Neuer Schlüssel für Lokaler Anbieter“ mit einem falschen Beispiel-Schlüssel; darunter rot: „Verbindung fehlgeschlagen“ mit dem Grund und dem Ausweg](assets/screenshots/modelle-schluessel-falsch.png)
+   ![Feld „Neuer Schlüssel für ‚Lokaler Anbieter‘“ mit einem falschen Beispiel-Schlüssel; darunter rot: „Verbindung fehlgeschlagen“ mit dem Grund und dem Ausweg](assets/screenshots/modelle-schluessel-falsch.png)
 5. Klicke „Schlüssel speichern“. PaiBot prüft den Schlüssel beim Anbieter noch einmal und speichert ihn nur, wenn er angenommen wird. Danach lädt die Modell-Liste neu.
 
-   ![Nach „Schlüssel speichern“: Meldung „Schlüssel gespeichert. Die Verbindung zu Lokaler Anbieter steht.“, Marke „verbunden“](assets/screenshots/modelle-schluessel-gespeichert.png)
+   ![Nach „Schlüssel speichern“: Meldung „Schlüssel gespeichert. Die Verbindung zu ‚Lokaler Anbieter‘ steht.“, Marke „verbunden“](assets/screenshots/modelle-schluessel-gespeichert.png)
 
 **Modell wählen**
 
@@ -83,7 +83,7 @@ Bei EUrouter wählst du keine Modelle aus einer Liste, sondern eine deiner Routi
     ![Formular mit der Adresse „http://postgres:5432/v1“: rot am Feld „Diese Adresse gehört zu einem Dienst von PaiBot selbst und ist als Anbieter nicht erlaubt.“](assets/screenshots/modelle-eigen-gesperrt.png)
 20. Nach dem Speichern steht unter dem Knopf „… ist gespeichert. Die Verbindung steht.“ Oben zeigt die Karte „Anbieter“ jetzt den neuen Anbieter, darunter seine Modelle.
 
-    ![Oben der neue Anbieter „Dienst auf meinem Rechner“ mit Adresse, Region „lokal“ und „Schlüssel hinterlegt“, darunter seine Modelle; unten die Meldung „Dienst auf meinem Rechner ist gespeichert. Die Verbindung steht.“](assets/screenshots/modelle-eigen-gespeichert.png)
+    ![Oben der neue Anbieter „Dienst auf meinem Rechner“ mit Adresse, Region „lokal“ und „Schlüssel hinterlegt“, darunter seine Modelle; unten die Meldung „‚Dienst auf meinem Rechner‘ ist gespeichert. Die Verbindung steht.“](assets/screenshots/modelle-eigen-gespeichert.png)
 21. Sobald es mehr als einen Anbieter gibt, wählst du oben bei „Angezeigter Anbieter“, welcher Anbieter und welche Modell-Liste angezeigt werden. Ein Modell dieses Anbieters übernimmst du wie in den Schritten 6 bis 8.
 
     ![Karte „Anbieter“ mit der Auswahl „Angezeigter Anbieter: Dienst auf meinem Rechner · lokal“; darunter die Modelle dieses Anbieters](assets/screenshots/modelle-eigen-angezeigt.png)
@@ -102,11 +102,11 @@ Bei EUrouter wählst du keine Modelle aus einer Liste, sondern eine deiner Routi
 
 25. Klicke „Anbieter entfernen“ (bei EUrouter heißt der Knopf „Schlüssel entfernen“) und bestätige die Rückfrage. Damit entfernst du den Anbieter samt Schlüssel und Modell-Liste. Frühere Antworten in deinen Unterhaltungen bleiben. Arbeitet dein Bot gerade mit einem Modell dieses Anbieters, sagt die Rückfrage das: Danach hat er kein Modell mehr, bis du ein anderes wählst.
 
-    ![Rückfrage „Dienst auf meinem Rechner entfernen?“ mit „Abbrechen“ und „Entfernen“](assets/screenshots/modelle-eigen-entfernen.png)
+    ![Rückfrage „‚Dienst auf meinem Rechner‘ entfernen?“ mit „Abbrechen“ und „Entfernen“](assets/screenshots/modelle-eigen-entfernen.png)
 26. Schreibt dein Bot in diesem Moment mit einem Modell dieses Anbieters, lehnt PaiBot das Entfernen ab: „… schreibt gerade mit einem Modell von …“. Warte, bis die Antwort fertig ist, oder brich sie im Chat ab.
 27. Entfernst du den letzten Anbieter, fügst du unter „Anbieter hinzufügen“ wieder einen hinzu.
 
-    ![Rückfrage „Lokaler Anbieter entfernen?“: Der Bot arbeitet gerade mit einem Modell dieses Anbieters und hat danach keins mehr](assets/screenshots/modelle-entfernen.png)
+    ![Rückfrage „‚Lokaler Anbieter‘ entfernen?“: Der Bot arbeitet gerade mit einem Modell dieses Anbieters und hat danach keins mehr](assets/screenshots/modelle-entfernen.png)
 
 Beispiel für das Ergebnis eines Tests mit falschem Schlüssel:
 
@@ -128,11 +128,11 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung. Sie zeigen d
 
 Nach dem Entfernen eines weiteren Anbieters zeigt die Seite wieder den verbleibenden:
 
-![Nach dem Entfernen: Meldung „Dienst auf meinem Rechner ist entfernt.“; oben wieder „Lokaler Anbieter“ ohne Auswahl](assets/screenshots/modelle-eigen-entfernt.png)
+![Nach dem Entfernen: Meldung „‚Dienst auf meinem Rechner‘ ist entfernt.“; oben wieder „Lokaler Anbieter“ ohne Auswahl](assets/screenshots/modelle-eigen-entfernt.png)
 
 Nach dem Entfernen des letzten Anbieters hat dein Bot kein Modell mehr, und du fügst unter „Anbieter hinzufügen“ einen neuen hinzu:
 
-![Seite „Modell und Anbieter“ nach „Anbieter entfernen“: „Noch kein Anbieter“ mit dem Hinweis auf „Anbieter hinzufügen“, Meldung „Lokaler Anbieter ist entfernt.“; darunter „Kai hat noch kein Modell.“](assets/screenshots/modelle-entfernt.png)
+![Seite „Modell und Anbieter“ nach „Anbieter entfernen“: „Noch kein Anbieter“ mit dem Hinweis auf „Anbieter hinzufügen“, Meldung „‚Lokaler Anbieter‘ ist entfernt.“; darunter „Kai hat noch kein Modell.“](assets/screenshots/modelle-entfernt.png)
 
 Am Handy stehen die Karten untereinander:
 
