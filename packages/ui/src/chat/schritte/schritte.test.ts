@@ -62,12 +62,16 @@ describe("Texte der Schritte", () => {
     new URL("../../../../shared/src/i18n/de.ts", import.meta.url),
     "utf-8",
   );
-  const block = quelle.slice(quelle.indexOf("// Schritte im Chat"));
+  const ab = quelle.slice(quelle.indexOf("// Schritte im Chat"));
+  // Der Block reicht bis zum nächsten Kommentar; was danach folgt, gehört anderen Zweigen.
+  const ende = ab.indexOf("\n  // ", 10);
+  const block = ende < 0 ? ab : ab.slice(0, ende);
+  const danach = ende < 0 ? "" : ab.slice(ende);
   const zeilen = [...block.matchAll(/"schritte\.[a-z_.]+":\s*\n?\s*"([^"]*)"/g)].map((m) => m[1]);
 
-  it("der Block ist da und am Ende der Datei", () => {
+  it("der Block ist da und geschlossen: danach folgt kein Text der Schritte", () => {
     expect(zeilen.length).toBeGreaterThan(40);
-    expect(block.indexOf("// ", 10)).toBe(-1);
+    expect(danach).not.toMatch(/"schritte\./);
   });
 
   it("kein „Open Source“, „DSGVO“, „EU“, „sicher“", () => {
