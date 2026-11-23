@@ -93,6 +93,24 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     grund:
       "Ereignis-Strom je Unterhaltung mit fester Nummer je Ereignis; gelöscht werden nur Zwischenstücke der Antwort (`text.delta`, `draft.delta`) und alles mit der Unterhaltung.",
   },
+  team_anlagen: {
+    klasse: "A",
+    geheim: "nein",
+    grund:
+      "Was ein Entwurf angelegt hat (Bots, Teams), nur anhängen; Trigger weisen Ändern und Löschen ab.",
+  },
+  faeden: {
+    klasse: "A",
+    geheim: "nein",
+    grund:
+      "Kopf eines Fadens (Ziel, Abnahme, Herkunft), wird einmal mit der Unterhaltung angelegt und geht nur mit ihr.",
+  },
+  faden_punkte: {
+    klasse: "A",
+    geheim: "nein",
+    grund:
+      "Die Punkte „fertig, wenn“ eines Fadens in fester Reihenfolge; nur anlegen, sie ändern sich nicht.",
+  },
 
   // B: letzter Stand
   settings: {
@@ -124,6 +142,17 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     klasse: "B",
     geheim: "nein",
     grund: "Unterhaltungen mit Titel und Schleusen-Einstellung; werden geändert und gelöscht.",
+  },
+  teams: {
+    klasse: "B",
+    geheim: "nein",
+    grund: "Teams aus Bots mit Name, Leitung und Zusammenarbeit; werden geändert.",
+  },
+  team_entwuerfe: {
+    klasse: "B",
+    geheim: "nein",
+    grund:
+      "Entwürfe für ein Team; der Status wird fortgeschrieben (angelegt, rückgängig), es zählt der neueste Stand.",
   },
   messages: {
     klasse: "B",

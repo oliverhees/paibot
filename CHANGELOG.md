@@ -64,6 +64,7 @@ PaiBot ist im Bau. Mit diesem Stand lässt sich PaiBot einrichten und benutzen: 
 - Die Datenbank hat getrennte Rollen für Migrationen und für die App; die App läuft mit der eingeschränkten Rolle ([Installation](docs/installation.md))
 - Docker Compose: internes Netz für die Datenbank, Pflichtwerte, gehärtete Container, Healthchecks für Web-App und Worker
 - Die Tests laufen auch gegen eine echte Postgres-Datenbank (eine Variable genügt, siehe [Entwickeln und Testen](docs/entwickeln.md))
+- Datenbank für Teams aus Bots (Migrationen 0017 und 0018): Teams, Entwürfe, Fäden; jede neue Tabelle hat eine Abgleich-Klasse, Art und Team einer Unterhaltung stehen nach dem Anlegen fest, das Tor arbeitet mit Fassung 4. Kein Weg zurück: vor dem Update eine Sicherung anlegen ([Bots und Teams](docs/entwickler/bots-und-teams.md), #90)
 
 ### Sicherheit
 

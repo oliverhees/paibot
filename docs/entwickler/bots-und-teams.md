@@ -53,6 +53,16 @@ Zwei Migrationen, getrennt, weil die zweite mit dem Tor zusammen in Kraft tritt 
 | `conversations.kind`, `conversations.team_id`, `conversations.bot_id` (leer möglich) | Art der Unterhaltung, Team eines Fadens                                                                                                                                                                                                                                                       |
 | `settings.stabschef_erlaubt`                                                         | ob Pai Teams Aufträge geben darf (ausgeschaltet; es gibt noch keine Funktion dafür)                                                                                                                                                                                                           |
 
+**Abgleich-Klassen der neuen Tabellen** (`packages/db/src/schema/abgleich-klassen.ts#ABGLEICH_KLASSEN`, geprüft in `packages/db/src/abgleich-klassen.test.ts`): Die Klasse sagt, wie eine Tabelle später zwischen zwei Orten einer Installation abgeglichen würde. Keine der fünf Tabellen enthält ein Geheimnis.
+
+| Tabelle          | Klasse            | Warum                                                                   |
+| ---------------- | ----------------- | ----------------------------------------------------------------------- |
+| `teams`          | B (letzter Stand) | Name, Leitung und Zusammenarbeit werden geändert                        |
+| `team_entwuerfe` | B (letzter Stand) | der Stand des Entwurfs wird fortgeschrieben (angelegt, rückgängig)      |
+| `team_anlagen`   | A (nur anhängen)  | Trigger weisen Ändern und Löschen ab                                    |
+| `faeden`         | A (nur anhängen)  | der Kopf wird einmal mit der Unterhaltung angelegt und geht nur mit ihr |
+| `faden_punkte`   | A (nur anhängen)  | die Punkte werden nur angelegt und ändern sich nicht                    |
+
 **Was beim Entfernen passiert** (`packages/db/src/teams-update-postgres.test.ts`, `packages/db/src/repo/bots-loeschen.test.ts`):
 
 | Was wird entfernt               | Folge                                                                                                                                                     |

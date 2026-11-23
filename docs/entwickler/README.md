@@ -31,6 +31,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | Apps (Datenmodell)                                  | [apps-datenmodell.md](apps-datenmodell.md)             | [funktion-tor.md](../funktion-tor.md#pai-liest-in-apps-fassung-3)           |
 | Installierbare Web-App                              | [web-app.md](web-app.md)                               | [installation.md](../installation.md#als-web-app-installieren)              |
 | Bots und Teams (Datenbank)                          | [bots-und-teams.md](bots-und-teams.md)                 | [funktion-tor.md](../funktion-tor.md#bots-pausieren-und-teams-fassung-4)    |
+| Datenbank für Teams (A)                             | [datenbank-teams-a.md](datenbank-teams-a.md)           | [funktion-datenbank-teams-a.md](../funktion-datenbank-teams-a.md)           |
 | Team-Entwurf (Format)                               | [team-entwurf.md](team-entwurf.md)                     | folgt mit der Oberfläche                                                    |
 | Doku-Index im Image                                 | [doku-index.md](doku-index.md)                         | –                                                                           |
 | In der Doku nachschlagen (noch nicht eingeschaltet) | [doku-nachschlagen.md](doku-nachschlagen.md)           | –                                                                           |

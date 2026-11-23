@@ -11,6 +11,8 @@
  * @since     2026-11-23
  */
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { is } from "drizzle-orm";
 import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
@@ -81,6 +83,11 @@ describe("Abgleich-Klassen der Tabellen", () => {
       app_tools: "A",
       bot_app_grants: "A",
       conversation_events: "A",
+      team_anlagen: "A",
+      faeden: "A",
+      faden_punkte: "A",
+      teams: "B",
+      team_entwuerfe: "B",
       messages: "B",
       runs: "B",
       tool_calls: "B",
@@ -106,6 +113,26 @@ describe("Abgleich-Klassen der Tabellen", () => {
   it("Sitzungen, Geräte, Versuchszähler und der Zustand der Schleuse bleiben am Ort", () => {
     for (const name of ["sessions", "geraete", "rate_limits", "schleuse_zustand"]) {
       expect(ABGLEICH_KLASSEN[name]?.klasse, name).toBe("C");
+    }
+  });
+});
+
+describe("Entwickler-Doku zu Bots und Teams", () => {
+  const DOKU = readFileSync(
+    fileURLToPath(new URL("../../../docs/entwickler/bots-und-teams.md", import.meta.url)),
+    "utf8",
+  );
+
+  it("die Doku nennt die fünf Tabellen für Teams mit derselben Klasse wie ABGLEICH_KLASSEN", () => {
+    const zeilen = new Map(
+      [...DOKU.matchAll(/^\|\s*`([a-z_]+)`\s*\|\s*([ABC]) \(/gm)].map((treffer) => [
+        treffer[1],
+        treffer[2],
+      ]),
+    );
+    for (const name of ["teams", "team_entwuerfe", "team_anlagen", "faeden", "faden_punkte"]) {
+      expect(zeilen.get(name), name).toBeDefined();
+      expect(zeilen.get(name), name).toBe(ABGLEICH_KLASSEN[name]?.klasse);
     }
   });
 });

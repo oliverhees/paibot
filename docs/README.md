@@ -28,6 +28,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Datenschleuse           | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar         |
 | Belege                  | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern                      |
 | Das Tor und die Regeln  | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern                      |
+| Datenbank für Teams (A) | [funktion-datenbank-teams-a.md](funktion-datenbank-teams-a.md)           | vorhanden, ohne Oberfläche                  |
 | Einstellungen und Info  | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern                      |
 | Selbsttest              | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern                      |
 | Architektur             | [architektur.md](architektur.md)                                         | vorhanden, wächst mit                       |
