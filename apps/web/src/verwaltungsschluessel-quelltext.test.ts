@@ -62,16 +62,21 @@ describe("zweiter Schlüssel im Quelltext", () => {
 
   it("der Vertrag der Abgleich-Klassen nennt nur den Spaltennamen, nie den Wert", () => {
     // `abgleich-klassen.ts` steht in der Liste oben, weil es die Spalte als Text kennzeichnet
-    // („enthält ein Geheimnis“). Es liest, schreibt und importiert nichts davon: der Name kommt nur
-    // als Zeichenkette vor, nie als Feld (`managementKeyEnc`), und die Datei hat keine Importe.
-    const text = ohneKommentare(
-      readFileSync(path.join(WURZEL, "packages/db/src/schema/abgleich-klassen.ts"), "utf8"),
+    // („enthält ein Geheimnis“). Geprüft wird der rohe Text der Datei, mit Kommentaren: Sie liest,
+    // schreibt und lädt nichts davon.
+    const text = readFileSync(
+      path.join(WURZEL, "packages/db/src/schema/abgleich-klassen.ts"),
+      "utf8",
     );
-    expect(text).not.toMatch(/^\s*import\s/m);
-    // Ohne Zeichenketten bleibt kein Vorkommen übrig: Der Name steht nur in Texten.
-    const ohneTexte = text.replace(/"(?:[^"\\]|\\.)*"/g, '""');
-    expect(ohneTexte).not.toMatch(/managementKeyEnc|management_key_enc/);
+    // 1. Keine Importe, Requires und Re-Exports (auch `import{…}`, `import("…")`, `export … from`).
+    expect(text).not.toMatch(/\bimport\b|\brequire\b|\bfrom\s*["'`]/);
+    // 2. Kein Zugriff über eine Zeichenkette (`zeile["…"]`), auch nicht über zusammengesetzte Namen.
+    expect(text).not.toMatch(/[\w)\]]\s*\[\s*["'`]/);
+    // 3. Nur die genau erlaubten Vorkommen (der Name in Anführungszeichen oder in Rückwärtsstrichen,
+    //    also als Text) bleiben außen vor; sonst darf der Name nirgends stehen, auch nicht als Feld.
     expect(text).toMatch(/"management_key_enc"/);
+    const rest = text.replace(/"management_key_enc"|`management_key_enc`/g, "");
+    expect(rest).not.toMatch(/managementKeyEnc|management_key_enc/);
   });
 
   it("die Regel-Liste wird nur von der Verwaltung, der Einrichtung und den Diensten gelesen", () => {
