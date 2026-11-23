@@ -51,8 +51,9 @@ const VERBOTENE_DATEIEN: readonly RegExp[] = [
   /^apps\/worker\//,
   // Bibliotheken des Servers
   /(?:^|\/)node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:postgres|drizzle-orm|@ai-sdk|pg-boss)(?:\/|$)/,
-  // Teile der Apps, die mit Adresse, Token, Datenbank oder Sperre arbeiten
-  /^apps\/web\/src\/lib\/apps\/(?:abgleich|adresse|dienste|seite|sperre|token|verwaltung)\.ts$/,
+  // Teile der Apps, die mit Adresse, Token, Datenbank oder Sperre arbeiten, und das Verzeichnis
+  // fertiger Apps (nur für den Server)
+  /^apps\/web\/src\/lib\/apps\/(?:abgleich|adresse|dienste|seite|sperre|token|verwaltung|vorlagen)\.ts$/,
   // Tor und Datenbank der Web-App
   /^apps\/web\/src\/lib\/(?:datenbank|gate|speicher|warteschlange)\.ts$/,
 ];
@@ -135,6 +136,8 @@ describe("Browser-Bündel der Client-Teile der Seite „Apps“ und der Pfade", 
     "Alias auf den Token-Pfad": 'import "@/lib/apps/token"; export const x = 1;',
     "Alias auf die Verwaltung der Apps": 'import "@/lib/apps/verwaltung"; export const x = 1;',
     "Alias auf das Tor der Web-App": 'import "@/lib/gate"; export const x = 1;',
+    "Alias auf das Verzeichnis fertiger Apps":
+      'import { VORLAGEN } from "@/lib/apps/vorlagen"; export const x = VORLAGEN;',
     "Paket mit der Token-Verschlüsselung":
       'import { hashToken } from "@paibot/crypto"; export const x = hashToken;',
     "Paket mit der MCP-Schicht":
@@ -143,6 +146,15 @@ describe("Browser-Bündel der Client-Teile der Seite „Apps“ und der Pfade", 
     "Paket mit dem Tor": 'import "@paibot/gate"; export const x = 1;',
     "Weitergereicht über eine Hilfsdatei der Web-App":
       'import { holeAdresse } from "@/lib/apps/ansicht-weg"; export const x = holeAdresse;',
+  };
+
+  /**
+   * Die Datei, die eine Probe selbst melden muss. Wer nur prüft, dass „irgendetwas“ verboten ist,
+   * bleibt grün, auch wenn die Datei aus der Sperrliste fehlt, weil ein Import von ihr gesperrt ist
+   * (`vorlagen.ts` bindet `adresse.ts` ein).
+   */
+  const ERWARTETE_DATEI: Record<string, string> = {
+    "Alias auf das Verzeichnis fertiger Apps": "apps/web/src/lib/apps/vorlagen.ts",
   };
 
   for (const [name, quelle] of Object.entries(PROBEN)) {
@@ -169,6 +181,8 @@ describe("Browser-Bündel der Client-Teile der Seite „Apps“ und der Pfade", 
         ],
       });
       expect(ergebnis.verboten.length, `${name}: ${ergebnis.fehler.join("; ")}`).toBeGreaterThan(0);
+      const erwartet = ERWARTETE_DATEI[name];
+      if (erwartet !== undefined) expect(ergebnis.verboten).toContain(erwartet);
     });
   }
 

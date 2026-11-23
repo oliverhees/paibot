@@ -75,6 +75,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 
 ## Grenzen
 
+- **Fertige Apps:** Einen Katalog fertiger Apps (Notion, Linear, Atlassian, GitHub) gibt es in der Oberfläche noch nicht; im Code liegt bisher nur das Verzeichnis der Vorlagen ([Fertige Apps](funktion-fertige-apps.md)).
 - **Neu verbinden:** Eine getrennte App lässt sich nur mit der gespeicherten Adresse neu verbinden. Die Einstufungen und der Zugriff der Bots aus der früheren Verbindung gelten nicht mehr.
 - **Nur lesen:** PaiBot liest Werkzeuge und bietet nur solche an, die du als „liest“ bestätigt hast. Schreibende Werkzeuge gibt es nicht.
 - **Ob ein Werkzeug wirklich nur liest, weiß PaiBot nicht.** Du entscheidest das beim Einstufen; die Angabe der App („nur lesend“) zählt nicht. Das Verhalten eines Servers kann sich ändern, ohne dass sich die Beschreibung ändert; PaiBot merkt eine geänderte Beschreibung, aber nicht, was das Werkzeug dahinter tut.

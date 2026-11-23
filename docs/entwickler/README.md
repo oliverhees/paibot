@@ -38,6 +38,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | Teamchat (Regeln)                                   | [teamchat.md](teamchat.md)                             | –                                                                           |
 | Werkzeug-Kern (Vertrag, Datenbank, Schleife)        | [werkzeug-kern.md](werkzeug-kern.md)                   | [funktion-tor.md](../funktion-tor.md)                                       |
 | Apps (MCP-Schicht, noch nicht angeschlossen)        | [apps.md](apps.md)                                     | folgt mit der Oberfläche                                                    |
+| Fertige Apps (Verzeichnis der Vorlagen)             | [fertige-apps.md](fertige-apps.md)                     | [funktion-fertige-apps.md](../funktion-fertige-apps.md)                     |
 | Datenbank (Abgleich-Klasse je Tabelle)              | [datenbank.md](datenbank.md)                           | –                                                                           |
 | Vorlage                                             | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
 

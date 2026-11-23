@@ -2254,6 +2254,19 @@ export const de = {
   "apps.zeile.zugriff": "Zugriff für {anzahl} Bots",
   "apps.zeile.zugriff.eins": "Zugriff für 1 Bot",
   "apps.zeile.zugriff.keiner": "kein Bot hat Zugriff",
+  // Verzeichnis fertiger Apps (apps/web/src/lib/apps/vorlagen.ts): Name und Hinweis zum Token je Vorlage
+  "apps.vorlage.notion.name": "Notion",
+  "apps.vorlage.notion.token.hinweis":
+    "Laut Notion geht die Anmeldung mit Token nur für Arbeitsbereiche mit Business- oder Enterprise-Tarif und nur für deren Besitzer. Nimm dafür möglichst kein Konto mit Admin-Rechten und nur einen Arbeitsbereich mit Daten, die der Bot sehen darf.",
+  "apps.vorlage.linear.name": "Linear",
+  "apps.vorlage.linear.token.hinweis":
+    "Laut Linear nimmt der Dienst einen Token oder einen API-Schlüssel von Linear an.",
+  "apps.vorlage.atlassian.name": "Atlassian",
+  "apps.vorlage.atlassian.token.hinweis":
+    "Atlassian nennt für die Anmeldung mit API-Token zwei Wege: Basic oder Bearer mit einem Service-Konto. PaiBot schickt den Token zurzeit nur als Bearer, deshalb geht hier nur das Service-Konto. Gib dem Service-Konto nur die Rechte, die der Bot braucht, keine Admin-Rechte.",
+  "apps.vorlage.github.name": "GitHub",
+  "apps.vorlage.github.token.hinweis":
+    "Laut GitHub nimmt der Dienst einen persönlichen Zugriffs-Token (PAT) an.",
   "apps.zeile.token": "Token hinterlegt, wird nicht mehr angezeigt",
   "apps.zeile.ohne_token": "ohne Token verbunden",
   "apps.zeile.notaus": "Not-Aus aktiv: PaiBot ruft diese App gerade nicht auf.",
