@@ -197,7 +197,7 @@ Die Seite „Regeln“ zeigt diese Nummern noch nicht, weil du die Aktionen noch
 
 Ein **Faden** ist eine Unterhaltung, die einem Team gehört und keinen eigenen Bot hat. In dieser Version nimmt ein Faden keine Nachricht an: Schreibst du in einen Faden, kommt der Hinweis „In einem Faden antwortet noch kein Bot.“, und es entsteht weder eine Nachricht noch eine Antwort.
 
-**Löschen:** Einen Bot, der schon gearbeitet hat, und deinen Standard-Bot kann die Datenbank nicht löschen; ein Team mit Fäden auch nicht. Eine Funktion zum Löschen gibt es in der Oberfläche noch nicht.
+**Löschen:** Einen Bot, der gerade antwortet, und deinen Standard-Bot kann die Datenbank nicht löschen; ein Team mit Fäden auch nicht. Eine Funktion zum Löschen gibt es in der Oberfläche noch nicht.
 
 ## So funktioniert es
 

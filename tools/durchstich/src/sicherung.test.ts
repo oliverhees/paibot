@@ -886,7 +886,7 @@ describe("Liste der erlaubten Funktionen beim Zurückspielen", () => {
     expect([...imSkript].sort()).toEqual([...ausDateien].sort());
   });
 
-  it("lässt die zwei Trigger-Funktionen der Unterhaltungen zu, eine unbekannte Funktion nicht", () => {
+  it("lässt die zwei Trigger-Funktionen der Unterhaltungen zu, eine fremde Funktion nicht", () => {
     const skriptText = readFileSync(SKRIPT, "utf8");
     const liste = /ERLAUBTE_FUNKTIONEN="([^"]*)"/.exec(skriptText)?.[1] ?? "";
     const namen = new Set(
@@ -897,7 +897,7 @@ describe("Liste der erlaubten Funktionen beim Zurückspielen", () => {
     );
     expect(namen.has("paibot_unterhaltung_festhalten")).toBe(true);
     expect(namen.has("paibot_faden_nur_fuer_faden")).toBe(true);
-    expect(namen.has("extra")).toBe(false);
+    expect(namen.has("pg_sleep")).toBe(false);
   });
 });
 

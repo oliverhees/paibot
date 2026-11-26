@@ -20,6 +20,8 @@ Die Datenbank trägt Bots mit Pause und Team, Teams, Entwürfe, deren Anlagen un
 
 ## Aufbau
 
+Verworfen wurde eine gemeinsame Migration: Die Datenbankänderungen und das Inkrafttreten der neuen Tor-Aktionen bleiben getrennt, damit das Update die beiden Schritte eindeutig zuordnen kann. Ebenfalls verworfen wurde, die Bedienung schon in diesem Teil mitzuliefern; Seiten und Routen kommen erst mit der Oberfläche.
+
 | Datei                                        | Aufgabe                                        |
 | -------------------------------------------- | ---------------------------------------------- |
 | `packages/db/src/schema/teams.ts`            | die fünf neuen Tabellen                        |

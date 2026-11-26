@@ -51,7 +51,7 @@ describe("Unterhaltung: Art und Team stehen fest", () => {
     return id;
   }
 
-  // Gegenprobe: den Trigger `conversations_festhalten` aus 0017 entfernen → alle vier rot.
+  // Gegenprobe: den Trigger `conversations_festhalten` aus 0017 entfernen → die beiden Umschreibungen rot.
   it("ein Faden wird nicht zum Direkt-Chat, ein Direkt-Chat nicht zum Faden", async () => {
     const t = await team("A");
     const f = await faden(t);

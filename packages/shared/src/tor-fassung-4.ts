@@ -2,10 +2,10 @@
  * PaiBot – Vertrag der Tor-Fassung 4 „Bots, Teams und Fäden als Daten“: was Fassung 4 gegenüber
  * Fassung 3 neu kennt (Aktionen des Besitzers für Bots, Teams, Entwürfe und Fäden, den Fakt
  * `botPaused`, die Grenzen G-15, G-32 bis G-34, die Vorbedingungen V-25, V-27 bis V-31, V-37 und
- * V-42 bis V-44, Fehlercodes). Der Vertrag steht zur Prüfung, ist aber noch nicht eingefroren und
- * nicht in Kraft: Das Tor entscheidet weiter mit `GATE_FORMAT` aus `./gate`, und die Listen
- * `LIMITS_BY_ID` und `PRECONDITIONS` dort bleiben, wie sie sind. Die neuen Aktionen stehen in
- * `ACTIONS`, aber in `UNSTORED_ACTION_TYPES`, bis die Datenbank sie speichern kann.
+ * V-42 bis V-44, Fehlercodes). Der Vertrag ist als Fassung 4 eingefroren und in Kraft: Das Tor
+ * entscheidet mit `GATE_FORMAT` aus `./gate`, und die Listen `LIMITS_BY_ID` und `PRECONDITIONS`
+ * der Fassung 4 stehen dafür in `packages/gate/src/fassungen/fassung-4.ts`. Die Aktionen stehen
+ * in `ACTIONS` und werden von der Datenbank gespeichert.
  *
  * Die Auswertung steht in `packages/gate/src/fassungen/fassung-4.ts`; ein Test dort prüft, dass
  * sie genau diesen Vertrag umsetzt.
