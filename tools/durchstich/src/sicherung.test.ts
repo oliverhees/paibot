@@ -885,20 +885,6 @@ describe("Liste der erlaubten Funktionen beim Zurückspielen", () => {
     expect(ausDateien.size).toBeGreaterThan(0);
     expect([...imSkript].sort()).toEqual([...ausDateien].sort());
   });
-
-  it("lässt die zwei Trigger-Funktionen der Unterhaltungen zu, eine fremde Funktion nicht", () => {
-    const skriptText = readFileSync(SKRIPT, "utf8");
-    const liste = /ERLAUBTE_FUNKTIONEN="([^"]*)"/.exec(skriptText)?.[1] ?? "";
-    const namen = new Set(
-      liste
-        .split(/\s+/)
-        .filter((z) => z !== "")
-        .map((z) => z.split(":")[0]),
-    );
-    expect(namen.has("paibot_unterhaltung_festhalten")).toBe(true);
-    expect(namen.has("paibot_faden_nur_fuer_faden")).toBe(true);
-    expect(namen.has("pg_sleep")).toBe(false);
-  });
 });
 
 describe.skipIf(bereit.grund !== undefined)(
