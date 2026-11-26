@@ -14,7 +14,7 @@ Seit:      2026-11-23
 
 ## Wofür
 
-Teams aus Bots brauchen einen Platz, an dem sie gespeichert werden. Dieser Teil legt ihn an und sorgt dafür, dass das Update von einer bestehenden Installation sauber durchläuft. Du merkst davon nur das Update selbst und zwei Dinge im Chat (siehe „Grenzen“).
+Teams aus Bots brauchen einen Platz, an dem sie gespeichert werden. Dieser Teil legt ihn an und sorgt dafür, dass das Update von einer bestehenden Installation sauber durchläuft. Du merkst davon nur das Update selbst und zwei Hinweise im Chat: Beim Senden und bei „Neu erzeugen“ in einem Faden erscheint derselbe Hinweis (siehe „Grenzen“).
 
 ## So benutzt du es
 
@@ -50,15 +50,15 @@ Ohne Oberfläche. Dieser Teil ändert nur die Datenbank und die Regeln des Tors.
 
 - Es gibt keine Seite und keinen Knopf, um ein Team anzulegen, einen Bot einem Team zuzuordnen oder einen Faden zu beginnen (geplant).
 - In einem Faden antwortet noch kein Bot: Senden und „Neu erzeugen“ zeigen den Hinweis „In einem Faden antwortet noch kein Bot.“.
-- Ein Bot, der schon gearbeitet hat, und dein Standard-Bot lassen sich nicht löschen.
+- Ein Bot, der schon gearbeitet hat, und dein Standard-Bot lassen sich nicht löschen. Einen Bot zu pausieren oder zu löschen ist in der Oberfläche noch nicht möglich.
 - Kein Weg zurück: Nach dem Update läuft keine ältere Version von PaiBot mehr mit dieser Datenbank.
 
 ## Fehlerbehebung
 
-| Beobachtung                                                             | Ursache                                                               | Was tun                                                                         |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Ein älteres PaiBot meldet Belege als „mit dieser Fassung nicht prüfbar“ | Die Belege stammen aus Fassung 4, das ältere Programm kennt sie nicht | PaiBot auf den neuen Stand bringen; die Belege sind nicht ungültig              |
-| Nach dem Zurückspielen eines alten Stands startet PaiBot nicht          | Der alte Stand kennt die neue Datenbank nicht                         | Die Sicherung von vor dem Update einspielen ([Aktualisieren](aktualisieren.md)) |
-| Ein Bot lässt sich nicht löschen                                        | Er hat schon gearbeitet oder ist dein Standard-Bot                    | Das ist gewollt; pausieren statt löschen                                        |
+| Beobachtung                                                             | Ursache                                                               | Was tun                                                                                     |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Ein älteres PaiBot meldet Belege als „mit dieser Fassung nicht prüfbar“ | Die Belege stammen aus Fassung 4, das ältere Programm kennt sie nicht | PaiBot auf den neuen Stand bringen; die Belege sind nicht ungültig                          |
+| Nach dem Zurückspielen eines alten Stands startet PaiBot nicht          | Der alte Stand kennt die neue Datenbank nicht                         | Die Sicherung von vor dem Update einspielen ([Aktualisieren](aktualisieren.md))             |
+| Ein Bot lässt sich nicht löschen                                        | Er hat schon gearbeitet oder ist dein Standard-Bot                    | Das ist gewollt; in dieser Version gibt es noch keine Oberfläche zum Pausieren oder Löschen |
 
 Technik: [Entwickler-Doku](entwickler/datenbank-teams-a.md).

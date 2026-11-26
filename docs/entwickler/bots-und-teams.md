@@ -23,6 +23,8 @@ Bots sollen in Teams arbeiten können, ohne dass ein Team wie mehrere Chats auss
 - **Die Pause eines Bots wird je Anfrage frisch gelesen**, nie vom Lauf-Start (`packages/agents/src/run/bot-stand.ts#readBotPaused`). Wer die Pause mitten im Lauf setzt, lehnt damit schon den nächsten Schritt und den nächsten Werkzeug-Aufruf ab.
 - **Bots, Teams, Entwürfe und Fäden ändert nur der Besitzer-Weg der Web-App.** Die Datenbank trennt das nicht (siehe Sicherheit); ein Quelltext-Test prüft es.
 
+Verworfen wurden ein Faden als weiterer Direkt-Chat (Fäden gehören stattdessen einem Team und haben keinen eigenen Bot) und eine Bedienung über beliebige App- oder Worker-Wege (Änderungen bleiben dem Besitzer-Weg der Web-App vorbehalten). Die verworfenen Alternativen sind damit nicht nur eine UI-Entscheidung, sondern durch Schema, Tor und Quelltext-Test abgesichert.
+
 ## Aufbau
 
 | Datei                                             | Aufgabe                                                                                                   |
