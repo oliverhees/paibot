@@ -1,7 +1,7 @@
 /**
- * PaiBot – eingefrorene Dateien bleiben Byte für Byte gleich: die Fassungen 1 bis 3 des Tors, ihre
- * festen Fälle, die festen Beleg-Ketten und die Lese-Schemata der alten Stände. Jede Änderung,
- * auch an Leerzeichen oder Kommentaren, macht diesen Test rot.
+ * PaiBot – eingefrorene Dateien bleiben Byte für Byte gleich: die Fassungen 1 bis 4 des Tors, ihre
+ * festen Fälle (auch die der Fassung 5), die festen Beleg-Ketten und die Lese-Schemata der alten
+ * Stände. Jede Änderung, auch an Leerzeichen oder Kommentaren, macht diesen Test rot.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -41,6 +41,8 @@ const EINGEFROREN: Readonly<Record<string, string>> = {
   // Fassung 4: eingefroren mit dem Inkraftsetzen (Migration 0018, `GATE_FORMAT = 4`).
   "./fassung-4.ts": "0222d6f8cdef34a330308d22b1610e322f6ebbbe6371b992e1e50322371b09bf",
   "./fassung-4.korpus.json": "99cb57cadaf96489ac077967ee72ac25645b7cd55a34b46e3e50021d7577bf75",
+  // Fassung 5: feste Fälle eingefroren vor der Auswertung (die Auswertung selbst kommt danach).
+  "./fassung-5.korpus.json": "070be5f461d51ee7d880f99c41222b471fb3ca6950681abd89f13b1dd90cc2c9",
   "../../../receipts/src/testdaten/kette-vor-fassung.jsonl":
     "9ad3e785369d054078213238428d7cbfbda5212758d66ec39c093cfba100b295",
   "../../../receipts/src/testdaten/kette-l1.jsonl":
