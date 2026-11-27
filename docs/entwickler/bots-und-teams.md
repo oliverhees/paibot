@@ -94,13 +94,13 @@ Zwei Migrationen, getrennt, weil die zweite mit dem Tor zusammen in Kraft tritt 
 
 Für die Oberfläche der Verwaltung gibt es eine Vorschau-Seite mit erfundenen Beispiel-Daten. Sie ist **nicht** an die Datenbank, das Tor oder einen Server angeschlossen: Pausieren, Löschen, Team wechseln, Anlegen und Stoppen ändern nur den Speicher der Seite (`packages/ui/src/teams/Ansicht.tsx`). Die Seite gibt es nur mit dem Entwicklungs-Server (`/_komponenten/teams`, in Produktion 404, `apps/web/src/app/%5Fkomponenten/teams/page.tsx`).
 
-| Szene (`?szene=…`) | Was sie zeigt                                                                                                     | Baustein                           |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `seitenleiste`     | Bots nach Teams gruppiert, Menü je Bot (pausieren, Team wechseln, löschen mit Rückfrage), Not-Aus                 | `Seitenleiste.tsx`, `BotMenue.tsx` |
-| `bot`              | Steckbrief: Rolle, Team, Modell, „Darf / Fragt vorher / Darf nie“, Hinweis bei Pause (`&bot=zahlen` ist pausiert) | `Steckbrief.tsx`                   |
-| `team`             | Name, Leitung, Zusammenarbeit (Aus / Leitung führt), Abnahme-Standard, Mitglieder, Hinweis ohne Tagesbudget       | `Verwaltung.tsx`                   |
-| `entwurf`          | Teile mit Häkchen, voller Wortlaut der Anweisungen, Kosten-Hinweis, Anlegen und Rückgängig, Verfall nach 7 Tagen  | `Entwurf.tsx`                      |
-| `uebersicht`       | Fäden aller Teams nach „Läuft“, „Wartet auf dich“, „Fertig“; nur „Faden öffnen“ und „Stoppen“                     | `Uebersicht.tsx`                   |
+| Szene (`?szene=…`) | Was sie zeigt                                                                                                                                                               | Baustein                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `seitenleiste`     | Kopf mit Logo, Not-Aus („Alle Bots laufen“), Haupt-Assistent, aufklappbare Teams mit Leitung, Bots ohne Team, Menü je Bot (pausieren, Team wechseln, löschen mit Rückfrage) | `Seitenleiste.tsx`, `BotMenue.tsx` |
+| `bot`              | Steckbrief: Rolle, Team, Modell, „Darf / Fragt vorher / Darf nie“, Hinweis bei Pause (`&bot=zahlen` ist pausiert)                                                           | `Steckbrief.tsx`                   |
+| `team`             | Name, Leitung, Zusammenarbeit (Aus / Leitung führt), Abnahme-Standard, Mitglieder, Hinweis ohne Tagesbudget                                                                 | `Verwaltung.tsx`                   |
+| `entwurf`          | Teile mit Häkchen, voller Wortlaut der Anweisungen, Kosten-Hinweis, Anlegen und Rückgängig, Verfall nach 7 Tagen                                                            | `Entwurf.tsx`                      |
+| `uebersicht`       | Fäden aller Teams nach „Läuft“, „Wartet auf dich“, „Fertig“; nur „Faden öffnen“ und „Stoppen“                                                                               | `Uebersicht.tsx`                   |
 
 Weitere Parameter: `thema=hell` und `bot=<name in Kleinbuchstaben>`.
 
