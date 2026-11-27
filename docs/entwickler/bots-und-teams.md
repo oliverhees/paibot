@@ -92,6 +92,30 @@ Zwei Migrationen, getrennt, weil die zweite mit dem Tor zusammen in Kraft tritt 
 - **Fehlende Zeile heißt pausiert:** Fehlt die Zeile des Bots, lehnen die Aufrufer ab (`botPaused: true`), nie „nicht pausiert“ aus Mangel an Daten.
 - **Zettel und Texte** eines Fadens stehen in dieser Fassung nicht in der Datenbank (nur das Ziel und die Punkte „fertig, wenn“, als Daten, die der Besitzer selbst anlegt).
 
+## Vorschau, noch nicht angeschlossen
+
+Für die Oberfläche der Verwaltung gibt es eine Vorschau-Seite mit erfundenen Beispiel-Daten. Sie ist **nicht** an die Datenbank, das Tor oder einen Server angeschlossen: Pausieren, Löschen, Team wechseln, Anlegen und Stoppen ändern nur den Speicher der Seite (`packages/ui/src/teams/Ansicht.tsx`). Die Seite gibt es nur mit dem Entwicklungs-Server (`/_komponenten/teams`, in Produktion 404, `apps/web/src/app/%5Fkomponenten/teams/page.tsx`).
+
+| Szene (`?szene=…`) | Was sie zeigt                                                                                                     | Baustein                           |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `seitenleiste`     | Bots nach Teams gruppiert, Menü je Bot (pausieren, Team wechseln, löschen mit Rückfrage), Not-Aus                 | `Seitenleiste.tsx`, `BotMenue.tsx` |
+| `bot`              | Steckbrief: Rolle, Team, Modell, „Darf / Fragt vorher / Darf nie“, Hinweis bei Pause (`&bot=zahlen` ist pausiert) | `Steckbrief.tsx`                   |
+| `team`             | Name, Leitung, Zusammenarbeit (Aus / Leitung führt), Abnahme-Standard, Mitglieder, Hinweis ohne Tagesbudget       | `Verwaltung.tsx`                   |
+| `entwurf`          | Teile mit Häkchen, voller Wortlaut der Anweisungen, Kosten-Hinweis, Anlegen und Rückgängig, Verfall nach 7 Tagen  | `Entwurf.tsx`                      |
+| `uebersicht`       | Fäden aller Teams nach „Läuft“, „Wartet auf dich“, „Fertig“; nur „Faden öffnen“ und „Stoppen“                     | `Uebersicht.tsx`                   |
+
+Weitere Parameter: `thema=hell` und `bot=<name in Kleinbuchstaben>`.
+
+- **Daten:** Das Team „Content“ und der Wortlaut seiner Anweisungen kommen aus `vorlagen/teams/content-team.json`; die Seite liest die Datei beim Laden (`apps/web/src/app/%5Fkomponenten/teams/vorlage.ts`), der Wortlaut steht kein zweites Mal im Code. Das Team „Recherche“ und Pai sind erfunden (`packages/ui/src/teams/beispiel.ts`).
+- **Typen:** Die Bausteine haben eigene Anzeige-Typen (`packages/ui/src/teams/typen.ts`); es gibt keine Vertragsdatei und keinen Import vom Server. Ein Test prüft, dass im Quelltext der Bausteine kein `fetch`, kein `WebSocket` und kein Import von `next`, `db`, `jobs`, `agents` oder `gate` steht.
+- **Entwurf:** Das Team der Vorlage gibt es in der Seitenleiste erst nach „Team anlegen“; „Rückgängig“ nimmt es wieder weg. Die Leitung lässt sich nicht abwählen. Was die Fassung noch nicht kann (Automationen, Merkzettel, App-Zugriffe, Regel-Vorschläge), steht grau mit „kommt mit …“. Mit Not-Aus ist „Team anlegen“ gesperrt; Ändern und Verwerfen gehen weiter.
+- **Wortwahl:** „Leitung“, nie „Ansprechpartner“; „abgenommen“, nie „freigegeben“. Die Texte stehen unter `teams.*` in `packages/shared/src/i18n/de.ts`.
+- **Handy:** Unter 960 Pixel Breite ist die Seitenleiste ein Blatt von unten mit Griffzeile; die Rückfrage vor dem Löschen liegt über der ganzen Seite. Es gibt nirgends einen sichtbaren Scrollbalken.
+- **Tests:** `apps/web/src/app/%5Fkomponenten/teams.test.ts` (alle Szenen rendern auch wenn `fetch` wirft, Pflichten und Wortwahl). Im Browser prüft `scripts/teams-browser.mjs` (`pnpm teams:browser`, Entwicklungs-Server unter `localhost`, Adresse in `TEAMS_URL`): Menü mit der Tastatur, Rückfrage beim Löschen, Not-Aus im Entwurf, Blatt am Handy, kein Scrollbalken, hell/dunkel.
+- **Bilder:** Die Aufnahmen `teams-*` stehen in `docs/screenshots.json` (Art „entwicklung“) und entstehen mit `pnpm doku:screenshots teams-seitenleiste …`; je Szene dunkel und hell, 1440 und 390 Pixel breit.
+
+Verwaltung und „Team aus Vorlage“ werden erst gebaut, wenn diese Vorschau freigegeben ist.
+
 ## Tests
 
 | Datei                                                                                                                          | Prüft                                                                                                                      |

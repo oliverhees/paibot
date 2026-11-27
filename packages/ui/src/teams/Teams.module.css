@@ -1,0 +1,771 @@
+/**
+ * PaiBot – Stile der Teams-Vorschau: Seitenleiste, Bot-Seite, Verwaltung, Entwurf, Übersicht.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-27
+ */
+
+/* Rahmen: Seitenleiste links, Inhalt rechts. Nirgends ein sichtbarer Scrollbalken. */
+.wurzel {
+  display: grid;
+  grid-template-columns: var(--layout-leiste) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: var(--text-body);
+}
+
+.wurzel *,
+.wurzel *::before,
+.wurzel *::after {
+  box-sizing: border-box;
+}
+
+.wurzel button,
+.wurzel input,
+.wurzel select {
+  font: inherit;
+  color: inherit;
+}
+
+.wurzel :focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.blatt {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--line);
+}
+
+.griff {
+  display: none;
+}
+
+.haupt {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  padding: var(--space-5) var(--space-6);
+}
+
+.haupt::-webkit-scrollbar,
+.leiste::-webkit-scrollbar,
+.anweisung::-webkit-scrollbar {
+  display: none;
+}
+
+.leiste {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  padding: 14px 12px 16px;
+}
+
+.nurHandy {
+  display: none;
+}
+
+/* Not-Aus */
+.notaus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-mid);
+  border-radius: 14px;
+  padding: 9px 10px 9px 12px;
+  margin-bottom: 10px;
+}
+
+.notaus[data-aktiv="true"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.punkt {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  flex: none;
+}
+
+.notaus[data-aktiv="true"] .punkt {
+  background: var(--danger);
+}
+
+.notausText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--schrift-m);
+  line-height: 18px;
+}
+
+.notausText small {
+  display: block;
+  font-size: var(--schrift-s);
+  color: var(--ink-soft);
+}
+
+.notausKnopf {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 600;
+  font-size: var(--schrift-s);
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.notaus[data-aktiv="true"] .notausKnopf {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+
+/* Gruppen und Bots */
+.gruppe {
+  margin-top: 10px;
+}
+
+.gruppeKopf {
+  margin: 0;
+  padding: 4px 8px;
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.teamKnopf {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius-xs);
+}
+
+.teamKnopf:hover,
+.teamKnopf[aria-current="true"] {
+  color: var(--accent-text);
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.botZeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.bot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  border: 0;
+  background: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--schrift-b);
+}
+
+.bot:hover,
+.menueKnopf:hover {
+  background: var(--surface-raised);
+}
+
+.bot[aria-current="true"] {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+
+.botName {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.marke {
+  flex: none;
+  margin-left: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.marke.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.marke.leiseMarke {
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+.menueKnopf {
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+/* Menü: steht unter der Zeile (kein Überstand, der abgeschnitten werden könnte) */
+.menue {
+  grid-column: 1 / -1;
+  margin: 2px 0 6px 28px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.menue > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.menuePunkt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  border-radius: var(--radius-xs);
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--schrift-m);
+}
+
+.menuePunkt:hover,
+.menuePunkt:focus-visible {
+  background: var(--surface-raised);
+}
+
+.gefahr {
+  color: var(--danger);
+}
+
+/* Text der Rückfrage vor dem Löschen (der Dialog selbst kommt aus der Bibliothek) */
+.frageText {
+  margin: 0;
+  font: var(--text-body);
+  color: var(--ink-soft);
+}
+
+/* Knöpfe und Felder */
+.knopf {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: var(--schrift-b);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.knopf:hover:not(:disabled) {
+  background: var(--surface-raised);
+}
+
+.knopf:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.haupt.knopf,
+.knopf.haupt {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent-kante);
+}
+
+.knopf.haupt:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.06);
+}
+
+.gefahrKnopf {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.eingabe {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-feld);
+  padding: 9px 12px;
+}
+
+.eingabe:focus-visible {
+  outline: none;
+  border-color: var(--fokus-feld);
+  box-shadow: 0 0 0 3px var(--fokus-feld-schein);
+}
+
+/* Seiten im Inhalt */
+.seite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.titel {
+  margin: 0;
+  font: var(--text-title);
+  letter-spacing: var(--tracking-title);
+  font-size: 30px;
+  line-height: 36px;
+}
+
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-b);
+}
+
+.leer {
+  margin: 12vh auto 0;
+  max-width: 360px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.beschriftung {
+  margin: 0 0 6px;
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  display: block;
+}
+
+.seitenKopf {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.hinweis {
+  margin: 0;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: var(--schrift-b);
+  background: var(--surface-raised);
+}
+
+.hinweis[data-art="warn"] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.hinweis[data-art="ok"] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.hinweis[data-art="info"] {
+  background: var(--eu-soft);
+  color: var(--on-eu-soft);
+}
+
+.felder {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.felder > div {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.felder dt {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.felder dd {
+  margin: 0;
+}
+
+.rechteReihe {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.rechte {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top-width: 3px;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.rechte[data-art="darf"] {
+  border-top-color: var(--ok);
+}
+
+.rechte[data-art="fragt"] {
+  border-top-color: var(--warn);
+}
+
+.rechte[data-art="nie"] {
+  border-top-color: var(--danger);
+}
+
+.rechteTitel {
+  margin: 0 0 6px;
+  font: var(--text-heading);
+  font-size: var(--schrift-l);
+}
+
+.rechte ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* Verwaltung */
+.feldReihe {
+  display: flex;
+  flex-direction: column;
+}
+
+.gruppeFeld {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wahl,
+.haken {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.wahl small,
+.haken small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.wahl input,
+.haken input {
+  margin-top: 4px;
+  accent-color: var(--accent-text);
+}
+
+.mitglieder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mitglieder li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px 4px 6px;
+}
+
+/* Entwurf */
+.leitungZeile {
+  margin: 8px 0 0;
+}
+
+.teile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.unterTitel {
+  margin: 8px 0 0;
+  font: var(--text-heading);
+  font-size: var(--schrift-l);
+}
+
+.teil {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.grau {
+  background: transparent;
+  border-style: dashed;
+  color: var(--ink-soft);
+  opacity: 0.8;
+}
+
+.grau .haken {
+  cursor: not-allowed;
+}
+
+.wortlaut {
+  margin-top: 8px;
+  padding-left: 30px;
+}
+
+.wortlaut summary {
+  cursor: pointer;
+  color: var(--accent-text);
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  border-radius: var(--radius-xs);
+}
+
+.anweisung {
+  margin: 8px 0 0;
+  max-height: 260px;
+  overflow: auto;
+  scrollbar-width: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font: var(--text-mono);
+}
+
+.kosten {
+  background: var(--eu-soft);
+  color: var(--on-eu-soft);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.kosten .beschriftung {
+  color: inherit;
+}
+
+.kosten ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.fuss {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-4);
+}
+
+/* Übersicht */
+.spalten {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spaltenKopf {
+  margin: 0;
+  font: var(--text-heading);
+  font-size: var(--schrift-l);
+}
+
+.zahl {
+  margin-left: 6px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.faeden {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fadenKarte {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spalte[data-stand="wartet"] .fadenKarte {
+  border-color: var(--warn);
+}
+
+.fadenKopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fadenTitel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Handy: Seitenleiste als Blatt von unten mit Griffzeile */
+@media (max-width: 959px) {
+  .wurzel {
+    display: block;
+    position: relative;
+  }
+
+  .haupt {
+    height: 100%;
+    padding: var(--space-4) var(--space-4) 88px;
+  }
+
+  .nurBreit {
+    display: none;
+  }
+
+  .nurHandy {
+    display: inline;
+  }
+
+  .blatt {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 64dvh;
+    z-index: 25;
+    border-right: 0;
+    border-top: 1px solid var(--line-mid);
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--shadow-pop);
+    transform: translateY(calc(100% - 56px));
+    transition: transform var(--dauer-mittel) var(--kurve-sprung);
+  }
+
+  .blatt[data-offen="true"] {
+    transform: none;
+  }
+
+  .blatt[data-offen="false"] .leiste {
+    visibility: hidden;
+  }
+
+  .griff {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex: none;
+    height: 56px;
+    width: 100%;
+    border: 0;
+    background: none;
+    padding: 0 18px;
+    cursor: pointer;
+  }
+
+  .felder,
+  .rechteReihe,
+  .spalten {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .titel {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .wortlaut {
+    padding-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blatt {
+    transition: none;
+  }
+}

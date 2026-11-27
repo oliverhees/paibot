@@ -117,6 +117,7 @@ export {
 } from "./shell/modus";
 export { SeitenSpalte, type SeitenSpalteProps } from "./shell/SeitenSpalte";
 export * from "./startbereich";
+export * from "./teams";
 export { Dialog, type DialogProps } from "./ueberlagerung/Dialog";
 export { Menue, type MenueEintrag, type MenueProps } from "./ueberlagerung/Menue";
 export { Reiter, type ReiterEintrag, type ReiterProps } from "./ueberlagerung/Reiter";

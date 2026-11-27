@@ -4560,6 +4560,291 @@
       "warteAuf": "textarea",
       "beschreibung": "Faden im hellen Design (Vorschau mit Beispiel-Daten, im Bau)",
       "thema": "hell"
+    },
+    {
+      "name": "teams-seitenleiste",
+      "pfad": "/_komponenten/teams?szene=seitenleiste",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Seitenleiste mit Bots nach Teams gruppiert und Not-Aus, dunkel (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-seitenleiste-handy",
+      "pfad": "/_komponenten/teams?szene=seitenleiste",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Seitenleiste mit Bots nach Teams gruppiert und Not-Aus, dunkel, Handy (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-seitenleiste-hell",
+      "pfad": "/_komponenten/teams?szene=seitenleiste&thema=hell",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Seitenleiste mit Bots nach Teams gruppiert und Not-Aus, hell (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-seitenleiste-hell-handy",
+      "pfad": "/_komponenten/teams?szene=seitenleiste&thema=hell",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Seitenleiste mit Bots nach Teams gruppiert und Not-Aus, hell, Handy (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-bot",
+      "pfad": "/_komponenten/teams?szene=bot",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Bot-Seite (Steckbrief) mit „darf / fragt vorher / darf nie“, dunkel (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-bot-handy",
+      "pfad": "/_komponenten/teams?szene=bot",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Bot-Seite (Steckbrief) mit „darf / fragt vorher / darf nie“, dunkel, Handy (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-bot-hell",
+      "pfad": "/_komponenten/teams?szene=bot&thema=hell",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Bot-Seite (Steckbrief) mit „darf / fragt vorher / darf nie“, hell (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-bot-hell-handy",
+      "pfad": "/_komponenten/teams?szene=bot&thema=hell",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Bot-Seite (Steckbrief) mit „darf / fragt vorher / darf nie“, hell, Handy (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-team",
+      "pfad": "/_komponenten/teams?szene=team",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Verwaltung mit Leitung, Zusammenarbeit, Abnahme-Standard und Mitgliedern, dunkel (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-team-handy",
+      "pfad": "/_komponenten/teams?szene=team",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Verwaltung mit Leitung, Zusammenarbeit, Abnahme-Standard und Mitgliedern, dunkel, Handy (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-team-hell",
+      "pfad": "/_komponenten/teams?szene=team&thema=hell",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Verwaltung mit Leitung, Zusammenarbeit, Abnahme-Standard und Mitgliedern, hell (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-team-hell-handy",
+      "pfad": "/_komponenten/teams?szene=team&thema=hell",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Verwaltung mit Leitung, Zusammenarbeit, Abnahme-Standard und Mitgliedern, hell, Handy (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-entwurf",
+      "pfad": "/_komponenten/teams?szene=entwurf",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Entwurf mit Teilen zum Abhaken, Kosten-Hinweis und „Team anlegen“, dunkel (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-entwurf-handy",
+      "pfad": "/_komponenten/teams?szene=entwurf",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Entwurf mit Teilen zum Abhaken, Kosten-Hinweis und „Team anlegen“, dunkel, Handy (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-entwurf-hell",
+      "pfad": "/_komponenten/teams?szene=entwurf&thema=hell",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Entwurf mit Teilen zum Abhaken, Kosten-Hinweis und „Team anlegen“, hell (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-entwurf-hell-handy",
+      "pfad": "/_komponenten/teams?szene=entwurf&thema=hell",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Team-Entwurf mit Teilen zum Abhaken, Kosten-Hinweis und „Team anlegen“, hell, Handy (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-uebersicht",
+      "pfad": "/_komponenten/teams?szene=uebersicht",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Teams-Übersicht: Fäden nach läuft, wartet auf dich und fertig, dunkel (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-uebersicht-handy",
+      "pfad": "/_komponenten/teams?szene=uebersicht",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Teams-Übersicht: Fäden nach läuft, wartet auf dich und fertig, dunkel, Handy (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-uebersicht-hell",
+      "pfad": "/_komponenten/teams?szene=uebersicht&thema=hell",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Teams-Übersicht: Fäden nach läuft, wartet auf dich und fertig, hell (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-uebersicht-hell-handy",
+      "pfad": "/_komponenten/teams?szene=uebersicht&thema=hell",
+      "modus": "entwicklung",
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "beschreibung": "Teams-Übersicht: Fäden nach läuft, wartet auf dich und fertig, hell, Handy (Vorschau mit Beispiel-Daten, im Bau)",
+      "thema": "hell"
+    },
+    {
+      "name": "teams-bot-pausiert",
+      "pfad": "/_komponenten/teams?szene=bot&bot=zahlen",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='pausiert']",
+      "beschreibung": "Bot-Seite eines pausierten Bots mit Hinweis (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-menue",
+      "pfad": "/_komponenten/teams?szene=seitenleiste",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Menü für Ideen"
+          }
+        },
+        {
+          "warteAuf": "[role='menu']"
+        }
+      ],
+      "beschreibung": "Menü eines Bots: pausieren, Team wechseln, löschen (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-loeschen",
+      "pfad": "/_komponenten/teams?szene=seitenleiste",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Menü für Lektorat"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "menuitem",
+            "name": "Löschen …"
+          }
+        },
+        {
+          "warteAuf": "[role='alertdialog']"
+        }
+      ],
+      "beschreibung": "Rückfrage vor dem Löschen eines Bots (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-entwurf-gesperrt",
+      "pfad": "/_komponenten/teams?szene=entwurf",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Alles anhalten"
+          }
+        },
+        {
+          "warteAuf": "[data-baustein='entwurf-gesperrt']"
+        }
+      ],
+      "beschreibung": "Team-Entwurf bei Not-Aus: „Team anlegen“ ist gesperrt (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "teams-entwurf-angelegt",
+      "pfad": "/_komponenten/teams?szene=entwurf",
+      "modus": "entwicklung",
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='teams-ansicht']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Team anlegen"
+          }
+        },
+        {
+          "warteAuf": "[data-baustein='entwurf-angelegt']"
+        }
+      ],
+      "beschreibung": "Team-Entwurf nach dem Anlegen, mit „Rückgängig“ (Vorschau mit Beispiel-Daten, im Bau)"
     }
   ]
 }
