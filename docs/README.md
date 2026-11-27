@@ -14,38 +14,39 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 
 ## Inhalt
 
-| Bereich                 | Datei                                                                    | Stand                                       |
-| ----------------------- | ------------------------------------------------------------------------ | ------------------------------------------- |
-| Installation            | [installation.md](installation.md)                                       | vorhanden                                   |
-| Server mit Coolify      | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                                   |
-| Aktualisieren           | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                                   |
-| Sicherung               | [sicherung.md](sicherung.md)                                             | vorhanden, Befehle ohne Oberfläche          |
-| Einrichtung und Zugang  | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern                      |
-| Chat                    | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern                      |
-| Bot                     | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern                      |
-| Apps                    | [funktion-apps.md](funktion-apps.md)                                     | vorhanden, mit Bildern                      |
-| Anbieter und Modelle    | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern                      |
-| Datenschleuse           | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar         |
-| Belege                  | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern                      |
-| Das Tor und die Regeln  | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern                      |
-| Datenbank für Teams (A) | [funktion-datenbank-teams-a.md](funktion-datenbank-teams-a.md)           | vorhanden, ohne Oberfläche                  |
-| Fertige Apps            | [funktion-fertige-apps.md](funktion-fertige-apps.md)                     | vorhanden, ohne Oberfläche                  |
-| Einstellungen und Info  | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern                      |
-| Selbsttest              | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern                      |
-| Architektur             | [architektur.md](architektur.md)                                         | vorhanden, wächst mit                       |
-| Hintergrund-Läufe       | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)            |
-| Sicherheit              | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit                       |
-| Entwickeln und Testen   | [entwickeln.md](entwickeln.md)                                           | vorhanden                                   |
-| Entwickler-Doku         | [entwickler/README.md](entwickler/README.md)                             | vorhanden, je Funktion eine Seite           |
-| Doku-Index im Image     | [entwickler/doku-index.md](entwickler/doku-index.md)                     | vorhanden (Grundlage, ohne Oberfläche)      |
-| Werkzeug-Kern (Vertrag) | [entwickler/werkzeug-kern.md](entwickler/werkzeug-kern.md)               | vorhanden (Verträge, noch ohne Werkzeug)    |
-| Apps (Datenmodell)      | [entwickler/apps-datenmodell.md](entwickler/apps-datenmodell.md)         | vorhanden (Datenbank, noch ohne Oberfläche) |
-| Lizenzen der Pakete     | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                                   |
-| Beitragsvereinbarung    | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                                   |
-| Vorlage für Funktion    | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                                   |
-| Bots im Team            | folgt mit der Funktion                                                   | geplant                                     |
-| Apps per MCP            | folgt mit der Funktion                                                   | geplant                                     |
-| Browser-Dienst          | folgt mit der Funktion                                                   | geplant                                     |
+| Bereich                                | Datei                                                                    | Stand                                       |
+| -------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------- |
+| Installation                           | [installation.md](installation.md)                                       | vorhanden                                   |
+| Server mit Coolify                     | [deploy-coolify.md](deploy-coolify.md)                                   | vorhanden                                   |
+| Aktualisieren                          | [aktualisieren.md](aktualisieren.md)                                     | vorhanden                                   |
+| Sicherung                              | [sicherung.md](sicherung.md)                                             | vorhanden, Befehle ohne Oberfläche          |
+| Einrichtung und Zugang                 | [funktion-einrichtung-und-zugang.md](funktion-einrichtung-und-zugang.md) | vorhanden, mit Bildern                      |
+| Chat                                   | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern                      |
+| Bot                                    | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern                      |
+| Apps                                   | [funktion-apps.md](funktion-apps.md)                                     | vorhanden, mit Bildern                      |
+| Anbieter und Modelle                   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern                      |
+| Datenschleuse                          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar         |
+| Belege                                 | [funktion-belege.md](funktion-belege.md)                                 | vorhanden, mit Bildern                      |
+| Das Tor und die Regeln                 | [funktion-tor.md](funktion-tor.md)                                       | vorhanden, mit Bildern                      |
+| Datenbank für Teams (A)                | [funktion-datenbank-teams-a.md](funktion-datenbank-teams-a.md)           | vorhanden, ohne Oberfläche                  |
+| Datenbank (Abgleich-Klasse je Tabelle) | [entwickler/datenbank.md](entwickler/datenbank.md)                       | vorhanden (Vertrag, ohne Oberfläche)        |
+| Fertige Apps                           | [funktion-fertige-apps.md](funktion-fertige-apps.md)                     | vorhanden, ohne Oberfläche                  |
+| Einstellungen und Info                 | [funktion-einstellungen.md](funktion-einstellungen.md)                   | vorhanden, mit Bildern                      |
+| Selbsttest                             | [funktion-selbsttest.md](funktion-selbsttest.md)                         | vorhanden, mit Bildern                      |
+| Architektur                            | [architektur.md](architektur.md)                                         | vorhanden, wächst mit                       |
+| Hintergrund-Läufe                      | [architektur.md](architektur.md#hintergrund-läufe)                       | vorhanden (Teil der Architektur)            |
+| Sicherheit                             | [sicherheit.md](sicherheit.md)                                           | vorhanden, wächst mit                       |
+| Entwickeln und Testen                  | [entwickeln.md](entwickeln.md)                                           | vorhanden                                   |
+| Entwickler-Doku                        | [entwickler/README.md](entwickler/README.md)                             | vorhanden, je Funktion eine Seite           |
+| Doku-Index im Image                    | [entwickler/doku-index.md](entwickler/doku-index.md)                     | vorhanden (Grundlage, ohne Oberfläche)      |
+| Werkzeug-Kern (Vertrag)                | [entwickler/werkzeug-kern.md](entwickler/werkzeug-kern.md)               | vorhanden (Verträge, noch ohne Werkzeug)    |
+| Apps (Datenmodell)                     | [entwickler/apps-datenmodell.md](entwickler/apps-datenmodell.md)         | vorhanden (Datenbank, noch ohne Oberfläche) |
+| Lizenzen der Pakete                    | [LIZENZPOLITIK.md](LIZENZPOLITIK.md)                                     | vorhanden                                   |
+| Beitragsvereinbarung                   | [BEITRAGSVEREINBARUNG.md](BEITRAGSVEREINBARUNG.md)                       | vorhanden                                   |
+| Vorlage für Funktion                   | [VORLAGE-funktion.md](VORLAGE-funktion.md)                               | vorhanden                                   |
+| Bots im Team                           | folgt mit der Funktion                                                   | geplant                                     |
+| Apps per MCP                           | folgt mit der Funktion                                                   | geplant                                     |
+| Browser-Dienst                         | folgt mit der Funktion                                                   | geplant                                     |
 
 „Mit Bildern“ heißt: Die Seite hat zu jedem Schritt in der Oberfläche ein Bild aus der laufenden App, aufgenommen per Skript mit Beispiel-Daten.
 
