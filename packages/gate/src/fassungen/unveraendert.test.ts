@@ -47,6 +47,9 @@ const EINGEFROREN: Readonly<Record<string, string>> = {
     "9ad3e785369d054078213238428d7cbfbda5212758d66ec39c093cfba100b295",
   "../../../receipts/src/testdaten/kette-l1.jsonl":
     "a06bd6d41f2f4f40615fa39d231482bef2be10fe8333e3993114ecf7fe780a4b",
+  // Feste Kette vom Stand mit Tor-Fassung 4, erzeugt vor dem Umschalten auf Fassung 5.
+  "../../../receipts/src/testdaten/kette-f4.jsonl":
+    "f1f03926ff90bc52eaf25fd94d1d7f94e01bce8198db20dc5c2248338e68f751",
   "../../../receipts/src/testdaten/lese-schema-vor-fassung.ts":
     "7c01d573d95816f37e5e15de02a6b71df4ddfbd44697347080b2e4567481c9ec",
   "../../../receipts/src/testdaten/lese-schema-l1.ts":
