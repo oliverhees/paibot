@@ -10,7 +10,7 @@ Seit:      2026-11-07
 
 # Mitmachen bei PaiBot
 
-Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folge, als YouTube-Serie. Dieser Leitfaden zeigt dir, wie du beitragen kannst.
+Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich und gemeinschaftlich. Dieser Leitfaden zeigt dir, wie du beitragen kannst.
 
 ## Inhalt
 
@@ -30,13 +30,13 @@ Schön, dass du helfen willst! 🧡 PaiBot entsteht öffentlich, Folge für Folg
 | 💡 Ideen einbringen | [Issue „Idee vorschlagen“](https://github.com/oliverhees/paibot/issues/new/choose) – besonders willkommen: Ideen für neue Bots |
 | 📝 Doku verbessern  | Tippfehler, unklare Stellen, fehlende Erklärungen per Pull Request                                                             |
 | 🛠️ Code beitragen   | kleine Verbesserungen direkt, größere Änderungen zuerst als Issue abstimmen                                                    |
-| 🎥 Mitbauen         | Folgen nachbauen, Erfahrungen teilen – in der Community auf [aiianer.de](https://aiianer.de)                                   |
+| 🎥 Mitbauen         | Den aktuellen Stand nachbauen, Erfahrungen teilen – in der Community auf [aiianer.de](https://aiianer.de)                      |
 
 ## Bevor du loslegst
 
 - **Beitragsvereinbarung (CLA):** Bevor wir deinen ersten Pull Request aufnehmen, stimmst du einmal der [Beitragsvereinbarung](docs/BEITRAGSVEREINBARUNG.md) zu (§ 5 der [Lizenz](LICENSE)). Schreib dazu diesen Satz in deinen Pull Request: „Ich habe die Beitragsvereinbarung von PaiBot, Fassung 1.0, gelesen und stimme ihr für diesen und alle künftigen Beiträge zu.“ Du bleibst Urheber deines Beitrags und räumst dem Projekt die Rechte daran ein, auch für eine künftige andere Lizenzierung. Ohne Zustimmung können wir nicht mergen.
 - **Für eine Person:** PaiBot steht unter einer Fair-Code-Lizenz für die Nutzung durch eine Person, privat oder für die eigene Arbeit. Beiträge, die PaiBot für mehrere Nutzer umbauen (Mehrbenutzer, Rollen, Mandanten), nehmen wir nicht auf.
-- **Größere Änderungen:** bitte zuerst ein Issue eröffnen, damit wir die Richtung abstimmen. Die Roadmap folgt der YouTube-Serie.
+- **Größere Änderungen:** bitte zuerst ein Issue eröffnen, damit wir die Richtung abstimmen. Die Roadmap folgt dem Bauplan.
 - **Sicherheitslücken:** nie als Issue, sondern nach [SECURITY.md](SECURITY.md).
 
 ## So arbeiten wir mit Issues
