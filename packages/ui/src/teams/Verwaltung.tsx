@@ -153,7 +153,9 @@ export function TeamVerwaltung({
                 still
               />
               <span className={styles.botName}>{b.name}</span>
-              {b.id === leitungId && <span className={styles.marke}>{t("teams.bot.leitung")}</span>}
+              {b.id === leitungId && (
+                <span className={styles.leitungMarke}>{t("teams.bot.leitung")}</span>
+              )}
               {b.pausiert && (
                 <span className={`${styles.marke} ${styles.warn}`}>{t("teams.bot.pausiert")}</span>
               )}

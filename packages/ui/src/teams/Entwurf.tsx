@@ -113,7 +113,9 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
                 <BotAvatar farbe={b.farbe} form={b.form} groesse={26} still />
                 <span>
                   <b>{b.name}</b>
-                  {istLeitung && <span className={styles.marke}>{t("teams.bot.leitung")}</span>}
+                  {istLeitung && (
+                    <span className={styles.leitungMarke}>{t("teams.bot.leitung")}</span>
+                  )}
                   <span className={`${styles.marke} ${styles.leiseMarke}`}>
                     {t("teams.entwurf.aus_vorlage")}
                   </span>

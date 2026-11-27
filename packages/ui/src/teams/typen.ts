@@ -27,6 +27,8 @@ export interface TeamsBot {
   /** Kennung des Teams; ohne Team steht der Bot unter „Ohne Team“. */
   teamId?: string;
   pausiert: boolean;
+  /** Der Haupt-Assistent steht in der Leiste für sich, nicht in einem Team. */
+  haupt?: boolean;
   /** Anzeige des Modells („Wie Pai“ oder ein Name). */
   modell: string;
   darf: readonly string[];

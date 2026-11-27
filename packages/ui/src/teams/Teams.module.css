@@ -77,6 +77,35 @@
   display: none;
 }
 
+/* Kopf mit Logo und „+“ */
+.kopfLeiste {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 6px 12px;
+}
+
+.wort {
+  flex: 1;
+  font: 800 21px / 1 var(--font-brand);
+  letter-spacing: -0.03em;
+  color: var(--accent-text);
+}
+
+.plus {
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  display: flex;
+  border-radius: 8px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.plus:hover {
+  background: var(--surface-raised);
+}
+
 /* Not-Aus */
 .notaus {
   display: flex;
@@ -89,13 +118,13 @@
 }
 
 .notaus[data-aktiv="true"] {
-  border-color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
   background: var(--danger-soft);
 }
 
 .punkt {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--ok);
   flex: none;
@@ -108,7 +137,7 @@
 .notausText {
   flex: 1;
   min-width: 0;
-  font-size: var(--schrift-m);
+  font-size: 13.5px;
   line-height: 18px;
 }
 
@@ -120,22 +149,43 @@
 
 .notausKnopf {
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--danger-soft);
   color: var(--danger);
-  font-weight: 600;
-  font-size: var(--schrift-s);
-  padding: 7px 10px;
+  font: 600 12.5px / 1 var(--font-sans);
+  padding: 8px 11px;
   cursor: pointer;
 }
 
 .notaus[data-aktiv="true"] .notausKnopf {
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--ink);
-  border: 1px solid var(--line-strong);
 }
 
-/* Gruppen und Bots */
+.uebersicht {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--schrift-b);
+  color: var(--ink);
+}
+
+.uebersicht:hover {
+  background: var(--surface-raised);
+}
+
+.uebersicht[aria-current="true"] {
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+}
+
+/* Gruppen, Teams und Bots */
 .gruppe {
   margin-top: 10px;
 }
@@ -149,14 +199,33 @@
   color: var(--ink-soft);
 }
 
+.team {
+  margin: 2px 0 6px;
+}
+
+.teamKopf {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+}
+
+.teamAuf {
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  display: flex;
+  padding: 6px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
 .teamKnopf {
   border: 0;
   background: none;
-  padding: 0;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: inherit;
+  padding: 4px 2px;
+  font: 600 13.5px / 1.2 var(--font-sans);
+  color: var(--ink);
   cursor: pointer;
   text-align: left;
   border-radius: var(--radius-xs);
@@ -167,6 +236,14 @@
   color: var(--accent-text);
 }
 
+.stapel {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.glieder,
 .liste {
   list-style: none;
   margin: 0;
@@ -176,11 +253,17 @@
   gap: 2px;
 }
 
+.glieder {
+  margin-left: 16px;
+  padding-left: 9px;
+  border-left: 1px solid var(--line);
+}
+
 .botZeile {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 2px;
 }
 
 .bot {
@@ -195,6 +278,7 @@
   text-align: left;
   cursor: pointer;
   font-size: var(--schrift-b);
+  color: var(--ink);
 }
 
 .bot:hover,
@@ -207,9 +291,61 @@
   color: var(--on-accent-soft);
 }
 
+.botRolle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  font-size: var(--schrift-s);
+}
+
+.botStand {
+  margin-left: auto;
+  flex: none;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.botStand[data-art="warn"] {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+/* Marke „LEITUNG“: feine Umrandung, keine Pille */
+.leitungMarke {
+  flex: none;
+  font: 600 10px / 1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-mid);
+  border-radius: 5px;
+  padding: 2px 4px;
+}
+
+.fuss {
+  margin-top: auto;
+  padding: 12px 6px 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.fuss span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .botName {
   min-width: 0;
-  flex: 0 1 auto;
+  max-width: 100%;
+  flex: 0 0 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -237,12 +373,16 @@
 }
 
 .menueKnopf {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--surface-raised);
+  opacity: 0;
   border: 0;
-  background: none;
   color: var(--ink-soft);
   border-radius: var(--radius-sm);
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -767,5 +907,18 @@
 @media (prefers-reduced-motion: reduce) {
   .blatt {
     transition: none;
+  }
+}
+
+/* Menü-Symbol je Zeile nur beim Überfahren, bei Fokus oder offenem Menü; am Handy immer */
+.botZeile:hover .menueKnopf,
+.botZeile:focus-within .menueKnopf,
+.menueKnopf[aria-expanded="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .menueKnopf {
+    opacity: 1;
   }
 }

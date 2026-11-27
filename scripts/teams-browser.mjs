@@ -231,7 +231,7 @@ await abschnitt("Entwurf", async () => {
   const { kontext, seite } = await oeffne("entwurf");
   const anlegen = seite.getByRole("button", { name: "Team anlegen" });
   pruefe("Der Entwurf legt nichts von selbst an", (await menueKnopf(seite, "Ideen").count()) === 0);
-  await seite.getByRole("button", { name: "Alles anhalten" }).click();
+  await seite.getByRole("button", { name: "Anhalten", exact: true }).click();
   pruefe(
     "Not-Aus sperrt „Team anlegen“ und sagt es",
     (await anlegen.isDisabled()) &&
@@ -337,7 +337,7 @@ await abschnitt("Handy: Blatt von unten", async () => {
     "Handy: in der Szene „Seitenleiste“ startet das Blatt offen",
     (await knopf.getAttribute("aria-expanded")) === "true",
   );
-  const notaus = await seite.getByRole("button", { name: "Alles anhalten" }).boundingBox();
+  const notaus = await seite.getByRole("button", { name: "Anhalten", exact: true }).boundingBox();
   pruefe(
     "Handy: im offenen Blatt liegt der Not-Aus im Bild",
     notaus !== null && notaus.y >= 0 && notaus.y + notaus.height <= 844,

@@ -55,10 +55,23 @@ export function beispielDaten(vorlage: Vorlage): TeamsDaten {
     farbe: "limette",
     form: "blatt",
     pausiert: false,
+    haupt: true,
     modell: t("teams.vorschau.modell_beispiel"),
     darf: [t("teams.recht.antworten"), t("teams.recht.lesen"), t("teams.recht.entwuerfe")],
     fragt: [t("teams.recht.anlegen_aendern")],
     nie: [t("teams.recht.schluessel"), t("teams.recht.notaus")],
+  };
+  const solo: TeamsBot = {
+    id: "bot-notiz",
+    name: "Notiz",
+    rolle: "Merkt sich Kleinigkeiten und erinnert dich daran.",
+    farbe: "gelb",
+    form: "kiesel",
+    pausiert: false,
+    modell: t("teams.steckbrief.modell_wie_pai"),
+    darf: DARF,
+    fragt: FRAGT,
+    nie: NIE,
   };
   const recherche: TeamsBot[] = [
     {
@@ -92,7 +105,7 @@ export function beispielDaten(vorlage: Vorlage): TeamsDaten {
   return {
     vorlage,
     vorlageTeamId: VORLAGE_TEAM_ID,
-    bots: [pai, ...recherche, ...content],
+    bots: [pai, ...recherche, ...content, solo],
     teams: [
       {
         id: VORLAGE_TEAM_ID,

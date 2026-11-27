@@ -85,11 +85,20 @@ describe("Teams-Bausteine: Seitenleiste", () => {
     expect(html).toContain("Menü für Redaktion");
   });
 
-  it("der Not-Aus ist da und steht zuerst auf „Alles läuft“", () => {
+  it("der Not-Aus ist da und steht zuerst auf „Alle Bots laufen“", () => {
     const html = zeige("seitenleiste");
     expect(html).toContain('data-baustein="notaus"');
-    expect(html).toContain("Alles läuft");
-    expect(html).toContain("Alles anhalten");
+    expect(html).toContain("Alle Bots laufen");
+    expect(html).toContain("Anhalten");
+  });
+
+  it("Pai steht unter „Haupt-Assistent“, Bots ohne Team darunter, Fußzeile mit Belege · Regeln · Grenzen", () => {
+    const html = zeige("seitenleiste");
+    expect(html.indexOf("Haupt-Assistent")).toBeLessThan(html.indexOf("Teams</h2>"));
+    expect(html.indexOf("Teams</h2>")).toBeLessThan(html.indexOf("Ohne Team"));
+    expect(html).toContain("dein Haupt-Assistent");
+    for (const wort of ["Belege", "Regeln", "Grenzen", "PaiBot"]) expect(html).toContain(wort);
+    expect(html).toContain("pausiert");
   });
 
   it("das Team aus der Vorlage gibt es erst nach dem Anlegen", () => {
