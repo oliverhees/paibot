@@ -44,7 +44,11 @@ Das Verzeichnis nennt genau vier Vorlagen:
 
 - Bei Linear ist die Standard-Adresse die zum Nur-Lesen; die Adresse mit allen Werkzeugen ist die zweite.
 - „Eingeschränkt“ heißt: Die Anmeldung mit einem Token geht nur unter einer Bedingung, die als fester Satz zur Vorlage gehört.
-- Keine Vorlage ist bisher ausprobiert. Die Werte stammen aus der Doku der Anbieter.
+- Keine Vorlage ist bisher ausprobiert. Die Werte stammen aus der Doku der Anbieter. Abgerufen am 27.11.2026. Was dort steht (Zitat in der Sprache der Doku):
+  - **Notion** ([Doku](https://developers.notion.com/guides/mcp/get-started-with-mcp)): Auf die Frage „Can I use Notion MCP without interactive authorization?“ antwortet Notion: „Yes, on Business and Enterprise plans.“ Und: „Only workspace owners can create them.“ (Zu den MCP-Tokens.)
+  - **Linear** ([Doku](https://linear.app/docs/mcp)): „You can also authenticate directly with a bearer token or Linear API key“. Zum Nur-Lesen: „Connect to https://mcp.linear.app/mcp/readonly, which only ever exposes read tools.“
+  - **Atlassian** ([Doku](https://github.com/atlassian/atlassian-mcp-server)): „Personal API token (Basic auth)“ und „Service account API key (Bearer token)“. PaiBot sendet nur den Bearer-Weg, deshalb nur das Service-Konto.
+  - **GitHub** ([Doku](https://github.com/github/github-mcp-server)): „Prefer a token? You can still authenticate with a GitHub Personal Access Token“. PaiBot sendet den Token als Bearer.
 - Beim Laden prüft PaiBot jede Vorlage streng. Eine fehlerhafte Vorlage stoppt das Laden des Moduls, statt später still falsch zu wirken.
 
 Technische Einzelheiten stehen in [Fertige Apps – für Entwickler](entwickler/fertige-apps.md).
