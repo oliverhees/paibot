@@ -78,7 +78,7 @@ export function Steckbrief({
         </div>
         <div>
           <dt>{t("teams.steckbrief.modell")}</dt>
-          <dd>{bot.modell === "Wie Pai" ? t("teams.steckbrief.modell_wie_pai") : bot.modell}</dd>
+          <dd>{bot.modell}</dd>
         </div>
       </dl>
       <div className={styles.rechteReihe}>

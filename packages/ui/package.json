@@ -17,9 +17,11 @@
     "test:browser": "PAIBOT_BROWSER_TESTS=1 vitest run browser/"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
     "@types/react": "^19.3.0",
-    "react": "^19.3.1"
+    "@types/react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@paibot/shared": "workspace:*",

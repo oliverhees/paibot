@@ -8,6 +8,7 @@
  * @since     2026-11-27
  */
 
+import { t } from "@paibot/shared/texte";
 import type { TeamsBot, TeamsDaten, TeamsSzene, Vorlage } from "./typen";
 
 export const SZENEN: readonly { id: TeamsSzene; textKey: `teams.szene.${TeamsSzene}` }[] = [
@@ -20,9 +21,9 @@ export const SZENEN: readonly { id: TeamsSzene; textKey: `teams.szene.${TeamsSze
 
 export const VORLAGE_TEAM_ID = "team-content";
 
-const DARF = ["Antworten schreiben", "Im Gespräch lesen"] as const;
-const FRAGT = ["Eine Frage an dich stellen, wenn etwas fehlt"] as const;
-const NIE = ["Apps benutzen", "Eigene Regeln ändern", "Bots anlegen oder löschen"] as const;
+const DARF = [t("teams.recht.antworten"), t("teams.recht.lesen")] as const;
+const FRAGT = [t("teams.recht.frage")] as const;
+const NIE = [t("teams.recht.apps"), t("teams.recht.regeln"), t("teams.recht.bots")] as const;
 
 /** Der Bot, der aus der Vorlage entsteht: engste Rechte, ohne Apps. */
 function ausVorlage(v: Vorlage, leitung: string, teamId: string): TeamsBot[] {
@@ -34,9 +35,9 @@ function ausVorlage(v: Vorlage, leitung: string, teamId: string): TeamsBot[] {
     form: b.form,
     teamId,
     pausiert: false,
-    modell: b.modell === "wie_pai" ? "Wie Pai" : b.modell,
+    modell: b.modell === "wie_pai" ? t("teams.steckbrief.modell_wie_pai") : b.modell,
     darf: DARF,
-    fragt: b.name === leitung ? ["Arbeit abnehmen oder zurückgeben"] : FRAGT,
+    fragt: b.name === leitung ? [t("teams.recht.abnehmen")] : FRAGT,
     nie: NIE,
   }));
 }
@@ -54,10 +55,10 @@ export function beispielDaten(vorlage: Vorlage): TeamsDaten {
     farbe: "limette",
     form: "blatt",
     pausiert: false,
-    modell: "Beispiel-Modell",
-    darf: ["Antworten schreiben", "Im Gespräch lesen", "Team-Entwürfe schreiben"],
-    fragt: ["Etwas anlegen oder ändern"],
-    nie: ["Schlüssel lesen", "Not-Aus aufheben"],
+    modell: t("teams.vorschau.modell_beispiel"),
+    darf: [t("teams.recht.antworten"), t("teams.recht.lesen"), t("teams.recht.entwuerfe")],
+    fragt: [t("teams.recht.anlegen_aendern")],
+    nie: [t("teams.recht.schluessel"), t("teams.recht.notaus")],
   };
   const recherche: TeamsBot[] = [
     {
@@ -68,9 +69,9 @@ export function beispielDaten(vorlage: Vorlage): TeamsDaten {
       form: "kiesel",
       teamId: "team-recherche",
       pausiert: false,
-      modell: "Wie Pai",
+      modell: t("teams.steckbrief.modell_wie_pai"),
       darf: DARF,
-      fragt: ["Arbeit abnehmen oder zurückgeben"],
+      fragt: [t("teams.recht.abnehmen")],
       nie: NIE,
     },
     {
@@ -81,7 +82,7 @@ export function beispielDaten(vorlage: Vorlage): TeamsDaten {
       form: "dee",
       teamId: "team-recherche",
       pausiert: true,
-      modell: "Wie Pai",
+      modell: t("teams.steckbrief.modell_wie_pai"),
       darf: DARF,
       fragt: FRAGT,
       nie: NIE,

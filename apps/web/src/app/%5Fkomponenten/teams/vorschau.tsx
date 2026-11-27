@@ -57,7 +57,7 @@ export function TeamsVorschau({ vorlage }: { vorlage: Vorlage }) {
           className={styles.auswahl}
           value={szene}
           onChange={(e) => setSzene(e.target.value as TeamsSzene)}
-          aria-label="Szene"
+          aria-label={t("teams.vorschau.szene")}
         >
           {TEAMS_SZENEN.map((s) => (
             <option key={s.id} value={s.id}>
