@@ -112,7 +112,7 @@ Weitere Parameter: `thema=hell` und `bot=<name in Kleinbuchstaben>`.
 - **Wortwahl:** „Leitung“, nie „Ansprechpartner“; „abgenommen“, nie „freigegeben“. Die Texte stehen unter `teams.*` in `packages/shared/src/i18n/de.ts`.
 - **Handy:** Unter 960 Pixel Breite ist die Seitenleiste ein Blatt von unten mit Griffzeile; die Rückfrage vor dem Löschen liegt über der ganzen Seite. Es gibt nirgends einen sichtbaren Scrollbalken.
 - **Tests:** `packages/ui/src/teams/teams.test.ts` (Bausteine mit eigener Beispiel-Vorlage: Szenen, Pflichten, Wortwahl) und `apps/web/src/app/%5Fkomponenten/teams.test.ts` (Seite rendert auch wenn `fetch` wirft, Quelltext ohne Abruf, Wortlaut der echten Vorlage). Im Browser prüft `scripts/teams-browser.mjs` (`pnpm teams:browser`, Entwicklungs-Server unter `localhost`, Adresse in `TEAMS_URL`): Menü mit der Tastatur, Rückfrage beim Löschen, Not-Aus im Entwurf, Blatt am Handy, kein Scrollbalken, hell/dunkel.
-- **Bilder:** Die Aufnahmen `teams-*` stehen in `docs/screenshots.json` (Art „entwicklung“) und entstehen mit `pnpm doku:screenshots teams-seitenleiste …`; je Szene dunkel und hell, 1440 und 390 Pixel breit.
+- **Bilder:** Die Aufnahmen `teams-*` stehen in `docs/screenshots.json` (Feld „modus“: „entwicklung“) und entstehen mit `pnpm doku:screenshots teams-seitenleiste …`; je Szene dunkel und hell, 1440 und 390 Pixel breit.
 
 Verwaltung und „Team aus Vorlage“ werden erst gebaut, wenn diese Vorschau freigegeben ist.
 
