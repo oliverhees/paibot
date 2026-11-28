@@ -10,7 +10,16 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { APP_DEFAULT_TABLE_RIGHTS, APP_TABLE_RIGHTS, credentialsOf, scramVerifier } from "./rollen";
+import {
+  APP_DEFAULT_TABLE_RIGHTS,
+  APP_TABLE_RIGHTS,
+  credentialsOf,
+  scramVerifier,
+  WORKER_FADEN_COLUMNS,
+  WORKER_HIDDEN_TABLES,
+  WORKER_READ_ONLY_TABLES,
+  WORKER_TABLE_RIGHTS,
+} from "./rollen";
 import { createTestDb } from "./testing";
 
 describe("credentialsOf", () => {
@@ -75,5 +84,33 @@ describe("APP_TABLE_RIGHTS", () => {
         .map((w) => w.trim());
       for (const word of words) expect(allowed.has(word), `${table}: ${word}`).toBe(true);
     }
+  });
+});
+
+describe("WORKER_TABLE_RIGHTS", () => {
+  it("jede Tabelle hat einen Eintrag, genau wie bei der App-Rolle", () => {
+    expect(Object.keys(WORKER_TABLE_RIGHTS).sort()).toEqual(Object.keys(APP_TABLE_RIGHTS).sort());
+  });
+
+  it("nie mehr als die App-Rolle: jedes Recht des Workers hat auch die App", () => {
+    const woerter = (rights: string) =>
+      rights
+        .replace(/\([^)]*\)/g, "")
+        .split(",")
+        .map((w) => w.trim())
+        .filter((w) => w !== "");
+    for (const [table, rights] of Object.entries(WORKER_TABLE_RIGHTS)) {
+      const app = woerter(APP_TABLE_RIGHTS[table] ?? "");
+      for (const word of woerter(rights)) expect(app, `${table}: ${word}`).toContain(word);
+    }
+  });
+
+  it("Tabellen des Besitzers nur lesen, Anmeldung gar nicht, beim Faden nur Stand, Staffelstab und „belastet“", () => {
+    for (const table of WORKER_READ_ONLY_TABLES) expect(WORKER_TABLE_RIGHTS[table]).toBe("select");
+    for (const table of WORKER_HIDDEN_TABLES) expect(WORKER_TABLE_RIGHTS[table]).toBe("");
+    expect(WORKER_TABLE_RIGHTS.faeden).toBe(`select, update (${WORKER_FADEN_COLUMNS.join(", ")})`);
+    expect(Object.values(WORKER_TABLE_RIGHTS).join()).not.toMatch(
+      /(?:^|[\s,])(?:delete|truncate|trigger|references)(?=$|[\s,(])/,
+    );
   });
 });

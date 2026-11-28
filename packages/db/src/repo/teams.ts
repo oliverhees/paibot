@@ -1,7 +1,7 @@
 /**
  * PaiBot – Zugriff auf Teams: anlegen, lesen, ändern, löschen, Mitglieder, und die Stände eines
  * Entwurfs. Nur der Besitzer-Weg der Web-App ruft die schreibenden Funktionen auf (Quelltext-Test
- * `teams-nur-besitzer-weg.test.ts`).
+ * `teams-nur-besitzer-weg.test.ts`); die Rolle des Workers darf diese Tabellen nur lesen.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
