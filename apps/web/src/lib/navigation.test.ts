@@ -107,6 +107,7 @@ describe("Navigation", () => {
       "/info": t("seite.info"),
       "/modelle": t("seite.modelle"),
       "/regeln": t("seite.regeln"),
+      "/team-entwurf": t("teams.entwurf.seite_titel"),
       "/teams": t("teams.seite.titel"),
       "/teams/[id]": t("teams.seite.titel"),
       "/einstellungen/selbsttest": t("seite.einstellungen"),

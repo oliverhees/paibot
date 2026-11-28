@@ -80,6 +80,35 @@ async function inhaltLesen(
   return { inhalt: geprueft.entwurf, abdruck: geprueft.abdruck };
 }
 
+/**
+ * Die Ansicht einer Zeile, wie Route und Seite sie brauchen. Öffentlich, damit die Seite sie nicht
+ * ein zweites Mal baut: Sonst gäbe es zwei Stellen, die den Inhalt prüfen und den Abdruck rechnen.
+ *
+ * `modelle` reicht eine Seite mit, die mehrere Zeilen zeigt – sonst holt jede Zeile dieselbe Liste
+ * noch einmal.
+ */
+export async function entwurfAnsicht(
+  db: Database,
+  zeile: repo.entwuerfe.Entwurf,
+  modelle?: readonly ModellEintrag[],
+): Promise<EntwurfAnsicht> {
+  return zuAnsicht(db, zeile, modelle ?? (await modellListe(db)));
+}
+
+/** Die Modelle, die es hier gibt – einmal gelesen, für mehrere Ansichten. */
+export async function entwurfModelle(db: Database): Promise<readonly ModellEintrag[]> {
+  return modellListe(db);
+}
+
+/** Die Vorlagen des Images als Ansichten, mit den eigenen Modellen zugeordnet. */
+export async function teamVorlagenAnsichten(
+  db: Database,
+  modelle?: readonly ModellEintrag[],
+): Promise<VorlageAnsicht[]> {
+  const vorlagen = await ladeVorlagen({ modelle: modelle ?? (await modellListe(db)) });
+  return vorlagen.map(vorlageAnsicht);
+}
+
 async function zuAnsicht(
   db: Database,
   entwurf: repo.entwuerfe.Entwurf,
@@ -134,8 +163,7 @@ function vorlageAnsicht(vorlage: TeamVorlage): VorlageAnsicht {
  * nur Dateien von der Platte – kein Netz (`vorlagen.ts`).
  */
 export const teamVorlagenListe: RoutenAktion<"teamVorlagenListe"> = async (k) => {
-  const vorlagen = await ladeVorlagen({ modelle: await modellListe(k.db) });
-  return { daten: { vorlagen: vorlagen.map(vorlageAnsicht) } };
+  return { daten: { vorlagen: await teamVorlagenAnsichten(k.db) } };
 };
 
 /** `GET /api/team-entwuerfe`: alle Entwürfe, neueste zuerst. */

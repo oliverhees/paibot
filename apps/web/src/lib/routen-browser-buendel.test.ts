@@ -42,6 +42,10 @@ const EINSTIEGE = [
   "app/(app)/apps/error.tsx",
   "lib/apps/ansicht.ts",
   "lib/apps/pfade.ts",
+  // Die Vorschau eines Team-Entwurfs prüft ihren Inhalt und rechnet den Abdruck im Browser. Sie
+  // darf dafür das Format mitbringen (nur Web Crypto), aber nicht den Lader der Vorlagen und
+  // nichts aus der Datenbank.
+  "app/(app)/team-entwurf/TeamEntwurfSeite.tsx",
 ];
 
 /** Dateien (relativ zur Wurzel des Repos), die nie im Browser-Bündel stehen dürfen. */

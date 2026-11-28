@@ -18,4 +18,9 @@ export const TEAM_PFADE = {
   botTeam: (id: string) => `/api/bots/${teil(id)}/team`,
   teams: () => "/api/teams",
   team: (id: string) => `/api/teams/${teil(id)}`,
+  teamVorlagen: () => "/api/team-vorlagen",
+  teamEntwuerfe: () => "/api/team-entwuerfe",
+  teamEntwurf: (id: string) => `/api/team-entwuerfe/${teil(id)}`,
+  teamEntwurfAnlegen: (id: string) => `/api/team-entwuerfe/${teil(id)}/anlegen`,
+  teamEntwurfZuruecknehmen: (id: string) => `/api/team-entwuerfe/${teil(id)}/zuruecknehmen`,
 } as const;

@@ -20,15 +20,31 @@ import type { Vorlage } from "./typen";
 export type EntwurfStatus = "offen" | "angelegt" | "zurueck" | "verworfen";
 export const ENTWURF_VERFALL_TAGE = 7;
 
+/**
+ * Ein gewählter Bot, so wie er angelegt wird: mit dem Wortlaut, der in der Vorschau steht. Hat der
+ * Besitzer die Anweisung geändert, steht hier die geänderte – nicht die der Vorlage.
+ */
+export interface EntwurfAuswahlBot {
+  name: string;
+  anweisung: string;
+}
+
 export interface EntwurfVorschauProps {
   vorlage: Vorlage;
   status: EntwurfStatus;
   notAus: boolean;
-  /** Die Namen der gewählten Bots; das Team gehört immer dazu. */
-  onAnlegen: (botNamen: readonly string[]) => void;
+  /**
+   * Die gewählten Bots mit ihrem Wortlaut, in der Reihenfolge der Vorlage; das Team gehört immer
+   * dazu. Abgewählte Bots fehlen in der Liste.
+   */
+  onAnlegen: (bots: readonly EntwurfAuswahlBot[]) => void;
   onRueckgaengig: () => void;
   onVerwerfen: () => void;
   onWiederOeffnen: () => void;
+  /** Läuft gerade eine Anfrage? Dann sind die Knöpfe gesperrt. */
+  sendet?: boolean;
+  /** Was der Server gemeldet hat, wenn etwas nicht ging. */
+  fehler?: string;
 }
 
 const SPAETER = [
@@ -54,11 +70,23 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
   const v = p.vorlage;
   const leitung = v.team.leitung.name;
   const [gewaehlt, setGewaehlt] = useState<ReadonlySet<string>>(new Set(v.bots.map((b) => b.name)));
+  // Geänderte Anweisungen, je Bot-Name. Was hier fehlt, steht noch im Wortlaut der Vorlage.
+  const [geaendert, setGeaendert] = useState<ReadonlyMap<string, string>>(new Map());
+  const wortlautVon = (b: { name: string; anweisung: string }) =>
+    geaendert.get(b.name) ?? b.anweisung;
+  const auswahl = (): EntwurfAuswahlBot[] =>
+    v.bots
+      .filter((b) => gewaehlt.has(b.name))
+      .map((b) => ({ name: b.name, anweisung: wortlautVon(b) }));
   const zeigeZusammenarbeit =
     v.team.zusammenarbeit === "leitung_fuehrt"
       ? t("teams.verwaltung.fuehrt")
       : t("teams.verwaltung.aus");
-  const gesperrt = p.notAus;
+  // Die Abnahme steht immer da, auch wenn die Vorlage sie nicht setzt: Wer abnimmt, soll man sehen,
+  // bevor man anlegt. Ohne Angabe gilt die Leitung – wie in der Vorlage.
+  const zeigeAbnahme =
+    v.team.abnahme === "ich" ? t("teams.entwurf.abnahme_ich") : t("teams.entwurf.abnahme_leitung");
+  const gesperrt = p.notAus || p.sendet === true;
 
   return (
     <article
@@ -87,6 +115,7 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
                 {t("teams.entwurf.teil_team_text", {
                   name: v.team.name,
                   zusammenarbeit: zeigeZusammenarbeit,
+                  abnahme: zeigeAbnahme,
                 })}
               </small>
             </span>
@@ -124,7 +153,21 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
               </label>
               <details className={styles.wortlaut}>
                 <summary>{t("teams.entwurf.wortlaut")}</summary>
-                <pre className={styles.anweisung}>{b.anweisung}</pre>
+                {p.status === "offen" ? (
+                  <textarea
+                    className={styles.anweisung}
+                    aria-label={t("teams.entwurf.wortlaut_aendern", { name: b.name })}
+                    value={wortlautVon(b)}
+                    rows={8}
+                    onChange={(e) => {
+                      const neu = new Map(geaendert);
+                      neu.set(b.name, e.target.value);
+                      setGeaendert(neu);
+                    }}
+                  />
+                ) : (
+                  <pre className={styles.anweisung}>{wortlautVon(b)}</pre>
+                )}
               </details>
             </div>
           );
@@ -166,7 +209,7 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
             {t("teams.entwurf.zusammenfassung", { bots: gewaehlt.size })}{" "}
             {t("teams.entwurf.verfall", { tage: ENTWURF_VERFALL_TAGE })}
           </p>
-          {gesperrt && (
+          {p.notAus && (
             <p
               className={styles.hinweis}
               data-art="warn"
@@ -176,17 +219,32 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
               {t("teams.entwurf.gesperrt")}
             </p>
           )}
+          {p.fehler !== undefined && (
+            <p
+              className={styles.hinweis}
+              data-art="warn"
+              role="alert"
+              data-baustein="entwurf-fehler"
+            >
+              {p.fehler}
+            </p>
+          )}
           <div className={styles.aktionen}>
             <button
               type="button"
               className={`${styles.knopf} ${styles.haupt}`}
               disabled={gesperrt}
-              onClick={() => p.onAnlegen([...gewaehlt])}
+              onClick={() => p.onAnlegen(auswahl())}
             >
               <Sym name="haken" groesse={15} />
               {t("teams.entwurf.anlegen")}
             </button>
-            <button type="button" className={styles.knopf} onClick={p.onVerwerfen}>
+            <button
+              type="button"
+              className={styles.knopf}
+              disabled={p.sendet === true}
+              onClick={p.onVerwerfen}
+            >
               {t("teams.entwurf.verwerfen")}
             </button>
           </div>
@@ -202,8 +260,23 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
           >
             {t("teams.entwurf.angelegt", { name: v.team.name })}
           </p>
+          {p.fehler !== undefined && (
+            <p
+              className={styles.hinweis}
+              data-art="warn"
+              role="alert"
+              data-baustein="entwurf-fehler"
+            >
+              {p.fehler}
+            </p>
+          )}
           <div className={styles.aktionen}>
-            <button type="button" className={styles.knopf} onClick={p.onRueckgaengig}>
+            <button
+              type="button"
+              className={styles.knopf}
+              disabled={p.sendet === true}
+              onClick={p.onRueckgaengig}
+            >
               <Sym name="zurueck" groesse={15} />
               {t("teams.entwurf.rueckgaengig")}
             </button>

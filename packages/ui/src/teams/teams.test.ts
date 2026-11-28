@@ -50,16 +50,22 @@ const zeige = (start: TeamsSzene, startBot?: string) =>
   renderToStaticMarkup(
     h(TeamsAnsicht, { daten: beispielDaten(vorlage), start, ...(startBot ? { startBot } : {}) }),
   );
-const entwurf = (notAus: boolean, status: "offen" | "angelegt" = "offen") =>
+const entwurf = (
+  notAus: boolean,
+  status: "offen" | "angelegt" = "offen",
+  weiter: { sendet?: boolean; fehler?: string; vorlage?: Vorlage } = {},
+) =>
   renderToStaticMarkup(
     h(EntwurfVorschau, {
-      vorlage,
+      vorlage: weiter.vorlage ?? vorlage,
       status,
       notAus,
       onAnlegen: () => {},
       onRueckgaengig: () => {},
       onVerwerfen: () => {},
       onWiederOeffnen: () => {},
+      ...(weiter.sendet === undefined ? {} : { sendet: weiter.sendet }),
+      ...(weiter.fehler === undefined ? {} : { fehler: weiter.fehler }),
     }),
   );
 const alle = SZENEN.map((s) => s.id);
@@ -234,6 +240,47 @@ describe("Teams-Bausteine: Team-Entwurf", () => {
     const ideen = teile.find((x) => x.includes("Sammelt Themen"));
     expect(redaktion?.slice(0, 200)).toContain('disabled=""');
     expect(ideen?.slice(0, 200)).not.toContain('disabled=""');
+  });
+
+  it("die Anweisung ist vor dem Anlegen änderbar: je Bot ein Feld mit Beschriftung", () => {
+    const html = entwurf(false);
+    const felder = [...html.matchAll(/<textarea[^>]*aria-label="([^"]*)"/g)].map((m) => m[1]);
+    expect(felder).toEqual([
+      "Anweisung für Redaktion ändern",
+      "Anweisung für Ideen ändern",
+      "Anweisung für Entwurf ändern",
+      "Anweisung für Lektorat ändern",
+    ]);
+    for (const b of vorlage.bots) expect(html, b.name).toContain(esc(b.anweisung));
+  });
+
+  it("Gegenprobe: nach dem Anlegen steht der Wortlaut fest, kein Feld mehr", () => {
+    const html = entwurf(false, "angelegt");
+    expect(html).not.toContain("<textarea");
+    expect(html).toContain("<pre");
+    for (const b of vorlage.bots) expect(html, b.name).toContain(esc(b.anweisung));
+  });
+
+  it("die Abnahme steht in der Vorschau, und zwar die der Vorlage", () => {
+    expect(entwurf(false)).toContain("Abnahme durch die Leitung");
+    const eigene: Vorlage = { ...vorlage, team: { ...vorlage.team, abnahme: "ich" } };
+    const html = entwurf(false, "offen", { vorlage: eigene });
+    expect(html).toContain("Abnahme durch dich");
+    expect(html).not.toContain("Abnahme durch die Leitung");
+  });
+
+  it("eine Meldung des Servers steht als Fehler da, und die Knöpfe warten", () => {
+    const html = entwurf(false, "offen", { fehler: "Entwurf veraltet." });
+    expect(html).toContain('data-baustein="entwurf-fehler"');
+    expect(html).toContain("Entwurf veraltet.");
+    // Gegenprobe: ohne Meldung ist die Stelle leer, und ohne laufende Anfrage ist der Knopf frei.
+    expect(entwurf(false)).not.toContain('data-baustein="entwurf-fehler"');
+    expect(entwurf(false, "offen", { sendet: true })).toMatch(
+      /<button[^>]*disabled=""[^>]*>(<svg.*?<\/svg>)?Team anlegen/,
+    );
+    expect(entwurf(false)).not.toMatch(
+      /<button[^>]*disabled=""[^>]*>(<svg.*?<\/svg>)?Team anlegen/,
+    );
   });
 });
 
