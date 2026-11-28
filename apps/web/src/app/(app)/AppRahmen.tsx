@@ -36,7 +36,8 @@ import {
 import { apiFetch } from "../../lib/api/client";
 import { unterhaltungsAdresse } from "../../lib/chat/pfade";
 import { Rahmen, type RahmenKontext } from "../../lib/chat/rahmen-kontext";
-import type { UnterhaltungKurz } from "../../lib/chat/typen";
+import { merken, neuesteZuerst, unterhaltungenVon } from "../../lib/chat/seitenleiste";
+import type { UnterhaltungKurz, UnterhaltungUpdate } from "../../lib/chat/typen";
 import { INFO_LINKS } from "../../lib/einstellungen/info";
 import {
   BOT_ADRESSE,
@@ -168,10 +169,6 @@ function NavLink(props: ComponentProps<typeof Link>) {
   return <Link {...props} prefetch={false} />;
 }
 
-function neuesteZuerst(liste: readonly UnterhaltungKurz[]): UnterhaltungKurz[] {
-  return [...liste].sort((a, b) => (a.zuletzt < b.zuletzt ? 1 : a.zuletzt > b.zuletzt ? -1 : 0));
-}
-
 export function AppRahmen({
   gruppen,
   herkunft,
@@ -198,8 +195,8 @@ export function AppRahmen({
   // Neue Daten vom Server (z. B. nach dem Neuladen der Seite) übernehmen.
   useEffect(() => setUnterhaltungen(neuesteZuerst(vomServer)), [vomServer]);
 
-  const unterhaltungMerken = useCallback((u: UnterhaltungKurz) => {
-    setUnterhaltungen((liste) => neuesteZuerst([u, ...liste.filter((x) => x.id !== u.id)]));
+  const unterhaltungMerken = useCallback((u: UnterhaltungUpdate) => {
+    setUnterhaltungen((liste) => merken(liste, u));
   }, []);
   const unterhaltungEntfernen = useCallback((id: string) => {
     setUnterhaltungen((liste) => liste.filter((x) => x.id !== id));
@@ -221,12 +218,10 @@ export function AppRahmen({
 
   // Unterhaltungen eines Bots, in der Reihenfolge der Liste (zuletzt benutzte zuerst).
   const navUnterhaltungen = (botId: string | undefined) =>
-    unterhaltungen
-      .filter((u) => botId !== undefined && u.botId === botId)
-      .map((u) => {
-        const href = unterhaltungsAdresse(u.id);
-        return { id: u.id, titel: u.titel, href, aktiv: pfad === href };
-      });
+    unterhaltungenVon(unterhaltungen, botId).map((u) => {
+      const href = unterhaltungsAdresse(u.id);
+      return { id: u.id, titel: u.titel, href, aktiv: pfad === href };
+    });
 
   // Der Haupt-Assistent behält seine eigene Seite (`/bot`, mit Name, Anweisung und Modell); jeder
   // weitere Bot hat seinen Steckbrief unter `/bot/<Kennung>`.

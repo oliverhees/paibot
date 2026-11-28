@@ -41,6 +41,14 @@ export interface UnterhaltungKurz {
   botId?: string;
 }
 
+/**
+ * Ein Live-Update aus dem Browser. `botId` ist **Pflicht**, auch wenn sie leer sein darf (Fäden
+ * eines Teams haben keinen Bot): Die Seitenleiste gruppiert nach Bot, und ein Update, das die
+ * Zuordnung vergisst, nähme die Unterhaltung aus ihrer Gruppe. So kann man sie nicht vergessen –
+ * der Typecheck verlangt sie an jeder Stelle.
+ */
+export type UnterhaltungUpdate = Omit<UnterhaltungKurz, "botId"> & { botId: string | undefined };
+
 /** Unterhaltung mit dem Modus der Datenschleuse, der für sie gilt. */
 export interface UnterhaltungInfo {
   id: string;

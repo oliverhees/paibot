@@ -12,7 +12,7 @@
 
 import type { AppShellFlaeche } from "@paibot/ui";
 import { createContext, type ReactNode, useContext, useEffect } from "react";
-import type { UnterhaltungKurz } from "./typen";
+import type { UnterhaltungKurz, UnterhaltungUpdate } from "./typen";
 
 export interface RahmenKontext {
   /** Eigene Kopfzeile der Seite; `undefined` setzt die Standard-Kopfzeile. */
@@ -23,7 +23,7 @@ export interface RahmenKontext {
   setFlaecheOffen(offen: boolean): void;
   unterhaltungen: readonly UnterhaltungKurz[];
   /** Neu oder geändert: steht danach mit neuem Titel bzw. neuer Zeit in der Liste. */
-  unterhaltungMerken(u: UnterhaltungKurz): void;
+  unterhaltungMerken(u: UnterhaltungUpdate): void;
   unterhaltungEntfernen(id: string): void;
   /** Not-Aus an: Der Bot nimmt keine Nachrichten an. */
   notAus?: boolean;
