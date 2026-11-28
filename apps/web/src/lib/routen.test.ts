@@ -11,7 +11,7 @@
 import { ACTION_TYPES, ACTIONS, UNSTORED_ACTION_TYPES } from "@paibot/shared/aktionen";
 import { RATE_LIMITS } from "@paibot/shared/konstanten";
 import { CREDENTIAL_SCOPE } from "@paibot/shared/tor";
-import { TEAM_ACTION_TYPES } from "@paibot/shared/tor-fassung-4";
+import type { TeamActionType } from "@paibot/shared/tor-fassung-4";
 import { AUFTRAG_ACTION_TYPES } from "@paibot/shared/tor-fassung-5";
 import { describe, expect, it } from "vitest";
 import { LIMIT_DEFINITIONEN } from "./rate-limit";
@@ -25,6 +25,20 @@ import {
 } from "./routen";
 
 const routen = Object.entries(API_ROUTEN) as [RoutenName, (typeof API_ROUTEN)[RoutenName]][];
+
+/**
+ * Aktionen der Fassung 4, die noch keine Route haben: Entwürfe, Fäden und der Stabschef. Ihre
+ * Bedienung kommt später; bis dahin gibt es sie nur im Tor und in der Datenbank. Bots und Teams
+ * zu verwalten ist dagegen bedienbar und hat Routen.
+ */
+const OHNE_BEDIENUNG: readonly TeamActionType[] = [
+  "team.entwurf_erstellen",
+  "team.entwurf_verwerfen",
+  "team.entwurf_anlegen",
+  "team.entwurf_zuruecknehmen",
+  "faden.anlegen",
+  "einstellung.stabschef_setzen",
+];
 
 describe("API-Routen", () => {
   it("jede Kombination aus Methode und Pfad gibt es nur einmal", () => {
@@ -60,11 +74,11 @@ describe("API-Routen", () => {
         continue;
       }
       if (nochNichtSpeicherbar.has(aktion)) continue;
-      // Die Aktionen für Bots, Teams und Fäden (Tor-Fassung 4) haben noch keine Route: Die
-      // Bedienung kommt später; bis dahin gibt es sie nur im Tor und in der Datenbank.
-      // Ebenso die Aktionen des Besitzers an Aufträgen (Tor-Fassung 5).
+      // Entwürfe, Fäden und der Stabschef (Tor-Fassung 4) haben noch keine Route, ebenso die
+      // Aktionen des Besitzers an Aufträgen (Tor-Fassung 5): Die Bedienung kommt später; bis dahin
+      // gibt es sie nur im Tor und in der Datenbank.
       if (
-        (TEAM_ACTION_TYPES as readonly string[]).includes(aktion) ||
+        (OHNE_BEDIENUNG as readonly string[]).includes(aktion) ||
         (AUFTRAG_ACTION_TYPES as readonly string[]).includes(aktion)
       ) {
         expect(genutzt.has(aktion), aktion).toBe(false);

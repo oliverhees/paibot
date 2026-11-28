@@ -11,7 +11,10 @@
 
 import type { ActionType, Credential } from "@paibot/shared/aktionen";
 import {
+  botCreateInput,
   botInput,
+  botPauseInput,
+  botTeamInput,
   connectionTestInput,
   conversationCreateInput,
   conversationRenameInput,
@@ -32,6 +35,8 @@ import {
   setupCodeCheckInput,
   setupConnectionTestInput,
   setupInput,
+  teamCreateInput,
+  teamPatchInput,
 } from "@paibot/shared/eingaben";
 import type { z } from "zod";
 import { GROESSTER_KOERPER_BYTES, STANDARD_KOERPER_BYTES } from "./api/koerper";
@@ -340,6 +345,93 @@ export const API_ROUTEN = {
     veraendernd: true,
     aktion: "modell.waehlen",
     eingabe: modelChoiceInput,
+  },
+
+  /** Alle Bots mit dem Standard-Bot; liest nur. */
+  botsListe: {
+    methode: "GET",
+    pfad: "/api/bots",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  /** Legt einen weiteren Bot an (Grenze „Bots insgesamt“ im Tor). */
+  botAnlegen: {
+    methode: "POST",
+    pfad: "/api/bots",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "bot.anlegen",
+    eingabe: botCreateInput,
+    koerperBytes: 64 * 1024,
+  },
+  /** Pausiert einen Bot oder hebt die Pause auf. */
+  botPausieren: {
+    methode: "PUT",
+    pfad: "/api/bots/:id/pause",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "bot.pausieren",
+    eingabe: botPauseInput,
+  },
+  /** Löscht einen Bot; den Standard-Bot und einen Bot mit laufender Antwort lehnt das Tor ab. */
+  botLoeschen: {
+    methode: "DELETE",
+    pfad: "/api/bots/:id",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "bot.loeschen",
+  },
+  /** Ordnet einen Bot einem Team zu oder nimmt ihn heraus. */
+  botTeamSetzen: {
+    methode: "PUT",
+    pfad: "/api/bots/:id/team",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "bot.team_setzen",
+    eingabe: botTeamInput,
+  },
+
+  /** Alle Teams mit ihren Bots; liest nur. */
+  teamsListe: {
+    methode: "GET",
+    pfad: "/api/teams",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  /** Legt ein Team an; Leitung und Schalter kommen mit dem Ändern. */
+  teamAnlegen: {
+    methode: "POST",
+    pfad: "/api/teams",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "team.anlegen",
+    eingabe: teamCreateInput,
+  },
+  /** Ändert Name, Leitung, Zusammenarbeit oder Abnahme-Standard eines Teams. */
+  teamAendern: {
+    methode: "PUT",
+    pfad: "/api/teams/:id",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "team.aendern",
+    eingabe: teamPatchInput,
+  },
+  /** Löscht ein Team; seine Bots bleiben und stehen danach ohne Team da. */
+  teamLoeschen: {
+    methode: "DELETE",
+    pfad: "/api/teams/:id",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "team.loeschen",
   },
 
   /** Die verbundenen und getrennten Apps (ohne Token) mit dem Zugriff der Bots; liest nur. */

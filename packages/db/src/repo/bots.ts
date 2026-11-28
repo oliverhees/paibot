@@ -32,10 +32,15 @@ export interface BotCreate {
   avatarShape: AvatarShape;
   color: BotColor;
   maxOutputTokens?: number;
+  /** Aufgabe des Bots in seinem Team, in einem Satz. */
+  role?: string;
+  /** Team, in dem der Bot anfängt; ohne Angabe steht er für sich. */
+  teamId?: TeamId;
 }
 
 export interface BotPatch {
   name?: string;
+  role?: string;
   instructions?: string;
   avatarShape?: AvatarShape;
   color?: BotColor;
@@ -63,6 +68,8 @@ export async function create(db: Database, input: BotCreate): Promise<Bot> {
           ...(input.maxOutputTokens === undefined
             ? {}
             : { maxOutputTokens: input.maxOutputTokens }),
+          ...(input.role === undefined ? {} : { role: input.role }),
+          ...(input.teamId === undefined ? {} : { teamId: input.teamId }),
         })
         .returning(),
     fehler,

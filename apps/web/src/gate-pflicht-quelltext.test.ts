@@ -218,6 +218,9 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   "worker/src/schleuse-meldung.ts": { art: "betrieb", nur: ["schleuse.report"] },
   // Not-Aus umschalten (Aktion hinter `PUT /api/notaus`).
   "web/src/lib/notaus/notaus.ts": { art: "aktion" },
+  // Bots und Teams verwalten: Schreiben nur in der Ausführung der Aktionen (anlegen, pausieren,
+  // löschen, einem Team zuordnen; Team anlegen, ändern, löschen).
+  "web/src/lib/teams/verwaltung.ts": { art: "aktion" },
 };
 
 function quelltexte(): { datei: string; text: string }[] {

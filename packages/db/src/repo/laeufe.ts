@@ -112,6 +112,19 @@ export async function getActive(
   return row === undefined ? undefined : toRun(row);
 }
 
+/**
+ * Hat dieser Bot gerade einen aktiven Lauf? Fakt `botRunActive` der Aktion `bot.loeschen`
+ * (Vorbedingung „kein Lauf des Bots“).
+ */
+export async function hatAktivenLauf(db: Database, botId: BotId): Promise<boolean> {
+  const [row] = await db
+    .select({ id: runs.id })
+    .from(runs)
+    .where(and(eq(runs.botId, botId), inArray(runs.status, [...ACTIVE_RUN_STATUSES])))
+    .limit(1);
+  return row !== undefined;
+}
+
 /** Läufe einer Unterhaltung, neueste zuerst. */
 export async function listForConversation(
   db: Database,

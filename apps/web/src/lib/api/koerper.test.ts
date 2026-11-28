@@ -199,6 +199,7 @@ describe("Next-Einstellungen", () => {
     );
     expect(gross.map((def) => def.pfad).sort()).toEqual([
       "/api/bot",
+      "/api/bots",
       "/api/unterhaltungen/:id/nachrichten",
     ]);
     for (const def of Object.values(API_ROUTEN as Record<string, RoutenDefinition>)) {
