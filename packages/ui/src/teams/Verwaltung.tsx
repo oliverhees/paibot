@@ -16,17 +16,50 @@ import { BotAvatar } from "../faden/BotAvatar";
 import styles from "./Teams.module.css";
 import type { AbnahmeStandard, TeamsBot, TeamsTeam, Zusammenarbeit } from "./typen";
 
+/** Was die Verwaltung an den Server gibt, wenn gespeichert wird. */
+export interface TeamAenderung {
+  name: string;
+  /** Leere Kennung heißt: keine Leitung. */
+  leitungId: string;
+  zusammenarbeit: Zusammenarbeit;
+  abnahme: AbnahmeStandard;
+}
+
+export interface TeamVerwaltungProps {
+  team: TeamsTeam;
+  mitglieder: readonly TeamsBot[];
+  /**
+   * Speichern. Fehlt der Rückruf, bleibt die Verwaltung Vorschau und sagt es auch. Mit Rückruf
+   * meldet sie „Gespeichert.“, sobald er ohne Fehler zurückkommt.
+   */
+  onSpeichern?: (aenderung: TeamAenderung) => void | Promise<void>;
+  /** Team löschen; fehlt der Rückruf, gibt es den Knopf nicht. */
+  onLoeschen?: () => void;
+  /**
+   * Es ist keine Tagesgrenze gesetzt. Dann steht am Schalter „Zusammenarbeit“ der Hinweis, dass
+   * die Bots ohne Tagesbudget arbeiten. Mit Tagesgrenze steht dort keiner.
+   */
+  ohneTagesbudget?: boolean;
+  /** Fehler vom Server, im Wortlaut der Antwort. */
+  fehler?: string;
+  /** Speichern läuft. */
+  sendet?: boolean;
+}
+
 /**
- * Ein Team ansehen und ändern (nur lokal, die Vorschau speichert nichts). Das Team hat kein eigenes
- * Tagesbudget; der Hinweis sagt, dass die Tagesgrenze für alle Bots zusammen gilt.
+ * Ein Team ansehen und ändern. Das Team hat kein eigenes Tagesbudget; der Hinweis unten sagt,
+ * dass die Tagesgrenze für alle Bots zusammen gilt. Ist keine gesetzt, steht zusätzlich der
+ * Hinweis am Schalter „Zusammenarbeit“.
  */
 export function TeamVerwaltung({
   team,
   mitglieder,
-}: {
-  team: TeamsTeam;
-  mitglieder: readonly TeamsBot[];
-}) {
+  onSpeichern,
+  onLoeschen,
+  ohneTagesbudget = false,
+  fehler,
+  sendet = false,
+}: TeamVerwaltungProps) {
   const [name, setName] = useState(team.name);
   const [leitungId, setLeitungId] = useState(team.leitungId);
   const [zus, setZus] = useState<Zusammenarbeit>(team.zusammenarbeit);
@@ -47,8 +80,15 @@ export function TeamVerwaltung({
       className={styles.seite}
       aria-label={t("teams.verwaltung.region", { name: team.name })}
       data-baustein="team-verwaltung"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        if (sendet) return;
+        if (onSpeichern === undefined) {
+          setGespeichert(true);
+          return;
+        }
+        setGespeichert(false);
+        await onSpeichern({ name, leitungId, zusammenarbeit: zus, abnahme });
         setGespeichert(true);
       }}
     >
@@ -81,6 +121,7 @@ export function TeamVerwaltung({
             setGespeichert(false);
           }}
         >
+          <option value="">{t("teams.verwaltung.leitung_keine")}</option>
           {mitglieder.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -114,6 +155,11 @@ export function TeamVerwaltung({
             <small>{t("teams.verwaltung.fuehrt_hilfe")}</small>
           </span>
         </label>
+        {ohneTagesbudget && (
+          <p className={styles.hinweis} data-art="info" data-baustein="zusammenarbeit-hinweis">
+            {t("teams.verwaltung.ohne_budget")}
+          </p>
+        )}
       </fieldset>
       <fieldset className={styles.gruppeFeld}>
         <legend className={styles.beschriftung}>{t("teams.verwaltung.abnahme")}</legend>
@@ -166,13 +212,29 @@ export function TeamVerwaltung({
       <p className={styles.hinweis} data-art="info" data-baustein="budget-hinweis">
         {t("teams.verwaltung.budget")}
       </p>
+      {fehler !== undefined && (
+        <p className={styles.hinweis} role="alert" data-art="warn" data-baustein="team-fehler">
+          {fehler}
+        </p>
+      )}
       <div className={styles.aktionen}>
-        <button type="submit" className={`${styles.knopf} ${styles.haupt}`}>
+        <button type="submit" className={`${styles.knopf} ${styles.haupt}`} disabled={sendet}>
           {t("teams.verwaltung.speichern")}
         </button>
+        {onLoeschen !== undefined && (
+          <button
+            type="button"
+            className={`${styles.knopf} ${styles.gefahrKnopf}`}
+            onClick={onLoeschen}
+          >
+            {t("teams.verwaltung.loeschen")}
+          </button>
+        )}
         {gespeichert && (
           <span className={styles.leise} role="status">
-            {t("teams.verwaltung.vorschau_gespeichert")}
+            {onSpeichern === undefined
+              ? t("teams.verwaltung.vorschau_gespeichert")
+              : t("teams.verwaltung.gespeichert")}
           </span>
         )}
       </div>

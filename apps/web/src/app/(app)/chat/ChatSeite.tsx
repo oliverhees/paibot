@@ -1228,9 +1228,17 @@ export function ChatSeite({
       </Link>
     </>
   ) : null;
+  // Ist der Bot pausiert, lehnt das Tor jede Antwort ab (`botPaused`). Die Oberfläche sagt das
+  // vorher und sperrt die Eingabe, damit niemand gegen eine Wand schreibt.
+  const pausiert = bereitschaft.pausiert;
   const hinweise =
-    laenge.art !== "ok" || schleuseHinweis ? (
+    laenge.art !== "ok" || schleuseHinweis || pausiert ? (
       <div className={styles.hinweise}>
+        {pausiert && (
+          <p className={styles.notizZeile} role="status" data-baustein="bot-pausiert">
+            {t("chat.pausiert", { name: botName })}
+          </p>
+        )}
         {laenge.art !== "ok" && (
           <p
             className={styles.laenge}
@@ -1333,9 +1341,11 @@ export function ChatSeite({
           platzhalter={
             rahmen.notAus === true
               ? t("notaus.chat.eingabe")
-              : t("chat.eingabe.platzhalter_bot", { name: botName })
+              : pausiert
+                ? t("chat.eingabe.platzhalter_pausiert", { name: botName })
+                : t("chat.eingabe.platzhalter_bot", { name: botName })
           }
-          deaktiviert={!bereit || sendet !== undefined || rahmen.notAus === true}
+          deaktiviert={!bereit || pausiert || sendet !== undefined || rahmen.notAus === true}
           notiz={t("chat.notiz", { name: botName })}
         />
       </div>

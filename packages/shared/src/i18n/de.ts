@@ -544,6 +544,10 @@ export const de = {
   "chat.laenge.zu_lang":
     "{anzahl} Zeichen zu viel. Kürze die Nachricht, dann lässt sie sich senden.",
   "chat.eingabe.platzhalter_bot": "Schreib {name} eine Nachricht",
+  "chat.eingabe.platzhalter_pausiert":
+    "{name} ist pausiert. Setze den Bot auf seiner Seite fort, um weiterzuschreiben.",
+  "chat.pausiert":
+    "{name} ist pausiert und antwortet nicht. Auf der Seite des Bots setzt du ihn fort.",
   "chat.notiz": "{name} handelt nur mit Beleg. Jede Antwort bekommt einen, den du prüfen kannst.",
   "chat.ausstehend": "wird gesendet …",
   "chat.lauf.wartet": "wartet in der Schlange",
@@ -2119,8 +2123,36 @@ export const de = {
   "teams.verwaltung.mitglieder": "Mitglieder",
   "teams.verwaltung.budget":
     "Dieses Team hat kein eigenes Tagesbudget. Deine Tagesgrenze gilt für alle Bots zusammen.",
+  "teams.verwaltung.ohne_budget":
+    "Du hast keine Tagesgrenze gesetzt. Schaltest du die Zusammenarbeit ein, arbeiten die Bots dieses Teams ohne Tagesbudget. Die Grenze setzt du unter Einstellungen → Grenzen.",
   "teams.verwaltung.speichern": "Speichern",
+  "teams.verwaltung.gespeichert": "Gespeichert.",
+  "teams.verwaltung.leitung_keine": "Keine Leitung",
+  "teams.verwaltung.loeschen": "Team löschen …",
+  "teams.verwaltung.loeschen_titel": "Team {name} löschen?",
+  "teams.verwaltung.loeschen_text":
+    "Das Team wird entfernt. Seine Bots bleiben und stehen danach unter „Ohne Team“.",
   "teams.verwaltung.vorschau_gespeichert": "Nur Vorschau: es wurde nichts gespeichert.",
+  "teams.seite.titel": "Bots und Teams",
+  "teams.seite.vorspann":
+    "Hier legst du Bots an, ordnest sie Teams zu und bestimmst, wer ein Team leitet. Jede Änderung geht durch das Tor und bekommt einen Beleg.",
+  "teams.seite.teams": "Teams",
+  "teams.seite.keine_teams": "Noch kein Team. Lege eines an und ordne ihm Bots zu.",
+  "teams.seite.team_anlegen": "Team anlegen",
+  "teams.seite.team_name": "Name des Teams",
+  "teams.seite.bots": "Bots",
+  "teams.seite.bot_anlegen": "Bot anlegen",
+  "teams.seite.bot_name": "Name des Bots",
+  "teams.seite.bot_rolle": "Aufgabe in einem Satz",
+  "teams.seite.bot_rolle_platzhalter": "Zum Beispiel: Sammelt Themen und schreibt Stichpunkte.",
+  "teams.seite.keine_bots": "Außer dem Haupt-Assistenten gibt es noch keinen Bot.",
+  "teams.seite.verwalten": "Verwalten",
+  "teams.seite.mitglieder": "{anzahl} Bots",
+  "teams.seite.ohne_leitung": "ohne Leitung",
+  "teams.bot.seite": "Bot {name}",
+  "teams.bot.team_zuordnen": "Team",
+  "teams.bot.haupt": "Dein Haupt-Assistent. Er bleibt und lässt sich nicht löschen.",
+  "teams.bot.laeuft": "Wird gespeichert …",
   "teams.entwurf.region": "Entwurf für das Team {name}",
   "teams.entwurf.titel": "Entwurf: Team {name}",
   "teams.entwurf.kopf":
