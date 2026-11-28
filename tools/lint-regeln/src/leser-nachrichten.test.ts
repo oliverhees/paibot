@@ -233,6 +233,8 @@ const ERWARTET = [
   "packages/agents/src/run/nahtstellen.ts",
   "packages/agents/src/run/schleife.ts",
   "packages/agents/src/run/strom.ts",
+  // zählt nur, ob es überhaupt eine Nachricht an einen neuen Bot gibt („Rückgängig“ als Ganzes)
+  "packages/db/src/repo/entwuerfe.ts",
   // Zugriffsfunktionen
   "packages/db/src/repo/nachrichten.ts",
   "packages/db/src/repo/suche.ts",

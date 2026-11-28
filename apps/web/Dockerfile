@@ -33,6 +33,7 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PAIBOT_ROLE=web \
     PAIBOT_DOKU_INDEX=/app/doku-index/doku-index.json \
+    PAIBOT_TEAM_VORLAGEN=/app/vorlagen/teams \
     PAIBOT_WORKER_HEALTH_FILE=/tmp/paibot-worker.herzschlag
 WORKDIR /app
 RUN addgroup -S paibot && adduser -S paibot -G paibot
@@ -47,6 +48,11 @@ COPY --from=build --chown=paibot:paibot /app/apps/worker/dist/worker.mjs ./apps/
 # bekäme er die Rechte der Datei und wäre für die App nicht zu betreten.
 RUN mkdir -p /app/doku-index && chmod 0555 /app/doku-index
 COPY --from=build --chown=root:root --chmod=0444 /app/doku-index/doku-index.json ./doku-index/doku-index.json
+# Team-Vorlagen dieser Version. Sie gehören root und sind nur lesbar: Die App legt Teams daraus an,
+# soll sie aber zur Laufzeit nicht ändern können. Wie beim Index der Doku wird der Ordner vorher
+# angelegt, sonst bekäme er die Rechte der Dateien und wäre für die App nicht zu betreten.
+RUN mkdir -p /app/vorlagen/teams && chmod 0555 /app/vorlagen /app/vorlagen/teams
+COPY --from=build --chown=root:root --chmod=0444 /app/vorlagen/teams/*.json ./vorlagen/teams/
 USER paibot
 # Läuft als Nicht-Root und verträgt ein schreibgeschütztes Dateisystem (read_only im Compose);
 # beschreibbar sind nur /tmp und der Cache von Next.js (tmpfs).
