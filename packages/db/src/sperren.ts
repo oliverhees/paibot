@@ -13,3 +13,9 @@ export const BELEGE_LOCK_KEY = 2026112001;
 
 /** Sperre beim Anwenden der Migrationen. */
 export const MIGRATION_LOCK_KEY = 2026112002;
+
+/**
+ * Sperre beim Anlegen eines Bots. Sie hält Zählen und Einfügen zusammen, damit die Grenze „Bots
+ * insgesamt“ auch bei gleichzeitigen Anfragen und über mehrere Prozesse hinweg hält.
+ */
+export const BOTS_LOCK_KEY = 2026112801;

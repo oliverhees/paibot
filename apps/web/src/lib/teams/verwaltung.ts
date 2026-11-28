@@ -11,12 +11,14 @@
  * @since     2026-11-28
  */
 
-import { repo } from "@paibot/db";
+import { type Database, repo } from "@paibot/db";
 import { PaiBotError } from "@paibot/shared/fehler";
 import { type BotId, isId, type ModelId, newId, type TeamId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
+import { neuerNameUnzulaessig } from "@paibot/shared/namen";
 import { TEAM_FIELDS } from "@paibot/shared/tor-fassung-4";
 import type { RoutenAktion } from "../api/route";
+import { nacheinander } from "./reihe";
 
 type TeamFeld = (typeof TEAM_FIELDS)[number];
 
@@ -44,40 +46,71 @@ export const botsListe: RoutenAktion<"botsListe"> = async (k) => {
 };
 
 /**
+ * Der Name des neuen Bots darf nicht mit „Team “ beginnen (das prüft schon das Eingabe-Schema) und
+ * nicht mit dem Namen eines bestehenden Bots zu verwechseln sein: gleiche Schreibweise, gleiche
+ * Unicode-Form, unsichtbare Zeichen oder ähnlich aussehende Buchstaben aus anderen Schriften. Sonst
+ * wüsste im Teamchat niemand, wer gemeint ist.
+ */
+async function nameFrei(db: Database, name: string): Promise<void> {
+  const grund = neuerNameUnzulaessig(name, await repo.bots.list(db));
+  if (grund === undefined) return;
+  throw new PaiBotError("eingabe_ungueltig", {
+    felder: [{ feld: "name", code: "ungueltig" }],
+    ...(grund === "reserviert"
+      ? {
+          text: "Namen, die mit „Team “ beginnen, gehören einem Team.",
+          ausweg: "Nimm einen Namen ohne dieses Wort am Anfang.",
+        }
+      : {
+          text: "Diesen Namen trägt schon ein Bot oder er sieht einem zu ähnlich.",
+          ausweg: "Nimm einen Namen, der klar von den anderen zu unterscheiden ist.",
+        }),
+  });
+}
+
+/**
  * `POST /api/bots`: legt einen weiteren Bot an. Ohne Modell nimmt der neue Bot das Modell des
  * Standard-Bots; ohne Team steht er für sich. Die Grenze „Bots insgesamt“ zieht das Tor aus den
- * Fakten `botsAfter` und `maxBots`, die hier der Server zählt.
+ * Fakten `botsAfter` und `maxBots`, die hier der Server zählt; dass die gezählte Zahl bis zum
+ * Einfügen gilt, hält die Reihe dieses Prozesses (`nacheinander`) zusammen mit der Sperre der
+ * Datenbank (`repo.bots.anlegenUnterGrenze`) – auch bei gleichzeitigen Anfragen.
  */
-export const botAnlegen: RoutenAktion<"botAnlegen"> = async (k) => {
-  const botId = newId("bot");
-  const teamId = k.eingabe.teamId as TeamId | undefined;
-  if (teamId !== undefined && (await repo.teams.get(k.db, teamId)) === undefined) {
-    throw new PaiBotError("nicht_gefunden");
-  }
-  const modelId =
-    (k.eingabe.modelId as ModelId | undefined) ??
-    ((await repo.bots.getDefault(k.db))?.modelId as ModelId | undefined);
-  const botsAfter = (await repo.bots.count(k.db)) + 1;
-  const ergebnis = await k.tor(
-    k.nachweis,
-    { type: "bot.anlegen", target: { botId } },
-    { botsAfter, maxBots: LIMITS.bots },
-    async () => {
-      const bot = await repo.bots.create(k.db, {
-        id: botId,
-        name: k.eingabe.name,
-        role: k.eingabe.role,
-        instructions: k.eingabe.instructions,
-        avatarShape: k.eingabe.avatarShape,
-        color: k.eingabe.color,
-        ...(modelId === undefined ? {} : { modelId }),
-        ...(teamId === undefined ? {} : { teamId }),
-      });
-      return { value: bot, result: { status: "ok" } };
-    },
-  );
-  return { daten: { bot: ergebnis.value }, status: 201 };
-};
+export const botAnlegen: RoutenAktion<"botAnlegen"> = async (k) =>
+  nacheinander(async () => {
+    const botId = newId("bot");
+    const teamId = k.eingabe.teamId as TeamId | undefined;
+    if (teamId !== undefined && (await repo.teams.get(k.db, teamId)) === undefined) {
+      throw new PaiBotError("nicht_gefunden");
+    }
+    await nameFrei(k.db, k.eingabe.name);
+    const modelId =
+      (k.eingabe.modelId as ModelId | undefined) ??
+      ((await repo.bots.getDefault(k.db))?.modelId as ModelId | undefined);
+    const botsAfter = (await repo.bots.count(k.db)) + 1;
+    const ergebnis = await k.tor(
+      k.nachweis,
+      { type: "bot.anlegen", target: { botId } },
+      { botsAfter, maxBots: LIMITS.bots },
+      async () => {
+        const bot = await repo.bots.anlegenUnterGrenze(
+          k.db,
+          {
+            id: botId,
+            name: k.eingabe.name,
+            role: k.eingabe.role,
+            instructions: k.eingabe.instructions,
+            avatarShape: k.eingabe.avatarShape,
+            color: k.eingabe.color,
+            ...(modelId === undefined ? {} : { modelId }),
+            ...(teamId === undefined ? {} : { teamId }),
+          },
+          LIMITS.bots,
+        );
+        return { value: bot, result: { status: "ok" } };
+      },
+    );
+    return { daten: { bot: ergebnis.value }, status: 201 };
+  });
 
 /**
  * `PUT /api/bots/:id/pause`: pausiert einen Bot oder hebt die Pause auf. Ein pausierter Bot

@@ -23,6 +23,7 @@ const ORDNER = ["apps/worker/src", "packages/agents/src"];
 /** Schreibende Zugriffsfunktionen auf `bots` (Datei `repo/bots.ts`) und die Teams-Bereiche. */
 const SCHREIBFUNKTIONEN = [
   "bots.create",
+  "bots.anlegenUnterGrenze",
   "bots.update",
   "bots.setModel",
   "bots.remove",

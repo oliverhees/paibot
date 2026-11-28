@@ -192,6 +192,55 @@ describe("Bots verwalten", () => {
     expect(await repo.bots.count(s.u.db)).toBe(LIMITS.bots);
   });
 
+  // Gegenprobe zur Grenze bei gleichzeitigen Anfragen: in `botAnlegen` die Reihe (`nacheinander`)
+  // weglassen **und** in `repo.bots.anlegenUnterGrenze` die Sperre samt Zählung entfernen → beide
+  // Anfragen gelingen, es gibt 51 Bots, dieser Test wird rot.
+  it("zwei gleichzeitige Anfragen an der Grenze legen genau einen Bot an", async () => {
+    const s = await eingerichtet();
+    for (let i = await repo.bots.count(s.u.db); i < LIMITS.bots - 1; i++) {
+      await repo.bots.create(s.u.db, { name: `Bot ${i}`, avatarShape: "blatt", color: "blau" });
+    }
+    expect(await repo.bots.count(s.u.db)).toBe(LIMITS.bots - 1);
+    const [a, b] = await Promise.all([
+      anlegen(s, { ...ZWEITER_BOT, name: "Mila" }),
+      anlegen(s, { ...ZWEITER_BOT, name: "Nora" }),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([201, 429]);
+    const abgelehnt = a.status === 429 ? a : b;
+    expect(abgelehnt.body.fehler?.code).toBe("limit_erreicht");
+    expect(await repo.bots.count(s.u.db)).toBe(LIMITS.bots);
+  });
+
+  // Gegenprobe zur Pflicht „Namen mit ‚Team ‘ sind reserviert“: in `packages/shared/src/inputs.ts`
+  // die Prüfung `istTeamName` aus `botNameSchema` entfernen → dieser Test wird rot.
+  it("einen Bot namens „Team …“ legt niemand an", async () => {
+    const s = await eingerichtet();
+    const r = await anlegen(s, { ...ZWEITER_BOT, name: "Team Content" });
+    expect(r.status).toBe(400);
+    expect(r.body.fehler?.code).toBe("eingabe_ungueltig");
+    expect((r.body.fehler as { felder?: unknown } | undefined)?.felder).toEqual([
+      { feld: "name", code: "ungueltig" },
+    ]);
+    expect(await repo.bots.count(s.u.db)).toBe(1);
+  });
+
+  // Gegenprobe zur Pflicht „Namen bleiben auseinanderzuhalten“: den Aufruf `nameFrei` in
+  // `botAnlegen` entfernen → dieser Test wird rot.
+  it("einen Namen, der einem bestehenden Bot zu ähnlich ist, lehnt die Route ab", async () => {
+    const s = await eingerichtet();
+    for (const name of ["pai", "PAI", "Ｐａｉ", "P\u0430i"]) {
+      const r = await anlegen(s, { ...ZWEITER_BOT, name });
+      expect({ name, status: r.status, code: r.body.fehler?.code }).toEqual({
+        name,
+        status: 400,
+        code: "eingabe_ungueltig",
+      });
+    }
+    expect(await repo.bots.count(s.u.db)).toBe(1);
+    // Ein eigener Name geht weiter.
+    expect((await anlegen(s, ZWEITER_BOT)).status).toBe(201);
+  });
+
   it("pausiert einen Bot und hebt die Pause auf", async () => {
     const s = await eingerichtet();
     await anlegen(s, ZWEITER_BOT);
@@ -234,6 +283,39 @@ describe("Bots verwalten", () => {
     expect((await repo.bots.get(s.u.db, botId))?.teamId).toBe(teamId);
     expect((await teamSetzen(s, botId, {})).status).toBe(200);
     expect((await repo.bots.get(s.u.db, botId))?.teamId).toBe(undefined);
+  });
+
+  // Gegenprobe zur Festlegung „die Leitung ist immer Mitglied ihres Teams“: in
+  // `repo.bots.setTeam` das Leeren von `teams.lead_bot_id` entfernen → dieser Test wird rot.
+  it("nimmt man die Leitung aus dem Team, hat das Team danach keine Leitung", async () => {
+    const s = await eingerichtet();
+    const { teamId, botId } = await mitTeam(s);
+    expect((await teamPatch(s, teamId, { lead: botId })).status).toBe(200);
+    expect((await teamSetzen(s, botId, {})).status).toBe(200);
+    expect((await repo.teams.get(s.u.db, teamId))?.leadBotId).toBe(undefined);
+    expect((await repo.bots.get(s.u.db, botId))?.teamId).toBe(undefined);
+  });
+
+  it("versetzt man die Leitung in ein anderes Team, verliert das alte Team seine Leitung", async () => {
+    const s = await eingerichtet();
+    const { teamId, botId } = await mitTeam(s);
+    await teamPatch(s, teamId, { lead: botId });
+    const zweites = (await teamNeu(s, { name: "Technik" })).body.daten as { team: { id: TeamId } };
+    expect((await teamSetzen(s, botId, { teamId: zweites.team.id })).status).toBe(200);
+    expect((await repo.teams.get(s.u.db, teamId))?.leadBotId).toBe(undefined);
+    expect((await repo.bots.get(s.u.db, botId))?.teamId).toBe(zweites.team.id);
+    expect((await repo.teams.get(s.u.db, zweites.team.id))?.leadBotId).toBe(undefined);
+  });
+
+  it("ein einfaches Mitglied zu versetzen lässt die Leitung des Teams stehen", async () => {
+    const s = await eingerichtet();
+    const { teamId, botId } = await mitTeam(s);
+    await teamPatch(s, teamId, { lead: botId });
+    const r = await anlegen(s, { ...ZWEITER_BOT, name: "Nora" });
+    const mitglied = (r.body.daten as { bot: { id: BotId } }).bot.id;
+    await teamSetzen(s, mitglied, { teamId });
+    expect((await teamSetzen(s, mitglied, {})).status).toBe(200);
+    expect((await repo.teams.get(s.u.db, teamId))?.leadBotId).toBe(botId);
   });
 
   // Gegenprobe zur Vorbedingung „Team vorhanden“: den Fakt `teamExists` in `botTeamSetzen` fest
