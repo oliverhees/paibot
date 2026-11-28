@@ -281,6 +281,7 @@ describe("Bausteine", () => {
     expect(regeln.find((r) => r.nr === "R-999")?.wirkung).toBe("fragt");
     expect(regeln.find((r) => r.nr === "R-006")?.stufen).toEqual([{ text: "lehnt ab", an: "nie" }]);
     expect(regeln.map((r) => r.nr)[0]).toBe("R-003");
+    // G-15 (Pause) und G-33 (Bots insgesamt) sind sichtbar, seit „Bots und Teams“ bedienbar ist.
     expect(grenzenEintraege().map((g) => g.nr)).toEqual([
       "G-01",
       "G-02",
@@ -289,6 +290,8 @@ describe("Bausteine", () => {
       "G-05",
       "G-16",
       "G-18",
+      "G-15",
+      "G-33",
     ]);
     const vorbedingungen = vorbedingungenEintraege().map((v) => v.nr);
     expect(vorbedingungen).toContain("V-01");

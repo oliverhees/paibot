@@ -49,10 +49,12 @@ export function neueUnterhaltungAdresse(botId?: string): string {
 }
 
 /**
- * Arbeits-Seiten in der Reihenfolge der Oberfläche: Belege, Regeln, Datenschleuse, Modell und
- * Anbieter, Apps. Persönliches (Zugang, Einstellungen, Hilfe, Info, Abmelden) steht im Menü „Du“.
+ * Arbeits-Seiten in der Reihenfolge der Oberfläche: Bots und Teams, Belege, Regeln,
+ * Datenschleuse, Modell und Anbieter, Apps. Persönliches (Zugang, Einstellungen, Hilfe, Info,
+ * Abmelden) steht im Menü „Du“.
  */
 export const NAVIGATION: readonly NavigationsEintrag[] = [
+  { id: "teams", text: t("teams.seite.titel"), href: TEAMS_ADRESSE, icon: "person" },
   { id: "belege", text: t("seite.belege"), href: "/belege", icon: "beleg" },
   { id: "regeln", text: t("seite.regeln"), href: "/regeln", icon: "regeln" },
   { id: "datenschleuse", text: t("seite.datenschleuse"), href: "/datenschleuse", icon: "schleuse" },
@@ -150,7 +152,6 @@ export function liegtUnter(pfad: string, href: string): boolean {
 /** Seiten ohne eigenen Eintrag in den Werkzeugen, die trotzdem einen Titel brauchen. */
 const WEITERE_SEITEN: readonly { href: string; text: string }[] = [
   { href: BOT_ADRESSE, text: t("seite.bot") },
-  { href: TEAMS_ADRESSE, text: t("seite.teams") },
   { href: "/einstellungen", text: t("seite.einstellungen") },
   { href: DU_ADRESSEN.info, text: t("seite.info") },
 ];

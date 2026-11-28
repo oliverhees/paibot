@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "../../../../lib/api/client";
 import { TEAMS_ADRESSE } from "../../../../lib/navigation";
+import { botPauseKoerper, botTeamKoerper } from "../../../../lib/teams/koerper";
 import { TEAM_PFADE } from "../../../../lib/teams/pfade";
 import type { BotSeiteDaten } from "../../../../lib/teams/seite";
 import styles from "./steckbrief.module.css";
@@ -60,7 +61,7 @@ export function BotSteckbrief({ daten, notAus }: { daten: BotSeiteDaten; notAus:
         <Button
           art="zweit"
           laedt={sendet}
-          onClick={() => rufe("PUT", TEAM_PFADE.botPause(bot.id), { paused: !bot.pausiert })}
+          onClick={() => rufe("PUT", TEAM_PFADE.botPause(bot.id), botPauseKoerper(!bot.pausiert))}
         >
           {bot.pausiert ? t("teams.bot.fortsetzen") : t("teams.bot.pausieren")}
         </Button>
@@ -71,9 +72,7 @@ export function BotSteckbrief({ daten, notAus }: { daten: BotSeiteDaten; notAus:
             aria-label={t("teams.bot.team_waehlen", { name: bot.name })}
             disabled={sendet}
             onChange={(e) =>
-              rufe("PUT", TEAM_PFADE.botTeam(bot.id), {
-                teamId: e.target.value === "" ? null : e.target.value,
-              })
+              rufe("PUT", TEAM_PFADE.botTeam(bot.id), botTeamKoerper(e.target.value))
             }
           >
             <option value="">{t("teams.bot.kein_team")}</option>

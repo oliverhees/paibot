@@ -382,39 +382,37 @@ export async function anbieterAendern(k: RoutenKontext<"anbieterAendern">) {
   return { daten: { anbieter: ergebnis.value } };
 }
 
-/** So weit in der Zukunft, dass jeder wartende oder laufende Lauf davor liegt. */
-const ALLE_LAEUFE_MS = 100 * 365 * 24 * 60 * 60 * 1000;
-
 /**
- * Arbeitet der Bot gerade (Lauf wartet oder läuft) mit einem Modell dieses Anbieters? Dann wird
+ * Arbeitet gerade ein Bot (Lauf wartet oder läuft) mit einem Modell dieses Anbieters? Dann wird
  * der Anbieter nicht entfernt: Ein wartender Lauf fände sonst kein Modell mehr.
+ *
+ * Hier steht bewusst **kein** `getDefault`: Seit es mehrere Bots gibt, kann auch ein anderer Bot
+ * mit einem Modell dieses Anbieters schreiben. Geprüft wird deshalb jeder Bot und sein eigener
+ * Lauf; genannt wird der erste, der schreibt.
  */
 async function schreibtMitAnbieter(
   db: Database,
   providerId: ProviderId,
-  jetzt: Date,
 ): Promise<{ bot: string } | undefined> {
-  const bot = await repo.bots.getDefault(db);
-  if (bot?.modelId === undefined) return undefined;
-  const modell = await repo.models.get(db, bot.modelId as ModelId);
-  if (modell?.providerId !== providerId) return undefined;
-  const laeufe = await repo.runs.findStale(db, {
-    before: new Date(jetzt.getTime() + ALLE_LAEUFE_MS),
-    statuses: ["queued", "running"],
-  });
-  return laeufe.length > 0 ? { bot: bot.name } : undefined;
+  for (const bot of await repo.bots.list(db)) {
+    if (bot.modelId === undefined) continue;
+    const modell = await repo.models.get(db, bot.modelId as ModelId);
+    if (modell?.providerId !== providerId) continue;
+    if (await repo.runs.hatAktivenLauf(db, bot.id)) return { bot: bot.name };
+  }
+  return undefined;
 }
 
 /**
  * `DELETE /api/anbieter/:id`: entfernt Anbieter samt Schlüssel; Modelle des Anbieters gehen mit.
- * Nutzt der Bot ein Modell dieses Anbieters, hat er danach keins mehr (der Chat zeigt dann den Weg
+ * Nutzt ein Bot ein Modell dieses Anbieters, hat er danach keins mehr (der Chat zeigt dann den Weg
  * zu „Modell und Anbieter“); frühere Nachrichten bleiben. Schreibt der Bot gerade mit einem Modell
  * des Anbieters, lehnt die Route ab (`lauf_aktiv`), bis die Antwort fertig oder abgebrochen ist.
  */
 export async function anbieterLoeschen(k: RoutenKontext<"anbieterLoeschen">) {
   const { provider } = await anbieterMitSchluessel(k.db, k.params.id ?? "");
   const providerId = provider.id as ProviderId;
-  const schreibt = await schreibtMitAnbieter(k.db, providerId, k.dienste.uhr.now());
+  const schreibt = await schreibtMitAnbieter(k.db, providerId);
   if (schreibt !== undefined) {
     const p = { name: schreibt.bot, anbieter: provider.name };
     throw new PaiBotError("lauf_aktiv", {

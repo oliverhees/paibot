@@ -312,18 +312,15 @@ export async function anbieterRegelEntfernen(k: RoutenKontext<"anbieterRegelEntf
   ) {
     throw new PaiBotError("nicht_gefunden");
   }
-  const bot = await repo.bots.getDefault(k.db);
-  if (bot?.modelId === modell.id) {
-    const laeufe = await repo.runs.findStale(k.db, {
-      before: new Date(k.dienste.uhr.now().getTime() + 100 * 365 * 24 * 60 * 60 * 1000),
-      statuses: ["queued", "running"],
+  // Kein `getDefault`: Seit es mehrere Bots gibt, kann auch ein anderer Bot gerade mit diesem
+  // Modell schreiben. Geprüft wird jeder Bot, der es benutzt, und sein eigener Lauf.
+  for (const bot of await repo.bots.list(k.db)) {
+    if (bot.modelId !== modell.id) continue;
+    if (!(await repo.runs.hatAktivenLauf(k.db, bot.id))) continue;
+    throw new PaiBotError("lauf_aktiv", {
+      text: t("modelle.eigen.lauf_aktiv", { name: bot.name, anbieter: provider.name }),
+      ausweg: t("modelle.eigen.lauf_aktiv.ausweg"),
     });
-    if (laeufe.length > 0) {
-      throw new PaiBotError("lauf_aktiv", {
-        text: t("modelle.eigen.lauf_aktiv", { name: bot.name, anbieter: provider.name }),
-        ausweg: t("modelle.eigen.lauf_aktiv.ausweg"),
-      });
-    }
   }
   await k.tor(
     k.nachweis,

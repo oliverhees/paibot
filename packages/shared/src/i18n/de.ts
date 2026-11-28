@@ -20,7 +20,6 @@ export const de = {
   "seite.anmelden": "Anmelden",
   "seite.chat": "Chat",
   "seite.bot": "Bot",
-  "seite.teams": "Teams",
   "seite.modelle": "Modell und Anbieter",
   "seite.datenschleuse": "Datenschleuse",
   "seite.apps": "Apps",
@@ -2039,6 +2038,14 @@ export const de = {
   "regel.V-42": "Kein Lauf des Bots aktiv",
   "regel.V-43": "Team unbenutzt und unverändert",
   "regel.V-44": "Leitung gehört zum Team",
+  // Erklärungen der Nummern, die mit „Bots und Teams“ bedienbar geworden sind
+  "regeln.grenze.G-15":
+    "Ein pausierter Bot antwortet nicht; die Pause gilt ab dem nächsten Schritt.",
+  "regeln.grenze.G-33": "Es gibt höchstens so viele Bots wie erlaubt (50).",
+  "regeln.vorbedingung.V-25": "Das Team gibt es.",
+  "regeln.vorbedingung.V-37": "Der Standard-Bot lässt sich nicht löschen.",
+  "regeln.vorbedingung.V-42": "Der Bot antwortet gerade nicht.",
+  "regeln.vorbedingung.V-44": "Die gewählte Leitung gehört zum Team.",
   // Bots und Teams verwalten: Bausteine der Oberfläche (Vorschau mit Beispiel-Daten)
   "teams.vorschau.szene": "Szene",
   "teams.recht.antworten": "Antworten schreiben",

@@ -438,6 +438,59 @@ describe("Eigener Anbieter entfernen", () => {
     ]);
   });
 
+  // Gegenprobe zur bewussten Entscheidung „kein getDefault“: Prüft `schreibtMitAnbieter` wieder
+  // nur den Standard-Bot (`repo.bots.getDefault`), wird dieser Test rot – der Anbieter ließe sich
+  // entfernen, während ein zweiter Bot noch mit einem seiner Modelle schreibt.
+  it("schreibt ein zweiter Bot mit einem Modell des Anbieters, bleibt er auch dann", async () => {
+    const e = await eingerichtet();
+    const lokal = await lokalAngelegt(e);
+    // Das Modell des lokalen Anbieters holen, ohne es dem Standard-Bot zu geben: Sonst würde schon
+    // die alte Prüfung greifen und die Gegenprobe wäre wirkungslos.
+    const liste = await e.rufe(e.r.modelle, "POST", `/api/anbieter/${lokal.id}/modelle`, {
+      params: { id: lokal.id },
+    });
+    const [m] = (liste.body.daten as { modelle: { id: ModelId }[] }).modelle;
+    if (m === undefined) throw new Error("kein Modell");
+    expect((await repo.bots.getDefault(e.u.db))?.modelId).not.toBe(m.id);
+    const mila = await repo.bots.create(e.u.db, {
+      name: "Mila",
+      instructions: "Antworte kurz.",
+      avatarShape: "blatt",
+      color: "blau",
+      modelId: m.id,
+    });
+    const u = await repo.conversations.create(e.u.db, {
+      botId: mila.id as BotId,
+      title: "Test",
+    });
+    const n = await repo.messages.insert(e.u.db, {
+      conversationId: u.id,
+      role: "user",
+      content: "Hallo",
+    });
+    const lauf = await repo.runs.create(e.u.db, {
+      conversationId: u.id,
+      triggerMessageId: n.id,
+      botId: mila.id as BotId,
+    });
+
+    const besetzt = await e.rufe(e.r.anbieterLoeschen, "DELETE", `/api/anbieter/${lokal.id}`, {
+      params: { id: lokal.id },
+    });
+    expect(besetzt.status).toBe(409);
+    expect(besetzt.body.fehler).toMatchObject({
+      code: "lauf_aktiv",
+      text: t("modelle.eigen.lauf_aktiv", { name: "Mila", anbieter: "Lokaler Anbieter" }),
+    });
+
+    await repo.runs.markRunning(e.u.db, lauf.id);
+    await repo.runs.finish(e.u.db, lauf.id, { status: "succeeded" });
+    const weg = await e.rufe(e.r.anbieterLoeschen, "DELETE", `/api/anbieter/${lokal.id}`, {
+      params: { id: lokal.id },
+    });
+    expect(weg.status).toBe(200);
+  });
+
   it("schreibt der Bot mit einem anderen Anbieter, geht das Entfernen; sein Modell bleibt", async () => {
     const e = await eingerichtet();
     const lokal = await lokalAngelegt(e);
