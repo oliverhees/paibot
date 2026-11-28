@@ -38,6 +38,14 @@ import {
   STANDARD_RULE_VERSIONS_3,
 } from "./tor-fassung-3";
 import { ERROR_CODES_4, LIMITS_BY_ID_4, PRECONDITIONS_4, TEAM_ACTION_TYPES } from "./tor-fassung-4";
+import {
+  AUFTRAG_ACTION_TYPES,
+  CAPS_5,
+  ERROR_CODES_5,
+  LIMITS_BY_ID_5,
+  PRECONDITIONS_5,
+  STANDARD_RULES_5,
+} from "./tor-fassung-5";
 
 declare global {
   interface ImportMeta {
@@ -68,8 +76,13 @@ describe("Text-Schlüssel", () => {
     }
   });
 
-  it("es gibt keine Fehlertexte ohne Fehlercode (heute oder im Vertrag der Fassung 3 oder 4)", () => {
-    const codes = new Set<string>([...ERROR_CODES, ...ERROR_CODES_3, ...ERROR_CODES_4]);
+  it("es gibt keine Fehlertexte ohne Fehlercode (heute oder im Vertrag der Fassung 3, 4 oder 5)", () => {
+    const codes = new Set<string>([
+      ...ERROR_CODES,
+      ...ERROR_CODES_3,
+      ...ERROR_CODES_4,
+      ...ERROR_CODES_5,
+    ]);
     for (const key of TEXT_KEYS.filter((key) => key.startsWith("fehler."))) {
       expect(codes.has(key.replace(/^fehler\./, "").replace(/\.ausweg$/, ""))).toBe(true);
     }
@@ -103,6 +116,21 @@ describe("Text-Schlüssel", () => {
     for (const code of ERROR_CODES_4) expect(isTextKey(`fehler.${code}`), code).toBe(true);
   });
 
+  it("Vertrag der Fassung 5: jede neue Aktion, Regel, Grenze, Vorbedingung, der Deckel und jeder Fehlercode hat einen Text", () => {
+    for (const type of AUFTRAG_ACTION_TYPES) expect(isTextKey(`aktion.${type}`), type).toBe(true);
+    for (const id of [...Object.keys(LIMITS_BY_ID_5), ...Object.keys(PRECONDITIONS_5)]) {
+      expect(isTextKey(`regel.${id}`), id).toBe(true);
+    }
+    for (const cap of CAPS_5) {
+      expect(isTextKey(`regel.${cap.id}`), cap.id).toBe(true);
+      expect(isTextKey(`tor.deckel.${cap.id}`), cap.id).toBe(true);
+    }
+    for (const rule of STANDARD_RULES_5) {
+      expect(t(`regel.${rule.id}` as "regel.R-001")).toBe(rule.title);
+    }
+    for (const code of ERROR_CODES_5) expect(isTextKey(`fehler.${code}`), code).toBe(true);
+  });
+
   it("nennen die Bauart statt fremder Programme; Coolify nur als dokumentierter Installationsweg", () => {
     const fremd = /\b(caddy|nginx|traefik|apache|haproxy|let'?s encrypt|cloudflare)\b/i;
     for (const key of TEXT_KEYS) {
@@ -119,8 +147,17 @@ describe("Text-Schlüssel", () => {
   });
 
   it("es gibt keine Bezeichnungen für unbekannte Aktionen oder Regeln", () => {
-    const actions = new Set<string>([...ACTION_TYPES, ...APP_ACTION_TYPES, ...TEAM_ACTION_TYPES]);
+    const actions = new Set<string>([
+      ...ACTION_TYPES,
+      ...APP_ACTION_TYPES,
+      ...TEAM_ACTION_TYPES,
+      ...AUFTRAG_ACTION_TYPES,
+    ]);
     const rules = new Set<string>([
+      ...Object.keys(LIMITS_BY_ID_5),
+      ...Object.keys(PRECONDITIONS_5),
+      ...CAPS_5.map((cap) => cap.id),
+      ...STANDARD_RULES_5.map((rule) => rule.id),
       ...Object.keys(LIMITS_BY_ID_4),
       ...Object.keys(PRECONDITIONS_4),
       ...STANDARD_RULE_VERSIONS_3.map((rule) => rule.id),

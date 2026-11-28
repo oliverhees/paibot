@@ -491,6 +491,9 @@ export async function runToolCall(input: CallInput): Promise<CallOutcome & { cha
     botOfConversation: input.botOfConversation,
     runRunning: current?.status === "running" && current.cancelRequestedAt === undefined,
     argsDigest: call.argsDigest,
+    // Art des Auftrags (G-42: Werkzeuge nur ohne Auftrag). Aufträge gibt es in diesem Stand noch
+    // nicht (ihre Tabellen kommen später), ein Lauf steht also nie unter einem Auftrag.
+    auftragArt: "keiner",
   };
   const action: ActionRequest<"werkzeug.aufrufen"> = {
     actionId: call.actionId,

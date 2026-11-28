@@ -34,6 +34,7 @@ import type {
   SchleuseMode,
   Settings,
 } from "@paibot/shared/objekte";
+import { auftragFakten } from "./auftrag-fakten";
 import type { SchrittFakten } from "./nahtstellen";
 import type { RunSchleuseStatus } from "./vertrag";
 
@@ -393,6 +394,9 @@ export function modelFacts(input: {
     killSwitch: context.settings.killSwitch,
     ...target,
     ...input.schritt,
+    // Unterhaltung, Zweck und Auftrag (ab Fassung 5). Aufträge gibt es in diesem Stand noch nicht
+    // (ihre Tabellen kommen später).
+    ...auftragFakten({ conversation: context.conversation }),
   };
 }
 

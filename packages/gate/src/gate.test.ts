@@ -997,7 +997,7 @@ describe("Fassung des Tors", () => {
     const { ports, log, entries } = memoryPorts();
     const action = sampleAction("nachricht.senden");
     await createGate(ports).run(action, sampleFacts("nachricht.senden"), okExecute(log));
-    expect(GATE_FORMAT).toBe(4);
+    expect(GATE_FORMAT).toBe(5);
     expect(dec(entries)?.decision.gateFormat).toBe(GATE_FORMAT);
   });
 

@@ -172,6 +172,20 @@ describe("G-05 not_aus", () => {
       "entfaellt",
       "entfaellt",
       "entfaellt",
+      // Fassung 5: nur G-42 (Werkzeuge nur ohne Auftrag) gilt beim Werkzeug-Aufruf.
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "ok",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
     ]);
   });
 });
@@ -197,6 +211,21 @@ describe("fehlende oder falsche Fakten lassen nichts durch", () => {
       "entfaellt",
       "entfaellt",
       "entfaellt",
+      // Fassung 5: ohne `auftragArt` gelten Budget und Zeit des Baums (G-11, G-12) und sind
+      // verletzt; die übrigen neuen entfallen.
+      "entfaellt",
+      "entfaellt",
+      "verletzt",
+      "verletzt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
+      "entfaellt",
     ]);
   });
 
@@ -211,12 +240,20 @@ describe("fehlende oder falsche Fakten lassen nichts durch", () => {
   });
 });
 
-/** Aktionen der Fassung 4 mit einer eigenen Grenze (G-03 für den Zettel, G-32 bis G-34, G-05). */
+/**
+ * Aktionen der Fassungen 4 und 5 mit einer eigenen Grenze (G-03 für den Zettel, G-32 bis G-34,
+ * G-05, die Grenzen eines Auftrags).
+ */
 const MIT_EIGENER_GRENZE: readonly string[] = [
   "bot.anlegen",
   "team.entwurf_erstellen",
   "team.entwurf_anlegen",
   "faden.anlegen",
+  "auftrag.uebergeben",
+  "auftrag.melden",
+  "auftrag.zurueckgeben",
+  "auftrag.zettel_aendern",
+  "auftrag.budget_erhoehen",
 ];
 
 describe("checkLimits", () => {
@@ -254,6 +291,25 @@ describe("checkLimits", () => {
     ["team.entwurf_erstellen", { entwuerfe_je_tag: "ok", not_aus: "ok" }],
     ["team.entwurf_anlegen", { entwurf_umfang: "ok", bots_gesamt: "ok", not_aus: "ok" }],
     ["faden.anlegen", { laenge: "ok" }],
+    [
+      "auftrag.uebergeben",
+      {
+        laenge: "ok",
+        not_aus: "ok",
+        bot_bereit: "ok",
+        auftrag_tiefe: "ok",
+        auftrag_anzahl: "ok",
+        auftrag_zeit: "ok",
+        kein_kreis: "ok",
+        uebergaben_je_lauf: "ok",
+        auftrag_breite: "ok",
+        auftraege_je_mitglied: "ok",
+      },
+    ],
+    ["auftrag.melden", { not_aus: "ok" }],
+    ["auftrag.zurueckgeben", { laenge: "ok", not_aus: "ok" }],
+    ["auftrag.zettel_aendern", { laenge: "ok" }],
+    ["auftrag.budget_erhoehen", { zuschlaege_je_baum: "ok" }],
   ] as const)("%s: nur die eigenen Grenzen gelten, die übrigen entfallen", (type, erwartet) => {
     const checks = checkLimits(sampleAction(type) as ActionRequest, sampleFacts(type) as Facts);
     const gelten = Object.fromEntries(

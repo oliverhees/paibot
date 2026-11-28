@@ -168,6 +168,22 @@ const VIOLATIONS: Record<GateLimitName, Partial<Record<ActionType, Record<string
   entwuerfe_je_tag: {
     "team.entwurf_erstellen": [{ offeneEntwuerfe: 5 }, { entwuerfeHeute: 20 }],
   },
+  // Die Grenzen der Fassung 5 prüfen die festen Fälle in `fassungen/fassung-5.korpus.test.ts`; hier
+  // stehen die Verletzungen, die mit den Fakten der Beispiele gleich zu bilden sind. Die übrigen
+  // brauchen einen Baum (G-11, G-12), eine Bitte (G-45), eine Frage (G-44) oder einen Faden (G-38).
+  auftrag_tiefe: { "auftrag.uebergeben": [{ tiefe: 4 }] },
+  auftrag_anzahl: { "auftrag.uebergeben": [{ baumAuftraege: 20 }] },
+  auftrag_budget: {},
+  auftrag_zeit: { "auftrag.uebergeben": [{ baumSekunden: 1800 }] },
+  kein_kreis: { "auftrag.uebergeben": [{ zielImPfad: true }] },
+  erwaehnungen_je_nachricht: {},
+  uebergaben_je_lauf: { "auftrag.uebergeben": [{ uebergabeAntworten: 1 }] },
+  auftrag_breite: { "auftrag.uebergeben": [{ offeneUnterauftraege: 6 }] },
+  werkzeug_im_auftrag: { "werkzeug.aufrufen": [{ auftragArt: "wurzel" }] },
+  auftraege_je_mitglied: { "auftrag.uebergeben": [{ auftraegeAnZiel: 3 }] },
+  rueckfragen_je_faden: {},
+  bitten_je_auftrag: {},
+  zuschlaege_je_baum: { "auftrag.budget_erhoehen": [{ zuschlaege: 5 }] },
 };
 
 const LIMIT_ID_BY_NAME = Object.fromEntries(
@@ -232,13 +248,18 @@ describe("jede Aktion × jede Standard-Regel", () => {
     expect(decision.matchedRules).toEqual([{ id: "R-999", version: 1 }]);
   });
 
-  it.each(BOT_ACTIONS)("%s: fremder Bot → keine Bot-Regel greift, R-999 fragt", (type) => {
-    const facts = { ...sampleFacts(type), botOfConversation: false } as Facts;
-    expect(decide(type, facts)).toMatchObject({
-      outcome: "ask",
-      matchedRules: [{ id: "R-999", version: 1 }],
-    });
-  });
+  // Übergabe und Meldung (ab Fassung 5) haben keinen Fakt `botOfConversation`: Wer dort was darf,
+  // legen Rollen und Weg fest (V-40, R-009, R-015 bis R-019; feste Fälle im Korpus 5).
+  it.each(BOT_ACTIONS.filter((type) => !type.startsWith("auftrag.")))(
+    "%s: fremder Bot → keine Bot-Regel greift, R-999 fragt",
+    (type) => {
+      const facts = { ...sampleFacts(type), botOfConversation: false } as Facts;
+      expect(decide(type, facts)).toMatchObject({
+        outcome: "ask",
+        matchedRules: [{ id: "R-999", version: 1 }],
+      });
+    },
+  );
 
   it.each(ACTION_TYPES)("%s: R-999 allein → fragen", (type) => {
     expect(decide(type, undefined, [R999])).toMatchObject({

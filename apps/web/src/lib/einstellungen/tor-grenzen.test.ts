@@ -68,6 +68,7 @@ async function nachrichtEinreihen(
       runActive: false,
       killSwitch: settings?.killSwitch ?? true,
       botPaused: false,
+      conversationKind: "direkt",
     },
     async () => {
       ausgefuehrt = true;

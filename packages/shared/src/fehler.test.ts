@@ -21,6 +21,16 @@ import {
   PaiBotError,
 } from "./errors";
 import { ERROR_STATUS_4 } from "./tor-fassung-4";
+import { ERROR_STATUS_5 } from "./tor-fassung-5";
+
+describe("Fehlercodes der Tor-Fassung 5", () => {
+  // Gegenprobe: `...ERROR_STATUS_5` in `ERROR_STATUS` entfernen → rot.
+  it("stehen mit demselben HTTP-Status in den lebenden Fehlercodes wie im Vertrag", () => {
+    for (const [code, status] of Object.entries(ERROR_STATUS_5)) {
+      expect(ERROR_STATUS[code as keyof typeof ERROR_STATUS], code).toBe(status);
+    }
+  });
+});
 
 describe("Fehlercodes der Tor-Fassung 4", () => {
   // Gegenprobe: in `ERROR_STATUS_4` einen Status ändern (z. B. `bot_pausiert: 400`) → beide Tests rot.
@@ -48,7 +58,7 @@ describe("Fehlercodes der Tor-Fassung 4", () => {
 describe("Fehlercodes", () => {
   it("haben die vorgegebene Schreibweise und Liste", () => {
     for (const code of [...ERROR_CODES, ...FIELD_CODES]) expect(code).toMatch(CODE_PATTERN);
-    expect(ERROR_CODES).toHaveLength(56);
+    expect(ERROR_CODES).toHaveLength(64);
     expect(ERROR_STATUS.regel_unbekannt).toBe(409);
     expect(ERROR_STATUS.freigabe_noetig).toBe(202);
     expect(ERROR_STATUS.werkzeug_unbekannt).toBe(400);

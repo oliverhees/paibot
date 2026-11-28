@@ -72,6 +72,10 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     };
     const facts: Facts<"modell.anfragen"> = {
       botPaused: false,
+      conversationKind: "direkt",
+      botHatAuftrag: false,
+      auftragArt: "keiner",
+      zweck: "chat",
       botOfConversation: true,
       providerId: env.providerId,
       providerEnabled: true,

@@ -34,16 +34,18 @@ async function pruefe(kette: GemischteKette) {
   return verifyChain(kette.entries, { rules: kette.regeln });
 }
 
-describe("Belege der Fassungen 1, 2, 3 und 4 in einer Kette", () => {
-  it("Fassung 1, 2, 3 und 4 stehen in der Reihenfolge ihres Inkrafttretens in der Kette", async () => {
+describe("Belege der Fassungen 1 bis 5 in einer Kette", () => {
+  it("Fassung 1 bis 5 stehen in der Reihenfolge ihres Inkrafttretens in der Kette", async () => {
     const kette = await ketteGemischt();
-    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3, 4, 4]);
+    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3, 4, 4, 5, 5]);
     const typen = kette.entries
       .filter((entry) => entry.body.type === "decision")
       .map((entry) => (entry.body as { action: { type: string } }).action.type);
     expect(typen).toEqual([
       "nachricht.senden",
       "nachricht.senden",
+      "nachricht.senden",
+      "app.verbinden",
       "nachricht.senden",
       "app.verbinden",
       "nachricht.senden",
@@ -69,7 +71,7 @@ describe("Belege der Fassungen 1, 2, 3 und 4 in einer Kette", () => {
       const neu = reevaluate(entry, kette.regeln);
       expect(neu.status, String(entry.seq)).toBe("ok");
     }
-    expect(formate).toEqual([1, 2, 3, 3, 4, 4]);
+    expect(formate).toEqual([1, 2, 3, 3, 4, 4, 5, 5]);
   });
 
   // Gegenprobe: das Tor mit Fassung 4 liest Belege der Fassung 3 nicht mehr (Fassung 3 aus
@@ -92,7 +94,7 @@ describe("Belege der Fassungen 1, 2, 3 und 4 in einer Kette", () => {
     await kette.tor("nachricht.senden");
     await kette.tor("app.trennen");
     expect(kette.entries.length).toBeGreaterThan(vorher + 2);
-    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3, 4, 4, 4, 4]);
+    expect(fassungen(kette.entries)).toEqual(["fehlt", 2, 3, 3, 4, 4, 5, 5, 5, 5]);
     const report = await pruefe(kette);
     expect(report.firstFailure).toBeUndefined();
     expect(report.verdict.level).toBe("vertrauenswuerdig");
@@ -124,7 +126,7 @@ describe("Stand mit Fassung 2 liest Belege der Fassungen 3 und 4", () => {
     const apps = kette.entries.filter(
       (entry) => entry.body.type === "decision" && entry.body.action.type === "app.verbinden",
     );
-    expect(apps).toHaveLength(2);
+    expect(apps).toHaveLength(3);
     for (const entry of kette.entries) {
       expect(l2ReceiptEntryReadSchema.safeParse(entry).success, String(entry.seq)).toBe(true);
     }

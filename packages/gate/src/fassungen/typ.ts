@@ -33,18 +33,34 @@ export interface FormatPrecondition {
   readonly actions: readonly string[];
   readonly when?: readonly RuleCondition[];
   readonly require: readonly RuleCondition[];
+  /** Ab Fassung 5: zusätzliche Bedingungen nur für einzelne Aktionen (alle müssen gelten). */
+  readonly requireFor?: Readonly<Record<string, readonly RuleCondition[]>>;
+  /**
+   * Ab Fassung 5: je Aktion Gruppen von Bedingungen; aus jeder Gruppe muss mindestens eine gelten
+   * (so lässt sich „wenn A, dann B“ als „nicht A oder B“ schreiben).
+   */
+  readonly requireOneOfFor?: Readonly<Record<string, readonly (readonly RuleCondition[])[]>>;
+  /** Ab Fassung 5: mindestens eine dieser Gruppen muss ganz gelten (z. B. erlaubte Wege). */
+  readonly requireAnyOf?: readonly (readonly RuleCondition[])[];
+  /**
+   * Ab Fassung 5: `fact >= sumOf[0] + sumOf[1]`; fehlt ein Fakt, ist keine Ganzzahl oder liegt die
+   * Summe außerhalb der sicheren Ganzzahlen: nicht erfüllt.
+   */
+  readonly requireAtLeastSum?: { readonly fact: string; readonly sumOf: readonly [string, string] };
   readonly errorCode: ErrorCode;
 }
 
 /**
- * Ein Deckel einer Fassung: Gilt `when` und mindestens eine Bedingung aus `anyOf`, wird aus einem
- * `allow` das Ergebnis `then`; andere Ergebnisse bleiben.
+ * Ein Deckel einer Fassung: Gilt `when` und mindestens eine Bedingung aus `anyOf` (ab Fassung 5:
+ * ein leeres `anyOf` stellt keine weitere Bedingung), wird bei `then: "ask"` aus einem `allow` ein
+ * `ask`, bei `then: "deny"` (ab Fassung 5) aus jedem Ergebnis außer `deny` ein `deny`; andere
+ * Ergebnisse bleiben.
  */
 export interface CapDefinition {
   readonly id: string;
   readonly name: string;
   readonly actions: readonly string[];
-  readonly then: "ask";
+  readonly then: "ask" | "deny";
   readonly when: readonly RuleCondition[];
   readonly anyOf: readonly RuleCondition[];
 }
@@ -94,10 +110,17 @@ export interface GateFormatSpec {
   readonly capOrder?: readonly string[];
   /**
    * Fehlercode für das Ergebnis einer nicht erlaubten Entscheidung dieser Fassung. Ab Fassung 2
-   * Pflicht; Fassung 1 rechnet mit `denialCode` aus `evaluate.ts`.
+   * Pflicht; Fassung 1 rechnet mit `denialCode` aus `evaluate.ts`. Ab Fassung 5 zählen auch die
+   * Deckel und die passende Regel, und die Fakten der Entscheidung dürfen mitkommen (nur für einen genaueren Code, nie für
+   * das Ergebnis).
    */
   denialCode?(
-    decision: Pick<Decision, "outcome" | "preconditions"> & { limits?: Decision["limits"] },
+    decision: Pick<Decision, "outcome" | "preconditions"> & {
+      limits?: Decision["limits"];
+      caps?: readonly { name: string; result: string }[];
+      matchedRules?: readonly { id: string }[];
+    },
+    facts?: unknown,
   ): ErrorCode;
   /** Kennt die Aktion laut dieser Fassung den Fakt? */
   hasFact(type: string, name: string): boolean;

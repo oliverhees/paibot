@@ -84,6 +84,7 @@ export function sendFacts(inputChars = 812) {
     runActive: false,
     killSwitch: false,
     botPaused: false,
+    conversationKind: "direkt" as const,
   };
 }
 

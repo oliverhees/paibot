@@ -31,13 +31,14 @@ import {
 import { type ActionId, idSchema, type ReceiptId } from "./id";
 import { LIMITS_BY_ID_3, PRECONDITIONS_3, R014_V1 } from "./tor-fassung-3";
 import { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "./tor-fassung-4";
+import { CAPS_5, LIMITS_BY_ID_5, PRECONDITIONS_5, STANDARD_RULES_5 } from "./tor-fassung-5";
 
 /**
  * Fassung des Tor-Formats, mit der das Tor jetzt entscheidet und der Schreiber belegt. Jede
  * Änderung am Tor, die für gleiche Fakten ein anderes Ergebnis von `evaluate` geben kann, hebt
  * diese Zahl; eine Fassung selbst wird nie geändert.
  */
-export const GATE_FORMAT = 4;
+export const GATE_FORMAT = 5;
 
 /** Stufen einer Aktion: nachfragen, vorbereiten, ausführen (mit Beleg). */
 export const STAGES = ["ask", "prepare", "execute"] as const;
@@ -91,6 +92,13 @@ export const STANDARD_RULE_IDS = [
   "R-006",
   "R-010",
   "R-014",
+  /** Ab Fassung 5: Zusammenarbeit (siehe `STANDARD_RULES_5`). */
+  "R-009",
+  "R-015",
+  "R-016",
+  "R-017",
+  "R-018",
+  "R-019",
   "R-999",
 ] as const;
 export type StandardRuleId = (typeof STANDARD_RULE_IDS)[number];
@@ -116,6 +124,8 @@ export const LIMITS_BY_ID = {
   ...LIMITS_BY_ID_3,
   /** Ab Fassung 4: Bot bereit, Umfang und Zahl der Entwürfe, Bots gesamt (siehe `LIMITS_BY_ID_4`). */
   ...LIMITS_BY_ID_4,
+  /** Ab Fassung 5: Aufträge, Übergaben und ihr Baum (siehe `LIMITS_BY_ID_5`). */
+  ...LIMITS_BY_ID_5,
 } as const;
 export type LimitId = keyof typeof LIMITS_BY_ID;
 /** Name einer Grenze (alle Grenzen, die dieser Stand kennt). */
@@ -383,6 +393,8 @@ export const STANDARD_RULE_VERSIONS = [
   R006_V1,
   R010_V1,
   R014_V1,
+  /** Ab Fassung 5 (Migration 0019): R-009, R-015 bis R-019. */
+  ...STANDARD_RULES_5,
 ] as const satisfies readonly RuleDefinition[];
 
 const R007_V1 = {
@@ -441,6 +453,7 @@ export const ACTIVE_STANDARD_RULES = [
   R006_V1,
   R010_V1,
   R014_V1,
+  ...STANDARD_RULES_5,
   R999_V1,
 ] as const satisfies readonly RuleDefinition[];
 
@@ -612,6 +625,11 @@ export const PRECONDITIONS = {
   ...PRECONDITIONS_3,
   /** Ab Fassung 4: Vorbedingungen für Teams, Entwürfe, Bots und Fäden (siehe `PRECONDITIONS_4`). */
   ...PRECONDITIONS_4,
+  /**
+   * Ab Fassung 5: Auftrag offen (V-39), erlaubter Weg der Übergabe (V-40), Budget ausgeschöpft
+   * (V-41). Die zusätzlichen Formen (`requireFor`, `requireAnyOf` …) wertet nur die Fassung aus.
+   */
+  ...PRECONDITIONS_5,
 } as const satisfies Record<
   string,
   {
@@ -646,9 +664,10 @@ export const preconditionCheckSchema = z.strictObject({
 export type PreconditionCheck = z.infer<typeof preconditionCheckSchema>;
 
 /**
- * Deckel: greifen nach den Regeln und machen aus einem `allow` ein `ask`, wenn `when` gilt und
- * mindestens eine Bedingung aus `anyOf`. Keine Regel und keine Einstellung hebt einen Deckel auf;
- * `deny`, `ask` und `prepare` bleiben, wie sie sind.
+ * Deckel: greifen nach den Regeln, wenn `when` gilt und mindestens eine Bedingung aus `anyOf`
+ * (leeres `anyOf`: keine weitere Bedingung). `then: "ask"` macht aus einem `allow` ein `ask`;
+ * `deny`, `ask` und `prepare` bleiben. `then: "deny"` (ab Fassung 5, D-02) macht aus `allow` und
+ * `ask` ein `deny`. Keine Regel und keine Einstellung hebt einen Deckel auf.
  */
 export const CAPS = {
   "D-01": {
@@ -662,19 +681,28 @@ export const CAPS = {
       { fact: "toolReach", op: "eq", value: "nach_aussen" },
     ],
   },
+  /** Ab Fassung 5: Nach fremden Inhalten gibt es keine Übergabe (siehe `CAPS_5`). */
+  "D-02": {
+    name: CAPS_5[0].name,
+    actions: CAPS_5[0].actions,
+    // biome-ignore lint/suspicious/noThenProperty: Feld des Vertrags (ein Text, keine Funktion)
+    then: CAPS_5[0].then,
+    when: CAPS_5[0].when,
+    anyOf: CAPS_5[0].anyOf,
+  },
 } as const satisfies Record<
   string,
   {
     name: string;
     actions: readonly ActionType[];
-    then: "ask";
+    then: "ask" | "deny";
     when: readonly RuleCondition[];
     anyOf: readonly RuleCondition[];
   }
 >;
 export type CapId = keyof typeof CAPS;
 export const CAP_IDS = Object.keys(CAPS) as [CapId, ...CapId[]];
-export const CAP_NAMES = ["fremd_dann_fragen"] as const;
+export const CAP_NAMES = ["fremd_dann_fragen", "fremd_dann_verboten"] as const;
 export type CapName = (typeof CAP_NAMES)[number];
 /** Ergebnis eines Deckels: nicht zutreffend, zutreffend ohne Wirkung (nicht `allow`), gedeckelt. */
 export const CAP_RESULTS = ["entfaellt", "nicht_noetig", "gedeckelt"] as const;

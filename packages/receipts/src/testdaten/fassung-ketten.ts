@@ -32,6 +32,7 @@ import {
   testKey,
   testSign,
 } from "../testhilfen";
+import { ohneSpaetereFakten } from "./fakten-je-fassung";
 
 /** Regeln zum Nachrechnen der Test-Ketten (die Test-Regel mit Nummer 1). */
 export const FASSUNG_RULES = [{ ...TEST_RULE, seq: 1 }];
@@ -126,8 +127,10 @@ export function alsFassung1(body: Roh): void {
   const decision = body.decision as Roh;
   delete decision.gateFormat;
   decision.limits = (decision.limits as unknown[]).slice(0, 5);
-  // `botPaused` kennt erst Fassung 4.
-  if (body.facts !== undefined) delete (body.facts as Roh).botPaused;
+  // `botPaused` kennt erst Fassung 4, die Füllwerte der Fassung 5 erst Fassung 5.
+  if (body.facts !== undefined) {
+    ohneSpaetereFakten((body.action as { type: string }).type, body.facts as Roh, 1);
+  }
 }
 
 /** Setzt `decision.gateFormat` und ein Feld, das Fassung 1 nicht kennt. */

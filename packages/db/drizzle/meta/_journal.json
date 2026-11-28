@@ -134,6 +134,13 @@
       "when": 1795388444129,
       "tag": "0018_fassung_4_aktionen",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795815827825,
+      "tag": "0019_fassung_5_aktionen",
+      "breakpoints": true
     }
   ]
 }

@@ -161,6 +161,10 @@ function mitZugang<R>(
   const facts: Facts<"modell.anfragen"> = {
     ...providerTargetFacts(providerId, ANBIETER_URL),
     botPaused: false,
+    conversationKind: "direkt",
+    botHatAuftrag: false,
+    auftragArt: "keiner",
+    zweck: "chat",
     botOfConversation: true,
     providerId,
     providerEnabled: true,

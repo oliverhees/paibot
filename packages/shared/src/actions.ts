@@ -23,6 +23,12 @@ import {
 } from "./objects";
 import { APP_ACTION_SHAPES, MCP_TOOL_CALL_FACTS } from "./tor-fassung-3";
 import { BOT_PAUSED_FACTS, TEAM_ACTION_SHAPES, type TeamActionType } from "./tor-fassung-4";
+import {
+  AUFTRAG_ACTION_SHAPES,
+  type AuftragActionType,
+  ENTWURF_ERSTELLEN_HERKUNFT_5,
+  NEW_FACTS_5,
+} from "./tor-fassung-5";
 
 /** Wer eine Aktion auslöst: der Besitzer der Installation oder ein Bot. */
 export type Actor = "besitzer" | `bot:${BotId}`;
@@ -301,6 +307,8 @@ export const ACTIONS = {
       killSwitch: z.boolean(),
       /** Der Bot der Unterhaltung ist pausiert (Grenze G-15, ab Fassung 4). */
       ...BOT_PAUSED_FACTS,
+      /** Direkt-Chat oder Faden, Erwähnungen (Grenze G-38, ab Fassung 5). */
+      ...NEW_FACTS_5["nachricht.senden"],
     },
   ),
   "modell.anfragen": action(
@@ -345,6 +353,8 @@ export const ACTIONS = {
       trigger: runTriggerSchema,
       /** Der Bot ist pausiert (Grenze G-15, ab Fassung 4). */
       ...BOT_PAUSED_FACTS,
+      /** Unterhaltung, Auftrag, Zweck und Auftragsbaum (R-016, G-11, G-12, ab Fassung 5). */
+      ...NEW_FACTS_5["modell.anfragen"],
     },
   ),
   "lauf.abbrechen": action(
@@ -382,6 +392,8 @@ export const ACTIONS = {
       stepAppId: MCP_TOOL_CALL_FACTS.stepAppId.optional(),
       /** Der Bot ist pausiert (Grenze G-15, ab Fassung 4). */
       ...BOT_PAUSED_FACTS,
+      /** Art des Auftrags des Laufs: Werkzeuge nur ohne Auftrag (Grenze G-42, ab Fassung 5). */
+      ...NEW_FACTS_5["werkzeug.aufrufen"],
     },
   ),
   /**
@@ -540,7 +552,10 @@ export const ACTIONS = {
       action(
         TEAM_ACTION_SHAPES[type].actorKind,
         TEAM_ACTION_SHAPES[type].target,
-        TEAM_ACTION_SHAPES[type].facts,
+        type === "team.entwurf_erstellen"
+          ? // Ab Fassung 5 auch die Herkunft `pai` (Team mit Pai entwerfen).
+            { ...TEAM_ACTION_SHAPES[type].facts, herkunft: ENTWURF_ERSTELLEN_HERKUNFT_5 }
+          : TEAM_ACTION_SHAPES[type].facts,
       ),
     ]),
   ) as {
@@ -549,6 +564,28 @@ export const ACTIONS = {
         (typeof TEAM_ACTION_SHAPES)[K]["actorKind"],
         (typeof TEAM_ACTION_SHAPES)[K]["target"],
         (typeof TEAM_ACTION_SHAPES)[K]["facts"]
+      >
+    >;
+  }),
+  /**
+   * Aktionen der Tor-Fassung 5 (Zusammenarbeit): Übergaben und Meldungen der Bots, Aufträge des
+   * Besitzers. Die Datenbank speichert sie ab Migration 0019 in Regeln und Belegen.
+   */
+  ...(Object.fromEntries(
+    (Object.keys(AUFTRAG_ACTION_SHAPES) as AuftragActionType[]).map((type) => [
+      type,
+      action(
+        AUFTRAG_ACTION_SHAPES[type].actorKind,
+        AUFTRAG_ACTION_SHAPES[type].target,
+        AUFTRAG_ACTION_SHAPES[type].facts,
+      ),
+    ]),
+  ) as {
+    [K in AuftragActionType]: ReturnType<
+      typeof action<
+        (typeof AUFTRAG_ACTION_SHAPES)[K]["actorKind"],
+        (typeof AUFTRAG_ACTION_SHAPES)[K]["target"],
+        (typeof AUFTRAG_ACTION_SHAPES)[K]["facts"]
       >
     >;
   }),

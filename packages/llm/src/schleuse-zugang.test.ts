@@ -106,6 +106,10 @@ function facts(region: Region = "eu"): Facts<"modell.anfragen"> {
   return {
     ...providerTargetFacts(providerId, PROVIDER_URL),
     botPaused: false,
+    conversationKind: "direkt",
+    botHatAuftrag: false,
+    auftragArt: "keiner",
+    zweck: "chat",
     botOfConversation: true,
     providerId,
     providerEnabled: true,

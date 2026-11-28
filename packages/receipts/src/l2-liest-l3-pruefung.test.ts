@@ -20,16 +20,16 @@ import { ketteL2 } from "./testdaten/kette-l2";
 import { verifyChain } from "./verify";
 
 /**
- * Wie weit der Stand „reicht“, den der Test nachstellt. Beim Schreiben der Belege (Fassung 4, mit
- * dem echten Tor) steht die Grenze bei 4, danach bei der Fassung des nachgestellten Standes: So
+ * Wie weit der Stand „reicht“, den der Test nachstellt. Beim Schreiben der Belege (Fassung 5, mit
+ * dem echten Tor) steht die Grenze bei 5, danach bei der Fassung des nachgestellten Standes: So
  * prüft derselbe Programmstand, als ob er die späteren Fassungen nicht kennte.
  */
-const stand = vi.hoisted(() => ({ hoechste: 4 }));
+const stand = vi.hoisted(() => ({ hoechste: 5 }));
 
 vi.mock("@paibot/gate", async (importOriginal) => {
   const original = await importOriginal<typeof import("@paibot/gate")>();
-  const bekannt = (format: number): format is 1 | 2 | 3 | 4 =>
-    (format === 1 || format === 2 || format === 3 || format === 4) && format <= stand.hoechste;
+  const bekannt = (format: number): format is 1 | 2 | 3 | 4 | 5 =>
+    Number.isInteger(format) && format >= 1 && format <= 5 && format <= stand.hoechste;
   return {
     ...original,
     get KNOWN_GATE_FORMAT() {
@@ -40,9 +40,9 @@ vi.mock("@paibot/gate", async (importOriginal) => {
   };
 });
 
-/** Kette mit den Fassungen 1 bis 4 schreiben (Grenze 4) und danach auf den Stand `hoechste` stellen. */
-async function ketteAufStand(hoechste: 2 | 3) {
-  stand.hoechste = 4;
+/** Kette mit den Fassungen 1 bis 5 schreiben (Grenze 5) und danach auf den Stand `hoechste` stellen. */
+async function ketteAufStand(hoechste: 2 | 3 | 4) {
+  stand.hoechste = 5;
   const kette = await ketteGemischt();
   const text = await kette.text();
   stand.hoechste = hoechste;
@@ -72,7 +72,7 @@ describe("Prüfung, die nur die Fassungen 1 und 2 kennt", () => {
     });
   });
 
-  it("Kette aus den Fassungen 1 bis 4: gelesen, Urteil nicht prüfbar, kein Fehler", async () => {
+  it("Kette aus den Fassungen 1 bis 5: gelesen, Urteil nicht prüfbar, kein Fehler", async () => {
     const { kette, text } = await ketteAufStand(2);
     const { entries } = parseJsonl(text);
     expect(entries.length).toBe(kette.entries.length);
@@ -80,9 +80,9 @@ describe("Prüfung, die nur die Fassungen 1 und 2 kennt", () => {
     expect(report.verdict.level).toBe("nicht_pruefbar");
     expect(report.ok).toBe(false);
     expect(report.firstFailure).toBeUndefined();
-    // Genau die Entscheidungen der Fassungen 3 und 4 sind nicht prüfbar, sonst nichts.
+    // Genau die Entscheidungen der Fassungen 3 bis 5 sind nicht prüfbar, sonst nichts.
     const nummern = nummernAb(kette, 3);
-    expect(nummern).toHaveLength(4);
+    expect(nummern).toHaveLength(6);
     expect(report.verdict.findings).toEqual(
       nummern.map((seq) => ({ problem: "fassung_unbekannt", seq })),
     );
@@ -102,7 +102,7 @@ describe("Prüfung, die nur die Fassungen 1 und 2 kennt", () => {
 
 describe("Prüfung mit Fassung 3 (kennt Fassung 4 nicht)", () => {
   // Gegenprobe: `fassung_unbekannt` für eine unbekannte Fassung durch „ungültig“ ersetzen → rot.
-  it("Belege der Fassung 4 sind nicht prüfbar, nie ungültig; Fassung 1 bis 3 bleiben gültig", async () => {
+  it("Belege der Fassungen 4 und 5 sind nicht prüfbar, nie ungültig; Fassung 1 bis 3 bleiben gültig", async () => {
     const { kette, text } = await ketteAufStand(3);
     const { entries } = parseJsonl(text);
     const report = await verifyChain(entries, { rules: kette.regeln });
@@ -110,14 +110,14 @@ describe("Prüfung mit Fassung 3 (kennt Fassung 4 nicht)", () => {
     expect(report.ok).toBe(false);
     expect(report.firstFailure).toBeUndefined();
     const nummern = nummernAb(kette, 4);
-    expect(nummern).toHaveLength(2);
+    expect(nummern).toHaveLength(4);
     expect(report.verdict.findings).toEqual(
       nummern.map((seq) => ({ problem: "fassung_unbekannt", seq })),
     );
   });
 
   it("eine Kette, die bei Fassung 3 endet, ist für diesen Stand vertrauenswürdig", async () => {
-    stand.hoechste = 4;
+    stand.hoechste = 5;
     const kette = await ketteGemischt(3);
     const text = await kette.text();
     stand.hoechste = 3;
@@ -139,5 +139,36 @@ describe("Prüfung mit Fassung 3 (kennt Fassung 4 nicht)", () => {
       err: (line) => out.push(line),
     });
     expect(exit).toBe(CLI_EXIT.nichtPruefbar);
+  });
+});
+
+describe("Prüfung mit Fassung 4 (kennt Fassung 5 nicht)", () => {
+  // Gegenprobe: `fassung_unbekannt` für eine unbekannte Fassung durch „ungültig“ ersetzen → rot.
+  it("Belege der Fassung 5 sind nicht prüfbar, nie ungültig; Fassung 1 bis 4 bleiben gültig", async () => {
+    const { kette, text } = await ketteAufStand(4);
+    const { entries } = parseJsonl(text);
+    const report = await verifyChain(entries, { rules: kette.regeln });
+    expect(report.verdict.level).toBe("nicht_pruefbar");
+    expect(report.ok).toBe(false);
+    expect(report.firstFailure).toBeUndefined();
+    const nummern = nummernAb(kette, 5);
+    expect(nummern).toHaveLength(2);
+    expect(report.verdict.findings).toEqual(
+      nummern.map((seq) => ({ problem: "fassung_unbekannt", seq })),
+    );
+  });
+
+  it("eine Kette, die bei Fassung 4 endet, ist für diesen Stand vertrauenswürdig", async () => {
+    stand.hoechste = 5;
+    const kette = await ketteGemischt(4);
+    const text = await kette.text();
+    stand.hoechste = 4;
+    const report = await verifyChain(parseJsonl(text).entries, { rules: kette.regeln });
+    expect(report.firstFailure).toBeUndefined();
+    expect(report.verdict).toStrictEqual({
+      level: "vertrauenswuerdig",
+      findings: [],
+      anchor: "fehlt",
+    });
   });
 });

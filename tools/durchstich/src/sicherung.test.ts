@@ -302,6 +302,10 @@ async function befuellen(appUrl: string) {
       },
       {
         botPaused: false,
+        conversationKind: "direkt",
+        botHatAuftrag: false,
+        auftragArt: "keiner",
+        zweck: "chat",
         botOfConversation: true,
         providerId,
         providerEnabled: provider.enabled,
@@ -373,6 +377,7 @@ async function befuellen(appUrl: string) {
           },
           {
             botPaused: false,
+            auftragArt: "keiner",
             botOfConversation: true,
             runRunning: true,
             toolName: "doku_nachschlagen",

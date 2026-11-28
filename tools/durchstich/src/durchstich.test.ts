@@ -151,6 +151,10 @@ async function modelRequest(): Promise<{
     },
     facts: {
       botPaused: false,
+      conversationKind: "direkt",
+      botHatAuftrag: false,
+      auftragArt: "keiner",
+      zweck: "chat",
       botOfConversation: conversation.botId === bot.id,
       providerId: provider.id,
       providerEnabled: provider.enabled,

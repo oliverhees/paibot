@@ -39,6 +39,11 @@ const ids = {
 
 const TEAM_ID = `tea_${"0".repeat(26)}`;
 const ENTWURF_ID = `ent_${"0".repeat(26)}`;
+/** Ab Fassung 5: ein Faden, ein Auftrag darin, der Empfänger einer Übergabe und der Zettel. */
+const FADEN_ID = newId("conversation");
+const AUFTRAG_ID = `auf_${"0".repeat(26)}`;
+const ZIEL_BOT_ID = newId("bot");
+const ZETTEL_DIGEST = `sha256:${"3d".repeat(32)}`;
 
 const ARGS_DIGEST = `hmac-sha256:${"a7".repeat(32)}`;
 
@@ -106,6 +111,43 @@ const TARGETS: { [T in ActionType]: ActionRequest<T>["target"] } = {
     zettelDigest: `sha256:${"3d".repeat(32)}`,
   },
   "einstellung.stabschef_setzen": { installationId: ids.installationId },
+  "auftrag.uebergeben": {
+    conversationId: FADEN_ID,
+    runId: ids.runId,
+    botId: ids.botId,
+    toBotId: ZIEL_BOT_ID,
+    auftragId: AUFTRAG_ID,
+    zettelDigest: ZETTEL_DIGEST,
+  },
+  "auftrag.melden": {
+    conversationId: FADEN_ID,
+    runId: ids.runId,
+    botId: ids.botId,
+    auftragId: AUFTRAG_ID,
+  },
+  "auftrag.abbrechen": {
+    conversationId: FADEN_ID,
+    auftragId: AUFTRAG_ID,
+  },
+  "auftrag.abnehmen": {
+    conversationId: FADEN_ID,
+    auftragId: AUFTRAG_ID,
+  },
+  "auftrag.zurueckgeben": {
+    conversationId: FADEN_ID,
+    auftragId: AUFTRAG_ID,
+    toBotId: ZIEL_BOT_ID,
+    zettelDigest: ZETTEL_DIGEST,
+  },
+  "auftrag.zettel_aendern": {
+    conversationId: FADEN_ID,
+    auftragId: AUFTRAG_ID,
+    zettelDigest: ZETTEL_DIGEST,
+  },
+  "auftrag.budget_erhoehen": {
+    conversationId: FADEN_ID,
+    auftragId: AUFTRAG_ID,
+  },
 };
 
 /**
@@ -142,6 +184,7 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     runActive: false,
     killSwitch: false,
     botPaused: false,
+    conversationKind: "direkt",
   },
   "modell.anfragen": {
     botPaused: false,
@@ -169,11 +212,16 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     toolCount: 0,
     untrustedInput: false,
     trigger: "chat",
+    conversationKind: "direkt",
+    botHatAuftrag: false,
+    auftragArt: "keiner",
+    zweck: "chat",
   },
   "lauf.abbrechen": { credential: "sitzung", runActive: true },
   "belege.exportieren": { credential: "sitzung", entries: 42 },
   "werkzeug.aufrufen": {
     botPaused: false,
+    auftragArt: "keiner",
     botOfConversation: true,
     runRunning: true,
     toolName: "notiz_lesen",
@@ -299,6 +347,83 @@ const GOOD_FACTS: { [T in ActionType]: Facts<T> } = {
     maxZettelChars: 4000,
   },
   "einstellung.stabschef_setzen": { credential: "sitzung", on: true, wasOn: false },
+  "auftrag.uebergeben": {
+    geberRolle: "leitung",
+    zielRolle: "mitglied",
+    art: "uebergabe",
+    auftragArt: "wurzel",
+    sameTeam: true,
+    conversationKind: "faden",
+    zusammenarbeit: "leitung_fuehrt",
+    stabschefErlaubt: false,
+    trigger: "chat",
+    untrustedInput: false,
+    killSwitch: false,
+    toBotPaused: false,
+    auftragOffen: true,
+    zielHatAuftrag: true,
+    zielImPfad: false,
+    tiefe: 1,
+    maxTiefe: 3,
+    baumAuftraege: 1,
+    maxBaumAuftraege: 20,
+    baumSekunden: 60,
+    maxBaumSekunden: 1800,
+    uebergabeAntworten: 0,
+    maxUebergabeAntworten: 1,
+    offeneUnterauftraege: 0,
+    maxBreite: 6,
+    auftraegeAnZiel: 0,
+    maxAuftraegeJeMitglied: 3,
+    bittenImAuftrag: 0,
+    maxBitten: 1,
+    zettelChars: 240,
+    maxZettelChars: 2000,
+  },
+  "auftrag.melden": {
+    meldung: "fertig",
+    botRolle: "leitung",
+    meldungPasstZurRolle: true,
+    botHatAuftrag: true,
+    conversationKind: "faden",
+    auftragArt: "wurzel",
+    auftragOffen: true,
+    untrustedInput: false,
+    killSwitch: false,
+    rueckfragenImFaden: 0,
+    maxRueckfragen: 3,
+  },
+  "auftrag.abbrechen": {
+    credential: "sitzung",
+    auftragOffen: true,
+  },
+  "auftrag.abnehmen": {
+    credential: "sitzung",
+    auftragOffen: true,
+  },
+  "auftrag.zurueckgeben": {
+    credential: "sitzung",
+    zettelChars: 80,
+    maxZettelChars: 2000,
+    killSwitch: false,
+  },
+  "auftrag.zettel_aendern": {
+    credential: "sitzung",
+    auftragOffen: true,
+    auftragGestartet: false,
+    zettelChars: 300,
+    maxZettelChars: 2000,
+  },
+  "auftrag.budget_erhoehen": {
+    credential: "sitzung",
+    auftragOffen: true,
+    baumTokens: 200000,
+    maxBaumTokens: 200000,
+    baumZuschlagTokens: 0,
+    zuschlagTokens: 10000,
+    zuschlaege: 0,
+    maxZuschlaege: 5,
+  },
 };
 
 /**

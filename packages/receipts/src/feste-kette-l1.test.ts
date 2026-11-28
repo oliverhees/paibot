@@ -16,6 +16,7 @@ import { STORED_ACTION_TYPES } from "@paibot/shared/aktionen";
 import type { ReceiptBody } from "@paibot/shared/belege";
 import { STANDARD_RULE_VERSIONS } from "@paibot/shared/tor";
 import { TEAM_ACTION_TYPES } from "@paibot/shared/tor-fassung-4";
+import { AUFTRAG_ACTION_TYPES } from "@paibot/shared/tor-fassung-5";
 import { describe, expect, it } from "vitest";
 import { CLI_EXIT, runCli } from "./cli";
 import { parseJsonl } from "./jsonl";
@@ -49,12 +50,15 @@ describe("feste Kette vom Stand mit Tor-Fassung 1", () => {
     expect(all[1]?.type).toBe("key_change");
     const decisions = all.filter((b): b is Decided => b.type === "decision");
     const results = all.filter((b): b is Resulted => b.type === "result");
-    // Die Aktionen für Apps (ab Fassung 3) und für Teams (ab Fassung 4) gibt es nicht in dieser Kette.
+    // Die Aktionen für Apps (ab Fassung 3), für Teams (ab Fassung 4) und für Aufträge (ab Fassung 5)
+    // gibt es nicht in dieser Kette.
     expect(new Set(decisions.map((b) => b.action.type))).toEqual(
       new Set(
         STORED_ACTION_TYPES.filter(
           (type) =>
-            !type.startsWith("app.") && !(TEAM_ACTION_TYPES as readonly string[]).includes(type),
+            !type.startsWith("app.") &&
+            !(TEAM_ACTION_TYPES as readonly string[]).includes(type) &&
+            !(AUFTRAG_ACTION_TYPES as readonly string[]).includes(type),
         ),
       ),
     );

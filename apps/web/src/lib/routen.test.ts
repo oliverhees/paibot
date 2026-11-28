@@ -12,6 +12,7 @@ import { ACTION_TYPES, ACTIONS, UNSTORED_ACTION_TYPES } from "@paibot/shared/akt
 import { RATE_LIMITS } from "@paibot/shared/konstanten";
 import { CREDENTIAL_SCOPE } from "@paibot/shared/tor";
 import { TEAM_ACTION_TYPES } from "@paibot/shared/tor-fassung-4";
+import { AUFTRAG_ACTION_TYPES } from "@paibot/shared/tor-fassung-5";
 import { describe, expect, it } from "vitest";
 import { LIMIT_DEFINITIONEN } from "./rate-limit";
 import {
@@ -61,7 +62,11 @@ describe("API-Routen", () => {
       if (nochNichtSpeicherbar.has(aktion)) continue;
       // Die Aktionen für Bots, Teams und Fäden (Tor-Fassung 4) haben noch keine Route: Die
       // Bedienung kommt später; bis dahin gibt es sie nur im Tor und in der Datenbank.
-      if ((TEAM_ACTION_TYPES as readonly string[]).includes(aktion)) {
+      // Ebenso die Aktionen des Besitzers an Aufträgen (Tor-Fassung 5).
+      if (
+        (TEAM_ACTION_TYPES as readonly string[]).includes(aktion) ||
+        (AUFTRAG_ACTION_TYPES as readonly string[]).includes(aktion)
+      ) {
         expect(genutzt.has(aktion), aktion).toBe(false);
         continue;
       }

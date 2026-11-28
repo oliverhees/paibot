@@ -178,6 +178,10 @@ export function modelAccess(options: ModelAccessOptions): ModelAccess {
   };
   const facts: Facts<"modell.anfragen"> = {
     botPaused: false,
+    conversationKind: "direkt",
+    botHatAuftrag: false,
+    auftragArt: "keiner",
+    zweck: "chat",
     botOfConversation: true,
     providerId,
     providerEnabled: true,

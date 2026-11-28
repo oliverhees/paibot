@@ -28,6 +28,7 @@ import {
   testKey,
   testSign,
 } from "../testhilfen";
+import { ohneSpaetereFakten } from "./fakten-je-fassung";
 
 type Roh = Record<string, unknown>;
 
@@ -98,13 +99,14 @@ export class GemischteKette {
   }
 
   /**
-   * Entscheidung und Ergebnis nach der Fassung `format` (1, 2 oder 3), roh angehängt. Fassung 1
-   * trägt kein Feld `gateFormat`, die späteren ja. Die Fakten sind die der Beispiele ohne
-   * `botPaused`: Der Fakt gehört erst zu Fassung 4.
+   * Entscheidung und Ergebnis nach der Fassung `format` (1 bis 4), roh angehängt. Fassung 1
+   * trägt kein Feld `gateFormat`, die späteren ja. Die Fakten sind die der Beispiele ohne die
+   * Fakten späterer Fassungen: `botPaused` gehört erst zu Fassung 4, die Füllwerte der Fassung 5
+   * (`FUELLWERTE_5`) erst zu Fassung 5.
    */
-  async alt(type: ActionType, format: 1 | 2 | 3): Promise<void> {
+  async alt(type: ActionType, format: 1 | 2 | 3 | 4): Promise<void> {
     const action = sampleAction(type) as ActionRequest;
-    const { botPaused: _botPaused, ...facts } = sampleFacts(type) as Roh;
+    const facts = ohneSpaetereFakten(type, { ...(sampleFacts(type) as Roh) }, format);
     const decided = evaluate(action, facts as never, this.snapshot as RuleSnapshot, {
       format,
     }) as unknown as Roh;
@@ -174,17 +176,22 @@ export class GemischteKette {
 /**
  * Kette mit je einer Entscheidung samt Ergebnis aus Fassung 1 und Fassung 2 (`nachricht.senden`;
  * die Fakten sind in beiden Fassungen gleich), aus Fassung 3 (`nachricht.senden` und die Aktion für
- * Apps `app.verbinden`, roh) und, mit `bis = 4`, aus Fassung 4 (`nachricht.senden` mit dem Fakt
- * `botPaused` und `app.verbinden`, beide durch das echte Tor). Mit `bis = 3` endet die Kette bei
- * Fassung 3, wie sie ein Stand vor Fassung 4 geschrieben hat.
+ * Apps `app.verbinden`, roh), mit `bis >= 4` aus Fassung 4 (`nachricht.senden` mit dem Fakt
+ * `botPaused` und `app.verbinden`, roh) und mit `bis = 5` aus Fassung 5 (`nachricht.senden` mit
+ * `conversationKind` und `app.verbinden`, beide durch das echte Tor). Mit `bis = 3` bzw. `4` endet
+ * die Kette, wie sie ein Stand vor Fassung 4 bzw. 5 geschrieben hat.
  */
-export async function ketteGemischt(bis: 3 | 4 = 4): Promise<GemischteKette> {
+export async function ketteGemischt(bis: 3 | 4 | 5 = 5): Promise<GemischteKette> {
   const kette = await GemischteKette.neu();
   await kette.alt("nachricht.senden", 1);
   await kette.alt("nachricht.senden", 2);
   await kette.alt("nachricht.senden", 3);
   await kette.alt("app.verbinden", 3);
-  if (bis === 4) {
+  if (bis >= 4) {
+    await kette.alt("nachricht.senden", 4);
+    await kette.alt("app.verbinden", 4);
+  }
+  if (bis === 5) {
     await kette.tor("nachricht.senden");
     await kette.tor("app.verbinden");
   }

@@ -12,6 +12,7 @@
 
 import { newId } from "@paibot/shared/ids";
 import { ACTIVE_STANDARD_RULES, type RuleDefinition } from "@paibot/shared/tor";
+import { FUELLWERTE_5 } from "@paibot/shared/tor-fassung-5";
 import { describe, expect, it } from "vitest";
 import { denialCode } from "../evaluate";
 import { createGate, isGateDenied } from "../gate";
@@ -35,9 +36,13 @@ const ERLAUBT_WERKZEUG: RuleDefinition = {
 
 type Typ = "modell.anfragen" | "werkzeug.aufrufen";
 
-/** Fakten der Beispiele ohne `botPaused`: Der Fakt gehört erst zu Fassung 4, Fassung 2 kennt ihn nicht. */
+/**
+ * Fakten der Beispiele ohne `botPaused` (ab Fassung 4) und ohne die Füllwerte der Fassung 5:
+ * Fassung 2 kennt diese Fakten nicht.
+ */
 function fakten2(type: Typ): Record<string, unknown> {
   const { botPaused: _botPaused, ...rest } = sampleFacts(type) as Record<string, unknown>;
+  for (const key of Object.keys(FUELLWERTE_5[type])) delete rest[key];
   return rest;
 }
 
@@ -139,10 +144,15 @@ describe("Fehlercode einer Ablehnung in Fassung 2", () => {
       clock: { now: () => new Date(Date.UTC(2026, 10, 21, 12, 0, 0)) },
     });
     const error = await gate
-      // Das lebende Tor rechnet mit Fassung 4: dort gehört `botPaused` zu den Fakten des Aufrufs.
-      .run(sampleAction("werkzeug.aufrufen"), { ...facts, botPaused: false } as never, async () => {
-        throw new Error("darf nicht laufen");
-      })
+      // Das lebende Tor rechnet mit Fassung 5: dort gehören `botPaused` (ab Fassung 4) und
+      // `auftragArt` (ab Fassung 5) zu den Fakten des Aufrufs.
+      .run(
+        sampleAction("werkzeug.aufrufen"),
+        { ...facts, botPaused: false, ...FUELLWERTE_5["werkzeug.aufrufen"] } as never,
+        async () => {
+          throw new Error("darf nicht laufen");
+        },
+      )
       .catch((caught: unknown) => caught);
     expect(isGateDenied(error)).toBe(true);
     if (!isGateDenied(error)) return;

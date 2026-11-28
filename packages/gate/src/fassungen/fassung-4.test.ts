@@ -1,7 +1,8 @@
 /**
  * PaiBot – Tests der Tor-Fassung 4: setzt genau den Vertrag um, ist eine Obermenge von
  * Fassung 3 (Korpus 3 und 2 unter Fassung 4 mit gleichem Ergebnis, nur mit den Füllwerten und den
- * neuen Einträgen), und ist in Kraft: Das Tor entscheidet mit ihr, ihre Aktionen sind gespeichert.
+ * neuen Einträgen), und bleibt nach der in Kraft getretenen Fassung 5 in der Liste; ihre Aktionen
+ * bleiben gespeichert.
  *
  * Fassung 4 ist eingefroren (`unveraendert.test.ts`). Korpus 1 läuft unter Fassung 4 in
  * `obermenge.test.ts`, mit der von Fassung 3 geerbten Ausnahme (Quelle `mcp`).
@@ -421,11 +422,10 @@ describe("Obermenge: Korpus der Fassung 2 unter Fassung 4", () => {
   }
 });
 
-describe("Fassung 4 ist in Kraft", () => {
-  it("das Tor entscheidet mit Fassung 4, der höchsten bekannten; sie steht in der Liste", () => {
-    expect(GATE_FORMAT).toBe(4);
-    expect(KNOWN_GATE_FORMAT).toBe(4);
-    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3", "4"]);
+describe("Fassung 4 bleibt nach Fassung 5", () => {
+  it("Fassung 4 steht weiter in der Liste; das Tor entscheidet mit einer höheren", () => {
+    expect(GATE_FORMAT).toBeGreaterThan(4);
+    expect(KNOWN_GATE_FORMAT).toBeGreaterThan(4);
     expect(GATE_FORMATS[4]).toBe(GATE_FORMAT_4);
   });
 
@@ -436,12 +436,11 @@ describe("Fassung 4 ist in Kraft", () => {
     }
   });
 
-  it("die Standard-Regeln sind die der Fassung 3: keine neue, auch keine für Bots", () => {
-    const ids = ACTIVE_STANDARD_RULES.map((rule) => rule.id).sort();
+  it("Fassung 4 brachte keine neue Standard-Regel: alle der Fassung 4 sind weiter aktiv", () => {
+    const ids = ACTIVE_STANDARD_RULES.map((rule) => rule.id);
     const erwartet = (K4.ruleSets.standard ?? [])
       .map((rule) => rule.id)
-      .filter((id) => id !== "R-007" && id !== "R-008")
-      .sort();
-    expect(ids).toEqual(erwartet);
+      .filter((id) => id !== "R-007" && id !== "R-008");
+    for (const id of erwartet) expect(ids, id).toContain(id);
   });
 });

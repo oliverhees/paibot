@@ -106,6 +106,7 @@ async function nachschlagen(test: TestDb): Promise<string> {
       callsInRun: 0,
       maxCallsPerRun: 16,
       trigger: "chat",
+      auftragArt: "keiner",
     } as never,
     async () => ({ value: undefined, result: { status: "ok" } }),
   );

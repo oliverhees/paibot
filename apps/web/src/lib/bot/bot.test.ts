@@ -13,6 +13,7 @@ import { repo } from "@paibot/db";
 import { LIMITS } from "@paibot/shared/konstanten";
 import { t } from "@paibot/shared/texte";
 import { ACTIVE_STANDARD_RULES } from "@paibot/shared/tor";
+import { STANDARD_RULES_5 } from "@paibot/shared/tor-fassung-5";
 import { describe, expect, it, vi } from "vitest";
 import { belegeSeit, eingerichtet, letzteNummer } from "../modelle/testing";
 import { anfrage, Keksdose } from "../zugang/testing";
@@ -131,6 +132,21 @@ describe("Was dein Bot darf", () => {
     expect(rechte.fragt.map((r) => r.id)).toEqual(["R-005"]);
     expect(rechte.nie.map((r) => r.id)).toEqual(["G-01"]);
     expect(rechte.erlaubt[0]?.text).toBe(t("regel.R-002"));
+  });
+
+  it("Regeln der Zusammenarbeit (Tor-Fassung 5) stehen hier noch nicht: es gibt noch keine Teams und keine Schalter", () => {
+    const rechte = botRechte(ACTIVE_STANDARD_RULES);
+    const alle = [...rechte.erlaubt, ...rechte.fragt, ...rechte.nie].map((r) => r.id);
+    for (const regel of STANDARD_RULES_5) expect(alle, regel.id).not.toContain(regel.id);
+    // Ohne den Ausschluss stünden sie da: R-015 bis R-019 erlauben, R-009 fragt.
+    expect(STANDARD_RULES_5.map((r) => r.id).sort()).toEqual([
+      "R-009",
+      "R-015",
+      "R-016",
+      "R-017",
+      "R-018",
+      "R-019",
+    ]);
   });
 
   it("abgeschaltete Regeln zählen nicht", () => {
