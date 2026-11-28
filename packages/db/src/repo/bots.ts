@@ -16,6 +16,7 @@ import {
   type ModelId,
   newId,
   PaiBotError,
+  type TeamId,
 } from "@paibot/shared";
 import { asc, eq, sql } from "drizzle-orm";
 import type { Database } from "../client";
@@ -142,6 +143,33 @@ export async function setPaused(
     standardFehler,
   );
   return row === undefined ? undefined : toBot(row);
+}
+
+/**
+ * Ordnet den Bot einem Team zu; `null` nimmt ihn heraus. `undefined`, wenn es ihn nicht gibt.
+ * Gibt es das Team nicht, meldet der Fremdschlüssel `nicht_gefunden`.
+ */
+export async function setTeam(
+  db: Database,
+  id: BotId,
+  teamId: TeamId | null,
+): Promise<Bot | undefined> {
+  const [row] = await uebersetzen(
+    () =>
+      db
+        .update(bots)
+        .set({ teamId, updatedAt: sql`pg_catalog.now()` })
+        .where(eq(bots.id, id))
+        .returning(),
+    standardFehler,
+  );
+  return row === undefined ? undefined : toBot(row);
+}
+
+/** Wie viele Bots es gibt. Fakt `botsAfter` der Aktion `bot.anlegen` (Grenze „Bots insgesamt“). */
+export async function count(db: Database): Promise<number> {
+  const [row] = await db.select({ anzahl: sql<number>`count(*)::int` }).from(bots);
+  return row?.anzahl ?? 0;
 }
 
 /** Namen der Fremdschlüssel, die das Löschen eines Bots verhindern. */

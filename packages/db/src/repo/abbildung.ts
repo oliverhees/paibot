@@ -37,7 +37,9 @@ import type {
   Run as RunRow,
   Session as SessionRow,
   Settings as SettingsRow,
+  Team as TeamRow,
 } from "../schema";
+import type { Team } from "./teams";
 
 /** `{ [schluessel]: wert }`, oder nichts, wenn der Wert fehlt. */
 function wennGesetzt<K extends string, V>(
@@ -128,6 +130,19 @@ export function toBot(row: BotRow): Bot {
     role: row.role,
     paused: row.paused,
     ...wennGesetzt("teamId", row.teamId),
+    createdAt: toIsoTime(row.createdAt),
+    updatedAt: toIsoTime(row.updatedAt),
+  };
+}
+
+/** Ein Team mit Zeiten als ISO-Text; ohne Leitung fehlt `leadBotId`. */
+export function toTeam(row: TeamRow): Team {
+  return {
+    id: row.id,
+    name: row.name,
+    ...wennGesetzt("leadBotId", row.leadBotId),
+    collaboration: row.collaboration,
+    acceptanceDefault: row.acceptanceDefault,
     createdAt: toIsoTime(row.createdAt),
     updatedAt: toIsoTime(row.updatedAt),
   };

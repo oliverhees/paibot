@@ -27,6 +27,7 @@ const SCHREIBFUNKTIONEN = [
   "bots.setModel",
   "bots.remove",
   "bots.setPaused",
+  "bots.setTeam",
   "teams",
   "teamEntwuerfe",
   "teamAnlagen",

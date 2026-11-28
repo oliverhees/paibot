@@ -129,9 +129,13 @@ export const sendMessageInput = z.strictObject({
 });
 export type SendMessageInput = z.infer<typeof sendMessageInput>;
 
-/** Unterhaltung anlegen; ohne Titel vergibt PaiBot einen. */
+/**
+ * Unterhaltung anlegen; ohne Titel vergibt PaiBot einen. Ohne `botId` nimmt sie den Standard-Bot
+ * – der bleibt die Vorgabe, nicht die einzige Wahl.
+ */
 export const conversationCreateInput = z.strictObject({
   title: z.string().trim().min(1).max(LIMITS.conversationTitleChars).optional(),
+  botId: idSchema("bot").optional(),
 });
 export type ConversationCreateInput = z.infer<typeof conversationCreateInput>;
 
@@ -225,6 +229,53 @@ export const botInput = z.strictObject({
   maxOutputTokens: z.number().int().min(1).max(LIMITS.maxOutputTokens),
 });
 export type BotInput = z.infer<typeof botInput>;
+
+/**
+ * Weiteren Bot anlegen: Name, Aufgabe im Team, Anweisung und Aussehen. Ohne Modell nimmt der Bot
+ * das Modell des Standard-Bots („wie Pai“); ohne Team steht er für sich.
+ */
+export const botCreateInput = z.strictObject({
+  name: z.string().trim().min(1).max(LIMITS.botNameChars),
+  role: z.string().trim().max(LIMITS.botRoleChars).default(""),
+  instructions: z.string().max(LIMITS.botInstructionsChars).default(""),
+  avatarShape: avatarShapeSchema,
+  color: botColorSchema,
+  modelId: idSchema("model").optional(),
+  teamId: idSchema("team").optional(),
+});
+export type BotCreateInput = z.infer<typeof botCreateInput>;
+
+/** Bot pausieren oder fortsetzen. */
+export const botPauseInput = z.strictObject({ paused: z.boolean() });
+export type BotPauseInput = z.infer<typeof botPauseInput>;
+
+/** Bot einem Team zuordnen; ohne `teamId` steht er danach ohne Team da. */
+export const botTeamInput = z.strictObject({ teamId: idSchema("team").optional() });
+export type BotTeamInput = z.infer<typeof botTeamInput>;
+
+/** Wie ein Team zusammenarbeitet und wer Ergebnisse abnimmt. */
+export const teamCollaborationSchema = z.enum(["aus", "leitung_fuehrt"]);
+export const teamAcceptanceSchema = z.enum(["leitung", "besitzer", "ohne"]);
+
+/** Team anlegen: nur der Name; Leitung und Schalter kommen mit dem Ändern. */
+export const teamCreateInput = z.strictObject({
+  name: z.string().trim().min(1).max(LIMITS.teamNameChars),
+});
+export type TeamCreateInput = z.infer<typeof teamCreateInput>;
+
+/**
+ * Team ändern: Name, Leitung, Zusammenarbeit, Abnahme-Standard. Mindestens ein Feld; `lead: null`
+ * nimmt die Leitung weg. Welche Felder kamen, meldet die Route dem Tor als Fakt `fields`.
+ */
+export const teamPatchInput = z
+  .strictObject({
+    name: z.string().trim().min(1).max(LIMITS.teamNameChars).optional(),
+    lead: idSchema("bot").nullable().optional(),
+    collaboration: teamCollaborationSchema.optional(),
+    acceptance: teamAcceptanceSchema.optional(),
+  })
+  .refine((input) => Object.keys(input).length > 0, { path: ["name"] });
+export type TeamPatchInput = z.infer<typeof teamPatchInput>;
 
 /** Modell des Bots festlegen. */
 export const modelChoiceInput = z.strictObject({ modelId: idSchema("model") });
