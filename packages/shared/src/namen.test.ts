@@ -1,5 +1,5 @@
 /**
- * PaiBot – Namen im Teamchat: Vergleichsform und Konflikte (Tests)
+ * PaiBot – Namen von Bots: Vergleichsform, Konflikte, reservierter Vorsatz „Team “ (Tests)
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -9,7 +9,13 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { aehnlichkeitsForm, namensKonflikte, vergleichsName } from "./namen";
+import {
+  aehnlichkeitsForm,
+  istTeamName,
+  namensKonflikte,
+  neuerNameUnzulaessig,
+  vergleichsName,
+} from "./namen";
 
 const bots = (...namen: string[]) => namen.map((name, i) => ({ id: `b${i}`, name }));
 
@@ -70,5 +76,47 @@ describe("namensKonflikte", () => {
   it("meldet jeden Konflikt mit allen beteiligten Bots", () => {
     const k = namensKonflikte(bots("Ideen", "ideen", "IDEEN", "Entwurf"));
     expect(k).toEqual([{ art: "gleich", botIds: ["b0", "b1", "b2"] }]);
+  });
+});
+
+// Gegenprobe zur Pflicht „Namen mit ‚Team ‘ sind reserviert“: in `istTeamName` die Prüfung durch
+// `false` ersetzen → die beiden folgenden Tests werden rot.
+describe("istTeamName", () => {
+  it("erkennt den reservierten Vorsatz, auch in anderer Schreibweise", () => {
+    expect(istTeamName("Team Content")).toBe(true);
+    expect(istTeamName("team content")).toBe(true);
+    expect(istTeamName("  TEAM  Content")).toBe(true);
+    expect(istTeamName("ＴＥＡＭ　Content")).toBe(true);
+    expect(istTeamName("Team\u00a0Content")).toBe(true);
+  });
+
+  it("lässt Namen durch, die nur mit „Team“ anfangen oder es enthalten", () => {
+    expect(istTeamName("Teamgeist")).toBe(false);
+    expect(istTeamName("Team")).toBe(false);
+    expect(istTeamName("Mein Team Content")).toBe(false);
+    expect(istTeamName("Redaktion")).toBe(false);
+  });
+});
+
+describe("neuerNameUnzulaessig", () => {
+  const vorhandene = bots("Pai", "Ideen");
+
+  it("lässt einen neuen, eigenen Namen durch", () => {
+    expect(neuerNameUnzulaessig("Entwurf", vorhandene)).toBe(undefined);
+    expect(neuerNameUnzulaessig("Redaktion", [])).toBe(undefined);
+  });
+
+  it("lehnt den reservierten Vorsatz ab", () => {
+    expect(neuerNameUnzulaessig("Team Content", vorhandene)).toBe("reserviert");
+  });
+
+  it("lehnt einen Namen ab, der von einem bestehenden Bot nicht zu unterscheiden ist", () => {
+    expect(neuerNameUnzulaessig("ideen", vorhandene)).toBe("gleich");
+    expect(neuerNameUnzulaessig("ＩＤＥＥＮ", vorhandene)).toBe("gleich");
+    expect(neuerNameUnzulaessig("Id\u0435en", vorhandene)).toBe("aehnlich");
+  });
+
+  it("meldet nur Konflikte des neuen Namens, nicht die der bestehenden untereinander", () => {
+    expect(neuerNameUnzulaessig("Entwurf", bots("Ideen", "ideen"))).toBe(undefined);
   });
 });
