@@ -39,11 +39,13 @@ Die drei Klassen:
 
 Keine eigene Tabelle, keine Migration: Die Zuordnung ist reiner Code. Die Klassen im Überblick (die Begründung je Tabelle steht in `packages/db/src/schema/abgleich-klassen.ts`):
 
-| Klasse | Tabellen                                                                                                                                                            |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A      | `belege`, `rules`, `app_tools`, `bot_app_grants`, `conversation_events`                                                                                             |
-| B      | `settings`, `providers`, `models`, `bots`, `conversations`, `messages`, `runs`, `tool_calls`, `apps`, `owner`                                                       |
-| C      | `installation_keys`, `sessions`, `geraete`, `rate_limits`, `schleuse_zustand`; außerhalb des Schemas `pgboss` (Warteschlange) und `drizzle` (Stand der Migrationen) |
+| Klasse | Tabellen                                                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A      | `belege`, `rules`, `app_tools`, `bot_app_grants`, `conversation_events`, `team_anlagen`, `faeden`, `faden_punkte`, `auftraege`, `auftrag_ereignisse`, `auftrag_zuschlaege` |
+| B      | `settings`, `providers`, `models`, `bots`, `conversations`, `messages`, `runs`, `tool_calls`, `apps`, `owner`                                                              |
+| C      | `installation_keys`, `sessions`, `geraete`, `rate_limits`, `schleuse_zustand`; außerhalb des Schemas `pgboss` (Warteschlange) und `drizzle` (Stand der Migrationen)        |
+
+**Aufträge (Migration 0020):** `auftraege` ist Klasse A wie `faeden`, obwohl sich der Stand ändert: Zettel, Entscheidung und Baum stehen fest, der Stand geht nur feste, einseitige Wege, „belastet“ wird nie zurückgenommen (Trigger in `packages/db/drizzle/0020_auftraege.sql`). `auftrag_ereignisse` und `auftrag_zuschlaege` sind nur anhängen und stehen in `packages/db/src/rollen.ts#APPEND_ONLY_TABLES`. Einzelheiten in [Datenbank für Aufträge](auftraege.md).
 
 **Regel für jede neue Migration:** Legt sie eine Tabelle an, trägt dieselbe Änderung die Tabelle mit Klasse und einem Satz Begründung in `ABGLEICH_KLASSEN` ein. Sonst ist `packages/db/src/abgleich-klassen.test.ts` rot. Wird eine Tabelle entfernt, fällt auch ihr Eintrag weg (der Test meldet eine Klasse ohne Tabelle).
 

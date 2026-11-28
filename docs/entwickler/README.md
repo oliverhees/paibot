@@ -40,6 +40,7 @@ Die Anwender-Doku steht in der [Übersicht der Doku](../README.md). Wie man loka
 | Apps (MCP-Schicht, noch nicht angeschlossen)        | [apps.md](apps.md)                                     | folgt mit der Oberfläche                                                    |
 | Fertige Apps (Verzeichnis der Vorlagen)             | [fertige-apps.md](fertige-apps.md)                     | [funktion-fertige-apps.md](../funktion-fertige-apps.md)                     |
 | Datenbank (Abgleich-Klasse je Tabelle)              | [datenbank.md](datenbank.md)                           | –                                                                           |
+| Datenbank für Aufträge                              | [auftraege.md](auftraege.md)                           | –                                                                           |
 | Vorlage                                             | [VORLAGE.md](VORLAGE.md)                               | –                                                                           |
 
 ## Aufbau des Monorepos
