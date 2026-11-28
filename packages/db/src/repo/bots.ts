@@ -18,11 +18,13 @@ import {
   PaiBotError,
   type TeamId,
 } from "@paibot/shared";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { bots, settings } from "../schema";
+import { bots, settings, teams } from "../schema";
+import { BOTS_LOCK_KEY } from "../sperren";
 import { toBot } from "./abbildung";
 import { feldFehler, SQLSTATE, standardFehler, uebersetzen } from "./fehler";
+import { withTransaction } from "./transaktion";
 
 export interface BotCreate {
   id?: BotId;
@@ -76,6 +78,30 @@ export async function create(db: Database, input: BotCreate): Promise<Bot> {
   );
   if (row === undefined) throw new PaiBotError("intern");
   return toBot(row);
+}
+
+/**
+ * Legt einen Bot an, aber nur solange es weniger als `max` gibt. Zählen und Einfügen liegen in
+ * einer Transaktion unter der Sperre `BOTS_LOCK_KEY`: Zwei gleichzeitige Anfragen an der Grenze
+ * legen deshalb nie beide an, auch nicht aus zwei Prozessen. Über der Grenze meldet sie
+ * `limit_erreicht` und fügt nichts ein. Jeder Weg, der Bots anlegt und die Grenze einhalten muss,
+ * nimmt diese Funktion statt `create`.
+ */
+export async function anlegenUnterGrenze(
+  db: Database,
+  input: BotCreate,
+  max: number,
+): Promise<Bot> {
+  return withTransaction(db, async (tx) => {
+    await tx.execute(`select pg_catalog.pg_advisory_xact_lock(${BOTS_LOCK_KEY})`);
+    if ((await count(tx)) >= max) {
+      throw new PaiBotError("limit_erreicht", {
+        text: `Du hast schon ${max} Bots – mehr gehen nicht.`,
+        ausweg: "Lösche einen Bot, den du nicht mehr brauchst.",
+      });
+    }
+    return create(tx, input);
+  });
 }
 
 export async function get(db: Database, id: BotId): Promise<Bot | undefined> {
@@ -155,22 +181,36 @@ export async function setPaused(
 /**
  * Ordnet den Bot einem Team zu; `null` nimmt ihn heraus. `undefined`, wenn es ihn nicht gibt.
  * Gibt es das Team nicht, meldet der Fremdschlüssel `nicht_gefunden`.
+ *
+ * War der Bot die Leitung des Teams, das er verlässt, hat dieses Team danach keine Leitung: beides
+ * geschieht in einer Transaktion. So ist die Leitung eines Teams immer ein Mitglied desselben
+ * Teams – genau wie beim Löschen eines Bots, das die Leitung ebenfalls leer lässt.
  */
 export async function setTeam(
   db: Database,
   id: BotId,
   teamId: TeamId | null,
 ): Promise<Bot | undefined> {
-  const [row] = await uebersetzen(
-    () =>
-      db
-        .update(bots)
-        .set({ teamId, updatedAt: sql`pg_catalog.now()` })
-        .where(eq(bots.id, id))
-        .returning(),
-    standardFehler,
-  );
-  return row === undefined ? undefined : toBot(row);
+  return withTransaction(db, async (tx) => {
+    await tx
+      .update(teams)
+      .set({ leadBotId: null, updatedAt: sql`pg_catalog.now()` })
+      .where(
+        teamId === null
+          ? eq(teams.leadBotId, id)
+          : and(eq(teams.leadBotId, id), ne(teams.id, teamId)),
+      );
+    const [row] = await uebersetzen(
+      () =>
+        tx
+          .update(bots)
+          .set({ teamId, updatedAt: sql`pg_catalog.now()` })
+          .where(eq(bots.id, id))
+          .returning(),
+      standardFehler,
+    );
+    return row === undefined ? undefined : toBot(row);
+  });
 }
 
 /** Wie viele Bots es gibt. Fakt `botsAfter` der Aktion `bot.anlegen` (Grenze „Bots insgesamt“). */
