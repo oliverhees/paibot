@@ -10,6 +10,7 @@
     "./ids": "./src/id.ts",
     "./grundtypen": "./src/grundtypen.ts",
     "./objekte": "./src/objects.ts",
+    "./namen": "./src/namen.ts",
     "./eingaben": "./src/inputs.ts",
     "./ereignisse": "./src/events.ts",
     "./aktionen": "./src/actions.ts",

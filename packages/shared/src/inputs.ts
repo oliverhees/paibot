@@ -15,6 +15,7 @@ import { ahmtKennzeichnungNach, anzeigeText } from "./anzeigetext";
 import { LIMITS } from "./constants";
 import { timezoneSchema } from "./grundtypen";
 import { idSchema } from "./id";
+import { istTeamName } from "./namen";
 import {
   avatarShapeSchema,
   botColorSchema,
@@ -220,9 +221,20 @@ export const connectionTestInput = z
   });
 export type ConnectionTestInput = z.infer<typeof connectionTestInput>;
 
+/**
+ * Name eines Bots: ohne Leerraum an den Enden, nicht leer, höchstens `LIMITS.botNameChars` Zeichen
+ * und nicht mit „Team “ beginnend – solche Namen gehören einem Team und nicht einem Bot.
+ */
+export const botNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(LIMITS.botNameChars)
+  .refine((name) => !istTeamName(name), { message: "reserviert" });
+
 /** Bot ändern: Name, Anweisung, Avatar und Ausgabegrenze. */
 export const botInput = z.strictObject({
-  name: z.string().trim().min(1).max(LIMITS.botNameChars),
+  name: botNameSchema,
   instructions: z.string().max(LIMITS.botInstructionsChars),
   avatarShape: avatarShapeSchema,
   color: botColorSchema,
@@ -235,7 +247,7 @@ export type BotInput = z.infer<typeof botInput>;
  * das Modell des Standard-Bots („wie Pai“); ohne Team steht er für sich.
  */
 export const botCreateInput = z.strictObject({
-  name: z.string().trim().min(1).max(LIMITS.botNameChars),
+  name: botNameSchema,
   role: z.string().trim().max(LIMITS.botRoleChars).default(""),
   instructions: z.string().max(LIMITS.botInstructionsChars).default(""),
   avatarShape: avatarShapeSchema,
