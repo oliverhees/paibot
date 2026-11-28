@@ -23,7 +23,7 @@ Mitgeliefert ist die Vorlage **Content-Team**: vier Bots für Artikel – Redakt
 1. Öffne die Seite „Bots und Teams“ (Adresse `/teams`) und klick unter dem Formular „Team anlegen“ auf den Verweis **„Team aus Vorlage“**. Du landest auf der Adresse `/team-entwurf`. Dort stehen die Vorlagen, die zu deiner Installation gehören.
 
    ![Seite „Team aus Vorlage“ mit der Vorlage „Content-Team“, ihrer Beschreibung und dem Knopf „Vorschau öffnen“](assets/screenshots/team-vorlage-liste.png)
-2. Klick bei der Vorlage auf **„Vorschau öffnen“**. Jetzt ist ein Entwurf offen – angelegt ist noch nichts. Die Vorschau zeigt dir alles:
+2. Klick bei der Vorlage auf **„Vorschau öffnen“**. Jetzt ist ein Entwurf offen – angelegt ist noch nichts. Ist der [Not-Aus](funktion-einstellungen.md) an, lehnt das Tor diesen Schritt ab („PaiBot ist angehalten.“): Einen neuen Entwurf zu öffnen zählt schon als Inbetriebnahme. Die Vorschau zeigt dir alles:
    - **Leitung:** welcher Bot die Arbeit verteilt und abnimmt
    - **Team und Zusammenarbeit:** Name des Teams, „Leitung führt“ oder „Aus“, und wer abnimmt
    - **Bots:** jeder mit Namen, Zeichen, Aufgabe und der Marke „aus Vorlage“
@@ -51,13 +51,13 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 
 ## Einstellungen
 
-| Einstellung    | Wo                                         | Bedeutung                                                                              | Standard             |
-| -------------- | ------------------------------------------ | -------------------------------------------------------------------------------------- | -------------------- |
-| Vorlage        | Seite „Team aus Vorlage“                   | Welches Team vorgeschlagen wird                                                        | Content-Team         |
-| Anweisung      | Vorschau, „Anweisung im vollen Wortlaut“   | Der Text, mit dem der neue Bot arbeitet                                                | Wortlaut der Vorlage |
-| Häkchen je Bot | Vorschau                                   | Ob dieser Bot angelegt wird; die Leitung ist fest                                      | alle Bots gewählt    |
-| Not-Aus        | [Einstellungen](funktion-einstellungen.md) | Ist er an, lehnt das Tor das Anlegen ab. Lesen, Ändern, Verwerfen und Rückgängig gehen | aus                  |
-| Verfall        | –                                          | Nach dieser Zeit lässt sich der Entwurf nicht mehr anlegen                             | 7 Tage               |
+| Einstellung    | Wo                                         | Bedeutung                                                                                                                                     | Standard             |
+| -------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Vorlage        | Seite „Team aus Vorlage“                   | Welches Team vorgeschlagen wird                                                                                                               | Content-Team         |
+| Anweisung      | Vorschau, „Anweisung im vollen Wortlaut“   | Der Text, mit dem der neue Bot arbeitet                                                                                                       | Wortlaut der Vorlage |
+| Häkchen je Bot | Vorschau                                   | Ob dieser Bot angelegt wird; die Leitung ist fest                                                                                             | alle Bots gewählt    |
+| Not-Aus        | [Einstellungen](funktion-einstellungen.md) | Ist er an, lehnt das Tor das Öffnen einer neuen Vorschau und das Anlegen ab. Lesen, Ändern am offenen Entwurf, Verwerfen und Rückgängig gehen | aus                  |
+| Verfall        | –                                          | Nach dieser Zeit lässt sich der Entwurf nicht mehr anlegen                                                                                    | 7 Tage               |
 
 ## So funktioniert es
 
@@ -80,13 +80,13 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 
 ## Fehlerbehebung
 
-| Beobachtung                                                      | Ursache                                                                        | Was tun                                                                                     |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| „Der Entwurf ist nicht mehr der, den du gesehen hast.“           | Der Inhalt hat sich geändert, seit die Vorschau geladen wurde                  | Die Seite neu laden, die Vorschau noch einmal lesen und erneut anlegen                      |
-| „Ein Name ist schon vergeben.“                                   | Es gibt schon ein Team oder einen Bot mit diesem Namen                         | Das vorhandene Team umbenennen oder löschen, dann erneut anlegen                            |
-| „Wähle im Entwurf ein Modell, das du eingerichtet hast.“         | Es ist noch kein Modell eingerichtet, also hat auch der Haupt-Assistent keines | Zuerst unter [Anbieter und Modelle](funktion-anbieter-und-modelle.md) ein Modell einrichten |
-| „PaiBot ist angehalten.“ beim Anlegen                            | Der Not-Aus ist an                                                             | Ihn unter [Einstellungen](funktion-einstellungen.md) aufheben                               |
-| Der Knopf „Team anlegen“ ist grau, darüber steht ein Hinweis     | Der Not-Aus ist an                                                             | Wie oben; Lesen und Verwerfen gehen weiter                                                  |
-| „Dieser Entwurf wurde schon benutzt.“ bei „Rückgängig“           | Jemand hat einem der neuen Bots geschrieben                                    | Die Bots einzeln auf der Seite [Bots und Teams](funktion-bots-und-teams.md) löschen         |
-| Der Entwurf lässt sich nicht mehr anlegen, obwohl er noch da ist | Die 7 Tage sind um                                                             | „Entwurf wieder öffnen“ und die Vorlage noch einmal nehmen                                  |
-| „Es gibt hier keine Vorlagen.“                                   | Im Installations-Abbild fehlt der Ordner mit den Vorlagen                      | Das Abbild neu bauen oder aktualisieren ([Aktualisieren](aktualisieren.md))                 |
+| Beobachtung                                                                 | Ursache                                                                        | Was tun                                                                                     |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| „Der Entwurf ist nicht mehr der, den du gesehen hast.“                      | Der Inhalt hat sich geändert, seit die Vorschau geladen wurde                  | Die Seite neu laden, die Vorschau noch einmal lesen und erneut anlegen                      |
+| „Ein Name ist schon vergeben.“                                              | Es gibt schon ein Team oder einen Bot mit diesem Namen                         | Das vorhandene Team umbenennen oder löschen, dann erneut anlegen                            |
+| „Wähle im Entwurf ein Modell, das du eingerichtet hast.“                    | Es ist noch kein Modell eingerichtet, also hat auch der Haupt-Assistent keines | Zuerst unter [Anbieter und Modelle](funktion-anbieter-und-modelle.md) ein Modell einrichten |
+| „PaiBot ist angehalten.“ beim Anlegen oder beim Öffnen einer neuen Vorschau | Der Not-Aus ist an                                                             | Ihn unter [Einstellungen](funktion-einstellungen.md) aufheben                               |
+| Der Knopf „Team anlegen“ ist grau, darüber steht ein Hinweis                | Der Not-Aus ist an                                                             | Wie oben; den offenen Entwurf lesen und ändern, ihn verwerfen und „Rückgängig“ gehen weiter |
+| „Dieser Entwurf wurde schon benutzt.“ bei „Rückgängig“                      | Jemand hat einem der neuen Bots geschrieben                                    | Die Bots einzeln auf der Seite [Bots und Teams](funktion-bots-und-teams.md) löschen         |
+| Der Entwurf lässt sich nicht mehr anlegen, obwohl er noch da ist            | Die 7 Tage sind um                                                             | „Entwurf wieder öffnen“ und die Vorlage noch einmal nehmen                                  |
+| „Es gibt hier keine Vorlagen.“                                              | Im Installations-Abbild fehlt der Ordner mit den Vorlagen                      | Das Abbild neu bauen oder aktualisieren ([Aktualisieren](aktualisieren.md))                 |
