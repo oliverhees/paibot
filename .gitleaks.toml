@@ -1,0 +1,27 @@
+# PaiBot – Ausnahmen für gitleaks (Prüfung der ganzen Git-Historie in der CI).
+#
+# Autor:     Oliver Hees
+# Website:   https://paibot.de
+# Copyright: 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+# Lizenz:    PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+# Seit:      2026-11-28
+#
+# Es gelten alle Regeln von gitleaks. Eine Ausnahme gilt nur für genau eine Regel und nur für
+# die hier genannten Pfade, nie pauschal. Jede neue Ausnahme braucht eine Begründung.
+
+title = "PaiBot"
+
+[extend]
+useDefault = true
+
+# Die Regel generic-api-key schlägt bei Zuweisungen wie `TOKEN = "…"`, `newPassword: "…"` oder
+# `toolKey: "…"` an. In Testdateien sind das erfundene Werte für Fixtures, keine Zugangsdaten.
+# Regeln für echte Formate (Anbieter-Schlüssel, private Schlüssel, Cloud-Zugänge) bleiben auch dort aktiv.
+[[allowlists]]
+description = "Erfundene Test-Werte in Testdateien, Korpus des Tors und Browser-Skript für die Seite Apps (nur Regel generic-api-key)"
+targetRules = ["generic-api-key"]
+paths = [
+  '''\.test\.(ts|tsx|mjs)$''',
+  '''^packages/gate/src/fassungen/fassung-\d+\.korpus\.json$''',
+  '''^scripts/apps-browser\.mjs$''',
+]

@@ -36,6 +36,9 @@ ENV NODE_ENV=production \
     PAIBOT_WORKER_HEALTH_FILE=/tmp/paibot-worker.herzschlag
 WORKDIR /app
 RUN addgroup -S paibot && adduser -S paibot -G paibot
+# npm und npx brauchen Web und Worker zur Laufzeit nicht. Das mitgelieferte npm bringt eigene Pakete
+# mit (brace-expansion, undici), deren Sicherheitsmeldungen Trivy im Image sonst findet.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=build --chown=paibot:paibot /app/apps/web/.next/standalone ./
 COPY --from=build --chown=paibot:paibot /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=paibot:paibot /app/apps/web/public ./apps/web/public
