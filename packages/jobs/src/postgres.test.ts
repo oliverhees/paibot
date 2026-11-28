@@ -15,7 +15,15 @@ import { randomBytes } from "node:crypto";
 import { newId } from "@paibot/shared/ids";
 import { PgBoss } from "pg-boss";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { createQueue, QUEUE_SCHEMA, type Queue, queueConnection, type RunJob } from "./index";
+import {
+  createQueue,
+  prepareQueue,
+  QUEUE_SCHEMA,
+  type Queue,
+  queueConnection,
+  RUN_QUEUE,
+  type RunJob,
+} from "./index";
 
 const url = process.env.PAIBOT_TEST_DATABASE_URL;
 const open: Queue[] = [];
@@ -48,6 +56,10 @@ const install = {
   role: `paibot_app_test_${randomBytes(4).toString("hex")}`,
   password: randomBytes(24).toString("hex"),
   appUrl: "",
+  /** Worker-Rolle: nur Login und Verbindung, Rechte im Schema gibt `prepareQueue`. */
+  workerRole: `paibot_worker_test_${randomBytes(4).toString("hex")}`,
+  workerPassword: randomBytes(24).toString("hex"),
+  workerUrl: "",
 };
 
 beforeAll(async () => {
@@ -60,6 +72,12 @@ beforeAll(async () => {
       `create role ${install.role} with login nosuperuser nocreatedb nocreaterole noinherit password '${install.password}'`,
     );
     await admin.executeSql(`grant connect on database ${install.database} to ${install.role}`);
+    await admin.executeSql(
+      `create role ${install.workerRole} with login nosuperuser nocreatedb nocreaterole noinherit password '${install.workerPassword}'`,
+    );
+    await admin.executeSql(
+      `grant connect on database ${install.database} to ${install.workerRole}`,
+    );
   } finally {
     await admin.close();
   }
@@ -75,6 +93,7 @@ beforeAll(async () => {
     await inDatabase.close();
   }
   install.appUrl = withUser(url, install.role, install.password, install.database);
+  install.workerUrl = withUser(url, install.workerRole, install.workerPassword, install.database);
 });
 
 afterAll(async () => {
@@ -85,6 +104,7 @@ afterAll(async () => {
   try {
     await admin.executeSql(`drop database if exists ${install.database} with (force)`);
     await admin.executeSql(`drop role if exists ${install.role}`);
+    await admin.executeSql(`drop role if exists ${install.workerRole}`);
   } finally {
     await admin.close();
   }
@@ -272,5 +292,55 @@ describe.skipIf(!url)("Warteschlange mit echtem Postgres", () => {
     await q.stop({ timeoutMs: 10_000 });
     expect(finished).toBe(true);
     expect(calls).toEqual([failing.runId, next.runId]);
+  });
+});
+
+describe.skipIf(!url)("Warteschlange mit der Worker-Rolle", () => {
+  it("ohne Einrichtung durch die App-Rolle startet die Warteschlange des Workers nicht", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const q = createQueue(install.workerUrl, { rolle: "worker" });
+    open.push(q);
+    await expect(q.start()).rejects.toBeDefined();
+  });
+
+  it("nach prepareQueue arbeitet der Worker Läufe ab, ändert aber nichts am Aufbau", async () => {
+    await prepareQueue(install.appUrl, { workerRole: install.workerRole });
+    // Zweimal: wiederholbar.
+    await prepareQueue(install.appUrl, { workerRole: install.workerRole });
+
+    const web = queue();
+    const worker = createQueue(install.workerUrl, { rolle: "worker" });
+    open.push(worker);
+    const job: RunJob = { runId: newId("run"), conversationId: newId("conversation") };
+    const seen: string[] = [];
+    await web.enqueueRun(job);
+    await worker.startRunWorker(
+      async (got) => {
+        seen.push(got.runId);
+      },
+      { concurrency: 1 },
+    );
+    await waitFor(() => seen.includes(job.runId));
+
+    const own = adminDb(install.workerUrl);
+    await own.open();
+    try {
+      const besitz = await own.executeSql(
+        `select count(*)::int as n from pg_class c join pg_namespace n on n.oid = c.relnamespace
+         where n.nspname = $1 and pg_has_role(current_user, c.relowner, 'USAGE')`,
+        [QUEUE_SCHEMA],
+      );
+      expect(besitz.rows[0]).toEqual({ n: 0 });
+      for (const statement of [
+        `create table ${QUEUE_SCHEMA}.fremd (x int)`,
+        `create function ${QUEUE_SCHEMA}.fremd() returns trigger language plpgsql as 'begin return new; end'`,
+        `select ${QUEUE_SCHEMA}.create_queue('fremd', '{"policy":"standard","partition":true}'::jsonb)`,
+      ]) {
+        await expect(own.executeSql(statement), statement).rejects.toMatchObject({ code: "42501" });
+      }
+    } finally {
+      await own.close();
+    }
+    expect(RUN_QUEUE.name).toBe("run");
   });
 });

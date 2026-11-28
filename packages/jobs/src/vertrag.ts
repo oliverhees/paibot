@@ -77,6 +77,23 @@ export interface RunWorkerOptions {
 export interface QueueOptions {
   /** Höchstzahl der Verbindungen der Warteschlange. */
   maxConnections?: number;
+  /**
+   * `worker`: Die Verbindung ist die Worker-Rolle. Sie besitzt nichts im Schema der Warteschlange
+   * und darf dort nur lesen und schreiben. Die Warteschlange richtet deshalb nichts ein (keine
+   * Tabellen, keine Warteschlange `run`), wartet nichts (das macht die Web-App als Besitzerin) und
+   * führt keine Zeitpläne aus. Eingerichtet wird sie vorher mit `prepareQueue`. Standard: `web`.
+   */
+  rolle?: "web" | "worker";
+}
+
+/** Optionen für `prepareQueue`. */
+export interface PrepareQueueOptions {
+  /**
+   * Name der Worker-Rolle. Sie bekommt im Schema der Warteschlange USAGE und Lesen und Schreiben
+   * auf alle Tabellen, auch auf solche, die die App-Rolle später anlegt. Besitzen darf sie dort
+   * nichts.
+   */
+  workerRole?: string;
 }
 
 export interface Queue {
