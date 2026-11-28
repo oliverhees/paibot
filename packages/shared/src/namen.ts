@@ -11,6 +11,9 @@
  * @since     2026-11-28
  */
 
+import { PaiBotError } from "./errors";
+import { t } from "./i18n";
+
 const UNSICHTBAR = /[\p{Cf}\p{Cc}]/gu;
 const LEERRAUM = /\s+/gu;
 
@@ -134,4 +137,35 @@ export function neuerNameUnzulaessig(
     k.botIds.includes(NEU),
   );
   return konflikt?.art;
+}
+
+/**
+ * Der Fehler zu einem Namens-Grund, in einer Fassung für die Oberfläche: Feld `name`, Text und
+ * Ausweg aus der zentralen Textdatei. Eine Quelle für beide Wege – die Prüfung vor dem Tor in der
+ * Web-App und die Prüfung unter der Sperre in der Datenbank.
+ */
+export function namensFehler(grund: "reserviert" | "gleich" | "aehnlich"): PaiBotError {
+  const schluessel =
+    grund === "reserviert" ? "teams.fehler.name_reserviert" : "teams.fehler.name_belegt";
+  return new PaiBotError("eingabe_ungueltig", {
+    felder: [{ feld: "name", code: "ungueltig" }],
+    text: t(schluessel),
+    ausweg: t(`${schluessel}.ausweg`),
+  });
+}
+
+/**
+ * Welcher Name für einen bestehenden Bot nicht geht. Wie `neuerNameUnzulaessig`, nur dass der Bot
+ * selbst nicht mit sich in Konflikt gerät: Wer seinen Namen behält oder nur die Schreibweise
+ * ändert, darf speichern.
+ */
+export function namensaenderungUnzulaessig(
+  id: string,
+  name: string,
+  vorhandene: readonly { readonly id: string; readonly name: string }[],
+): "reserviert" | "gleich" | "aehnlich" | undefined {
+  return neuerNameUnzulaessig(
+    name,
+    vorhandene.filter((bot) => bot.id !== id),
+  );
 }

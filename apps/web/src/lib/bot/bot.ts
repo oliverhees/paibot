@@ -72,7 +72,12 @@ export async function botLesen(k: RoutenKontext<"bot">) {
   return { daten: { bot, modell: (await modellVon(k.db, bot)) ?? null } };
 }
 
-/** `PUT /api/bot`: speichert nur, was sich geändert hat; ohne Änderung `eingabe_ungueltig`. */
+/**
+ * `PUT /api/bot`: speichert nur, was sich geändert hat; ohne Änderung `eingabe_ungueltig`. Ändert
+ * sich der Name, darf er nicht mit dem eines anderen Bots zu verwechseln sein – sonst wüsste im
+ * Teamchat niemand, wer gemeint ist. Das prüft `repo.bots.aendernUnterNamenspruefung` in derselben
+ * Transaktion, unter derselben Sperre wie das Anlegen; der Bot selbst ist dabei ausgenommen.
+ */
 export async function botAendern(k: RoutenKontext<"botAendern">) {
   const alt = await standardBot(k.db);
   const felder = geaenderteFelder(alt, k.eingabe);
@@ -89,7 +94,7 @@ export async function botAendern(k: RoutenKontext<"botAendern">) {
     { type: "bot.aendern", target: { botId } },
     { fields: felder },
     async () => {
-      const neu = await repo.bots.update(k.db, botId, patch);
+      const neu = await repo.bots.aendernUnterNamenspruefung(k.db, botId, patch);
       if (neu === undefined) throw new PaiBotError("nicht_gefunden");
       return { value: neu, result: { status: "ok" } };
     },

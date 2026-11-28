@@ -2097,6 +2097,24 @@ export const de = {
   "teams.bot.leitung": "Leitung",
   "teams.bot.team_waehlen": "Team von {name} wählen",
   "teams.bot.kein_team": "Kein Team",
+  // Abgelehnte Änderungen an Bots und Teams (Datenbank und Verwaltungs-Routen). Der Namensraum
+  // `fehler.*` gehört allein den Fehlercodes des Tors (`packages/shared/src/texte.test.ts`),
+  // deshalb stehen diese Sätze hier.
+  "teams.fehler.bots_grenze": "Du hast schon {max} Bots – mehr gehen nicht.",
+  "teams.fehler.bots_grenze.ausweg": "Lösche einen Bot, den du nicht mehr brauchst.",
+  "teams.fehler.name_reserviert": "Namen, die mit „Team “ beginnen, gehören einem Team.",
+  "teams.fehler.name_reserviert.ausweg": "Nimm einen Namen ohne dieses Wort am Anfang.",
+  "teams.fehler.name_belegt": "Diesen Namen trägt schon ein Bot oder er sieht einem zu ähnlich.",
+  "teams.fehler.name_belegt.ausweg":
+    "Nimm einen Namen, der klar von den anderen zu unterscheiden ist.",
+  "teams.fehler.hat_faeden": "Dieses Team hat Fäden und lässt sich nicht löschen.",
+  "teams.fehler.hat_faeden.ausweg": "Lösche zuerst die Fäden des Teams.",
+  "teams.fehler.leitung_fremd": "Dieser Bot gehört nicht mehr zu diesem Team.",
+  "teams.fehler.leitung_fremd.ausweg":
+    "Lade die Seite neu und wähle eine Leitung aus den Mitgliedern des Teams.",
+  "teams.fehler.entwurf_nicht_offen": "Dieser Entwurf ist nicht mehr offen.",
+  "teams.fehler.entwurf_nicht_offen.ausweg":
+    "Lade die Seite neu; der Entwurf hat seinen Stand schon geändert.",
   "teams.loeschen.titel": "{name} löschen?",
   "teams.loeschen.text": "Der Bot wird entfernt. Seine Belege bleiben erhalten.",
   "teams.loeschen.leitung":

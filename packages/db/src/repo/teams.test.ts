@@ -109,6 +109,62 @@ describe("Teams: Zugriffsfunktionen", () => {
     expect(await teams.istMitglied(db, anderes.id, fremd.id)).toBe(false);
   });
 
+  it("setzt die Leitung auf ein Mitglied und nimmt sie mit null wieder weg", async () => {
+    const team = await teams.create(db, { name: "Content" });
+    const mila = await neuerBot("Mila");
+    await bots.setTeam(db, mila.id, team.id);
+    const mitLeitung = await teams.aendernUnterLeitungspruefung(db, team.id, {
+      leadBotId: mila.id,
+      name: "Redaktion",
+    });
+    expect(mitLeitung).toMatchObject({ name: "Redaktion", leadBotId: mila.id });
+    const ohne = await teams.aendernUnterLeitungspruefung(db, team.id, { leadBotId: null });
+    expect(ohne?.leadBotId).toBeUndefined();
+  });
+
+  it("lehnt eine Leitung ab, die nicht zum Team gehört, und ändert nichts", async () => {
+    const team = await teams.create(db, { name: "Content" });
+    const fremd = await neuerBot("Fremd");
+    await expect(
+      teams.aendernUnterLeitungspruefung(db, team.id, { leadBotId: fremd.id, name: "Redaktion" }),
+    ).rejects.toMatchObject({
+      code: "abgelehnt",
+      text: "Dieser Bot gehört nicht mehr zu diesem Team.",
+    });
+    expect(await teams.get(db, team.id)).toMatchObject({ name: "Content" });
+    expect((await teams.get(db, team.id))?.leadBotId).toBeUndefined();
+  });
+
+  // Der Befund: `teamAendern` liest die Mitgliedschaft vor dem Tor; dazwischen kann `setTeam` den
+  // Bot herausnehmen. Hier ist genau diese Verschränkung nachgestellt – die Prüfung in derselben
+  // Transaktion muss sie auffangen. Gegenprobe: in `aendernUnterLeitungspruefung` direkt `update`
+  // aufrufen → das alte Team zeigt einen Bot als Leitung, der kein Mitglied mehr ist (rot).
+  it("ein veralteter Mitglieds-Stand macht niemanden zur Leitung eines fremden Teams", async () => {
+    const team = await teams.create(db, { name: "Content" });
+    const mila = await neuerBot("Mila");
+    await bots.setTeam(db, mila.id, team.id);
+    // Stand, den die Route vor dem Tor gelesen hätte: Mila gehört dazu.
+    expect(await teams.istMitglied(db, team.id, mila.id)).toBe(true);
+    // Dazwischen nimmt ein zweiter Weg Mila aus dem Team.
+    await bots.setTeam(db, mila.id, null);
+    await expect(
+      teams.aendernUnterLeitungspruefung(db, team.id, { leadBotId: mila.id }),
+    ).rejects.toMatchObject({ code: "abgelehnt" });
+    expect((await teams.get(db, team.id))?.leadBotId).toBeUndefined();
+    expect((await bots.get(db, mila.id))?.teamId).toBeUndefined();
+  });
+
+  it("ein Versetzen in ein anderes Team nimmt dem alten Team die Leitung", async () => {
+    const team = await teams.create(db, { name: "Content" });
+    const anderes = await teams.create(db, { name: "Recherche" });
+    const mila = await neuerBot("Mila");
+    await bots.setTeam(db, mila.id, team.id);
+    await teams.aendernUnterLeitungspruefung(db, team.id, { leadBotId: mila.id });
+    await bots.setTeam(db, mila.id, anderes.id);
+    expect((await teams.get(db, team.id))?.leadBotId).toBeUndefined();
+    expect((await teams.get(db, anderes.id))?.leadBotId).toBeUndefined();
+  });
+
   it("löscht ein Team ohne Fäden; die Bots bleiben ohne Team, ein unbekanntes Team ergibt false", async () => {
     const team = await teams.create(db, { name: "Content" });
     const mila = await neuerBot("Mila");

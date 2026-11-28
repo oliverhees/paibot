@@ -15,7 +15,7 @@ import { type Database, repo } from "@paibot/db";
 import { PaiBotError } from "@paibot/shared/fehler";
 import { type BotId, isId, type ModelId, newId, type TeamId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
-import { neuerNameUnzulaessig } from "@paibot/shared/namen";
+import { namensFehler, neuerNameUnzulaessig } from "@paibot/shared/namen";
 import { TEAM_FIELDS } from "@paibot/shared/tor-fassung-4";
 import type { RoutenAktion } from "../api/route";
 import { nacheinander } from "./reihe";
@@ -50,22 +50,14 @@ export const botsListe: RoutenAktion<"botsListe"> = async (k) => {
  * nicht mit dem Namen eines bestehenden Bots zu verwechseln sein: gleiche Schreibweise, gleiche
  * Unicode-Form, unsichtbare Zeichen oder ähnlich aussehende Buchstaben aus anderen Schriften. Sonst
  * wüsste im Teamchat niemand, wer gemeint ist.
+ *
+ * Das ist die schnelle Ablehnung **vor** dem Tor: Ein verwechselbarer Name ist eine ungültige
+ * Eingabe und braucht keinen Beleg. Die harte Grenze zieht die Datenbank unter ihrer Sperre
+ * (`repo.bots.anlegenUnterGrenze`), damit auch gleichzeitige Anfragen sie nicht umgehen.
  */
 async function nameFrei(db: Database, name: string): Promise<void> {
   const grund = neuerNameUnzulaessig(name, await repo.bots.list(db));
-  if (grund === undefined) return;
-  throw new PaiBotError("eingabe_ungueltig", {
-    felder: [{ feld: "name", code: "ungueltig" }],
-    ...(grund === "reserviert"
-      ? {
-          text: "Namen, die mit „Team “ beginnen, gehören einem Team.",
-          ausweg: "Nimm einen Namen ohne dieses Wort am Anfang.",
-        }
-      : {
-          text: "Diesen Namen trägt schon ein Bot oder er sieht einem zu ähnlich.",
-          ausweg: "Nimm einen Namen, der klar von den anderen zu unterscheiden ist.",
-        }),
-  });
+  if (grund !== undefined) throw namensFehler(grund);
 }
 
 /**
@@ -210,7 +202,10 @@ export const teamAnlegen: RoutenAktion<"teamAnlegen"> = async (k) => {
 /**
  * `PUT /api/teams/:id`: ändert Name, Leitung, Zusammenarbeit oder Abnahme-Standard. Welche Felder
  * kamen, meldet die Route als Fakt `fields`. Dass die neue Leitung zum Team gehört, prüft das Tor
- * über den Fakt `leadInTeam` – nicht diese Route.
+ * über den Fakt `leadInTeam` – nicht diese Route. Weil der hier gelesene Fakt bis zum Schreiben
+ * veralten kann (ein gleichzeitiges `bot.team_setzen` nimmt den Bot heraus), schreibt die Änderung
+ * `repo.teams.aendernUnterLeitungspruefung`: Es prüft die Mitgliedschaft noch einmal in derselben
+ * Transaktion unter der Sperre, die auch das Versetzen nimmt, und lehnt sonst ab.
  */
 export const teamAendern: RoutenAktion<"teamAendern"> = async (k) => {
   const teamId = teamsId(k.params);
@@ -227,7 +222,7 @@ export const teamAendern: RoutenAktion<"teamAendern"> = async (k) => {
     { type: "team.aendern", target: { teamId } },
     { fields, teamExists: vorhanden !== undefined, leadInTeam },
     async () => {
-      const team = await repo.teams.update(k.db, teamId, {
+      const team = await repo.teams.aendernUnterLeitungspruefung(k.db, teamId, {
         ...(eingabe.name === undefined ? {} : { name: eingabe.name }),
         ...(lead === undefined ? {} : { leadBotId: lead }),
         ...(eingabe.collaboration === undefined ? {} : { collaboration: eingabe.collaboration }),
