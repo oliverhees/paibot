@@ -1,0 +1,82 @@
+/**
+ * PaiBot – Stile der Seite „Bots und Teams“: Listen der Teams und Bots, Formulare zum Anlegen.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-28
+ */
+
+.seite {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.titel {
+  margin: 0;
+  font-size: var(--schrift-xl);
+}
+
+.vorspann,
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.abschnitt {
+  margin: 0 0 10px;
+  font-size: var(--schrift-l);
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.karte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  background: var(--surface);
+}
+
+.karte p {
+  margin: 2px 0 0;
+}
+
+.link {
+  color: var(--accent-text);
+  font-size: var(--schrift-m);
+}
+
+.formular {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.formular > :global(.feld) {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.fehler {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--danger-soft);
+  font-size: var(--schrift-m);
+}

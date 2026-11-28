@@ -117,6 +117,22 @@ describe("Chat-Ansicht", () => {
     expect(aus).toMatch(/<textarea[^>]*disabled/);
   });
 
+  // Gegenprobe zur Pflicht: Wertet die Seite `bereitschaft.pausiert` nicht aus (Hinweis und
+  // `pausiert` in `deaktiviert` weglassen), wird dieser Test rot.
+  it("pausierter Bot: Hinweis über der Eingabe, Eingabe gesperrt; nicht pausiert kein Hinweis", () => {
+    const aus = renderToStaticMarkup(
+      h(ChatSeite, { bereitschaft: { ...BEREIT, pausiert: true }, verlauf: verlauf() }),
+    );
+    expect(aus).toContain('data-baustein="bot-pausiert"');
+    expect(aus).toContain("Pai ist pausiert und antwortet nicht");
+    expect(aus).toMatch(/<textarea[^>]*disabled/);
+    expect(aus).toContain("Pai ist pausiert. Setze den Bot auf seiner Seite fort");
+
+    const laeuft = renderToStaticMarkup(h(ChatSeite, { bereitschaft: BEREIT, verlauf: verlauf() }));
+    expect(laeuft).not.toContain('data-baustein="bot-pausiert"');
+    expect(laeuft).not.toMatch(/<textarea[^>]*disabled/);
+  });
+
   it("ohne Schlüssel: eigener Hinweis", () => {
     const aus = renderToStaticMarkup(
       h(ChatSeite, { bereitschaft: { ...BEREIT, schluessel: false } }),

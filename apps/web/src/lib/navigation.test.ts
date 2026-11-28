@@ -98,6 +98,7 @@ describe("Navigation", () => {
       "/belege/[id]": t("seite.belege"),
       "/apps": t("seite.apps"),
       "/bot": t("seite.bot"),
+      "/bot/[id]": t("seite.bot"),
       "/datenschleuse": t("seite.datenschleuse"),
       "/einstellungen": t("seite.einstellungen"),
       "/einstellungen/darstellung": t("seite.einstellungen"),
@@ -105,6 +106,8 @@ describe("Navigation", () => {
       "/info": t("seite.info"),
       "/modelle": t("seite.modelle"),
       "/regeln": t("seite.regeln"),
+      "/teams": t("seite.teams"),
+      "/teams/[id]": t("seite.teams"),
       "/einstellungen/selbsttest": t("seite.einstellungen"),
     };
     const ohneEigeneKopfzeile = seiten().filter((s) => !s.startsWith("/chat/"));

@@ -1,0 +1,54 @@
+/**
+ * PaiBot – Stile der Seite eines Bots: Steckbrief, Aktionen darunter, Fehlerzeile.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-28
+ */
+
+.seite {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.teamWahl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--schrift-m);
+}
+
+.teamWahl select {
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-feld);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.hinweisZeile {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.fehler {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--danger-soft);
+  font-size: var(--schrift-m);
+}

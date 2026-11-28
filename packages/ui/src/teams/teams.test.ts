@@ -17,6 +17,7 @@ import { EntwurfVorschau } from "./Entwurf";
 import { Steckbrief } from "./Steckbrief";
 import type { TeamsSzene, Vorlage } from "./typen";
 import { TeamsUebersicht } from "./Uebersicht";
+import { TeamVerwaltung } from "./Verwaltung";
 
 /** Kleine eigene Vorlage: die Tests hängen nicht an der Datei aus `vorlagen/teams/`. */
 const vorlage: Vorlage = {
@@ -146,6 +147,30 @@ describe("Teams-Bausteine: Team-Verwaltung", () => {
     }
     expect(html).toContain("kein eigenes Tagesbudget");
     expect(html).toContain('data-baustein="budget-hinweis"');
+  });
+
+  // Gegenprobe zur Pflicht: Lässt man den Hinweis am Schalter „Zusammenarbeit“ weg (also
+  // `ohneTagesbudget` nicht auswerten), wird der erste Fall dieses Tests rot.
+  it("ohne Tagesgrenze steht der Hinweis am Schalter „Zusammenarbeit“, mit Grenze nicht", () => {
+    const daten = beispielDaten(vorlage);
+    const team = daten.teams[0];
+    if (!team) throw new Error("kein Team");
+    const zeigeTeam = (ohneTagesbudget: boolean) =>
+      renderToStaticMarkup(
+        h(TeamVerwaltung, {
+          team,
+          mitglieder: daten.bots.filter((b) => b.teamId === team.id),
+          ohneTagesbudget,
+        }),
+      );
+    const ohne = zeigeTeam(true);
+    expect(ohne).toContain('data-baustein="zusammenarbeit-hinweis"');
+    expect(ohne).toContain("Du hast keine Tagesgrenze gesetzt");
+    expect(zeigeTeam(false)).not.toContain('data-baustein="zusammenarbeit-hinweis"');
+  });
+
+  it("die Wahl „Keine Leitung“ steht in der Liste der Leitung", () => {
+    expect(zeige("team")).toContain("Keine Leitung");
   });
 });
 

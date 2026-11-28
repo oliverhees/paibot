@@ -21,4 +21,4 @@ export { TeamsSeitenleiste, type TeamsSeitenleisteProps } from "./Seitenleiste";
 export { Steckbrief } from "./Steckbrief";
 export type * from "./typen";
 export { TeamsUebersicht } from "./Uebersicht";
-export { TeamVerwaltung } from "./Verwaltung";
+export { type TeamAenderung, TeamVerwaltung, type TeamVerwaltungProps } from "./Verwaltung";
