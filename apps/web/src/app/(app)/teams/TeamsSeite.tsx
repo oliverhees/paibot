@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
 import { botAdresse, teamAdresse } from "../../../lib/navigation";
+import { botAnlegenKoerper, teamAnlegenKoerper } from "../../../lib/teams/koerper";
 import { TEAM_PFADE } from "../../../lib/teams/pfade";
 import type { TeamsSeiteDaten } from "../../../lib/teams/seite";
 import styles from "./teams.module.css";
@@ -97,7 +98,10 @@ export function TeamsSeite({ daten }: { daten: TeamsSeiteDaten }) {
             })}
           </ul>
         )}
-        <form className={styles.formular} onSubmit={(e) => anlegen("team", { name: teamName }, e)}>
+        <form
+          className={styles.formular}
+          onSubmit={(e) => anlegen("team", teamAnlegenKoerper(teamName), e)}
+        >
           <TextField
             label={t("teams.seite.team_name")}
             value={teamName}
@@ -136,7 +140,17 @@ export function TeamsSeite({ daten }: { daten: TeamsSeiteDaten }) {
         )}
         <form
           className={styles.formular}
-          onSubmit={(e) => anlegen("bot", { name: botName, role: botRolle }, e)}
+          onSubmit={(e) =>
+            anlegen(
+              "bot",
+              botAnlegenKoerper(
+                botName,
+                botRolle,
+                daten.ohneTeam.length + daten.teams.reduce((n, g) => n + g.mitglieder.length, 0),
+              ),
+              e,
+            )
+          }
         >
           <TextField
             label={t("teams.seite.bot_name")}

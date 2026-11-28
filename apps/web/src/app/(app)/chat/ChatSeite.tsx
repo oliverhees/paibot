@@ -454,10 +454,15 @@ export function ChatSeite({
     };
     let ziel = unterhaltung;
     if (ziel === undefined) {
+      // Die neue Unterhaltung gehört dem Bot, mit dem diese Seite geöffnet wurde. Ohne Angabe
+      // nimmt die Route den Standard-Bot – er bleibt die Vorgabe, nicht die einzige Wahl.
       const r = await apiFetch<{ unterhaltung: UnterhaltungInfo; zuletzt: string }>(
         "POST",
         CHAT_PFADE.unterhaltungen(),
-        { title: titelAusNachricht(roh) },
+        {
+          title: titelAusNachricht(roh),
+          ...(bereitschaft.botId === undefined ? {} : { botId: bereitschaft.botId }),
+        },
       );
       if (!r.ok) return zurueck(r.fehler);
       ziel = r.daten.unterhaltung;

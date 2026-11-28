@@ -341,3 +341,23 @@ export async function ladeBereitschaft(
     zeitzone: settings?.timezone ?? "Europe/Berlin",
   };
 }
+
+/**
+ * Bereitschaft für eine **bestehende** Unterhaltung: Sie gehört dem Bot dieser Unterhaltung, nicht
+ * dem Standard-Bot. Davon hängen der Hinweis auf eine Pause und die Angabe des Modells über der
+ * Eingabe ab. Ohne Bot-Kennung – das gibt es nur beim Faden eines Teams (`typen.ts`,
+ * `UnterhaltungInfo.botId`) – bleibt der Standard-Bot die Vorgabe.
+ */
+export async function ladeBereitschaftZurUnterhaltung(
+  db: Database,
+  schleuseInstalliert: boolean,
+  unterAnbieter: ((anbieter: Provider) => Promise<UnterAnbieterListe | undefined>) | undefined,
+  unterhaltung: UnterhaltungInfo,
+): Promise<ChatBereitschaft> {
+  return ladeBereitschaft(
+    db,
+    schleuseInstalliert,
+    unterAnbieter,
+    unterhaltung.botId as BotId | undefined,
+  );
+}

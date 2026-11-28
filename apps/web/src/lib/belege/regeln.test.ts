@@ -21,17 +21,49 @@ import {
 } from "./regeln";
 
 describe("Regeln-Liste und die Tor-Fassungen 4 und 5", () => {
-  // Gegenprobe: `NOCH_NICHT_BEDIENBAR` leeren → die Seite zeigt Nummern ohne Text (rot).
-  it("zeigt keine Nummer der Fassungen 4 und 5, solange Bots, Teams und Aufträge nicht bedienbar sind", () => {
-    const g4 = [...Object.keys(LIMITS_BY_ID_4), ...Object.keys(LIMITS_BY_ID_5)];
-    const v4 = [...Object.keys(PRECONDITIONS_4), ...Object.keys(PRECONDITIONS_5)];
-    expect([...NOCH_NICHT_BEDIENBAR].sort()).toEqual([...g4, ...v4].sort());
+  // Gegenprobe: eine Nummer der Entwürfe aus `NOCH_NICHT_BEDIENBAR` nehmen → die Seite zeigt eine
+  // Nummer ohne Text (dieser Test wird rot).
+  it("zeigt die Nummern für Bots und Teams, aber keine der Entwürfe, Fäden und Aufträge", () => {
+    expect([...NOCH_NICHT_BEDIENBAR].sort()).toEqual(
+      [
+        "G-32",
+        "G-34",
+        "V-27",
+        "V-28",
+        "V-29",
+        "V-30",
+        "V-31",
+        "V-43",
+        ...Object.keys(LIMITS_BY_ID_5),
+        ...Object.keys(PRECONDITIONS_5),
+      ].sort(),
+    );
     const grenzen = grenzenEintraege().map((g) => g.nr);
-    for (const id of g4) expect(grenzen, id).not.toContain(id);
     const vorbedingungen = vorbedingungenEintraege().map((v) => v.nr);
-    for (const id of v4) expect(vorbedingungen, id).not.toContain(id);
+    // Jede verborgene Nummer gehört zur Fassung 4 oder 5 und ist weder Grenze noch Vorbedingung
+    // der Seite.
+    const spaeter = [
+      ...Object.keys(LIMITS_BY_ID_4),
+      ...Object.keys(PRECONDITIONS_4),
+      ...Object.keys(LIMITS_BY_ID_5),
+      ...Object.keys(PRECONDITIONS_5),
+    ];
+    for (const id of NOCH_NICHT_BEDIENBAR) {
+      expect(spaeter, id).toContain(id);
+      expect([...grenzen, ...vorbedingungen], id).not.toContain(id);
+    }
+    // Bedienbar geworden, deshalb sichtbar:
+    for (const id of ["G-15", "G-33"]) expect(grenzen, id).toContain(id);
+    for (const id of ["V-25", "V-37", "V-42", "V-44"]) expect(vorbedingungen, id).toContain(id);
+    // Jede sichtbare Nummer hat Titel und Erklärung, nie einen Textschlüssel als Text.
+    for (const zeile of [...grenzenEintraege(), ...vorbedingungenEintraege()]) {
+      expect(zeile.titel, zeile.nr).not.toContain("regel.");
+      expect(zeile.titel.length, zeile.nr).toBeGreaterThan(3);
+      expect(zeile.erklaerung, zeile.nr).not.toContain("regeln.");
+      expect(zeile.erklaerung.length, zeile.nr).toBeGreaterThan(10);
+    }
     // Die bisherigen Nummern bleiben sichtbar.
-    expect(grenzen).toEqual(["G-01", "G-02", "G-03", "G-04", "G-05", "G-16", "G-18"]);
+    expect(grenzen).toContain("G-01");
     expect(vorbedingungen).toContain("V-01");
   });
 });

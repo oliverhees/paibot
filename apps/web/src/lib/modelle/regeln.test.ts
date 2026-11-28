@@ -176,6 +176,57 @@ describe("DELETE /api/anbieter/:id/regeln/:modellId", () => {
     });
     expect(nein.status).toBe(400);
   });
+
+  // Gegenprobe zur bewussten Entscheidung „kein getDefault“: Prüft die Route wieder nur den
+  // Standard-Bot, wird dieser Test rot – die Regel ließe sich entfernen, während ein zweiter Bot
+  // noch mit ihr schreibt, und sein wartender Lauf fände kein Modell mehr.
+  it("schreibt ein zweiter Bot mit dieser Regel, bleibt sie – bis sein Lauf fertig ist", async () => {
+    const e = await mitEurouter();
+    const { hinzu, weg } = regelRouten(e);
+    const r = await e.rufe(hinzu, "POST", `/api/anbieter/${e.id}/regeln`, {
+      params: { id: e.id },
+      koerper: { name: "Beispiel-Regel" },
+    });
+    const regelId = (r.body as { daten: { regel: { id: string } } }).daten.regel.id;
+    // Nur Mila schreibt mit dieser Regel; der Standard-Bot benutzt sie nicht. Sonst würde schon
+    // die alte Prüfung greifen und die Gegenprobe wäre wirkungslos.
+    expect((await repo.bots.getDefault(e.u.db))?.modelId).not.toBe(regelId);
+    const mila = await repo.bots.create(e.u.db, {
+      name: "Mila",
+      instructions: "Antworte kurz.",
+      avatarShape: "blatt",
+      color: "blau",
+      modelId: regelId as never,
+    });
+    const u = await repo.conversations.create(e.u.db, { botId: mila.id, title: "Test" });
+    const n = await repo.messages.insert(e.u.db, {
+      conversationId: u.id,
+      role: "user",
+      content: "Hallo",
+    });
+    const lauf = await repo.runs.create(e.u.db, {
+      conversationId: u.id,
+      triggerMessageId: n.id,
+      botId: mila.id,
+    });
+
+    const besetzt = await e.rufe(weg, "DELETE", `/api/anbieter/${e.id}/regeln/${regelId}`, {
+      params: { id: e.id, modellId: regelId },
+    });
+    expect(besetzt.status).toBe(409);
+    expect(besetzt.body.fehler).toMatchObject({
+      code: "lauf_aktiv",
+      text: t("modelle.eigen.lauf_aktiv", { name: "Mila", anbieter: "EUrouter" }),
+    });
+    expect(await repo.models.get(e.u.db, regelId as never)).toBeDefined();
+
+    await repo.runs.markRunning(e.u.db, lauf.id);
+    await repo.runs.finish(e.u.db, lauf.id, { status: "succeeded" });
+    const ok = await e.rufe(weg, "DELETE", `/api/anbieter/${e.id}/regeln/${regelId}`, {
+      params: { id: e.id, modellId: regelId },
+    });
+    expect(ok.status).toBe(200);
+  });
 });
 
 describe("EUrouter: keine Modell-Liste", () => {

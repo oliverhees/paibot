@@ -19,7 +19,7 @@ import {
   type RuleCondition,
   type RuleDefinition,
 } from "@paibot/shared/tor";
-import { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "@paibot/shared/tor-fassung-4";
+import type { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "@paibot/shared/tor-fassung-4";
 import { LIMITS_BY_ID_5, PRECONDITIONS_5 } from "@paibot/shared/tor-fassung-5";
 
 export interface RegelZeile {
@@ -113,13 +113,21 @@ export function regelEintraege(regeln: readonly RuleDefinition[]): RegelZeile[] 
 export const NUR_WERKZEUG_GRENZEN: readonly string[] = ["G-17", "G-06", "G-07", "G-08", "G-40"];
 
 /**
- * Nummern der Tor-Fassungen 4 (Bot bereit, Entwürfe, Teams) und 5 (Aufträge, Übergaben): Die Seite
- * zeigt sie nicht, solange man Bots, Teams und Aufträge noch nicht bedienen kann. Sie kommen mit
- * der Bedienung.
+ * Nummern, die die Seite nicht zeigt: aus der Tor-Fassung 4 die der Entwürfe und Fäden und aus der
+ * Tor-Fassung 5 alle (Aufträge und Übergaben) – die kann man noch nicht bedienen (es gibt keine
+ * Route dafür, `apps/web/src/lib/routen.ts`). Die Nummern für Bots und Teams stehen auf der Seite,
+ * seit es „Bots und Teams“ gibt: G-15 (Pause), G-33 (Bots insgesamt), V-25 (Team vorhanden), V-37
+ * (Standard-Bot bleibt), V-42 (kein Lauf des Bots) und V-44 (Leitung gehört zum Team).
  */
 export const NOCH_NICHT_BEDIENBAR: readonly string[] = [
-  ...Object.keys(LIMITS_BY_ID_4),
-  ...Object.keys(PRECONDITIONS_4),
+  "G-32",
+  "G-34",
+  "V-27",
+  "V-28",
+  "V-29",
+  "V-30",
+  "V-31",
+  "V-43",
   ...Object.keys(LIMITS_BY_ID_5),
   ...Object.keys(PRECONDITIONS_5),
 ];

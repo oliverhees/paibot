@@ -46,6 +46,9 @@ export async function modelleSeitenDaten(
   d: ZugangsDienste,
 ): Promise<ModelleSeitenDaten> {
   const anbieterListe = await repo.providers.list(db);
+  // Hier bleibt es bewusst der Standard-Bot: Modell und Anbieter gelten für die ganze
+  // Installation; die Seite zeigt sie am Modell des Haupt-Assistenten. Die Modelle der weiteren
+  // Bots stehen auf ihrer eigenen Seite (`/bot/[id]`).
   const bot = await repo.bots.getDefault(db);
   const modell = bot === undefined ? undefined : await modellVon(db, bot);
   const einstellungen = await repo.settings.get(db);

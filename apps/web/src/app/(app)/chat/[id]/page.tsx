@@ -13,7 +13,7 @@ import { t } from "@paibot/shared/texte";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { ladeBereitschaft, ladeVerlauf } from "../../../../lib/chat/laden";
+import { ladeBereitschaftZurUnterhaltung, ladeVerlauf } from "../../../../lib/chat/laden";
 import { FASSUNG_COOKIE, fassungAus } from "../../../../lib/chat/startbereich";
 import { datenbank } from "../../../../lib/datenbank";
 import { schleuseEingerichtet } from "../../../../lib/schleuse/schleuse";
@@ -40,10 +40,13 @@ export default async function UnterhaltungSeite({
   const db = datenbank();
   const verlauf = await ladeVerlauf(db, id, { mitSchritten: true });
   if (verlauf === undefined) notFound();
-  const bereitschaft = await ladeBereitschaft(
+  // Die Bereitschaft gehört dem Bot **dieser** Unterhaltung: ein pausierter Bot bekommt seinen
+  // Hinweis, und über der Eingabe steht sein Modell – nicht das des Standard-Bots.
+  const bereitschaft = await ladeBereitschaftZurUnterhaltung(
     db,
     await schleuseEingerichtet(db, prozessDienste()),
     (anbieter) => prozessDienste().unterAnbieter(anbieter),
+    verlauf.unterhaltung,
   );
   const fassung = fassungAus((await cookies()).get(FASSUNG_COOKIE)?.value);
   return (

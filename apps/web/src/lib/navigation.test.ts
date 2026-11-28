@@ -72,8 +72,9 @@ describe("Menü „Du“", () => {
 });
 
 describe("Navigation", () => {
-  it("zeigt die Arbeits-Seiten Belege, Regeln, Datenschleuse, Modell und Anbieter, Apps in dieser Reihenfolge", () => {
+  it("zeigt die Arbeits-Seiten Bots und Teams, Belege, Regeln, Datenschleuse, Modell und Anbieter, Apps in dieser Reihenfolge", () => {
     expect(NAVIGATION.map((e) => e.href)).toEqual([
+      "/teams",
       "/belege",
       "/regeln",
       "/datenschleuse",
@@ -106,8 +107,8 @@ describe("Navigation", () => {
       "/info": t("seite.info"),
       "/modelle": t("seite.modelle"),
       "/regeln": t("seite.regeln"),
-      "/teams": t("seite.teams"),
-      "/teams/[id]": t("seite.teams"),
+      "/teams": t("teams.seite.titel"),
+      "/teams/[id]": t("teams.seite.titel"),
       "/einstellungen/selbsttest": t("seite.einstellungen"),
     };
     const ohneEigeneKopfzeile = seiten().filter((s) => !s.startsWith("/chat/"));

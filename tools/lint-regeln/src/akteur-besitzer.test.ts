@@ -310,6 +310,8 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
       "Vertrag Fassung 5: Art des Akteurs der neuen Aktionen (Übergaben vom Bot, Aufträge vom Besitzer)",
     "packages/shared/src/inputs.ts":
       "Vertrag der Eingaben: Auswahlwert des Abnahme-Standards eines Teams (leitung, besitzer, ohne)",
+    "apps/web/src/lib/teams/ansicht.ts":
+      "Abbildung für die Anzeige: derselbe Auswahlwert des Abnahme-Standards (kein Akteur fürs Tor)",
     "packages/db/src/rollen.ts": "Datenbank-Rolle mit dem Namen besitzer (kein Akteur)",
     "packages/db/src/schema/werte.ts":
       "Auswahlwerte der Spalten: abnahme und herkunft (kein Akteur)",

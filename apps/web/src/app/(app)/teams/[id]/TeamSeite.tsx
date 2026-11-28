@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "../../../../lib/api/client";
 import { TEAMS_ADRESSE } from "../../../../lib/navigation";
-import { abnahmeGespeichert } from "../../../../lib/teams/ansicht";
+import { teamAendernKoerper } from "../../../../lib/teams/koerper";
 import { TEAM_PFADE } from "../../../../lib/teams/pfade";
 import type { TeamMitBots } from "../../../../lib/teams/seite";
 
@@ -36,12 +36,11 @@ export function TeamSeite({ daten }: { daten: TeamMitBots & { ohneTagesbudget: b
     if (sendet) return;
     setSendet(true);
     setFehler(undefined);
-    const antwort = await apiFetch<unknown>("PUT", TEAM_PFADE.team(team.id), {
-      name: aenderung.name,
-      leadBotId: aenderung.leitungId === "" ? null : aenderung.leitungId,
-      collaboration: aenderung.zusammenarbeit,
-      acceptanceDefault: abnahmeGespeichert(aenderung.abnahme),
-    });
+    const antwort = await apiFetch<unknown>(
+      "PUT",
+      TEAM_PFADE.team(team.id),
+      teamAendernKoerper(aenderung),
+    );
     setSendet(false);
     if (antwort.ok) {
       router.refresh();

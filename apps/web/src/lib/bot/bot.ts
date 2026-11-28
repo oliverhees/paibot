@@ -28,6 +28,8 @@ export function geaenderteFelder(alt: Bot, neu: BotInput): BotFeld[] {
   return BOT_FIELDS.filter((feld) => alt[feld] !== neu[feld]);
 }
 
+// Bewusst der Standard-Bot: `GET`/`PUT /api/bot` gehören zum Haupt-Assistenten. Die weiteren
+// Bots ändert der Besitzer über die Routen unter `/api/bots/:id` (`lib/teams/verwaltung.ts`).
 async function standardBot(db: Database): Promise<Bot> {
   const bot = await repo.bots.getDefault(db);
   if (bot === undefined) throw new PaiBotError("nicht_gefunden");
@@ -183,6 +185,8 @@ export interface BotSeitenDaten {
   rechte: BotRechte;
 }
 
+// Bewusst der Standard-Bot: Die Seite `/bot` ist der Haupt-Assistent. Der Steckbrief eines
+// weiteren Bots kommt aus `lib/teams/seite.ts#botSeite` mit der Kennung aus der Adresse.
 export async function botSeitenDaten(db: Database): Promise<BotSeitenDaten | undefined> {
   const bot = await repo.bots.getDefault(db);
   if (bot === undefined) return undefined;
