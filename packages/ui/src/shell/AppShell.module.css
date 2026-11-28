@@ -218,6 +218,106 @@
   overflow-wrap: anywhere;
 }
 
+/* Ein Bot mit seinen Unterhaltungen: Haupt-Assistent, Team-Mitglied oder Bot ohne Team. */
+.botBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Marke an der Zeile des Bots, der sein Team leitet. */
+.leitung {
+  flex: none;
+  font-size: var(--schrift-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-mid);
+  border-radius: 5px;
+  padding: 1px 4px;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.teamKopf {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+}
+
+.teamAuf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.teamAuf:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.teamAuf:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.teamName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: var(--schrift-m);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.teamName:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.teamName:focus-visible {
+  outline: var(--fokus-breite) solid var(--focus);
+  outline-offset: var(--fokus-abstand);
+}
+
+.teamName[aria-current="page"] {
+  color: var(--accent-text);
+}
+
+.teamZahl {
+  flex: none;
+  font-size: var(--schrift-xs);
+  color: var(--ink-soft);
+}
+
+/* Mitglieder eines Teams: eingezogen, damit die Gruppe sichtbar bleibt. */
+.teamGlieder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 10px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line-mid);
+}
+
 .unterhaltungen,
 .werkzeuge {
   margin: 0;

@@ -27,6 +27,7 @@ vi.mock("next/navigation", () => ({
 const BEREIT: ChatBereitschaft = {
   botName: "Pai",
   botFarbe: "limette",
+  pausiert: false,
   modell: { name: "Beispiel-Modell A", herkunft: "über EUrouter" },
   schluessel: true,
   schleuseInstalliert: false,

@@ -21,8 +21,32 @@ export interface NavigationsEintrag {
   icon: IconName;
 }
 
-/** Steckbrief des Bots; erreichbar über den Namen des Bots in der Seitenleiste. */
+/** Seite des Haupt-Assistenten; erreichbar über seinen Namen in der Seitenleiste. */
 export const BOT_ADRESSE = "/bot";
+
+/** Übersicht aller Teams. */
+export const TEAMS_ADRESSE = "/teams";
+
+/**
+ * Seite eines Bots. Der Haupt-Assistent hat seine eigene Seite (`/bot`, mit Name, Anweisung und
+ * Modell); jeder weitere Bot hat seinen Steckbrief unter `/bot/<Kennung>`.
+ */
+export function botAdresse(botId: string, haupt = false): string {
+  return haupt ? BOT_ADRESSE : `${BOT_ADRESSE}/${encodeURIComponent(botId)}`;
+}
+
+/** Seite der Verwaltung eines Teams. */
+export function teamAdresse(teamId: string): string {
+  return `${TEAMS_ADRESSE}/${encodeURIComponent(teamId)}`;
+}
+
+/**
+ * Neue Unterhaltung mit einem bestimmten Bot. Ohne Kennung bleibt es die Startseite – dort
+ * antwortet der Standard-Bot, die Vorgabe für eine neue Unterhaltung.
+ */
+export function neueUnterhaltungAdresse(botId?: string): string {
+  return botId === undefined ? "/" : `/?bot=${encodeURIComponent(botId)}`;
+}
 
 /**
  * Arbeits-Seiten in der Reihenfolge der Oberfläche: Belege, Regeln, Datenschleuse, Modell und
@@ -126,6 +150,7 @@ export function liegtUnter(pfad: string, href: string): boolean {
 /** Seiten ohne eigenen Eintrag in den Werkzeugen, die trotzdem einen Titel brauchen. */
 const WEITERE_SEITEN: readonly { href: string; text: string }[] = [
   { href: BOT_ADRESSE, text: t("seite.bot") },
+  { href: TEAMS_ADRESSE, text: t("seite.teams") },
   { href: "/einstellungen", text: t("seite.einstellungen") },
   { href: DU_ADRESSEN.info, text: t("seite.info") },
 ];

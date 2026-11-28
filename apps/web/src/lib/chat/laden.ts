@@ -12,7 +12,7 @@
 import { type Database, repo } from "@paibot/db";
 import type { ReceiptEntry } from "@paibot/shared/belege";
 import type { ConversationEvent } from "@paibot/shared/ereignisse";
-import type { ConversationId, MessageId, ModelId, RunId } from "@paibot/shared/ids";
+import type { BotId, ConversationId, MessageId, ModelId, RunId } from "@paibot/shared/ids";
 import type { Conversation, Provider, Settings } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import { anbieterHerkunft, type UnterAnbieterListe } from "../modelle/herkunft";
@@ -41,14 +41,20 @@ const FENSTER = 500;
 
 const LESESTAND = { isolationLevel: "repeatable read", accessMode: "read only" } as const;
 
-/** Unterhaltungen des Standard-Bots, zuletzt benutzte bzw. neueste zuerst. */
+/**
+ * Unterhaltungen aller Bots, zuletzt benutzte bzw. neueste zuerst, jede mit ihrem Bot. Die
+ * Seitenleiste gruppiert sie danach; Fäden eines Teams gehören keinem Bot und bleiben draußen.
+ */
 export async function ladeUnterhaltungen(db: Database): Promise<UnterhaltungKurz[]> {
-  const settings = await repo.settings.get(db);
-  const botId = settings?.defaultBotId;
-  if (botId === undefined) return [];
-  const liste = await repo.conversations.list(db, { botId, limit: UNTERHALTUNGEN_GRENZE });
+  const liste = await repo.conversations.list(db, { limit: UNTERHALTUNGEN_GRENZE });
   return liste
-    .map((u) => ({ id: u.id, titel: u.title, zuletzt: u.lastMessageAt ?? u.createdAt }))
+    .filter((u) => u.botId !== undefined)
+    .map((u) => ({
+      id: u.id,
+      titel: u.title,
+      zuletzt: u.lastMessageAt ?? u.createdAt,
+      ...(u.botId === undefined ? {} : { botId: u.botId }),
+    }))
     .sort((a, b) => (a.zuletzt < b.zuletzt ? 1 : a.zuletzt > b.zuletzt ? -1 : 0));
 }
 
@@ -64,7 +70,12 @@ export function unterhaltungInfo(
   u: Conversation,
   settings: Settings | undefined,
 ): UnterhaltungInfo {
-  return { id: u.id, titel: u.title, schleuse: schleuseVon(u, settings) };
+  return {
+    id: u.id,
+    titel: u.title,
+    ...(u.botId === undefined ? {} : { botId: u.botId }),
+    schleuse: schleuseVon(u, settings),
+  };
 }
 
 /** Beleg in kurzer Form (nur Entscheidung und Ergebnis haben eine Aktion). */
@@ -265,14 +276,19 @@ function modellInfoVon(
   };
 }
 
-/** Kann der Bot antworten? Modell, Schlüssel, Datenschleuse und Zeitzone für die Oberfläche. */
+/**
+ * Kann der Bot antworten? Modell, Schlüssel, Pause, Datenschleuse und Zeitzone für die
+ * Oberfläche. `botId` wählt den Bot; ohne Angabe ist es der Standard-Bot – er bleibt die Vorgabe
+ * für eine neue Unterhaltung, aber nicht die einzige Wahl.
+ */
 export async function ladeBereitschaft(
   db: Database,
   schleuseInstalliert: boolean,
   unterAnbieter?: (anbieter: Provider) => Promise<UnterAnbieterListe | undefined>,
+  botId?: BotId,
 ): Promise<ChatBereitschaft> {
   const settings = await repo.settings.get(db);
-  const bot = await repo.bots.getDefault(db);
+  const bot = botId === undefined ? await repo.bots.getDefault(db) : await repo.bots.get(db, botId);
   let modell: ModellInfo | undefined;
   let schluessel = false;
   if (bot?.modelId !== undefined) {
@@ -313,8 +329,10 @@ export async function ladeBereitschaft(
     ...(bot?.modelId === undefined ? {} : { modellId: bot.modelId }),
     belegeGesamt,
     waehlbar,
+    ...(bot === undefined ? {} : { botId: bot.id }),
     botName: bot?.name ?? t("einrichtung.bot.vorschlag"),
     botFarbe: bot?.color ?? "limette",
+    pausiert: bot?.paused === true,
     ...(modell === undefined ? {} : { modell }),
     ...(liste === undefined ? {} : { unterAnbieter: liste }),
     schluessel,

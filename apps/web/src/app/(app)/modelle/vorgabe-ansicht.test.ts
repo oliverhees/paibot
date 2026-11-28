@@ -184,6 +184,7 @@ describe("Chat: Kopf und Zeile unter der Antwort", () => {
   const BEREIT: ChatBereitschaft = {
     botName: "Pai",
     botFarbe: "limette",
+    pausiert: false,
     modell: {
       name: "Beispiel-Regel",
       herkunft: "über EUrouter",
@@ -274,6 +275,7 @@ describe("Chat: Name und Kennzeichnung sind getrennte Elemente", () => {
         bereitschaft: {
           botName: "Pai",
           botFarbe: "limette",
+          pausiert: false,
           modell,
           schluessel: true,
           schleuseInstalliert: false,

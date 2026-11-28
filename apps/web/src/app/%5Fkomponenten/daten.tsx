@@ -23,7 +23,6 @@ export const SHELL_TEXTE: AppShellTexte = {
   modelle: "Modelle:",
   deinBot: "Dein Bot",
   navigation: "Navigation",
-  unterhaltungen: "Unterhaltungen von Pai",
   menueOeffnen: "Menü öffnen",
   menueSchliessen: "Menü schließen",
   flaeche: "Arbeitsfläche",
@@ -43,6 +42,7 @@ export function navigation(aktiv: string): AppShellNavigation {
     modelle: t("modelle.region.eu"),
     neu: { href: "#neu" },
     bot: {
+      id: "bot_pai",
       name: "Pai",
       rolle: "schreibt Entwürfe und Antworten, fasst lange Texte zusammen und plant deine Woche",
       farbe: "violett",
