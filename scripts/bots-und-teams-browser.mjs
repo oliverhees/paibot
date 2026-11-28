@@ -21,6 +21,7 @@
 //   - Pausieren setzt den Hinweis; im Chat des Bots ist die Eingabe gesperrt; Fortsetzen hebt es auf
 //   - Löschen fragt zurück: Abbrechen löscht nichts, Löschen führt zurück auf `/teams`
 //   - „Team verwalten“: der Hinweis ohne Tagesbudget steht am Schalter „Zusammenarbeit“
+//   - ein gescheitertes Speichern (leerer Name) zeigt den Fehler und nie „Gespeichert.“
 //   - eine Leitung aus dem Team lässt sich speichern (dass der Server eine Leitung ablehnt, die
 //     nicht zum Team gehört, prüft `apps/web/src/lib/teams/verwaltung.test.ts`; die Seite bietet
 //     in der Auswahl nur Mitglieder an, dieser Fall ist über den Browser nicht erreichbar)
@@ -217,11 +218,34 @@ try {
     (await seite.getByRole("button", { name: "Team löschen …", exact: true }).count()) === 1,
   );
 
-  // Leitung setzen: der Bot ist Mitglied, das geht.
+  // Gescheitertes Speichern ist kein Erfolg: ein leerer Name wird abgelehnt, und dann steht die
+  // Fehlermeldung da – nicht „Gespeichert.“. Gegenprobe: in `packages/ui/src/teams/Verwaltung.tsx`
+  // das `try`/`catch` um `onSpeichern` entfernen (oder in `TeamSeite.tsx` den Fehler wieder mit
+  // `.catch(() => undefined)` schlucken) → dieser Fall wird rot.
+  const nameFeld = seite.getByLabel("Name", { exact: true });
+  await nameFeld.fill("");
+  await seite.getByRole("button", { name: "Speichern", exact: true }).click();
+  await seite.locator("[data-baustein='team-fehler']").waitFor({ timeout: 15_000 });
+  await seite.waitForTimeout(300);
+  pruefe(
+    "Speichern gescheitert: Fehler sichtbar und kein „Gespeichert.“",
+    (await seite.getByText("Gespeichert.").count()) === 0,
+  );
+  pruefe(
+    "Speichern gescheitert: der Name in der Datenbank bleibt, wie er war",
+    ((await seite.locator("main h1").textContent()) ?? "") === TEAM,
+  );
+
+  // Leitung setzen: der Bot ist Mitglied, das geht – und jetzt kommt die Bestätigung.
+  await nameFeld.fill(TEAM);
   await seite.getByLabel("Leitung", { exact: true }).selectOption({ label: BOT });
   await seite.getByRole("button", { name: "Speichern", exact: true }).click();
   await seite.getByText("Gespeichert.").waitFor({ timeout: 15_000 });
   pruefe("Leitung setzen: ein Mitglied lässt sich als Leitung speichern", true);
+  pruefe(
+    "Speichern gelungen: die Fehlermeldung ist weg",
+    (await seite.locator("[data-baustein='team-fehler']").count()) === 0,
+  );
 
   // 7. Der Haupt-Assistent hat keinen Knopf zum Löschen (seine Seite in der Leiste ist `/bot`;
   // den Steckbrief gibt es trotzdem, und auch dort löscht ihn niemand).

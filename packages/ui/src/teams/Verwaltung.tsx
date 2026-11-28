@@ -30,7 +30,8 @@ export interface TeamVerwaltungProps {
   mitglieder: readonly TeamsBot[];
   /**
    * Speichern. Fehlt der Rückruf, bleibt die Verwaltung Vorschau und sagt es auch. Mit Rückruf
-   * meldet sie „Gespeichert.“, sobald er ohne Fehler zurückkommt.
+   * meldet sie „Gespeichert.“ nur, wenn er ohne Fehler zurückkommt: Wirft er (bzw. lehnt sein
+   * Versprechen ab), gilt nichts als gespeichert und es bleibt bei der Fehlermeldung aus `fehler`.
    */
   onSpeichern?: (aenderung: TeamAenderung) => void | Promise<void>;
   /** Team löschen; fehlt der Rückruf, gibt es den Knopf nicht. */
@@ -88,7 +89,12 @@ export function TeamVerwaltung({
           return;
         }
         setGespeichert(false);
-        await onSpeichern({ name, leitungId, zusammenarbeit: zus, abnahme });
+        try {
+          await onSpeichern({ name, leitungId, zusammenarbeit: zus, abnahme });
+        } catch {
+          // Gescheitertes Speichern ist kein Erfolg: kein „Gespeichert.“; den Satz zeigt `fehler`.
+          return;
+        }
         setGespeichert(true);
       }}
     >
