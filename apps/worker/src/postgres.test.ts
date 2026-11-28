@@ -19,7 +19,7 @@ import {
   type PostgresTestDatabase,
   TEST_DATABASE_URL_ENV,
 } from "@paibot/db/testing";
-import { createQueue, type RunJob } from "@paibot/jobs";
+import { createQueue, prepareQueue, type RunJob } from "@paibot/jobs";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import { afterAll, describe, expect, it } from "vitest";
 import { buildRunDeps, realWorkerDeps } from "./abhaengigkeiten";
@@ -76,6 +76,8 @@ describe.skipIf(BASE_URL === undefined)("Worker gegen echtes Postgres", () => {
         motor,
       },
     );
+    // Wie im Betrieb: Der Migrations-Schritt richtet die Warteschlange ein, der Worker nicht.
+    await prepareQueue(testDb.url);
     const worker = await runWorker(
       { databaseUrl: testDb.url, concurrency: 2, shutdownTimeoutMs: 2000 },
       env,

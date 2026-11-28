@@ -29,6 +29,7 @@ import path from "node:path";
 export const DB_VORSATZ = "paibot_doku_";
 const DB_NAME_MUSTER = /^paibot_doku_[0-9a-f]{12}$/;
 const ROLLEN_MUSTER = /^paibot_doku_[0-9a-f]{12}_app$/;
+const WORKER_ROLLEN_MUSTER = /^paibot_doku_[0-9a-f]{12}_worker$/;
 
 /** Neuer, eindeutiger Name für die Wegwerf-Datenbank. */
 export function neuerDatenbankName(zufall = randomBytes(6).toString("hex")) {
@@ -51,6 +52,17 @@ export function rollenName(datenbank) {
 /** Hat die Rolle die Form, die nur `pnpm doku:app` vergibt? */
 export function istDokuRolle(name) {
   return typeof name === "string" && ROLLEN_MUSTER.test(name);
+}
+
+/** Name der Worker-Rolle zur Datenbank. */
+export function workerRollenName(datenbank) {
+  if (!istDokuDatenbank(datenbank)) throw new Error(`Keine Doku-Datenbank: ${datenbank}`);
+  return `${datenbank}_worker`;
+}
+
+/** Hat die Worker-Rolle die Form, die nur `pnpm doku:app` vergibt? */
+export function istDokuWorkerRolle(name) {
+  return typeof name === "string" && WORKER_ROLLEN_MUSTER.test(name);
 }
 
 /** Vermerk an der Datenbank; vor dem Löschen muss er genau stimmen. */

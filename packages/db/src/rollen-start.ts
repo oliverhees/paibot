@@ -52,7 +52,14 @@ export interface DatabaseStartOptions {
 
 /** Ergebnis der Vorbereitung. Bei `ok: false` soll der Start abbrechen. */
 export type DatabaseStartResult =
-  | { ok: true; role: RoleCheck; state: MigrationState; separateRoles: boolean }
+  | {
+      ok: true;
+      role: RoleCheck;
+      state: MigrationState;
+      separateRoles: boolean;
+      /** Nur nach dem Migrations-Schritt: Name der eingerichteten Worker-Rolle. */
+      workerRole?: string;
+    }
   | {
       ok: false;
       reason:
@@ -85,16 +92,26 @@ export function quarantineMessage(eintrag: string): string {
   return `Gleichnamige Tabelle außerhalb von public als Text abgelegt: ${alt} -> ${neu}. PaiBot legt so etwas nie an; jemand mit den Rechten der App könnte es gewesen sein. Öffne und lies sie nicht, lösche sie nur, mit dem Zugang aus DATABASE_MIGRATION_URL: drop table "${schema}"."${name}" cascade; Prüfe danach den Server und tausche die Zugangsdaten.`;
 }
 
+/** Variable mit der Adresse des Workers (eigene Rolle, siehe `prepareWorkerRole`). */
+export const WORKER_URL_ENV = "DATABASE_WORKER_URL";
+
 /** Ergebnis des Migrations-Schritts. */
 export type MigrationStepResult =
-  | { ok: true; separateRoles: boolean }
+  | {
+      ok: true;
+      separateRoles: boolean;
+      /** Name der eingerichteten Worker-Rolle; fehlt ohne `DATABASE_WORKER_URL`. */
+      workerRole?: string;
+    }
   | { ok: false; reason: "keine_datenbank" | "migration_fehlgeschlagen"; message: string };
 
 /**
  * Migrations-Schritt (Dienst `migrate`, in der Entwicklung auch die Web-App): Migrationen mit
  * `DATABASE_MIGRATION_URL` (fehlt sie: mit `DATABASE_URL`), mit Wiederholversuchen. Sind die Rollen
  * getrennt, wird danach unter derselben Sperre die App-Rolle aus `DATABASE_URL` eingerichtet
- * (anlegen, Rechte, Einstellungen zurücksetzen, Passwort neu setzen).
+ * (anlegen, Rechte, Einstellungen zurücksetzen, Passwort neu setzen), danach die Worker-Rolle aus
+ * `DATABASE_WORKER_URL`, falls gesetzt (sonst eine Warnung). Die Warteschlange richtet der Aufrufer
+ * danach mit der App-Rolle ein (Paket jobs, `prepareQueue`).
  */
 export async function migrateDatabase(
   options: Omit<DatabaseStartOptions, "production">,
@@ -106,6 +123,7 @@ export async function migrateDatabase(
   }
   const migrationUrl = nonEmpty(options.env.DATABASE_MIGRATION_URL) ?? appUrl;
   const separateRoles = safeUser(migrationUrl) !== safeUser(appUrl);
+  const workerUrl = nonEmpty(options.env[WORKER_URL_ENV]);
   const attempts = options.attempts ?? 5;
   const delayMs = options.delayMs ?? 3000;
 
@@ -113,7 +131,10 @@ export async function migrateDatabase(
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       // Auch mit nur einer Rolle: dann legt `prepareAppRole` nur das Schema der Warteschlange an.
-      const result = await runMigrations(migrationUrl, options.migrationsFolder, { appUrl });
+      const result = await runMigrations(migrationUrl, options.migrationsFolder, {
+        appUrl,
+        ...(workerUrl === undefined ? {} : { workerUrl }),
+      });
       log.info("Datenbank-Migrationen angewendet.");
       if (result.appRole?.created) {
         log.info(`App-Rolle ${result.appRole.role} angelegt.`);
@@ -122,7 +143,15 @@ export async function migrateDatabase(
       for (const eintrag of result.appRole?.quarantined ?? []) {
         log.warn(quarantineMessage(eintrag));
       }
-      return { ok: true, separateRoles };
+      if (result.workerRole === undefined) {
+        log.warn(
+          `${WORKER_URL_ENV} fehlt: keine eigene Worker-Rolle eingerichtet. Der Worker startet in Produktion so nicht (außer ${ALLOW_PRIVILEGED_DB_ENV}=1). ${HILFE}`,
+        );
+        return { ok: true, separateRoles };
+      }
+      if (result.workerRole.created) log.info(`Worker-Rolle ${result.workerRole.role} angelegt.`);
+      log.info(`Rechte der Worker-Rolle ${result.workerRole.role} gesetzt.`);
+      return { ok: true, separateRoles, workerRole: result.workerRole.role };
     } catch (error) {
       lastReason = error instanceof Error ? error.message : String(error);
       log.error(`Migration fehlgeschlagen (Versuch ${attempt}/${attempts}): ${lastReason}`);
@@ -153,10 +182,12 @@ export async function checkDatabase(options: DatabaseStartOptions): Promise<Data
 export async function prepareDatabase(options: DatabaseStartOptions): Promise<DatabaseStartResult> {
   const migration = await migrateDatabase(options);
   if (!migration.ok && migration.reason === "keine_datenbank") return migration;
-  return check(
+  const result = await check(
     { ...options, attempts: 1 },
     { migrated: migration.ok, separateRoles: migration.ok ? migration.separateRoles : true },
   );
+  if (!result.ok || !migration.ok || migration.workerRole === undefined) return result;
+  return { ...result, workerRole: migration.workerRole };
 }
 
 async function check(

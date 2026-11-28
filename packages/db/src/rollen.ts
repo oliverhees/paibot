@@ -55,9 +55,10 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  *   Unterhaltung.
  * - `auftrag_ereignisse`, `auftrag_zuschlaege`: nur lesen und anhängen (Trigger lehnen Ändern und
  *   Löschen ab; gelöscht wird nur mit dem Auftrag).
- * - Alle diese Tabellen schreibt dieselbe Rolle für die Web-App und den Worker: Die Datenbank trennt
- *   nicht, wer schreibt. Dass nur der Besitzer-Weg der Web-App `bots`, `teams`, `team_entwuerfe`
- *   und `faeden` ändert, prüft ein Quelltext-Test (`teams-nur-besitzer-weg.test.ts`).
+ * - Diese Rechte gelten für die Web-App. Der Worker hat eine eigene Rolle (`WORKER_TABLE_RIGHTS`),
+ *   die `bots`, `teams`, `team_entwuerfe`, `team_anlagen` und `faden_punkte` nur liest und an
+ *   `faeden` nur Stand, Stab und Belastung ändert. Zusätzlich prüft ein Quelltext-Test, dass Worker
+ *   und Lauf-Steuerung die Schreibfunktionen dafür nicht aufrufen (`teams-nur-besitzer-weg.test.ts`).
  * - `runs`: lesen, anlegen, fortschreiben; gelöscht wird nur mit der Unterhaltung (sonst verschwänden
  *   mit einem Lauf auch seine Werkzeug-Aufrufe).
  */
@@ -98,6 +99,74 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
     "select, insert, update (status, decision_receipt_id, result_receipt_id, result_status, output, error_code, updated_at, finished_at, output_truncated, output_chars)",
 };
 
+/**
+ * Rechte der Worker-Rolle je Tabelle im Schema `public`. Leer heißt: keine Rechte, die Tabelle ist
+ * für den Worker unsichtbar. Jede Tabelle steht hier (ein Test prüft das); eine neue Tabelle
+ * bekommt für den Worker erst Rechte, wenn sie hier eingetragen ist.
+ *
+ * Der Worker führt Läufe aus. Er liest Bots, Modelle, Anbieter, Regeln, Apps und Teams, schreibt
+ * aber nur, was ein Lauf erzeugt:
+ *
+ * - `runs`: lesen und fortschreiben; Läufe legt die Web-App an.
+ * - `messages`, `tool_calls`, `auftraege`: wie die App-Rolle (anlegen, nur Lauf-Spalten ändern).
+ * - `conversations`: lesen, nur „letzte Nachricht“ und Zeit fortschreiben (beim Anlegen einer
+ *   Nachricht); Titel, Bot und Team ändert er nie.
+ * - `conversation_events`, `belege`, `app_tools`, `auftrag_ereignisse`, `auftrag_zuschlaege`: lesen
+ *   und anhängen.
+ * - `schleuse_zustand`: lesen und den Zustand der Datenschleuse melden.
+ * - `faeden`: lesen, nur Stand, Staffelstab und „belastet“ ändern. Ziel, Abnahme, Herkunft und
+ *   Entscheidung (Kopf-Felder des Besitzers) bleiben gesperrt, ebenso Anlegen und Löschen.
+ * - Nur lesen: `apps`, `bot_app_grants`, `bots`, `faden_punkte`, `installation_keys`, `models`,
+ *   `providers`, `rules`, `settings`, `team_anlagen`, `team_entwuerfe`, `teams`.
+ * - Nichts: `owner`, `sessions`, `geraete`, `rate_limits` (Anmeldung, Sitzungen und Geräte des
+ *   Besitzers).
+ */
+export const WORKER_TABLE_RIGHTS: Readonly<Record<string, string>> = {
+  app_tools: "select, insert",
+  apps: "select",
+  auftraege: APP_TABLE_RIGHTS.auftraege ?? "select",
+  auftrag_ereignisse: "select, insert",
+  auftrag_zuschlaege: "select, insert",
+  belege: "select, insert",
+  bot_app_grants: "select",
+  bots: "select",
+  conversation_events: "select, insert",
+  conversations: "select, update (last_message_at, updated_at)",
+  faden_punkte: "select",
+  faeden: "select, update (stand, stab_bei, belastet)",
+  geraete: "",
+  installation_keys: "select",
+  messages: APP_TABLE_RIGHTS.messages ?? "select",
+  models: "select",
+  owner: "",
+  providers: "select",
+  rate_limits: "",
+  rules: "select",
+  runs: "select, update",
+  schleuse_zustand: "select, insert, update",
+  sessions: "",
+  settings: "select",
+  team_anlagen: "select",
+  team_entwuerfe: "select",
+  teams: "select",
+  tool_calls: APP_TABLE_RIGHTS.tool_calls ?? "select",
+};
+
+/** Tabellen des Besitzers, in die der Worker nie schreibt (nur lesen). */
+export const WORKER_READ_ONLY_TABLES = [
+  "bots",
+  "teams",
+  "team_entwuerfe",
+  "team_anlagen",
+  "faden_punkte",
+] as const;
+
+/** Tabellen, die der Worker gar nicht sieht. */
+export const WORKER_HIDDEN_TABLES = ["owner", "sessions", "geraete", "rate_limits"] as const;
+
+/** Spalten von `faeden`, die der Worker ändern darf; alle anderen sind Kopf-Felder des Besitzers. */
+export const WORKER_FADEN_COLUMNS = ["stand", "stab_bei", "belastet"] as const;
+
 /** Tabellen, auf denen die App-Rolle weder ändern noch löschen noch leeren darf. */
 export const APPEND_ONLY_TABLES = [
   "belege",
@@ -122,7 +191,9 @@ export type RoleIssue =
   | "replikationsmodus"
   | "rolleneinstellungen"
   | "schatten_tabellen"
-  | "suchpfad";
+  | "suchpfad"
+  | "besitzer_tabellen_schreibbar"
+  | "warteschlange_besitzer";
 
 /** Ergebnis der Rechte-Prüfung einer Verbindung. */
 export interface RoleCheck {
@@ -148,7 +219,71 @@ export const ROLE_ISSUE_TEXT: Readonly<Record<RoleIssue, string>> = {
     "trägt eigene Einstellungen an der Rolle (ALTER ROLE … SET), z. B. einen anderen Suchpfad",
   schatten_tabellen: "in einem anderen Schema liegen Tabellen mit dem Namen einer Tabelle der App",
   suchpfad: "die Verbindung sucht Tabellen nicht nur in pg_catalog und public",
+  besitzer_tabellen_schreibbar:
+    "darf Bots, Teams, Team-Entwürfe oder den Kopf eines Fadens ändern oder Daten der Anmeldung lesen (das darf nur die Web-App)",
+  warteschlange_besitzer:
+    "ist Besitzer des Schemas der Warteschlange (kann Trigger anlegen, die mit den Rechten der Web-App laufen)",
 };
+
+/**
+ * Prüft die Verbindung des Workers: alles aus `checkAppRole`, dazu darf sie nicht in die Tabellen
+ * des Besitzers schreiben (`WORKER_READ_ONLY_TABLES`, Kopf-Felder von `faeden`), die Tabellen der
+ * Anmeldung nicht sehen (`WORKER_HIDDEN_TABLES`) und nichts im Schema der Warteschlange besitzen.
+ * Mit der App-Rolle verbunden meldet sie deshalb `zu_viele_rechte`.
+ */
+export async function checkWorkerRole(sql: postgres.Sql): Promise<RoleCheck> {
+  const base = await checkAppRole(sql);
+  const [row] = await sql<{ schreibbar: boolean; warteschlange: boolean }[]>`
+    select
+      exists (
+        select 1 from pg_catalog.unnest(${WORKER_READ_ONLY_TABLES as unknown as string[]}::text[]) t
+        where pg_catalog.to_regclass('public.' || t) is not null
+          and (pg_catalog.has_table_privilege('public.' || t, 'INSERT')
+            or pg_catalog.has_any_column_privilege('public.' || t, 'UPDATE')
+            or pg_catalog.has_table_privilege('public.' || t, 'DELETE')
+            or pg_catalog.has_table_privilege('public.' || t, 'TRUNCATE'))
+      )
+      or exists (
+        select 1 from pg_catalog.unnest(${WORKER_HIDDEN_TABLES as unknown as string[]}::text[]) t
+        where pg_catalog.to_regclass('public.' || t) is not null
+          and (pg_catalog.has_any_column_privilege('public.' || t, 'SELECT')
+            or pg_catalog.has_table_privilege('public.' || t, 'INSERT')
+            or pg_catalog.has_any_column_privilege('public.' || t, 'UPDATE')
+            or pg_catalog.has_table_privilege('public.' || t, 'DELETE'))
+      )
+      or exists (
+        select 1 from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relname = 'faeden'
+          and (pg_catalog.has_table_privilege(c.oid, 'INSERT')
+            or pg_catalog.has_table_privilege(c.oid, 'DELETE')
+            or pg_catalog.has_table_privilege(c.oid, 'TRUNCATE')
+            or exists (
+              select 1 from pg_catalog.pg_attribute a
+              where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+                and a.attname <> all(${WORKER_FADEN_COLUMNS as unknown as string[]}::name[])
+                and pg_catalog.has_column_privilege(c.oid, a.attnum, 'UPDATE')))
+      ) as schreibbar,
+      exists (
+        select 1 from pg_catalog.pg_namespace n
+        where n.nspname = ${QUEUE_SCHEMA_NAME}
+          and pg_catalog.pg_has_role(current_user, n.nspowner, 'USAGE')
+      )
+      or exists (
+        select 1 from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = ${QUEUE_SCHEMA_NAME}
+          and pg_catalog.pg_has_role(current_user, c.relowner, 'USAGE')
+      ) as warteschlange`;
+  const issues: RoleIssue[] = [...base.issues];
+  if (row?.schreibbar !== false) issues.push("besitzer_tabellen_schreibbar");
+  if (row?.warteschlange !== false) issues.push("warteschlange_besitzer");
+  return {
+    ...base,
+    status: issues.length === 0 ? "eingeschraenkt" : "zu_viele_rechte",
+    issues,
+  };
+}
 
 /**
  * Prüft, mit welchen Rechten die Verbindung arbeitet. `eingeschraenkt` heißt: kein Superuser,
@@ -399,22 +534,7 @@ export async function prepareAppRole(
     return undefined;
   }
 
-  const [found] = await sql<{ n: number }[]>`
-    select count(*)::int as n from pg_roles where rolname = ${user}`;
-  let created = false;
-  if ((found?.n ?? 0) === 0) {
-    if (password === "") {
-      throw new Error(`Die App-Rolle ${user} fehlt, und DATABASE_URL enthält kein Passwort.`);
-    }
-    const [statement] = await sql<{ text: string }[]>`
-      select format(
-        'create role %I with login nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls password %L',
-        ${user}::text, ${scramVerifier(password)}::text
-      ) as text`;
-    if (statement === undefined) throw new Error("Anweisung für die App-Rolle fehlt.");
-    await sql.unsafe(statement.text);
-    created = true;
-  }
+  const created = await ensureLoginRole(sql, user, password, "App-Rolle", "DATABASE_URL");
 
   let quarantined: string[] = [];
   await sql.begin(async (tx) => {
@@ -422,13 +542,7 @@ export async function prepareAppRole(
     const database = await databaseName(tx);
     await tx`alter role ${role} reset all`;
     await tx`alter role ${role} in database ${tx(database)} reset all`;
-    if (!created && password !== "") {
-      const [statement] = await tx<{ text: string }[]>`
-        select pg_catalog.format('alter role %I with password %L',
-          ${user}::text, ${scramVerifier(password)}::text) as text`;
-      if (statement === undefined) throw new Error("Anweisung für die App-Rolle fehlt.");
-      await tx.unsafe(statement.text);
-    }
+    if (!created && password !== "") await setPassword(tx, user, password);
     await tx`grant connect on database ${tx(database)} to ${role}`;
     await tx`grant usage on schema public to ${role}`;
     await tx`revoke create on schema public from ${role}`;
@@ -492,6 +606,122 @@ export async function prepareAppRole(
   });
 
   return { role: user, created, quarantined };
+}
+
+/** Was `prepareWorkerRole` getan hat. */
+export interface WorkerRoleSetup {
+  role: string;
+  /** `true`, wenn die Rolle bei diesem Aufruf neu angelegt wurde. */
+  created: boolean;
+}
+
+/**
+ * Richtet die Worker-Rolle aus `workerUrl` ein. Läuft mit der Migrations-Verbindung `sql` nach
+ * `prepareAppRole` und ist beliebig oft wiederholbar, nach demselben Muster wie die App-Rolle:
+ * anlegen, falls sie fehlt (Login, keine Sonderrechte); Einstellungen an der Rolle zurücksetzen und
+ * Passwort neu setzen; Schema `public` nur benutzen; Rechte je Tabelle genau nach
+ * `WORKER_TABLE_RIGHTS` (eine leere Angabe heißt: keine); Nummern nur für Tabellen, in die sie
+ * einfügt; Lesen des Migrations-Stands; keine Standard-Rechte für künftige Tabellen. Rechte im
+ * Schema der Warteschlange vergibt deren Besitzer, die App-Rolle (Paket jobs, `prepareQueue`).
+ *
+ * Die Worker-Rolle muss eine eigene Rolle sein, weder die Migrations- noch die App-Rolle (`appUser`).
+ */
+export async function prepareWorkerRole(
+  sql: postgres.Sql,
+  workerUrl: string,
+  appUser: string,
+): Promise<WorkerRoleSetup> {
+  const { user, password } = credentialsOf(workerUrl);
+  if (user === "") throw new Error("In DATABASE_WORKER_URL fehlt der Benutzer der Worker-Rolle.");
+  const [self] = await sql<{ name: string }[]>`select current_user as name`;
+  if (user === self?.name || user === appUser) {
+    throw new Error(
+      "DATABASE_WORKER_URL braucht eine eigene Rolle (POSTGRES_WORKER_USER), nicht die der Migration oder der App.",
+    );
+  }
+  const created = await ensureLoginRole(sql, user, password, "Worker-Rolle", "DATABASE_WORKER_URL");
+
+  await sql.begin(async (tx) => {
+    const role = tx(user);
+    const database = await databaseName(tx);
+    await tx`alter role ${role} reset all`;
+    await tx`alter role ${role} in database ${tx(database)} reset all`;
+    if (!created && password !== "") await setPassword(tx, user, password);
+    await tx`grant connect on database ${tx(database)} to ${role}`;
+    await tx`grant usage on schema public to ${role}`;
+    await tx`revoke create on schema public from ${role}`;
+
+    const tables = await tx<{ name: string }[]>`
+      select c.relname as name from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('r', 'p')
+      order by c.relname`;
+    await tx`revoke all on all sequences in schema public from ${role}`;
+    for (const { name } of tables) {
+      const rights = WORKER_TABLE_RIGHTS[name] ?? "";
+      await tx`revoke all on table ${tx("public")}.${tx(name)} from ${role}`;
+      if (rights === "") continue;
+      await tx.unsafe(`grant ${rights} on table public.${quoteIdent(name)} to ${quoteIdent(user)}`);
+      if (!rights.includes("insert")) continue;
+      const sequences = await tx<{ seq: string }[]>`
+        select s.relname as seq from pg_catalog.pg_depend d
+        join pg_catalog.pg_class s on s.oid = d.objid and s.relkind = 'S'
+        join pg_catalog.pg_class t on t.oid = d.refobjid
+        join pg_catalog.pg_namespace n on n.oid = t.relnamespace
+        where n.nspname = 'public' and t.relname = ${name} and d.deptype in ('a', 'i')`;
+      for (const { seq } of sequences) {
+        await tx`grant usage, select on sequence ${tx("public")}.${tx(seq)} to ${role}`;
+      }
+    }
+
+    const [drizzleTable] = await tx<{ ok: boolean }[]>`
+      select pg_catalog.to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+    if (drizzleTable?.ok === true) {
+      await tx`grant usage on schema drizzle to ${role}`;
+      await tx`grant select on drizzle.__drizzle_migrations to ${role}`;
+    }
+    await tx`revoke create on database ${tx(database)} from ${role}`;
+    await withdrawExtras(tx, user, database);
+  });
+
+  return { role: user, created };
+}
+
+/** Legt eine Login-Rolle ohne Sonderrechte an, falls sie fehlt; `true`, wenn neu angelegt. */
+async function ensureLoginRole(
+  sql: postgres.Sql,
+  user: string,
+  password: string,
+  label: string,
+  variable: string,
+): Promise<boolean> {
+  const [found] = await sql<{ n: number }[]>`
+    select count(*)::int as n from pg_roles where rolname = ${user}`;
+  if ((found?.n ?? 0) > 0) return false;
+  if (password === "") {
+    throw new Error(`Die ${label} ${user} fehlt, und ${variable} enthält kein Passwort.`);
+  }
+  const [statement] = await sql<{ text: string }[]>`
+    select format(
+      'create role %I with login nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls password %L',
+      ${user}::text, ${scramVerifier(password)}::text
+    ) as text`;
+  if (statement === undefined) throw new Error(`Anweisung für die ${label} fehlt.`);
+  await sql.unsafe(statement.text);
+  return true;
+}
+
+/** Setzt das Passwort einer Rolle als SCRAM-Prüfwert (nie im Klartext in der Anweisung). */
+async function setPassword(
+  tx: postgres.TransactionSql,
+  user: string,
+  password: string,
+): Promise<void> {
+  const [statement] = await tx<{ text: string }[]>`
+    select pg_catalog.format('alter role %I with password %L',
+      ${user}::text, ${scramVerifier(password)}::text) as text`;
+  if (statement === undefined) throw new Error("Anweisung für das Passwort fehlt.");
+  await tx.unsafe(statement.text);
 }
 
 /**

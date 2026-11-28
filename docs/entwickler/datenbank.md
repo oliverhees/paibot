@@ -49,6 +49,23 @@ Keine eigene Tabelle, keine Migration: Die Zuordnung ist reiner Code. Die Klasse
 
 **Regel für jede neue Migration:** Legt sie eine Tabelle an, trägt dieselbe Änderung die Tabelle mit Klasse und einem Satz Begründung in `ABGLEICH_KLASSEN` ein. Sonst ist `packages/db/src/abgleich-klassen.test.ts` rot. Wird eine Tabelle entfernt, fällt auch ihr Eintrag weg (der Test meldet eine Klasse ohne Tabelle).
 
+## Rollen: App und Worker
+
+Neben dem Besitzer der Tabellen (Migrations-Rolle) gibt es zwei Arbeits-Rollen. Beide richtet der Migrations-Schritt bei jedem Lauf neu ein (`packages/db/src/rollen.ts#prepareAppRole`, `#prepareWorkerRole`, aufgerufen aus `packages/db/src/migrate.ts#runMigrations`); eine SQL-Migration für Rechte gibt es nicht.
+
+| Rolle  | Variable              | Rechte je Tabelle                               | Prüfung beim Start                               |
+| ------ | --------------------- | ----------------------------------------------- | ------------------------------------------------ |
+| App    | `DATABASE_URL`        | `packages/db/src/rollen.ts#APP_TABLE_RIGHTS`    | `checkAppRole`                                   |
+| Worker | `DATABASE_WORKER_URL` | `packages/db/src/rollen.ts#WORKER_TABLE_RIGHTS` | `checkWorkerRole` (zusätzlich zu `checkAppRole`) |
+
+**Regel für jede neue Tabelle:** Sie bekommt einen Eintrag in **beiden** Listen; in `WORKER_TABLE_RIGHTS` heißt `""` „keine Rechte“. Fehlt ein Eintrag, ist `packages/db/src/rollen.test.ts` rot. Die Worker-Rolle darf nie mehr als die App-Rolle (selber Test).
+
+**Warteschlange:** Das Schema `pgboss` gehört der App-Rolle. Die Worker-Rolle bekommt dort nur `usage` und Lesen/Schreiben auf Tabellen und Nummern (`packages/jobs/src/pgboss-queue.ts#prepareQueueWith`, aufgerufen über `prepareQueue` aus `apps/web/src/lib/betrieb.ts` im Migrations-Schritt). Der Worker startet die Warteschlange ohne Migration, Wartung und Zeitpläne (`createQueue(url, { rolle: "worker" })`); die Wartung läuft in der Web-App (`apps/web/src/lib/warteschlange.ts#warteschlangeBeimStart`).
+
+**Verworfen:** Das Schema `pgboss` der Worker-Rolle geben. Wer eine Tabelle besitzt, kann Trigger darauf legen; die Web-App schreibt beim Einreihen in `pgboss.job`, ein Trigger des Workers liefe dann mit den Rechten der App-Rolle. Ebenso verworfen: dem Worker für die Warteschlange zusätzlich die Zugangsdaten der App-Rolle geben – dann wäre die Trennung wertlos.
+
+**Ohne `DATABASE_WORKER_URL`:** In Produktion startet der Worker nicht (`apps/worker/src/umgebung.ts#workerDatabaseSource`), außer mit `PAIBOT_ALLOW_PRIVILEGED_DB=1`; in der Entwicklung nutzt er `DATABASE_URL` mit Warnung.
+
 ## Für den künftigen Abgleich
 
 Diese Punkte gelten für das Paket, das später Klassen auswertet. Sie stehen hier, damit sie nicht verloren gehen.
@@ -62,17 +79,20 @@ Diese Punkte gelten für das Paket, das später Klassen auswertet. Sie stehen hi
 
 ## Schnittstellen
 
-| Art       | Name                                                  | Datei                                        |
-| --------- | ----------------------------------------------------- | -------------------------------------------- |
-| Konstante | `ABGLEICH_KLASSEN`                                    | `packages/db/src/schema/abgleich-klassen.ts` |
-| Konstante | `ABGLEICH_KLASSEN_FREMDE_SCHEMAS`                     | `packages/db/src/schema/abgleich-klassen.ts` |
-| Konstante | `ABGLEICH_KLASSEN_WERTE` (A, B, C)                    | `packages/db/src/schema/abgleich-klassen.ts` |
-| Konstante | `ABGLEICH_GEHEIM_WERTE` (vier Kennzeichnungen)        | `packages/db/src/schema/abgleich-klassen.ts` |
-| Konstante | `GEHEIMNIS_SPALTE` (Namensmuster für Geheimnisse)     | `packages/db/src/schema/abgleich-klassen.ts` |
-| Funktion  | `abgleichKlassenFehler(tabellen, zuordnung)`          | `packages/db/src/schema/abgleich-klassen.ts` |
-| Funktion  | `abgleichGeheimFehler(spaltenJeTabelle, zuordnung)`   | `packages/db/src/schema/abgleich-klassen.ts` |
-| Typ       | `AbgleichKlasse`, `AbgleichGeheim`, `AbgleichEintrag` | `packages/db/src/schema/abgleich-klassen.ts` |
-| Konstante | `APPEND_ONLY_TABLES` (für den Test)                   | `packages/db/src/rollen.ts`                  |
+| Art       | Name                                                                                             | Datei                                        |
+| --------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| Konstante | `ABGLEICH_KLASSEN`                                                                               | `packages/db/src/schema/abgleich-klassen.ts` |
+| Konstante | `ABGLEICH_KLASSEN_FREMDE_SCHEMAS`                                                                | `packages/db/src/schema/abgleich-klassen.ts` |
+| Konstante | `ABGLEICH_KLASSEN_WERTE` (A, B, C)                                                               | `packages/db/src/schema/abgleich-klassen.ts` |
+| Konstante | `ABGLEICH_GEHEIM_WERTE` (vier Kennzeichnungen)                                                   | `packages/db/src/schema/abgleich-klassen.ts` |
+| Konstante | `GEHEIMNIS_SPALTE` (Namensmuster für Geheimnisse)                                                | `packages/db/src/schema/abgleich-klassen.ts` |
+| Funktion  | `abgleichKlassenFehler(tabellen, zuordnung)`                                                     | `packages/db/src/schema/abgleich-klassen.ts` |
+| Funktion  | `abgleichGeheimFehler(spaltenJeTabelle, zuordnung)`                                              | `packages/db/src/schema/abgleich-klassen.ts` |
+| Typ       | `AbgleichKlasse`, `AbgleichGeheim`, `AbgleichEintrag`                                            | `packages/db/src/schema/abgleich-klassen.ts` |
+| Konstante | `APPEND_ONLY_TABLES` (für den Test)                                                              | `packages/db/src/rollen.ts`                  |
+| Konstante | `WORKER_TABLE_RIGHTS`, `WORKER_READ_ONLY_TABLES`, `WORKER_HIDDEN_TABLES`, `WORKER_FADEN_COLUMNS` | `packages/db/src/rollen.ts`                  |
+| Funktion  | `prepareWorkerRole(sql, workerUrl, appUser)`, `checkWorkerRole(sql)`                             | `packages/db/src/rollen.ts`                  |
+| Funktion  | `prepareQueue(appUrl, { workerRole })`                                                           | `packages/jobs/src/index.ts`                 |
 
 Alles steht auch im Index von `@paibot/db` (`packages/db/src/schema/index.ts`). Es gibt keine Aktion des Tors und keine Route.
 
@@ -83,10 +103,14 @@ Alles steht auch im Index von `@paibot/db` (`packages/db/src/schema/index.ts`). 
 
 ## Tests
 
-| Test                                                   | Prüft                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/db/src/abgleich-klassen.test.ts`             | jede Tabelle des Schemas hat eine Klasse und die Klasse jeder Tabelle ist festgenagelt; keine Klasse ohne Tabelle; Klassen A bis C mit Begründung; Warteschlange und Migrations-Stand sind C; Tabellen aus `APPEND_ONLY_TABLES` sind A (außer `nie`-Geheimnisse: C); jede Spalte mit einem Namen nach `GEHEIMNIS_SPALTE` ist gekennzeichnet, keine Spalte steht in `spalten` und `oeffentlich` zugleich; Gegenproben der Prüffunktionen und des Namensmusters |
-| `apps/web/src/verwaltungsschluessel-quelltext.test.ts` | der verschlüsselte Schlüssel der Modell-Verwaltung (`management_key_enc`) steht nur in den genannten Dateien; `packages/db/src/schema/abgleich-klassen.ts` gehört dazu, weil dort seine Kennzeichnung (`je-ort-neu-verschluesselt`) steht                                                                                                                                                                                                                     |
+| Test                                                   | Prüft                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/db/src/abgleich-klassen.test.ts`             | jede Tabelle des Schemas hat eine Klasse und die Klasse jeder Tabelle ist festgenagelt; keine Klasse ohne Tabelle; Klassen A bis C mit Begründung; Warteschlange und Migrations-Stand sind C; Tabellen aus `APPEND_ONLY_TABLES` sind A (außer `nie`-Geheimnisse: C); jede Spalte mit einem Namen nach `GEHEIMNIS_SPALTE` ist gekennzeichnet, keine Spalte steht in `spalten` und `oeffentlich` zugleich; Gegenproben der Prüffunktionen und des Namensmusters                               |
+| `packages/db/src/worker-rolle-postgres.test.ts`        | mit der Worker-Rolle scheitern Schreiben in `bots`, `teams`, `team_entwuerfe`, `team_anlagen`, `faden_punkte`, Anlegen/Löschen von `faeden` und das Ändern seiner Kopf-Felder mit 42501; `stand`, `stab_bei`, `belastet` gehen; `owner`, `sessions`, `geraete`, `rate_limits` nicht lesbar; die Arbeit eines Laufs geht; die Rechte in Postgres stimmen genau mit `WORKER_TABLE_RIGHTS`; wiederholbar; dieselbe Rolle wie App/Migration wird abgelehnt (nur mit `PAIBOT_TEST_DATABASE_URL`) |
+| `packages/db/src/rollen.test.ts`                       | jede Tabelle steht in `WORKER_TABLE_RIGHTS`; nie mehr als die App-Rolle; die festen Pflichten                                                                                                                                                                                                                                                                                                                                                                                               |
+| `packages/jobs/src/postgres.test.ts`                   | die Worker-Rolle startet die Warteschlange erst nach `prepareQueue`, arbeitet dann einen Lauf der App ab, besitzt nichts und legt nichts an                                                                                                                                                                                                                                                                                                                                                 |
+| `apps/web/src/lib/betrieb-postgres.test.ts`            | Update einer Installation ohne Worker-Rolle: `migrate` ohne Variable warnt, mit Variable legt er die Rolle einmal an; danach arbeitet der Worker einen Lauf von vorher ab und scheitert an `bots`                                                                                                                                                                                                                                                                                           |
+| `apps/web/src/verwaltungsschluessel-quelltext.test.ts` | der verschlüsselte Schlüssel der Modell-Verwaltung (`management_key_enc`) steht nur in den genannten Dateien; `packages/db/src/schema/abgleich-klassen.ts` gehört dazu, weil dort seine Kennzeichnung (`je-ort-neu-verschluesselt`) steht                                                                                                                                                                                                                                                   |
 
 Ausführen:
 

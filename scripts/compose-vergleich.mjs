@@ -22,6 +22,7 @@
 // sein (web steht dort zuerst). Erlaubt sind nur diese Unterschiede:
 //   - Passwort des Tabellen-Besitzers: ${SERVICE_HEX_64_PGOWNER} statt ${POSTGRES_PASSWORD…}
 //   - Passwort der App-Rolle:          ${SERVICE_HEX_64_PGAPP} statt ${POSTGRES_APP_PASSWORD…}
+//   - Passwort der Worker-Rolle:       ${SERVICE_HEX_64_PGWORKER} statt ${POSTGRES_WORKER_PASSWORD…}
 //   - PAIBOT_SECRET:                   ${SERVICE_REALBASE64_32_PAIBOT} statt ${PAIBOT_SECRET…}
 //   - APP_URL:                         ${SERVICE_URL_WEB} statt ${APP_URL…}
 //   - beim Dienst web genau eine Zeile „SERVICE_URL_WEB_3000:“ (Domain gehört zu web, Port 3000)
@@ -208,12 +209,14 @@ for (let i = 0; i < laenge; i++) {
 // Pflichtwerte aus .env; Coolify-Datei: die Werte, die Coolify erzeugt.
 const HERKUNFT_BAU = [
   [/\$\{POSTGRES_APP_PASSWORD:\?[^}]+\}/g, "«APP-PASSWORT»"],
+  [/\$\{POSTGRES_WORKER_PASSWORD:\?[^}]+\}/g, "«WORKER-PASSWORT»"],
   [/\$\{POSTGRES_PASSWORD(?::\?[^}]+)?\}/g, "«BESITZER-PASSWORT»"],
   [/\$\{PAIBOT_SECRET:\?[^}]+\}/g, "«PAIBOT-SECRET»"],
   [/\$\{APP_URL:\?[^}]+\}/g, "«APP-URL»"],
 ];
 const HERKUNFT_COOLIFY = [
   [/\$\{SERVICE_HEX_64_PGAPP\}/g, "«APP-PASSWORT»"],
+  [/\$\{SERVICE_HEX_64_PGWORKER\}/g, "«WORKER-PASSWORT»"],
   [/\$\{SERVICE_HEX_64_PGOWNER\}/g, "«BESITZER-PASSWORT»"],
   [/\$\{SERVICE_REALBASE64_32_PAIBOT\}/g, "«PAIBOT-SECRET»"],
   [/\$\{SERVICE_URL_WEB\}/g, "«APP-URL»"],
@@ -319,7 +322,11 @@ if (coolifyPfad !== undefined) {
     if (rest) {
       fehler.push(`${coolifyPfad}:${z.nr}: ${rest[0]} ist hier nicht vorgesehen.`);
     }
-    if (/\$\{(POSTGRES_PASSWORD|POSTGRES_APP_PASSWORD|PAIBOT_SECRET|APP_URL)\b/.test(z.text)) {
+    if (
+      /\$\{(POSTGRES_PASSWORD|POSTGRES_APP_PASSWORD|POSTGRES_WORKER_PASSWORD|PAIBOT_SECRET|APP_URL)\b/.test(
+        z.text,
+      )
+    ) {
       fehler.push(
         `${coolifyPfad}:${z.nr}: Diesen Wert erzeugt Coolify; er kommt hier nicht aus einer eigenen Variable.`,
       );

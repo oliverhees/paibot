@@ -41,6 +41,11 @@ const DEFAULT_RELEASE_INTERVAL_MS = QUEUE_SUPERVISION.releaseIntervalSeconds * 1
 export interface BuildQueueOptions {
   /** Abstand der Freigabe fehlgeschlagener Aufträge (für Tests kürzer). */
   releaseIntervalMs?: number;
+  /**
+   * Nur arbeiten (Worker-Rolle): beim Start weder Schema prüfen noch die Warteschlange `run`
+   * anlegen oder ändern. Das hat `prepareQueue` mit der App-Rolle getan.
+   */
+  nurArbeiten?: boolean;
 }
 
 /**
@@ -117,6 +122,64 @@ async function ensureSchema(boss: PgBoss): Promise<void> {
   await db.executeSql(`create schema ${QUEUE_SCHEMA}`);
 }
 
+/** Legt die Warteschlange `run` an und setzt ihre Werte (auch bei einer schon vorhandenen). */
+async function ensureRunQueue(boss: PgBoss): Promise<void> {
+  await boss.createQueue(RUN_QUEUE.name, {
+    policy: RUN_QUEUE.policy,
+    retryLimit: RUN_QUEUE.retryLimit,
+    expireInSeconds: RUN_QUEUE.expireInSeconds,
+    heartbeatSeconds: RUN_QUEUE.heartbeatSeconds,
+    notify: RUN_QUEUE.notify,
+  });
+  // Eine schon vorhandene Warteschlange behält sonst ihre alten Werte.
+  await boss.updateQueue(RUN_QUEUE.name, {
+    retryLimit: RUN_QUEUE.retryLimit,
+    expireInSeconds: RUN_QUEUE.expireInSeconds,
+    heartbeatSeconds: RUN_QUEUE.heartbeatSeconds,
+    notify: RUN_QUEUE.notify,
+  });
+}
+
+/** Name einer Rolle in doppelten Anführungszeichen. */
+function quoteIdent(name: string): string {
+  return `"${name.replaceAll('"', '""')}"`;
+}
+
+/**
+ * Einrichtung durch die Besitzerin (App-Rolle): Schema prüfen, Bibliothek starten (installiert oder
+ * hebt ihre Tabellen an), Warteschlange `run` anlegen, Rechte der Worker-Rolle setzen, beenden.
+ * Die Rechte vergibt die Besitzerin, weil nur sie das für ihre Tabellen darf. `alter default
+ * privileges` gilt für Tabellen, die sie später anlegt (etwa Teil-Tabellen der Statistik).
+ */
+export async function prepareQueueWith(
+  boss: PgBoss,
+  options: { workerRole?: string },
+): Promise<void> {
+  boss.on("error", (error) => {
+    console.error(`[jobs] Fehler der Warteschlange: ${describeQueueError(error)}`);
+  });
+  try {
+    await ensureSchema(boss);
+    await boss.start();
+    await ensureRunQueue(boss);
+    if (options.workerRole !== undefined) {
+      const role = quoteIdent(options.workerRole);
+      const db = boss.getDb();
+      for (const statement of [
+        `grant usage on schema ${QUEUE_SCHEMA} to ${role}`,
+        `grant select, insert, update, delete on all tables in schema ${QUEUE_SCHEMA} to ${role}`,
+        `grant usage, select on all sequences in schema ${QUEUE_SCHEMA} to ${role}`,
+        `alter default privileges in schema ${QUEUE_SCHEMA} grant select, insert, update, delete on tables to ${role}`,
+        `alter default privileges in schema ${QUEUE_SCHEMA} grant usage, select on sequences to ${role}`,
+      ]) {
+        await db.executeSql(statement);
+      }
+    }
+  } finally {
+    await boss.stop({ graceful: false, close: true, timeout: 5_000 });
+  }
+}
+
 /**
  * Setzt die Schnittstelle `Queue` auf eine (noch nicht gestartete) pg-boss-Instanz. Die Instanz
  * wird von außen übergeben, damit Tests sie auf PGlite setzen können.
@@ -161,22 +224,18 @@ export function buildQueue(boss: PgBoss, options: BuildQueueOptions = {}): Queue
   }
 
   async function doStart(): Promise<void> {
-    await ensureSchema(boss);
-    await boss.start();
-    await boss.createQueue(RUN_QUEUE.name, {
-      policy: RUN_QUEUE.policy,
-      retryLimit: RUN_QUEUE.retryLimit,
-      expireInSeconds: RUN_QUEUE.expireInSeconds,
-      heartbeatSeconds: RUN_QUEUE.heartbeatSeconds,
-      notify: RUN_QUEUE.notify,
-    });
-    // Eine schon vorhandene Warteschlange behält sonst ihre alten Werte.
-    await boss.updateQueue(RUN_QUEUE.name, {
-      retryLimit: RUN_QUEUE.retryLimit,
-      expireInSeconds: RUN_QUEUE.expireInSeconds,
-      heartbeatSeconds: RUN_QUEUE.heartbeatSeconds,
-      notify: RUN_QUEUE.notify,
-    });
+    if (options.nurArbeiten === true) {
+      await boss.start();
+      if ((await boss.getQueue(RUN_QUEUE.name)) === null) {
+        throw new Error(
+          `Die Warteschlange ${RUN_QUEUE.name} fehlt. Sie legt der Migrations-Schritt (Dienst migrate) an.`,
+        );
+      }
+    } else {
+      await ensureSchema(boss);
+      await boss.start();
+      await ensureRunQueue(boss);
+    }
     if (state === "new") state = "started";
   }
 

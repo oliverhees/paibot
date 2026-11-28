@@ -299,6 +299,7 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
           PAIBOT_ROLE: "migrate",
           DATABASE_URL: db.app,
           DATABASE_MIGRATION_URL: db.migration,
+          DATABASE_WORKER_URL: db.worker,
           MIGRATIONS_DIR: migrationen,
           PORT: String(await freierPort()),
           HOSTNAME: "127.0.0.1",
@@ -345,11 +346,14 @@ export async function starteStack({ ausgabe, log = () => undefined, zusatzWeb })
       if (worker) await worker.stoppe();
       if (zustand !== "aus") attrappe.setzeZustand(zustand);
       workerLaeufe += 1;
-      log(`Worker (nur App-Rolle, mit Netz-Sperre, Datenschleuse: ${zustand}) …`);
+      log(`Worker (nur Worker-Rolle, mit Netz-Sperre, Datenschleuse: ${zustand}) …`);
+      // Ohne DATABASE_URL: Der Worker hält die Zugangsdaten der App-Rolle nicht.
+      const { DATABASE_URL: _app, ...ohneApp } = gemeinsam;
       worker = starte("Worker", process.execPath, [WORKER], {
         cwd: app,
         env: grundUmgebung({
-          ...gemeinsam,
+          ...ohneApp,
+          DATABASE_WORKER_URL: db.worker,
           PAIBOT_WORKER_HEALTH_FILE: path.join(ordner, "worker.herzschlag"),
           ...(zustand === "aus"
             ? {}

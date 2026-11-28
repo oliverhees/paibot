@@ -27,7 +27,7 @@ import {
   MIGRATIONS_FOLDER,
   TEST_DATABASE_URL_ENV,
 } from "@paibot/db/testing";
-import { createQueue } from "@paibot/jobs";
+import { createQueue, prepareQueue } from "@paibot/jobs";
 import { createReceiptWriter, verifyChain } from "@paibot/receipts";
 import type { RunId } from "@paibot/shared/ids";
 import { build } from "esbuild";
@@ -136,6 +136,8 @@ describe.skipIf(BASE_URL === undefined)("Worker mitten im Werkzeug beendet", () 
     const fake = provider();
     const testDb = await createPostgresTestDatabase(BASE_URL ?? "");
     const { db, sql } = createDb(testDb.url);
+    // Wie im Betrieb: Der Migrations-Schritt richtet die Warteschlange ein, der Worker nicht.
+    await prepareQueue(testDb.url);
     const sender = createQueue(testDb.url);
     const entryFile = path.join(folder, "einstieg.ts");
     await writeFile(entryFile, entry());

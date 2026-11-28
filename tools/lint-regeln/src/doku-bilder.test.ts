@@ -31,6 +31,8 @@ const lauf = await laden<{
   istDokuDatenbank: (name: unknown) => boolean;
   istDokuRolle: (name: unknown) => boolean;
   rollenName: (db: string) => string;
+  istDokuWorkerRolle: (name: unknown) => boolean;
+  workerRollenName: (db: string) => string;
   wegwerfWert: (laenge?: number) => string;
   setzeSonderwert: (text: string, lauf: Record<string, string>) => string;
   schreibeLauf: (daten: unknown, datei: string) => void;
@@ -244,6 +246,9 @@ describe("Schutz der Wegwerf-Datenbank", () => {
     const name = lauf.neuerDatenbankName();
     expect(lauf.istDokuDatenbank(name)).toBe(true);
     expect(lauf.istDokuRolle(lauf.rollenName(name))).toBe(true);
+    expect(lauf.istDokuWorkerRolle(lauf.workerRollenName(name))).toBe(true);
+    expect(lauf.istDokuWorkerRolle(lauf.rollenName(name))).toBe(false);
+    expect(lauf.istDokuRolle(lauf.workerRollenName(name))).toBe(false);
     for (const fremd of [
       "paibot",
       "postgres",
@@ -254,6 +259,7 @@ describe("Schutz der Wegwerf-Datenbank", () => {
       expect(lauf.istDokuDatenbank(fremd), fremd).toBe(false);
     }
     expect(() => lauf.rollenName("paibot")).toThrow();
+    expect(() => lauf.workerRollenName("paibot")).toThrow();
     expect(() => lauf.neuerDatenbankName("x; drop database")).toThrow();
   });
 

@@ -11,7 +11,13 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { type AppRoleSetup, prepareAppRole } from "./rollen";
+import {
+  type AppRoleSetup,
+  credentialsOf,
+  prepareAppRole,
+  prepareWorkerRole,
+  type WorkerRoleSetup,
+} from "./rollen";
 import { MIGRATION_LOCK_KEY } from "./sperren";
 
 export * from "./rollen";
@@ -26,6 +32,12 @@ export interface MigrationOptions {
    */
   appUrl?: string;
   /**
+   * Adresse des Workers (`DATABASE_WORKER_URL`). Ist sie gesetzt, richtet `runMigrations` nach der
+   * App-Rolle unter derselben Sperre die Worker-Rolle ein (`prepareWorkerRole`). Sie muss eine
+   * eigene Rolle nutzen, weder die aus `url` noch die aus `appUrl`.
+   */
+  workerUrl?: string;
+  /**
    * Wie lange auf die Sperre der Migration gewartet wird (Millisekunden, Standard 120 000). Hält
    * sie jemand länger, bricht der Lauf mit einer Meldung ab, die die haltende Rolle nennt.
    */
@@ -36,6 +48,8 @@ export interface MigrationOptions {
 export interface MigrationResult {
   /** Was für die App-Rolle getan wurde; fehlt ohne `appUrl` oder bei derselben Rolle. */
   appRole?: AppRoleSetup;
+  /** Was für die Worker-Rolle getan wurde; fehlt ohne `workerUrl`. */
+  workerRole?: WorkerRoleSetup;
 }
 
 /**
@@ -58,9 +72,16 @@ export async function runMigrations(
     await acquireMigrationLock(sql, options.lockWaitMs ?? 120_000);
     try {
       await migrate(drizzle(sql), { migrationsFolder });
-      if (options.appUrl === undefined) return {};
-      const appRole = await prepareAppRole(sql, options.appUrl);
-      return appRole === undefined ? {} : { appRole };
+      const result: MigrationResult = {};
+      if (options.appUrl !== undefined) {
+        const appRole = await prepareAppRole(sql, options.appUrl);
+        if (appRole !== undefined) result.appRole = appRole;
+      }
+      if (options.workerUrl !== undefined) {
+        const appUser = credentialsOf(options.appUrl ?? url).user;
+        result.workerRole = await prepareWorkerRole(sql, options.workerUrl, appUser);
+      }
+      return result;
     } finally {
       await sql`select pg_catalog.pg_advisory_unlock(${MIGRATION_LOCK_KEY}::bigint)`;
     }

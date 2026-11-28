@@ -50,3 +50,24 @@ export const prozessEinreihen: Einreihen = {
     await warteschlange().enqueueRun(job, { executor: executorFuer(tx) });
   },
 };
+
+/**
+ * Startet die Warteschlange beim Serverstart. Die Web-App ist die Besitzerin der Warteschlange und
+ * übernimmt deshalb ihre Wartung (alte Aufträge entfernen, Statistik und deren Teil-Tabellen); der
+ * Worker darf dort nur lesen und schreiben. Ohne `DATABASE_URL` geschieht nichts. Ein Fehler steht
+ * im Log und bricht den Start nicht ab; beim ersten Einreihen wird es erneut versucht.
+ */
+export function warteschlangeBeimStart(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<void> {
+  if (!env.DATABASE_URL) return Promise.resolve();
+  return warteschlange()
+    .start()
+    .then(
+      () => console.log("[paibot] Warteschlange gestartet (Wartung läuft in der Web-App)."),
+      (error: unknown) => {
+        const art = error instanceof Error ? error.name : typeof error;
+        console.warn(`[paibot] Warteschlange beim Start nicht gestartet (${art}).`);
+      },
+    );
+}

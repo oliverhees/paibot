@@ -11,7 +11,7 @@
 
 import { randomBytes } from "node:crypto";
 import { createDb, repo } from "@paibot/db";
-import { prepareDatabase, runMigrations } from "@paibot/db/migrate";
+import { checkWorkerRole, prepareDatabase, runMigrations } from "@paibot/db/migrate";
 import {
   createPostgresTestDatabase,
   MIGRATIONS_FOLDER,
@@ -234,4 +234,91 @@ describe.skipIf(BASE_URL === undefined)("Start mit getrennten Rollen gegen echte
     await prepareStart(env({ DATABASE_URL: appUrl }), { log: silent, exit, attempts: 1 });
     expect(exitCodes).toEqual([1, 0, 0]);
   }, 60_000);
+
+  it("Update einer Installation ohne Worker-Rolle: migrate legt sie an, der Worker arbeitet danach mit ihr einen alten Auftrag ab", async () => {
+    const db = await createPostgresTestDatabase(BASE_URL ?? "", { migrate: false });
+    opened.push(db);
+    const appUrl = newRole(db);
+    const workerUrl = newRole(db);
+    const workerName = new URL(workerUrl).username;
+    const exitCodes: number[] = [];
+    const exit = ((code: number) => {
+      exitCodes.push(code);
+    }) as (code: number) => never;
+    const lines: string[] = [];
+    const log = {
+      info: (m: string) => lines.push(`info ${m}`),
+      warn: (m: string) => lines.push(`warn ${m}`),
+      error: (m: string) => lines.push(`error ${m}`),
+    };
+    // Nicht „production“: Das Passwort des Test-Superusers ist kurz (wie im Test darüber).
+    const migrate = (extra: Record<string, string> = {}) =>
+      ({
+        NODE_ENV: "test",
+        PAIBOT_ROLE: "migrate",
+        DATABASE_URL: appUrl,
+        DATABASE_MIGRATION_URL: db.url,
+        MIGRATIONS_DIR: MIGRATIONS_FOLDER,
+        ...extra,
+      }) as NodeJS.ProcessEnv;
+
+    // 1. Bestehende Installation (bisheriger Stand): nur App-Rolle, die Web-App legt die
+    //    Warteschlange selbst an, ein Lauf wartet noch.
+    await runMigrations(db.url, MIGRATIONS_FOLDER, { appUrl });
+    const alt = createQueue(appUrl);
+    const wartend = { runId: newId("run"), conversationId: newId("conversation") };
+    try {
+      await alt.start();
+      await alt.enqueueRun(wartend);
+    } finally {
+      await alt.stop({ timeoutMs: 1000 });
+    }
+
+    // 2. Update ohne neuen Wert in der .env: migrate läuft durch, warnt aber.
+    await prepareStart(migrate(), { log, exit, attempts: 1 });
+    expect(exitCodes).toEqual([0]);
+    expect(lines).toContainEqual(expect.stringMatching(/^warn DATABASE_WORKER_URL fehlt/));
+
+    // 3. Wert ergänzt (sh deploy/env-ergaenzen.sh): migrate legt die Worker-Rolle an und gibt ihr
+    //    die Rechte in der Warteschlange; ein zweiter Lauf ändert nichts mehr.
+    lines.length = 0;
+    await prepareStart(migrate({ DATABASE_WORKER_URL: workerUrl }), { log, exit, attempts: 1 });
+    await prepareStart(migrate({ DATABASE_WORKER_URL: workerUrl }), { log, exit, attempts: 1 });
+    expect(exitCodes).toEqual([0, 0, 0]);
+    expect(lines).toContain(`info Worker-Rolle ${workerName} angelegt.`);
+    expect(lines.filter((l) => l.includes(`angelegt.`) && l.includes(workerName))).toHaveLength(1);
+    expect(lines.join("\n")).not.toContain(new URL(workerUrl).password);
+
+    // 4. Der Worker mit seiner Rolle: eingeschränkt, arbeitet den alten Lauf ab, schreibt keine Bots.
+    const worker = createDb(workerUrl);
+    const queue = createQueue(workerUrl, { rolle: "worker" });
+    try {
+      expect(await checkWorkerRole(worker.sql)).toMatchObject({
+        status: "eingeschraenkt",
+        role: workerName,
+        issues: [],
+      });
+      const seen: RunJob[] = [];
+      await queue.start();
+      await queue.startRunWorker(
+        async (job) => {
+          seen.push(job);
+        },
+        { concurrency: 1 },
+      );
+      await waitFor(() => seen.length > 0);
+      expect(seen[0]).toEqual(wartend);
+      const code = await worker.sql`insert into bots (id, name) values (${newId("bot")}, 'x')`.then(
+        () => undefined,
+        (error: { code?: string }) => error.code,
+      );
+      expect(code).toBe("42501");
+    } finally {
+      await queue.stop({ timeoutMs: 1000 });
+      await worker.sql.end({ timeout: 2 });
+    }
+
+    // 5. Die Web-App startet danach weiter mit der App-Rolle.
+    await roundTrip(appUrl);
+  }, 90_000);
 });

@@ -64,6 +64,7 @@ function coolifyWerte(): Env {
   return {
     SERVICE_HEX_64_PGOWNER: randomBytes(32).toString("hex"),
     SERVICE_HEX_64_PGAPP: randomBytes(32).toString("hex"),
+    SERVICE_HEX_64_PGWORKER: randomBytes(32).toString("hex"),
     SERVICE_REALBASE64_32_PAIBOT: randomBytes(32).toString("base64"),
     // Coolify setzt SERVICE_URL_WEB aus der Domain beim Dienst web (mit Schema, ohne Port) und
     // SERVICE_URL_WEB_3000 mit angehängtem Port.
@@ -78,6 +79,8 @@ describe("deploy/docker-compose.coolify.yml mit Werten aus Coolify", () => {
       const werte = coolifyWerte();
       const web = dienstUmgebung("web", werte);
       expect(web.DATABASE_MIGRATION_URL).toBeUndefined();
+      // Die Web-App kennt die Zugangsdaten der Worker-Rolle nicht.
+      expect(web.DATABASE_WORKER_URL).toBeUndefined();
       expect(checkProductionEnv(web, "web")).toEqual([]);
       expect(pruefeAppUrl(web).warnungen).toEqual([]);
       expect(checkProductionEnv(dienstUmgebung("migrate", werte), "migrate")).toEqual([]);
@@ -93,6 +96,9 @@ describe("deploy/docker-compose.coolify.yml mit Werten aus Coolify", () => {
     expect(decodeURIComponent(besitzer.password)).toBe(werte.SERVICE_HEX_64_PGOWNER);
     expect(app.username).toBe("paibot_app");
     expect(besitzer.username).toBe("paibot");
+    const worker = new URL(migrate.DATABASE_WORKER_URL ?? "");
+    expect(decodeURIComponent(worker.password)).toBe(werte.SERVICE_HEX_64_PGWORKER);
+    expect(worker.username).toBe("paibot_worker");
     expect(dienstUmgebung("postgres", werte).POSTGRES_PASSWORD).toBe(werte.SERVICE_HEX_64_PGOWNER);
   });
 

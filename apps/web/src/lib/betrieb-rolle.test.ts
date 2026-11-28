@@ -31,6 +31,12 @@ vi.mock("@paibot/db/migrate", () => ({
   },
 }));
 
+vi.mock("@paibot/jobs", () => ({
+  prepareQueue: async () => {
+    calls.push("warteschlange");
+  },
+}));
+
 const { prepareStart } = await import("./betrieb");
 
 const url = (user: string) =>
@@ -71,7 +77,8 @@ describe("wer migriert", () => {
       } as NodeJS.ProcessEnv,
       { log: silent, exit },
     );
-    expect(calls).toEqual(["migrieren"]);
+    // Nach den Migrationen richtet migrate die Warteschlange mit der App-Rolle ein.
+    expect(calls).toEqual(["migrieren", "warteschlange"]);
     expect(exits).toEqual([0]);
   });
 
@@ -80,6 +87,7 @@ describe("wer migriert", () => {
       { NODE_ENV: "development", DATABASE_URL: url("paibot") } as NodeJS.ProcessEnv,
       { log: silent, exit },
     );
-    expect(calls).toEqual(["migrieren"]);
+    // In der Entwicklung ist die Web-App auch der Migrations-Schritt (samt Warteschlange).
+    expect(calls).toEqual(["migrieren", "warteschlange"]);
   });
 });

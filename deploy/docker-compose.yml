@@ -10,10 +10,13 @@
 # Werte erzeugen:  sh deploy/env-erzeugen.sh
 # Start lokal:     docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 #
-# Zwei Rollen in der Datenbank:
-#   POSTGRES_USER      Besitzer der Tabellen; nur der Einmal-Dienst migrate nutzt ihn.
-#   POSTGRES_APP_USER  eingeschränkte Rolle für Web-App und Worker; migrate legt sie an und setzt
-#                      bei jedem Lauf ihre Rechte, Einstellungen und ihr Passwort neu.
+# Drei Rollen in der Datenbank:
+#   POSTGRES_USER         Besitzer der Tabellen; nur der Einmal-Dienst migrate nutzt ihn.
+#   POSTGRES_APP_USER     eingeschränkte Rolle der Web-App; migrate legt sie an und setzt bei jedem
+#                         Lauf ihre Rechte, Einstellungen und ihr Passwort neu.
+#   POSTGRES_WORKER_USER  Rolle des Workers mit noch weniger Rechten: liest, was Läufe brauchen,
+#                         schreibt nur Läufe, Nachrichten, Ereignisse, Belege und Aufträge, nie
+#                         Bots, Teams oder den Kopf eines Fadens. migrate richtet sie ebenso ein.
 #
 # migrate, web und worker kommen aus demselben Image; PAIBOT_ROLE wählt die Rolle. Nur migrate
 # kennt die Zugangsdaten des Tabellen-Besitzers; er migriert und beendet sich (Exit 0). web und
@@ -75,6 +78,7 @@ services:
       PAIBOT_ROLE: migrate
       DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
       DATABASE_MIGRATION_URL: postgres://${POSTGRES_USER:-paibot}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paibot}
+      DATABASE_WORKER_URL: postgres://${POSTGRES_WORKER_USER:-paibot_worker}:${POSTGRES_WORKER_PASSWORD:?POSTGRES_WORKER_PASSWORD fehlt – ergänze die Werte mit sh deploy/env-ergaenzen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
       # Bewusst ohne PAIBOT_SECRET: Der Migrations-Schritt braucht es nicht.
     depends_on:
       postgres:
@@ -162,7 +166,7 @@ services:
     logging: *logging
     environment:
       PAIBOT_ROLE: worker
-      DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
+      DATABASE_WORKER_URL: postgres://${POSTGRES_WORKER_USER:-paibot_worker}:${POSTGRES_WORKER_PASSWORD:?POSTGRES_WORKER_PASSWORD fehlt – ergänze die Werte mit sh deploy/env-ergaenzen.sh}@postgres:5432/${POSTGRES_DB:-paibot}
       PAIBOT_SECRET: ${PAIBOT_SECRET:?PAIBOT_SECRET fehlt – erzeuge die Werte mit sh deploy/env-erzeugen.sh}
       PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
       PAIBOT_WORKER_CONCURRENCY: ${PAIBOT_WORKER_CONCURRENCY:-2}
@@ -172,11 +176,13 @@ services:
       SCHLEUSE_KEY: ${SCHLEUSE_KEY:-}
       # anfrage (Standard): der Worker schickt den Anbieter-Schlüssel mit jeder Anfrage mit.
       SCHLEUSE_SCHLUESSEL_WEG: ${SCHLEUSE_SCHLUESSEL_WEG:-anfrage}
-      # Bewusst ohne DATABASE_MIGRATION_URL: Der Worker migriert nie.
+      # Bewusst ohne DATABASE_MIGRATION_URL (der Worker migriert nie) und ohne DATABASE_URL (die
+      # Zugangsdaten der App-Rolle braucht er nicht).
     depends_on:
       postgres:
         condition: service_healthy
-      # migrate wendet die Migrationen an und legt die App-Rolle an; erst danach startet der Worker.
+      # migrate wendet die Migrationen an, legt die Rollen an und richtet die Warteschlange ein;
+      # erst danach startet der Worker.
       migrate:
         condition: service_completed_successfully
     networks:

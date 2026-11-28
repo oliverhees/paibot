@@ -1,9 +1,10 @@
 /**
  * PaiBot – Quelltext-Test: Bots, Teams, Entwürfe und Fäden ändert nur der Besitzer-Weg der
- * Web-App, nie der Worker und nie die Lauf-Steuerung. Die Datenbank kann das nicht trennen (eine
- * Rolle für Web-App und Worker, siehe `APP_TABLE_RIGHTS`); deshalb prüft dieser Test den Quelltext
- * von `apps/worker` und `packages/agents`: keine Schreibfunktion für diese Tabellen und kein
- * Tabellen-Objekt von ihnen.
+ * Web-App, nie der Worker und nie die Lauf-Steuerung. In der Datenbank trennt das die eigene Rolle
+ * des Workers (`WORKER_TABLE_RIGHTS`, Test `worker-rolle-postgres.test.ts`). Dieser Test prüft
+ * zusätzlich den Quelltext von `apps/worker` und `packages/agents`: keine Schreibfunktion für diese
+ * Tabellen und kein Tabellen-Objekt von ihnen. Er fängt auch den Fall ab, dass der Worker
+ * übergangsweise mit der App-Rolle läuft (`PAIBOT_ALLOW_PRIVILEGED_DB=1`).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de

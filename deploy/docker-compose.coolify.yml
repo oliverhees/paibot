@@ -17,7 +17,8 @@
 # https://coolify.io/docs/knowledge-base/docker/compose):
 #   SERVICE_HEX_64_PGOWNER        Passwort des Tabellen-Besitzers (nur postgres und migrate):
 #                                 64 Hex-Zeichen, gefahrlos in einer Datenbank-Adresse
-#   SERVICE_HEX_64_PGAPP          Passwort der App-Rolle (migrate, web, worker), ein eigener Wert
+#   SERVICE_HEX_64_PGAPP          Passwort der App-Rolle (migrate, web), ein eigener Wert
+#   SERVICE_HEX_64_PGWORKER       Passwort der Worker-Rolle (migrate, worker), ein eigener Wert
 #   SERVICE_REALBASE64_32_PAIBOT  PAIBOT_SECRET: 32 zufällige Byte als Base64
 #   SERVICE_URL_WEB               APP_URL: die Domain des Dienstes web mit https://, ohne Port
 # Die Zeile SERVICE_URL_WEB_3000 beim Dienst web ordnet die Domain dem Dienst web zu; der Proxy
@@ -41,12 +42,17 @@
 #      sich gespeicherte Anbieter-Schlüssel nicht mehr lesen; ein neuer Wert ersetzt ihn nicht.
 #
 # Nur für eine neue Installation. Lief PaiBot schon mit deploy/docker-compose.yml, bleib dabei oder
-# trag die bisherigen Werte in die drei SERVICE_…-Variablen ein (siehe docs/deploy-coolify.md).
+# trag die bisherigen Werte in die SERVICE_…-Variablen ein (siehe docs/deploy-coolify.md).
+# SERVICE_HEX_64_PGWORKER erzeugt Coolify auch bei einer bestehenden Installation beim nächsten
+# Einlesen selbst; die Worker-Rolle legt migrate dann an (docs/aktualisieren.md).
 #
-# Zwei Rollen in der Datenbank:
-#   POSTGRES_USER      Besitzer der Tabellen; nur der Einmal-Dienst migrate nutzt ihn.
-#   POSTGRES_APP_USER  eingeschränkte Rolle für Web-App und Worker; migrate legt sie an und setzt
-#                      bei jedem Lauf ihre Rechte, Einstellungen und ihr Passwort neu.
+# Drei Rollen in der Datenbank:
+#   POSTGRES_USER         Besitzer der Tabellen; nur der Einmal-Dienst migrate nutzt ihn.
+#   POSTGRES_APP_USER     eingeschränkte Rolle der Web-App; migrate legt sie an und setzt bei jedem
+#                         Lauf ihre Rechte, Einstellungen und ihr Passwort neu.
+#   POSTGRES_WORKER_USER  Rolle des Workers mit noch weniger Rechten: liest, was Läufe brauchen,
+#                         schreibt nur Läufe, Nachrichten, Ereignisse, Belege und Aufträge, nie
+#                         Bots, Teams oder den Kopf eines Fadens. migrate richtet sie ebenso ein.
 #
 # migrate, web und worker kommen aus demselben Image; PAIBOT_ROLE wählt die Rolle. migrate läuft bei
 # jedem Deploy einmal, beendet sich mit Exit 0 und steht danach auf „Exited“; das ist richtig.
@@ -135,7 +141,7 @@ services:
     logging: *logging
     environment:
       PAIBOT_ROLE: worker
-      DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${SERVICE_HEX_64_PGAPP}@postgres:5432/${POSTGRES_DB:-paibot}
+      DATABASE_WORKER_URL: postgres://${POSTGRES_WORKER_USER:-paibot_worker}:${SERVICE_HEX_64_PGWORKER}@postgres:5432/${POSTGRES_DB:-paibot}
       PAIBOT_SECRET: ${SERVICE_REALBASE64_32_PAIBOT}
       PAIBOT_ALLOW_PRIVILEGED_DB: ${PAIBOT_ALLOW_PRIVILEGED_DB:-}
       PAIBOT_WORKER_CONCURRENCY: ${PAIBOT_WORKER_CONCURRENCY:-2}
@@ -145,11 +151,13 @@ services:
       SCHLEUSE_KEY: ${SCHLEUSE_KEY:-}
       # anfrage (Standard): der Worker schickt den Anbieter-Schlüssel mit jeder Anfrage mit.
       SCHLEUSE_SCHLUESSEL_WEG: ${SCHLEUSE_SCHLUESSEL_WEG:-anfrage}
-      # Bewusst ohne DATABASE_MIGRATION_URL: Der Worker migriert nie.
+      # Bewusst ohne DATABASE_MIGRATION_URL (der Worker migriert nie) und ohne DATABASE_URL (die
+      # Zugangsdaten der App-Rolle braucht er nicht).
     depends_on:
       postgres:
         condition: service_healthy
-      # migrate wendet die Migrationen an und legt die App-Rolle an; erst danach startet der Worker.
+      # migrate wendet die Migrationen an, legt die Rollen an und richtet die Warteschlange ein;
+      # erst danach startet der Worker.
       migrate:
         condition: service_completed_successfully
     networks:
@@ -194,6 +202,7 @@ services:
       PAIBOT_ROLE: migrate
       DATABASE_URL: postgres://${POSTGRES_APP_USER:-paibot_app}:${SERVICE_HEX_64_PGAPP}@postgres:5432/${POSTGRES_DB:-paibot}
       DATABASE_MIGRATION_URL: postgres://${POSTGRES_USER:-paibot}:${SERVICE_HEX_64_PGOWNER}@postgres:5432/${POSTGRES_DB:-paibot}
+      DATABASE_WORKER_URL: postgres://${POSTGRES_WORKER_USER:-paibot_worker}:${SERVICE_HEX_64_PGWORKER}@postgres:5432/${POSTGRES_DB:-paibot}
       # Bewusst ohne PAIBOT_SECRET: Der Migrations-Schritt braucht es nicht.
     depends_on:
       postgres:

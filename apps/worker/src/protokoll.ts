@@ -76,7 +76,7 @@ export function sanitizeLine(message: string): string {
 type Env = Readonly<Record<string, string | undefined>>;
 
 const SECRET_VARIABLES = ["PAIBOT_SECRET", "SCHLEUSE_KEY", "FAKE_PROVIDER_CONTROL_KEY"] as const;
-const URL_VARIABLES = ["DATABASE_URL", "DATABASE_MIGRATION_URL"] as const;
+const URL_VARIABLES = ["DATABASE_URL", "DATABASE_MIGRATION_URL", "DATABASE_WORKER_URL"] as const;
 
 /** Werte aus der Umgebung, die nie im Log stehen dürfen (Schlüssel und Datenbank-Passwörter). */
 export function secretsOf(env: Env): string[] {

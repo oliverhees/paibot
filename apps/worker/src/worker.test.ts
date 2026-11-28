@@ -31,10 +31,15 @@ import {
 
 const SECRET = randomBytes(32).toString("base64");
 const DB_PASSWORD = randomBytes(16).toString("hex");
-const URL_OK = `postgres://paibot_app:${DB_PASSWORD}@postgres:5432/paibot`;
-const ENV = { PAIBOT_SECRET: SECRET, DATABASE_URL: URL_OK, NODE_ENV: "production" };
+const URL_OK = `postgres://paibot_worker:${DB_PASSWORD}@postgres:5432/paibot`;
+const ENV = { PAIBOT_SECRET: SECRET, DATABASE_WORKER_URL: URL_OK, NODE_ENV: "production" };
 
-const CONFIG: WorkerConfig = { databaseUrl: URL_OK, concurrency: 2, shutdownTimeoutMs: 200 };
+const CONFIG: WorkerConfig = {
+  databaseUrl: URL_OK,
+  databaseVariable: "DATABASE_WORKER_URL",
+  concurrency: 2,
+  shutdownTimeoutMs: 200,
+};
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -202,31 +207,46 @@ describe("Einstellungen", () => {
   });
 
   it("liest Standardwerte und prüft Zahlen, ohne Werte zu nennen", () => {
-    expect(loadWorkerConfig({ DATABASE_URL: URL_OK })).toEqual({
+    expect(loadWorkerConfig({ DATABASE_WORKER_URL: URL_OK })).toEqual({
       databaseUrl: URL_OK,
+      databaseVariable: "DATABASE_WORKER_URL",
       concurrency: 2,
       shutdownTimeoutMs: 20_000,
       healthFile: "/tmp/paibot-worker.herzschlag",
     });
     expect(
       loadWorkerConfig({
-        DATABASE_URL: URL_OK,
+        DATABASE_WORKER_URL: URL_OK,
         PAIBOT_WORKER_CONCURRENCY: "4",
         PAIBOT_WORKER_HEALTH_FILE: "",
       }),
-    ).toEqual({ databaseUrl: URL_OK, concurrency: 4, shutdownTimeoutMs: 20_000 });
+    ).toEqual({
+      databaseUrl: URL_OK,
+      databaseVariable: "DATABASE_WORKER_URL",
+      concurrency: 4,
+      shutdownTimeoutMs: 20_000,
+    });
+    // Ohne eigene Adresse: Rückfall auf die App-Rolle (ob erlaubt, prüft checkWorkerEnv).
+    const app = `postgres://paibot_app:${DB_PASSWORD}@postgres:5432/paibot`;
+    expect(loadWorkerConfig({ DATABASE_URL: app })).toMatchObject({
+      databaseUrl: app,
+      databaseVariable: "DATABASE_URL",
+    });
+    expect(loadWorkerConfig({ DATABASE_URL: app, DATABASE_WORKER_URL: URL_OK }).databaseUrl).toBe(
+      URL_OK,
+    );
     expect(() => loadWorkerConfig({})).toThrow(TypeError);
     expect(() =>
-      loadWorkerConfig({ DATABASE_URL: URL_OK, PAIBOT_WORKER_CONCURRENCY: "x" }),
+      loadWorkerConfig({ DATABASE_WORKER_URL: URL_OK, PAIBOT_WORKER_CONCURRENCY: "x" }),
     ).toThrow(/PAIBOT_WORKER_CONCURRENCY/);
     expect(() =>
-      loadWorkerConfig({ DATABASE_URL: URL_OK, PAIBOT_WORKER_CONCURRENCY: "0" }),
+      loadWorkerConfig({ DATABASE_WORKER_URL: URL_OK, PAIBOT_WORKER_CONCURRENCY: "0" }),
     ).toThrow(TypeError);
     expect(() =>
-      loadWorkerConfig({ DATABASE_URL: URL_OK, PAIBOT_WORKER_HEALTH_FILE: "herz" }),
+      loadWorkerConfig({ DATABASE_WORKER_URL: URL_OK, PAIBOT_WORKER_HEALTH_FILE: "herz" }),
     ).toThrow(/absoluter Pfad/);
     try {
-      loadWorkerConfig({ DATABASE_URL: "kaputt:geheim" });
+      loadWorkerConfig({ DATABASE_WORKER_URL: "kaputt:geheim" });
     } catch (error) {
       expect(String(error)).not.toContain("geheim");
     }
@@ -234,27 +254,117 @@ describe("Einstellungen", () => {
 
   it("Pflichtwerte wie die Web-App, Passwort-Regeln nur in Produktion", () => {
     expect(checkWorkerEnv(ENV, true)).toEqual([]);
-    expect(checkWorkerEnv({ DATABASE_URL: URL_OK }, false)).toEqual([
+    expect(checkWorkerEnv({ DATABASE_WORKER_URL: URL_OK }, false)).toEqual([
       "PAIBOT_SECRET fehlt. Erzeuge es mit: openssl rand -base64 32",
     ]);
     expect(checkWorkerEnv({ ...ENV, PAIBOT_SECRET: "bitte-erzeugen" }, true)[0]).toMatch(
       /Platzhalter/,
     );
     expect(checkWorkerEnv({ ...ENV, PAIBOT_SECRET: "a2V5" }, true)[0]).toMatch(/falsche Form/);
-    const kurz = { ...ENV, DATABASE_URL: "postgres://u:kurz12345@h/db" };
+    const kurz = { ...ENV, DATABASE_WORKER_URL: "postgres://u:kurz12345@h/db" };
     expect(checkWorkerEnv(kurz, true)).toEqual([
-      "Das Passwort in DATABASE_URL ist zu kurz (mindestens 24 Zeichen).",
+      "Das Passwort in DATABASE_WORKER_URL ist zu kurz (mindestens 24 Zeichen).",
     ]);
     expect(checkWorkerEnv(kurz, false)).toEqual([]);
-    expect(checkWorkerEnv({ ...ENV, DATABASE_URL: "postgres://u:postgres@h/db" }, true)[0]).toMatch(
-      /Platzhalter/,
-    );
-    expect(checkWorkerEnv({ PAIBOT_SECRET: SECRET }, true)).toEqual(["DATABASE_URL fehlt."]);
+    expect(
+      checkWorkerEnv({ ...ENV, DATABASE_WORKER_URL: "postgres://u:postgres@h/db" }, true)[0],
+    ).toMatch(/Platzhalter/);
+    expect(checkWorkerEnv({ PAIBOT_SECRET: SECRET }, false)).toEqual(["DATABASE_URL fehlt."]);
     expect(checkWorkerEnv({ ...ENV, SCHLEUSE_URL: "http://datenschleuse:4000/v1" }, true)).toEqual([
       "SCHLEUSE_KEY fehlt.",
     ]);
-    const alle = checkWorkerEnv({ ...ENV, DATABASE_URL: "postgres://u:kurz12345@h/db" }, true);
+    const alle = checkWorkerEnv(
+      { ...ENV, DATABASE_WORKER_URL: "postgres://u:kurz12345@h/db" },
+      true,
+    );
     expect(alle.join(" ")).not.toContain("kurz12345");
+  });
+});
+
+describe("Adresse des Workers", () => {
+  const APP = `postgres://paibot_app:${DB_PASSWORD}@postgres:5432/paibot`;
+  const PROD = { PAIBOT_SECRET: SECRET, NODE_ENV: "production" };
+
+  it("in Produktion ohne DATABASE_WORKER_URL: Abbruch, auch wenn DATABASE_URL gesetzt ist", () => {
+    const fehler = checkWorkerEnv({ ...PROD, DATABASE_URL: APP }, true);
+    expect(fehler).toHaveLength(1);
+    expect(fehler[0]).toMatch(/^DATABASE_WORKER_URL fehlt\. Der Worker braucht eine eigene Rolle/);
+    expect(fehler[0]).toContain("PAIBOT_ALLOW_PRIVILEGED_DB=1");
+    expect(checkWorkerEnv({ ...PROD }, true)[0]).toMatch(/^DATABASE_WORKER_URL fehlt/);
+  });
+
+  it("nur mit ausdrücklicher Erlaubnis gilt in Produktion die App-Rolle", () => {
+    expect(
+      checkWorkerEnv({ ...PROD, DATABASE_URL: APP, PAIBOT_ALLOW_PRIVILEGED_DB: "1" }, true),
+    ).toEqual([]);
+    expect(
+      checkWorkerEnv({ ...PROD, DATABASE_URL: APP, PAIBOT_ALLOW_PRIVILEGED_DB: "ja" }, true)[0],
+    ).toMatch(/^DATABASE_WORKER_URL fehlt/);
+  });
+
+  it("in der Entwicklung reicht DATABASE_URL; der Start warnt", async () => {
+    expect(checkWorkerEnv({ PAIBOT_SECRET: SECRET, DATABASE_URL: APP }, false)).toEqual([]);
+    const { deps, lines } = fakeDeps({ stale: async () => [] });
+    const worker = await runWorker(
+      { ...CONFIG, databaseUrl: APP, databaseVariable: "DATABASE_URL" },
+      { PAIBOT_SECRET: SECRET, DATABASE_URL: APP },
+      deps,
+    );
+    await worker.stop();
+    expect(lines).toContainEqual(
+      expect.stringMatching(
+        /^warn WARNUNG: DATABASE_WORKER_URL fehlt\. Der Worker nutzt die App-Rolle/,
+      ),
+    );
+  });
+
+  it("mit eigener Rolle warnt er, wenn DATABASE_URL trotzdem gesetzt ist", async () => {
+    const { deps, lines } = fakeDeps({ stale: async () => [] });
+    const worker = await runWorker(CONFIG, { ...ENV, DATABASE_URL: APP }, deps);
+    await worker.stop();
+    expect(lines).toContainEqual(expect.stringMatching(/^warn DATABASE_URL ist gesetzt/));
+    expect(lines.join("\n")).not.toContain(DB_PASSWORD);
+  });
+});
+
+describe("Warteschlange der Worker-Rolle", () => {
+  it("wartet, bis der Dienst migrate sie eingerichtet hat, und startet dann", async () => {
+    const { deps, calls, lines, queue } = fakeDeps({ stale: async () => [] });
+    let versuche = 0;
+    deps.createQueue = () => {
+      calls.push("createQueue");
+      return {
+        ...queue,
+        start: async () => {
+          versuche += 1;
+          if (versuche < 3) throw new Error(`Die Warteschlange run fehlt. ${URL_OK}`);
+          await queue.start();
+        },
+      };
+    };
+    const worker = await runWorker(CONFIG, ENV, deps);
+    await worker.stop();
+    expect(versuche).toBe(3);
+    expect(calls.filter((c) => c === "createQueue")).toHaveLength(3);
+    expect(lines).toContainEqual(
+      expect.stringMatching(/^info Warte auf die Warteschlange des Dienstes migrate/),
+    );
+    expect(lines).toContain("info Warteschlange gestartet.");
+    expect(lines.join("\n")).not.toContain(DB_PASSWORD);
+  });
+
+  it("bricht nach der Frist ab und schließt die Verbindung", async () => {
+    const { deps, calls, lines, queue } = fakeDeps();
+    deps.createQueue = () => ({
+      ...queue,
+      start: async () => {
+        throw new Error("permission denied for schema pgboss");
+      },
+    });
+    await startFails(runWorker(CONFIG, ENV, deps), "warteschlange");
+    expect(lines.at(-2)).toMatch(/^error Warteschlange nicht startbar/);
+    expect(calls).not.toContain("queue.startRunWorker");
+    expect(calls.at(-1)).toBe("db.close");
   });
 });
 
@@ -295,7 +405,7 @@ describe("Start", () => {
 
   it("bricht bei unvollständigen Einstellungen ab, bevor er die Datenbank anfasst", async () => {
     const { deps, calls, lines } = fakeDeps();
-    await startFails(runWorker(CONFIG, { DATABASE_URL: URL_OK }, deps), "einstellungen");
+    await startFails(runWorker(CONFIG, { DATABASE_WORKER_URL: URL_OK }, deps), "einstellungen");
     expect(calls).toEqual([]);
     expect(lines).toEqual([
       "error PAIBOT_SECRET fehlt. Erzeuge es mit: openssl rand -base64 32",
@@ -308,7 +418,9 @@ describe("Start", () => {
     await startFails(runWorker(CONFIG, ENV, deps), "keine_datenbank");
     expect(calls.filter((c) => c === "ping").length).toBeGreaterThan(1);
     expect(calls).not.toContain("openDatabase");
-    expect(lines.at(-2)).toMatch(/^error Datenbank nach 0 s nicht erreichbar\. Prüfe DATABASE_URL/);
+    expect(lines.at(-2)).toMatch(
+      /^error Datenbank nach 0 s nicht erreichbar\. Prüfe DATABASE_WORKER_URL/,
+    );
   });
 
   it("wartet, bis der Dienst migrate migriert hat, und migriert nie selbst", async () => {
