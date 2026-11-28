@@ -128,6 +128,15 @@ Gut zu wissen:
 - Die CI führt die Tests mit `pnpm test --concurrency=1` aus (`.github/workflows/ci.yml`).
 - Ein einzelnes Paket testen: `pnpm --filter <paket> test`, z. B. `pnpm --filter @paibot/gate test`.
 
+## Geheimnisse und Schwachstellen in der CI
+
+Zwei Prüfungen in `.github/workflows/ci.yml` messen, ob das Projekt Geheimnisse und bekannte Schwachstellen vermeidet. Beide laufen als Docker-Image mit Fassung und Digest (keine Action), damit sich der Inhalt nicht unbemerkt ändert.
+
+- **gitleaks** (Job `geheimnisse`): sucht über die ganze Git-Historie (`fetch-depth: 0`) nach Geheimnissen. Ein Fund in einem alten Commit macht die Prüfung rot, auch wenn die Datei längst geändert ist. Ein Fund heißt: Geheimnis widerrufen bzw. austauschen; die Historie umzuschreiben genügt nicht. Lokal: `docker run --rm -v "$PWD:/repo" <Image aus ci.yml> git /repo --config /repo/.gitleaks.toml --redact --no-banner`.
+- **Trivy** (Schritt im Job `docker`): prüft das dort gebaute Image `paibot:lokal` auf Schwachstellen. CRITICAL oder HIGH mit verfügbarer Korrektur macht die Prüfung rot (`--ignore-unfixed`, `--exit-code 1`). Ein Fund wird behoben, zum Beispiel durch ein neues Paket oder einen neuen Basis-Digest in `apps/web/Dockerfile`. Dort entfernt das Laufzeit-Image auch das mitgelieferte npm, das Web und Worker nicht brauchen.
+- **Ausnahmen** gibt es nur für nachgewiesene Fehlalarme, jeweils mit Begründung: `.gitleaks.toml` (gilt nur für eine Regel und nur für genannte Pfade) und `.trivyignore` (eine CVE-Kennung pro Zeile mit Begründung und Prüfdatum). Pauschale Ausnahmen (ganze Ordner, alle Regeln) sind nicht erlaubt.
+- **Neue Fassung** der Images: Fassung und Digest in `ci.yml` zusammen ändern und danach beide Prüfungen lokal laufen lassen.
+
 ## Prüfung dieser Seiten
 
 `pnpm doku:check` prüft die Entwickler-Doku mit (`scripts/doku-check.mjs`):

@@ -1,0 +1,7 @@
+# PaiBot – Ausnahmen für Trivy (Prüfung des gebauten Images in der CI).
+#
+# Es gibt derzeit keine Ausnahme. Eine Ausnahme steht nur hier, eine CVE-Kennung pro Zeile,
+# jeweils mit Begründung und Datum, bis wann sie geprüft wird, zum Beispiel:
+#
+#   # Betrifft nur den Paketmanager im Build-Stand, nicht das Laufzeit-Image; erneut prüfen bis 2027-01-31
+#   CVE-2026-00000
