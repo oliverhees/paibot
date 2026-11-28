@@ -274,7 +274,12 @@ interface Vorhaben {
   bots: repo.entwuerfe.EntwurfBotAnlage[];
   /** Jeder Bot hat ein Modell (Vorbedingung „Modelle vorhanden“). */
   modelsAvailable: boolean;
-  /** Kein Name ist vergeben oder mit einem bestehenden zu verwechseln, keiner beginnt mit „Team “. */
+  /**
+   * Kein Name ist vergeben oder mit einem bestehenden zu verwechseln, keiner beginnt mit „Team “ –
+   * der des Teams eingeschlossen. Der Vertrag nennt die Vorbedingung „Namen frei“ ohne Einschränkung
+   * auf die Bots, und `teams.name` ist eindeutig (`packages/db/src/schema/teams.ts`): Ohne diesen
+   * Teil scheiterte erst die Transaktion, statt dass das Tor mit einem Beleg ablehnt.
+   */
   namesFree: boolean;
   /** Die Leitung ist einer der Bots, die angelegt werden (Vorbedingung „Ansprechpartner“). */
   contactInDraft: boolean;
@@ -292,7 +297,8 @@ async function vorhabenAus(db: Database, inhalt: TeamEntwurf): Promise<Vorhaben>
     id: b.id,
     name: b.name,
   }));
-  let namesFree = true;
+  const teamNamen = (await repo.teams.list(db)).map((team) => team.name);
+  let namesFree = !teamNamen.includes(inhalt.team.name);
   let modelsAvailable = true;
   const bots: repo.entwuerfe.EntwurfBotAnlage[] = [];
   for (const bot of inhalt.bots) {
