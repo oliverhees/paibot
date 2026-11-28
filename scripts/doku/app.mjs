@@ -524,7 +524,7 @@ async function main() {
     PAIBOT_DOKU_INDEX: baueDokuIndex(ROOT),
   };
   // Wie der Einmal-Dienst `migrate`: einziger Prozess mit dem Zugang des Tabellen-Besitzers, ohne
-  // PAIBOT_SECRET. Web-App und Worker bekommen danach nur die App-Rolle.
+  // PAIBOT_SECRET. Die Web-App bekommt danach nur die App-Rolle, der Worker nur seine eigene.
   log("Migrations-Schritt (wie der Dienst migrate) …");
   await fuehreAus(
     "Migrations-Schritt",
@@ -537,6 +537,7 @@ async function main() {
         PAIBOT_ROLE: "migrate",
         DATABASE_URL: db.app,
         DATABASE_MIGRATION_URL: db.migration,
+        DATABASE_WORKER_URL: db.worker,
         MIGRATIONS_DIR: gemeinsam.MIGRATIONS_DIR,
         PORT: String(await freierPort()),
         HOSTNAME: "127.0.0.1",
@@ -575,10 +576,13 @@ async function main() {
   const starteWorker = async (zustand) => {
     if (worker) await worker.stoppe();
     if (zustand !== "aus") attrappe.setzeZustand(zustand);
+    // Ohne DATABASE_URL: Der Worker hält die Zugangsdaten der App-Rolle nicht.
+    const { DATABASE_URL: _app, ...ohneApp } = gemeinsam;
     worker = starte("Worker", process.execPath, [WORKER], {
       cwd: lauf,
       env: grundUmgebung({
-        ...gemeinsam,
+        ...ohneApp,
+        DATABASE_WORKER_URL: db.worker,
         PAIBOT_WORKER_HEALTH_FILE: path.join(ordner, "worker.herzschlag"),
         ...(zustand === "aus"
           ? {}

@@ -13,8 +13,8 @@
 //
 //   1. PAIBOT_DOKU_DATABASE_URL gesetzt: Adresse eines Postgres-Servers mit einem Benutzer, der
 //      Datenbanken und Rollen anlegen darf. Angelegt werden die Datenbank paibot_doku_<zufall> und
-//      (vom Migrations-Schritt) die Rolle paibot_doku_<zufall>_app. Gelöscht wird nur, was diesen
-//      Namen trägt UND an der Datenbank den Vermerk mit der Kennung dieses Laufs hat.
+//      (vom Migrations-Schritt) die Rollen paibot_doku_<zufall>_app und paibot_doku_<zufall>_worker.
+//      Gelöscht wird nur, was diesen Namen trägt UND an der Datenbank den Vermerk mit der Kennung dieses Laufs hat.
 //   2. Sonst: ein eigener Postgres-Server aus den Programmen des Systems (initdb, pg_ctl) in einem
 //      neuen temporären Ordner, nur an 127.0.0.1. Am Ende gestoppt und der Ordner gelöscht.
 import { execFileSync, spawnSync } from "node:child_process";
@@ -35,9 +35,11 @@ import {
   datenbankVermerk,
   istDokuDatenbank,
   istDokuRolle,
+  istDokuWorkerRolle,
   neuerDatenbankName,
   rollenName,
   wegwerfWert,
+  workerRollenName,
 } from "./lauf.mjs";
 
 /** Der Postgres-Treiber des Projekts (Abhängigkeit von packages/db), keine neue Abhängigkeit. */
@@ -161,20 +163,22 @@ function mitDatenbank(adresse, name) {
 
 /**
  * Legt auf dem Server `verwalter` eine neue Datenbank mit Vermerk an. Liefert die Adressen für
- * Migration (Verwalter) und App (eigene Rolle, legt der Migrations-Schritt an) und `loesche()`.
+ * Migration (Verwalter), App und Worker (je eine eigene Rolle, legt der Migrations-Schritt an) und
+ * `loesche()`.
  */
 export async function legeDatenbankAn(root, verwalter, kennung) {
   const postgres = postgresTreiber(root);
   const name = neuerDatenbankName();
   const rolle = rollenName(name);
+  const workerRolle = workerRollenName(name);
   const sql = postgres(verwalter, { max: 1, onnotice: () => undefined, connect_timeout: 10 });
   try {
     const [vorhanden] = await sql`
       select
         exists (select 1 from pg_database where datname = ${name}) as db,
-        exists (select 1 from pg_roles where rolname = ${rolle}) as rolle`;
+        exists (select 1 from pg_roles where rolname in (${rolle}, ${workerRolle})) as rolle`;
     if (vorhanden.db || vorhanden.rolle) {
-      throw new Error(`${name} oder ${rolle} gibt es schon; nichts angefasst.`);
+      throw new Error(`${name}, ${rolle} oder ${workerRolle} gibt es schon; nichts angefasst.`);
     }
     await sql.unsafe(`create database "${name}"`);
     await sql.unsafe(`comment on database "${name}" is '${datenbankVermerk(kennung)}'`);
@@ -184,11 +188,15 @@ export async function legeDatenbankAn(root, verwalter, kennung) {
   const app = new URL(mitDatenbank(verwalter, name));
   app.username = rolle;
   app.password = wegwerfWert(32);
+  const worker = new URL(mitDatenbank(verwalter, name));
+  worker.username = workerRolle;
+  worker.password = wegwerfWert(32);
   return {
     name,
     rolle,
     migration: mitDatenbank(verwalter, name),
     app: app.href,
+    worker: worker.href,
     loesche: () => loescheDatenbank(root, verwalter, { name, rolle, kennung }),
   };
 }
@@ -214,6 +222,8 @@ export async function loescheDatenbank(root, verwalter, { name, rolle, kennung }
       await sql.unsafe(`drop database "${name}" with (force)`);
     }
     await sql.unsafe(`drop role if exists "${rolle}"`);
+    const workerRolle = workerRollenName(name);
+    if (istDokuWorkerRolle(workerRolle)) await sql.unsafe(`drop role if exists "${workerRolle}"`);
   } finally {
     await sql.end({ timeout: 5 });
   }
