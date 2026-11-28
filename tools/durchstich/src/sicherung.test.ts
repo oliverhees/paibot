@@ -814,11 +814,41 @@ describe.skipIf(bereit.grund !== undefined)(
         const belege = vergleich.find((z) => z.startsWith("B|"))?.split("|");
         expect(belege?.[6]).toBe("true");
 
-        // Migrations-Schritt mit dem neuen Code: auf den neuesten Stand (ab 0014), gleiche Daten, R-010 und R-014 dazu.
+        // Migrations-Schritt mit dem neuen Code: auf den neuesten Stand (ab 0014), gleiche Daten.
+        // Dazu kommen genau die Standard-Regeln späterer Fassungen: R-010, R-014 und die der Tor-Fassung 5.
+        const regelnLesen = async (url: string) => {
+          const sql = verbinden(url);
+          try {
+            return await sql<{ id: string; version: number; r: unknown }[]>`
+              select id, version, to_jsonb(r) as r from public.rules r order by seq`;
+          } finally {
+            await sql.end({ timeout: 2 });
+          }
+        };
+        const regelnVorher = await regelnLesen(ziel.url);
         await runMigrations(ziel.url, MIGRATIONS_FOLDER);
+        const regelnNachher = await regelnLesen(ziel.url);
+        // Die alten Regeln bleiben mit Inhalt und Version unverändert (verglichen über die Spalten von vorher).
+        const spalten = Object.keys((regelnVorher[0]?.r ?? {}) as Record<string, unknown>);
+        expect(spalten.length).toBeGreaterThan(0);
+        expect(
+          regelnNachher.slice(0, regelnVorher.length).map(({ id, version, r }) => ({
+            id,
+            version,
+            r: Object.fromEntries(spalten.map((s) => [s, (r as Record<string, unknown>)[s]])),
+          })),
+        ).toEqual(regelnVorher);
+        expect(
+          regelnNachher.slice(regelnVorher.length).map(({ id, version }) => ({ id, version })),
+        ).toEqual(
+          ["R-010", "R-014", "R-009", "R-015", "R-016", "R-017", "R-018", "R-019"].map((id) => ({
+            id,
+            version: 1,
+          })),
+        );
         const neu = await zaehlen(ziel.url);
-        expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 2);
-        expect(neu["drizzle.__drizzle_migrations"]).toBe(19);
+        expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 8);
+        expect(neu["drizzle.__drizzle_migrations"]).toBe(20);
         for (const tabelle of Object.keys(altZeilen).filter(
           (t) => t !== "public.rules" && t !== "drizzle.__drizzle_migrations",
         )) {
