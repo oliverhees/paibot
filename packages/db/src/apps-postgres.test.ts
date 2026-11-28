@@ -337,16 +337,42 @@ describe.skipIf(BASE_URL === undefined)(
           await sql.unsafe("select to_jsonb(m) - 'untrusted' as z from messages m order by id"),
           await sql.unsafe("select to_jsonb(r) as z from runs r"),
           await sql.unsafe("select seq, id, hash, prev_hash, signature from belege order by seq"),
-          await sql.unsafe("select id, version from rules order by seq"),
+          await sql.unsafe("select to_jsonb(r) as z from rules r order by seq"),
         ]);
       const vorher = await lesen();
       await runMigrations(database.url, MIGRATIONS_FOLDER);
       const nachher = JSON.parse(await lesen()) as unknown[][];
       const alt = JSON.parse(vorher) as unknown[][];
-      // Alles Bisherige steht gleich da; bei den Regeln ist nur R-014 dazugekommen.
+      // Alles Bisherige steht gleich da.
       expect(nachher.slice(0, 4)).toEqual(alt.slice(0, 4));
-      expect(nachher[4]?.slice(0, -1)).toEqual(alt[4]);
-      expect(nachher[4]?.at(-1)).toEqual({ id: "R-014", version: 1 });
+      // Die alten Regeln stehen mit Inhalt und Version unverändert vorn (verglichen werden die
+      // Spalten, die es vor dem Aufstieg gab).
+      type Zeile = { z: Record<string, unknown> };
+      const alteRegeln = (alt[4] ?? []) as Zeile[];
+      const neueRegeln = (nachher[4] ?? []) as Zeile[];
+      expect(alteRegeln.length).toBeGreaterThan(0);
+      expect(
+        neueRegeln
+          .slice(0, alteRegeln.length)
+          .map((zeile, i) =>
+            Object.fromEntries(
+              Object.keys(alteRegeln[i]?.z ?? {}).map((spalte) => [spalte, zeile.z[spalte]]),
+            ),
+          ),
+      ).toEqual(alteRegeln.map((zeile) => zeile.z));
+      // Dazu kommen genau die Standard-Regeln späterer Migrationen: R-014 (Apps) und die
+      // Regeln der Tor-Fassung 5 (Übergaben, Meldungen, Rückfall R-009), je in Version 1.
+      expect(
+        neueRegeln
+          .slice(alteRegeln.length)
+          .map(({ z }) => ({ id: z.id, version: z.version, source: z.source })),
+      ).toEqual(
+        ["R-014", "R-009", "R-015", "R-016", "R-017", "R-018", "R-019"].map((id) => ({
+          id,
+          version: 1,
+          source: "standard",
+        })),
+      );
       // Die Kette lässt sich weiterschreiben: die nächste Zeile hängt am letzten Hash.
       const letzte = (await sql.unsafe("select hash from belege order by seq desc limit 1"))[0];
       await bestandsKette.entscheidung({

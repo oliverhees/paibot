@@ -133,7 +133,7 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
     const entscheidung = (await env.receipts()).find(
       (entry) => entry.body.type === "decision" && entry.body.action.actionId === action.actionId,
     )?.body;
-    expect(entscheidung).toMatchObject({ decision: { gateFormat: 4 } });
+    expect(entscheidung).toMatchObject({ decision: { gateFormat: GATE_FORMAT } });
     expect(
       entscheidung?.type === "decision" && Array.isArray(entscheidung.decision.preconditions),
     ).toBe(true);
@@ -221,6 +221,7 @@ describe.skipIf(baseUrl === undefined)("Aufräumen nach Absturz (echtes Postgres
       callsInRun: 0,
       maxCallsPerRun: 16,
       trigger: "chat",
+      auftragArt: "keiner",
     } as Facts<"werkzeug.aufrufen">;
   }
 
