@@ -109,6 +109,22 @@ Alle neun stehen in `apps/web/src/lib/routen.ts` mit `zugang: "besitzer"`; die A
 
 `POST /api/bots` hat `koerperBytes: 64 * 1024` wie `botAendern`, weil die Anweisung dieselbe Länge haben darf (`LIMITS.botInstructionsChars = 8000` passt nicht sicher in die Standard-Grenze von 16 KB). Dafür steht `/api/bots` auch im Matcher von `apps/web/src/proxy.ts` und in der Liste von `apps/web/src/lib/api/koerper.test.ts`.
 
+**Die Grenze „Bots insgesamt“ hält auch bei gleichzeitigen Anfragen.** Das Tor entscheidet aus `botsAfter` und `maxBots`, beides zählt der Server vor dem Aufruf. Damit die gezählte Zahl bis zum Einfügen gilt, liegen zwei Schichten darüber:
+
+- `apps/web/src/lib/teams/reihe.ts#nacheinander` stellt den Anlege-Weg der Route in eine Reihe dieses Prozesses (Versprechen-Kette an `globalThis`, Schlüssel `Symbol.for("paibot.web.bots-anlegen-reihe")`). Die zweite gleichzeitige Anfrage zählt deshalb erst, wenn die erste eingefügt hat – das **Tor** lehnt sie mit `limit_erreicht` ab (Grenze „Bots insgesamt“), nicht erst die Datenbank.
+- `packages/db/src/repo/bots.ts#anlegenUnterGrenze` zählt und fügt in **einer** Transaktion unter `pg_advisory_xact_lock(BOTS_LOCK_KEY)` ein (`packages/db/src/sperren.ts`). Das gilt über Prozesse hinweg und für jeden künftigen Anlege-Weg; über der Grenze meldet die Funktion `limit_erreicht` und fügt nichts ein. `packages/db/src/teams-nur-besitzer-weg.test.ts` führt sie als schreibende Funktion, die nur über den Besitzer-Weg laufen darf.
+
+Die Sperre spannt bewusst **nicht** über den Tor-Aufruf: Das Tor schreibt seine Belege in eigenen Transaktionen unter `BELEGE_LOCK_KEY` (`packages/receipts/src/writer.ts`). Läge der Tor-Aufruf in dieser Transaktion, würde die Beleg-Transaktion auf derselben Verbindung auf sie warten, und eine Ablehnung nähme ihre Belege mit zurück – Belege dürfen nie verschwinden. Gegenprobe: in `botAnlegen` die Reihe weglassen **und** in `anlegenUnterGrenze` Sperre samt Zählung entfernen → „zwei gleichzeitige Anfragen an der Grenze legen genau einen Bot an“ in `apps/web/src/lib/teams/verwaltung.test.ts` wird rot.
+
+**Die Leitung eines Teams ist immer ein Mitglied desselben Teams.** `repo.bots.setTeam` nimmt dem alten Team in derselben Transaktion die Leitung, wenn der versetzte Bot dort Leitung war und das neue Team ein anderes (oder keines) ist. Das ist dasselbe Verhalten wie beim Löschen eines Bots (Fremdschlüssel `on delete set null`), und es ist bewusst keine Ablehnung: `bot.team_setzen` kennt in der Tor-Fassung nur den Fakt `teamExists`, und Vertragsdateien ändert dieses Paket nicht. Drei Fälle in `apps/web/src/lib/teams/verwaltung.test.ts`: Leitung herausnehmen, Leitung in ein anderes Team versetzen, einfaches Mitglied versetzen (Leitung bleibt). Gegenprobe: das `update` auf `teams.lead_bot_id` in `setTeam` entfernen → die ersten zwei Fälle werden rot.
+
+**Namen von Bots bleiben auseinanderzuhalten.** Die reinen Vergleichsfunktionen stehen in `packages/shared/src/namen.ts` (Ausgang `@paibot/shared/namen`); `packages/agents/src/raum/namen.ts` gibt sie nur weiter, damit der Raum und die Verwaltung dieselben nutzen und `apps/web` nicht von `@paibot/agents` abhängen muss.
+
+- `istTeamName`: Ein Name, der mit „Team “ beginnt, gehört einem Team. `botNameSchema` in `packages/shared/src/inputs.ts` lehnt ihn ab, für `botInput` und `botCreateInput`; geprüft wird auf der Vergleichsform, also auch „team …“ und „ＴＥＡＭ　…“.
+- `neuerNameUnzulaessig`: Der Anlege-Weg der Route (`verwaltung.ts#nameFrei`) lehnt dazu Namen ab, die von einem bestehenden Bot nicht zu unterscheiden wären – gleiche Schreibweise, gleiche Unicode-Form, unsichtbare Zeichen (`gleich`) oder ähnlich aussehende Buchstaben aus anderen Schriften (`aehnlich`, z. B. kyrillisches „а“).
+
+Gegenproben: `istTeamName` aus `botNameSchema` entfernen → „einen Bot namens „Team …“ legt niemand an“ wird rot; den Aufruf `nameFrei` entfernen → „einen Namen, der einem bestehenden Bot zu ähnlich ist, lehnt die Route ab“ wird rot. Die Funktionen selbst prüft `packages/shared/src/namen.test.ts`.
+
 **`leadInTeam` ist jetzt gefüllt:** `teamAendern` liest ihn über `repo.teams.istMitglied` (`packages/db/src/repo/teams.ts#istMitglied`). Setzt man ihn fest auf `true`, wird der Fall „eine Leitung, die nicht zum Team gehört, lehnt das Tor ab“ in `apps/web/src/lib/teams/verwaltung.test.ts` rot.
 
 ### Jede Stelle mit `repo.bots.getDefault`, einzeln entschieden

@@ -70,7 +70,7 @@ export function TeamSeite({ daten }: { daten: TeamMitBots & { ohneTagesbudget: b
         team={team}
         mitglieder={daten.mitglieder}
         ohneTagesbudget={daten.ohneTagesbudget}
-        onSpeichern={(a) => speichern(a).catch(() => undefined)}
+        onSpeichern={speichern}
         onLoeschen={() => setFrage(true)}
         sendet={sendet}
         {...(fehler === undefined ? {} : { fehler })}
