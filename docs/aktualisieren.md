@@ -85,6 +85,29 @@ Die Sicherung enthält deine Unterhaltungen lesbar. Behandle sie wie ein Passwor
 
 Die Datenschleuse (Profil `schleuse`) wird auch auf diesem Weg aus einem festen Commit gebaut, weil es von ihr noch kein fertiges Image gibt.
 
+## Auf den Stand mit eigener Worker-Rolle
+
+Ab diesem Stand arbeitet der Worker mit einer eigenen Rolle der Datenbank (`paibot_worker`, siehe [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank)). Sie bekommt ein eigenes Passwort. Die Daten bleiben, wie sie sind.
+
+**Mit eigenem Bau oder fertigem Image:**
+
+1. Sicherung anlegen ([Vorher sichern](#1-vorher-sichern)).
+2. Neuen Stand holen wie oben.
+3. Den neuen Wert in `deploy/.env` ergänzen lassen. Der Befehl hängt `POSTGRES_WORKER_USER` und ein zufälliges `POSTGRES_WORKER_PASSWORD` an, zeigt sie nicht an und lässt alle übrigen Zeilen unverändert. Ein zweiter Aufruf ändert nichts mehr.
+
+   ```bash
+   sh deploy/env-ergaenzen.sh
+   ```
+
+   Vergisst du diesen Schritt, bricht schon `docker compose … up` mit „POSTGRES_WORKER_PASSWORD fehlt – ergänze die Werte mit sh deploy/env-ergaenzen.sh“ ab, bevor ein Dienst ersetzt wird; der bisherige Stand läuft weiter.
+
+4. Starten wie oben (`… up -d --build` bzw. `… up -d`). `migrate` legt die Worker-Rolle an, setzt ihre Rechte, gibt ihr Zugriff auf die Warteschlange und endet mit `Exited (0)`. Aufträge, die vor dem Update in der Warteschlange lagen, arbeitet danach der Worker mit der neuen Rolle ab.
+5. Prüfen: Im Log von `migrate` stehen „Worker-Rolle paibot_worker angelegt.“ und „Rechte der Worker-Rolle paibot_worker gesetzt.“, im Log von `worker` „Rechte der Rolle paibot_worker geprüft: eingeschränkt.“ und keine Warnung zu `DATABASE_WORKER_URL`.
+
+**Mit Coolify:** Coolify erzeugt `SERVICE_HEX_64_PGWORKER` beim nächsten Einlesen der Compose-Datei selbst. Stell bei dieser Variable wie bei den anderen Geheimnissen **Build time** auf „Not available during build“ ([Coolify](deploy-coolify.md)). Danach neu ausrollen; Schritt 5 gilt genauso.
+
+**Eigene Compose-Datei oder verwaltete Datenbank:** Gib dem Dienst `migrate` zusätzlich `DATABASE_WORKER_URL` mit einer neuen Rolle und eigenem Passwort, dem Dienst `worker` nur noch `DATABASE_WORKER_URL` (ohne `DATABASE_URL`). Ohne `DATABASE_WORKER_URL` startet der Worker im Betrieb nicht. Nur für den Übergang erlaubt `PAIBOT_ALLOW_PRIVILEGED_DB=1`, dass er mit der App-Rolle aus `DATABASE_URL` weiterläuft, mit Warnung im Log.
+
 ## Zurück auf die alte Version
 
 Eine Datenbank, die schon auf der neueren Version lief, passt nicht mehr zur älteren: Die ältere Version meldet dann im Log „Datenbank nicht auf Stand“ und startet nicht. Das gilt auch für den Wechsel auf den Stand mit der Datenbank für Apps: Danach gibt es kein Zurück auf eine ältere Version ohne die Sicherung von vorher, also mach sie vor dem Wechsel. Zurück geht es nur mit der Sicherung von vorher:
@@ -109,12 +132,15 @@ Mit fertigem Image steht in Schritt 3 `deploy/docker-compose.image.yml`, und in 
 
 ## Fehlerbehebung
 
-| Beobachtung                                               | Ursache                                                | Was tun                                                                            |
-| --------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `migrate` endet nicht mit `Exited (0)`                    | die Migration ist gescheitert (Log von `migrate`)      | `… logs migrate` lesen; `web` und `worker` starten erst, wenn `migrate` durchläuft |
-| „Datenbank nicht auf Stand“                               | die Version ist älter als die Datenbank                | neuere Version starten oder die Sicherung von vorher einspielen (oben)             |
-| „PAIBOT_VERSION fehlt“                                    | beim fertigen Image fehlt die Version in `deploy/.env` | `PAIBOT_VERSION=<Version>` eintragen                                               |
-| „manifest unknown“ oder „not found“ beim Laden des Images | diese Version gibt es (noch) nicht als Image           | Version prüfen; sonst mit eigenem Bau aktualisieren                                |
-| Nach dem Wechsel lässt sich kein Schlüssel mehr nutzen    | `PAIBOT_SECRET` wurde geändert                         | den alten Wert aus deiner Aufbewahrung zurück in `deploy/.env` setzen              |
+| Beobachtung                                               | Ursache                                                | Was tun                                                                                                   |
+| --------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `migrate` endet nicht mit `Exited (0)`                    | die Migration ist gescheitert (Log von `migrate`)      | `… logs migrate` lesen; `web` und `worker` starten erst, wenn `migrate` durchläuft                        |
+| „Datenbank nicht auf Stand“                               | die Version ist älter als die Datenbank                | neuere Version starten oder die Sicherung von vorher einspielen (oben)                                    |
+| „PAIBOT_VERSION fehlt“                                    | beim fertigen Image fehlt die Version in `deploy/.env` | `PAIBOT_VERSION=<Version>` eintragen                                                                      |
+| „manifest unknown“ oder „not found“ beim Laden des Images | diese Version gibt es (noch) nicht als Image           | Version prüfen; sonst mit eigenem Bau aktualisieren                                                       |
+| Nach dem Wechsel lässt sich kein Schlüssel mehr nutzen    | `PAIBOT_SECRET` wurde geändert                         | den alten Wert aus deiner Aufbewahrung zurück in `deploy/.env` setzen                                     |
+| „POSTGRES_WORKER_PASSWORD fehlt“                          | die `.env` stammt von einem Stand ohne Worker-Rolle    | `sh deploy/env-ergaenzen.sh`, dann erneut starten ([oben](#auf-den-stand-mit-eigener-worker-rolle))       |
+| Worker: „DATABASE_WORKER_URL fehlt“                       | eigene Compose-Datei ohne die Worker-Verbindung        | `DATABASE_WORKER_URL` bei `migrate` und `worker` setzen ([oben](#auf-den-stand-mit-eigener-worker-rolle)) |
+| Worker: „Warteschlange nicht startbar“                    | `migrate` lief nicht mit `DATABASE_WORKER_URL` durch   | Log von `migrate` lesen, `DATABASE_WORKER_URL` dort setzen und neu starten                                |
 
 Mehr zur Installation: [Installation](installation.md).

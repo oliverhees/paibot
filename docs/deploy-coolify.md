@@ -38,12 +38,13 @@ Zwei Möglichkeiten:
 1. In Coolify ein Projekt anlegen, z. B. „PaiBot“.
 2. Neue Ressource → aus dem öffentlichen GitHub-Repo `https://github.com/oliverhees/paibot` → Build Pack **Docker Compose**, Branch `main`.
 3. **Base Directory** `/deploy`, **Docker Compose Location** `/docker-compose.coolify.yml`.
-4. Speichern. Coolify liest die Datei ein und legt unter **Environment Variables** vier Werte an:
+4. Speichern. Coolify liest die Datei ein und legt unter **Environment Variables** fünf Werte an:
 
    | Variable                       | Wofür                                                          |
    | ------------------------------ | -------------------------------------------------------------- |
    | `SERVICE_HEX_64_PGOWNER`       | Passwort des Tabellen-Besitzers (nur `postgres` und `migrate`) |
    | `SERVICE_HEX_64_PGAPP`         | Passwort der App-Rolle, ein eigener Wert                       |
+   | `SERVICE_HEX_64_PGWORKER`      | Passwort der Worker-Rolle, ein eigener Wert                    |
    | `SERVICE_REALBASE64_32_PAIBOT` | `PAIBOT_SECRET`: 32 zufällige Byte als Base64                  |
    | `SERVICE_URL_WEB`              | `APP_URL`: die Domain des Dienstes `web`, mit `https://`       |
 
@@ -52,8 +53,8 @@ Zwei Möglichkeiten:
 5. **Domain prüfen:** Unter **Domains** steht sie beim Dienst `web`, mit `:3000` am Ende (der Port im Container; im Browser bleibt es `https://` ohne Port). Eigene Domain: dort `https://paibot.deine-domain.de:3000` eintragen. `migrate`, `worker` und `postgres` bekommen **keine** Domain.
 6. **Geheimnisse aus dem Bau heraushalten:** Coolify gibt beim Bau sonst alle Variablen als Build-Argumente mit und schreibt `ARG`-Zeilen ins Dockerfile; so könnten Passwörter und `PAIBOT_SECRET` im Image landen. PaiBot braucht beim Bau keinen dieser Werte. Darum:
    - unter **Advanced** bei **Build arguments** „Managed manually in Dockerfile“ wählen (in älteren Versionen von Coolify: „Inject Build Args to Dockerfile“ ausschalten),
-   - bei `SERVICE_HEX_64_PGOWNER`, `SERVICE_HEX_64_PGAPP`, `SERVICE_REALBASE64_32_PAIBOT` und, falls gesetzt, `SCHLEUSE_KEY`, `SCHLEUSE_STATE_KEY` und `SCHLEUSE_ANBIETER_SCHLUESSEL` **Build time** auf „Not available during build“ stellen (älter: Häkchen „Build Variable?“ entfernen).
-7. Deploy starten. Coolify zeigt danach vier Dienste: `postgres`, `migrate`, `web` und `worker`. `migrate` wendet die Migrationen an, richtet die App-Rolle ein und beendet sich; erst danach starten `web` und `worker`.
+   - bei `SERVICE_HEX_64_PGOWNER`, `SERVICE_HEX_64_PGAPP`, `SERVICE_HEX_64_PGWORKER`, `SERVICE_REALBASE64_32_PAIBOT` und, falls gesetzt, `SCHLEUSE_KEY`, `SCHLEUSE_STATE_KEY` und `SCHLEUSE_ANBIETER_SCHLUESSEL` **Build time** auf „Not available during build“ stellen (älter: Häkchen „Build Variable?“ entfernen).
+7. Deploy starten. Coolify zeigt danach vier Dienste: `postgres`, `migrate`, `web` und `worker`. `migrate` wendet die Migrationen an, richtet App- und Worker-Rolle und die Warteschlange ein und beendet sich; erst danach starten `web` und `worker`.
 8. **`PAIBOT_SECRET` sichern:** den Wert von `SERVICE_REALBASE64_32_PAIBOT` in deinen Passwort-Manager kopieren, getrennt von den Sicherungen der Datenbank. Ohne ihn lassen sich gespeicherte Anbieter-Schlüssel nicht mehr lesen; ein neuer Wert ersetzt ihn nicht.
 
 Lief PaiBot schon mit `deploy/docker-compose.yml`, bleib bei Weg B. Willst du trotzdem umsteigen, trägst du vor dem ersten Deploy deine bisherigen Werte in die drei `SERVICE_…`-Variablen ein: `POSTGRES_PASSWORD` in `SERVICE_HEX_64_PGOWNER`, `POSTGRES_APP_PASSWORD` in `SERVICE_HEX_64_PGAPP`, `PAIBOT_SECRET` in `SERVICE_REALBASE64_32_PAIBOT`.
@@ -66,23 +67,25 @@ Lief PaiBot schon mit `deploy/docker-compose.yml`, bleib bei Weg B. Willst du tr
    ```bash
    openssl rand -hex 32      # für POSTGRES_PASSWORD
    openssl rand -hex 32      # für POSTGRES_APP_PASSWORD
+   openssl rand -hex 32      # für POSTGRES_WORKER_PASSWORD
    openssl rand -base64 32   # für PAIBOT_SECRET
    ```
 
 3. Umgebungsvariablen in Coolify setzen:
    - `POSTGRES_PASSWORD`: erster Wert (Migrations-Rolle, Besitzer der Tabellen)
-   - `POSTGRES_APP_PASSWORD`: zweiter Wert (App-Rolle, mit der PaiBot arbeitet)
-   - `PAIBOT_SECRET`: dritter Wert. Zusätzlich im Passwort-Manager sichern; ohne ihn lassen sich gespeicherte Anbieter-Schlüssel nicht mehr lesen.
+   - `POSTGRES_APP_PASSWORD`: zweiter Wert (App-Rolle, mit der die Web-App arbeitet)
+   - `POSTGRES_WORKER_PASSWORD`: dritter Wert (Worker-Rolle, mit der der Worker arbeitet)
+   - `PAIBOT_SECRET`: vierter Wert. Zusätzlich im Passwort-Manager sichern; ohne ihn lassen sich gespeicherte Anbieter-Schlüssel nicht mehr lesen.
    - `APP_URL`: die Adresse, unter der du PaiBot öffnest, z. B. `https://paibot.deine-domain.de` (ohne Port)
 4. Beim Dienst `web` die Domain eintragen (Port 3000). Coolify besorgt das HTTPS-Zertifikat.
-5. Geheimnisse aus dem Bau heraushalten wie in Weg A, Schritt 6 (hier bei `POSTGRES_PASSWORD`, `POSTGRES_APP_PASSWORD` und `PAIBOT_SECRET`).
+5. Geheimnisse aus dem Bau heraushalten wie in Weg A, Schritt 6 (hier bei `POSTGRES_PASSWORD`, `POSTGRES_APP_PASSWORD`, `POSTGRES_WORKER_PASSWORD` und `PAIBOT_SECRET`).
 6. Deploy starten.
 
 ### Für beide Wege
 
 Die Datenbank veröffentlicht keinen Port und hängt nur im internen Netz des Stacks. Bei Weg A belegt auch die Web-App keinen Port auf dem Server: Der Proxy von Coolify erreicht sie über das Docker-Netz, deshalb gibt es kein `WEB_PORT` und zwei Installationen auf einem Server stören sich nicht. Bei Weg B (`docker-compose.yml`) ist die Web-App auf `127.0.0.1` gebunden (Port aus `WEB_PORT`, Standard 3000). Von außen ist PaiBot nur über deine Domain erreichbar.
 
-Beim ersten Start legt `migrate` die App-Rolle `paibot_app` an und gibt ihr nur die Rechte, die sie braucht. Nur `migrate` bekommt die Zugangsdaten der Migrations-Rolle; `web` und `worker` arbeiten nur mit der App-Rolle. Was die Rollen dürfen: [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank).
+Beim ersten Start legt `migrate` die App-Rolle `paibot_app` und die Worker-Rolle `paibot_worker` an und gibt beiden nur die Rechte, die sie brauchen. Nur `migrate` bekommt die Zugangsdaten der Migrations-Rolle; `web` arbeitet nur mit der App-Rolle, `worker` nur mit der Worker-Rolle. Was die Rollen dürfen: [Installation, Abschnitt „Rollen der Datenbank“](installation.md#rollen-der-datenbank).
 
 ### Stolperfallen
 
@@ -106,7 +109,7 @@ Coolify baut PaiBot bei diesem Weg auf deinem Server aus dem Quellcode. Die Eins
 for i in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep -Ei 'paibot|schleuse|litellm'); do
   echo "== $i"
   docker history --no-trunc --format '{{.CreatedBy}}' "$i" \
-    | grep -oE '(PAIBOT_SECRET|POSTGRES_PASSWORD|POSTGRES_APP_PASSWORD|SERVICE_HEX_64_PGOWNER|SERVICE_HEX_64_PGAPP|SERVICE_REALBASE64_32_PAIBOT|SCHLEUSE_KEY|SCHLEUSE_STATE_KEY|SCHLEUSE_ANBIETER_SCHLUESSEL)=.{0,4}' \
+    | grep -oE '(PAIBOT_SECRET|POSTGRES_PASSWORD|POSTGRES_APP_PASSWORD|POSTGRES_WORKER_PASSWORD|SERVICE_HEX_64_PGOWNER|SERVICE_HEX_64_PGAPP|SERVICE_HEX_64_PGWORKER|SERVICE_REALBASE64_32_PAIBOT|SCHLEUSE_KEY|SCHLEUSE_STATE_KEY|SCHLEUSE_ANBIETER_SCHLUESSEL)=.{0,4}' \
     | sort -u
 done
 ```
@@ -129,6 +132,8 @@ Gilt für Weg B. Lief PaiBot bei dir schon mit nur `POSTGRES_PASSWORD`, startet 
 2. `POSTGRES_APP_PASSWORD` neu setzen (`openssl rand -hex 32`). `PAIBOT_SECRET` nur setzen, wenn es noch fehlt; ein vorhandenes nie ersetzen.
 3. Ist `POSTGRES_PASSWORD` kürzer als 24 Zeichen, im Terminal des Dienstes `postgres` in Coolify `psql -U paibot -d paibot -c "\password paibot"` ausführen, ein neues Passwort setzen und danach die Variable `POSTGRES_PASSWORD` anpassen.
 4. Neu deployen. Im Log von `migrate` stehen „App-Rolle paibot_app angelegt“, „Rechte der App-Rolle paibot_app gesetzt“ und „Migrations-Schritt fertig.“.
+
+**Auf den Stand mit eigener Worker-Rolle:** Bei Weg A erzeugt Coolify `SERVICE_HEX_64_PGWORKER` beim nächsten Einlesen selbst; stell dort **Build time** auf „Not available during build“ und deploye neu. Bei Weg B setzt du vorher `POSTGRES_WORKER_PASSWORD` (`openssl rand -hex 32`, ebenfalls nicht zur Bauzeit); fehlt er, bricht das Deploy mit „POSTGRES_WORKER_PASSWORD fehlt“ ab, und der alte Stand läuft weiter. Danach stehen im Log von `migrate` „Worker-Rolle paibot_worker angelegt.“ und „Rechte der Worker-Rolle paibot_worker gesetzt.“ (siehe [Aktualisieren](aktualisieren.md#auf-den-stand-mit-eigener-worker-rolle)).
 
 Lief bei dir schon ein Stand, in dem `web` selbst migriert hat, reicht ein neues Deploy: `migrate` kommt dazu, die Daten bleiben. Hast du in Coolify bei `web` von Hand `DATABASE_MIGRATION_URL` eingetragen, entferne sie dort, sonst startet die Web-App nicht.
 

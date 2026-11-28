@@ -60,7 +60,7 @@ Keine Aktion ist über eine Route erreichbar (`apps/web/src/lib/routen.test.ts`)
 - Art und Team einer Unterhaltung lassen sich nicht ändern: Trigger `conversations_festhalten` mit der Funktion `paibot_unterhaltung_festhalten`; `faeden` gibt es nur für die Art `faden` (Trigger `faeden_nur_fuer_faden`). Test: `packages/db/src/unterhaltung-festhalten.test.ts`.
 - Beide Trigger-Funktionen stehen in `ERLAUBTE_FUNKTIONEN` von `deploy/sicherung-db.sh`; eine unbekannte Funktion lehnt die Sicherung weiter ab (`tools/durchstich/src/sicherung.test.ts`).
 - Belege älterer Fassungen bleiben prüfbar (`packages/receipts/src/alte-fassung-lesen.test.ts`).
-- Web-App und Worker teilen eine Datenbank-Rolle; die Trennung prüft nur ein Quelltext-Test (`packages/db/src/teams-nur-besitzer-weg.test.ts`).
+- Der Worker hat eine eigene Datenbank-Rolle, die diese Tabellen nur liest (an `faeden` nur `stand`, `stab_bei`, `belastet` ändert): `packages/db/src/rollen.ts#WORKER_TABLE_RIGHTS`, Test `packages/db/src/worker-rolle-postgres.test.ts`. Dazu kommt der Quelltext-Test `packages/db/src/teams-nur-besitzer-weg.test.ts`.
 
 ## Tests
 
