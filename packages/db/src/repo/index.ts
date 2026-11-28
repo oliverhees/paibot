@@ -26,6 +26,7 @@ export * as schleuse from "./schleuse";
 export * as installationKeys from "./schluessel";
 export * as sessions from "./sitzungen";
 export * as search from "./suche";
+export * as teams from "./teams";
 export { withTransaction } from "./transaktion";
 export * as conversations from "./unterhaltungen";
 export * as toolCalls from "./werkzeuge";

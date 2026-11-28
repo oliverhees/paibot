@@ -21,6 +21,11 @@ export const LIMITS = {
   passwordMaxChars: 1024,
   botNameChars: 60,
   botInstructionsChars: 8000,
+  /** Längste Aufgabe eines Bots in seinem Team (`bots.role`). */
+  botRoleChars: 200,
+  /** Höchstens so viele Bots darf eine Installation haben (Grenze „Bots insgesamt“ im Tor). */
+  bots: 50,
+  teamNameChars: 60,
   conversationTitleChars: 200,
   providerNameChars: 100,
   apiKeyChars: 1000,
