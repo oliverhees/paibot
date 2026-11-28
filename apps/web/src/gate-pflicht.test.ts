@@ -375,6 +375,46 @@ function appListeErsetzen(beschreibung = "Gibt Text zurück."): void {
   });
 }
 
+/** Eingerichtet, dazu ein zweiter Bot (der Standard-Bot bleibt, wie er ist). */
+async function mitZweitemBot(): Promise<Stand> {
+  const s = await einrichten();
+  await rufe(s, "botAnlegen", { koerper: ZWEITER_BOT });
+  return s;
+}
+
+/** Eingerichtet, dazu ein Team und ein zweiter Bot, der zu ihm gehört. */
+async function mitTeam(): Promise<Stand> {
+  const s = await mitZweitemBot();
+  await rufe(s, "teamAnlegen", { koerper: { name: "Content" } });
+  await rufe(s, "botTeamSetzen", {
+    params: { id: await zweiterBotId(s) },
+    koerper: { teamId: await teamId(s) },
+  });
+  return s;
+}
+
+const ZWEITER_BOT = {
+  name: "Mila",
+  role: "Schreibt Entwürfe",
+  instructions: "Antworte kurz.",
+  avatarShape: "blatt",
+  color: "blau",
+} as const;
+
+/** Der Bot, der nicht der Standard-Bot ist. */
+async function zweiterBotId(s: Stand): Promise<string> {
+  const einstellungen = await repo.settings.get(s.u.db);
+  const bot = (await repo.bots.list(s.u.db)).find((b) => b.id !== einstellungen?.defaultBotId);
+  if (bot === undefined) throw new Error("kein zweiter Bot");
+  return bot.id;
+}
+
+async function teamId(s: Stand): Promise<string> {
+  const [team] = await repo.teams.list(s.u.db);
+  if (team === undefined) throw new Error("kein Team");
+  return team.id;
+}
+
 const APP_ADRESSE = "https://mcp.beispiel.de/mcp";
 
 /** Eingerichtet, mit einer verbundenen App (Ersatz für die Liste der Werkzeuge). */
@@ -509,6 +549,28 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
       if (anderes === undefined) throw new Error("kein Modell");
       return { koerper: { modelId: anderes.id } };
     },
+  },
+  botAnlegen: { vorher: einrichten, aufruf: async () => ({ koerper: ZWEITER_BOT }) },
+  botPausieren: {
+    vorher: mitZweitemBot,
+    aufruf: async (s) => ({ params: { id: await zweiterBotId(s) }, koerper: { paused: true } }),
+  },
+  botLoeschen: {
+    vorher: mitZweitemBot,
+    aufruf: async (s) => ({ params: { id: await zweiterBotId(s) } }),
+  },
+  botTeamSetzen: {
+    vorher: mitTeam,
+    aufruf: async (s) => ({ params: { id: await zweiterBotId(s) }, koerper: {} }),
+  },
+  teamAnlegen: { vorher: einrichten, aufruf: async () => ({ koerper: { name: "Content" } }) },
+  teamAendern: {
+    vorher: mitTeam,
+    aufruf: async (s) => ({ params: { id: await teamId(s) }, koerper: { name: "Redaktion" } }),
+  },
+  teamLoeschen: {
+    vorher: mitTeam,
+    aufruf: async (s) => ({ params: { id: await teamId(s) } }),
   },
   anbieterAnlegen: {
     vorher: einrichten,
@@ -707,6 +769,8 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
     vorher: frisch,
     aufruf: async () => ({ koerper: { setupCode: TEST_CODE, apiKey: TEST_SCHLUESSEL } }),
   },
+  botsListe: { vorher: mitZweitemBot, aufruf: async () => ({}) },
+  teamsListe: { vorher: mitTeam, aufruf: async () => ({}) },
   sitzungen: { vorher: einrichten, aufruf: async () => ({}) },
   geraete: { vorher: einrichten, aufruf: async () => ({}) },
   unterhaltungen: { vorher: mitUnterhaltung, aufruf: async () => ({}) },
