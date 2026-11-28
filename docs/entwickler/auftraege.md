@@ -91,6 +91,8 @@ Trigger der Migration (`packages/db/drizzle/0020_auftraege.sql`):
 
 Wege des Stands (auch `packages/db/src/repo/auftraege.ts#AUFTRAG_TRANSITIONS`): `gefragt` → `arbeitet`, `abgelehnt`, `abgebrochen`, `gescheitert`; `arbeitet` → `wartet_auf_dich`, `fertig`, `gescheitert`, `abgebrochen`; `wartet_auf_dich` → `arbeitet`, `fertig`, `gescheitert`, `abgebrochen`; `fertig` → `arbeitet` nur für die Wurzel.
 
+Bestand beim Update: Die Migration setzt `faeden.belastet` für jeden Faden, in dem schon eine Nachricht mit `untrusted = true` steht (`packages/db/drizzle/0020_auftraege.sql`, Anweisung nach dem Trigger `messages_faden_belasten`); der Trigger allein sähe nur neue Schreibvorgänge. Test: `packages/db/src/auftraege-postgres.test.ts` „alte Fäden mit fremdem Inhalt …“.
+
 Kein Weg zurück auf eine ältere Version nach dieser Migration: Die Herkunft `rueckmeldung` und `vorschlag` kennt der alte Stand nicht (Kopf der Migration).
 
 ## Schnittstellen

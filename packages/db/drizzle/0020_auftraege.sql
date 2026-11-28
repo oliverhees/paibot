@@ -550,6 +550,12 @@ CREATE TRIGGER messages_faden_belasten
 AFTER INSERT OR UPDATE OF untrusted ON "messages"
 FOR EACH ROW EXECUTE FUNCTION paibot_messages_faden_belasten();
 --> statement-breakpoint
+-- Bestand: Fäden, in denen schon vor diesem Update fremder Inhalt steht, gelten sofort als
+-- belastet (der Trigger oben sieht nur neue Schreibvorgänge). Nachrichten bleiben unverändert.
+UPDATE "faeden" f SET "belastet" = true
+WHERE NOT f."belastet" AND EXISTS (
+  SELECT 1 FROM "messages" m WHERE m."conversation_id" = f."conversation_id" AND m."untrusted");
+--> statement-breakpoint
 -- Läufe mit Auftrag (eigene Funktion neben `paibot_runs_regeln`): Auftrag, Wurzel und Kennzeichen
 -- bleiben nach dem Anlegen gleich; der Abschluss-Grund wird einmal gesetzt. Ein Lauf passt zu
 -- seinem Auftrag (Wurzel, Unterhaltung, Bot), der Auftrag ist offen (oder eine fertige Wurzel, die
