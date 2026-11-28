@@ -30,7 +30,8 @@
     "belege:pruefen": "turbo run build --filter=@paibot/receipts --output-logs=errors-only && node packages/receipts/dist/belege-pruefen.mjs",
     "apps:browser": "node scripts/apps-browser.mjs",
     "faden:browser": "node scripts/faden-browser.mjs",
-    "teams:browser": "node scripts/teams-browser.mjs"
+    "teams:browser": "node scripts/teams-browser.mjs",
+    "bots:browser": "node scripts/bots-und-teams-browser.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",

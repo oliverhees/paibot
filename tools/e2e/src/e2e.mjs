@@ -200,7 +200,14 @@ async function neuesGeraet(app, { viewport = DESKTOP, adresse } = {}) {
 function beobachte(seite) {
   seite.on("console", (m) => {
     if ((m.type() === "error" || m.type() === "warning") && !istErwartet(m)) {
-      ergebnis.konsole.push({ art: m.type(), text: m.text(), url: seite.url() });
+      // `url`: die Seite, auf der es passierte. `quelle`: die Anfrage, die es auslöste – ohne sie
+      // ist „Failed to load resource“ nicht zu gebrauchen (die Seite sagt nicht, was fehlschlug).
+      ergebnis.konsole.push({
+        art: m.type(),
+        text: m.text(),
+        url: seite.url(),
+        quelle: m.location().url,
+      });
     }
   });
   seite.on("pageerror", (e) => ergebnis.konsole.push({ art: "pageerror", text: e.message }));
@@ -823,6 +830,139 @@ async function main() {
     await seite.getByText(`Gespeichert. ${urspruenglich} nutzt`, { exact: false }).waitFor();
   });
 
+  // ---- Mehrere Bots und Teams: anlegen, eigene Unterhaltung, pausieren, löschen ---------------
+  await schritt(
+    "Bots und Teams: zweiter Bot, eigene Unterhaltung, Pause, Löschen mit Rückfrage",
+    seite,
+    async () => {
+      const AUFGABE = "Sammelt Themen und schreibt Stichpunkte.";
+      await seite.goto(`${app}/`);
+      // Der Weg in die Seite führt über das Menü, nicht über eine getippte Adresse.
+      await seite.getByRole("link", { name: "Bots und Teams", exact: true }).first().click();
+      await seite.waitForURL(`${app}/teams`);
+
+      // Team anlegen
+      const teamsVorher = await belegeZaehlen(seite, app, "team.anlegen");
+      await seite.getByLabel("Name des Teams").fill("Content");
+      await seite.getByRole("button", { name: "Team anlegen", exact: true }).click();
+      await seite.getByRole("link", { name: "Verwalten" }).first().waitFor();
+      if ((await belegeZaehlen(seite, app, "team.anlegen")) <= teamsVorher) {
+        throw new Error("Team anlegen hat keinen Beleg erzeugt.");
+      }
+
+      // Zweiten Bot anlegen
+      const botsVorher = await belegeZaehlen(seite, app, "bot.anlegen");
+      await seite.getByLabel("Name des Bots").fill("Mila");
+      await seite.getByLabel("Aufgabe in einem Satz").fill(AUFGABE);
+      await seite.getByRole("button", { name: "Bot anlegen", exact: true }).click();
+      const botLink = seite.getByRole("link", { name: "Bot Mila öffnen" });
+      await botLink.waitFor();
+      if ((await belegeZaehlen(seite, app, "bot.anlegen")) <= botsVorher) {
+        throw new Error("Bot anlegen hat keinen Beleg erzeugt.");
+      }
+      await neuestenBelegPruefen(seite, app, "bot.anlegen");
+
+      // Steckbrief: der Bot aus der Adresse, nicht der Standard-Bot
+      await seite.goto(`${app}/teams`);
+      await botLink.click();
+      await seite.waitForURL(/\/bot\/bot_/u);
+      const steckbrief = seite.url();
+      const botId = steckbrief.split("/bot/")[1];
+      if (!((await seite.locator("main").textContent()) ?? "").includes(AUFGABE)) {
+        throw new Error("Der Steckbrief zeigt nicht den Bot aus der Adresse.");
+      }
+
+      // Eigene Unterhaltung mit diesem Bot: die Antwort kommt, und sie hängt an seiner Unterhaltung.
+      await stack.anbieter.verhalten({ script: null, reply: BEISPIEL_ANTWORT });
+      await seite.goto(`${app}/?bot=${botId}`);
+      await seite.getByRole("textbox", { name: "Nachricht" }).fill("Hallo Mila.");
+      await seite.getByRole("button", { name: "Senden" }).click();
+      await seite.getByText(BEISPIEL_ANTWORT, { exact: true }).waitFor({ timeout: 60_000 });
+      const milaUnterhaltung = new URL(seite.url()).pathname;
+      if (milaUnterhaltung === unterhaltung) {
+        throw new Error("Der zweite Bot schreibt in der Unterhaltung des Standard-Bots.");
+      }
+
+      // Pausieren: der Hinweis steht da, die Eingabe ist gesperrt, und das Tor lehnt das Senden ab.
+      await seite.goto(steckbrief);
+      const pausenBelege = await belegeZaehlen(seite, app, "bot.pausieren");
+      await seite.getByRole("button", { name: "Pausieren", exact: true }).click();
+      await seite.getByRole("button", { name: "Fortsetzen", exact: true }).waitFor();
+      if ((await belegeZaehlen(seite, app, "bot.pausieren")) <= pausenBelege) {
+        throw new Error("Pausieren hat keinen Beleg erzeugt.");
+      }
+      await seite.goto(`${app}${milaUnterhaltung}`);
+      await seite.locator("[data-baustein='bot-pausiert']").waitFor();
+      const feld = seite.getByRole("textbox", { name: "Nachricht" });
+      if ((await feld.count()) > 0 && !(await feld.isDisabled())) {
+        throw new Error("Die Eingabe ist trotz Pause nicht gesperrt.");
+      }
+      // Der Browser meldet jede Antwort ab 400 als Konsolenfehler. Hier sind zwei Ablehnungen
+      // Absicht: die Gegenprobe unten (409 `bot_pausiert`) und das abgelehnte Löschen von „Mila“
+      // (403 `abgelehnt`, fester Satz aus `packages/db/src/repo/bots.ts`).
+      erwarte(`/api/unterhaltungen/${milaUnterhaltung.split("/").at(-1)}/nachrichten`, 409);
+      erwarte(`/api/bots/${botId}`, 403);
+      // Gegenprobe am Server: Auch ohne Oberfläche antwortet ein pausierter Bot nicht. Die Anfrage
+      // geht aus der Seite und mit ihrem Prüfzeichen – sonst scheitert sie schon an der Herkunft,
+      // und der Fall hielte auch bei einem Bot, der gar nicht pausiert ist. Erwartet wird genau
+      // die Ablehnung des Tors, nicht irgendein Fehler.
+      const abgelehnt = await seite.evaluate(async (id) => {
+        const zeichen = document.querySelector('meta[name="pb-pruefzeichen"]')?.content ?? "";
+        const antwort = await fetch(`/api/unterhaltungen/${id}/nachrichten`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-pb-pruefzeichen": zeichen },
+          body: JSON.stringify({ text: "Trotzdem?", schleuse: "off" }),
+        });
+        return { status: antwort.status, code: (await antwort.json())?.fehler?.code };
+      }, milaUnterhaltung.split("/").at(-1));
+      if (abgelehnt.status !== 409 || abgelehnt.code !== "bot_pausiert") {
+        throw new Error(
+          `Ein pausierter Bot wurde nicht vom Tor abgelehnt (${abgelehnt.status} ${abgelehnt.code}).`,
+        );
+      }
+
+      // „Mila“ hat geantwortet und lässt sich deshalb nicht mehr löschen – die Läufe sind die
+      // Belegspur des Bots (`packages/db/src/repo/bots.ts`, Fremdschlüssel auf `runs`). Die Seite
+      // sagt es mit festem Satz und bleibt stehen.
+      await seite.goto(steckbrief);
+      await seite.getByRole("button", { name: "Löschen …", exact: true }).click();
+      await seite.getByRole("button", { name: "Löschen", exact: true }).click();
+      await seite
+        .getByText("Dieser Bot hat schon gearbeitet und lässt sich nicht löschen.")
+        .waitFor();
+      if (!seite.url().startsWith(steckbrief)) {
+        throw new Error("Ein Bot mit Läufen wurde gelöscht.");
+      }
+
+      // Löschen fragt zurück; die Belege des Bots bleiben, und die Kette prüft weiter. Dafür ein
+      // zweiter Bot, der nie geantwortet hat: „Mila“ darf nicht mehr weg (siehe oben).
+      await seite.goto(`${app}/teams`);
+      await seite.getByLabel("Name des Bots").fill("Tom");
+      await seite.getByRole("button", { name: "Bot anlegen", exact: true }).click();
+      const tomLink = seite.getByRole("link", { name: "Bot Tom öffnen" });
+      await tomLink.waitFor();
+      const vorherBelege = await belegeZaehlen(seite, app, "bot.anlegen");
+      await tomLink.click();
+      await seite.waitForURL(/\/bot\/bot_/u);
+      await seite.getByRole("button", { name: "Löschen …", exact: true }).click();
+      await seite.getByText("Seine Belege bleiben erhalten.").waitFor();
+      await seite.getByRole("button", { name: "Abbrechen", exact: true }).click();
+      if (!((await seite.locator("main").textContent()) ?? "").includes("Tom")) {
+        throw new Error("„Abbrechen“ hat den Bot gelöscht.");
+      }
+      await seite.getByRole("button", { name: "Löschen …", exact: true }).click();
+      await seite.getByRole("button", { name: "Löschen", exact: true }).click();
+      await seite.waitForURL(`${app}/teams`);
+      if ((await seite.getByRole("link", { name: "Bot Tom öffnen" }).count()) > 0) {
+        throw new Error("Der Bot steht nach dem Löschen noch da.");
+      }
+      if ((await belegeZaehlen(seite, app, "bot.anlegen")) !== vorherBelege) {
+        throw new Error("Die Belege des Bots sind mit ihm verschwunden.");
+      }
+      await neuestenBelegPruefen(seite, app, "bot.loeschen");
+    },
+  );
+
   // ---- Handy-Format: senden, Antwort streamt, Stopp, Beleg als Blatt ---------------------------
   const HANDY_ANTWORT =
     "Gern. Das hier ist eine lange Antwort, die der Test-Anbieter nach zwei Stücken anhält.";
@@ -1258,7 +1398,11 @@ async function main() {
     const ziel = seite.locator('[id^="nachricht-"][data-ziel="ja"]');
     await ziel.getByText("Hallo Pai, wie geht es dir?").waitFor();
     await feld.fill("");
-    await navigation.getByRole("navigation", { name: /Unterhaltungen/ }).waitFor();
+    // Je Bot eine Liste: Der Schritt prüft nur, dass die Listen nach dem Leeren wieder da sind.
+    await navigation
+      .getByRole("navigation", { name: /^Unterhaltungen von / })
+      .first()
+      .waitFor();
   });
 
   await schritt("Als Datei sichern: Datei lesbar, ohne Kennungen", seite, async () => {
@@ -1408,18 +1552,14 @@ async function main() {
       await navigation.getByRole("button", { name: "Du", exact: true }).waitFor();
       await seite.reload();
       // Der gemerkte Zustand gilt, sobald die Seite im Browser läuft (nicht schon im Server-HTML).
-      await seite
-        .waitForFunction(
-          () =>
-            document
-              .querySelector("aside[aria-label='Navigation'] button[aria-controls][aria-expanded]")
-              ?.getAttribute("aria-expanded") === "false",
-          undefined,
-          { timeout: 10_000 },
-        )
-        .catch(() => {
-          throw new Error("Eingeklappter Zustand nach dem Neuladen vergessen.");
-        });
+      // Geprüft wird der Knopf „Werkzeuge“ selbst: Seit die Leiste Teams und Bots aufklappt, ist er
+      // nicht mehr der erste Knopf mit `aria-expanded`.
+      let eingeklappt = false;
+      for (let i = 0; i < 50 && !eingeklappt; i += 1) {
+        eingeklappt = (await knopf.getAttribute("aria-expanded")) === "false";
+        if (!eingeklappt) await seite.waitForTimeout(200);
+      }
+      if (!eingeklappt) throw new Error("Eingeklappter Zustand nach dem Neuladen vergessen.");
       await knopf.focus();
       await seite.keyboard.press("Enter");
       await navigation.getByRole("link", { name: "Belege" }).waitFor();
@@ -1466,7 +1606,15 @@ for (const [name, ok] of pruefungen) log(`${ok ? "ok    " : "FEHLER"} ${name}`);
 if (fehler) log(`Abbruch: ${fehler.message.split("\n").slice(0, 3).join(" ")}`);
 for (const v of netz.verstoesse) log(`Netz (${v.rolle}): ${v.art} → ${v.ziel}`);
 for (const u of ergebnis.fremdImBrowser) log(`Browser: ${u}`);
-for (const k of konsolenFehler) log(`Konsole (${k.art}): ${k.text}${k.url ? ` [${k.url}]` : ""}`);
+for (const k of konsolenFehler) {
+  const orte = [
+    k.quelle ? `Anfrage: ${k.quelle}` : undefined,
+    k.url ? `Seite: ${k.url}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  log(`Konsole (${k.art}): ${k.text}${orte ? ` [${orte}]` : ""}`);
+}
 log(`Ergebnis, Logs und Bilder: ${ausgabe}`);
 const ok = pruefungen.every(([, v]) => v);
 log(ok ? "Ende-zu-Ende-Prüfung bestanden." : "Ende-zu-Ende-Prüfung NICHT bestanden.");
