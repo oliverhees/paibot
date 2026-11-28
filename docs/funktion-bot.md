@@ -62,15 +62,17 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 
 - „Speichern“ schickt die Angaben an `PUT /api/bot`. Die Aktion `bot.aendern` läuft durch das Tor und bekommt zwei Belege (Entscheidung und Ergebnis). Im Beleg stehen nur die Namen der geänderten Felder, nie die Anweisung selbst.
 - Ohne Änderung speichert PaiBot nichts und meldet „Es gibt nichts zu speichern.“
+- `PUT /api/bot` gilt immer dem Standard-Bot. Die weiteren Bots gehen über eigene Adressen ([Bots und Teams](funktion-bots-und-teams.md)).
 - Ein Lauf liest Name und Anweisung beim Start aus der Datenbank; deshalb gilt eine Änderung ab der nächsten Antwort.
 - „Was dein Bot darf“ entsteht aus den aktiven Regeln, die für den Bot gelten (erlauben, fragen, ablehnen), plus der festen Grenze G-01 (keine unmaskierten Nachrichten, wenn die Datenschleuse gefordert ist). Es ist eine Anzeige, keine Einstellung.
 
 ## Grenzen
 
-- Es gibt einen Bot. Weitere Bots anlegen ist nicht Teil dieser Version.
-- Einen Bot pausieren oder löschen kannst du in der Oberfläche noch nicht. Die Datenbank und das Tor kennen es schon: Ein pausierter Bot antwortet nicht, und ein Bot, der schon gearbeitet hat, und dein Standard-Bot lassen sich nicht löschen (der feste Satz dazu: „Dieser Bot hat schon gearbeitet und lässt sich nicht löschen.“ bzw. „Das ist dein Standard-Bot und lässt sich nicht löschen.“). Mehr dazu bei [Tor und Belege](funktion-tor.md#bots-pausieren-und-teams-fassung-4).
+- Diese Seite gehört deinem **Haupt-Assistenten**. Weitere Bots legst du unter [Bots und Teams](funktion-bots-und-teams.md) an; sie haben eine eigene Seite mit Steckbrief, Pause und Löschen.
+- Name, Anweisung und Aussehen lassen sich hier nur für den Haupt-Assistenten ändern. Für die weiteren Bots ist das noch nicht gebaut.
+- Deinen Haupt-Assistenten kannst du nicht löschen; er ist dein Standard-Bot („Der Standard-Bot lässt sich nicht löschen.“). Pausieren geht auf seiner Seite unter [Bots und Teams](funktion-bots-und-teams.md).
 - Als eingebautes Werkzeug nutzt der Bot das Nachschlagen in der Doku. Weitere Werkzeuge bekommt er nur aus Apps, die du verbunden, eingestuft und freigegeben hast, und nur lesende ([Apps](funktion-apps.md)). Er führt sonst selbst nichts aus.
-- Eine kurze Rolle oder Beschreibung des Bots lässt sich noch nicht speichern; die Navigation zeigt „dein persönlicher Assistent“.
+- Eine kurze Aufgabe lässt sich für den Haupt-Assistenten auf dieser Seite nicht setzen; die Navigation zeigt „dein persönlicher Assistent“. Die weiteren Bots bekommen ihre Aufgabe beim Anlegen unter [Bots und Teams](funktion-bots-und-teams.md).
 - Die Ausgabegrenze je Antwort hat den Standard 4096 Token und ist höchstens 200 000 (das prüft auch die Datenbank; beim Update werden höhere Werte auf 200 000 gesetzt); die Einrichtung setzt keinen eigenen Wert. Die Seite „Bot“ zeigt sie nicht und bietet kein Feld dafür; beim Speichern schickt sie den gespeicherten Wert unverändert zurück. Ändern lässt sie sich in dieser Version nur über die Schnittstelle der App (`PUT /api/bot`).
 
 ## Fehlerbehebung

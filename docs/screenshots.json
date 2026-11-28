@@ -4845,6 +4845,185 @@
         }
       ],
       "beschreibung": "Team-Entwurf nach dem Anlegen, mit „Rückgängig“ (Vorschau mit Beispiel-Daten, im Bau)"
+    },
+    {
+      "name": "bots-teams-leer",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "beschreibung": "Seite „Bots und Teams“ nach der Einrichtung: noch kein Team, nur der Haupt-Assistent"
+    },
+    {
+      "name": "bots-teams-angelegt",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "tippe": "Name des Teams",
+          "text": "Content"
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Team anlegen"
+          }
+        },
+        {
+          "warteAufText": "Content"
+        },
+        {
+          "tippe": "Name des Bots",
+          "text": "Mila"
+        },
+        {
+          "tippe": "Aufgabe in einem Satz",
+          "text": "Sammelt Themen und schreibt Stichpunkte."
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Bot anlegen"
+          }
+        },
+        {
+          "warteAufText": "Mila"
+        }
+      ],
+      "beschreibung": "Seite „Bots und Teams“: Team „Content“ und der zweite Bot „Mila“ sind angelegt (die folgenden Aufnahmen bauen darauf auf)"
+    },
+    {
+      "name": "bots-teams-handy",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "beschreibung": "Seite „Bots und Teams“ auf dem Handy, mit Team „Content“ und Bot „Mila“"
+    },
+    {
+      "name": "bots-bot-steckbrief",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Bot Mila öffnen"
+          }
+        },
+        {
+          "warteAufText": "Sammelt Themen und schreibt Stichpunkte."
+        }
+      ],
+      "beschreibung": "Steckbrief des Bots „Mila“: Aufgabe, Team wählen, Pausieren und Löschen"
+    },
+    {
+      "name": "bots-bot-pausiert",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Bot Mila öffnen"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Pausieren"
+          }
+        },
+        {
+          "warteAufText": "Fortsetzen"
+        }
+      ],
+      "beschreibung": "Steckbrief: „Mila“ ist pausiert, der Knopf heißt jetzt „Fortsetzen“"
+    },
+    {
+      "name": "bots-bot-loeschen",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Bot Mila öffnen"
+          }
+        },
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Löschen …"
+          }
+        },
+        {
+          "warteAufText": "Seine Belege bleiben erhalten."
+        }
+      ],
+      "beschreibung": "Steckbrief: die Rückfrage vor dem Löschen eines Bots"
+    },
+    {
+      "name": "bots-team-verwalten",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Verwalten"
+          }
+        },
+        {
+          "warteAufText": "Zusammenarbeit"
+        }
+      ],
+      "beschreibung": "Team „Content“ verwalten: Leitung, Zusammenarbeit mit dem Hinweis ohne Tagesbudget, Abnahme-Standard, Mitglieder"
+    },
+    {
+      "name": "bots-team-verwalten-handy",
+      "pfad": "/teams",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "main",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "link",
+            "name": "Verwalten"
+          }
+        },
+        {
+          "warteAufText": "Zusammenarbeit"
+        }
+      ],
+      "beschreibung": "Team „Content“ verwalten auf dem Handy"
     }
   ]
 }
