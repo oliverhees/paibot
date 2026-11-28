@@ -86,6 +86,7 @@ jobs:
           {
             echo "SERVICE_HEX_64_PGOWNER=$(openssl rand -hex 32)"
             echo "SERVICE_HEX_64_PGAPP=$(openssl rand -hex 32)"
+            echo "SERVICE_HEX_64_PGWORKER=$(openssl rand -hex 32)"
             echo "SERVICE_REALBASE64_32_PAIBOT=$(openssl rand -base64 32)"
             echo "SERVICE_URL_WEB=https://paibot.example.de"
             echo "SERVICE_URL_WEB_3000=https://paibot.example.de:3000"
@@ -502,7 +503,7 @@ jobs:
           $compose logs worker > /tmp/worker.log 2>&1
           cat /tmp/worker.log
           if [ "$status" != "healthy" ]; then echo "Worker nicht gesund: $status"; exit 1; fi
-          for zeile in "Datenbank erreichbar." "Datenbank auf Stand" "Rechte der Rolle paibot_app geprüft: eingeschränkt." \
+          for zeile in "Datenbank erreichbar." "Datenbank auf Stand" "Rechte der Rolle paibot_worker geprüft: eingeschränkt." \
                        "Warteschlange gestartet." "Bereit: nimmt Läufe an" "Herzschlag läuft."; do
             grep -qF "[paibot-worker] $zeile" /tmp/worker.log || { echo "Log-Zeile fehlt: $zeile"; exit 1; }
           done
@@ -510,6 +511,9 @@ jobs:
           if [ -n "$(docker port "$id")" ]; then echo "Worker veröffentlicht einen Port"; exit 1; fi
           if docker exec "$id" printenv DATABASE_MIGRATION_URL >/dev/null; then
             echo "Worker kennt die Migrations-Rolle"; exit 1
+          fi
+          if docker exec "$id" printenv DATABASE_URL >/dev/null; then
+            echo "Worker kennt die App-Rolle"; exit 1
           fi
           if docker exec "$id" sh -c 'touch /app/schreibtest' 2>/dev/null; then
             echo "Dateisystem des Workers ist beschreibbar"; exit 1
