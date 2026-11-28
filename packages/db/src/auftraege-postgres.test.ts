@@ -55,9 +55,11 @@ describe.skipIf(BASE_URL === undefined)("Update von 0019 auf die Aufträge (Post
   const chat = newId("conversation");
   const chat2 = newId("conversation");
   const faden = newId("conversation");
+  const fadenBelastet = newId("conversation");
   const frage = newId("message");
   const antwort = newId("message");
   const imFaden = newId("message");
+  const fremdImFaden = newId("message");
   const lauf = newId("run");
   let database: PostgresTestDatabase;
   let owner: postgres.Sql;
@@ -86,9 +88,11 @@ describe.skipIf(BASE_URL === undefined)("Update von 0019 auf die Aufträge (Post
       on conflict (id) do update set default_bot_id = excluded.default_bot_id`;
     await owner`insert into teams (id, name) values (${team}, 'Studio')`;
     await owner`insert into conversations (id, bot_id, title) values (${chat}, ${pai}, 'Erstes'), (${chat2}, ${ideen}, 'Zweites')`;
-    await owner`insert into conversations (id, bot_id, title, kind, team_id) values (${faden}, null, 'Faden', 'faden', ${team})`;
+    await owner`insert into conversations (id, bot_id, title, kind, team_id)
+      values (${faden}, null, 'Faden', 'faden', ${team}), (${fadenBelastet}, null, 'Fremd', 'faden', ${team})`;
     await owner`insert into faeden (conversation_id, ziel, abnahme, herkunft, action_id)
-      values (${faden}, 'Ein Video', 'leitung', 'besitzer', ${newId("action")})`;
+      values (${faden}, 'Ein Video', 'leitung', 'besitzer', ${newId("action")}),
+             (${fadenBelastet}, 'Eine Recherche', 'leitung', 'besitzer', ${newId("action")})`;
     await owner`insert into messages (id, conversation_id, role, content) values (${frage}, ${chat}, 'user', 'Hallo')`;
     await owner`insert into runs (id, conversation_id, trigger_message_id, bot_id, status, finished_at)
       values (${lauf}, ${chat}, ${frage}, ${pai}, 'succeeded', now())`;
@@ -96,6 +100,9 @@ describe.skipIf(BASE_URL === undefined)("Update von 0019 auf die Aufträge (Post
       values (${antwort}, ${chat}, 'assistant', 'Hi', ${lauf}, true)`;
     // Eine alte Antwort ohne Autor in einem Faden: bleibt erlaubt (die Pflicht gilt für neue Zeilen).
     await owner`insert into messages (id, conversation_id, role, content) values (${imFaden}, ${faden}, 'assistant', 'Alt')`;
+    // Ein alter Faden mit fremdem Inhalt: Er muss nach dem Update als belastet gelten.
+    await owner`insert into messages (id, conversation_id, role, content, untrusted)
+      values (${fremdImFaden}, ${fadenBelastet}, 'assistant', 'Von einer Webseite', true)`;
     vorher = await bestand();
     expect((await checkMigrationState(owner, MIGRATIONS_FOLDER)).status).toBe("veraltet");
     // 2. Update auf den neuesten Stand, dabei die App-Rolle einrichten.
@@ -151,6 +158,15 @@ describe.skipIf(BASE_URL === undefined)("Update von 0019 auf die Aufträge (Post
     expect(f).toEqual({ stand: "laufend", stab_bei: null, belastet: false });
     const [s] = await owner`select notaus_epoche, auftrag_max_tokens from settings`;
     expect(s).toEqual({ notaus_epoche: 0, auftrag_max_tokens: 200000 });
+  });
+
+  it("alte Fäden mit fremdem Inhalt gelten nach dem Update als belastet, saubere nicht", async () => {
+    const zeilen =
+      await owner`select conversation_id, belastet from faeden order by conversation_id`;
+    expect(Object.fromEntries(zeilen.map((z) => [z.conversation_id, z.belastet]))).toEqual({
+      [faden]: false,
+      [fadenBelastet]: true,
+    });
   });
 
   describe("mit der App-Rolle", () => {
