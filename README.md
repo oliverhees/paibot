@@ -111,20 +111,20 @@ Die neuesten KI-Agenten kommen oft gar nicht oder nur eingeschränkt nach Europa
 
 ## Funktionen
 
-|     | Funktion                                                       | Status                                                                                                                                                |
-| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🖥️  | Läuft auf eigenem Server (Docker Compose, Coolify)             | vorhanden, siehe [`docs/installation.md`](docs/installation.md); ein veröffentlichtes Image gibt es noch nicht                                        |
-| 💬  | Chat mit deinem Bot, vorläufiger Text beim Schreiben, Stopp    | vorhanden ([Chat](docs/funktion-chat.md)); Anhänge, Spracheingabe, Merken und Web-Zugriff geplant                                                     |
-| 📚  | Pai schlägt in der Doku seiner Version nach, mit Quellen       | vorhanden als erstes Werkzeug ([Chat](docs/funktion-chat.md#so-benutzt-du-es)); es liest nur die mitgelieferte Doku, weitere Werkzeuge geplant        |
-| 🧾  | Tor und Belege: feste Regeln ohne KI, Beleg zu jeder Aktion    | vorhanden ([Belege](docs/funktion-belege.md), [Das Tor](docs/funktion-tor.md))                                                                        |
-| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | vorhanden als zuschaltbarer Dienst, Schalter je Unterhaltung ([Datenschleuse](docs/funktion-datenschleuse.md)); Standard: aus                         |
-| 🤖  | Dein Bot mit Name, Anweisung und Aussehen                      | vorhanden ([Bot](docs/funktion-bot.md)); weitere Bots mit Rollen und Gedächtnis: geplant                                                              |
-| 🔌  | Apps per MCP verbinden, Freigabe vor jeder schreibenden Aktion | geplant                                                                                                                                               |
-| 🌐  | Browser-Agent: der Bot surft selbst, du schaust live zu        | geplant                                                                                                                                               |
-| 🤝  | Bots im Team: Delegieren, Übergeben, Chief of Staff            | geplant                                                                                                                                               |
-| ⏰  | Routinen, die im Hintergrund laufen                            | geplant                                                                                                                                               |
-| 📱  | App fürs Handy (PWA) mit Push, Deutsch und Englisch            | Oberfläche fürs Handy und „Als Web-App installieren“ vorhanden; Push und Englisch geplant                                                             |
-| 💻  | Modell auf deinem eigenen Rechner oder in deinem Netz          | vorhanden als eigener Anbieter mit Ort „lokal“ ([Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md)); eine mitgelieferte lokale KI: geplant |
+|     | Funktion                                                       | Status                                                                                                                                                                                     |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🖥️  | Läuft auf eigenem Server (Docker Compose, Coolify)             | vorhanden, siehe [`docs/installation.md`](docs/installation.md); ein veröffentlichtes Image gibt es noch nicht                                                                             |
+| 💬  | Chat mit deinem Bot, vorläufiger Text beim Schreiben, Stopp    | vorhanden ([Chat](docs/funktion-chat.md)); Anhänge, Spracheingabe, Merken und Web-Zugriff geplant                                                                                          |
+| 📚  | Pai schlägt in der Doku seiner Version nach, mit Quellen       | vorhanden als erstes Werkzeug ([Chat](docs/funktion-chat.md#so-benutzt-du-es)); es liest nur die mitgelieferte Doku, weitere Werkzeuge geplant                                             |
+| 🧾  | Tor und Belege: feste Regeln ohne KI, Beleg zu jeder Aktion    | vorhanden ([Belege](docs/funktion-belege.md), [Das Tor](docs/funktion-tor.md))                                                                                                             |
+| 🛡️  | Datenschleuse für persönliche Daten, zuschaltbar               | vorhanden als zuschaltbarer Dienst, Schalter je Unterhaltung ([Datenschleuse](docs/funktion-datenschleuse.md)); Standard: aus                                                              |
+| 🤖  | Dein Bot mit Name, Anweisung und Aussehen                      | vorhanden ([Bot](docs/funktion-bot.md)); weitere Bots mit eigener Aufgabe ebenfalls ([Bots und Teams](docs/funktion-bots-und-teams.md)); Anweisung je weiterem Bot und Gedächtnis: geplant |
+| 🔌  | Apps per MCP verbinden, Freigabe vor jeder schreibenden Aktion | geplant                                                                                                                                                                                    |
+| 🌐  | Browser-Agent: der Bot surft selbst, du schaust live zu        | geplant                                                                                                                                                                                    |
+| 🤝  | Bots im Team: Delegieren, Übergeben, Chief of Staff            | Bots in Teams ordnen mit Leitung vorhanden ([Bots und Teams](docs/funktion-bots-und-teams.md)); Delegieren, Übergeben und Chief of Staff geplant                                           |
+| ⏰  | Routinen, die im Hintergrund laufen                            | geplant                                                                                                                                                                                    |
+| 📱  | App fürs Handy (PWA) mit Push, Deutsch und Englisch            | Oberfläche fürs Handy und „Als Web-App installieren“ vorhanden; Push und Englisch geplant                                                                                                  |
+| 💻  | Modell auf deinem eigenen Rechner oder in deinem Netz          | vorhanden als eigener Anbieter mit Ort „lokal“ ([Anbieter und Modelle](docs/funktion-anbieter-und-modelle.md)); eine mitgelieferte lokale KI: geplant                                      |
 
 ## So funktioniert es
 

@@ -10,7 +10,7 @@ Seit:      2026-11-21
 
 # Team-Entwurf – für Entwickler
 
-> Stand: Es gibt bisher nur das **Format** (Fassung 2) und eine **Vorlage** als reine Funktionen und Daten. Es gibt noch keine Seite, keine Route, keine Tabelle und keine Aktion zum Anlegen eines Teams, und nichts, das Zusammenarbeit oder Abnahme ausführt: Das Format hält die Wahl nur fest. Eine Anwender-Seite folgt mit der Oberfläche.
+> Stand: Vom **Weg über einen Entwurf** gibt es bisher nur das **Format** (Fassung 2) und eine **Vorlage** als reine Funktionen und Daten: keine Seite, keine Route und keine Aktion, die aus einem Entwurf ein Team anlegt. Ein Team ohne Entwurf anzulegen, zu ändern und ihm Bots zuzuordnen gibt es dagegen – mit Tabelle (`packages/db/src/schema/teams.ts`), Aktionen der Fassung 4, Routen (`apps/web/src/lib/routen.ts`) und Seiten (`/teams`, `/teams/<Kennung>`, `/bot/<Kennung>`); siehe [Bots und Teams](bots-und-teams.md). Nichts führt Zusammenarbeit oder Abnahme aus: Beide halten die Wahl nur fest, hier im Entwurf und dort am Team.
 
 ## Zweck und Entscheidung
 
