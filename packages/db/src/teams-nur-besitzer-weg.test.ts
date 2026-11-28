@@ -25,6 +25,7 @@ const SCHREIBFUNKTIONEN = [
   "bots.create",
   "bots.anlegenUnterGrenze",
   "bots.update",
+  "bots.aendernUnterNamenspruefung",
   "bots.setModel",
   "bots.remove",
   "bots.setPaused",

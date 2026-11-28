@@ -17,13 +17,16 @@ import {
   newId,
   PaiBotError,
   type TeamId,
+  t,
 } from "@paibot/shared";
 import { asc, eq, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { bots, teamEntwuerfe, teams } from "../schema";
 import type { ENTWURF_STATUS, FADEN_ABNAHMEN, TEAM_ZUSAMMENARBEIT } from "../schema/werte";
+import { TEAMS_LOCK_KEY } from "../sperren";
 import { toTeam } from "./abbildung";
 import { feldFehler, SQLSTATE, standardFehler, uebersetzen } from "./fehler";
+import { withTransaction } from "./transaktion";
 
 export type Zusammenarbeit = (typeof TEAM_ZUSAMMENARBEIT)[number];
 export type AbnahmeStandard = (typeof FADEN_ABNAHMEN)[number];
@@ -122,8 +125,8 @@ export async function remove(db: Database, id: TeamId): Promise<boolean> {
     (f) => {
       if (f.code !== SQLSTATE.fremdschluessel && f.code !== SQLSTATE.verhindert) return undefined;
       return new PaiBotError("abgelehnt", {
-        text: "Dieses Team hat Fäden und lässt sich nicht löschen.",
-        ausweg: "Lösche zuerst die Fäden des Teams.",
+        text: t("teams.fehler.hat_faeden"),
+        ausweg: t("teams.fehler.hat_faeden.ausweg"),
       });
     },
   );
@@ -148,6 +151,36 @@ export async function istMitglied(db: Database, id: TeamId, botId: BotId): Promi
     .where(eq(bots.id, botId))
     .limit(1);
   return row?.team === id;
+}
+
+/**
+ * Ändert ein Team und sichert dabei die Festlegung „die Leitung ist ein Mitglied ihres Teams“.
+ * Kommt mit dem Patch eine **neue** Leitung, liegen das Prüfen der Mitgliedschaft und das
+ * Schreiben in einer Transaktion unter der Sperre `TEAMS_LOCK_KEY`. Dieselbe Sperre nimmt
+ * `bots.setTeam`: Ein gleichzeitiges Versetzen oder Herausnehmen des Bots kann sich deshalb nicht
+ * zwischen Prüfung und Schreiben drängen, auch nicht aus einem zweiten Prozess. Gehört der Bot
+ * dann nicht (mehr) zum Team, meldet die Funktion `abgelehnt` und ändert **nichts**.
+ *
+ * Das Tor prüft dieselbe Bedingung vorher über den Fakt `leadInTeam`; hier liegt die harte Grenze
+ * in der Datenbank – genau wie die Grenze „Bots insgesamt“ in `bots.anlegenUnterGrenze`.
+ */
+export async function aendernUnterLeitungspruefung(
+  db: Database,
+  id: TeamId,
+  patch: TeamPatch,
+): Promise<Team | undefined> {
+  const lead = patch.leadBotId;
+  if (lead === undefined || lead === null) return update(db, id, patch);
+  return withTransaction(db, async (tx) => {
+    await tx.execute(`select pg_catalog.pg_advisory_xact_lock(${TEAMS_LOCK_KEY})`);
+    if (!(await istMitglied(tx, id, lead))) {
+      throw new PaiBotError("abgelehnt", {
+        text: t("teams.fehler.leitung_fremd"),
+        ausweg: t("teams.fehler.leitung_fremd.ausweg"),
+      });
+    }
+    return update(tx, id, patch);
+  });
 }
 
 /**
@@ -187,8 +220,8 @@ export async function entwurfStandSetzen(
   if (vorher === undefined) return undefined;
   if (!wechselErlaubt(vorher.status, nach)) {
     throw new PaiBotError("abgelehnt", {
-      text: "Dieser Entwurf ist nicht mehr offen.",
-      ausweg: "Lade die Seite neu; der Entwurf hat seinen Stand schon geändert.",
+      text: t("teams.fehler.entwurf_nicht_offen"),
+      ausweg: t("teams.fehler.entwurf_nicht_offen.ausweg"),
     });
   }
   const [row] = await uebersetzen(

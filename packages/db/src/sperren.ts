@@ -19,3 +19,11 @@ export const MIGRATION_LOCK_KEY = 2026112002;
  * insgesamt“ auch bei gleichzeitigen Anfragen und über mehrere Prozesse hinweg hält.
  */
 export const BOTS_LOCK_KEY = 2026112801;
+
+/**
+ * Sperre für die Leitung eines Teams. Sie hält das Prüfen der Mitgliedschaft und das Schreiben der
+ * Leitung zusammen (`teams.aendernUnterLeitungspruefung`) und schließt dabei das Versetzen eines
+ * Bots (`bots.setTeam`) aus, damit die Leitung eines Teams niemals außerhalb dieses Teams steht –
+ * auch bei gleichzeitigen Anfragen und über mehrere Prozesse hinweg.
+ */
+export const TEAMS_LOCK_KEY = 2026112802;

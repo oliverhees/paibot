@@ -17,11 +17,17 @@ import {
   newId,
   PaiBotError,
   type TeamId,
+  t,
 } from "@paibot/shared";
+import {
+  namensaenderungUnzulaessig,
+  namensFehler,
+  neuerNameUnzulaessig,
+} from "@paibot/shared/namen";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { bots, settings, teams } from "../schema";
-import { BOTS_LOCK_KEY } from "../sperren";
+import { BOTS_LOCK_KEY, TEAMS_LOCK_KEY } from "../sperren";
 import { toBot } from "./abbildung";
 import { feldFehler, SQLSTATE, standardFehler, uebersetzen } from "./fehler";
 import { withTransaction } from "./transaktion";
@@ -81,11 +87,13 @@ export async function create(db: Database, input: BotCreate): Promise<Bot> {
 }
 
 /**
- * Legt einen Bot an, aber nur solange es weniger als `max` gibt. Zählen und Einfügen liegen in
- * einer Transaktion unter der Sperre `BOTS_LOCK_KEY`: Zwei gleichzeitige Anfragen an der Grenze
- * legen deshalb nie beide an, auch nicht aus zwei Prozessen. Über der Grenze meldet sie
- * `limit_erreicht` und fügt nichts ein. Jeder Weg, der Bots anlegt und die Grenze einhalten muss,
- * nimmt diese Funktion statt `create`.
+ * Legt einen Bot an, aber nur solange es weniger als `max` gibt und sein Name nicht mit dem eines
+ * bestehenden Bots zu verwechseln ist. Zählen, Namensvergleich und Einfügen liegen in einer
+ * Transaktion unter der Sperre `BOTS_LOCK_KEY`: Zwei gleichzeitige Anfragen an der Grenze legen
+ * deshalb nie beide an, und ein gleichzeitiges Umbenennen (`aendernUnterNamenspruefung`) kann sich
+ * nicht dazwischendrängen – auch nicht aus zwei Prozessen. Über der Grenze meldet sie
+ * `limit_erreicht`, bei einem verwechselbaren Namen `eingabe_ungueltig`, und fügt nichts ein. Jeder
+ * Weg, der Bots anlegt und Grenze und Namen einhalten muss, nimmt diese Funktion statt `create`.
  */
 export async function anlegenUnterGrenze(
   db: Database,
@@ -96,11 +104,38 @@ export async function anlegenUnterGrenze(
     await tx.execute(`select pg_catalog.pg_advisory_xact_lock(${BOTS_LOCK_KEY})`);
     if ((await count(tx)) >= max) {
       throw new PaiBotError("limit_erreicht", {
-        text: `Du hast schon ${max} Bots – mehr gehen nicht.`,
-        ausweg: "Lösche einen Bot, den du nicht mehr brauchst.",
+        text: t("teams.fehler.bots_grenze", { max }),
+        ausweg: t("teams.fehler.bots_grenze.ausweg"),
       });
     }
+    const grund = neuerNameUnzulaessig(input.name, await list(tx));
+    if (grund !== undefined) throw namensFehler(grund);
     return create(tx, input);
+  });
+}
+
+/**
+ * Ändert einen Bot, prüft dabei aber seinen neuen Namen gegen alle anderen Bots: gleiche
+ * Schreibweise, gleiche Unicode-Form, unsichtbare oder ähnlich aussehende Zeichen sind
+ * verwechselbar und werden mit `eingabe_ungueltig` abgelehnt, ohne etwas zu ändern. Der Bot selbst
+ * ist ausgenommen – wer seinen Namen behält, darf speichern.
+ *
+ * Vergleich und Änderung liegen in einer Transaktion unter derselben Sperre `BOTS_LOCK_KEY` wie
+ * `anlegenUnterGrenze`: Ein gleichzeitiges Anlegen oder Umbenennen kann den Namen zwischen Prüfung
+ * und Speichern nicht mehr belegen. Ohne neuen Namen bleibt es bei einem einfachen `update`.
+ */
+export async function aendernUnterNamenspruefung(
+  db: Database,
+  id: BotId,
+  patch: BotPatch,
+): Promise<Bot | undefined> {
+  const name = patch.name;
+  if (name === undefined) return update(db, id, patch);
+  return withTransaction(db, async (tx) => {
+    await tx.execute(`select pg_catalog.pg_advisory_xact_lock(${BOTS_LOCK_KEY})`);
+    const grund = namensaenderungUnzulaessig(id, name, await list(tx));
+    if (grund !== undefined) throw namensFehler(grund);
+    return update(tx, id, patch);
   });
 }
 
@@ -183,8 +218,10 @@ export async function setPaused(
  * Gibt es das Team nicht, meldet der Fremdschlüssel `nicht_gefunden`.
  *
  * War der Bot die Leitung des Teams, das er verlässt, hat dieses Team danach keine Leitung: beides
- * geschieht in einer Transaktion. So ist die Leitung eines Teams immer ein Mitglied desselben
- * Teams – genau wie beim Löschen eines Bots, das die Leitung ebenfalls leer lässt.
+ * geschieht in einer Transaktion unter der Sperre `TEAMS_LOCK_KEY`. Dieselbe Sperre nimmt
+ * `teams.aendernUnterLeitungspruefung`, damit ein gleichzeitiges Ernennen einer Leitung und ein
+ * Versetzen sich nicht überlappen können. So ist die Leitung eines Teams immer ein Mitglied
+ * desselben Teams – genau wie beim Löschen eines Bots, das die Leitung ebenfalls leer lässt.
  */
 export async function setTeam(
   db: Database,
@@ -192,6 +229,7 @@ export async function setTeam(
   teamId: TeamId | null,
 ): Promise<Bot | undefined> {
   return withTransaction(db, async (tx) => {
+    await tx.execute(`select pg_catalog.pg_advisory_xact_lock(${TEAMS_LOCK_KEY})`);
     await tx
       .update(teams)
       .set({ leadBotId: null, updatedAt: sql`pg_catalog.now()` })
