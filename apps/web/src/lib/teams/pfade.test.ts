@@ -27,5 +27,21 @@ describe("TEAM_PFADE", () => {
     expect(TEAM_PFADE.teams()).toBe(routenPfad("teamAnlegen", {}));
     expect(TEAM_PFADE.team(teamId)).toBe(routenPfad("teamAendern", { id: teamId }));
     expect(TEAM_PFADE.team(teamId)).toBe(routenPfad("teamLoeschen", { id: teamId }));
+    const entwurfId = newId("entwurf");
+    expect(TEAM_PFADE.teamVorlagen()).toBe(routenPfad("teamVorlagenListe", {}));
+    expect(TEAM_PFADE.teamEntwuerfe()).toBe(routenPfad("teamEntwuerfeListe", {}));
+    expect(TEAM_PFADE.teamEntwuerfe()).toBe(routenPfad("teamEntwurfErstellen", {}));
+    expect(TEAM_PFADE.teamEntwurf(entwurfId)).toBe(
+      routenPfad("teamEntwurfLesen", { id: entwurfId }),
+    );
+    expect(TEAM_PFADE.teamEntwurf(entwurfId)).toBe(
+      routenPfad("teamEntwurfVerwerfen", { id: entwurfId }),
+    );
+    expect(TEAM_PFADE.teamEntwurfAnlegen(entwurfId)).toBe(
+      routenPfad("teamEntwurfAnlegen", { id: entwurfId }),
+    );
+    expect(TEAM_PFADE.teamEntwurfZuruecknehmen(entwurfId)).toBe(
+      routenPfad("teamEntwurfZuruecknehmen", { id: entwurfId }),
+    );
   });
 });

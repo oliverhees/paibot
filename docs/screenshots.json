@@ -4857,6 +4857,110 @@
       "beschreibung": "Seite „Bots und Teams“ nach der Einrichtung: noch kein Team, nur der Haupt-Assistent"
     },
     {
+      "name": "team-vorlage-liste",
+      "pfad": "/team-entwurf",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='vorlagen']",
+      "beschreibung": "Seite „Team aus Vorlage“: die Vorlagen aus dem Image, hier „Content-Team“. Erste Aufnahme der Reihe – die folgenden bauen darauf auf."
+    },
+    {
+      "name": "team-vorlage-vorschau",
+      "pfad": "/team-entwurf",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='vorlagen']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Vorschau öffnen"
+          }
+        },
+        {
+          "warteAuf": "[data-baustein='entwurf']"
+        }
+      ],
+      "beschreibung": "Die Vorschau: Leitung, Zusammenarbeit, Abnahme, jeder Bot mit „aus Vorlage“ und Häkchen, Kosten-Hinweis und „Team anlegen“. Legt den Entwurf an, auf dem die nächsten Aufnahmen stehen."
+    },
+    {
+      "name": "team-vorlage-wortlaut",
+      "pfad": "/team-entwurf",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='entwurf']",
+      "vorher": [
+        {
+          "klick": {
+            "text": "Anweisung im vollen Wortlaut",
+            "nr": 1
+          }
+        },
+        {
+          "warteAuf": "[data-baustein='entwurf-bot'][data-bot='Ideen'] textarea"
+        }
+      ],
+      "beschreibung": "„Anweisung im vollen Wortlaut“ ist aufgeklappt: Der ganze Text steht da und lässt sich vor dem Anlegen ändern."
+    },
+    {
+      "name": "team-vorlage-vorschau-handy",
+      "pfad": "/team-entwurf",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 390,
+      "hoehe": 844,
+      "warteAuf": "[data-baustein='entwurf']",
+      "beschreibung": "Dieselbe Vorschau auf dem Handy: Häkchen, Wortlaut und Knöpfe bleiben erreichbar."
+    },
+    {
+      "name": "team-vorlage-angelegt",
+      "pfad": "/team-entwurf",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='entwurf']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Team anlegen"
+          }
+        },
+        {
+          "warteAuf": "[data-baustein='entwurf-angelegt']"
+        }
+      ],
+      "beschreibung": "Nach dem Klick: Das Team steht, und „Rückgängig“ nimmt es als Ganzes zurück, solange niemand einem der neuen Bots geschrieben hat."
+    },
+    {
+      "name": "team-vorlage-rueckgaengig",
+      "pfad": "/team-entwurf",
+      "zustand": "mit-beispieldaten",
+      "anmeldung": true,
+      "breite": 1440,
+      "hoehe": 900,
+      "warteAuf": "[data-baustein='entwurf']",
+      "vorher": [
+        {
+          "klick": {
+            "rolle": "button",
+            "name": "Rückgängig"
+          }
+        },
+        {
+          "warteAuf": "[data-baustein='entwurf-zu']"
+        }
+      ],
+      "beschreibung": "Nach „Rückgängig“: Team und Bots sind weg, der Entwurf bleibt nachlesbar. Letzte Aufnahme der Reihe – sie gibt den Namen „Content“ wieder frei."
+    },
+    {
       "name": "bots-teams-angelegt",
       "pfad": "/teams",
       "zustand": "mit-beispieldaten",

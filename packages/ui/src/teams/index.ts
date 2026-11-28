@@ -13,6 +13,7 @@ export { BotMenue, type BotMenueProps } from "./BotMenue";
 export { beispielDaten, SZENEN as TEAMS_SZENEN, VORLAGE_TEAM_ID } from "./beispiel";
 export {
   ENTWURF_VERFALL_TAGE,
+  type EntwurfAuswahlBot,
   type EntwurfStatus,
   EntwurfVorschau,
   type EntwurfVorschauProps,

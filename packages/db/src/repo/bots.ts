@@ -13,6 +13,7 @@ import {
   type Bot,
   type BotColor,
   type BotId,
+  type EntwurfId,
   type ModelId,
   newId,
   PaiBotError,
@@ -44,6 +45,8 @@ export interface BotCreate {
   role?: string;
   /** Team, in dem der Bot anfängt; ohne Angabe steht er für sich. */
   teamId?: TeamId;
+  /** Der Entwurf, aus dem der Bot entstanden ist; leer bei Bots von Hand. */
+  fromDraftId?: EntwurfId;
 }
 
 export interface BotPatch {
@@ -78,6 +81,7 @@ export async function create(db: Database, input: BotCreate): Promise<Bot> {
             : { maxOutputTokens: input.maxOutputTokens }),
           ...(input.role === undefined ? {} : { role: input.role }),
           ...(input.teamId === undefined ? {} : { teamId: input.teamId }),
+          ...(input.fromDraftId === undefined ? {} : { fromDraftId: input.fromDraftId }),
         })
         .returning(),
     fehler,

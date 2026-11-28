@@ -36,6 +36,8 @@ import {
   setupConnectionTestInput,
   setupInput,
   teamCreateInput,
+  teamDraftApplyInput,
+  teamDraftCreateInput,
   teamPatchInput,
 } from "@paibot/shared/eingaben";
 import type { z } from "zod";
@@ -432,6 +434,74 @@ export const API_ROUTEN = {
     antwort: "json",
     veraendernd: true,
     aktion: "team.loeschen",
+  },
+
+  /** Die Team-Vorlagen aus dem Image (kein Netz); liest nur. */
+  teamVorlagenListe: {
+    methode: "GET",
+    pfad: "/api/team-vorlagen",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  /** Alle Team-Entwürfe, neueste zuerst; liest nur. */
+  teamEntwuerfeListe: {
+    methode: "GET",
+    pfad: "/api/team-entwuerfe",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  /** Erstellt einen Team-Entwurf aus einer Vorlage (Grenzen „offen“ und „je Tag“ im Tor). */
+  teamEntwurfErstellen: {
+    methode: "POST",
+    pfad: "/api/team-entwuerfe",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "team.entwurf_erstellen",
+    eingabe: teamDraftCreateInput,
+  },
+  /** Ein Team-Entwurf mit seinem geprüften Inhalt; liest nur (der Verfall wirkt dabei mit). */
+  teamEntwurfLesen: {
+    methode: "GET",
+    pfad: "/api/team-entwuerfe/:id",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: false,
+  },
+  /** Verwirft einen offenen Entwurf; der Inhalt bleibt lesbar. */
+  teamEntwurfVerwerfen: {
+    methode: "DELETE",
+    pfad: "/api/team-entwuerfe/:id",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "team.entwurf_verwerfen",
+  },
+  /**
+   * Legt Team und Bots aus einem Entwurf an, in einer Transaktion. Der Körper trägt den Inhalt,
+   * den die Vorschau zeigt; darum ist die Grenze größer als der Standard (sechs Bots mit je
+   * 8 000 Zeichen Anweisung bleiben weit darunter).
+   */
+  teamEntwurfAnlegen: {
+    methode: "POST",
+    pfad: "/api/team-entwuerfe/:id/anlegen",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "team.entwurf_anlegen",
+    eingabe: teamDraftApplyInput,
+    koerperBytes: 256 * 1024,
+  },
+  /** Nimmt ein angelegtes Team als Ganzes zurück, solange nichts benutzt oder geändert ist. */
+  teamEntwurfZuruecknehmen: {
+    methode: "POST",
+    pfad: "/api/team-entwuerfe/:id/zuruecknehmen",
+    zugang: "besitzer",
+    antwort: "json",
+    veraendernd: true,
+    aktion: "team.entwurf_zuruecknehmen",
   },
 
   /** Die verbundenen und getrennten Apps (ohne Token) mit dem Zugriff der Bots; liest nur. */

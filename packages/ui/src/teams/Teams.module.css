@@ -747,6 +747,15 @@
   font: var(--text-mono);
 }
 
+/* Derselbe Kasten, nur änderbar: Der Wortlaut bleibt vor und nach dem Anlegen gleich zu lesen. */
+textarea.anweisung {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  color: inherit;
+}
+
 .kosten {
   background: var(--eu-soft);
   color: var(--on-eu-soft);

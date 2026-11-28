@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
-import { botAdresse, teamAdresse } from "../../../lib/navigation";
+import { botAdresse, TEAM_ENTWURF_ADRESSE, teamAdresse } from "../../../lib/navigation";
 import { botAnlegenKoerper, teamAnlegenKoerper } from "../../../lib/teams/koerper";
 import { TEAM_PFADE } from "../../../lib/teams/pfade";
 import type { TeamsSeiteDaten } from "../../../lib/teams/seite";
@@ -112,6 +112,12 @@ export function TeamsSeite({ daten }: { daten: TeamsSeiteDaten }) {
             {t("teams.seite.team_anlegen")}
           </Button>
         </form>
+        <p className={styles.leise}>
+          <Link className={styles.link} href={TEAM_ENTWURF_ADRESSE}>
+            {t("teams.seite.aus_vorlage")}
+          </Link>{" "}
+          {t("teams.seite.aus_vorlage_hinweis")}
+        </p>
       </section>
 
       <section aria-labelledby="bots-liste">

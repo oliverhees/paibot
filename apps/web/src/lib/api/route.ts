@@ -20,6 +20,7 @@ import type {
   Facts,
 } from "@paibot/shared/aktionen";
 import { apiErrorFrom, errorBody, okBody } from "@paibot/shared/api";
+import type { ReceiptUndo } from "@paibot/shared/belege";
 import { invalidInput, isPaiBotError, PaiBotError } from "@paibot/shared/fehler";
 import { newId } from "@paibot/shared/ids";
 import { t } from "@paibot/shared/texte";
@@ -79,6 +80,11 @@ export interface TorOptionen {
   db?: Database;
   /** Andere Signaturschlüssel (nur die Einrichtung, deren Schlüssel noch in der Transaktion liegt). */
   schluessel?: ReceiptKeys;
+  /**
+   * Rücknahme-Hinweis für die Belege dieser Aktion: ob sie sich zurücknehmen lässt und wie. Steht
+   * nur dort, wo die Route es sagt; ohne Angabe tragen die Belege keinen Hinweis.
+   */
+  undo?: ReceiptUndo;
 }
 
 export interface RoutenKontext<N extends RoutenName> {
@@ -424,6 +430,7 @@ export function erstelleRahmen(dienste: () => ZugangsDienste) {
                 ...(geraet === undefined ? {} : { device: geraet }),
               } as never,
               ausfuehren as never,
+              optionen.undo === undefined ? {} : { undo: optionen.undo },
             );
             gelaufen.add(anfrage.type);
             return ergebnis as never;

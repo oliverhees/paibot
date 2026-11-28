@@ -1,0 +1,69 @@
+/**
+ * PaiBot – Stile der Seite „Team aus Vorlage“: Liste der Vorlagen und der Rahmen um die Vorschau.
+ *
+ * @author    Oliver Hees
+ * @link      https://paibot.de
+ * @copyright 2026 Oliver Hees. Alle Urheberrechte liegen beim Autor.
+ * @license   PaiBot Fair-Code-Lizenz 1.1 – siehe Datei LICENSE im Projektstamm
+ * @since     2026-11-28
+ */
+
+.seite {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.titel {
+  margin: 0;
+  font-size: var(--schrift-xl);
+}
+
+.vorspann,
+.leise {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--schrift-m);
+}
+
+.titel + .vorspann {
+  margin-bottom: 14px;
+}
+
+.abschnitt {
+  margin: 0 0 10px;
+  font-size: var(--schrift-l);
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.karte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-karte);
+  background: var(--surface);
+}
+
+.karte p {
+  margin: 2px 0 0;
+}
+
+.fehler {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-feld);
+  background: var(--danger-soft);
+  font-size: var(--schrift-m);
+}

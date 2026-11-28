@@ -2178,18 +2178,34 @@ export const de = {
   "teams.bot.team_zuordnen": "Team",
   "teams.bot.haupt": "Dein Haupt-Assistent. Er bleibt und lässt sich nicht löschen.",
   "teams.bot.laeuft": "Wird gespeichert …",
+  "teams.seite.aus_vorlage": "Team aus Vorlage",
+  "teams.seite.aus_vorlage_hinweis":
+    "– ein fertiges Team mit Bots, das du erst ansiehst und dann mit einem Klick anlegst.",
+  "teams.entwurf.seite_titel": "Team aus Vorlage",
+  "teams.entwurf.seite_vorspann":
+    "Eine Vorlage bringt ein Team mit fertigen Bots. Du siehst alles, bevor etwas entsteht.",
+  "teams.entwurf.vorlagen": "Vorlagen",
+  "teams.entwurf.keine_vorlagen": "Es gibt hier keine Vorlagen.",
+  "teams.entwurf.vorlage_oeffnen": "Vorschau öffnen",
+  "teams.entwurf.vorlage_bots": "{anzahl} Bots",
+  "teams.entwurf.inhalt_ungueltig":
+    "Diese Änderung passt nicht ({stelle}). Setze den Wortlaut zurück oder kürze ihn.",
   "teams.entwurf.region": "Entwurf für das Team {name}",
   "teams.entwurf.titel": "Entwurf: Team {name}",
+  // Entwürfe kommen bisher nur aus einer Vorlage im Image; einen Assistenten, der sie schreibt,
+  // gibt es noch nicht. Der Satz sagt deshalb, woher der Entwurf wirklich kommt.
   "teams.entwurf.kopf":
-    "Pai hat diesen Entwurf geschrieben. Angelegt wird erst, wenn du bestätigst.",
+    "Dieser Entwurf kommt aus einer Vorlage. Angelegt wird erst, wenn du bestätigst.",
   "teams.entwurf.leitung": "Leitung: {name}",
   "teams.entwurf.teile": "Teile des Entwurfs",
   "teams.entwurf.teil_team": "Team und Zusammenarbeit",
-  "teams.entwurf.teil_team_text":
-    "Team {name}, Zusammenarbeit „{zusammenarbeit}“, Abnahme durch die Leitung.",
+  "teams.entwurf.teil_team_text": "Team {name}, Zusammenarbeit „{zusammenarbeit}“, {abnahme}.",
+  "teams.entwurf.abnahme_leitung": "Abnahme durch die Leitung",
+  "teams.entwurf.abnahme_ich": "Abnahme durch dich",
   "teams.entwurf.bots": "Bots",
   "teams.entwurf.aus_vorlage": "aus Vorlage",
   "teams.entwurf.wortlaut": "Anweisung im vollen Wortlaut",
+  "teams.entwurf.wortlaut_aendern": "Anweisung für {name} ändern",
   "teams.entwurf.kommt_mit": "kommt mit {was}",
   "teams.entwurf.spaeter_automation": "Automationen",
   "teams.entwurf.spaeter_automation_mit": "den Routinen",

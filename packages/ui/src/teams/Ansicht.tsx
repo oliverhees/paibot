@@ -106,8 +106,8 @@ export function TeamsAnsicht({ daten, start = "seitenleiste", startBot }: TeamsA
           vorlage={daten.vorlage}
           status={entwurf}
           notAus={notAus}
-          onAnlegen={(n) => {
-            setNamen(new Set(n));
+          onAnlegen={(gewaehlte) => {
+            setNamen(new Set(gewaehlte.map((b) => b.name)));
             setEntwurf("angelegt");
           }}
           onRueckgaengig={() => setEntwurf("zurueck")}

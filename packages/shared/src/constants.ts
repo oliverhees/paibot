@@ -26,6 +26,12 @@ export const LIMITS = {
   /** Höchstens so viele Bots darf eine Installation haben (Grenze „Bots insgesamt“ im Tor). */
   bots: 50,
   teamNameChars: 60,
+  /** Höchstens so viele Team-Entwürfe dürfen gleichzeitig offen sein (Grenze „Entwürfe je Tag“). */
+  teamDraftsOpen: 5,
+  /** Höchstens so viele Team-Entwürfe darf ein Tag bringen (Grenze „Entwürfe je Tag“). */
+  teamDraftsPerDay: 20,
+  /** Nach so vielen Tagen verfällt ein offener Team-Entwurf: Er ist dann nur noch lesbar. */
+  teamDraftValidDays: 7,
   conversationTitleChars: 200,
   providerNameChars: 100,
   apiKeyChars: 1000,

@@ -135,11 +135,14 @@ export async function proxy(request: NextRequest) {
 /**
  * Jeder Pfad außer den Routen mit größerer Körper-Grenze als dem Standard (`koerperBytes` im
  * Vertrag): Senden einer Nachricht, Ändern des Bots und Anlegen eines weiteren Bots (die Anweisung
- * ist bei beiden gleich lang). Vor dem Proxy hält Next jeden Körper bis zur Grenze in
- * `next.config.ts` im Speicher; für diese Routen liest ihn nur der Rahmen, und erst nach Sitzung
- * und Prüfzeichen. Alle diese Routen prüfen Sitzung, Herkunft und Prüfzeichen selbst. Ein Test
- * hält die Liste mit dem Vertrag gleich.
+ * ist bei beiden gleich lang) sowie Anlegen eines Teams aus einem Entwurf (dort trägt der Körper
+ * den Inhalt der Vorschau, also bis zu sechs Anweisungen). Vor dem Proxy hält Next jeden Körper bis
+ * zur Grenze in `next.config.ts` im Speicher; für diese Routen liest ihn nur der Rahmen, und erst
+ * nach Sitzung und Prüfzeichen. Alle diese Routen prüfen Sitzung, Herkunft und Prüfzeichen selbst.
+ * Ein Test hält die Liste mit dem Vertrag gleich.
  */
 export const config = {
-  matcher: ["/((?!api/bots?/?$|api/unterhaltungen/[^/]+/nachrichten/?$).*)"],
+  matcher: [
+    "/((?!api/bots?/?$|api/unterhaltungen/[^/]+/nachrichten/?$|api/team-entwuerfe/[^/]+/anlegen/?$).*)",
+  ],
 };

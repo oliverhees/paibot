@@ -28,6 +28,13 @@ export const BOT_ADRESSE = "/bot";
 export const TEAMS_ADRESSE = "/teams";
 
 /**
+ * Seite „Team aus Vorlage“. Steht bewusst **nicht** unter `/teams/…`: Dort liegt die Seite eines
+ * Teams unter seiner Kennung, und ein fester Name an dieser Stelle wäre eine Kennung, die niemand
+ * mehr vergeben kann.
+ */
+export const TEAM_ENTWURF_ADRESSE = "/team-entwurf";
+
+/**
  * Seite eines Bots. Der Haupt-Assistent hat seine eigene Seite (`/bot`, mit Name, Anweisung und
  * Modell); jeder weitere Bot hat seinen Steckbrief unter `/bot/<Kennung>`.
  */
@@ -154,6 +161,7 @@ const WEITERE_SEITEN: readonly { href: string; text: string }[] = [
   { href: BOT_ADRESSE, text: t("seite.bot") },
   { href: "/einstellungen", text: t("seite.einstellungen") },
   { href: DU_ADRESSEN.info, text: t("seite.info") },
+  { href: TEAM_ENTWURF_ADRESSE, text: t("teams.entwurf.seite_titel") },
 ];
 
 /**

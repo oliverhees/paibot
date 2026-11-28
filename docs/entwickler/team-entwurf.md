@@ -10,7 +10,7 @@ Seit:      2026-11-21
 
 # Team-Entwurf – für Entwickler
 
-> Stand: Vom **Weg über einen Entwurf** gibt es bisher nur das **Format** (Fassung 2) und eine **Vorlage** als reine Funktionen und Daten: keine Seite, keine Route und keine Aktion, die aus einem Entwurf ein Team anlegt. Ein Team ohne Entwurf anzulegen, zu ändern und ihm Bots zuzuordnen gibt es dagegen – mit Tabelle (`packages/db/src/schema/teams.ts`), Aktionen der Fassung 4, Routen (`apps/web/src/lib/routen.ts`) und Seiten (`/teams`, `/teams/<Kennung>`, `/bot/<Kennung>`); siehe [Bots und Teams](bots-und-teams.md). Nichts führt Zusammenarbeit oder Abnahme aus: Beide halten die Wahl nur fest, hier im Entwurf und dort am Team.
+> Stand: Der Weg über einen Entwurf ist **gebaut**, aber nur aus einer **Vorlage**: Seite `/team-entwurf`, sieben Routen (`apps/web/src/lib/routen.ts`), die vier Aktionen `team.entwurf_erstellen`, `team.entwurf_verwerfen`, `team.entwurf_anlegen`, `team.entwurf_zuruecknehmen` der Fassung 4 (`packages/shared/src/tor-fassung-4.ts`) und die Tabellen `team_entwuerfe` und `team_anlagen` (`packages/db/src/schema/teams.ts`). Entwürfe aus einer hochgeladenen Datei und aus einem Zuruf an den Assistenten gibt es noch nicht: `verwaltung.ts` schreibt immer `herkunft: "vorlage"` (`apps/web/src/lib/team/entwurf/verwaltung.ts#HERKUNFT`). Nichts führt Zusammenarbeit oder Abnahme aus: Beide halten die Wahl nur fest, hier im Entwurf und dort am Team. Siehe auch [Bots und Teams](bots-und-teams.md).
 
 ## Zweck und Entscheidung
 
@@ -26,6 +26,15 @@ Entscheidungen, wie sie im Code stehen:
 - Nichts wird gekürzt oder still repariert. Zu lange Texte sind Fehler (`apps/web/src/lib/team/entwurf/format.ts#mehrzeilig`).
 - Modelle nur aus der eigenen Liste: Eine Kennung bleibt nur, wenn genau ein eingeschaltetes Modell sie trägt, sonst gilt „wie Pai“ mit Hinweis (`apps/web/src/lib/team/entwurf/format.ts#ordneModelleZu`).
 
+Entscheidungen zum Weg vom Entwurf zum Team:
+
+- **Nur über die vier Aktionen wird geschrieben.** `bots` und `teams` werden aus diesem Bereich allein in `packages/db/src/repo/entwuerfe.ts#anwenden` und `#zuruecknehmen` angefasst, und die rufen nur die Routen in einem `k.tor(…)`-Block. Zwei Tests führen darüber Listen und meckern jede neue Stelle an: `packages/db/src/teams-nur-besitzer-weg.test.ts` und `apps/web/src/gate-pflicht-quelltext.test.ts`.
+- **Die Vorschau darf ändern, aber nicht am Tor vorbei.** Der Vertrag verlangt mit der Vorbedingung „Entwurf-Fassung passt“, dass der mitgeschickte Abdruck zum angelegten Inhalt passt. Darum schickt die Seite beim Klick den geänderten Inhalt mit (`content`), der Server prüft ihn mit demselben Format und rechnet den Abdruck selbst (`apps/web/src/lib/team/entwurf/verwaltung.ts#teamEntwurfAnlegen`). Verworfen: den geänderten Inhalt vorher in die Zeile schreiben – das wäre ein Schreibzugriff auf `team_entwuerfe` außerhalb des Tors.
+- **Der Verfall braucht keinen Aufräum-Auftrag.** Jede Stelle, die einen Entwurf zum Anlegen oder Anzeigen liest, ruft `packages/db/src/repo/entwuerfe.ts#mitVerfall`: Ist `gilt_bis` vorbei, wird der Stand auf `verfallen` gesetzt und dieser zurückgegeben. So sieht der Leser denselben Stand, mit dem das Anlegen rechnet.
+- **Die Fassung einer Vorlage ist ihr Abdruck.** `quelle` ist `content-team@<12 Hex-Stellen>` (`apps/web/src/lib/team/entwurf/vorlagen.ts`). Die Vorlagen tragen kein Feld `fassung`; ein eigenes Feld hätte den Schlüsselsatz-Test der Datei gebrochen, ein Zähler in einer zweiten Datei wäre eine zweite Wahrheit.
+- **„Rückgängig“ ist alles oder nichts.** Es prüft vor und in der Transaktion erneut, dass kein neuer Bot gelaufen ist, keine Nachricht hat, kein Faden im neuen Team steht und kein Teil geändert wurde (`packages/db/src/repo/entwuerfe.ts#nutzung`). Trifft etwas davon zu, lehnt das Tor ab; einzeln löschen geht weiter über die Seite des Bots.
+- **Der Not-Aus sperrt zwei der vier Aktionen: Entwurf erstellen und Anlegen.** Beide führen den Fakt `killSwitch` (`packages/shared/src/tor-fassung-4.ts`, Zeilen 122-135 für `team.entwurf_erstellen`, 147-166 für `team.entwurf_anlegen`), und die Grenze „Not-Aus“ greift für „jede Aktion, die laut Fassung 4 `killSwitch` kennt oder ihn mitbringt“ (`packages/gate/src/fassungen/fassung-4.ts`, Zeile 1114). Genau diese zwei Stellen übergeben ihn auch: `apps/web/src/lib/team/entwurf/verwaltung.ts` Zeile 209 und Zeile 379. `team.entwurf_verwerfen` und `team.entwurf_zuruecknehmen` kennen den Fakt nicht (`tor-fassung-4.ts`, Zeilen 137-140 und 166-170) und gehen bei aktivem Not-Aus durch; Lesen ist keine Aktion. Folge für die Anwender: Bei aktivem Not-Aus lässt sich **keine neue Vorschau öffnen** – ein schon offener Entwurf bleibt lesbar, änderbar im Browser, verwerfbar, und ein angelegtes Team bleibt zurücknehmbar.
+
 ## Aufbau
 
 | Datei                                            | Aufgabe                                                                                                                                                                                 |
@@ -34,6 +43,13 @@ Entscheidungen, wie sie im Code stehen:
 | `apps/web/src/lib/team/entwurf/format.test.ts`   | Tests des Formats                                                                                                                                                                       |
 | `apps/web/src/lib/team/entwurf/vorlagen.test.ts` | prüft jede Datei in `vorlagen/teams/` gegen das Format und die festen Zeilen in den Anweisungen der Vorlage                                                                             |
 | `vorlagen/teams/content-team.json`               | Vorlage „Content-Team“: Leitung Redaktion, dazu Ideen, Entwurf, Lektorat; „Leitung führt“ vorausgewählt, Abnahme durch die Leitung                                                      |
+| `apps/web/src/lib/team/entwurf/vorlagen.ts`      | lädt die Vorlagen als Dateien aus dem Image (`ladeVorlagen`, `ladeVorlage`), prüft jede streng, bildet `quelle`                                                                         |
+| `apps/web/src/lib/team/entwurf/verwaltung.ts`    | die Logik der sieben Routen: Fakten sammeln, Tor rufen, Ergebnis zurückgeben                                                                                                            |
+| `apps/web/src/lib/team/entwurf/seite.ts`         | das Lesen für die Seite: Vorlagen, Entwürfe, Not-Aus; bildet `verfallen` auf `verworfen` ab                                                                                             |
+| `apps/web/src/lib/team/entwurf/vorschau.ts`      | `inhaltMitAuswahl` und `geprueftMitAbdruck` – was der Browser vor dem Klick rechnet                                                                                                     |
+| `packages/db/src/repo/entwuerfe.ts`              | Zugriff auf `team_entwuerfe` und `team_anlagen`: anlegen, lesen, zählen, `mitVerfall`, `nutzung`, `anwenden`, `zuruecknehmen`, `verwerfen`                                              |
+| `packages/ui/src/teams/Entwurf.tsx`              | die Vorschau: Teile mit Häkchen, voller Wortlaut zum Ändern, Kosten-Hinweis, Anlegen und Rückgängig                                                                                     |
+| `apps/web/src/app/(app)/team-entwurf/`           | die Seite `/team-entwurf` (Server-Teil, Browser-Teil, Gestaltung)                                                                                                                       |
 
 Datenfluss: Text → Größengrenze und JSON (`pruefeEntwurfText`) → Fassung aus dem Feld `format` (`leseEntwurf`): Fassung 2 wird geprüft (`leseEntwurfV2`), Fassung 1 geprüft und überführt (`leseEntwurfV1`, `ueberfuehreV1`) → eindeutige Namen, Leitung prüfen, Form und Farbe der Reihe nach vergeben → optional Entwurf des Assistenten auf „aus“ setzen → optional Modelle zuordnen (`ordneModelleZu`) → Abdruck (`entwurfAbdruck`).
 
@@ -90,18 +106,55 @@ Alle Zeilen stehen in Spalte 0, mit ASCII-`@` und ASCII-`:`. Ein Test zieht die 
 
 ## Datenmodell und Migrationen
 
-Keine eigenen Tabellen. Gelesen werden nur die Grenzen der Tabelle `bots` (`packages/db/src/schema/anbieter.ts#bots`) über `LIMITS` aus `packages/shared/src/constants.ts` und die Listen `AVATAR_SHAPES` und `BOT_COLORS` aus `packages/shared/src/objects.ts`. Keine Migration.
+**Keine Migration in diesem Paket**: Beide Tabellen lagen schon vorher auf `main`.
+
+| Tabelle          | Rolle                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `team_entwuerfe` | ein Entwurf je Zeile: `origin`, `source`, `title`, `content` (JSON), `digest`, `format_version`, `valid_until`, `status`, `action_id` (`packages/db/src/schema/teams.ts`) |
+| `team_anlagen`   | je angelegtes Objekt eine Zeile, nur angehängt: welcher Entwurf hat welches Team und welchen Bot erzeugt. Sie bleibt auch nach „Rückgängig“ stehen                        |
+
+Der Stand eines Entwurfs wechselt nur über `packages/db/src/repo/teams.ts#entwurfStandSetzen`; erlaubt sind allein die Wechsel aus `ENTWURF_WECHSEL`. Jeder neue Bot trägt seinen Entwurf in `bots.from_draft_id` (`packages/db/src/repo/bots.ts`), damit nachprüfbar bleibt, woher er kommt.
+
+Gelesen werden außerdem die Grenzen der Tabelle `bots` (`packages/db/src/schema/anbieter.ts#bots`) über `LIMITS` aus `packages/shared/src/constants.ts` und die Listen `AVATAR_SHAPES` und `BOT_COLORS` aus `packages/shared/src/objects.ts`. Die Zahlen des Weges stehen je einmal: `botsMax` (6 Bots je Entwurf) in `ENTWURF_GRENZEN` des Formats, `bots` (50 insgesamt), `teamDraftsOpen` (5 offen), `teamDraftsPerDay` (20 am Tag) und `teamDraftValidDays` (7 Tage) in `LIMITS`.
 
 ## Schnittstellen
 
-| Art      | Name                                                             | Datei                                     |
-| -------- | ---------------------------------------------------------------- | ----------------------------------------- |
-| Funktion | `leseEntwurf`, `leseEntwurfV1`, `leseEntwurfV2`, `ueberfuehreV1` | `apps/web/src/lib/team/entwurf/format.ts` |
-| Funktion | `pruefeEntwurf`, `pruefeEntwurfText`                             | `apps/web/src/lib/team/entwurf/format.ts` |
-| Funktion | `ordneModelleZu`, `entwurfAbdruck`, `entwurfAbdruckV1`           | `apps/web/src/lib/team/entwurf/format.ts` |
-| Daten    | Vorlage `content-team.json`                                      | `vorlagen/teams/content-team.json`        |
+| Art      | Name                                                             | Datei                                         |
+| -------- | ---------------------------------------------------------------- | --------------------------------------------- |
+| Funktion | `leseEntwurf`, `leseEntwurfV1`, `leseEntwurfV2`, `ueberfuehreV1` | `apps/web/src/lib/team/entwurf/format.ts`     |
+| Funktion | `pruefeEntwurf`, `pruefeEntwurfText`                             | `apps/web/src/lib/team/entwurf/format.ts`     |
+| Funktion | `ordneModelleZu`, `entwurfAbdruck`, `entwurfAbdruckV1`           | `apps/web/src/lib/team/entwurf/format.ts`     |
+| Daten    | Vorlage `content-team.json`                                      | `vorlagen/teams/content-team.json`            |
+| Funktion | `ladeVorlagen`, `ladeVorlage`                                    | `apps/web/src/lib/team/entwurf/vorlagen.ts`   |
+| Funktion | `entwurfAnsicht`, `entwurfModelle`, `teamVorlagenAnsichten`      | `apps/web/src/lib/team/entwurf/verwaltung.ts` |
+| Funktion | `inhaltMitAuswahl`, `geprueftMitAbdruck`                         | `apps/web/src/lib/team/entwurf/vorschau.ts`   |
 
-Keine Route, keine Aktion, kein Ereignis.
+Routen (Vertrag in `apps/web/src/lib/routen.ts`, Dateien unter `apps/web/src/app/api/team-vorlagen/` und `apps/web/src/app/api/team-entwuerfe/`):
+
+| Methode, Pfad                                | Name                       | Aktion                       |
+| -------------------------------------------- | -------------------------- | ---------------------------- |
+| `GET /api/team-vorlagen`                     | `teamVorlagenListe`        | – (liest)                    |
+| `GET /api/team-entwuerfe`                    | `teamEntwuerfeListe`       | – (liest)                    |
+| `POST /api/team-entwuerfe`                   | `teamEntwurfErstellen`     | `team.entwurf_erstellen`     |
+| `GET /api/team-entwuerfe/:id`                | `teamEntwurfLesen`         | – (liest)                    |
+| `DELETE /api/team-entwuerfe/:id`             | `teamEntwurfVerwerfen`     | `team.entwurf_verwerfen`     |
+| `POST /api/team-entwuerfe/:id/anlegen`       | `teamEntwurfAnlegen`       | `team.entwurf_anlegen`       |
+| `POST /api/team-entwuerfe/:id/zuruecknehmen` | `teamEntwurfZuruecknehmen` | `team.entwurf_zuruecknehmen` |
+
+`teamEntwurfAnlegen` hat `koerperBytes: 256 * 1024` (Standard sind 16 KiB, `apps/web/src/lib/api/koerper.ts`), weil der Körper den Inhalt der Vorschau trägt: bis zu sechs Anweisungen à 8 000 Zeichen. Derselbe Pfad ist im Matcher von `apps/web/src/proxy.ts` ausgenommen, wie schon die Pfade für Bots und Nachrichten.
+
+Fakten, die der Server je Aktion ans Tor gibt – alle aus der Datenbank, keiner aus dem Browser:
+
+| Aktion                       | Fakten                                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `team.entwurf_erstellen`     | `herkunft`, `offeneEntwuerfe`, `maxOffeneEntwuerfe`, `entwuerfeHeute`, `maxEntwuerfeProTag`, `killSwitch`                                                                 |
+| `team.entwurf_verwerfen`     | `entwurfOffen`                                                                                                                                                            |
+| `team.entwurf_anlegen`       | `entwurfOffen`, `entwurfDigest`, `seenEntwurfDigest`, `namesFree`, `modelsAvailable`, `contactInDraft`, `draftBots`, `maxDraftBots`, `botsAfter`, `maxBots`, `killSwitch` |
+| `team.entwurf_zuruecknehmen` | `allUnused`, `allUnchanged`                                                                                                                                               |
+
+`seenEntwurfDigest` ist das Einzige, was aus der Anfrage kommt – es ist ja gerade die Frage, was der Browser gesehen hat. `namesFree` prüft die Namen aller Bots des Entwurfs **und** den des Teams (`teams.name` ist eindeutig): Sonst scheiterte erst die Transaktion, statt dass das Tor mit einem Beleg und einem Ausweg ablehnt.
+
+Kein neues Ereignis.
 
 ## Sicherheit
 
@@ -110,23 +163,60 @@ Keine Route, keine Aktion, kein Ereignis.
 - Höchstens 50 Fehler werden gemeldet; Pfade in Fehlern sind auf 120 Zeichen gekürzt.
 - Zusammenarbeit und Abnahme sind nur Auswahlwerte; sie geben kein Recht und lösen nichts aus. Ein Entwurf des Assistenten kann „Leitung führt“ nicht selbst einschalten (`apps/web/src/lib/team/entwurf/format.test.ts`).
 - Die Vorlage nennt kein Recht und jede Anweisung sagt, dass sie keine Rechte gibt (`apps/web/src/lib/team/entwurf/vorlagen.test.ts`).
+- Die Vorlagen kommen **aus dem Image, nicht aus dem Netz**: `apps/web/src/lib/team/entwurf/vorlagen.ts` importiert nur `node:fs/promises`, `node:path`, das Format und `@paibot/shared`. Zwei Tests halten das fest – einer prüft die Import-Liste der Quelle, einer ruft alle Vorlagen mit einem werfenden `fetch` ab und erwartet, dass `fetch` nie angefasst wurde (`apps/web/src/lib/team/entwurf/vorlagen-laden.test.ts`).
+- Eine Vorlagen-Kennung aus einer Anfrage kann nicht aus dem Ordner führen: Sie muss auf `TEAM_TEMPLATE_KEY_PATTERN` passen (`packages/shared/src/inputs.ts`), also kleine Buchstaben, Ziffern und Bindestrich – weder Punkt noch Schrägstrich. `../content-team`, `/etc/passwd` und `content-team.json` werden abgewiesen, ohne dass etwas gelesen wird.
+- Der Lader der Vorlagen und die Logik der Routen dürfen nicht ins Browser-Bündel geraten; `apps/web/src/lib/routen-browser-buendel.test.ts` führt sie als verbotene Dateien und hat je eine Gegenprobe. Die Vorschau im Browser darf das Format mitbringen (es nutzt nur Web Crypto), aber nichts, was Dateien oder die Datenbank anfasst.
+- Im Image liegen die Vorlagen schreibgeschützt (`apps/web/Dockerfile`: Ordner `0555`, Dateien `0444`, Pfad in `PAIBOT_TEAM_VORLAGEN`); die App liest sie und kann sie zur Laufzeit nicht ändern.
+- Eine ungültige Vorlage **wirft** beim Laden (`TeamVorlagenFehler`), statt still zu fehlen: Sie ist ein Fehler im Image, keine Eingabe eines Menschen, und soll beim Bau auffallen.
+
+### Wer schreibt Bots und Teams
+
+Jede Stelle, die in `bots` oder `teams` schreibt, steht in dieser Tabelle und in `ERWARTET` in
+`tools/lint-regeln/src/schreiber-bots-teams.test.ts`. Eine neue Stelle macht den Test rot; wer sie
+ergänzt, entscheidet damit, dass auch sie durch das Tor geht und einen Beleg schreibt.
+
+| Datei                                    | Weg                                                               |
+| ---------------------------------------- | ----------------------------------------------------------------- |
+| `apps/web/src/lib/bot/bot.ts`            | ein Bot von Hand: anlegen, ändern, Modell, Pause, löschen         |
+| `apps/web/src/lib/teams/verwaltung.ts`   | Teams von Hand: anlegen, umbenennen, Leitung, Mitglieder, löschen |
+| `apps/web/src/lib/zugang/einrichtung.ts` | der erste Bot bei der Einrichtung                                 |
+| `packages/db/src/repo/entwuerfe.ts`      | Team aus einer Vorlage: eine Transaktion, Rückgängig als Ganzes   |
+| `packages/db/src/repo/bots.ts`           | die Zugriffsfunktionen selbst (hier liegen die Tabellen)          |
+| `packages/db/src/repo/teams.ts`          | die Zugriffsfunktionen selbst (hier liegen die Tabellen)          |
 
 ## Tests
 
-| Test                                             | Prüft                                                                                                                                                                                                                                 |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web/src/lib/team/entwurf/format.test.ts`   | unbekannte Felder, Grenzen, Codepoints, Texte, Namen, Leitung, Zusammenarbeit und Abnahme, Modelle, Abdruck und Bindung an die Fassung, Fassung 1 lesen und überführen, Entwurf des Assistenten, Text-Eingabe, keine Rechte, Reinheit |
-| `apps/web/src/lib/team/entwurf/vorlagen.test.ts` | jede Vorlage ist gültig; Inhalt der Vorlage „Content-Team“; Beispiel-Zeilen der Anweisungen gegen die feste Form; kein „freigeben“; keine Versprechen über Fähigkeiten, die PaiBot nicht hat                                          |
+| Test                                                                                            | Prüft                                                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/lib/team/entwurf/format.test.ts`                                                  | unbekannte Felder, Grenzen, Codepoints, Texte, Namen, Leitung, Zusammenarbeit und Abnahme, Modelle, Abdruck und Bindung an die Fassung, Fassung 1 lesen und überführen, Entwurf des Assistenten, Text-Eingabe, keine Rechte, Reinheit                                                                       |
+| `apps/web/src/lib/team/entwurf/vorlagen.test.ts`                                                | jede Vorlage ist gültig; Inhalt der Vorlage „Content-Team“; Beispiel-Zeilen der Anweisungen gegen die feste Form; kein „freigeben“; keine Versprechen über Fähigkeiten, die PaiBot nicht hat                                                                                                                |
+| `apps/web/src/lib/team/entwurf/vorlagen-laden.test.ts`                                          | Laden aus dem Image ohne Netz (werfendes `fetch`, Import-Liste der Quelle); ungültige Vorlage wirft und nennt die Stelle; falscher Dateiname, fehlender Ordner, zu viele Dateien; Kennungen, die aus dem Ordner führen wollen                                                                               |
+| `apps/web/src/lib/team/entwurf/verwaltung.test.ts`                                              | die sieben Routen: Abdruck bindet (mit Gegenprobe), Not-Aus sperrt nur das Anlegen, Frist um → abgelehnt und `verfallen` (mit Gegenprobe), Name mit „Team “, vergebener Team- und Bot-Name, zweimal anlegen, Rückgängig als Ganzes, nach einer Nachricht abgelehnt; jede Ablehnung mit Beleg und ohne Zeile |
+| `packages/db/src/repo/entwuerfe.test.ts`                                                        | die Transaktion: Fehler mitten drin → keine Zeile in `bots`, `teams`, `team_anlagen`; `nutzung` nach Nachricht, Änderung und Löschen; Wechsel der Stände                                                                                                                                                    |
+| `apps/web/src/lib/team/entwurf/vorschau.test.ts`                                                | `inhaltMitAuswahl` und `geprueftMitAbdruck`: Reihenfolge des Entwurfs gewinnt gegen die der Auswahl, gleicher Abdruck                                                                                                                                                                                       |
+| `apps/web/src/lib/team/entwurf/seite.test.ts`                                                   | das Lesen für die Seite: Frist um → `verworfen` und Zeile auf `verfallen` (Gegenprobe mit Frist in der Zukunft), Modelle nur einmal gelesen                                                                                                                                                                 |
+| `apps/web/src/app/(app)/team-entwurf/seite.test.ts`                                             | die Seite: ohne Entwurf die Vorlagen, mit offenem Entwurf die Vorschau mit Feld, nach dem Anlegen „Rückgängig“ ohne Feld, Not-Aus sperrt den Knopf (mit Gegenprobe)                                                                                                                                         |
+| `apps/web/src/gate-pflicht.test.ts`                                                             | jede der sieben Routen geht durchs Tor (401 ohne Sitzung, 403 ohne Prüfzeichen, Beleg je Aktion)                                                                                                                                                                                                            |
+| `apps/web/src/gate-pflicht-quelltext.test.ts`, `packages/db/src/teams-nur-besitzer-weg.test.ts` | kein anderer Weg schreibt in `bots` oder `teams`: Beide führen Listen und melden jede Schreibstelle, die nicht darin steht – und jeden Eintrag ohne Schreibstelle                                                                                                                                           |
+| `tools/lint-regeln/src/schreiber-bots-teams.test.ts`                                            | die Bestandsliste aller schreibenden Stellen über `apps`, `packages`, `tools`, `scripts` und `deploy`: eine Stelle, die nicht in `ERWARTET` steht, macht den Test rot (Gegenprobe belegt), ebenso ein Eintrag ohne Stelle                                                                                   |
+| `tools/e2e/src/e2e.mjs`                                                                         | der ganze Weg im Browser: Vorlage öffnen, Wortlaut ändern, Bot abwählen, anlegen, rückgängig – am Schirm (1440) und am Handy (390), dort zusätzlich ohne seitliches Hinausragen                                                                                                                             |
 
 Ausführen:
 
 ```bash
-pnpm --filter @paibot/web exec vitest run src/lib/team
+pnpm --filter @paibot/web exec vitest run src/lib/team "src/app/(app)/team-entwurf"
+pnpm --filter @paibot/db exec vitest run src/repo/entwuerfe.test.ts
+pnpm e2e
 ```
 
 ## Bekannte Schwächen
 
-- Es gibt noch keinen Weg, einen Entwurf anzulegen; ob Namen schon vergeben sind, prüft das Format nicht (es kennt die Datenbank nicht).
+- Das Format prüft nicht, ob Namen schon vergeben sind – es kennt die Datenbank nicht. Das tut der Fakt `namesFree` der Route; zwischen seiner Erhebung und dem Einfügen liegt die Sperre der Transaktion, nicht mehr.
+- Entwürfe entstehen nur aus einer Vorlage. Eine hochgeladene Datei und ein Zuruf an den Assistenten sind im Format vorgesehen (`herkunft`), aber nicht gebaut.
+- In der Vorschau lassen sich nur Häkchen und Anweisungen ändern. Namen von Team und Bots stehen fest; Umbenennen geht erst nach dem Anlegen.
+- Der Abdruck bindet den Inhalt, nicht die Sitzung: Wer denselben Inhalt und denselben Abdruck schickt, legt an. Dass die Anfrage vom Besitzer kommt, hält der Zugang mit Sitzung und Prüfzeichen fest, nicht der Abdruck.
+- `team_anlagen` wird nur angehängt. Nach „Rückgängig“ zeigen ihre Zeilen auf Bots und ein Team, die es nicht mehr gibt – das ist Absicht (Belegspur), aber wer sie liest, muss damit rechnen.
+- Das Image wurde für diese Änderung nicht gebaut; die Zeilen im `Dockerfile` folgen dem Muster des Doku-Index, das dort schon läuft.
 - Zusammenarbeit „Leitung führt“ und Abnahme sind bisher nur gespeicherte Wahl: Nichts im Programm führt sie aus. Abnahme „leitung“ bei Zusammenarbeit „aus“ ist erlaubt und wirkt dann nicht.
 - Ob Modelle den Entwurf als JSON zuverlässig liefern und ob sie die festen Zeilen der Vorlage einhalten, ist nicht geprüft.
 - Das feste Muster im Test bildet die Zeilen-Form nach; es ist von der späteren Erkennung unabhängig und muss mit ihr abgeglichen werden, wenn sie sich ändert.

@@ -79,7 +79,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 - **In einem Team antwortet noch kein Bot.** Teams ordnen heute deine Bots; Fäden, in denen mehrere Bots zusammenarbeiten, kommen später. Ein Faden nimmt noch keine Nachricht an.
 - **Übergaben zwischen Bots gibt es noch nicht.** Jeder Bot antwortet in seiner eigenen Unterhaltung.
 - „Zusammenarbeit: Leitung führt“ und der Abnahme-Standard sind heute gespeicherte Angaben; wirksam werden sie mit den Fäden (geplant).
-- Teams aus einer Vorlage anlegen ist geplant und noch nicht gebaut.
+- Ein ganzes Team mit Bots in einem Schritt anzulegen geht über eine Vorlage: [Team aus Vorlage](funktion-team-entwurf.md).
 - **Die weiteren Bots haben noch keine eigene Anweisung.** Beim Anlegen wird nur die Aufgabe gespeichert und angezeigt; die Anweisung an das Modell bleibt leer, also arbeiten sie mit dem allgemeinen Kopf. Eine eigene Anweisung je Bot – und ein Weg, sie zu ändern – kommt später. Name, Anweisung und Aussehen deines Haupt-Assistenten änderst du weiter auf der Seite [Bot](funktion-bot.md); für die weiteren Bots zeigt ihre Seite heute den Steckbrief.
 - Die Tagesgrenze für Token gilt für die ganze Installation, nicht je Team.
 

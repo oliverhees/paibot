@@ -415,6 +415,44 @@ async function teamId(s: Stand): Promise<string> {
   return team.id;
 }
 
+/** Kennung der Vorlage, die mit dem Release kommt (`vorlagen/teams/content-team.json`). */
+const VORLAGE = "content-team";
+
+/** Eingerichtet, dazu ein offener Entwurf aus der Vorlage des Images. */
+async function mitEntwurf(): Promise<Stand> {
+  const s = await einrichten();
+  await rufe(s, "teamEntwurfErstellen", { koerper: { template: VORLAGE } });
+  return s;
+}
+
+async function entwurfZeile(s: Stand): Promise<repo.entwuerfe.Entwurf> {
+  const [entwurf] = await repo.entwuerfe.list(s.u.db);
+  if (entwurf === undefined) throw new Error("kein Entwurf");
+  return entwurf;
+}
+
+async function entwurfId(s: Stand): Promise<string> {
+  return (await entwurfZeile(s)).id;
+}
+
+/**
+ * Der Abdruck, den die Vorschau zeigt. Er muss zum Fakt `entwurfDigest` passen, den der Server über
+ * den anzulegenden Inhalt selbst rechnet (V-28); ohne geänderten Inhalt ist das der gespeicherte.
+ */
+async function entwurfAbdruckVon(s: Stand): Promise<string> {
+  return (await entwurfZeile(s)).digest;
+}
+
+/** Eingerichtet, Entwurf aus der Vorlage angelegt (Team und Bots stehen). */
+async function mitAngelegtemTeam(): Promise<Stand> {
+  const s = await mitEntwurf();
+  await rufe(s, "teamEntwurfAnlegen", {
+    params: { id: await entwurfId(s) },
+    koerper: { seenDigest: await entwurfAbdruckVon(s) },
+  });
+  return s;
+}
+
 const APP_ADRESSE = "https://mcp.beispiel.de/mcp";
 
 /** Eingerichtet, mit einer verbundenen App (Ersatz für die Liste der Werkzeuge). */
@@ -571,6 +609,25 @@ const AKTIONS_FAELLE: Record<AktionsRoute, Fall> = {
   teamLoeschen: {
     vorher: mitTeam,
     aufruf: async (s) => ({ params: { id: await teamId(s) } }),
+  },
+  teamEntwurfErstellen: {
+    vorher: einrichten,
+    aufruf: async () => ({ koerper: { template: VORLAGE } }),
+  },
+  teamEntwurfVerwerfen: {
+    vorher: mitEntwurf,
+    aufruf: async (s) => ({ params: { id: await entwurfId(s) } }),
+  },
+  teamEntwurfAnlegen: {
+    vorher: mitEntwurf,
+    aufruf: async (s) => ({
+      params: { id: await entwurfId(s) },
+      koerper: { seenDigest: await entwurfAbdruckVon(s) },
+    }),
+  },
+  teamEntwurfZuruecknehmen: {
+    vorher: mitAngelegtemTeam,
+    aufruf: async (s) => ({ params: { id: await entwurfId(s) } }),
   },
   anbieterAnlegen: {
     vorher: einrichten,
@@ -771,6 +828,12 @@ const LESE_FAELLE: Record<LeseRoute, Fall | null> = {
   },
   botsListe: { vorher: mitZweitemBot, aufruf: async () => ({}) },
   teamsListe: { vorher: mitTeam, aufruf: async () => ({}) },
+  teamVorlagenListe: { vorher: einrichten, aufruf: async () => ({}) },
+  teamEntwuerfeListe: { vorher: mitEntwurf, aufruf: async () => ({}) },
+  teamEntwurfLesen: {
+    vorher: mitEntwurf,
+    aufruf: async (s) => ({ params: { id: await entwurfId(s) } }),
+  },
   sitzungen: { vorher: einrichten, aufruf: async () => ({}) },
   geraete: { vorher: einrichten, aufruf: async () => ({}) },
   unterhaltungen: { vorher: mitUnterhaltung, aufruf: async () => ({}) },
