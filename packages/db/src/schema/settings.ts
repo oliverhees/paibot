@@ -65,6 +65,36 @@ export const settings = pgTable(
     stabschefErlaubt: boolean("stabschef_erlaubt").notNull().default(false),
     /** Höchstzahl der Zeichen aller Werkzeug-Ergebnisse eines Schritts. */
     toolResultsMaxCharsPerStep: integer("tool_results_max_chars_per_step").notNull().default(24000),
+    /*
+     * Grenzen der Aufträge (ab Migration 0020), je Bereich mit CHECK. Die Nummern der Grenzen im Tor
+     * stehen in der Entwickler-Doku (`docs/entwickler/auftraege.md`).
+     */
+    /** Tiefe eines Auftragsbaums (Wurzel = 0). */
+    auftragMaxTiefe: integer("auftrag_max_tiefe").notNull().default(3),
+    /** Aufträge je Baum. */
+    auftragMaxAnzahl: integer("auftrag_max_anzahl").notNull().default(20),
+    /** Token aller Läufe eines Baums (ohne Zuschläge). */
+    auftragMaxTokens: integer("auftrag_max_tokens").notNull().default(200000),
+    /** Minuten seit der Wurzel. */
+    auftragMaxMinuten: integer("auftrag_max_minuten").notNull().default(30),
+    /** Offene Unter-Aufträge je Auftrag. */
+    auftragMaxBreite: integer("auftrag_max_breite").notNull().default(6),
+    /** Aufträge der Leitung an dasselbe Mitglied je Baum (Übergabe und Rückgaben). */
+    auftraegeJeMitglied: integer("auftraege_je_mitglied").notNull().default(3),
+    /** Rückfragen an dich je Faden. */
+    rueckfragenJeFaden: integer("rueckfragen_je_faden").notNull().default(3),
+    /** Bitten um Zulieferung je Auftrag eines Mitglieds. */
+    bittenJeAuftrag: integer("bitten_je_auftrag").notNull().default(1),
+    /** Zuschläge „+10.000 Token“ je Baum; fest 5. */
+    zuschlaegeJeBaum: integer("zuschlaege_je_baum").notNull().default(5),
+    /** Erwähnungen (`@Name`) je Nachricht. */
+    erwaehnungenJeNachricht: integer("erwaehnungen_je_nachricht").notNull().default(6),
+    /**
+     * Not-Aus-Epoche: steigt um 1, wenn der Not-Aus eingeschaltet wird (Trigger `settings_epoche`),
+     * und sonst nie. Ein Auftrag speichert die Epoche beim Anlegen; ein Lauf zu einem Auftrag einer
+     * älteren Epoche startet nicht mehr.
+     */
+    notausEpoche: integer("notaus_epoche").notNull().default(0),
   },
   (t) => [
     check("settings_nur_eine_zeile", sql`${t.id} = 'singleton'`),
@@ -98,6 +128,23 @@ export const settings = pgTable(
       "settings_verlaufsgrenze_positiv",
       sql`${t.historyTokenLimit} is null or ${t.historyTokenLimit} > 0`,
     ),
+    check("settings_auftrag_max_tiefe_bereich", sql`${t.auftragMaxTiefe} between 1 and 5`),
+    check("settings_auftrag_max_anzahl_bereich", sql`${t.auftragMaxAnzahl} between 1 and 100`),
+    check(
+      "settings_auftrag_max_tokens_bereich",
+      sql`${t.auftragMaxTokens} between 1000 and 2000000`,
+    ),
+    check("settings_auftrag_max_minuten_bereich", sql`${t.auftragMaxMinuten} between 1 and 240`),
+    check("settings_auftrag_max_breite_bereich", sql`${t.auftragMaxBreite} between 1 and 12`),
+    check("settings_auftraege_je_mitglied_bereich", sql`${t.auftraegeJeMitglied} between 1 and 10`),
+    check("settings_rueckfragen_je_faden_bereich", sql`${t.rueckfragenJeFaden} between 1 and 10`),
+    check("settings_bitten_je_auftrag_bereich", sql`${t.bittenJeAuftrag} between 1 and 3`),
+    check("settings_zuschlaege_je_baum_fest", sql`${t.zuschlaegeJeBaum} = 5`),
+    check(
+      "settings_erwaehnungen_je_nachricht_bereich",
+      sql`${t.erwaehnungenJeNachricht} between 1 and 12`,
+    ),
+    check("settings_notaus_epoche_nicht_negativ", sql`${t.notausEpoche} >= 0`),
     optionalIdCheck("settings_installation_id_format", t.installationId, "installation"),
     check(
       "settings_einrichtungs_code_format",

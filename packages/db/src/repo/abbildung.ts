@@ -94,11 +94,23 @@ export function toMessage(row: MessageRow): Message {
           },
         }),
     ...wennGesetzt("step", row.step),
-    origin: row.origin,
+    ...herkunftImVertrag(row.origin),
     // Nur gesetzt, wenn es wahr ist (fehlt = falsch): Nachrichten ohne fremden Inhalt bleiben, wie sie waren.
     ...(row.untrusted ? { untrusted: true as const } : {}),
     createdAt: toIsoTime(row.createdAt),
   };
+}
+
+/**
+ * Herkunft einer Nachricht in den Worten des heutigen Vertrags (`modell`, `fest`). Seit Migration
+ * 0020 kennt die Datenbank zwei Werte mehr: Eine Rückmeldung eines Teams ist fester Text von PaiBot
+ * (`fest`); deine Nachricht aus einem Antwort-Vorschlag hat im Vertrag noch kein eigenes Wort und
+ * erscheint ohne Herkunft, wie andere Nachrichten der Person.
+ */
+function herkunftImVertrag(origin: MessageRow["origin"]): Pick<Message, "origin"> {
+  if (origin === "rueckmeldung") return { origin: "fest" };
+  if (origin === "vorschlag") return {};
+  return { origin };
 }
 
 export function toRun(row: RunRow): Run {

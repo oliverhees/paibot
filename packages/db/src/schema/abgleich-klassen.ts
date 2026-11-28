@@ -105,6 +105,25 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     grund:
       "Kopf eines Fadens (Ziel, Abnahme, Herkunft), wird einmal mit der Unterhaltung angelegt und geht nur mit ihr.",
   },
+  auftraege: {
+    klasse: "A",
+    geheim: "nein",
+    grund:
+      "Aufträge eines Auftragsbaums (wie `faeden`, Entscheidung des Besitzers vom 26.11.2026): Zettel, Entscheidung und Baum stehen fest; nur der Stand geht feste, einseitige Wege, Zähler steigen, „belastet“ wird nie zurückgenommen.",
+  },
+  auftrag_ereignisse: {
+    klasse: "A",
+    geheim: "nein",
+    grund:
+      "Ereignisse der Aufträge (Anlegen, Stand, Staffelstab), nur anhängen; Trigger weisen Ändern und Löschen ab, gelöscht wird nur mit dem Auftrag.",
+  },
+  auftrag_zuschlaege: {
+    klasse: "A",
+    geheim: "nein",
+    oeffentlich: ["tokens"],
+    grund:
+      "Zuschläge zum Budget eines Auftragsbaums, nur anhängen, höchstens fünf je Wurzel; Trigger weisen Ändern und Löschen ab.",
+  },
   faden_punkte: {
     klasse: "A",
     geheim: "nein",
@@ -117,6 +136,7 @@ export const ABGLEICH_KLASSEN: Readonly<Record<string, AbgleichEintrag>> = {
     klasse: "B",
     geheim: "nie",
     spalten: ["setup_code_hash"],
+    oeffentlich: ["auftrag_max_tokens"],
     grund:
       "Einstellungen der Installation, eine Zeile, wird überschrieben. Der Abdruck des Einrichtungs-Codes (`setup_code_hash`) bleibt am Ort.",
   },

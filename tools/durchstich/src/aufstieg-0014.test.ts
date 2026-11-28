@@ -180,9 +180,11 @@ const STAND_TEST_GEHEIMNIS = createHash("sha256")
   .update("PaiBot Bestandsdaten nur für Tests")
   .digest("base64");
 
-/** Neue Spalten der Migrationen 0014 und 0017 je Tabelle. */
+/** Neue Spalten der Migrationen 0014, 0017 und 0020 je Tabelle. */
 const NEUE_SPALTEN: Readonly<Record<string, readonly string[]>> = {
-  messages: ["step", "origin", "untrusted"],
+  messages: ["step", "origin", "untrusted", "bot_id", "auftrag_id", "frage_bezug"],
+  runs: ["auftrag_id", "auftrag_root_id", "untrusted_input", "finish_reason"],
+  faeden: ["stand", "stab_bei", "belastet"],
   bots: ["role", "paused", "team_id", "aus_entwurf_id"],
   conversations: ["kind", "team_id"],
   settings: [
@@ -193,6 +195,17 @@ const NEUE_SPALTEN: Readonly<Record<string, readonly string[]>> = {
     "max_tokens_per_run",
     "tool_result_max_chars",
     "tool_results_max_chars_per_step",
+    "auftrag_max_tiefe",
+    "auftrag_max_anzahl",
+    "auftrag_max_tokens",
+    "auftrag_max_minuten",
+    "auftrag_max_breite",
+    "auftraege_je_mitglied",
+    "rueckfragen_je_faden",
+    "bitten_je_auftrag",
+    "zuschlaege_je_baum",
+    "erwaehnungen_je_nachricht",
+    "notaus_epoche",
   ],
   tool_calls: [
     "tool_key",
@@ -382,13 +395,17 @@ for (const umgebung of umgebungen) {
 
           const zeilen = await zeilenJeTabelle(u);
           // Dazu kommen die Regeln R-010 und R-014, R-009 und R-015 bis R-019 (Migration 0019), die
-          // drei leeren Tabellen für Apps und die fünf leeren Tabellen für Teams (Migration 0017).
+          // drei leeren Tabellen für Apps, die fünf leeren Tabellen für Teams (Migration 0017) und
+          // die drei leeren Tabellen für Aufträge (Migration 0020).
           const vorherZeilen = {
             ...Object.fromEntries(
               Object.entries(vorher).map(([t, z]) => [t, z.length + (t === "rules" ? 8 : 0)]),
             ),
             app_tools: 0,
             apps: 0,
+            auftraege: 0,
+            auftrag_ereignisse: 0,
+            auftrag_zuschlaege: 0,
             bot_app_grants: 0,
             faden_punkte: 0,
             faeden: 0,

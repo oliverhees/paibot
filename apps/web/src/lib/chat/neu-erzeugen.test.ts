@@ -117,10 +117,13 @@ describe("POST /api/unterhaltungen/:id/antworten/:antwortId/neu", () => {
       .insert(conversations)
       .values({ id: faden, kind: "faden", teamId: team, title: "Ein Faden" });
     await repo.messages.insert(e.u.db, { conversationId: faden, role: "user", content: "Los" });
+    // Eine Antwort in einem Faden nennt ihren Autor (Trigger `messages_bezuege`).
+    const pai = await repo.bots.getDefault(e.u.db);
     const antwort = await repo.messages.insert(e.u.db, {
       conversationId: faden,
       role: "assistant",
       content: "Fertig.",
+      ...(pai === undefined ? {} : { botId: pai.id }),
     });
     const r = await neu(e, faden, antwort.id);
     expect(r.status).toBe(403);

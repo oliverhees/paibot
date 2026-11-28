@@ -334,8 +334,13 @@ describe.skipIf(BASE_URL === undefined)(
           await sql.unsafe(
             "select to_jsonb(t) - 'app_id' - 'app_tool_id' - 'tool_version' as z from tool_calls t",
           ),
-          await sql.unsafe("select to_jsonb(m) - 'untrusted' as z from messages m order by id"),
-          await sql.unsafe("select to_jsonb(r) as z from runs r"),
+          // Spalten späterer Migrationen (leer bei alten Zeilen) zählen nicht zum Vergleich.
+          await sql.unsafe(
+            "select to_jsonb(m) - 'untrusted' - 'bot_id' - 'auftrag_id' - 'frage_bezug' as z from messages m order by id",
+          ),
+          await sql.unsafe(
+            "select to_jsonb(r) - 'auftrag_id' - 'auftrag_root_id' - 'untrusted_input' - 'finish_reason' as z from runs r",
+          ),
           await sql.unsafe("select seq, id, hash, prev_hash, signature from belege order by seq"),
           await sql.unsafe("select to_jsonb(r) as z from rules r order by seq"),
         ]);

@@ -61,3 +61,56 @@ export const ENTWURF_STATUS = [
 export const ENTWURF_HERKUENFTE = ["vorlage", "datei"] as const;
 /** Was ein Entwurf anlegen kann. */
 export const TEAM_ANLAGE_ARTEN = ["bot", "team"] as const;
+
+// Werte der Spalten für Aufträge (ab Migration 0020). Die Arten stimmen mit `AUFTRAG_ARTEN` der
+// Tor-Fassung 5 überein (ohne `keiner`: ohne Auftrag gibt es keine Zeile); ein Test prüft das.
+
+/** Art eines Auftrags. `rueckkehr`, `sammeln` und `rueckmeldung` legt nur der Server an. */
+export const AUFTRAG_ARTEN_DB = [
+  "wurzel",
+  "uebergabe",
+  "bitte",
+  "rueckkehr",
+  "faecher",
+  "sammeln",
+  "rueckmeldung",
+  "rueckgabe",
+] as const;
+/** Arten, die der Server ohne eigenen Geber anlegt (der Stab kehrt zurück, Antworten werden gesammelt). */
+export const AUFTRAG_SERVER_ARTEN = ["rueckkehr", "sammeln", "rueckmeldung"] as const;
+/** Stand eines Auftrags. Beginnt immer mit `gefragt`. */
+export const AUFTRAG_STATUS = [
+  "gefragt",
+  "arbeitet",
+  "wartet_auf_dich",
+  "fertig",
+  "gescheitert",
+  "abgelehnt",
+  "abgebrochen",
+] as const;
+/** Offene Stände: Der Auftrag ist noch nicht zu Ende. */
+export const AUFTRAG_OFFENE_STATUS = ["gefragt", "arbeitet", "wartet_auf_dich"] as const;
+/** Endzustände eines Auftrags. */
+export const AUFTRAG_END_STATUS = ["fertig", "gescheitert", "abgelehnt", "abgebrochen"] as const;
+/** Arten der Ereignisse eines Auftrags (nur anhängen, ohne Inhalte). */
+export const AUFTRAG_EREIGNIS_TYPEN = ["auftrag.created", "auftrag.status", "stab.moved"] as const;
+/** Stand eines Fadens (Kopf). */
+export const FADEN_STAENDE = [
+  "laufend",
+  "wartet_auf_dich",
+  "wartet_auf_abnahme",
+  "fertig",
+  "abgebrochen",
+  "gescheitert",
+] as const;
+/**
+ * Herkunft einer Nachricht in der Datenbank: zu `MESSAGE_ORIGINS` (`modell`, `fest`) kommen
+ * `rueckmeldung` (feste Rückmeldung eines Teams im Chat mit Pai) und `vorschlag` (deine Nachricht
+ * aus einem Antwort-Vorschlag, mit Bezug auf die Frage).
+ */
+export const NACHRICHT_HERKUENFTE = ["modell", "fest", "rueckmeldung", "vorschlag"] as const;
+/** Fester Zuschlag je Klick „+10.000 Token“ und Höchstzahl der Zuschläge je Auftragsbaum. */
+export const AUFTRAG_ZUSCHLAG_TOKENS = 10000;
+export const AUFTRAG_MAX_ZUSCHLAEGE = 5;
+/** Höchstlänge des Zettels eines Auftrags in Zeichen. */
+export const AUFTRAG_ZETTEL_MAX = 2000;

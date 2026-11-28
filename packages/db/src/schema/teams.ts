@@ -9,10 +9,11 @@
  * @since     2026-11-22
  */
 
-import type { ActionId, BotId, ConversationId, EntwurfId, TeamId } from "@paibot/shared";
+import type { ActionId, Actor, BotId, ConversationId, EntwurfId, TeamId } from "@paibot/shared";
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  boolean,
   check,
   index,
   integer,
@@ -23,13 +24,14 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 import { bots } from "./anbieter";
-import { idCheck, inListCheck, optionalIdCheck, PATTERNS, pgTable } from "./helfer";
+import { idCheck, inListCheck, matches, optionalIdCheck, PATTERNS, pgTable } from "./helfer";
 import { conversations } from "./unterhaltungen";
 import {
   ENTWURF_HERKUENFTE,
   ENTWURF_STATUS,
   FADEN_ABNAHMEN,
   FADEN_HERKUENFTE,
+  FADEN_STAENDE,
   TEAM_ANLAGE_ARTEN,
   TEAM_ZUSAMMENARBEIT,
 } from "./werte";
@@ -154,9 +156,23 @@ export const faeden = pgTable(
     actionId: text("action_id").$type<ActionId>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Stand des Fadens für den Kopf (ab Migration 0020). */
+    stand: text("stand").$type<(typeof FADEN_STAENDE)[number]>().notNull().default("laufend"),
+    /** Wer den Staffelstab hat: `bot:…`, `besitzer` oder niemand (leer). */
+    stabBei: text("stab_bei").$type<Actor>(),
+    /**
+     * Im Faden stand einmal fremder Inhalt. Wird nur gesetzt, nie zurückgenommen (Trigger
+     * `faeden_regeln`); eine neue Wurzel im Faden nimmt es nicht weg.
+     */
+    belastet: boolean("belastet").notNull().default(false),
   },
   (t) => [
     check("faeden_ziel_laenge", sql`char_length(${t.goal}) between 1 and 2000`),
+    inListCheck("faeden_stand_werte", t.stand, FADEN_STAENDE),
+    check(
+      "faeden_stab_bei_format",
+      sql`${t.stabBei} is null or ${matches(t.stabBei, PATTERNS.actor)}`,
+    ),
     inListCheck("faeden_abnahme_werte", t.acceptance, FADEN_ABNAHMEN),
     inListCheck("faeden_herkunft_werte", t.origin, FADEN_HERKUENFTE),
     idCheck("faeden_action_id_format", t.actionId, "action"),

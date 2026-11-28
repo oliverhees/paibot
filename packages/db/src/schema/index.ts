@@ -11,6 +11,7 @@
 export * from "./abgleich-klassen";
 export * from "./anbieter";
 export * from "./apps";
+export * from "./auftraege";
 export * from "./schleuse";
 export * from "./settings";
 export * from "./teams";
