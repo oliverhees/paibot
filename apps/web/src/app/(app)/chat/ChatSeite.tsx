@@ -467,7 +467,13 @@ export function ChatSeite({
       if (!r.ok) return zurueck(r.fehler);
       ziel = r.daten.unterhaltung;
       setUnterhaltung(ziel);
-      unterhaltungMerken({ id: ziel.id, titel: ziel.titel, zuletzt: r.daten.zuletzt });
+      unterhaltungMerken({
+        id: ziel.id,
+        titel: ziel.titel,
+        zuletzt: r.daten.zuletzt,
+        // Ohne den Bot fiele die neue Unterhaltung aus ihrer Gruppe in der Seitenleiste.
+        botId: ziel.botId,
+      });
       window.history.replaceState(null, "", unterhaltungsAdresse(ziel.id));
     }
     const modus = schleuseAn ? "on" : "off";
@@ -481,7 +487,12 @@ export function ChatSeite({
     avatar.ausdruck("nicken");
     entwurfMerken(ziel.id, "");
     setUnterhaltung({ ...ziel, schleuse: modus });
-    unterhaltungMerken({ id: ziel.id, titel: ziel.titel, zuletzt: r.daten.zeit });
+    unterhaltungMerken({
+      id: ziel.id,
+      titel: ziel.titel,
+      zuletzt: r.daten.zeit,
+      botId: ziel.botId,
+    });
   }
 
   async function stoppen() {
@@ -1371,6 +1382,7 @@ export function ChatSeite({
                 id: u.id,
                 titel: u.titel,
                 zuletzt: alt?.zuletzt ?? new Date().toISOString(),
+                botId: u.botId,
               });
               setDialog(undefined);
             }}

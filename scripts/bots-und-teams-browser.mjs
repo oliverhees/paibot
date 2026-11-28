@@ -19,6 +19,8 @@
 //   - der Bot taucht in der Seitenleiste auf und nach dem Zuordnen unter seinem Team
 //   - der Steckbrief zeigt den Bot aus der Adresse, nicht den Standard-Bot
 //   - Pausieren setzt den Hinweis; im Chat des Bots ist die Eingabe gesperrt; Fortsetzen hebt es auf
+//   - die Seitenleiste behält eine Unterhaltung nach dem Senden und dem Umbenennen, unter ihrem
+//     Bot und ohne Neuladen
 //   - Löschen fragt zurück: Abbrechen löscht nichts, Löschen führt zurück auf `/teams`
 //   - „Team verwalten“: der Hinweis ohne Tagesbudget steht am Schalter „Zusammenarbeit“
 //   - ein gescheitertes Speichern (leerer Name) zeigt den Fehler und nie „Gespeichert.“
@@ -303,6 +305,41 @@ try {
   pruefe(
     "Löschen: das Team bleibt, jetzt ohne Leitung",
     ((await seite.locator("main").textContent()) ?? "").includes(TEAM),
+  );
+
+  // 11. Die Seitenleiste behält die Unterhaltung – nach dem Senden und nach dem Umbenennen, ohne
+  // Neuladen und unter ihrem Bot. Gegenprobe zum Befund „Unterhaltung verschwindet nach dem Senden
+  // oder Umbenennen aus der Seitenleiste“: in `apps/web/src/app/(app)/chat/ChatSeite.tsx` an einem
+  // der drei Aufrufe von `unterhaltungMerken` die `botId` auf `undefined` setzen (weglassen
+  // verbietet der Typecheck, siehe `UnterhaltungUpdate`) → diese zwei Fälle werden rot.
+  // Hier mit dem Haupt-Assistenten, weil der zweite Bot oben gelöscht wurde; die Zuordnung läuft
+  // für jeden Bot über dieselbe Stelle. Dass sie pro Bot stimmt, prüft
+  // `apps/web/src/lib/chat/seitenleiste.test.ts`.
+  const paiNav = () => seite.locator('nav[aria-label="Unterhaltungen von Pai"]');
+  await seite.goto(`${lauf.url}/`, { waitUntil: "load" });
+  const feld = seite.locator("main textarea").first();
+  await feld.waitFor({ timeout: 15_000 });
+  await feld.fill("Was steht heute an?");
+  await seite.getByRole("button", { name: "Senden", exact: true }).click();
+  await seite.waitForURL(/\/chat\//u, { timeout: 30_000 });
+  await seite.waitForTimeout(1500);
+  // Die offene Unterhaltung ist die Seite, auf der wir stehen: Ihre Zeile trägt `aria-current`
+  // – und zwar in der Liste von Pai, nicht irgendwo sonst.
+  pruefe(
+    "Seitenleiste: die neue Unterhaltung steht unter ihrem Bot, ohne Neuladen",
+    (await paiNav().locator('a[aria-current="page"]').count()) === 1,
+    `Zeilen in der Liste von Pai: ${await paiNav().getByRole("link").count()}`,
+  );
+
+  const NEUER_TITEL = "Themen für Montag";
+  await seite.getByRole("button", { name: "Weitere Aktionen", exact: true }).first().click();
+  await seite.getByRole("menuitem", { name: "Umbenennen", exact: true }).click();
+  await seite.getByLabel("Titel", { exact: true }).fill(NEUER_TITEL);
+  await seite.getByRole("button", { name: "Speichern", exact: true }).click();
+  await seite.waitForTimeout(1000);
+  pruefe(
+    "Seitenleiste: nach dem Umbenennen steht sie weiter unter ihrem Bot, ohne Neuladen",
+    (await paiNav().getByRole("link", { name: NEUER_TITEL, exact: true }).count()) === 1,
   );
 
   pruefe("Seite: keine Fehler aus dem Skript", skriptFehler.length === 0, skriptFehler.join(" | "));
