@@ -14,7 +14,7 @@ Seit:      2026-11-28
 
 ## Wofür
 
-Ein Bot für alles wird schnell unübersichtlich. Du willst zum Beispiel einen Bot, der Themen sammelt, und einen, der Texte prüft – jeder mit seiner eigenen Anweisung und seinem eigenen Gesprächsverlauf. Gehören mehrere Bots zusammen, fasst du sie zu einem Team zusammen und bestimmst, wer darin die Leitung hat.
+Ein Bot für alles wird schnell unübersichtlich. Du willst zum Beispiel einen Bot, der Themen sammelt, und einen, der Texte prüft – jeder mit seiner eigenen Aufgabe, seinem eigenen Gesprächsverlauf und seiner eigenen Seite. Gehören mehrere Bots zusammen, fasst du sie zu einem Team zusammen und bestimmst, wer darin die Leitung hat.
 
 ## So benutzt du es
 
@@ -23,6 +23,8 @@ Ein Bot für alles wird schnell unübersichtlich. Du willst zum Beispiel einen B
    ![Seite „Bots und Teams“ direkt nach der Einrichtung: „Noch kein Team. Lege eines an und ordne ihm Bots zu.“ und „Außer dem Haupt-Assistenten gibt es noch keinen Bot.“](assets/screenshots/bots-teams-leer.png)
 2. Schreib unter „Name des Teams“ einen Namen (höchstens 60 Zeichen) und klick „Team anlegen“.
 3. Schreib unter „Name des Bots“ einen Namen und unter „Aufgabe in einem Satz“, wofür du den Bot brauchst (höchstens 200 Zeichen). Klick „Bot anlegen“. Der neue Bot bekommt das Modell deines Haupt-Assistenten und steht erst einmal ohne Team da.
+
+   Die Aufgabe ist eine Notiz für dich: Sie wird gespeichert und auf der Seite des Bots und in den Listen angezeigt. Eine **eigene Anweisung an das Modell setzt sie nicht** – ein neu angelegter Bot arbeitet mit dem allgemeinen Kopf, genau wie dein Haupt-Assistent ohne eigene Anweisung. Eine eigene Anweisung je Bot kommt später (siehe „Grenzen“).
 
    ![Seite „Bots und Teams“ mit dem Team „Content“ (0 Bots, ohne Leitung) und dem Bot „Mila“ unter „Bots“](assets/screenshots/bots-teams-angelegt.png)
 4. Klick auf „Bot Mila öffnen“. Du landest auf der Seite des Bots (Adresse `/bot/<Kennung>`). Dort steht sein Steckbrief: Aufgabe, Team, Modell und was er darf, fragen muss und nie darf.
@@ -52,15 +54,15 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 
 ## Einstellungen
 
-| Einstellung      | Wo                   | Bedeutung                                                                       | Standard        |
-| ---------------- | -------------------- | ------------------------------------------------------------------------------- | --------------- |
-| Name des Teams   | Seite Team verwalten | Name in der Seitenleiste und in den Listen (1 bis 60 Zeichen, einmalig)         | aus dem Anlegen |
-| Leitung          | Seite Team verwalten | Welcher Bot des Teams die Arbeit verteilt und abnimmt                           | keine Leitung   |
-| Zusammenarbeit   | Seite Team verwalten | „Aus“: die Bots antworten einzeln. „Leitung führt“: die Leitung verteilt Arbeit | Aus             |
-| Abnahme-Standard | Seite Team verwalten | Wer das Ergebnis abnimmt: die Leitung oder du                                   | Du nimmst ab    |
-| Aufgabe des Bots | Seite Bots und Teams | Ein Satz, wofür der Bot da ist (höchstens 200 Zeichen)                          | leer            |
-| Pause            | Seite des Bots       | Ein pausierter Bot antwortet nicht                                              | nicht pausiert  |
-| Team des Bots    | Seite des Bots       | Zu welchem Team der Bot gehört                                                  | kein Team       |
+| Einstellung      | Wo                   | Bedeutung                                                                             | Standard        |
+| ---------------- | -------------------- | ------------------------------------------------------------------------------------- | --------------- |
+| Name des Teams   | Seite Team verwalten | Name in der Seitenleiste und in den Listen (1 bis 60 Zeichen, einmalig)               | aus dem Anlegen |
+| Leitung          | Seite Team verwalten | Welcher Bot des Teams die Arbeit verteilt und abnimmt                                 | keine Leitung   |
+| Zusammenarbeit   | Seite Team verwalten | „Aus“: die Bots antworten einzeln. „Leitung führt“: die Leitung verteilt Arbeit       | Aus             |
+| Abnahme-Standard | Seite Team verwalten | Wer das Ergebnis abnimmt: die Leitung oder du                                         | Du nimmst ab    |
+| Aufgabe des Bots | Seite Bots und Teams | Ein Satz, wofür der Bot da ist; wird nur gespeichert und angezeigt (max. 200 Zeichen) | leer            |
+| Pause            | Seite des Bots       | Ein pausierter Bot antwortet nicht                                                    | nicht pausiert  |
+| Team des Bots    | Seite des Bots       | Zu welchem Team der Bot gehört                                                        | kein Team       |
 
 ## So funktioniert es
 
@@ -78,7 +80,7 @@ Die Bilder zu den einzelnen Schritten stehen oben in der Anleitung (Beispiel-Dat
 - **Übergaben zwischen Bots gibt es noch nicht.** Jeder Bot antwortet in seiner eigenen Unterhaltung.
 - „Zusammenarbeit: Leitung führt“ und der Abnahme-Standard sind heute gespeicherte Angaben; wirksam werden sie mit den Fäden (geplant).
 - Teams aus einer Vorlage anlegen ist geplant und noch nicht gebaut.
-- Name, Anweisung und Aussehen deines Haupt-Assistenten änderst du weiter auf der Seite [Bot](funktion-bot.md). Für die weiteren Bots zeigt die Seite des Bots heute den Steckbrief; ihre Anweisung ändern kommt später.
+- **Die weiteren Bots haben noch keine eigene Anweisung.** Beim Anlegen wird nur die Aufgabe gespeichert und angezeigt; die Anweisung an das Modell bleibt leer, also arbeiten sie mit dem allgemeinen Kopf. Eine eigene Anweisung je Bot – und ein Weg, sie zu ändern – kommt später. Name, Anweisung und Aussehen deines Haupt-Assistenten änderst du weiter auf der Seite [Bot](funktion-bot.md); für die weiteren Bots zeigt ihre Seite heute den Steckbrief.
 - Die Tagesgrenze für Token gilt für die ganze Installation, nicht je Team.
 
 ## Fehlerbehebung
