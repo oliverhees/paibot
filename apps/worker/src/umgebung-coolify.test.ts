@@ -55,9 +55,15 @@ describe("Worker mit Werten aus Coolify", () => {
     for (let i = 0; i < 20; i++) {
       const env = workerUmgebung({
         SERVICE_HEX_64_PGAPP: randomBytes(32).toString("hex"),
+        SERVICE_HEX_64_PGWORKER: randomBytes(32).toString("hex"),
         SERVICE_REALBASE64_32_PAIBOT: randomBytes(32).toString("base64"),
       });
       expect(env.DATABASE_MIGRATION_URL).toBeUndefined();
+      // Der Worker bekommt nur seine eigene Rolle, nicht die Zugangsdaten der App-Rolle.
+      expect(env.DATABASE_URL).toBeUndefined();
+      expect(env.DATABASE_WORKER_URL).toMatch(
+        /^postgres:\/\/paibot_worker:[0-9a-f]{64}@postgres:5432\/paibot$/,
+      );
       expect(checkWorkerEnv(env, true)).toEqual([]);
     }
   });
@@ -65,6 +71,6 @@ describe("Worker mit Werten aus Coolify", () => {
   it("ohne erzeugte Werte bricht der Start ab", () => {
     const fehler = checkWorkerEnv(workerUmgebung({}), true).join("\n");
     expect(fehler).toContain("PAIBOT_SECRET fehlt");
-    expect(fehler).toContain("DATABASE_URL enthält kein Passwort");
+    expect(fehler).toContain("DATABASE_WORKER_URL enthält kein Passwort");
   });
 });

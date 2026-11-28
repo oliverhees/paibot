@@ -36,6 +36,12 @@ type Env = Readonly<Record<string, string | undefined>>;
 /** Einstellungen des Workers aus der Umgebung. */
 export interface WorkerConfig {
   databaseUrl: string;
+  /**
+   * Variable, aus der `databaseUrl` stammt: `DATABASE_WORKER_URL` (eigene Worker-Rolle) oder
+   * `DATABASE_URL` (Rückfall auf die App-Rolle, nur in der Entwicklung oder mit
+   * `PAIBOT_ALLOW_PRIVILEGED_DB=1`). Fehlt sie, gilt `DATABASE_URL`.
+   */
+  databaseVariable?: "DATABASE_WORKER_URL" | "DATABASE_URL";
   /** Wie viele Läufe gleichzeitig. */
   concurrency: number;
   /** Datei, deren Änderungszeit als Herzschlag für den Healthcheck des Containers dient. */
@@ -45,7 +51,8 @@ export interface WorkerConfig {
 }
 
 /**
- * Liest die Einstellungen: `DATABASE_URL` (Pflicht), `PAIBOT_SECRET` (Pflicht, geprüft beim Start),
+ * Liest die Einstellungen: `DATABASE_WORKER_URL` (in Produktion Pflicht; sonst `DATABASE_URL`),
+ * `PAIBOT_SECRET` (Pflicht, geprüft beim Start),
  * `SCHLEUSE_URL`/`SCHLEUSE_KEY` (optional), Gleichzeitigkeit und Health-Datei mit Standardwerten.
  * Fehler: `TypeError` mit dem Namen der fehlenden oder ungültigen Variable, nie mit ihrem Wert.
  */
@@ -109,6 +116,7 @@ export interface WorkerDeps {
   log: WorkerLog;
   pingDatabase(url: string): Promise<boolean>;
   openDatabase(url: string): DatabaseHandle;
+  /** Warteschlange der Worker-Rolle (nur arbeiten, nichts einrichten). */
   createQueue(url: string): Queue;
   executeRun: typeof executeRunFn;
   failStaleRuns: typeof failStaleRunsFn;
@@ -131,7 +139,8 @@ export class WorkerStartError extends Error {
 /** Ein Lauf, der länger als seine Ablaufzeit plus eine Minute dauert, gilt als hängend. */
 const HANG_AFTER_MS = RUN_QUEUE.expireInSeconds * 1000 + 60_000;
 
-const HILFE = "Anleitung: docs/installation.md, Abschnitt „Rollen der Datenbank“.";
+const HILFE_WORKER =
+  "Anleitung: docs/installation.md, Abschnitt „Rollen der Datenbank“, und docs/aktualisieren.md.";
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -144,15 +153,54 @@ function stateText(state: MigrationState): string {
 }
 
 /**
+ * Startet die Warteschlange der Worker-Rolle. Sie richtet nichts selbst ein; das tut der Dienst
+ * migrate nach den Migrationen. Bis dahin scheitert der Start, und es wird bis `deadline` erneut
+ * versucht (je Versuch eine neue Warteschlange, eine gescheiterte bleibt beendet).
+ */
+async function startQueue(
+  deps: WorkerDeps,
+  url: string,
+  deadline: number,
+  timing: WorkerTiming,
+  log: WorkerLog,
+  secrets: readonly string[],
+): Promise<Queue> {
+  let waiting = false;
+  for (;;) {
+    const queue = deps.createQueue(url);
+    try {
+      await queue.start();
+      return queue;
+    } catch (error) {
+      await queue.stop({ timeoutMs: 1000 }).catch(() => undefined);
+      const detail = describeError(error, secrets);
+      if (Date.now() + timing.retryDelayMs > deadline) {
+        log.error(
+          `Warteschlange nicht startbar (${detail}). Der Dienst migrate richtet sie ein und gibt der Worker-Rolle ihre Rechte darin; ist er ohne Fehler durchgelaufen?`,
+        );
+        log.error("Start abgebrochen.");
+        throw new WorkerStartError("warteschlange");
+      }
+      if (!waiting) {
+        waiting = true;
+        log.info(`Warte auf die Warteschlange des Dienstes migrate (${detail}) …`);
+      }
+      await sleep(timing.retryDelayMs);
+    }
+  }
+}
+
+/**
  * Startet den Worker mit eingespritzten Abhängigkeiten. Reihenfolge:
  *
  * 1. Pflichtwerte der Umgebung prüfen.
  * 2. Auf die Datenbank warten (`timing.databaseWaitMs`).
  * 3. Warten, bis der Dienst migrate alle Migrationen angewendet hat (`timing.migrationWaitMs`); der
  *    Worker migriert nie selbst.
- * 4. Rechte der Verbindung prüfen: zu viele Rechte brechen in Produktion ab (außer
- *    `PAIBOT_ALLOW_PRIVILEGED_DB=1`).
- * 5. Warteschlange starten, veraltete Läufe aufräumen (`failStaleRuns`), Lauf-Arbeiter anmelden.
+ * 4. Rechte der Verbindung prüfen (`checkWorkerRole`): zu viele Rechte brechen in Produktion ab
+ *    (außer `PAIBOT_ALLOW_PRIVILEGED_DB=1`).
+ * 5. Warteschlange starten (wartet bis zur Frist der Migration, bis der Dienst migrate sie
+ *    eingerichtet hat), veraltete Läufe aufräumen (`failStaleRuns`), Lauf-Arbeiter anmelden.
  * 6. Zustand der Datenschleuse prüfen und in die Datenbank schreiben, danach regelmäßig.
  * 7. Herzschlag in die Health-Datei schreiben.
  *
@@ -182,9 +230,20 @@ export async function runWorker(
     throw new WorkerStartError("einstellungen");
   }
   log.info(`Start: Rolle worker, Stand ${readStand(env)}.`);
+  const variable = config.databaseVariable ?? "DATABASE_URL";
   if (env.DATABASE_MIGRATION_URL) {
     log.warn(
       "DATABASE_MIGRATION_URL ist gesetzt, der Worker braucht und benutzt sie nicht. Entferne sie beim Dienst worker.",
+    );
+  }
+  if (variable === "DATABASE_WORKER_URL" && env.DATABASE_URL) {
+    log.warn(
+      "DATABASE_URL ist gesetzt, der Worker braucht und benutzt sie nicht (er nutzt DATABASE_WORKER_URL). Entferne sie beim Dienst worker.",
+    );
+  }
+  if (variable === "DATABASE_URL") {
+    log.warn(
+      `WARNUNG: DATABASE_WORKER_URL fehlt. Der Worker nutzt die App-Rolle aus DATABASE_URL und könnte so Bots, Teams und Fäden des Besitzers ändern. ${HILFE_WORKER}`,
     );
   }
 
@@ -195,7 +254,7 @@ export async function runWorker(
     if (await deps.pingDatabase(config.databaseUrl)) break;
     if (Date.now() + timing.retryDelayMs > dbDeadline) {
       abort(
-        `Datenbank nach ${Math.round(timing.databaseWaitMs / 1000)} s nicht erreichbar. Prüfe DATABASE_URL (Host, Benutzer, Passwort) und ob der Dienst postgres läuft. Die App-Rolle legt der Dienst migrate an.`,
+        `Datenbank nach ${Math.round(timing.databaseWaitMs / 1000)} s nicht erreichbar. Prüfe ${variable} (Host, Benutzer, Passwort) und ob der Dienst postgres läuft. Die Rollen legt der Dienst migrate an.`,
         "keine_datenbank",
       );
     }
@@ -250,7 +309,7 @@ export async function runWorker(
     const role = await database.roleCheck();
     if (role.status === "zu_viele_rechte") {
       const gruende = role.issues.map((issue) => ROLE_ISSUE_TEXT[issue]).join(", ");
-      const text = `Der Worker verbindet sich als Rolle ${role.role} mit zu vielen Rechten (${gruende}). So lassen sich Schutz-Trigger der Belege abschalten. Setze DATABASE_URL beim Dienst worker auf die App-Rolle. ${HILFE}`;
+      const text = `Der Worker verbindet sich als Rolle ${role.role} mit zu vielen Rechten (${gruende}). Setze DATABASE_WORKER_URL beim Dienst worker auf die Worker-Rolle und starte den Dienst migrate erneut. ${HILFE_WORKER}`;
       if (production && env[ALLOW_PRIVILEGED_DB_ENV] !== "1") {
         abort(
           `${text} Nur für den Übergang: ${ALLOW_PRIVILEGED_DB_ENV}=1 erlaubt den Start trotzdem.`,
@@ -271,8 +330,7 @@ export async function runWorker(
       );
     }
 
-    queue = deps.createQueue(config.databaseUrl);
-    await queue.start();
+    queue = await startQueue(deps, config.databaseUrl, migrationDeadline, timing, log, secrets);
     log.info("Warteschlange gestartet.");
 
     const prepared = await runDeps.prepare();

@@ -24,7 +24,7 @@ import {
 } from "@paibot/agents";
 import { createSigningKeyHolder, decryptSecret, deriveKey, loadMasterSecret } from "@paibot/crypto";
 import { createDb, type Database, repo } from "@paibot/db";
-import { checkAppRole, checkMigrationState, pingDatabase } from "@paibot/db/migrate";
+import { checkMigrationState, checkWorkerRole, pingDatabase } from "@paibot/db/migrate";
 import { createGate, ruleSnapshot } from "@paibot/gate";
 import { createQueue } from "@paibot/jobs";
 import { schleuseFromEnv } from "@paibot/llm";
@@ -44,7 +44,7 @@ export function openDatabase(url: string): DatabaseHandle {
   return {
     db,
     migrationState: (folder) => checkMigrationState(sql, folder),
-    roleCheck: () => checkAppRole(sql),
+    roleCheck: () => checkWorkerRole(sql),
     probe: async () => {
       await sql`select 1`;
     },
@@ -144,7 +144,7 @@ export function realWorkerDeps(): Omit<WorkerDeps, "log"> {
   return {
     pingDatabase: (url) => pingDatabase(url, 3),
     openDatabase,
-    createQueue: (url) => createQueue(url),
+    createQueue: (url) => createQueue(url, { rolle: "worker" }),
     executeRun,
     failStaleRuns,
     buildRunDeps,

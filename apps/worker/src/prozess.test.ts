@@ -65,10 +65,25 @@ function harness(start?: ProcessDeps["start"]) {
 const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
 
 describe("Prozess", () => {
+  it("mit eigener Worker-Adresse sind danach die Adressen der App- und der Migrations-Rolle weg", async () => {
+    const h = harness();
+    h.env.DATABASE_WORKER_URL = `postgres://paibot_worker:${PASSWORD}w@postgres:5432/paibot`;
+    await installProcessHandlers(h.deps);
+    expect(h.env.DATABASE_URL).toBeUndefined();
+    expect(h.env.DATABASE_MIGRATION_URL).toBeUndefined();
+    expect(h.env.DATABASE_WORKER_URL).toBeDefined();
+    h.emit("SIGTERM");
+    h.release();
+    await tick();
+    expect(h.exits).toEqual([0]);
+  });
+
   it("SIGTERM beendet sauber mit Exit-Code 0; die Migrations-Adresse ist danach weg", async () => {
     const h = harness();
     await installProcessHandlers(h.deps);
     expect(h.env.DATABASE_MIGRATION_URL).toBeUndefined();
+    // Ohne eigene Worker-Adresse bleibt DATABASE_URL (Rückfall in der Entwicklung).
+    expect(h.env.DATABASE_URL).toBeDefined();
     h.emit("SIGTERM");
     expect(h.stops()).toBe(1);
     expect(h.exits).toEqual([]);

@@ -132,5 +132,7 @@ export async function installProcessHandlers(deps: ProcessDeps): Promise<void> {
     exit(1);
   } finally {
     delete env.DATABASE_MIGRATION_URL;
+    // Mit eigener Rolle braucht der Prozess die Zugangsdaten der App-Rolle nicht.
+    if (env.DATABASE_WORKER_URL) delete env.DATABASE_URL;
   }
 }

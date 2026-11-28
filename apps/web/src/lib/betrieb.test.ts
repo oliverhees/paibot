@@ -77,6 +77,34 @@ describe("checkProductionEnv", () => {
     expect(errors.join()).not.toContain(same);
   });
 
+  it("migrate: die Worker-Rolle ist freiwillig, gesetzt braucht sie ein eigenes, langes Passwort", () => {
+    const app = pw();
+    const besitzer = pw();
+    const base = {
+      DATABASE_URL: url("paibot_app", app),
+      DATABASE_MIGRATION_URL: url("paibot", besitzer),
+    };
+    expect(checkProductionEnv(base, "migrate")).toEqual([]);
+    expect(
+      checkProductionEnv({ ...base, DATABASE_WORKER_URL: url("paibot_worker", pw()) }, "migrate"),
+    ).toEqual([]);
+    for (const gleich of [app, besitzer]) {
+      const errors = checkProductionEnv(
+        { ...base, DATABASE_WORKER_URL: url("paibot_worker", gleich) },
+        "migrate",
+      );
+      expect(errors).toEqual([
+        "DATABASE_WORKER_URL nutzt dasselbe Passwort wie eine andere Rolle. Die Worker-Rolle braucht ein eigenes (POSTGRES_WORKER_PASSWORD).",
+      ]);
+    }
+    const kurz = checkProductionEnv(
+      { ...base, DATABASE_WORKER_URL: url("paibot_worker", "a".repeat(23)) },
+      "migrate",
+    );
+    expect(kurz.join("\n")).toContain("DATABASE_WORKER_URL");
+    expect(kurz.join("\n")).not.toContain("a".repeat(23));
+  });
+
   it("Mindestlänge des Passworts: 23 Zeichen abgelehnt, 24 angenommen", () => {
     const base = { APP_URL: "https://paibot.example.de", PAIBOT_SECRET: secret() };
     const password = (n: number) => "k7Qz".repeat(10).slice(0, n);
