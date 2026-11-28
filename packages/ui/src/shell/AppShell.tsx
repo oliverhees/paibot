@@ -50,6 +50,8 @@ export interface NavUnterhaltung {
 }
 
 export interface NavBot {
+  /** Kennung des Bots: Schlüssel in der Liste. */
+  id: string;
   name: string;
   /** Rolle in einem Satz; wird nie abgeschnitten, sondern umbrochen. */
   rolle: string;
@@ -60,7 +62,24 @@ export interface NavBot {
   href?: string;
   /** Zeile des Bots hervorheben (z. B. auf seinem Steckbrief); sonst aktiv, wenn eine seiner Unterhaltungen offen ist. */
   aktiv?: boolean;
+  /** Pausiert: der Bot antwortet nicht, bis der Besitzer fortsetzt. Die Zeile sagt es. */
+  pausiert?: boolean;
+  /** Dieser Bot leitet das Team, in dem seine Zeile steht. */
+  leitung?: boolean;
   unterhaltungen: readonly NavUnterhaltung[];
+  /** „Neue Unterhaltung“ mit genau diesem Bot. */
+  neu?: { href: string };
+}
+
+/** Ein Team in der Seitenleiste: aufklappbar, mit seinen Bots (Leitung zuerst). */
+export interface NavTeam {
+  id: string;
+  name: string;
+  /** Seite der Team-Verwaltung. */
+  href: string;
+  /** Zeile des Teams hervorheben (auf seiner Verwaltungsseite). */
+  aktiv?: boolean;
+  bots: readonly NavBot[];
 }
 
 export interface NavEintrag {
@@ -76,7 +95,12 @@ export interface AppShellNavigation {
   ort: string;
   /** Herkunft der Modelle, z. B. „EU“. */
   modelle: string;
+  /** Der Haupt-Assistent; er steht für sich, nicht in einem Team. */
   bot: NavBot;
+  /** Teams mit ihren Bots, unter dem Haupt-Assistenten. Leer, solange es keine gibt. */
+  teams?: readonly NavTeam[];
+  /** Weitere Bots ohne Team, unter den Teams. */
+  weitereBots?: readonly NavBot[];
   /** Arbeits-Seiten unten (einklappbar): Belege, Regeln, Datenschleuse, Modell und Anbieter. */
   werkzeuge: readonly NavEintrag[];
   /** Knopf „Neue Unterhaltung“ oben in der Leiste. */
@@ -93,8 +117,6 @@ export interface AppShellTexte {
   deinBot: string;
   /** Name der Navigation, z. B. „Navigation“. */
   navigation: string;
-  /** Name der Liste der Unterhaltungen, z. B. „Unterhaltungen von Pai“. */
-  unterhaltungen: string;
   menueOeffnen: string;
   menueSchliessen: string;
   /** Name der rechten Fläche, z. B. „Arbeitsfläche“. */
@@ -153,6 +175,147 @@ function StandardLink(props: {
   "aria-current"?: "page";
 }) {
   return <a {...props} />;
+}
+
+/** Link-Komponente, wie die AppShell sie durchgibt. */
+type LinkTyp = NonNullable<AppShellProps["link"]>;
+
+/**
+ * Ein Bot in der Seitenleiste: Avatar, Name (Link auf seinen Steckbrief), Rolle, Stand und seine
+ * Unterhaltungen. Der Haupt-Assistent und jedes Team-Mitglied nutzen dieselbe Zeile.
+ */
+function BotEintrag({
+  bot,
+  link: Link,
+  onGewaehlt,
+}: {
+  bot: NavBot;
+  link: LinkTyp;
+  onGewaehlt: () => void;
+}) {
+  return (
+    <div className={styles.botBlock} data-bot={bot.id}>
+      <div
+        className={styles.botReihe}
+        data-aktiv={bot.aktiv || bot.unterhaltungen.some((u) => u.aktiv) || undefined}
+      >
+        <AvatarLebendig
+          farbe={bot.farbe}
+          groesse={20}
+          zustand={bot.pausiert ? "angehalten" : (bot.zustand ?? "ruhig")}
+          still
+        />
+        <span className={styles.botText}>
+          <span className={styles.botName}>
+            {bot.href ? (
+              <Link
+                href={bot.href}
+                onClick={onGewaehlt}
+                className={styles.botLink}
+                {...(bot.aktiv ? { "aria-current": "page" as const } : {})}
+              >
+                {bot.name}
+              </Link>
+            ) : (
+              bot.name
+            )}
+            {bot.leitung && <span className={styles.leitung}>{t("teams.bot.leitung")}</span>}
+            {bot.pausiert ? (
+              <span className={styles.botZustand} data-zustand="angehalten">
+                {t("teams.bot.pausiert")}
+              </span>
+            ) : (
+              bot.zustand &&
+              bot.zustand !== "ruhig" &&
+              bot.zustandText && (
+                <span className={styles.botZustand} data-zustand={bot.zustand}>
+                  {bot.zustandText}
+                </span>
+              )
+            )}
+          </span>
+          <span className={styles.rolle}>{bot.rolle}</span>
+        </span>
+      </div>
+      {(bot.unterhaltungen.length > 0 || bot.neu !== undefined) && (
+        <nav aria-label={t("navigation.unterhaltungen", { name: bot.name })}>
+          <ul className={styles.unterhaltungen}>
+            {bot.unterhaltungen.map((u) => (
+              <li key={u.id}>
+                <Link
+                  href={u.href}
+                  className={styles.zeile}
+                  onClick={onGewaehlt}
+                  {...(u.aktiv ? { "aria-current": "page" as const } : {})}
+                >
+                  <span className={styles.zeilenText}>{u.titel}</span>
+                </Link>
+              </li>
+            ))}
+            {bot.neu !== undefined && (
+              <li>
+                <Link href={bot.neu.href} className={styles.zeile} onClick={onGewaehlt}>
+                  <Icon name="plus" groesse={14} />
+                  <span className={styles.zeilenText}>
+                    {t("navigation.neue_unterhaltung_mit", { name: bot.name })}
+                  </span>
+                </Link>
+              </li>
+            )}
+          </ul>
+        </nav>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Ein Team in der Seitenleiste: Kopf mit Pfeil zum Auf- und Zuklappen, der Name als Link auf die
+ * Verwaltung, darunter die Mitglieder. Offen ist der Anfangszustand.
+ */
+function TeamGruppe({
+  team,
+  link: Link,
+  onGewaehlt,
+}: {
+  team: NavTeam;
+  link: LinkTyp;
+  onGewaehlt: () => void;
+}) {
+  const [offen, setOffen] = useState(true);
+  const listeId = useId();
+  return (
+    <section className={styles.team} aria-label={team.name} data-team={team.id}>
+      <div className={styles.teamKopf}>
+        <button
+          type="button"
+          className={styles.teamAuf}
+          aria-expanded={offen}
+          aria-controls={listeId}
+          aria-label={t("teams.leiste.team_zeigen", { name: team.name })}
+          onClick={() => setOffen(!offen)}
+        >
+          <Icon name={offen ? "runter" : "rechts"} groesse={14} />
+        </button>
+        <Link
+          href={team.href}
+          className={styles.teamName}
+          onClick={onGewaehlt}
+          {...(team.aktiv ? { "aria-current": "page" as const } : {})}
+        >
+          {team.name}
+        </Link>
+        <span className={styles.teamZahl}>
+          {t("faden.seite.bots", { anzahl: team.bots.length })}
+        </span>
+      </div>
+      <div id={listeId} className={styles.teamGlieder} hidden={!offen}>
+        {team.bots.map((b) => (
+          <BotEintrag key={b.id} bot={b} link={Link} onGewaehlt={onGewaehlt} />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function useModus(element: React.RefObject<HTMLElement | null>): ShellModus | null {
@@ -240,6 +403,8 @@ export function AppShell({
     merkeEingeklappt(neu);
   };
   const { bot } = navigation;
+  const teams = navigation.teams ?? [];
+  const weitereBots = navigation.weitereBots ?? [];
 
   return (
     <div
@@ -304,56 +469,22 @@ export function AppShell({
             ) : (
               <div className={styles.block}>
                 <h2 className={styles.etikett}>{texte.deinBot}</h2>
-                <div
-                  className={styles.botReihe}
-                  data-aktiv={bot.aktiv || bot.unterhaltungen.some((u) => u.aktiv) || undefined}
-                >
-                  <AvatarLebendig
-                    farbe={bot.farbe}
-                    groesse={20}
-                    zustand={bot.zustand ?? "ruhig"}
-                    still
-                  />
-                  <span className={styles.botText}>
-                    <span className={styles.botName}>
-                      {bot.href ? (
-                        <Link
-                          href={bot.href}
-                          onClick={schliesseNav}
-                          className={styles.botLink}
-                          {...(bot.aktiv ? { "aria-current": "page" as const } : {})}
-                        >
-                          {bot.name}
-                        </Link>
-                      ) : (
-                        bot.name
-                      )}
-                      {bot.zustand && bot.zustand !== "ruhig" && bot.zustandText && (
-                        <span className={styles.botZustand} data-zustand={bot.zustand}>
-                          {bot.zustandText}
-                        </span>
-                      )}
-                    </span>
-                    <span className={styles.rolle}>{bot.rolle}</span>
-                  </span>
-                </div>
-                {bot.unterhaltungen.length > 0 && (
-                  <nav aria-label={texte.unterhaltungen}>
-                    <ul className={styles.unterhaltungen}>
-                      {bot.unterhaltungen.map((u) => (
-                        <li key={u.id}>
-                          <Link
-                            href={u.href}
-                            className={styles.zeile}
-                            onClick={schliesseNav}
-                            {...(u.aktiv ? { "aria-current": "page" as const } : {})}
-                          >
-                            <span className={styles.zeilenText}>{u.titel}</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </nav>
+                <BotEintrag bot={bot} link={Link} onGewaehlt={schliesseNav} />
+                {teams.length > 0 && (
+                  <section aria-label={t("faden.seite.teams")}>
+                    <h2 className={styles.etikett}>{t("faden.seite.teams")}</h2>
+                    {teams.map((tm) => (
+                      <TeamGruppe key={tm.id} team={tm} link={Link} onGewaehlt={schliesseNav} />
+                    ))}
+                  </section>
+                )}
+                {weitereBots.length > 0 && (
+                  <section aria-label={t("teams.leiste.ohne_team")}>
+                    <h2 className={styles.etikett}>{t("teams.leiste.ohne_team")}</h2>
+                    {weitereBots.map((b) => (
+                      <BotEintrag key={b.id} bot={b} link={Link} onGewaehlt={schliesseNav} />
+                    ))}
+                  </section>
                 )}
               </div>
             )}

@@ -37,12 +37,16 @@ export interface UnterhaltungKurz {
   titel: string;
   /** Letzte Nachricht, sonst Anlegen (ISO). */
   zuletzt: string;
+  /** Bot, dem die Unterhaltung gehört; die Seitenleiste gruppiert danach. */
+  botId?: string;
 }
 
 /** Unterhaltung mit dem Modus der Datenschleuse, der für sie gilt. */
 export interface UnterhaltungInfo {
   id: string;
   titel: string;
+  /** Bot, mit dem die Unterhaltung geht; fehlt nur bei einem Faden eines Teams. */
+  botId?: string;
   /** Gilt für diese Unterhaltung: eigener Modus, sonst der Standard. */
   schleuse: SchleuseMode;
 }
@@ -154,8 +158,12 @@ export interface ModellWahl extends ModellInfo {
 
 /** Ob der Bot antworten kann und was die Eingabe zeigen soll. */
 export interface ChatBereitschaft {
+  /** Kennung des Bots, mit dem diese Seite spricht. Fehlt, solange kein Bot eingerichtet ist. */
+  botId?: string;
   botName: string;
   botFarbe: BotColor;
+  /** Pausierter Bot: Er antwortet nicht, bis der Besitzer die Pause aufhebt. */
+  pausiert: boolean;
   /** Modell des Bots; fehlt, wenn keins gewählt ist. */
   modell?: ModellInfo;
   /** Ist für den Anbieter des Modells ein Schlüssel eingetragen? */

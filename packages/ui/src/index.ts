@@ -105,6 +105,7 @@ export {
   type AppShellTexte,
   type NavBot,
   type NavEintrag,
+  type NavTeam,
   type NavUnterhaltung,
 } from "./shell/AppShell";
 export {

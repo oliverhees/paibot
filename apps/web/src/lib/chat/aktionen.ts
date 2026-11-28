@@ -12,7 +12,7 @@
 
 import { repo } from "@paibot/db";
 import { PaiBotError } from "@paibot/shared/fehler";
-import { type ConversationId, isId, newId, type RunId } from "@paibot/shared/ids";
+import { type BotId, type ConversationId, isId, newId, type RunId } from "@paibot/shared/ids";
 import { LIMITS } from "@paibot/shared/konstanten";
 import { ACTIVE_RUN_STATUSES, type SchleuseMode } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
@@ -40,10 +40,18 @@ export const unterhaltungenListe: RoutenAktion<"unterhaltungen"> = async (k) => 
   daten: { unterhaltungen: await ladeUnterhaltungen(k.db) },
 });
 
-/** `POST /api/unterhaltungen`: neue Unterhaltung mit dem Standard-Bot. */
+/**
+ * `POST /api/unterhaltungen`: neue Unterhaltung mit dem gewählten Bot. Ohne Angabe ist es der
+ * Standard-Bot – er bleibt die Vorgabe, aber nicht die einzige Wahl. Einen Bot, den es nicht
+ * gibt, lehnt die Route ab, bevor das Tor entscheidet.
+ */
 export const unterhaltungAnlegen: RoutenAktion<"unterhaltungAnlegen"> = async (k) => {
   const settings = await repo.settings.get(k.db);
-  const botId = settings?.defaultBotId;
+  const gewaehlt = k.eingabe.botId as BotId | undefined;
+  if (gewaehlt !== undefined && (await repo.bots.get(k.db, gewaehlt)) === undefined) {
+    throw new PaiBotError("nicht_gefunden");
+  }
+  const botId = gewaehlt ?? settings?.defaultBotId;
   if (botId === undefined) throw new PaiBotError("einrichtung_offen");
   const conversationId = newId("conversation");
   const titel = k.eingabe.title ?? t("chat.titel.neu");

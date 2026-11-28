@@ -1,6 +1,6 @@
 /**
- * PaiBot – AppShell der angemeldeten App: Navigation der ersten Version, Unterhaltungen des Bots,
- * Arbeitsfläche rechts (von der Seite gefüllt) und Abmelden.
+ * PaiBot – AppShell der angemeldeten App: Navigation mit dem Haupt-Assistenten, den Teams und
+ * ihren Bots samt Unterhaltungen, Arbeitsfläche rechts (von der Seite gefüllt) und Abmelden.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -12,7 +12,6 @@
 "use client";
 
 import "../../lib/ohne-auswertung";
-import type { BotColor } from "@paibot/shared/objekte";
 import { t } from "@paibot/shared/texte";
 import {
   AppShell,
@@ -21,6 +20,8 @@ import {
   Icon,
   Menue,
   type MenueEintrag,
+  type NavBot,
+  type NavTeam,
 } from "@paibot/ui";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -39,20 +40,25 @@ import type { UnterhaltungKurz } from "../../lib/chat/typen";
 import { INFO_LINKS } from "../../lib/einstellungen/info";
 import {
   BOT_ADRESSE,
+  botAdresse,
   botAktiv,
   duEintraege,
   kopfTitel,
   liegtUnter,
   modelleHerkunft,
   NAVIGATION,
+  neueUnterhaltungAdresse,
+  teamAdresse,
 } from "../../lib/navigation";
+import type { AnsichtBot, BotsUndTeams } from "../../lib/teams/ansicht";
 import styles from "./app.module.css";
 import { NotAusDialog, type NotAusFrage, NotAusKnopf, NotAusLeiste } from "./NotAus";
 import notausStyles from "./notaus.module.css";
 import { useSuche } from "./Suche";
 
 export interface AppRahmenProps {
-  bot: { name: string; farbe: BotColor };
+  /** Haupt-Assistent, Teams mit ihren Bots und die Bots ohne Team (vom Server). */
+  gruppen: BotsUndTeams;
   /** Herkunft der Modelle in Worten (`anbieterHerkunft`); fehlt ohne Anbieter. */
   herkunft?: string;
   /** Unterhaltungen des Bots, neueste zuerst (vom Server; danach hält der Rahmen sie aktuell). */
@@ -68,13 +74,12 @@ export interface AppRahmenProps {
   children: ReactNode;
 }
 
-function shellTexte(botName: string): AppShellTexte {
+function shellTexte(): AppShellTexte {
   return {
     laeuftAuf: t("navigation.laeuft_auf"),
     modelle: t("navigation.modelle"),
     deinBot: t("navigation.dein_bot"),
     navigation: t("navigation.name"),
-    unterhaltungen: t("navigation.unterhaltungen", { name: botName }),
     menueOeffnen: t("navigation.menue_oeffnen"),
     menueSchliessen: t("navigation.menue_schliessen"),
     flaeche: t("navigation.flaeche"),
@@ -168,7 +173,7 @@ function neuesteZuerst(liste: readonly UnterhaltungKurz[]): UnterhaltungKurz[] {
 }
 
 export function AppRahmen({
-  bot,
+  gruppen,
   herkunft,
   unterhaltungen: vomServer,
   notAus: notAusVomServer = false,
@@ -179,7 +184,9 @@ export function AppRahmen({
 }: AppRahmenProps) {
   const pfad = usePathname();
   const router = useRouter();
-  const suche = useSuche({ botName: bot.name, zeitzone });
+  const haupt = gruppen.haupt;
+  const hauptName = haupt?.name ?? t("einrichtung.bot.vorschlag");
+  const suche = useSuche({ botName: hauptName, zeitzone });
   const [notAus, setNotAus] = useState(notAusVomServer);
   const [notAusFrage, setNotAusFrage] = useState<NotAusFrage | undefined>(undefined);
   useEffect(() => setNotAus(notAusVomServer), [notAusVomServer]);
@@ -212,33 +219,73 @@ export function AppRahmen({
     [flaecheOffen, unterhaltungen, unterhaltungMerken, unterhaltungEntfernen, notAus],
   );
 
-  const navUnterhaltungen = unterhaltungen.map((u) => {
-    const href = unterhaltungsAdresse(u.id);
-    return { id: u.id, titel: u.titel, href, aktiv: pfad === href };
-  });
+  // Unterhaltungen eines Bots, in der Reihenfolge der Liste (zuletzt benutzte zuerst).
+  const navUnterhaltungen = (botId: string | undefined) =>
+    unterhaltungen
+      .filter((u) => botId !== undefined && u.botId === botId)
+      .map((u) => {
+        const href = unterhaltungsAdresse(u.id);
+        return { id: u.id, titel: u.titel, href, aktiv: pfad === href };
+      });
+
+  // Der Haupt-Assistent behält seine eigene Seite (`/bot`, mit Name, Anweisung und Modell); jeder
+  // weitere Bot hat seinen Steckbrief unter `/bot/<Kennung>`.
+  const navBot = (b: AnsichtBot): NavBot => {
+    const eigene = navUnterhaltungen(b.id);
+    const href = botAdresse(b.id, b.haupt);
+    return {
+      id: b.id,
+      name: b.name,
+      rolle: b.haupt && b.rolle === "" ? t("navigation.bot.rolle") : b.rolle,
+      farbe: b.farbe,
+      // In der Liste steht der Avatar still; nur der Not-Aus ändert sein Gesicht.
+      ...(notAus ? { zustand: "angehalten" as const } : {}),
+      ...(b.pausiert ? { pausiert: true } : {}),
+      ...(b.leitung ? { leitung: true } : {}),
+      href,
+      aktiv: b.haupt
+        ? botAktiv(
+            pfad,
+            eigene.some((u) => u.aktiv),
+          )
+        : pfad === href,
+      unterhaltungen: eigene,
+      neu: { href: neueUnterhaltungAdresse(b.id) },
+    };
+  };
+
+  const hauptNav: NavBot = haupt
+    ? navBot(haupt)
+    : {
+        id: "ohne",
+        name: hauptName,
+        rolle: t("navigation.bot.rolle"),
+        farbe: "limette",
+        href: BOT_ADRESSE,
+        aktiv: liegtUnter(pfad, BOT_ADRESSE),
+        unterhaltungen: [],
+      };
+
+  const navTeams: NavTeam[] = gruppen.teams.map((tm) => ({
+    id: tm.id,
+    name: tm.name,
+    href: teamAdresse(tm.id),
+    aktiv: pfad === teamAdresse(tm.id),
+    bots: tm.bots.map(navBot),
+  }));
 
   return (
     <Rahmen.Provider value={kontext}>
       <AppShell
         link={NavLink}
-        texte={shellTexte(bot.name)}
+        texte={shellTexte()}
         navigation={{
           ort: t("navigation.ort"),
           modelle: modelleHerkunft(herkunft),
-          neu: { href: "/" },
-          bot: {
-            name: bot.name,
-            rolle: t("navigation.bot.rolle"),
-            farbe: bot.farbe,
-            // In der Liste steht der Avatar still; nur der Not-Aus ändert sein Gesicht.
-            ...(notAus ? { zustand: "angehalten" as const } : {}),
-            href: BOT_ADRESSE,
-            aktiv: botAktiv(
-              pfad,
-              navUnterhaltungen.some((u) => u.aktiv),
-            ),
-            unterhaltungen: navUnterhaltungen,
-          },
+          neu: { href: neueUnterhaltungAdresse() },
+          bot: hauptNav,
+          teams: navTeams,
+          weitereBots: gruppen.ohneTeam.map(navBot),
           werkzeuge: NAVIGATION.map((eintrag) => ({
             ...eintrag,
             aktiv: liegtUnter(pfad, eintrag.href),

@@ -1,7 +1,7 @@
 /**
  * PaiBot – Grundgerüst der angemeldeten App: prüft die Sitzung auf dem Server und zeigt die
- * Navigation mit dem Bot und seinen Unterhaltungen aus der Datenbank, dazu den Hinweis auf neue
- * Anmeldungen von anderen Geräten.
+ * Navigation mit dem Haupt-Assistenten, den Teams und ihren Bots samt Unterhaltungen aus der
+ * Datenbank, dazu den Hinweis auf neue Anmeldungen von anderen Geräten.
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -11,13 +11,13 @@
  */
 
 import { repo } from "@paibot/db";
-import { t } from "@paibot/shared/texte";
 import type { ReactNode } from "react";
 import { modellVon } from "../../lib/bot/bot";
 import { ladeUnterhaltungen } from "../../lib/chat/laden";
 import { datenbank } from "../../lib/datenbank";
 import { notAusAn } from "../../lib/notaus/notaus";
 import { stand } from "../../lib/stand";
+import { ladeBotsUndTeams } from "../../lib/teams/laden";
 import { prozessDienste } from "../../lib/zugang/dienste";
 import { neueAnmeldungen } from "../../lib/zugang/hinweis";
 import { besitzerSeite } from "../../lib/zugang/seite";
@@ -32,7 +32,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // Neue Geräte seit dem Stand dieses Geräts (Hinweis bis „Das war ich“).
   const neue = await neueAnmeldungen(db, sitzung, prozessDienste().uhr.now());
   const zeitzone = (await repo.settings.get(db))?.timezone ?? "Europe/Berlin";
+  // Hier bleibt es bewusst der Standard-Bot: Die Zeile „Modelle: …“ in der Seitenleiste nennt die
+  // Herkunft des Modells, mit dem der Haupt-Assistent antwortet.
   const bot = await repo.bots.getDefault(db);
+  const gruppen = await ladeBotsUndTeams(db);
   const unterhaltungen = await ladeUnterhaltungen(db);
   // Herkunft der Modelle in der Seitenleiste: belegbare Angabe zum Anbieter des gewählten Modells.
   const herkunft = bot === undefined ? undefined : (await modellVon(db, bot))?.herkunft;
@@ -45,10 +48,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       zeitzone={zeitzone}
       stand={stand()}
       {...(herkunft === undefined ? {} : { herkunft })}
-      bot={{
-        name: bot?.name ?? t("einrichtung.bot.vorschlag"),
-        farbe: bot?.color ?? "limette",
-      }}
+      gruppen={gruppen}
     >
       {children}
     </AppRahmen>
