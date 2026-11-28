@@ -199,11 +199,59 @@ Ein **Faden** ist eine Unterhaltung, die einem Team gehört und keinen eigenen B
 
 **Löschen:** Einen Bot, der schon gearbeitet hat, und deinen Standard-Bot kann die Datenbank nicht löschen; das Tor lehnt das Löschen außerdem ab, solange ein Bot gerade antwortet. Ein Team mit Fäden lässt sich ebenfalls nicht löschen. Eine Funktion zum Löschen gibt es in der Oberfläche noch nicht.
 
+### Zusammenarbeit von Bots (Fassung 5)
+
+**Stand:** Die Regeln gelten: Das Tor entscheidet nach Fassung 5. **Bedienen kannst du das noch nicht:** Es gibt noch keine Aufträge in der Datenbank, keinen Bot, der einem anderen Arbeit gibt, und keinen Knopf dafür. Jeder Lauf deiner Bots steht heute „ohne Auftrag“. Die Aktionen gibt es im Tor schon, damit später jede Übergabe durch dasselbe Tor läuft und einen Beleg bekommt.
+
+Mit Fassung 5 kommen sieben Aktionen dazu:
+
+- **Von Bots:** einem anderen Bot Arbeit übergeben (`auftrag.uebergeben`) und den Stand des eigenen Auftrags melden (`auftrag.melden`: fertig oder eine Frage an dich).
+- **Nur von dir:** einen Auftrag abbrechen, abnehmen oder zurückgeben (auch einen schon fertigen), den Zettel eines noch nicht gestarteten Auftrags ändern und das Budget eines Auftrags erhöhen.
+
+Wer wem Arbeit geben darf, ist fest. Es gibt genau vier Wege:
+
+1. Pai gibt der Leitung eines Teams einen Auftrag. Das geht nur aus deinem Direkt-Chat mit Pai und nur in einer Antwort auf deine eigene Nachricht, nie aus einer Automation und nie aus einem Faden.
+2. Die Leitung gibt einem Mitglied ihres Teams Arbeit.
+3. Die Leitung gibt einem Mitglied Arbeit zurück.
+4. Ein Mitglied mit Auftrag der Leitung bittet einen Kollegen im selben Team um eine Zulieferung.
+
+Jeden anderen Weg lehnt das Tor ab (V-40), auch mit einer Regel, die alles erlaubt; ein Bot in einem anderen Team bekommt dabei den eigenen Code `ziel_in_anderem_team`. Ein erlaubter Weg wirkt nur, wenn du ihn eingeschaltet hast: die Zusammenarbeit am Team bzw. „Pai darf Teams Aufträge geben“. Ist der Schalter aus, fragt das Tor (R-009). Weil es noch keine Freigabe gibt, heißt das heute: abgelehnt, Code `zusammenarbeit_aus`. **Eine eigene Regel ändert daran nichts:** R-009 liegt vor jeder eigenen Regel, deshalb kann eine eigene Regel Übergaben weder erlauben noch verbieten. Steuern kannst du sie nur mit den beiden Schaltern und den festen Grenzen. Hat ein Lauf fremde Inhalte gelesen (zum Beispiel aus einem Werkzeug), gibt es keine Übergabe (Deckel D-02).
+
+Ein Bot, der unter einem Auftrag arbeitet, ruft keine Werkzeuge (G-42). Ein pausierter Bot bekommt keine Arbeit (G-15). Ein Auftrag aus einem Faden gilt nur dort: In einer anderen Unterhaltung hat derselbe Bot keinen Auftrag.
+
+| Nummer | Name                       | Was sie prüft                                                                                  |
+| ------ | -------------------------- | ---------------------------------------------------------------------------------------------- |
+| R-009  | Bot fragt vor Übergaben    | Regel: Ein erlaubter Weg bei ausgeschaltetem Schalter wird gefragt (heute: abgelehnt)          |
+| R-015  | Leitung gibt Arbeit weiter | Regel: Leitung an Mitglied ihres Teams, wenn die Zusammenarbeit an ist                         |
+| R-016  | Bot mit Auftrag antwortet  | Regel: Ein Bot mit gültigem Auftrag in dieser Unterhaltung darf das Modell fragen              |
+| R-017  | Pai beauftragt ein Team    | Regel: Pai an eine Leitung, aus deinem Chat, wenn du es erlaubt hast                           |
+| R-018  | Bot meldet seinen Stand    | Regel: Ein Bot meldet den Stand seines eigenen Auftrags im Faden                               |
+| R-019  | Mitglied bittet Kollegen   | Regel: Bitte im selben Team, wenn die Zusammenarbeit an ist                                    |
+| V-39   | Auftrag offen              | Vorbedingung: Der Auftrag läuft noch (Zurückgeben geht auch bei einem fertigen)                |
+| V-40   | Weg erlaubt                | Vorbedingung: Die Übergabe nimmt einen der vier Wege                                           |
+| V-41   | Budget ausgeschöpft        | Vorbedingung: Mehr Budget gibt es erst, wenn das bisherige aufgebraucht ist                    |
+| G-09   | Tiefe                      | Grenze: Die Kette der Übergaben wird nicht zu tief                                             |
+| G-10   | Aufträge je Auftrag        | Grenze: Ein Auftrag erzeugt nicht zu viele Unteraufträge                                       |
+| G-11   | Budget                     | Grenze: Alle Antworten zu einem Auftrag zusammen bleiben im Budget samt deinen Zuschlägen      |
+| G-12   | Zeit                       | Grenze: Ein Auftrag läuft nicht zu lange                                                       |
+| G-13   | Kein Kreis                 | Grenze: Niemand gibt Arbeit an sich selbst oder zurück nach oben                               |
+| G-38   | Erwähnungen je Nachricht   | Grenze: Eine Nachricht im Faden erwähnt nicht zu viele Bots                                    |
+| G-39   | Übergaben je Lauf          | Grenze: Ein Lauf übergibt nicht zu oft                                                         |
+| G-41   | Breite                     | Grenze: Nicht zu viele offene Unteraufträge gleichzeitig                                       |
+| G-42   | Keine Werkzeuge im Auftrag | Grenze: Werkzeuge nur ohne Auftrag                                                             |
+| G-43   | Aufträge je Mitglied       | Grenze: Die Leitung gibt einem Mitglied nicht zu oft Arbeit                                    |
+| G-44   | Rückfragen je Faden        | Grenze: Nicht zu viele Fragen an dich in einem Faden                                           |
+| G-45   | Bitten je Auftrag          | Grenze: Ein Mitglied bittet nicht zu oft                                                       |
+| G-46   | Zuschläge je Auftrag       | Grenze: Du erhöhst das Budget höchstens fünfmal um je 10 000 Token                             |
+| D-02   | Nach fremden Inhalten nie  | Deckel: Nach fremden Inhalten wird jede Übergabe abgelehnt, auch eine, die sonst gefragt würde |
+
+Die Seite „Regeln“ zeigt die Grenzen und Vorbedingungen dieser Fassung noch nicht, weil du Aufträge noch nicht benutzen kannst. Neu ist auch die Herkunft „Pai“ für einen Entwurf eines Teams: Pai darf einen Entwurf schreiben, anlegen kannst nur du ihn. Einzelne Ziel-Punkte eines Auftrags hakst du nicht ab; ist der Auftrag fertig, gelten alle als erfüllt.
+
 ## So funktioniert es
 
 - Das Tor liegt im Paket `packages/gate`. Es ist der einzige Weg, eine Aktion auszuführen (`gate.run`).
 - Die Entscheidung trifft die Funktion `evaluate`. Sie ist rein: Sie liest keine Uhr, keine Datenbank, kein Netz und nutzt keine KI. Sie bekommt nur die Aktion, die Fakten (Werte wie Zeichenzahl, Region, Schalter, nie Inhalte von Nachrichten oder Schlüssel) und die Regeln.
-- **Fassung der Tor-Regeln:** Das Tor entscheidet jetzt nach **Fassung 4** („Bots, Teams und Fäden“). Jeder Beleg nennt sie, ältere Belege werden nach ihrer Fassung geprüft (Belege ohne Angabe nach Fassung 1, Belege der Fassungen 2 und 3 nach Fassung 2 und 3). Ein älterer Stand von PaiBot, der Fassung 4 noch nicht kennt, urteilt über Belege der Fassung 4 „mit dieser Fassung nicht prüfbar“, nie „ungültig“. Eine Fassung wird nie geändert; was das Tor anders entscheiden würde, kommt als neue Fassung. Die Regel R-014 steht in der Datenbank. Nach dem Wechsel auf diese Version gibt es kein Zurück auf eine ältere: Ein älteres Programm erkennt die neuen Aktionen und die neue Fassung der Belege nicht. Mach vorher eine Sicherung ([Aktualisieren](aktualisieren.md)).
+- **Fassung der Tor-Regeln:** Das Tor entscheidet jetzt nach **Fassung 5** („Zusammenarbeit“). Jeder Beleg nennt sie, ältere Belege werden nach ihrer Fassung geprüft (Belege ohne Angabe nach Fassung 1, Belege der Fassungen 2 bis 4 nach Fassung 2 bis 4). Ein älterer Stand von PaiBot, der Fassung 5 noch nicht kennt, urteilt über Belege der Fassung 5 „mit dieser Fassung nicht prüfbar“, nie „ungültig“. Eine Fassung wird nie geändert; was das Tor anders entscheiden würde, kommt als neue Fassung. Die Regeln R-014, R-009 und R-015 bis R-019 stehen in der Datenbank. Nach dem Wechsel auf diese Version gibt es kein Zurück auf eine ältere: Ein älteres Programm erkennt die neuen Aktionen und die neue Fassung der Belege nicht. Mach vorher eine Sicherung ([Aktualisieren](aktualisieren.md)).
 - Reihenfolge: 1. Eingabe prüfen, 2. Vorbedingungen, 3. Grenzen, 4. Regeln, 5. Deckel (nur bei Werkzeug-Aufrufen). Alle Vorbedingungen der Aktion, alle Grenzen und bei Werkzeug-Aufrufen der Deckel stehen im Beleg. Eine verletzte Vorbedingung geht einer verletzten Grenze vor; beide führen immer zur Ablehnung. Von allen Regeln, die passen, entscheidet die mit der kleinsten Priorität; sie bleibt auch bei einer Ablehnung im Beleg sichtbar.
 - Regelstand: Für jede angewandte Regel stehen Kennung, Fassung und eine Prüfsumme ihres Inhalts im Beleg, dazu der Stand des Regel-Protokolls. Regeln werden nie geändert, nur als neue Fassung angehängt. Mit dem Stand lässt sich eine Entscheidung später mit genau den Regeln von damals nachrechnen, und eine nachträglich veränderte Regel fällt an der Prüfsumme auf.
 - Bevor das Tor entscheidet, prüft es den Regelstand: Jede Prüfsumme muss zum Inhalt passen, und jede eingebaute Regel (Quelle „standard“, Kennung `R-…`) muss genau der Fassung gleichen, die in PaiBot selbst steht. Fehlt eine eingebaute Regel (auch, weil eine abgeschaltete höhere Fassung sie verdeckt), taucht eine unbekannte Kennung `R-…` auf, trägt eine Kennung `R-…` eine andere Quelle, ist ein Regel-Vorschlag eingeschaltet oder liegt eine Regel außerhalb des Prioritäten-Bands ihrer Quelle, entscheidet das Tor nicht, schreibt keinen Beleg und führt nichts aus (Fehler `intern`). Das gilt auch für eine leere Regel-Tabelle: Dann wird nie „alles gefragt“ und nie „alles erlaubt“, sondern abgebrochen. Regel-Vorschläge zählen nie mit.
