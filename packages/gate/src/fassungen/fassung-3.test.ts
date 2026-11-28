@@ -5,8 +5,8 @@
  *   Entscheidung; die neuen Grenzen stehen dahinter und entfallen);
  * - jede Bedingung von R-014 wirkt (ohne sie ändert sich ein fester Fall bzw., bei Akteur und
  *   Quelle, die Auswertung der Regel selbst);
- * - sie steht unter dem Tor der Fassung 4 weiter in der Liste: R-014 steht in den Standard-Regeln,
- *   ein erlaubter Aufruf eines App-Werkzeugs läuft (mit den Fakten der Fassung 4) durch das echte
+ * - sie steht unter dem Tor der Fassung 5 weiter in der Liste: R-014 steht in den Standard-Regeln,
+ *   ein erlaubter Aufruf eines App-Werkzeugs läuft (mit den Fakten der Fassung 5) durch das echte
  *   Tor; mit Fassung 2 bleibt er ungültig.
  *
  * @author    Oliver Hees
@@ -326,30 +326,31 @@ describe("Bedingungen Akteur und Quelle von R-014, direkt an der Regel-Auswertun
   });
 });
 
-describe("Fassung 3 unter dem Tor der Fassung 4", () => {
+describe("Fassung 3 unter dem Tor der Fassung 5", () => {
   const verbinden = K3.cases.find((fall) => fall.name === "aktion app.verbinden") as Fall;
   const appAufrufFassung3 = K3.cases.find((fall) => fall.name === "R-014 passt") as Fall;
-  // Das lebende Tor rechnet mit Fassung 4: Ein Aufruf trägt dort zusätzlich `botPaused`.
+  // Das lebende Tor rechnet mit Fassung 5: Ein Aufruf trägt dort zusätzlich `botPaused` (ab
+  // Fassung 4) und `auftragArt` (ab Fassung 5).
   const appAufruf: Fall = {
     ...appAufrufFassung3,
-    facts: { ...appAufrufFassung3.facts, botPaused: false },
+    facts: { ...appAufrufFassung3.facts, botPaused: false, auftragArt: "keiner" },
   };
 
   it("Fassung 3 steht weiter in der Liste; das Tor entscheidet mit einer höheren", () => {
-    expect(GATE_FORMAT).toBe(4);
+    expect(GATE_FORMAT).toBe(5);
     expect(currentGateFormat()).not.toBe(GATE_FORMAT_3);
-    expect(KNOWN_GATE_FORMAT).toBe(4);
-    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3", "4"]);
+    expect(KNOWN_GATE_FORMAT).toBe(5);
+    expect(Object.keys(GATE_FORMATS)).toEqual(["1", "2", "3", "4", "5"]);
     expect(gateFormatSpec(3)).toBe(GATE_FORMAT_3);
-    expect(gateFormatSpec(5)).toBeUndefined();
+    expect(gateFormatSpec(6)).toBeUndefined();
     expect(() =>
       evaluate(appAufruf.action as never, appAufruf.facts as never, ACTIVE_STANDARD_RULES, {
-        format: 5,
+        format: 6,
       }),
     ).toThrow(RangeError);
   });
 
-  it("Fassung 3 rechnet den Aufruf ohne botPaused, mit botPaused ist er für sie ungültig", () => {
+  it("Fassung 3 rechnet den Aufruf ohne die neuen Fakten, mit ihnen ist er für sie ungültig", () => {
     const alt = GATE_FORMAT_3.evaluate(
       appAufrufFassung3.action as never,
       appAufrufFassung3.facts as never,
@@ -454,7 +455,7 @@ describe("Fassung 3 unter dem Tor der Fassung 4", () => {
     throw new Error("kein Fehler geworfen");
   }
 
-  it("ein erlaubter App-Aufruf läuft durch das echte Tor: Beleg-Paar mit Fassung 4, ausgeführt", async () => {
+  it("ein erlaubter App-Aufruf läuft durch das echte Tor: Beleg-Paar mit Fassung 5, ausgeführt", async () => {
     const p = ports(ACTIVE_STANDARD_RULES);
     let ausgefuehrt = false;
     await createGate(p).run(appAufruf.action as never, appAufruf.facts as never, async () => {
@@ -463,7 +464,7 @@ describe("Fassung 3 unter dem Tor der Fassung 4", () => {
     });
     expect(ausgefuehrt).toBe(true);
     expect(p.belege).toEqual(["decision", "result"]);
-    expect(p.entscheidungen).toEqual([{ gateFormat: 4, outcome: "allow" }]);
+    expect(p.entscheidungen).toEqual([{ gateFormat: 5, outcome: "allow" }]);
   });
 
   it("derselbe Aufruf mit geändertem Abdruck wird abgelehnt: nichts ausgeführt, Beleg mit Ablehnung", async () => {
@@ -490,7 +491,7 @@ describe("Fassung 3 unter dem Tor der Fassung 4", () => {
       value: 1,
       result: { status: "ok" },
     }));
-    expect(p.entscheidungen).toEqual([{ gateFormat: 4, outcome: "allow" }]);
+    expect(p.entscheidungen).toEqual([{ gateFormat: 5, outcome: "allow" }]);
   });
 
   it("Fakten einer App ohne alle App-Fakten (nur ein Teil) sind ungültig: kein Beleg", async () => {

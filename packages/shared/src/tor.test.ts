@@ -35,6 +35,7 @@ import {
 } from "./gate";
 import { idSchema, newId } from "./id";
 import { TEAM_ACTION_TYPES } from "./tor-fassung-4";
+import { AUFTRAG_ACTION_TYPES } from "./tor-fassung-5";
 
 const botId = idSchema("bot").parse("bot_06f8k2m9qz3w7x1c4b5n8p0r2t");
 const conversationId = idSchema("conversation").parse("unt_06f8k2m9qz3w7x1c4b5n8p0r2t");
@@ -74,6 +75,10 @@ const modelFacts: Facts<"modell.anfragen"> = {
   toolCount: 0,
   untrustedInput: false,
   trigger: "chat",
+  conversationKind: "direkt",
+  botHatAuftrag: false,
+  auftragArt: "keiner",
+  zweck: "chat",
 };
 
 describe("Aktionen", () => {
@@ -111,8 +116,15 @@ describe("Aktionen", () => {
       "app.zugriff_setzen",
       "app.trennen",
       ...TEAM_ACTION_TYPES,
+      ...AUFTRAG_ACTION_TYPES,
     ]);
-    const botActions = new Set(["modell.anfragen", "werkzeug.aufrufen", "werkzeug.ausfuehren"]);
+    const botActions = new Set([
+      "modell.anfragen",
+      "werkzeug.aufrufen",
+      "werkzeug.ausfuehren",
+      "auftrag.uebergeben",
+      "auftrag.melden",
+    ]);
     for (const type of ACTION_TYPES) {
       expect(ACTIONS[type].actor).toBe(botActions.has(type) ? "bot" : "besitzer");
     }
@@ -218,7 +230,8 @@ describe("Regeln", () => {
     });
     expect(ruleDefinitionSchema.parse(r010)).toEqual(r010);
     expect(ACTIVE_STANDARD_RULES.find((rule) => rule.id === "R-010")).toBe(r010);
-    // Die ersten sieben Fassungen bleiben, wie sie waren; R-010 und R-014 kommen nur hinten dazu.
+    // Die ersten sieben Fassungen bleiben, wie sie waren; R-010, R-014 und die Regeln der Fassung 5
+    // kommen nur hinten dazu.
     expect(STANDARD_RULE_VERSIONS.map((rule) => `${rule.id}@${rule.version}`)).toEqual([
       "R-001@1",
       "R-002@1",
@@ -229,6 +242,12 @@ describe("Regeln", () => {
       "R-006@1",
       "R-010@1",
       "R-014@1",
+      "R-009@1",
+      "R-015@1",
+      "R-016@1",
+      "R-017@1",
+      "R-018@1",
+      "R-019@1",
     ]);
     expect(UNSTORED_STANDARD_RULE_VERSIONS.map((rule) => rule.id)).toEqual(["R-007", "R-008"]);
   });
@@ -254,6 +273,19 @@ describe("Regeln", () => {
       "G-32",
       "G-33",
       "G-34",
+      "G-09",
+      "G-10",
+      "G-11",
+      "G-12",
+      "G-13",
+      "G-38",
+      "G-39",
+      "G-41",
+      "G-42",
+      "G-43",
+      "G-44",
+      "G-45",
+      "G-46",
     ]);
   });
 

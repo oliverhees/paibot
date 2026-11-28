@@ -20,6 +20,7 @@ import {
   UNSTORED_STANDARD_RULE_VERSIONS,
 } from "./gate";
 import { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "./tor-fassung-4";
+import { CAPS_5, LIMITS_BY_ID_5, PRECONDITIONS_5, STANDARD_RULES_5 } from "./tor-fassung-5";
 
 function bereich(prefix: string, von: number, bis: number, stellen: number): string[] {
   return Array.from(
@@ -38,19 +39,13 @@ const VERGEBEN = [
   "V-34",
   "V-35",
   "V-36",
-  ...bereich("V", 39, 41, 2),
-  ...bereich("G", 9, 14, 2),
+  "G-14",
   ...bereich("G", 19, 31, 2),
   "G-35",
   "G-36",
   "G-37",
-  "G-38",
-  "G-39",
-  ...bereich("G", 41, 46, 2),
-  "D-02",
   "R-011",
   "R-013",
-  ...bereich("R", 15, 19, 3),
 ];
 
 /** Nummern, die Fassung 4 braucht (sie stehen seit dem Inkraftsetzen in den lebenden Listen). */
@@ -110,6 +105,10 @@ describe("Nummern des Tors", () => {
       "G-32",
       "G-33",
       "G-34",
+      ...bereich("G", 9, 13, 2),
+      "G-38",
+      "G-39",
+      ...bereich("G", 41, 46, 2),
     ]);
     expect(Object.keys(PRECONDITIONS)).toEqual([
       ...bereich("V", 1, 14, 2),
@@ -125,9 +124,12 @@ describe("Nummern des Tors", () => {
       "V-42",
       "V-43",
       "V-44",
+      ...bereich("V", 39, 41, 2),
     ]);
-    expect(Object.keys(CAPS)).toEqual(["D-01"]);
-    expect(REGELN.sort()).toEqual([...bereich("R", 1, 8, 3), "R-010", "R-014", "R-999"].sort());
+    expect(Object.keys(CAPS)).toEqual(["D-01", "D-02"]);
+    expect(REGELN.sort()).toEqual(
+      [...bereich("R", 1, 10, 3), "R-014", ...bereich("R", 15, 19, 3), "R-999"].sort(),
+    );
   });
 
   it("Fassung 4: ihre Nummern sind weder vergeben noch doppelt und stehen in den lebenden Listen", () => {
@@ -152,16 +154,30 @@ describe("Nummern des Tors", () => {
     ]);
   });
 
-  it("die für Fassung 5 und später festgelegten Nummern stehen unter den vergebenen", () => {
-    for (const id of [
-      ...bereich("G", 41, 46, 2),
-      ...bereich("V", 39, 41, 2),
-      "R-018",
-      "R-019",
+  it("Fassung 5: genau ihre Nummern, weder vergeben noch doppelt, und in den lebenden Listen", () => {
+    const fassung5 = [
+      ...Object.keys(LIMITS_BY_ID_5),
+      ...Object.keys(PRECONDITIONS_5),
+      ...CAPS_5.map((cap) => cap.id),
+      ...STANDARD_RULES_5.map((rule) => rule.id),
+    ];
+    expect(new Set(fassung5).size).toBe(fassung5.length);
+    expect(Object.keys(LIMITS_BY_ID_5)).toEqual([
+      ...bereich("G", 9, 13, 2),
       "G-38",
       "G-39",
-    ]) {
-      expect(VERGEBEN, id).toContain(id);
+      ...bereich("G", 41, 46, 2),
+    ]);
+    expect(Object.keys(PRECONDITIONS_5)).toEqual(bereich("V", 39, 41, 2));
+    expect(CAPS_5.map((cap) => cap.id)).toEqual(["D-02"]);
+    expect(STANDARD_RULES_5.map((rule) => rule.id)).toEqual(["R-009", ...bereich("R", 15, 19, 3)]);
+    for (const id of fassung5) {
+      expect(NIE_VERGEBEN, id).not.toContain(id);
+      expect(VERGEBEN, id).not.toContain(id);
+      expect(ALLE, id).toContain(id);
     }
+    // G-14 bleibt für später reserviert und gehört nicht zu Fassung 5.
+    expect(fassung5).not.toContain("G-14");
+    expect(VERGEBEN).toContain("G-14");
   });
 });

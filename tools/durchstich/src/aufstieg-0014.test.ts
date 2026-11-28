@@ -284,6 +284,7 @@ async function neueEntscheidungen(u: Umgebung) {
     callsInRun: 0,
     maxCallsPerRun: 16,
     trigger: "chat",
+    auftragArt: "keiner",
   });
   const ausfuehren = async () => ({ value: undefined, result: { status: "ok" as const } });
   const ergebnisse: { type: string; outcome?: string; rules?: string[]; error?: string }[] = [];
@@ -317,6 +318,7 @@ async function neueEntscheidungen(u: Umgebung) {
       conversationExists: true,
       runActive: false,
       killSwitch: false,
+      conversationKind: "direkt",
     },
   );
   const ziel = { conversationId, runId, botId };
@@ -379,11 +381,11 @@ for (const umgebung of umgebungen) {
           await u.migrieren();
 
           const zeilen = await zeilenJeTabelle(u);
-          // Dazu kommen die Regeln R-010 und R-014, die drei leeren Tabellen für Apps und die fünf
-          // leeren Tabellen für Teams (Migration 0017).
+          // Dazu kommen die Regeln R-010 und R-014, R-009 und R-015 bis R-019 (Migration 0019), die
+          // drei leeren Tabellen für Apps und die fünf leeren Tabellen für Teams (Migration 0017).
           const vorherZeilen = {
             ...Object.fromEntries(
-              Object.entries(vorher).map(([t, z]) => [t, z.length + (t === "rules" ? 2 : 0)]),
+              Object.entries(vorher).map(([t, z]) => [t, z.length + (t === "rules" ? 8 : 0)]),
             ),
             app_tools: 0,
             apps: 0,
@@ -514,6 +516,10 @@ describe("Startwert der Token-Grenze im Tor (Bestandsdaten)", () => {
             toolCount: 0,
             untrustedInput: false,
             trigger: "chat",
+            conversationKind: "direkt",
+            botHatAuftrag: false,
+            auftragArt: "keiner",
+            zweck: "chat",
           },
           ACTIVE_STANDARD_RULES.map((rule) => ({ ...rule, hash: "" })) as never,
         );

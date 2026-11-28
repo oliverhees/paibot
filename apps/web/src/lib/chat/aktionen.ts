@@ -227,6 +227,9 @@ export function nachrichtSenden(einreihen: Einreihen): RoutenAktion<"nachrichtSe
         runActive: aktiv !== undefined,
         killSwitch: settings?.killSwitch ?? false,
         botPaused: bot?.paused ?? true,
+        // In einem Faden schreibt man hier nicht (`keinLaufImFaden` oben); Erwähnungen zählen erst
+        // dort (G-38). Ein Entwurf gehört wie ein Direkt-Chat einem Bot.
+        conversationKind: unterhaltung?.kind === "faden" ? "faden" : "direkt",
       },
       async () => {
         const botId = unterhaltung?.botId;

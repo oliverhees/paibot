@@ -13,10 +13,12 @@
  */
 
 import type { RuleDefinition } from "@paibot/shared/tor";
+import { FUELLWERTE_5 } from "@paibot/shared/tor-fassung-5";
 import { describe, expect, it } from "vitest";
 import korpus from "./fassung-1.korpus.json";
 import { GATE_FORMAT_2 } from "./fassung-2";
 import { GATE_FORMAT_4 } from "./fassung-4";
+import { GATE_FORMAT_5 } from "./fassung-5";
 
 interface Pruefung {
   name: string;
@@ -232,4 +234,46 @@ describe("Obermenge: Korpus der Fassung 1 unter Fassung 4", () => {
       expect(f4.matchedRules, name).toEqual([]);
     }
   });
+});
+
+/**
+ * Korpus 1 unter Fassung 5, über die Füllwerte der Fassungen 2 und 4 und die der Fassung 5
+ * (`FUELLWERTE_5`: Direkt-Chat, kein Auftrag, Zweck `chat`): Entscheidung, Stufe und gewinnende
+ * Regeln sind wie unter Fassung 4, mit derselben geerbten Ausnahme (Quelle `mcp`). Die Korpora der
+ * Fassungen 2 bis 4 unter Fassung 5 prüft `fassung-5.test.ts`.
+ */
+function rechne5(fall: Fall, facts: unknown) {
+  const action = fall.action as never;
+  const decision =
+    fall.stand === undefined
+      ? GATE_FORMAT_5.evaluate(action, facts as never, fall.rules)
+      : GATE_FORMAT_5.evaluate(action, facts as never, {
+          stand: fall.stand,
+          rules: fall.rules as never,
+        });
+  return decision as unknown as { outcome: string; stage: string; matchedRules: unknown };
+}
+
+describe("Obermenge: Korpus der Fassung 1 unter Fassung 5", () => {
+  const faelle5 = FAELLE.filter((fall) => !MCP_AUSNAHMEN.includes(fall.name));
+
+  for (const fall of faelle5) {
+    it(fall.name, () => {
+      const type = fall.action?.type;
+      const gefuellt = fuellen(type, fall.facts) as Record<string, unknown> | null;
+      const f4facts =
+        gefuellt !== null && type !== undefined && BOT_BEREIT.includes(type)
+          ? { ...gefuellt, botPaused: false }
+          : gefuellt;
+      const fuell5 =
+        type === undefined ? undefined : (FUELLWERTE_5 as Record<string, object>)[type];
+      const f5facts =
+        f4facts !== null && fuell5 !== undefined ? { ...f4facts, ...fuell5 } : f4facts;
+      const f4 = rechne4(fall, f4facts);
+      const f5 = rechne5(fall, f5facts);
+      expect({ outcome: f5.outcome, stage: f5.stage, matchedRules: f5.matchedRules }).toStrictEqual(
+        { outcome: f4.outcome, stage: f4.stage, matchedRules: f4.matchedRules },
+      );
+    });
+  }
 });

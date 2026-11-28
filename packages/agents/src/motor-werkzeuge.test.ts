@@ -189,6 +189,7 @@ function werkzeugFakten(call: ToolCall, werkzeug: Werkzeug): Facts<"werkzeug.auf
   const quelle = werkzeug.quelle ?? { source: "eingebaut" };
   return {
     botPaused: false,
+    auftragArt: "keiner",
     botOfConversation: true,
     runRunning: true,
     toolName: call.name,
@@ -576,6 +577,8 @@ describe("Werkzeug eines Test-Servers über HTTP, durch das Tor", () => {
       callsInRun: 0,
       maxCallsPerRun: 16,
       trigger: "chat",
+      // Fassung 5: Werkzeuge nur ohne Auftrag (G-42), Füllwert „keiner“.
+      auftragArt: "keiner",
     });
     const werkzeugBelege = s.zugang.receipts.entries.filter((entry) =>
       s.werkzeugAktionen.includes(entry.record.action.actionId),

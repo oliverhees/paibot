@@ -11,6 +11,7 @@
 
 import { t } from "@paibot/shared/texte";
 import { LIMITS_BY_ID_4, PRECONDITIONS_4 } from "@paibot/shared/tor-fassung-4";
+import { LIMITS_BY_ID_5, PRECONDITIONS_5 } from "@paibot/shared/tor-fassung-5";
 import { describe, expect, it } from "vitest";
 import {
   grenzenEintraege,
@@ -19,11 +20,11 @@ import {
   vorbedingungenEintraege,
 } from "./regeln";
 
-describe("Regeln-Liste und die Tor-Fassung 4", () => {
+describe("Regeln-Liste und die Tor-Fassungen 4 und 5", () => {
   // Gegenprobe: `NOCH_NICHT_BEDIENBAR` leeren → die Seite zeigt Nummern ohne Text (rot).
-  it("zeigt keine Nummer der Fassung 4, solange Bots und Teams nicht bedienbar sind", () => {
-    const g4 = Object.keys(LIMITS_BY_ID_4);
-    const v4 = Object.keys(PRECONDITIONS_4);
+  it("zeigt keine Nummer der Fassungen 4 und 5, solange Bots, Teams und Aufträge nicht bedienbar sind", () => {
+    const g4 = [...Object.keys(LIMITS_BY_ID_4), ...Object.keys(LIMITS_BY_ID_5)];
+    const v4 = [...Object.keys(PRECONDITIONS_4), ...Object.keys(PRECONDITIONS_5)];
     expect([...NOCH_NICHT_BEDIENBAR].sort()).toEqual([...g4, ...v4].sort());
     const grenzen = grenzenEintraege().map((g) => g.nr);
     for (const id of g4) expect(grenzen, id).not.toContain(id);

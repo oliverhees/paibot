@@ -17,6 +17,7 @@ import type { BotId, ModelId, ProviderId } from "@paibot/shared/ids";
 import type { Bot, Region } from "@paibot/shared/objekte";
 import { isTextKey, t } from "@paibot/shared/texte";
 import { ACTOR_FACT, type RuleDefinition } from "@paibot/shared/tor";
+import { STANDARD_RULES_5 } from "@paibot/shared/tor-fassung-5";
 import type { RoutenKontext } from "../api/route";
 import { anbieterHerkunft } from "../modelle/herkunft";
 
@@ -139,7 +140,15 @@ export interface BotRechte {
   nie: RechtEintrag[];
 }
 
+/**
+ * Regeln der Zusammenarbeit (Tor-Fassung 5): Sie wirken nur mit Teams und ihren Schaltern, für die
+ * es noch keine Bedienung gibt. Bis dahin stehen sie nicht im Überblick, sonst sähe es so aus, als
+ * dürfte der Bot schon Aufträge geben.
+ */
+const ZUSAMMENARBEIT: ReadonlySet<string> = new Set(STANDARD_RULES_5.map((r) => r.id));
+
 function giltFuerBot(regel: RuleDefinition): boolean {
+  if (ZUSAMMENARBEIT.has(regel.id)) return false;
   return regel.conditions.some((c) => c.fact === ACTOR_FACT && c.op === "eq" && c.value === "bot");
 }
 

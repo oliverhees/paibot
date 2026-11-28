@@ -62,6 +62,7 @@ async function facts(
 ): Promise<Facts<"werkzeug.aufrufen">> {
   return {
     botPaused: false,
+    auftragArt: "keiner",
     toolName: def.modelName,
     toolSource: def.source,
     toolKind: def.kind,

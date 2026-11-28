@@ -21,10 +21,12 @@ import {
   type RuleSnapshot,
 } from "@paibot/shared/tor";
 import { TEAM_ACTION_TYPES } from "@paibot/shared/tor-fassung-4";
+import { AUFTRAG_ACTION_TYPES } from "@paibot/shared/tor-fassung-5";
 import { sampleAction, sampleFacts } from "../../../gate/src/testdaten";
 import { digestBytes, hashReceipt } from "../hash";
 import { exportJsonl } from "../jsonl";
 import { keyInfo, signedEntry, TEST_INSTALLATION, testKey, testSign } from "../testhilfen";
+import { ohneSpaetereFakten } from "./fakten-je-fassung";
 
 /**
  * Eigene Regel für den gedeckelten Werkzeug-Aufruf (schreibend, mit fremden Inhalten). Im Betrieb
@@ -67,19 +69,22 @@ type Schritt = {
   result: Record<string, unknown>;
 };
 
-/** Fakten der Beispiele; die rohe Kette (Fassung 2) kennt `botPaused` noch nicht (Fassung 4). */
+/**
+ * Fakten der Beispiele; die rohe Kette (Fassung 2) kennt `botPaused` (Fassung 4) und die Füllwerte
+ * der Fassung 5 (`FUELLWERTE_5`) noch nicht.
+ */
 function beispielFakten(type: ActionType, roh: boolean): Record<string, unknown> {
   const fakten = sampleFacts(type) as Record<string, unknown>;
   if (!roh) return fakten;
-  const { botPaused: _botPaused, ...ohne } = fakten;
-  return ohne;
+  return ohneSpaetereFakten(type, { ...fakten }, 2);
 }
 
 function schritte(roh: boolean): Schritt[] {
-  // Die Aktionen für Apps (Fassung 3) und für Teams (Fassung 4) gehören zu späteren Fassungen; diese
-  // Kette zeigt, was ein Stand mit Fassung 1 liest.
+  // Die Aktionen für Apps (Fassung 3), für Teams (Fassung 4) und für Aufträge (Fassung 5) gehören
+  // zu späteren Fassungen; diese Kette zeigt, was ein Stand mit Fassung 1 liest.
+  const spaeter: readonly string[] = [...TEAM_ACTION_TYPES, ...AUFTRAG_ACTION_TYPES];
   const list: Schritt[] = STORED_ACTION_TYPES.filter(
-    (type) => !type.startsWith("app.") && !(TEAM_ACTION_TYPES as readonly string[]).includes(type),
+    (type) => !type.startsWith("app.") && !spaeter.includes(type),
   ).map((type) => ({
     type,
     facts: beispielFakten(type, roh),

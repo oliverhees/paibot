@@ -48,6 +48,12 @@ describe("rules", () => {
       "R-001",
       "R-002",
       "R-005",
+      "R-015",
+      "R-016",
+      "R-017",
+      "R-018",
+      "R-019",
+      "R-009",
       "R-999",
     ]);
     expect(aktiv.map((r) => r.priority)).toEqual(

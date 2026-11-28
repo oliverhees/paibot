@@ -78,6 +78,10 @@ function facts(overrides: Partial<Facts<"modell.anfragen">> = {}): Facts<"modell
   return {
     ...providerTargetFacts(providerId, defaultBaseUrl()),
     botPaused: false,
+    conversationKind: "direkt",
+    botHatAuftrag: false,
+    auftragArt: "keiner",
+    zweck: "chat",
     botOfConversation: true,
     providerId,
     providerEnabled: true,

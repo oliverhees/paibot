@@ -592,6 +592,10 @@ describe("failStaleRuns", () => {
     };
     const facts: Facts<"modell.anfragen"> = {
       botPaused: false,
+      conversationKind: "direkt",
+      botHatAuftrag: false,
+      auftragArt: "keiner",
+      zweck: "chat",
       botOfConversation: true,
       providerId: env.providerId,
       providerEnabled: true,

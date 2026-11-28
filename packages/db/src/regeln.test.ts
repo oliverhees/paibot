@@ -62,6 +62,7 @@ describe("Standard-Regeln", () => {
       "0003_standard_regeln.sql",
       "0005_haertung.sql",
       "0014_werkzeug_kern.sql",
+      "0019_fassung_5_aktionen.sql",
     ]) {
       const sql = readFileSync(path.join(MIGRATIONS_FOLDER, datei), "utf8");
       const ab = sql.lastIndexOf('INSERT INTO "rules"');

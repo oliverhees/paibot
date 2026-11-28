@@ -26,6 +26,7 @@ import korpus3 from "../../gate/src/fassungen/fassung-3.korpus.json";
 import { sampleAction, sampleFacts } from "../../gate/src/testdaten";
 import { digestBytes, hashReceipt } from "./hash";
 import { decisionFormat, reevaluate } from "./nachrechnen";
+import { ohneSpaetereFakten } from "./testdaten/fakten-je-fassung";
 import { signedEntry, TEST_INSTALLATION, type TestKey, testKey, testSign } from "./testhilfen";
 import { verifyChain } from "./verify";
 
@@ -144,8 +145,8 @@ class Kette {
     aendern: (decision: Roh) => void = () => {},
   ): Promise<ReceiptEntry> {
     const action = sampleAction(type) as ActionRequest;
-    // Fassung 2 kennt `botPaused` nicht (Fassung 4): Der Fakt fällt aus den Beispielen heraus.
-    const { botPaused: _botPaused, ...facts } = alleFakten;
+    // Fassung 2 kennt `botPaused` (Fassung 4) und die Füllwerte der Fassung 5 nicht.
+    const facts = ohneSpaetereFakten(type, { ...alleFakten }, 2);
     const decided = evaluate(action, facts as never, this.snapshot as RuleSnapshot, {
       format: 2,
     }) as unknown as Roh;
@@ -170,7 +171,7 @@ function decisions(kette: Kette) {
 const STANDARD = [...ACTIVE_STANDARD_RULES];
 
 describe("Belege der Fassung 2 schreiben und prüfen", () => {
-  it("jede neue Entscheidung trägt die aktuelle Fassung (4) und Vorbedingungen, die Kette ist vertrauenswürdig", async () => {
+  it("jede neue Entscheidung trägt die aktuelle Fassung (5) und Vorbedingungen, die Kette ist vertrauenswürdig", async () => {
     const kette = await Kette.neu(STANDARD);
     for (const type of ["nachricht.senden", "modell.anfragen", "werkzeug.aufrufen"] as const) {
       await kette.run(type, sampleFacts(type) as Roh);
@@ -182,12 +183,12 @@ describe("Belege der Fassung 2 schreiben und prüfen", () => {
     expect(decisions(kette)).toHaveLength(4);
     for (const entry of decisions(kette)) {
       if (entry.body.type !== "decision") continue;
-      expect(entry.body.decision.gateFormat).toBe(4);
+      expect(entry.body.decision.gateFormat).toBe(5);
       expect(Array.isArray(entry.body.decision.preconditions)).toBe(true);
       expect(Object.hasOwn(entry.body.decision, "caps")).toBe(
         entry.body.action.type === "werkzeug.aufrufen",
       );
-      expect(decisionFormat(entry.body)).toStrictEqual({ status: "passt", format: 4 });
+      expect(decisionFormat(entry.body)).toStrictEqual({ status: "passt", format: 5 });
       expect(reevaluate(entry, (kette.snapshot as RuleSnapshot).rules).status).toBe("ok");
     }
     const report = await kette.pruefe();
@@ -368,8 +369,12 @@ describe("Aktionen, die Fassung 2 nicht kennt", () => {
     );
     for (const name of APP_FELDER) expect(appFakten[name], name).toBeDefined();
     const action = sampleAction("werkzeug.aufrufen") as ActionRequest;
-    // Ohne `botPaused`: Der Fakt gehört erst zu Fassung 4, Fassung 2 kennt ihn nicht.
-    const { botPaused: _botPaused, ...basis } = sampleFacts("werkzeug.aufrufen") as Roh;
+    // Ohne die Fakten der Fassungen 4 und 5: Fassung 2 kennt sie nicht.
+    const basis = ohneSpaetereFakten(
+      "werkzeug.aufrufen",
+      { ...(sampleFacts("werkzeug.aufrufen") as Roh) },
+      2,
+    );
     for (const name of APP_FELDER) expect(Object.hasOwn(basis, name), name).toBe(false);
 
     const rechne = async (facts: Roh) => {

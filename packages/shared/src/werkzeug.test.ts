@@ -66,7 +66,7 @@ const torFakten = {
   trigger: "chat",
 };
 
-const facts = { ...basisFakten, ...torFakten, botPaused: false };
+const facts = { ...basisFakten, ...torFakten, botPaused: false, auftragArt: "keiner" };
 
 /** Quelle `mcp` mit allen Fakten der App (Tor-Fassung 3). */
 const mcpFakten = {

@@ -68,6 +68,10 @@ function row(baseUrl: string, apiKeyEnc = encFor(legit())): ModelChoice {
 function decidedFor(baseUrl: string): Facts<"modell.anfragen"> {
   return {
     botPaused: false,
+    conversationKind: "direkt",
+    botHatAuftrag: false,
+    auftragArt: "keiner",
+    zweck: "chat",
     botOfConversation: true,
     providerId,
     providerEnabled: true,

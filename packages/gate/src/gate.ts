@@ -217,13 +217,14 @@ export function createGate(ports: GatePorts): Gate {
     if (decision.outcome !== "allow") {
       const resultRef = await receipts.appendResult({
         action: checkedAction,
-        result: { status: "denied", code: denialCode(decision) },
+        result: { status: "denied", code: denialCode(decision, checkedFacts) },
         time: clock.now(),
       });
       throw new GateDenied(
         decision,
         { decision: decisionRef, result: resultRef },
         { actionId: checkedAction.actionId, type: checkedAction.type },
+        checkedFacts,
       );
     }
 
@@ -313,9 +314,11 @@ export class GateDenied extends PaiBotError {
     decision: Decision,
     receipts: { decision: ReceiptRef; result: ReceiptRef },
     action: { actionId: ActionId; type: ActionType },
+    /** Fakten der Entscheidung, nur für einen genaueren Fehlercode (ab Fassung 5). */
+    facts?: unknown,
   ) {
     const outcome = decision.outcome === "allow" ? "deny" : decision.outcome;
-    const code = denialCode({ ...decision, outcome });
+    const code = denialCode({ ...decision, outcome }, facts);
     // Beim Not-Aus gilt der feste Text mit Ausweg; der Grund des Tors steht im Beleg.
     super(code, code === "angehalten" ? {} : { text: decision.reason });
     this.name = "GateDenied";

@@ -75,6 +75,11 @@ describe("Wertebereich: heutige Verträge = aktuelle Fassung", () => {
         actions: [...lebend.actions],
         ...("when" in lebend ? { when: lebend.when } : {}),
         require: lebend.require,
+        // Ab Fassung 5: die zusätzlichen Formen einer Vorbedingung.
+        ...("requireFor" in lebend ? { requireFor: lebend.requireFor } : {}),
+        ...("requireOneOfFor" in lebend ? { requireOneOfFor: lebend.requireOneOfFor } : {}),
+        ...("requireAnyOf" in lebend ? { requireAnyOf: lebend.requireAnyOf } : {}),
+        ...("requireAtLeastSum" in lebend ? { requireAtLeastSum: lebend.requireAtLeastSum } : {}),
         errorCode: lebend.errorCode,
       });
     }

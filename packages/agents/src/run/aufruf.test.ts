@@ -96,6 +96,7 @@ async function gateEnv() {
   };
   const facts: Facts<"werkzeug.aufrufen"> = {
     botPaused: false,
+    auftragArt: "keiner",
     toolName: "test_lesen",
     toolSource: "eingebaut",
     toolKind: "lesen",

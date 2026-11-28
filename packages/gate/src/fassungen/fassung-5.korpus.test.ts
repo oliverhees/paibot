@@ -1,9 +1,9 @@
 /**
  * PaiBot – feste Fälle der Tor-Fassung 5 „Zusammenarbeit“ (`fassung-5.korpus.json`). Die
  * Erwartungen stammen aus dem Vertrag der Fassung 5 und entstanden, bevor es die Auswertung der
- * Fassung 5 im Code gibt. Die Datei wird nie angepasst: Weicht die Auswertung später von einem Fall
- * ab, ist die Auswertung falsch. Geprüft wird hier nur der Inhalt; der Vergleich mit der Auswertung
- * kommt mit `fassung-5.ts`. Verglichen wird dann alles außer dem Grund (`reason`).
+ * Fassung 5 im Code gab. Die Datei wird nie angepasst: Weicht die Auswertung von einem Fall ab, ist
+ * die Auswertung falsch. Geprüft werden der Inhalt und die Auswertung (`fassung-5.ts`); verglichen
+ * wird alles außer dem Grund (`reason`).
  *
  * @author    Oliver Hees
  * @link      https://paibot.de
@@ -14,6 +14,7 @@
 
 import type { RuleDefinition } from "@paibot/shared/tor";
 import { describe, expect, it } from "vitest";
+import { GATE_FORMAT_5 } from "./fassung-5";
 import korpus from "./fassung-5.korpus.json";
 
 interface Pruefung {
@@ -569,4 +570,33 @@ describe("Korpus der Fassung 5: Deckel D-02 und Grenzen", () => {
       ).toBe(true);
     }
   });
+});
+
+function regeln5(entry: Fall5): RuleDefinition[] {
+  const satz = KORPUS_5.ruleSets[entry.rules];
+  if (satz === undefined) throw new Error(`Regel-Satz ${entry.rules} fehlt.`);
+  return satz;
+}
+
+function rechne(entry: Fall5): Record<string, unknown> {
+  const decision = GATE_FORMAT_5.evaluate(
+    entry.action as never,
+    entry.facts as never,
+    regeln5(entry),
+  );
+  const { reason: _reason, ...rest } = decision as unknown as Record<string, unknown>;
+  return rest;
+}
+
+describe("Korpus der Fassung 5: Auswertung", () => {
+  for (const entry of KORPUS_5.cases) {
+    it(entry.name, () => {
+      expect(rechne(entry)).toStrictEqual(entry.expected);
+    });
+  }
+  for (const entry of KORPUS_5.limitCases) {
+    it(`grenzen: ${entry.name}`, () => {
+      expect(GATE_FORMAT_5.checkLimits(entry.action, entry.facts)).toStrictEqual(entry.expected);
+    });
+  }
 });

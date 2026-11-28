@@ -33,6 +33,8 @@ export const ID_PREFIX = {
   team: "tea",
   /** Ein Entwurf für ein Team, ab Tor-Fassung 4. */
   entwurf: "ent",
+  /** Ein Auftrag in einem Faden (Übergabe, Bitte, Rückgabe), ab Tor-Fassung 5. */
+  auftrag: "auf",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIX;

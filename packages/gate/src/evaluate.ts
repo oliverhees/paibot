@@ -66,13 +66,20 @@ export function preconditionId(name: PreconditionName): PreconditionId {
  * Fehlercode, mit dem eine nicht erlaubte Entscheidung gemeldet wird, nach der aktuellen Fassung
  * (`denialCode` der Fassung): bei einer verletzten Vorbedingung deren `errorCode` (die erste nach
  * ID), bei verletztem Not-Aus (G-05) `angehalten`, ab Fassung 2 bei verletzter Grenze eines Laufs
- * (G-16 bis G-18) `limit_erreicht`, sonst `OUTCOME_ERROR_CODE`.
+ * (G-16 bis G-18) `limit_erreicht`, sonst `OUTCOME_ERROR_CODE`. Ab Fassung 5 zählen auch Deckel
+ * und passende Regel, und die Fakten der Entscheidung (`facts`) machen den Code genauer, etwa
+ * `ziel_in_anderem_team` statt `weg_nicht_erlaubt`; am Ergebnis ändern sie nichts.
  */
 export function denialCode(
-  decision: Pick<Decision, "outcome" | "preconditions"> & { limits?: Decision["limits"] },
+  decision: Pick<Decision, "outcome" | "preconditions"> & {
+    limits?: Decision["limits"];
+    caps?: Decision["caps"];
+    matchedRules?: readonly { id: string }[];
+  },
+  facts?: unknown,
 ): ErrorCode {
   const ofFormat = currentGateFormat().denialCode;
-  if (ofFormat !== undefined) return ofFormat(decision);
+  if (ofFormat !== undefined) return ofFormat(decision, facts);
   const violated = (decision.preconditions ?? []).find((check) => check.result === "verletzt");
   if (violated !== undefined) return PRECONDITIONS[preconditionId(violated.name)].errorCode;
   const notAus = (decision.limits ?? []).some(

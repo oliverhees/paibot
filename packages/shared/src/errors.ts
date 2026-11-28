@@ -12,6 +12,7 @@ import { z } from "zod";
 import { PATTERN_SOURCES } from "./grundtypen";
 import { ERROR_STATUS_3 } from "./tor-fassung-3";
 import { ERROR_STATUS_4 } from "./tor-fassung-4";
+import { ERROR_STATUS_5 } from "./tor-fassung-5";
 
 /** Schreibweise aller Codes: Kleinbuchstaben, Wörter mit Unterstrich, Umlaute ausgeschrieben. */
 export const CODE_PATTERN = new RegExp(PATTERN_SOURCES.errorCode);
@@ -67,6 +68,8 @@ export const ERROR_STATUS = {
   ...ERROR_STATUS_3,
   /** Ab Tor-Fassung 4: Fehler rund um Bots, Teams und Entwürfe (siehe `ERROR_STATUS_4`). */
   ...ERROR_STATUS_4,
+  /** Ab Tor-Fassung 5: Fehler rund um Aufträge und Übergaben (siehe `ERROR_STATUS_5`). */
+  ...ERROR_STATUS_5,
 } as const satisfies Record<string, number>;
 
 export type ErrorCode = keyof typeof ERROR_STATUS;

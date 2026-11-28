@@ -14,6 +14,9 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { executeRun } from "@paibot/agents";
 import { createFakeMotor, type FakeMotorStep, setupRun, testDokuEnv } from "@paibot/agents/testing";
 import { repo } from "@paibot/db";
@@ -179,18 +182,43 @@ type BotAktion = {
 /**
  * Jede Aktion eines Bots aus dem Vertrag: `lauf` = jeder Auftrag geht hier durch das Tor;
  * `werkzeug` = ohne angebotene Werkzeuge führt ein Werkzeug-Wunsch nichts aus, er wird belegt
- * abgelehnt (geprüft unten).
+ * abgelehnt (geprüft unten); `ohne_weg` = der Worker hat für die Aktion noch keinen Weg, kein
+ * Quelltext von Worker und Lauf nennt sie (geprüft unten). Übergaben und Meldungen (ab Fassung 5)
+ * kommen mit den Aufträgen.
  */
-const BOT_AKTIONEN: Record<BotAktion, "lauf" | "werkzeug"> = {
+const BOT_AKTIONEN: Record<BotAktion, "lauf" | "werkzeug" | "ohne_weg"> = {
   "modell.anfragen": "lauf",
   "werkzeug.aufrufen": "werkzeug",
   "werkzeug.ausfuehren": "werkzeug",
+  "auftrag.uebergeben": "ohne_weg",
+  "auftrag.melden": "ohne_weg",
 };
 
 describe("Tor-Pflicht im Worker", () => {
   it("jede Aktion eines Bots aus dem Vertrag ist hier eingeordnet", () => {
     const ausVertrag = ACTION_TYPES.filter((t) => ACTIONS[t].actor === "bot").sort();
     expect(Object.keys(BOT_AKTIONEN).sort()).toEqual(ausVertrag);
+  });
+
+  // Gegenprobe: in einer Datei des Laufs `"auftrag.melden"` nennen → rot.
+  it("eine Aktion ohne Weg nennt kein Quelltext von Worker und Lauf", () => {
+    const ohneWeg = Object.entries(BOT_AKTIONEN)
+      .filter(([, art]) => art === "ohne_weg")
+      .map(([typ]) => typ);
+    const wurzeln = [
+      fileURLToPath(new URL(".", import.meta.url)),
+      fileURLToPath(new URL("../../../packages/agents/src", import.meta.url)),
+    ];
+    const dateien = wurzeln.flatMap((wurzel) =>
+      readdirSync(wurzel, { recursive: true, encoding: "utf8" })
+        .filter((d) => d.endsWith(".ts") && !d.endsWith(".test.ts"))
+        .map((d) => path.join(wurzel, d)),
+    );
+    expect(dateien.length).toBeGreaterThan(10);
+    for (const datei of dateien) {
+      const text = readFileSync(datei, "utf8");
+      for (const typ of ohneWeg) expect(text.includes(`"${typ}"`), `${datei}: ${typ}`).toBe(false);
+    }
   });
 
   it("ein Auftrag: Entscheidung und Ergebnis, Motor nur dazwischen, nur Lauf-Tabellen", async () => {
