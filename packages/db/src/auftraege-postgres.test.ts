@@ -279,17 +279,19 @@ describe.skipIf(BASE_URL === undefined)("Update von 0019 auf die Aufträge (Post
       const m1 = newId("message");
       const m2 = newId("message");
       await app`insert into messages (id, conversation_id, role, content) values (${m1}, ${chat}, 'user', 'a'), (${m2}, ${chat2}, 'user', 'b')`;
-      let zweiter: Promise<unknown> | undefined;
+      let zweiter: Promise<string | undefined> | undefined;
       await app.begin(async (tx) => {
         await tx`insert into runs (id, conversation_id, trigger_message_id, bot_id, auftrag_id, auftrag_root_id, untrusted_input)
           values (${newId("run")}, ${chat}, ${m1}, ${pai}, ${w}, ${w}, false)`;
-        // Die zweite Verbindung wartet auf die erste und scheitert nach deren Abschluss.
-        zweiter =
+        // Die zweite Verbindung wartet auf die erste und scheitert nach deren Abschluss. Der
+        // Fehler wird sofort abgefangen: er kann eintreffen, bevor der Test wieder wartet.
+        zweiter = codeOf(
           app2`insert into runs (id, conversation_id, trigger_message_id, bot_id, auftrag_id, auftrag_root_id, untrusted_input)
-          values (${newId("run")}, ${chat2}, ${m2}, ${ideen}, ${kind}, ${w}, false)`.execute();
+          values (${newId("run")}, ${chat2}, ${m2}, ${ideen}, ${kind}, ${w}, false)`.execute(),
+        );
         await new Promise((resolve) => setTimeout(resolve, 300));
       });
-      expect(await codeOf(zweiter ?? Promise.resolve())).toBe(EINDEUTIG);
+      expect(await zweiter).toBe(EINDEUTIG);
       const aktiv = await owner`select id from runs where auftrag_root_id = ${w}`;
       expect(aktiv).toHaveLength(1);
     });
