@@ -21,6 +21,8 @@ export const SQLSTATE = {
 
 /** Name des Teil-Index, der höchstens einen aktiven Lauf je Unterhaltung zulässt. */
 export const AKTIVER_LAUF_INDEX = "runs_ein_offener_lauf_je_unterhaltung";
+/** Teil-Index: höchstens ein aktiver Lauf je Auftragsbaum (Migration 0020). */
+export const AKTIVER_LAUF_JE_BAUM_INDEX = "runs_ein_aktiver_lauf_je_auftragsbaum";
 
 export interface PgFehler {
   code?: string;
@@ -83,13 +85,13 @@ export function standardFehler(fehler: PgFehler): PaiBotError | undefined {
  * Das ist ein Fehler im Aufrufer, die Oberfläche bekommt nur `intern`.
  */
 export class StatuswechselError extends PaiBotError {
-  readonly gegenstand: "lauf" | "nachricht" | "werkzeug";
+  readonly gegenstand: "lauf" | "nachricht" | "werkzeug" | "auftrag";
   readonly gegenstandId: string;
   readonly von: RunStatus | string;
   readonly nach: RunStatus | string;
 
   constructor(
-    gegenstand: "lauf" | "nachricht" | "werkzeug",
+    gegenstand: "lauf" | "nachricht" | "werkzeug" | "auftrag",
     gegenstandId: string,
     von: RunStatus | string,
     nach: RunStatus | string,

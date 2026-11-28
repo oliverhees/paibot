@@ -47,8 +47,14 @@ export const APP_DEFAULT_TABLE_RIGHTS = "select, insert, update, delete";
  * - `team_entwuerfe`: lesen, anlegen, nur Stand, die beiden Aktionen und Zeit ändern; Inhalt und
  *   Abdruck eines Entwurfs ändert die App nie.
  * - `team_anlagen`: nur lesen und anhängen (Trigger lehnen Ändern und Löschen ab).
- * - `faeden` und `faden_punkte`: nur lesen und anlegen; Kopf und Punkte eines Fadens gehen nur mit
- *   seiner Unterhaltung weg.
+ * - `faeden`: lesen, anlegen, nur Stand, Staffelstab, „belastet“ und Zeit ändern (Trigger: Ziel,
+ *   Abnahme, Herkunft und Entscheidung bleiben, „belastet“ nie zurück); `faden_punkte`: nur lesen
+ *   und anlegen. Kopf und Punkte eines Fadens gehen nur mit seiner Unterhaltung weg.
+ * - `auftraege`: lesen, anlegen, nur Stand, Zähler, „belastet“, Grund und Zeiten ändern; Wechsel des
+ *   Stands nur auf den Wegen, die der Trigger `auftraege_regeln` erlaubt. Gelöscht wird nur mit der
+ *   Unterhaltung.
+ * - `auftrag_ereignisse`, `auftrag_zuschlaege`: nur lesen und anhängen (Trigger lehnen Ändern und
+ *   Löschen ab; gelöscht wird nur mit dem Auftrag).
  * - Alle diese Tabellen schreibt dieselbe Rolle für die Web-App und den Worker: Die Datenbank trennt
  *   nicht, wer schreibt. Dass nur der Besitzer-Weg der Web-App `bots`, `teams`, `team_entwuerfe`
  *   und `faeden` ändert, prüft ein Quelltext-Test (`teams-nur-besitzer-weg.test.ts`).
@@ -73,7 +79,11 @@ export const APP_TABLE_RIGHTS: Readonly<Record<string, string>> = {
   providers: APP_DEFAULT_TABLE_RIGHTS,
   rate_limits: APP_DEFAULT_TABLE_RIGHTS,
   runs: "select, insert, update",
-  faeden: "select, insert",
+  auftraege:
+    "select, insert, update (status, rueckfragen, bitten, belastet, end_grund, updated_at, finished_at)",
+  auftrag_ereignisse: "select, insert",
+  auftrag_zuschlaege: "select, insert",
+  faeden: "select, insert, update (stand, stab_bei, belastet, updated_at)",
   faden_punkte: "select, insert",
   sessions: APP_DEFAULT_TABLE_RIGHTS,
   settings: APP_DEFAULT_TABLE_RIGHTS,
@@ -96,6 +106,8 @@ export const APPEND_ONLY_TABLES = [
   "app_tools",
   "bot_app_grants",
   "team_anlagen",
+  "auftrag_ereignisse",
+  "auftrag_zuschlaege",
 ] as const;
 
 /** Gründe, aus denen eine Verbindung zu viele Rechte hat. */

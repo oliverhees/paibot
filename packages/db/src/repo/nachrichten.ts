@@ -9,11 +9,11 @@
  */
 
 import {
+  type BotId,
   type ConversationId,
   type ErrorCode,
   type Message,
   type MessageId,
-  type MessageOrigin,
   type MessageRole,
   type MessageStatus,
   type ModelId,
@@ -26,10 +26,14 @@ import {
 } from "@paibot/shared";
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { conversations, messages } from "../schema";
+import { type AuftragId, conversations, messages } from "../schema";
+import type { NACHRICHT_HERKUENFTE } from "../schema/werte";
 import { toMessage } from "./abbildung";
 import { StatuswechselError, standardFehler, uebersetzen } from "./fehler";
 import { withTransaction } from "./transaktion";
+
+/** Herkunft einer Nachricht in der Datenbank. */
+export type NachrichtHerkunft = (typeof NACHRICHT_HERKUENFTE)[number];
 
 export interface MessageCreate {
   id?: MessageId;
@@ -47,8 +51,18 @@ export interface MessageCreate {
   errorCode?: ErrorCode;
   /** Schritt eines Laufs mit Werkzeugen; fehlt bei der End-Antwort und bei Nachrichten der Person. */
   step?: number;
-  /** Fester Text von PaiBot statt Text des Modells; Standard `modell`. */
-  origin?: MessageOrigin;
+  /**
+   * Woher der Text stammt; Standard `modell`. `rueckmeldung` (feste Rückmeldung eines Teams) und
+   * `vorschlag` (deine Nachricht aus einem Antwort-Vorschlag, mit `frageBezug`) kennt nur die
+   * Datenbank.
+   */
+  origin?: NachrichtHerkunft;
+  /** Autor einer Antwort eines Bots; in einem Faden Pflicht. */
+  botId?: BotId;
+  /** Auftrag, unter dem die Nachricht entstand (in derselben Unterhaltung). */
+  auftragId?: AuftragId;
+  /** Frage eines Bots, die diese Nachricht beantwortet. */
+  frageBezug?: MessageId;
   /** Die Nachricht enthält oder stützt sich auf fremde Inhalte; nur setzen, nie zurücknehmen. */
   untrusted?: boolean;
 }
@@ -99,6 +113,9 @@ export async function insert(db: Database, input: MessageCreate): Promise<Messag
             step: input.step ?? null,
             ...(input.origin === undefined ? {} : { origin: input.origin }),
             ...(input.untrusted === true ? { untrusted: true } : {}),
+            botId: input.botId ?? null,
+            auftragId: input.auftragId ?? null,
+            frageBezug: input.frageBezug ?? null,
           })
           .returning();
         if (row === undefined) throw new PaiBotError("intern");

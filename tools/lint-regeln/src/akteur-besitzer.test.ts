@@ -311,6 +311,8 @@ describe("Bestandsliste: wo der Text `besitzer` im Quelltext steht", () => {
     "packages/db/src/rollen.ts": "Datenbank-Rolle mit dem Namen besitzer (kein Akteur)",
     "packages/db/src/schema/werte.ts":
       "Auswahlwerte der Spalten: abnahme und herkunft (kein Akteur)",
+    "packages/db/src/schema/auftraege.ts":
+      "Prüfregel der Spalte geber: eine Wurzel kommt vom Besitzer (kein Akteur fürs Tor)",
     // Anzeige und Wegweiser der Web-App.
     "apps/web/src/lib/routen.ts": "Zugang je Route (Sitzung nötig)",
     "apps/web/src/lib/zugang/weiterleitung.ts": "liest den Zugang einer Route",

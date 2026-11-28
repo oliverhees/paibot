@@ -21,10 +21,11 @@ import {
 } from "@paibot/shared";
 import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { ACTIVE_RUN_STATUSES, runs } from "../schema";
+import { ACTIVE_RUN_STATUSES, type AuftragId, runs } from "../schema";
 import { toRun } from "./abbildung";
 import {
   AKTIVER_LAUF_INDEX,
+  AKTIVER_LAUF_JE_BAUM_INDEX,
   SQLSTATE,
   StatuswechselError,
   standardFehler,
@@ -59,10 +60,18 @@ export interface RunCreate {
   botId: BotId;
   /** Wartender Lauf, den dieser Lauf fortsetzt (siehe `resume`). */
   resumesRunId?: RunId;
+  /**
+   * Auftrag, unter dem der Lauf arbeitet, mit der Wurzel seines Baums und dem Kennzeichen, ob die
+   * Eingabe fremde Inhalte enthält (beim Anlegen festgehalten, danach unveränderlich).
+   */
+  auftrag?: { id: AuftragId; rootId: AuftragId; untrustedInput: boolean };
 }
 
 function anlegenFehler(fehler: Parameters<typeof standardFehler>[0]) {
-  if (fehler.code === SQLSTATE.eindeutig && fehler.constraint === AKTIVER_LAUF_INDEX) {
+  if (
+    fehler.code === SQLSTATE.eindeutig &&
+    (fehler.constraint === AKTIVER_LAUF_INDEX || fehler.constraint === AKTIVER_LAUF_JE_BAUM_INDEX)
+  ) {
     return new PaiBotError("lauf_aktiv");
   }
   return standardFehler(fehler);
@@ -70,8 +79,8 @@ function anlegenFehler(fehler: Parameters<typeof standardFehler>[0]) {
 
 /**
  * Legt einen Lauf an (Status `queued`). Gibt es in der Unterhaltung schon einen aktiven Lauf
- * (`queued`, `running` oder `waiting_approval`), weist der Teil-Index der Datenbank das ab;
- * das wird zu `lauf_aktiv`. Es gibt bewusst keine Vorab-Prüfung, die Datenbank entscheidet.
+ * (`queued`, `running` oder `waiting_approval`) oder mit Auftrag schon einen aktiven Lauf in
+ * demselben Auftragsbaum, weist ein Teil-Index der Datenbank das ab; das wird zu `lauf_aktiv`. Es gibt bewusst keine Vorab-Prüfung, die Datenbank entscheidet.
  */
 export async function create(db: Database, input: RunCreate): Promise<Run> {
   const [row] = await uebersetzen(
@@ -84,6 +93,13 @@ export async function create(db: Database, input: RunCreate): Promise<Run> {
           triggerMessageId: input.triggerMessageId,
           botId: input.botId,
           resumesRunId: input.resumesRunId ?? null,
+          ...(input.auftrag === undefined
+            ? {}
+            : {
+                auftragId: input.auftrag.id,
+                auftragRootId: input.auftrag.rootId,
+                untrustedInput: input.auftrag.untrustedInput,
+              }),
           createdAt: sql`pg_catalog.clock_timestamp()`,
         })
         .returning(),

@@ -24,6 +24,9 @@ import { createTestDb, MIGRATIONS_FOLDER } from "./testing";
 const TABLES = [
   "app_tools",
   "apps",
+  "auftraege",
+  "auftrag_ereignisse",
+  "auftrag_zuschlaege",
   "belege",
   "bot_app_grants",
   "bots",

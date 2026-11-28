@@ -12,6 +12,7 @@
  * @since     2026-11-21
  */
 
+import { readdirSync } from "node:fs";
 import {
   type ConversationId,
   type MessageId,
@@ -44,6 +45,7 @@ import {
   createPostgresTestDatabase,
   createTestDb,
   createTestDbFrom,
+  MIGRATIONS_FOLDER,
   migrateTestDb,
   migrationsUpTo,
   TEST_DATABASE_URL_ENV,
@@ -1032,7 +1034,8 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
       triggerMessageId: frage.id,
       botId: bot.id,
     });
-    await test.db.insert(runs).values(run);
+    // Rohe Zeile: Das Schema kennt Spalten der Läufe, die es auf dem Stand 0014 noch nicht gibt.
+    await alteZeile(test.client, "runs", run);
     const antwort = messageRow(conversation.id, { role: "assistant", runId: run.id, step: 0 });
     await alteZeile(test.client, "messages", antwort);
     const key = keyRow();
@@ -1100,7 +1103,9 @@ describe("Aufstieg auf die Bindung der Belege (Stand 0014 → neuester)", () => 
     const migrationen = await test.client.query<{ n: number }>(
       "select count(*)::int as n from drizzle.__drizzle_migrations",
     );
-    expect(migrationen.rows[0]?.n).toBe(20);
+    expect(migrationen.rows[0]?.n).toBe(
+      readdirSync(MIGRATIONS_FOLDER).filter((name) => name.endsWith(".sql")).length,
+    );
     // Nach dem Aufstieg ist ein neuer Wechsel mit fremder Entscheidung nicht mehr möglich.
     const neu = toolCallRow(ids, { position: 9, callId: "neu" });
     await test.db.insert(toolCalls).values(neu);

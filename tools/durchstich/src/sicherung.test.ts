@@ -848,7 +848,7 @@ describe.skipIf(bereit.grund !== undefined)(
         );
         const neu = await zaehlen(ziel.url);
         expect(neu["public.rules"]).toBe((altZeilen["public.rules"] ?? 0) + 8);
-        expect(neu["drizzle.__drizzle_migrations"]).toBe(20);
+        expect(neu["drizzle.__drizzle_migrations"]).toBe(21);
         for (const tabelle of Object.keys(altZeilen).filter(
           (t) => t !== "public.rules" && t !== "drizzle.__drizzle_migrations",
         )) {

@@ -32,6 +32,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { bots } from "./anbieter";
+import { type AuftragId, auftraege } from "./auftraege";
 import {
   idCheck,
   inListCheck,
@@ -46,9 +47,9 @@ import {
   ACTIVE_RUN_STATUSES,
   CONVERSATION_EVENT_TYPES,
   CONVERSATION_KINDS,
-  MESSAGE_ORIGINS,
   MESSAGE_ROLES,
   MESSAGE_STATUSES,
+  NACHRICHT_HERKUENFTE,
   ROUTES,
   RUN_STATUSES,
   SCHLEUSE_MODES,
@@ -127,16 +128,47 @@ export const messages = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     /** Schritt eines Laufs mit Werkzeugen; leer = End-Antwort bzw. Nachricht der Person. */
     step: integer("step"),
-    /** Woher der Text stammt: vom Modell oder als fester Text von PaiBot. */
-    origin: text("origin").$type<(typeof MESSAGE_ORIGINS)[number]>().notNull().default("modell"),
+    /**
+     * Woher der Text stammt: vom Modell, als fester Text von PaiBot, als feste Rückmeldung eines
+     * Teams oder als deine Nachricht aus einem Antwort-Vorschlag (ab Migration 0020).
+     */
+    origin: text("origin")
+      .$type<(typeof NACHRICHT_HERKUENFTE)[number]>()
+      .notNull()
+      .default("modell"),
     /**
      * Die Nachricht enthält oder stützt sich auf fremde Inhalte (z. B. aus einer App). Wird nur
      * gesetzt, nie zurückgenommen (Trigger `messages_unveraenderlich`, Migration 0016).
      */
     untrusted: boolean("untrusted").notNull().default(false),
+    /** Autor einer Antwort eines Bots (ab Migration 0020; ältere Antworten ohne). */
+    botId: text("bot_id")
+      .$type<BotId>()
+      .references(() => bots.id),
+    /** Auftrag, unter dem die Nachricht entstand. */
+    auftragId: text("auftrag_id")
+      .$type<AuftragId>()
+      .references((): AnyPgColumn => auftraege.id),
+    /** Frage eines Bots, die diese Nachricht beantwortet (bei `origin = vorschlag` Pflicht). */
+    frageBezug: text("frage_bezug")
+      .$type<MessageId>()
+      .references((): AnyPgColumn => messages.id),
   },
   (t) => [
     idCheck("messages_id_format", t.id, "message"),
+    optionalIdCheck("messages_bot_id_format", t.botId, "bot"),
+    optionalIdCheck("messages_auftrag_id_format", t.auftragId, "auftrag"),
+    optionalIdCheck("messages_frage_bezug_format", t.frageBezug, "message"),
+    check("messages_autor_nur_bot", sql`${t.botId} is null or ${t.role} = 'assistant'`),
+    check("messages_frage_bezug_nur_person", sql`${t.frageBezug} is null or ${t.role} = 'user'`),
+    check(
+      "messages_vorschlag_mit_bezug",
+      sql`${t.origin} <> 'vorschlag' or (${t.role} = 'user' and ${t.frageBezug} is not null)`,
+    ),
+    check(
+      "messages_rueckmeldung_nur_bot",
+      sql`${t.origin} <> 'rueckmeldung' or ${t.role} = 'assistant'`,
+    ),
     check(
       "messages_served_provider_format",
       sql`${t.servedProvider} is null or ${matches(t.servedProvider, "^[a-z0-9][a-z0-9._-]{0,63}$")}`,
@@ -158,7 +190,7 @@ export const messages = pgTable(
       sql`${t.errorCode} is null or ${matches(t.errorCode, PATTERNS.errorCode)}`,
     ),
     check("messages_step_nicht_negativ", sql`${t.step} is null or ${t.step} >= 0`),
-    inListCheck("messages_origin_werte", t.origin, MESSAGE_ORIGINS),
+    inListCheck("messages_origin_werte", t.origin, NACHRICHT_HERKUENFTE),
     check("messages_fest_nur_bot", sql`${t.origin} <> 'fest' or ${t.role} = 'assistant'`),
     check(
       "messages_schritt_nur_bot",
@@ -166,6 +198,7 @@ export const messages = pgTable(
     ),
     index("messages_conversation_created_idx").on(t.conversationId, t.createdAt),
     index("messages_run_id_idx").on(t.runId),
+    index("messages_auftrag_id_idx").on(t.auftragId),
     uniqueIndex("messages_eine_antwort_je_lauf")
       .on(t.runId)
       .where(sql`${t.role} = 'assistant' and ${t.step} is null and ${t.runId} is not null`),
@@ -204,9 +237,35 @@ export const runs = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     errorCode: text("error_code"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Auftrag, unter dem der Lauf arbeitet (ab Migration 0020; leer im Direkt-Chat ohne Auftrag). */
+    auftragId: text("auftrag_id")
+      .$type<AuftragId>()
+      .references((): AnyPgColumn => auftraege.id),
+    /** Wurzel des Auftragsbaums; gesetzt genau mit `auftrag_id`. Je Wurzel höchstens ein aktiver Lauf. */
+    auftragRootId: text("auftrag_root_id")
+      .$type<AuftragId>()
+      .references((): AnyPgColumn => auftraege.id),
+    /**
+     * Die Eingabe des Laufs enthielt fremde Inhalte; beim Anlegen festgehalten und danach
+     * unveränderlich. Leer = nicht erfasst (gilt als belastet); Pflicht bei Läufen mit Auftrag.
+     */
+    untrustedInput: boolean("untrusted_input"),
+    /** Wie die Antwort des Modells endete (`stop`, `length`, …); einmal gesetzt, dann fest. */
+    finishReason: text("finish_reason"),
   },
   (t) => [
     idCheck("runs_id_format", t.id, "run"),
+    optionalIdCheck("runs_auftrag_id_format", t.auftragId, "auftrag"),
+    optionalIdCheck("runs_auftrag_root_id_format", t.auftragRootId, "auftrag"),
+    check("runs_auftrag_mit_wurzel", sql`(${t.auftragId} is null) = (${t.auftragRootId} is null)`),
+    check(
+      "runs_auftrag_mit_kennzeichen",
+      sql`${t.auftragId} is null or ${t.untrustedInput} is not null`,
+    ),
+    check(
+      "runs_finish_reason_format",
+      sql`${t.finishReason} is null or ${matches(t.finishReason, "^[a-z][a-z-]{0,31}$")}`,
+    ),
     inListCheck("runs_status_werte", t.status, RUN_STATUSES),
     check(
       "runs_resumes_run_id_anders",
@@ -221,6 +280,12 @@ export const runs = pgTable(
     uniqueIndex("runs_ein_offener_lauf_je_unterhaltung")
       .on(t.conversationId)
       .where(sql`${t.status} in (${valueList(ACTIVE_RUN_STATUSES)})`),
+    uniqueIndex("runs_ein_aktiver_lauf_je_auftragsbaum")
+      .on(t.auftragRootId)
+      .where(
+        sql`${t.auftragRootId} is not null and ${t.status} in (${valueList(ACTIVE_RUN_STATUSES)})`,
+      ),
+    index("runs_auftrag_id_idx").on(t.auftragId),
     index("runs_aktiv_heartbeat_idx")
       .on(t.status, t.heartbeatAt)
       .where(sql`${t.status} in ('queued', 'running')`),
