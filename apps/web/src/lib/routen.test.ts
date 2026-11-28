@@ -27,18 +27,12 @@ import {
 const routen = Object.entries(API_ROUTEN) as [RoutenName, (typeof API_ROUTEN)[RoutenName]][];
 
 /**
- * Aktionen der Fassung 4, die noch keine Route haben: Entwürfe, Fäden und der Stabschef. Ihre
- * Bedienung kommt später; bis dahin gibt es sie nur im Tor und in der Datenbank. Bots und Teams
- * zu verwalten ist dagegen bedienbar und hat Routen.
+ * Aktionen der Fassung 4, die noch keine Route haben: Fäden und der Stabschef. Ihre Bedienung kommt
+ * später; bis dahin gibt es sie nur im Tor und in der Datenbank. Bots und Teams zu verwalten ist
+ * dagegen bedienbar und hat Routen, und Team-Entwürfe ebenfalls: Vorlage ansehen, ändern, mit einem
+ * Klick anlegen, als Ganzes zurücknehmen.
  */
-const OHNE_BEDIENUNG: readonly TeamActionType[] = [
-  "team.entwurf_erstellen",
-  "team.entwurf_verwerfen",
-  "team.entwurf_anlegen",
-  "team.entwurf_zuruecknehmen",
-  "faden.anlegen",
-  "einstellung.stabschef_setzen",
-];
+const OHNE_BEDIENUNG: readonly TeamActionType[] = ["faden.anlegen", "einstellung.stabschef_setzen"];
 
 describe("API-Routen", () => {
   it("jede Kombination aus Methode und Pfad gibt es nur einmal", () => {

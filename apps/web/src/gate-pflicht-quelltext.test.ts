@@ -221,6 +221,9 @@ const ERLAUBT: Record<string, { art: "aktion" } | { art: "betrieb"; nur: readonl
   // Bots und Teams verwalten: Schreiben nur in der Ausführung der Aktionen (anlegen, pausieren,
   // löschen, einem Team zuordnen; Team anlegen, ändern, löschen).
   "web/src/lib/teams/verwaltung.ts": { art: "aktion" },
+  // Team-Entwürfe: Schreiben nur in der Ausführung der Aktionen (erstellen, verwerfen, anlegen,
+  // zurücknehmen). Das Anlegen ist dabei eine Transaktion in `repo.entwuerfe.anwenden`.
+  "web/src/lib/team/entwurf/verwaltung.ts": { art: "aktion" },
 };
 
 function quelltexte(): { datei: string; text: string }[] {

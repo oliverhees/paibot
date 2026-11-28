@@ -200,6 +200,7 @@ describe("Next-Einstellungen", () => {
     expect(gross.map((def) => def.pfad).sort()).toEqual([
       "/api/bot",
       "/api/bots",
+      "/api/team-entwuerfe/:id/anlegen",
       "/api/unterhaltungen/:id/nachrichten",
     ]);
     for (const def of Object.values(API_ROUTEN as Record<string, RoutenDefinition>)) {
@@ -217,6 +218,9 @@ describe("Next-Einstellungen", () => {
       "/api/botx",
       "/api/unterhaltungen/con_abc/nachrichtenx",
       "/api/unterhaltungen/con_abc/nachrichten/mehr",
+      "/api/team-entwuerfe/con_abc/anlegenx",
+      "/api/team-entwuerfe/con_abc/anlegen/mehr",
+      "/api/team-entwuerfe/con_abc",
       "/x/api/bot",
     ]) {
       expect(passt(pfad), pfad).toBe(true);

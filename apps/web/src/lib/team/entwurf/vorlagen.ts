@@ -20,7 +20,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Sha256Digest } from "@paibot/shared";
+import { type Sha256Digest, TEAM_TEMPLATE_KEY_PATTERN } from "@paibot/shared";
 import {
   ENTWURF_GRENZEN,
   type EntwurfHinweis,
@@ -40,7 +40,7 @@ export const VORLAGEN_MAX = 50;
  * einen Punkt noch einen Schrägstrich zu: Eine Kennung aus einer Anfrage kann damit nie aus dem
  * Ordner herausführen.
  */
-export const VORLAGE_KENNUNG_MUSTER = /^[a-z0-9][a-z0-9-]{0,62}$/;
+export const VORLAGE_KENNUNG_MUSTER = TEAM_TEMPLATE_KEY_PATTERN;
 
 /** Fehler im Image: Ordner fehlt, Datei unlesbar oder Vorlage ungültig. Hält den Aufruf an. */
 export class TeamVorlagenFehler extends Error {

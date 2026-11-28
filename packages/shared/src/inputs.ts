@@ -13,7 +13,7 @@ import { z } from "zod";
 import { actionTypeSchema } from "./actions";
 import { ahmtKennzeichnungNach, anzeigeText } from "./anzeigetext";
 import { LIMITS } from "./constants";
-import { timezoneSchema } from "./grundtypen";
+import { sha256DigestSchema, timezoneSchema } from "./grundtypen";
 import { idSchema } from "./id";
 import { istTeamName } from "./namen";
 import {
@@ -288,6 +288,30 @@ export const teamPatchInput = z
   })
   .refine((input) => Object.keys(input).length > 0, { path: ["name"] });
 export type TeamPatchInput = z.infer<typeof teamPatchInput>;
+
+/**
+ * Kennung einer Team-Vorlage: zugleich der Dateiname ohne `.json` im Ordner `vorlagen/teams`. Weder
+ * Punkt noch Schrägstrich sind erlaubt, damit eine Kennung aus einer Anfrage nie aus dem Ordner
+ * herausführen kann.
+ */
+export const TEAM_TEMPLATE_KEY_PATTERN = /^[a-z0-9][a-z0-9-]{0,62}$/;
+export const teamTemplateKeySchema = z.string().regex(TEAM_TEMPLATE_KEY_PATTERN);
+
+/** Einen Team-Entwurf aus einer Vorlage erstellen. */
+export const teamDraftCreateInput = z.strictObject({ template: teamTemplateKeySchema });
+export type TeamDraftCreateInput = z.infer<typeof teamDraftCreateInput>;
+
+/**
+ * Ein Team aus einem Entwurf anlegen. `seenDigest` ist der Abdruck, den die Vorschau gezeigt hat;
+ * der Server rechnet ihn über den anzulegenden Inhalt nach und lehnt bei Abweichung ab
+ * (Vorbedingung „Entwurf-Fassung passt“). `content` ist der in der Vorschau geänderte Inhalt – eine
+ * geänderte Anweisung, ein abgewählter Bot. Ohne `content` gilt der gespeicherte Entwurf.
+ */
+export const teamDraftApplyInput = z.strictObject({
+  seenDigest: sha256DigestSchema,
+  content: z.unknown().optional(),
+});
+export type TeamDraftApplyInput = z.infer<typeof teamDraftApplyInput>;
 
 /** Modell des Bots festlegen. */
 export const modelChoiceInput = z.strictObject({ modelId: idSchema("model") });
