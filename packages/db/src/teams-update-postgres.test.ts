@@ -219,6 +219,33 @@ describe.skipIf(BASE_URL === undefined)("Update von 0016 auf Teams A (Postgres)"
       expect(await codeOf(owner`delete from team_anlagen`)).toBe(RESTRICT);
     });
 
+    // Gegenprobe: `inhalt` oder `abdruck` in die Update-Rechte von `team_entwuerfe` in
+    // `APP_TABLE_RIGHTS` aufnehmen → dieser Test wird grün, obwohl er rot sein soll.
+    it("Entwurf: Stand und Aktionen ändern ja, Inhalt und Abdruck nie", async () => {
+      const entwurf = newId("entwurf");
+      const abdruck = `sha256:${"a".repeat(64)}`;
+      await app`insert into team_entwuerfe (id, status, herkunft, quelle, titel, inhalt, abdruck, format_fassung)
+        values (${entwurf}, 'offen', 'vorlage', 'content-team@2', 'Content-Team', '{}'::jsonb, ${abdruck}, 2)`;
+      // Erlaubt: der Stand und die Aktion, mit der das Tor es erlaubt hat.
+      await app`update team_entwuerfe set status = 'angelegt', angelegt_action_id = ${newId("action")}
+        where id = ${entwurf}`;
+      // Verboten: der Vorschlag selbst. Ein Entwurf hält fest, was vorgeschlagen war; was wirklich
+      // entstand, steht in den Zeilen, in `team_anlagen` und als Abdruck im Beleg.
+      expect(
+        await codeOf(
+          app`update team_entwuerfe set inhalt = '{"x":1}'::jsonb where id = ${entwurf}`,
+        ),
+      ).toBe(RECHTE);
+      expect(
+        await codeOf(
+          app`update team_entwuerfe set abdruck = ${`sha256:${"b".repeat(64)}`} where id = ${entwurf}`,
+        ),
+      ).toBe(RECHTE);
+      expect(
+        await codeOf(app`update team_entwuerfe set titel = 'Anders' where id = ${entwurf}`),
+      ).toBe(RECHTE);
+    });
+
     it("Fäden: anlegen und lesen ja, löschen nur mit der Unterhaltung", async () => {
       const team = newId("team");
       await app`insert into teams (id, name) values (${team}, 'Faden-Team')`;

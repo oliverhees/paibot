@@ -49,3 +49,25 @@ export async function geprueftMitAbdruck(inhalt: TeamEntwurf): Promise<VorschauE
   if (!geprueft.ok) return { ok: false, stelle: geprueft.fehler[0]?.pfad ?? "" };
   return { ok: true, inhalt: geprueft.entwurf, abdruck: await entwurfAbdruck(geprueft.entwurf) };
 }
+
+/**
+ * Welcher Entwurf auf der Seite steht – oder `undefined` für die Vorlagen-Liste.
+ *
+ * Ein **offener** Entwurf gewinnt immer: Es gibt nichts, was man an seiner Stelle zeigen könnte,
+ * und wer gerade einen erstellt hat, will ihn sehen. Ist keiner offen, steht der letzte da, damit
+ * „Rückgängig“ erreichbar bleibt.
+ *
+ * `uebersprungen` ist die Kennung des geschlossenen Entwurfs, den „Entwurf wieder öffnen“ gerade
+ * beiseitegeschoben hat. Die Kennung statt eines Schalters: Ein Schalter bliebe stehen und
+ * verdeckte auch alles, was danach entsteht – genau das ging zweimal schief, erst beim Erstellen
+ * des neuen Entwurfs und dann beim Anlegen des Teams.
+ */
+export function entwurfDerSeite<T extends { id: string; stand: string }>(
+  entwuerfe: readonly T[],
+  uebersprungen?: string,
+): T | undefined {
+  const offen = entwuerfe.find((e) => e.stand === "offen");
+  if (offen !== undefined) return offen;
+  const letzter = entwuerfe[0];
+  return letzter?.id === uebersprungen ? undefined : letzter;
+}

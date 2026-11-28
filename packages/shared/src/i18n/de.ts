@@ -2192,8 +2192,10 @@ export const de = {
     "Diese Änderung passt nicht ({stelle}). Setze den Wortlaut zurück oder kürze ihn.",
   "teams.entwurf.region": "Entwurf für das Team {name}",
   "teams.entwurf.titel": "Entwurf: Team {name}",
+  // Entwürfe kommen bisher nur aus einer Vorlage im Image; einen Assistenten, der sie schreibt,
+  // gibt es noch nicht. Der Satz sagt deshalb, woher der Entwurf wirklich kommt.
   "teams.entwurf.kopf":
-    "Pai hat diesen Entwurf geschrieben. Angelegt wird erst, wenn du bestätigst.",
+    "Dieser Entwurf kommt aus einer Vorlage. Angelegt wird erst, wenn du bestätigst.",
   "teams.entwurf.leitung": "Leitung: {name}",
   "teams.entwurf.teile": "Teile des Entwurfs",
   "teams.entwurf.teil_team": "Team und Zusammenarbeit",

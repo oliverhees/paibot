@@ -24,7 +24,6 @@ import { createTestDb } from "../testing";
 import { bots, entwuerfe, messages, teams } from "./index";
 
 const ABDRUCK = `sha256:${"a".repeat(64)}` as Sha256Digest;
-const ABDRUCK_NEU = `sha256:${"b".repeat(64)}` as Sha256Digest;
 const AKTION = newId("action") as ActionId;
 
 const INHALT = { format: "pb-teamentwurf/v2", titel: "Content-Team" };
@@ -74,8 +73,6 @@ function anwendenEingabe(entwurfId: EntwurfId, botListe = DREI_BOTS) {
   return {
     entwurfId,
     actionId: AKTION,
-    inhalt: { ...INHALT, geaendert: true },
-    abdruck: ABDRUCK_NEU,
     team: {
       name: "Content",
       collaboration: "leitung_fuehrt" as const,
@@ -158,9 +155,11 @@ describe("Team-Entwürfe: anwenden", () => {
     const nachher = await entwuerfe.get(db, id);
     expect(nachher?.status).toBe("angelegt");
     expect(nachher?.createdActionId).toBe(AKTION);
-    // Der Entwurf trägt danach genau den Stand, der angelegt wurde.
-    expect(nachher?.digest).toBe(ABDRUCK_NEU);
-    expect(nachher?.content).toEqual({ ...INHALT, geaendert: true });
+    // Inhalt und Abdruck des Entwurfs bleiben, wie sie beim Erstellen waren: Der Entwurf ist der
+    // Vorschlag, nicht das Ergebnis. Die App-Rolle darf sie auch nicht ändern
+    // (`packages/db/src/rollen.ts`). Was wirklich entstand, steht in den Zeilen und im Beleg.
+    expect(nachher?.digest).toBe(ABDRUCK);
+    expect(nachher?.content).toEqual(INHALT);
   });
 
   it("legt die Bots mit Aufgabe, Anweisung, Aussehen und Ausgabegrenze an, ohne Pause", async () => {

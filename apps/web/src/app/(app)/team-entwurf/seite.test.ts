@@ -93,6 +93,18 @@ describe("Seite „Team aus Vorlage“", () => {
     expect(html).not.toContain(t("teams.entwurf.anlegen"));
   });
 
+  it("die Seite hat genau eine Hauptüberschrift – mit und ohne Entwurf", () => {
+    // Die Vorschau bringt ihre eigene („Entwurf: Team …“). Stünde der Seitentitel immer da,
+    // hätte die Seite zwei, und der Vorspann erklärte etwas, das schon auf dem Schirm liegt.
+    const zaehle = (html: string) => (html.match(/<h1\b/gu) ?? []).length;
+    const liste = seite();
+    expect(zaehle(liste)).toBe(1);
+    expect(liste).toContain(t("teams.entwurf.seite_titel"));
+    const vorschau = seite({ entwuerfe: [eintrag()] });
+    expect(zaehle(vorschau)).toBe(1);
+    expect(vorschau).not.toContain(t("teams.entwurf.seite_vorspann"));
+  });
+
   it("ohne Vorlagen sagt die Seite das, statt einen leeren Kasten zu zeigen", () => {
     expect(seite({ vorlagen: [] })).toContain(t("teams.entwurf.keine_vorlagen"));
   });

@@ -18,7 +18,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "../../../lib/api/client";
 import type { EntwurfSeiteDaten, EntwurfSeiteEintrag } from "../../../lib/team/entwurf/seite";
-import { geprueftMitAbdruck, inhaltMitAuswahl } from "../../../lib/team/entwurf/vorschau";
+import {
+  entwurfDerSeite,
+  geprueftMitAbdruck,
+  inhaltMitAuswahl,
+} from "../../../lib/team/entwurf/vorschau";
 import { TEAM_PFADE } from "../../../lib/teams/pfade";
 import styles from "./entwurf.module.css";
 
@@ -30,12 +34,12 @@ export function TeamEntwurfSeite({ daten }: { daten: EntwurfSeiteDaten }) {
   const router = useRouter();
   const [sendet, setSendet] = useState(false);
   const [fehler, setFehler] = useState<string | undefined>();
-  const [vorlagenZeigen, setVorlagenZeigen] = useState(false);
-  const offen = daten.entwuerfe.find((e) => e.stand === "offen");
+  // Die Kennung des geschlossenen Entwurfs, den „Entwurf wieder öffnen“ beiseitegeschoben hat.
+  const [uebersprungen, setUebersprungen] = useState<string | undefined>();
   // Ohne offenen Entwurf steht der letzte da, damit „Rückgängig“ erreichbar bleibt. „Entwurf wieder
   // öffnen“ zeigt stattdessen die Vorlagen: Ein verworfener Entwurf lässt sich nicht aufwecken, ein
   // neuer entsteht aus derselben Vorlage.
-  const letzter = vorlagenZeigen ? undefined : (offen ?? daten.entwuerfe[0]);
+  const letzter = entwurfDerSeite(daten.entwuerfe, uebersprungen);
 
   async function rufe(methode: "POST" | "DELETE", pfad: string, koerper?: unknown) {
     if (sendet) return;
@@ -69,11 +73,13 @@ export function TeamEntwurfSeite({ daten }: { daten: EntwurfSeiteDaten }) {
 
   return (
     <div className={styles.seite}>
-      <h1 className={styles.titel}>{t("teams.entwurf.seite_titel")}</h1>
-      <p className={styles.vorspann}>{t("teams.entwurf.seite_vorspann")}</p>
-
+      {/* Titel und Vorspann stehen bei der Vorlagen-Liste. Die Vorschau bringt ihre eigene
+          Hauptüberschrift mit („Entwurf: Team …“); stünden beide da, hätte die Seite zwei davon,
+          und der Vorspann erklärte etwas, das schon offen auf dem Schirm liegt. */}
       {letzter === undefined ? (
         <section aria-labelledby="vorlagen" data-baustein="vorlagen">
+          <h1 className={styles.titel}>{t("teams.entwurf.seite_titel")}</h1>
+          <p className={styles.vorspann}>{t("teams.entwurf.seite_vorspann")}</p>
           <h2 id="vorlagen" className={styles.abschnitt}>
             {t("teams.entwurf.vorlagen")}
           </h2>
@@ -121,7 +127,7 @@ export function TeamEntwurfSeite({ daten }: { daten: EntwurfSeiteDaten }) {
           onRueckgaengig={() =>
             rufe("POST", TEAM_PFADE.teamEntwurfZuruecknehmen(letzter.id), undefined)
           }
-          onWiederOeffnen={() => setVorlagenZeigen(true)}
+          onWiederOeffnen={() => setUebersprungen(letzter.id)}
         />
       )}
     </div>

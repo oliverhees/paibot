@@ -26,6 +26,10 @@
   font-size: var(--schrift-m);
 }
 
+.titel + .vorspann {
+  margin-bottom: 14px;
+}
+
 .abschnitt {
   margin: 0 0 10px;
   font-size: var(--schrift-l);

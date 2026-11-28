@@ -126,7 +126,7 @@ export function EntwurfVorschau(p: EntwurfVorschauProps) {
         {v.bots.map((b) => {
           const istLeitung = b.name === leitung;
           return (
-            <div key={b.name} className={styles.teil} data-baustein="entwurf-bot">
+            <div key={b.name} className={styles.teil} data-baustein="entwurf-bot" data-bot={b.name}>
               <label className={styles.haken}>
                 <input
                   type="checkbox"

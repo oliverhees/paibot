@@ -113,9 +113,6 @@ export interface AnwendenEingabe {
   entwurfId: EntwurfId;
   /** Die Aktion `team.entwurf_anlegen`, mit der das Tor dies erlaubt hat. */
   actionId: ActionId;
-  /** Inhalt und Abdruck, die angelegt werden; sie landen im Entwurf (er trägt dann den Stand). */
-  inhalt: unknown;
-  abdruck: Sha256Digest;
   team: {
     name: string;
     collaboration: teams.Zusammenarbeit;
@@ -403,10 +400,11 @@ export async function anwenden(db: Database, eingabe: AnwendenEingabe): Promise<
       })),
     ]);
 
-    await tx
-      .update(teamEntwuerfe)
-      .set({ content: eingabe.inhalt, digest: eingabe.abdruck, updatedAt: sql`pg_catalog.now()` })
-      .where(eq(teamEntwuerfe.id, eingabe.entwurfId));
+    // Inhalt und Abdruck der Zeile bleiben, wie sie beim Erstellen waren – der Entwurf ist der
+    // Vorschlag, nicht das Ergebnis. Die App-Rolle darf sie auch nicht ändern
+    // (`packages/db/src/rollen.ts`: „Inhalt und Abdruck eines Entwurfs ändert die App nie“). Was
+    // wirklich angelegt wurde, steht in den Zeilen selbst, in `team_anlagen` und als Abdruck im
+    // Beleg der Aktion.
     await entwurfStandSetzen(tx, eingabe.entwurfId, "angelegt", eingabe.actionId);
 
     return { team, bots: angelegt };

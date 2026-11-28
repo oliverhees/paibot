@@ -382,8 +382,6 @@ export const teamEntwurfAnlegen: RoutenAktion<"teamEntwurfAnlegen"> = async (k) 
         const angelegt = await repo.entwuerfe.anwenden(k.db, {
           entwurfId,
           actionId: erlaubnis.actionId,
-          inhalt,
-          abdruck,
           team: {
             name: inhalt.team.name,
             collaboration: inhalt.team.zusammenarbeit,

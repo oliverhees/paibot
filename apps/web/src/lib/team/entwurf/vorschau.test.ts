@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from "vitest";
 import { entwurfAbdruck, pruefeEntwurf, type TeamEntwurf } from "./format";
-import { geprueftMitAbdruck, inhaltMitAuswahl } from "./vorschau";
+import { entwurfDerSeite, geprueftMitAbdruck, inhaltMitAuswahl } from "./vorschau";
 
 /** Der geprüfte Beispiel-Entwurf: drei Bots, die Leitung ist der erste. */
 async function beispiel(): Promise<TeamEntwurf> {
@@ -138,5 +138,38 @@ describe("geprueftMitAbdruck", () => {
       bots: e.bots.map((b) => (b.name === "Zwei" ? { ...b, name: "Team Zwei" } : b)),
     });
     expect(ergebnis.ok).toBe(false);
+  });
+});
+
+describe("entwurfDerSeite", () => {
+  const e = (id: string, stand: string) => ({ id, stand });
+
+  it("ohne Entwurf stehen die Vorlagen da", () => {
+    expect(entwurfDerSeite([], undefined)).toBeUndefined();
+  });
+
+  it("„Entwurf wieder öffnen“ blendet genau diesen geschlossenen Entwurf aus", () => {
+    expect(entwurfDerSeite([e("a", "zurueck")], "a")).toBeUndefined();
+    expect(entwurfDerSeite([e("a", "verworfen")], "a")).toBeUndefined();
+  });
+
+  it("ein offener Entwurf gewinnt – auch nach „Entwurf wieder öffnen“", () => {
+    // Ging vorher schief: Nach „Entwurf wieder öffnen“ blieb die Vorlagen-Liste stehen, obwohl
+    // der Klick auf „Vorschau öffnen“ gerade einen Entwurf angelegt hatte.
+    expect(entwurfDerSeite([e("b", "offen"), e("a", "zurueck")], "a")).toEqual(e("b", "offen"));
+  });
+
+  it("der neue Entwurf bleibt stehen, wenn er angelegt ist", () => {
+    // Ging ebenfalls schief: Nach dem Anlegen war keiner mehr offen, und ein bloßer Schalter
+    // „Vorlagen zeigen“ verdeckte auch den eben angelegten Entwurf – samt „Rückgängig“.
+    expect(entwurfDerSeite([e("b", "angelegt"), e("a", "zurueck")], "a")).toEqual(
+      e("b", "angelegt"),
+    );
+  });
+
+  it("ohne offenen Entwurf steht der letzte da, damit „Rückgängig“ erreichbar bleibt", () => {
+    expect(entwurfDerSeite([e("b", "angelegt"), e("a", "verworfen")], undefined)).toEqual(
+      e("b", "angelegt"),
+    );
   });
 });

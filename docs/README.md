@@ -24,6 +24,7 @@ Für jeden Teil von PaiBot gibt es einen eigenen Doku-Teil. Die Doku wächst Fun
 | Chat                                   | [funktion-chat.md](funktion-chat.md)                                     | vorhanden, mit Bildern                      |
 | Bot                                    | [funktion-bot.md](funktion-bot.md)                                       | vorhanden, mit Bildern                      |
 | Bots und Teams                         | [funktion-bots-und-teams.md](funktion-bots-und-teams.md)                 | vorhanden, mit Bildern                      |
+| Team aus Vorlage                       | [funktion-team-entwurf.md](funktion-team-entwurf.md)                     | vorhanden, mit Bildern                      |
 | Apps                                   | [funktion-apps.md](funktion-apps.md)                                     | vorhanden, mit Bildern                      |
 | Anbieter und Modelle                   | [funktion-anbieter-und-modelle.md](funktion-anbieter-und-modelle.md)     | vorhanden, mit Bildern                      |
 | Datenschleuse                          | [funktion-datenschleuse.md](funktion-datenschleuse.md)                   | vorhanden, mit Bildern; zuschaltbar         |

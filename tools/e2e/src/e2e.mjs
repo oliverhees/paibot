@@ -830,6 +830,168 @@ async function main() {
     await seite.getByText(`Gespeichert. ${urspruenglich} nutzt`, { exact: false }).waitFor();
   });
 
+  // ---- Team aus Vorlage: Vorschau, ändern, anlegen, als Ganzes zurücknehmen -------------------
+  // Dieser Schritt steht **vor** „Mehrere Bots und Teams“: Die Vorlage legt ein Team „Content“ an,
+  // und „Rückgängig“ nimmt es ganz zurück. Dass der Schritt danach dasselbe Team von Hand anlegen
+  // kann, ist zugleich der Beleg, dass nach dem Zurücknehmen wirklich nichts übrig ist.
+  const VORLAGEN_TEAM = "Content";
+  const EIGENER_WORTLAUT = "Du bist Ideen. Sammle genau drei Blickwinkel, mehr nicht.";
+  const ABGEWAEHLT = "Lektorat";
+
+  /**
+   * Alle Bots, aus der Liste des Servers. Die Seite „Bots und Teams“ taugt dafür nicht: Sie führt
+   * unter „Bots“ nur die ohne Team, und die neuen gehören alle zum Team der Vorlage. Die Liste
+   * trägt auch die Anweisung je Bot – daran hängt die Probe, ob der geänderte Wortlaut ankam.
+   */
+  async function alleBots(seite, app) {
+    const antwort = await seite.request.get(`${app}/api/bots`);
+    if (!antwort.ok()) throw new Error(`Bots lesen: Status ${antwort.status()}.`);
+    return (await antwort.json()).daten?.bots ?? [];
+  }
+
+  const botNamen = async (seite, app) => (await alleBots(seite, app)).map((b) => b.name);
+
+  /**
+   * Geht den Weg einmal ganz: Vorlage öffnen, einen Wortlaut ändern, einen Bot abwählen, anlegen,
+   * zurücknehmen. Läuft auf jedem Format – am Schirm und am Handy –, damit der mobile Durchgang
+   * dieselbe Strecke prüft und nicht nur, dass die Seite lädt.
+   */
+  async function wegDurchDieVorlage(seite, app) {
+    const vorher = await botNamen(seite, app);
+    // Der Weg führt über den Verweis auf der Seite „Bots und Teams“, nicht über eine Adresse.
+    await seite.goto(`${app}/teams`);
+    await seite.getByRole("link", { name: "Team aus Vorlage", exact: true }).click();
+    await seite.waitForURL(`${app}/team-entwurf`);
+    // Steht noch ein alter Entwurf da, führt „Entwurf wieder öffnen“ zurück zu den Vorlagen.
+    const wieder = seite.getByRole("button", { name: "Entwurf wieder öffnen", exact: true });
+    if ((await wieder.count()) > 0) await wieder.click();
+
+    const erstellt = await belegeZaehlen(seite, app, "team.entwurf_erstellen");
+    await seite.getByRole("button", { name: "Vorschau öffnen", exact: true }).first().click();
+    const vorschau = seite.locator("[data-baustein='entwurf']");
+    await vorschau.waitFor();
+    if ((await belegeZaehlen(seite, app, "team.entwurf_erstellen")) <= erstellt) {
+      throw new Error("Die Vorschau zu öffnen hat keinen Beleg erzeugt.");
+    }
+
+    // Die Vorschau zeigt alle Teile: Leitung, Zusammenarbeit, Abnahme, Kosten-Hinweis, Verfall.
+    const text = (await vorschau.textContent()) ?? "";
+    for (const satz of [
+      "Leitung: Redaktion",
+      "Zusammenarbeit „Leitung führt“",
+      "Dieser Entwurf kommt aus einer Vorlage.",
+      "Abnahme durch die Leitung",
+      "Was das kosten kann",
+      "Neue Bots kosten nichts, solange du ihnen nicht schreibst.",
+      "Der Entwurf verfällt in 7 Tagen.",
+    ]) {
+      if (!text.includes(satz)) throw new Error(`Die Vorschau sagt nicht „${satz}“.`);
+    }
+    // Und sie zeigt jede Anweisung im vollen Wortlaut, nicht nur ihren Anfang. Der Wortlaut steht
+    // in einem zugeklappten „details“ – erst aufklappen, sonst ist er für den Browser nicht da.
+    for (const falte of await vorschau.locator("details > summary").all()) await falte.click();
+    const wortlaute = await vorschau.locator("textarea").all();
+    if (wortlaute.length !== 4) {
+      throw new Error(`${wortlaute.length} statt 4 Anweisungen in der Vorschau.`);
+    }
+    for (const feld of wortlaute) {
+      if ((await feld.inputValue()).length < 500) {
+        throw new Error("Eine Anweisung steht nicht im vollen Wortlaut da.");
+      }
+    }
+    // Ein Bot wird über `data-bot` gefunden, nicht über seinen Namen im Text: Die Anweisungen
+    // nennen einander, „Redaktion“ steht also in allen vier Kästen.
+    const botKasten = (name) =>
+      vorschau.locator(`[data-baustein='entwurf-bot'][data-bot='${name}']`);
+
+    // Die Leitung lässt sich nicht abwählen – sonst stünde ein Team ohne Ansprechpartner da.
+    const leitungsHaken = botKasten("Redaktion").getByRole("checkbox");
+    if (!(await leitungsHaken.isDisabled())) {
+      throw new Error("Die Leitung lässt sich abwählen.");
+    }
+
+    // Ändern: eigener Wortlaut für „Ideen“. Abwählen: „Lektorat“ kommt nicht mit.
+    await vorschau
+      .getByRole("textbox", { name: "Anweisung für Ideen ändern" })
+      .fill(EIGENER_WORTLAUT);
+    await botKasten(ABGEWAEHLT).getByRole("checkbox").uncheck();
+
+    // Anlegen: ein Klick, ein Beleg.
+    const angelegtVorher = await belegeZaehlen(seite, app, "team.entwurf_anlegen");
+    await vorschau.getByRole("button", { name: "Team anlegen", exact: true }).click();
+    await seite.locator("[data-baustein='entwurf-angelegt']").waitFor({ timeout: 60_000 });
+    if ((await belegeZaehlen(seite, app, "team.entwurf_anlegen")) <= angelegtVorher) {
+      throw new Error("Anlegen hat keinen Beleg erzeugt.");
+    }
+
+    // Das Team steht da, der abgewählte Bot nicht, und der geänderte Wortlaut gilt wirklich.
+    const nachher = await botNamen(seite, app);
+    const neue = nachher.filter((n) => !vorher.includes(n));
+    await seite.goto(`${app}/teams`);
+    if (neue.includes(ABGEWAEHLT)) throw new Error(`„${ABGEWAEHLT}“ wurde trotz Abwahl angelegt.`);
+    if (!neue.includes("Redaktion") || !neue.includes("Ideen") || !neue.includes("Entwurf")) {
+      throw new Error(`Es fehlen Bots aus der Vorlage (neu: ${neue.join(", ")}).`);
+    }
+    // Die Karte des Teams sagt, wie viele Bots dazugehören und wer leitet: drei, nicht vier, weil
+    // „Lektorat“ abgewählt war – und die Leitung aus der Vorlage steht fest.
+    const karte = seite.getByRole("listitem").filter({ hasText: VORLAGEN_TEAM }).first();
+    if ((await karte.count()) === 0) {
+      throw new Error("Das Team aus der Vorlage steht nicht in der Liste.");
+    }
+    const kartenText = (await karte.textContent()) ?? "";
+    if (!kartenText.includes("3 Bots") || !kartenText.includes("Leitung: Redaktion")) {
+      throw new Error(`Die Karte des Teams sagt „${kartenText.trim()}“.`);
+    }
+    // Der geänderte Wortlaut steht wirklich beim neuen Bot – nicht der aus der Vorlage.
+    const ideen = (await alleBots(seite, app)).find((b) => b.name === "Ideen");
+    if (ideen?.instructions !== EIGENER_WORTLAUT) {
+      throw new Error("Der geänderte Wortlaut kam nicht beim neuen Bot an.");
+    }
+
+    // Rückgängig nimmt das Team als Ganzes zurück: Hinterher ist es wie vorher.
+    await seite.goto(`${app}/team-entwurf`);
+    const zurueckVorher = await belegeZaehlen(seite, app, "team.entwurf_zuruecknehmen");
+    await seite.getByRole("button", { name: "Rückgängig", exact: true }).click();
+    await seite.locator("[data-baustein='entwurf-zu']").waitFor({ timeout: 60_000 });
+    if ((await belegeZaehlen(seite, app, "team.entwurf_zuruecknehmen")) <= zurueckVorher) {
+      throw new Error("Rückgängig hat keinen Beleg erzeugt.");
+    }
+    const danach = await botNamen(seite, app);
+    if (JSON.stringify([...danach].sort()) !== JSON.stringify([...vorher].sort())) {
+      throw new Error(`Nach dem Zurücknehmen bleiben Bots übrig (${danach.join(", ")}).`);
+    }
+    await seite.goto(`${app}/teams`);
+    if ((await seite.getByRole("listitem").filter({ hasText: VORLAGEN_TEAM }).count()) > 0) {
+      throw new Error("Das Team steht nach dem Zurücknehmen noch da.");
+    }
+  }
+
+  await schritt(
+    "Team aus Vorlage: Vorschau, ändern, abwählen, anlegen, rückgängig",
+    seite,
+    async () => {
+      await seite.setViewportSize(DESKTOP);
+      await wegDurchDieVorlage(seite, app);
+      await neuestenBelegPruefen(seite, app, "team.entwurf_anlegen");
+      await neuestenBelegPruefen(seite, app, "team.entwurf_zuruecknehmen");
+    },
+  );
+
+  await schritt("Handy: derselbe Weg durch die Vorlage im Format 390", seite, async () => {
+    await seite.setViewportSize(HANDY);
+    await wegDurchDieVorlage(seite, app);
+    // Am Handy darf nichts seitlich hinausragen: Sonst sind Häkchen oder Knopf nicht erreichbar.
+    await seite.goto(`${app}/team-entwurf`);
+    const breite = await seite.evaluate(() => ({
+      inhalt: document.documentElement.scrollWidth,
+      schirm: document.documentElement.clientWidth,
+    }));
+    if (breite.inhalt > breite.schirm + 1) {
+      throw new Error(`Die Seite ragt seitlich hinaus (${breite.inhalt} > ${breite.schirm}).`);
+    }
+    await seite.setViewportSize(DESKTOP);
+  });
+
   // ---- Mehrere Bots und Teams: anlegen, eigene Unterhaltung, pausieren, löschen ---------------
   await schritt(
     "Bots und Teams: zweiter Bot, eigene Unterhaltung, Pause, Löschen mit Rückfrage",
