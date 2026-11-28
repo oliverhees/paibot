@@ -31,6 +31,7 @@ const SCHREIBFUNKTIONEN = [
   "bots.setPaused",
   "bots.setTeam",
   "teams",
+  "entwuerfe",
   "teamEntwuerfe",
   "teamAnlagen",
   "faeden",
@@ -120,6 +121,7 @@ describe("Bots, Teams, Entwürfe und Fäden: nur der Besitzer-Weg schreibt", () 
     expect(verbotenes("await repo.bots.create(db, x);")).toEqual(["repo.bots.create"]);
     expect(verbotenes("await repo.teams.create(db, x);")).toEqual(["repo.teams"]);
     expect(verbotenes("repo.faeden.insert(tx, k)")).toEqual(["repo.faeden"]);
+    expect(verbotenes("await repo.entwuerfe.anwenden(db, e);")).toEqual(["repo.entwuerfe"]);
     expect(verbotenes('import { teams } from "@paibot/db";')).toEqual(["Tabelle teams"]);
     expect(verbotenes('import { bots as b, repo } from "@paibot/db";')).toEqual(["Tabelle bots"]);
     expect(verbotenes("// repo.bots.remove(db, id)\n/* repo.teams.x */ const a = 1;")).toEqual([]);

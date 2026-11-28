@@ -14,6 +14,7 @@ export * as belege from "./belege";
 export * as owner from "./besitzer";
 export * as bots from "./bots";
 export * as settings from "./einstellungen";
+export * as entwuerfe from "./entwuerfe";
 export * as events from "./ereignisse";
 export { type PgFehler, pgFehler, StatuswechselError } from "./fehler";
 export * as geraete from "./geraete";
